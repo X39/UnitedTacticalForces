@@ -1,0 +1,20 @@
+﻿@using X39.Util
+
+<MudStack>
+    <div>
+        
+    </div>
+</MudStack>
+
+@code {
+
+    [Parameter]
+    public IEnumerable<DateOnly> SelectedDays { get; set; } = Enumerable.Empty<DateOnly>();
+
+    [Parameter]
+    public DateOnly? SelectedDay
+    {
+        get => SelectedDays.FirstOrDefault();
+        set => SelectedDays = value is null ? Enumerable.Empty<DateOnly>() : value.Value.MakeEnumerable();
+    }
+}

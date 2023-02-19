@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.UnitedTacticalForces.WebApp", "X39.UnitedTacticalForces.WebApp\X39.UnitedTacticalForces.WebApp.csproj", "{809AF68F-1CBB-42B5-A1C7-875BDF2E7384}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.UnitedTacticalForces.Api", "X39.UnitedTacticalForces.Api\X39.UnitedTacticalForces.Api.csproj", "{0B9949C1-7AA5-4EB6-91CC-4DFCDE655EE6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{809AF68F-1CBB-42B5-A1C7-875BDF2E7384}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{809AF68F-1CBB-42B5-A1C7-875BDF2E7384}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{809AF68F-1CBB-42B5-A1C7-875BDF2E7384}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{809AF68F-1CBB-42B5-A1C7-875BDF2E7384}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B9949C1-7AA5-4EB6-91CC-4DFCDE655EE6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B9949C1-7AA5-4EB6-91CC-4DFCDE655EE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B9949C1-7AA5-4EB6-91CC-4DFCDE655EE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B9949C1-7AA5-4EB6-91CC-4DFCDE655EE6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

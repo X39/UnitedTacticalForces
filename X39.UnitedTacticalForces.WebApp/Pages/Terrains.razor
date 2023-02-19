@@ -1,0 +1,47 @@
+﻿@page "/terrains"
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
+@inject ISnackbar Snackbar
+@inject ITerrainRepository TerrainRepository
+<h3>ModPacks</h3>
+
+<MudStack Style="width: 100%">
+    <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                   OnFilesChanged="OnInputFileChanged"
+                   Hidden="false"
+                   Class="flex-1"
+                   MaximumFileCount="1"
+                   InputClass="absolute mud-width-full mud-height-full overflow-hidden z-20"
+                   InputStyle="opacity:0"
+                   @ondragenter="@SetDragClass" @ondragleave="@ClearDragClass" @ondragend="@ClearDragClass">
+        <ButtonTemplate>
+            <MudPaper Height="300px" Outlined="true" Class="@_dragClass">
+                <MudText Typo="Typo.h6">Drag and drop files here or click</MudText>
+            </MudPaper>
+        </ButtonTemplate>
+    </MudFileUpload>
+</MudStack>
+@code {
+    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mt-4 mud-width-full mud-height-full z-10";
+    private string _dragClass = DefaultDragClass;
+
+    private async Task OnInputFileChanged(InputFileChangeEventArgs e)
+    {
+        ClearDragClass();
+        var file = e.GetMultipleFiles().Single();
+        await using var stream = file.OpenReadStream();
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+        await TerrainRepository.CreateAsync(new Terrain(default, memoryStream.ToArray(), "image/png", "Test Terrain"));
+    }
+
+    private void SetDragClass()
+    {
+        _dragClass = $"{DefaultDragClass} mud-border-primary";
+    }
+
+    private void ClearDragClass()
+    {
+        _dragClass = DefaultDragClass;
+    }
+}
