@@ -38,7 +38,9 @@
                             }
                         </CardHeaderContent>
                         <CardHeaderActions>
-                            <MudIconButton Icon="@Icons.Material.Filled.NotificationsOff" Color="Color.Default"/>
+                            <AuthorizeView>
+                                <MudIconButton Icon="@Icons.Material.Filled.NotificationsOff" Color="Color.Default"/>
+                            </AuthorizeView>
                         </CardHeaderActions>
                     </MudCardHeader>
                     @if (it.Image.Any() && it.ImageMimeType.IsNotNullOrWhiteSpace())
@@ -49,15 +51,18 @@
                         <MudText Typo="Typo.body2">@it.Description</MudText>
                     </MudCardContent>
                     <MudCardActions>
-                        <MudBadge Content="7" Color="Color.Success" Overlap="true" Class="mx-6 my-4">
-                            <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Default"/>
-                        </MudBadge>
-                        <MudBadge Content="2" Color="Color.Warning" Overlap="true" Class="mx-6 my-4">
-                            <MudIconButton Icon="@Icons.Material.Filled.QuestionMark" Color="Color.Default"/>
-                        </MudBadge>
-                        <MudBadge Content="3" Color="Color.Error" Overlap="true" Class="mx-6 my-4">
-                            <MudIconButton Icon="@Icons.Material.Filled.Clear" Color="Color.Default"/>
-                        </MudBadge>
+                        <AuthorizeView>
+                            <MudIconButton Icon="@Icons.Material.Filled.NotificationsOff" Color="Color.Default"/>
+                            <MudBadge Content="7" Color="Color.Success" Overlap="true" Class="mx-6 my-4">
+                                <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Default"/>
+                            </MudBadge>
+                            <MudBadge Content="2" Color="Color.Warning" Overlap="true" Class="mx-6 my-4">
+                                <MudIconButton Icon="@Icons.Material.Filled.QuestionMark" Color="Color.Default"/>
+                            </MudBadge>
+                            <MudBadge Content="3" Color="Color.Error" Overlap="true" Class="mx-6 my-4">
+                                <MudIconButton Icon="@Icons.Material.Filled.Clear" Color="Color.Default"/>
+                            </MudBadge>
+                        </AuthorizeView>
                     </MudCardActions>
                 </MudCard>
             </ItemContent>
@@ -66,11 +71,5 @@
 </MudTimeline>
 
 @code {
-
-    protected override async Task OnInitializedAsync()
-    {
-        _events = await EventRepository.GetEventsAsync();
-    }
-
     private IReadOnlyCollection<Event> _events = ImmutableArray<Event>.Empty;
 }

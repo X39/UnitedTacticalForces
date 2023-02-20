@@ -2,21 +2,18 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using X39.UnitedTacticalForces.Api.Data;
 
 #nullable disable
 
-namespace X39.UnitedTacticalForces.Api.Migrations
+namespace X39.UnitedTacticalForces.Api.Data.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    [Migration("20230219012638_Fix")]
-    partial class Fix
+    partial class ApiDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -24,6 +21,21 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("PrivilegeUser", b =>
+                {
+                    b.Property<long>("PrivilegesId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("UsersId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrivilegesId", "UsersId");
+
+                    b.HasIndex("UsersId");
+
+                    b.ToTable("PrivilegeUser");
+                });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.Privilege", b =>
                 {
@@ -45,15 +57,10 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ClaimCode")
                         .IsUnique();
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("Privileges");
 
@@ -144,9 +151,8 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("SteamUuid")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<decimal>("SteamId64")
+                        .HasColumnType("numeric(20,0)");
 
                     b.HasKey("Id");
 
@@ -266,11 +272,19 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                     b.ToTable("Events");
                 });
 
-            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.Privilege", b =>
+            modelBuilder.Entity("PrivilegeUser", b =>
                 {
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.Privilege", null)
+                        .WithMany()
+                        .HasForeignKey("PrivilegesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", null)
-                        .WithMany("Privileges")
-                        .HasForeignKey("UserId");
+                        .WithMany()
+                        .HasForeignKey("UsersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPack", b =>
@@ -317,11 +331,6 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                     b.Navigation("ModPack");
 
                     b.Navigation("Terrain");
-                });
-
-            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.User", b =>
-                {
-                    b.Navigation("Privileges");
                 });
 #pragma warning restore 612, 618
         }

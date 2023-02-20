@@ -6,7 +6,7 @@
         <entry key="Common:0b9949c1-7aa5-4eb6-91cc-4dfcde655ee6:dbContext" value="X39.UnitedTacticalForces.Api.Data.ApiDbContext" />
         <entry key="Common:buildConfiguration" value="Debug" />
         <entry key="Common:noBuild" value="false" />
-        <entry key="Common:outputFolder" value="Migrations" />
+        <entry key="Common:outputFolder" value="Data\Migrations" />
       </map>
     </option>
   </component>

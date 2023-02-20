@@ -20,6 +20,7 @@ public class ModPackController : ControllerBase
         _apiDbContext = apiDbContext;
     }
 
+    [Authorize]
     [HttpPost("create", Name = nameof(CreateModPackAsync))]
     public async Task<ModPack> CreateModPackAsync([FromBody] ModPack modPack, CancellationToken cancellationToken)
     {
@@ -28,6 +29,7 @@ public class ModPackController : ControllerBase
         return entity.Entity;
     }
 
+    [Authorize]
     [HttpPost("{modPackId:long}/update", Name = nameof(UpdateModPackAsync))]
     public async Task UpdateModPackAsync(
         [FromRoute] long modPackId,

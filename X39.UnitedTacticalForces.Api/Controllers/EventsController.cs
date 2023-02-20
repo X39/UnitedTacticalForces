@@ -8,12 +8,12 @@ namespace X39.UnitedTacticalForces.Api.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class EvensController : ControllerBase
+public class EventsController : ControllerBase
 {
-    private readonly ILogger<EvensController> _logger;
+    private readonly ILogger<EventsController> _logger;
     private readonly ApiDbContext _apiDbContext;
 
-    public EvensController(ILogger<EvensController> logger, ApiDbContext apiDbContext)
+    public EventsController(ILogger<EventsController> logger, ApiDbContext apiDbContext)
     {
         _logger = logger;
         _apiDbContext = apiDbContext;
@@ -29,6 +29,7 @@ public class EvensController : ControllerBase
             .Include((e) => e.HostedBy));
     }
 
+    [Authorize]
     [HttpPost("{eventId:guid}/subscribe", Name = nameof(SubscribeToEventAsync))]
     public Task SubscribeToEventAsync(
         [FromRoute] Guid eventId)
@@ -36,6 +37,7 @@ public class EvensController : ControllerBase
         throw new NotImplementedException();
     }
 
+    [Authorize]
     [HttpPost("{eventId:guid}/unsubscribe", Name = nameof(UnsubscribeFromEventAsync))]
     public Task UnsubscribeFromEventAsync(
         [FromRoute] Guid eventId)
@@ -43,6 +45,7 @@ public class EvensController : ControllerBase
         throw new NotImplementedException();
     }
 
+    [Authorize]
     [HttpPost("create", Name = nameof(CreateEventAsync))]
     public async Task<Event> CreateEventAsync([FromBody] Event newEvent, CancellationToken cancellationToken)
     {
@@ -54,6 +57,7 @@ public class EvensController : ControllerBase
         return entity.Entity;
     }
 
+    [Authorize]
     [HttpPost("{eventId:guid}/update", Name = nameof(UpdateEventAsync))]
     public async Task UpdateEventAsync(
         [FromRoute] Guid eventId,

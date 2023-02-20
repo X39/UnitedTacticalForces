@@ -6,7 +6,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
 
-namespace X39.UnitedTacticalForces.Api.Migrations
+namespace X39.UnitedTacticalForces.Api.Data.Migrations
 {
     /// <inheritdoc />
     public partial class Initial : Migration
@@ -15,7 +15,22 @@ namespace X39.UnitedTacticalForces.Api.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Terrain",
+                name: "Privileges",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Category = table.Column<string>(type: "text", nullable: false),
+                    Title = table.Column<string>(type: "text", nullable: false),
+                    ClaimCode = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Privileges", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Terrains",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -26,7 +41,7 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Terrain", x => x.Id);
+                    table.PrimaryKey("PK_Terrains", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -35,7 +50,7 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Nickname = table.Column<string>(type: "text", nullable: false),
-                    SteamUuid = table.Column<string>(type: "text", nullable: false),
+                    SteamId64 = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     EMail = table.Column<string>(type: "text", nullable: true),
                     Avatar = table.Column<byte[]>(type: "bytea", nullable: false),
                     AvatarMimeType = table.Column<string>(type: "text", nullable: false)
@@ -46,7 +61,7 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ModPack",
+                name: "ModPacks",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -59,9 +74,9 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ModPack", x => x.Id);
+                    table.PrimaryKey("PK_ModPacks", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ModPack_Users_OwnerFk",
+                        name: "FK_ModPacks_Users_OwnerFk",
                         column: x => x.OwnerFk,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -69,24 +84,27 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Privileges",
+                name: "PrivilegeUser",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Category = table.Column<string>(type: "text", nullable: false),
-                    Title = table.Column<string>(type: "text", nullable: false),
-                    ClaimCode = table.Column<string>(type: "text", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: true)
+                    PrivilegesId = table.Column<long>(type: "bigint", nullable: false),
+                    UsersId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Privileges", x => x.Id);
+                    table.PrimaryKey("PK_PrivilegeUser", x => new { x.PrivilegesId, x.UsersId });
                     table.ForeignKey(
-                        name: "FK_Privileges_Users_UserId",
-                        column: x => x.UserId,
+                        name: "FK_PrivilegeUser_Privileges_PrivilegesId",
+                        column: x => x.PrivilegesId,
+                        principalTable: "Privileges",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_PrivilegeUser_Users_UsersId",
+                        column: x => x.UsersId,
                         principalTable: "Users",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -110,15 +128,15 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 {
                     table.PrimaryKey("PK_Events", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Events_ModPack_ModPackFk",
+                        name: "FK_Events_ModPacks_ModPackFk",
                         column: x => x.ModPackFk,
-                        principalTable: "ModPack",
+                        principalTable: "ModPacks",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Events_Terrain_TerrainFk",
+                        name: "FK_Events_Terrains_TerrainFk",
                         column: x => x.TerrainFk,
-                        principalTable: "Terrain",
+                        principalTable: "Terrains",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -137,18 +155,18 @@ namespace X39.UnitedTacticalForces.Api.Migrations
 
             migrationBuilder.InsertData(
                 table: "Privileges",
-                columns: new[] { "Id", "Category", "ClaimCode", "Title", "UserId" },
+                columns: new[] { "Id", "Category", "ClaimCode", "Title" },
                 values: new object[,]
                 {
-                    { 1L, "Events", "event-create", "Events erstellen", null },
-                    { 2L, "Events", "event-modify", "Alle events bearbeiten", null },
-                    { 3L, "Events", "event-delete", "Alle events löschen", null },
-                    { 4L, "Terrains", "terrain-create", "Terrain anlegen", null },
-                    { 5L, "Terrains", "terrain-modify", "Terrain bearbeiten", null },
-                    { 6L, "Terrains", "terrain-delete", "Terrain löschen", null },
-                    { 7L, "ModPacks", "modpack-create", "ModPack anlegen", null },
-                    { 8L, "ModPacks", "modpack-modify", "ModPack bearbeiten", null },
-                    { 9L, "ModPacks", "modpack-delete", "ModPack löschen", null }
+                    { 1L, "Events", "event-create", "Events erstellen" },
+                    { 2L, "Events", "event-modify", "Alle events bearbeiten" },
+                    { 3L, "Events", "event-delete", "Alle events löschen" },
+                    { 4L, "Terrains", "terrain-create", "Terrain anlegen" },
+                    { 5L, "Terrains", "terrain-modify", "Terrain bearbeiten" },
+                    { 6L, "Terrains", "terrain-delete", "Terrain löschen" },
+                    { 7L, "ModPacks", "modpack-create", "ModPack anlegen" },
+                    { 8L, "ModPacks", "modpack-modify", "ModPack bearbeiten" },
+                    { 9L, "ModPacks", "modpack-delete", "ModPack löschen" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -172,8 +190,8 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 column: "TerrainFk");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ModPack_OwnerFk",
-                table: "ModPack",
+                name: "IX_ModPacks_OwnerFk",
+                table: "ModPacks",
                 column: "OwnerFk");
 
             migrationBuilder.CreateIndex(
@@ -183,9 +201,9 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Privileges_UserId",
-                table: "Privileges",
-                column: "UserId");
+                name: "IX_PrivilegeUser_UsersId",
+                table: "PrivilegeUser",
+                column: "UsersId");
         }
 
         /// <inheritdoc />
@@ -195,13 +213,16 @@ namespace X39.UnitedTacticalForces.Api.Migrations
                 name: "Events");
 
             migrationBuilder.DropTable(
+                name: "PrivilegeUser");
+
+            migrationBuilder.DropTable(
+                name: "ModPacks");
+
+            migrationBuilder.DropTable(
+                name: "Terrains");
+
+            migrationBuilder.DropTable(
                 name: "Privileges");
-
-            migrationBuilder.DropTable(
-                name: "ModPack");
-
-            migrationBuilder.DropTable(
-                name: "Terrain");
 
             migrationBuilder.DropTable(
                 name: "Users");

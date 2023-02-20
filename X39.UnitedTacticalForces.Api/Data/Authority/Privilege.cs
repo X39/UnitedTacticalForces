@@ -9,6 +9,8 @@ public class Privilege
     public string Category { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string ClaimCode { get; set; } = string.Empty;
+    
+    public ICollection<User>? Users { get; set; }
 
     internal static IEnumerable<Privilege> StaticData()
     {

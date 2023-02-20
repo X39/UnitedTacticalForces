@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <PackageReference Include="AspNet.Security.OpenId.Steam" Version="7.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.3" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.3" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational.Design" Version="1.1.6" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.3">
@@ -27,6 +28,15 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="appsettings.secret.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\.submodules\SteamWebAPI2\src\Steam.Models\Steam.Models.csproj" />
+      <ProjectReference Include="..\.submodules\SteamWebAPI2\src\SteamWebAPI2\SteamWebAPI2.csproj" />
     </ItemGroup>
 
 </Project>

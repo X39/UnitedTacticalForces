@@ -1,8 +1,10 @@
 ﻿@inject IStringLocalizer<Language> Localizer
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_Events)]</MudNavLink>
-    <MudNavLink Href="calendar" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_Calendar)]</MudNavLink>
-    <MudNavLink Href="modpacks" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_Calendar)]</MudNavLink>
-    <MudNavLink Href="terrains" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_Calendar)]</MudNavLink>
-    <MudNavLink Href="users" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_Calendar)]</MudNavLink>
+
+    <AuthorizeView>
+        <MudNavLink Href="modpacks" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_ModPacks)]</MudNavLink>
+        <MudNavLink Href="terrains" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_Terrains)]</MudNavLink>
+        <MudNavLink Href="users" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_Users)]</MudNavLink>
+    </AuthorizeView>
 </MudNavMenu>

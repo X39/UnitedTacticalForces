@@ -12,12 +12,21 @@
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
     <data name="Shared_NavMenu_Events" xml:space="preserve">
-        <value>Events</value>
+        <value>Veranstaltungen</value>
     </data>
     <data name="Shared_NavMenu_Calendar" xml:space="preserve">
         <value>Kalender</value>
     </data>
     <data name="Pages_Events_Title" xml:space="preserve">
         <value>Anstehende Events</value>
+    </data>
+    <data name="Shared_NavMenu_ModPacks" xml:space="preserve">
+        <value>Mod-Pakete</value>
+    </data>
+    <data name="Shared_NavMenu_Terrains" xml:space="preserve">
+        <value>Karten</value>
+    </data>
+    <data name="Shared_NavMenu_Users" xml:space="preserve">
+        <value>Benutzer</value>
     </data>
 </root>

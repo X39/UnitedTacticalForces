@@ -85,5 +85,32 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
                 return ResourceManager.GetString("Shared_NavMenu_Events", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mod packs.
+        /// </summary>
+        internal static string Shared_NavMenu_ModPacks {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_ModPacks", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Terrains.
+        /// </summary>
+        internal static string Shared_NavMenu_Terrains {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_Terrains", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Users.
+        /// </summary>
+        internal static string Shared_NavMenu_Users {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_Users", resourceCulture);
+            }
+        }
     }
 }

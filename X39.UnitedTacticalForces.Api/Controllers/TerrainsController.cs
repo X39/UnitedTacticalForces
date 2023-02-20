@@ -21,6 +21,7 @@ public class TerrainsController : ControllerBase
         _apiDbContext = apiDbContext;
     }
     
+    [Authorize]
     [HttpPost("create", Name = nameof(CreateTerrainAsync))]
     public async Task<Terrain> CreateTerrainAsync([FromBody] Terrain terrain, CancellationToken cancellationToken)
     {
@@ -36,6 +37,7 @@ public class TerrainsController : ControllerBase
         return entity.Entity;
     }
 
+    [Authorize]
     [HttpPost("{terrainId:long}/update", Name = nameof(UpdateTerrainAsync))]
     public async Task UpdateTerrainAsync(
         [FromRoute] long terrainId,
