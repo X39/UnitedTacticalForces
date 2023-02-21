@@ -32,7 +32,12 @@
         await using var stream = file.OpenReadStream();
         using var memoryStream = new MemoryStream();
         await stream.CopyToAsync(memoryStream);
-        await TerrainRepository.CreateAsync(new Terrain(default, memoryStream.ToArray(), "image/png", "Test Terrain"));
+        await TerrainRepository.CreateAsync(new Terrain
+        {
+            Image = memoryStream.ToArray(),
+            ImageMimeType = "image/png",
+            Title = "Sample Terrain",
+        });
     }
 
     private void SetDragClass()

@@ -1,0 +1,47 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using X39.Util
+@inject IStringLocalizer<Language> Localizer
+<MudDialog>
+    <DialogContent>
+        <MudText></MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Localizer[nameof(Language.Common_Cancel)]</MudButton>
+        <MudButton Color="Color.Error" OnClick="Submit">@Localizer[nameof(Language.Common_Delete)]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired, Required]
+    public string Description { get; set; } = null!;
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel() => MudDialog.Cancel();
+
+    public static async Task<bool> ShowAsync(
+        IDialogService dialogService,
+        string description,
+        string title)
+    {
+        var dialogReference = await dialogService.ShowAsync<ConfirmDeletionDialog>(
+            title,
+            new DialogParameters
+            {
+                {nameof(Description), description},
+            },
+            new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+            })
+            .ConfigureAwait(false);
+        var dialogResult = await dialogReference.Result
+            .ConfigureAwait(false);
+        if (dialogResult.Data is bool flag)
+            return flag;
+        return false;
+    }
+}

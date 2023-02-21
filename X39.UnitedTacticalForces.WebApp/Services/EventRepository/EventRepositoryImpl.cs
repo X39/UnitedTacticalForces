@@ -6,13 +6,13 @@ namespace X39.UnitedTacticalForces.WebApp.Services.EventRepository;
 [Scoped<EventRepositoryImpl, IEventRepository>]
 internal class EventRepositoryImpl : RepositoryBase, IEventRepository
 {
-    public EventRepositoryImpl(HttpClient httpClient) : base(httpClient)
-    {
-    }
-
     public async Task<IReadOnlyCollection<Event>> GetEventsAsync(CancellationToken cancellationToken = default)
     {
-        var response = await Client.EvensUpcomingAsync(cancellationToken);
+        var response = await Client.EventsUpcomingAsync(cancellationToken);
         return response.ToImmutableArray();
+    }
+
+    public EventRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) : base(httpClient, baseUrl)
+    {
     }
 }

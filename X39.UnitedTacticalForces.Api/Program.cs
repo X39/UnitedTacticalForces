@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,7 +11,11 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using X39.UnitedTacticalForces.Api;
 using X39.UnitedTacticalForces.Api.Data;
+using X39.UnitedTacticalForces.Api.Helpers;
 using X39.Util.DependencyInjection;
+
+// See https://www.npgsql.org/efcore/release-notes/6.0.html#breaking-changes
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.secret.json", optional: true);
@@ -24,38 +30,23 @@ builder.Services.AddDbContext<ApiDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("ApiDbContext")));
 builder.Services.AddAttributedServicesFromAssemblyOf<Program>(builder.Configuration);
 builder.Services.AddAuthorization();
-builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer((options) =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration[Constants.Configuration.Jwt.Issuer],
-            ValidAudience = builder.Configuration[Constants.Configuration.Jwt.Audience],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(Constants.Configuration.Jwt.SecretKey)),
-        };
-    })
+builder.Services.AddAuthentication(options => { options.DefaultScheme = Constants.AuthorizationSchemas.Cookie; })
     .AddCookie(options =>
     {
-        options.LoginPath = "/login";
-        options.LogoutPath = "/logout";
+#if !DEBUG
+        options.AccessDeniedPath = "/";
+#endif
+        options.ExpireTimeSpan = TimeSpan.FromDays(7);
+        options.Events.OnSignedIn = ValidationHelper.OnSignedIn;
+        options.Events.OnValidatePrincipal = ValidationHelper.OnValidatePrincipal;
+        options.LoginPath = "/Users/login/steam";
+        options.LogoutPath = "/Users/logout";
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
     })
-    .AddSteam(Constants.AuthorizationSchemas.Steam, (options) =>
-    {
-        // https://steamcommunity.com/dev/apikey
-        options.ApplicationKey = builder.Configuration[Constants.Configuration.Steam.ApiKey];
-    })
-    .AddScheme<ApiScheme, ApiSchemeAuthenticationHandler>(Constants.AuthorizationSchemas.Api, "Api", (options) => { });
-builder.Services.AddControllers();
+    .AddSteam();
+builder.Services.AddControllers()
+    .AddJsonOptions((jsonOptions) => jsonOptions.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 builder.Services.AddHttpClient();
 // ...
 var app = builder.Build();
@@ -64,10 +55,11 @@ var app = builder.Build();
     await using var dbContext = scope.ServiceProvider.GetService<ApiDbContext>();
     await dbContext!.Database.MigrateAsync();
 }
-app.UseCors(builder => builder
-    .AllowAnyOrigin()
+app.UseCors(cors => cors
+    .SetIsOriginAllowed(_ => true)
     .AllowAnyMethod()
-    .AllowAnyHeader());
+    .AllowAnyHeader()
+    .AllowCredentials());
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -84,19 +76,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-public class ApiSchemeAuthenticationHandler : AuthenticationHandler<ApiScheme>
-{
-    public ApiSchemeAuthenticationHandler(IOptionsMonitor<ApiScheme> options, ILoggerFactory logger, UrlEncoder encoder,
-        ISystemClock clock) : base(options, logger, encoder, clock)
-    {
-    }
-
-    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
-    {
-        // Context.User.Claims.FirstOrDefault((q) => q.Type == Constants.ClaimTypes.CookieId);
-        return new HandleRequestResult()
-        {
-        };
-    }
-}

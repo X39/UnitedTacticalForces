@@ -28,7 +28,7 @@ public class TerrainsController : ControllerBase
         var entity = await _apiDbContext.Terrains.AddAsync(terrain, cancellationToken);
         await _apiDbContext.Users.AddAsync(new User
         {
-            Id = Guid.NewGuid(),
+            PrimaryKey = Guid.NewGuid(),
             Avatar = terrain.Image,
             AvatarMimeType = terrain.ImageMimeType,
             Nickname = "Test User",
@@ -44,7 +44,7 @@ public class TerrainsController : ControllerBase
         [FromBody] Terrain updatedTerrain,
         CancellationToken cancellationToken)
     {
-        var existingTerrain = await _apiDbContext.Terrains.SingleAsync((q) => q.Id == terrainId, cancellationToken);
+        var existingTerrain = await _apiDbContext.Terrains.SingleAsync((q) => q.PrimaryKey == terrainId, cancellationToken);
         existingTerrain.Title = updatedTerrain.Title;
         existingTerrain.Image= updatedTerrain.Image;
         existingTerrain.ImageMimeType= updatedTerrain.ImageMimeType;

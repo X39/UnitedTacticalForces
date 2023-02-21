@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Core;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
@@ -20,13 +21,14 @@ public class ApiDbContext : DbContext
 
     public DbSet<Event> Events { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
-    public DbSet<Privilege> Privileges { get; set; } = null!;
+    public DbSet<UserModPackMeta> UserModPackMetas { get; set; } = null!;
+    public DbSet<Role> Privileges { get; set; } = null!;
     public DbSet<Terrain> Terrains { get; set; } = null!;
     public DbSet<ModPack> ModPacks { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Privilege>().HasData(Privilege.StaticData());
+        modelBuilder.Entity<Role>().HasData(Role.StaticData());
         base.OnModelCreating(modelBuilder);
     }
 }

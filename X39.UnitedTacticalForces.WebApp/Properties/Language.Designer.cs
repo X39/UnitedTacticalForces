@@ -60,11 +60,191 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Cancel.
+        /// </summary>
+        internal static string Common_Cancel {
+            get {
+                return ResourceManager.GetString("Common_Cancel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Create.
+        /// </summary>
+        internal static string Common_Create {
+            get {
+                return ResourceManager.GetString("Common_Create", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete.
+        /// </summary>
+        internal static string Common_Delete {
+            get {
+                return ResourceManager.GetString("Common_Delete", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Submit.
+        /// </summary>
+        internal static string Common_Submit {
+            get {
+                return ResourceManager.GetString("Common_Submit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Dialogs_ModifyModPackDialog_Inputs_Title {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyModPackDialog_Inputs_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Replace mod pack HTML.
+        /// </summary>
+        internal static string Dialogs_ModifyModPackDialog_ReplaceModPackHtml {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyModPackDialog_ReplaceModPackHtml", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set mod pack HTMl.
+        /// </summary>
+        internal static string Dialogs_ModifyModPackDialog_SetModPackHtml {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyModPackDialog_SetModPackHtml", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Modify mod pack.
+        /// </summary>
+        internal static string Dialogs_ModifyModPackDialog_Title {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyModPackDialog_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New mod pack.
+        /// </summary>
+        internal static string Dialogs_ModifyModPackDialog_TitleNew {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyModPackDialog_TitleNew", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Upcoming events.
         /// </summary>
         internal static string Pages_Events_Title {
             get {
                 return ResourceManager.GetString("Pages_Events_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All mod packs.
+        /// </summary>
+        internal static string Pages_ModPacks_AllModPacks {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_AllModPacks", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to delete this mod pack? This cannot be undone!.
+        /// </summary>
+        internal static string Pages_ModPacks_ConfirmDeleteOfModPack_Description {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_ConfirmDeleteOfModPack_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Confirm deletion of mod pack.
+        /// </summary>
+        internal static string Pages_ModPacks_ConfirmDeleteOfModPack_Title {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_ConfirmDeleteOfModPack_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Create new mod pack.
+        /// </summary>
+        internal static string Pages_ModPacks_CreateNewModPack {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_CreateNewModPack", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to My mod packs.
+        /// </summary>
+        internal static string Pages_ModPacks_MyModPacks {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_MyModPacks", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interactions.
+        /// </summary>
+        internal static string Pages_ModPacks_Table_Interacitons {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_Table_Interacitons", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Owner.
+        /// </summary>
+        internal static string Pages_ModPacks_Table_Owner {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_Table_Owner", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Created.
+        /// </summary>
+        internal static string Pages_ModPacks_Table_TimeStampCreated {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_Table_TimeStampCreated", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Updated.
+        /// </summary>
+        internal static string Pages_ModPacks_Table_TimeStampUpdated {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_Table_TimeStampUpdated", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Pages_ModPacks_Table_Title {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_Table_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mod packs.
+        /// </summary>
+        internal static string Pages_ModPacks_Title {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_Title", resourceCulture);
             }
         }
         
@@ -83,6 +263,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Shared_NavMenu_Events {
             get {
                 return ResourceManager.GetString("Shared_NavMenu_Events", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Logout.
+        /// </summary>
+        internal static string Shared_NavMenu_Logout {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_Logout", resourceCulture);
             }
         }
         

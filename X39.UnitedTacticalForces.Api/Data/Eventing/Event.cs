@@ -8,7 +8,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Eventing;
 
 public class Event
 {
-    [Key] public Guid Id { get; set; }
+    [Key] public Guid PrimaryKey { get; set; }
 
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;

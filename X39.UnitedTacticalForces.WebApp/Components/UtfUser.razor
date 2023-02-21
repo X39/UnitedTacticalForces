@@ -1,0 +1,19 @@
+﻿@using System.ComponentModel.DataAnnotations
+
+<div class="d-flex gap-2 align-center">
+    @if (User is not null)
+    {
+        @if (User.Avatar is not null && User.Avatar.Length is not 0)
+        {
+            <MudAvatar Image="@User.ToImageSource()"/>
+        }
+        <MudText>@User.Nickname</MudText>
+    }
+</div>
+
+@code {
+
+    [Required, EditorRequired, Parameter]
+    public User? User { get; set; } = null!;
+
+}

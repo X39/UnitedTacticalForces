@@ -22,34 +22,34 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("PrivilegeUser", b =>
+            modelBuilder.Entity("RoleUser", b =>
                 {
-                    b.Property<long>("PrivilegesId")
+                    b.Property<long>("RolesPrimaryKey")
                         .HasColumnType("bigint");
 
-                    b.Property<Guid>("UsersId")
+                    b.Property<Guid>("UsersPrimaryKey")
                         .HasColumnType("uuid");
 
-                    b.HasKey("PrivilegesId", "UsersId");
+                    b.HasKey("RolesPrimaryKey", "UsersPrimaryKey");
 
-                    b.HasIndex("UsersId");
+                    b.HasIndex("UsersPrimaryKey");
 
-                    b.ToTable("PrivilegeUser");
+                    b.ToTable("RoleUser");
                 });
 
-            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.Privilege", b =>
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.Role", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<long>("PrimaryKey")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PrimaryKey"));
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("ClaimCode")
+                    b.Property<string>("Identifier")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -57,9 +57,9 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("PrimaryKey");
 
-                    b.HasIndex("ClaimCode")
+                    b.HasIndex("Identifier")
                         .IsUnique();
 
                     b.ToTable("Privileges");
@@ -67,72 +67,79 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1L,
+                            PrimaryKey = 1L,
+                            Category = "General",
+                            Identifier = "admin",
+                            Title = "Admin"
+                        },
+                        new
+                        {
+                            PrimaryKey = 2L,
                             Category = "Events",
-                            ClaimCode = "event-create",
+                            Identifier = "event-create",
                             Title = "Events erstellen"
                         },
                         new
                         {
-                            Id = 2L,
+                            PrimaryKey = 3L,
                             Category = "Events",
-                            ClaimCode = "event-modify",
+                            Identifier = "event-modify",
                             Title = "Alle events bearbeiten"
                         },
                         new
                         {
-                            Id = 3L,
+                            PrimaryKey = 4L,
                             Category = "Events",
-                            ClaimCode = "event-delete",
+                            Identifier = "event-delete",
                             Title = "Alle events löschen"
                         },
                         new
                         {
-                            Id = 4L,
+                            PrimaryKey = 5L,
                             Category = "Terrains",
-                            ClaimCode = "terrain-create",
+                            Identifier = "terrain-create",
                             Title = "Terrain anlegen"
                         },
                         new
                         {
-                            Id = 5L,
+                            PrimaryKey = 6L,
                             Category = "Terrains",
-                            ClaimCode = "terrain-modify",
+                            Identifier = "terrain-modify",
                             Title = "Terrain bearbeiten"
                         },
                         new
                         {
-                            Id = 6L,
+                            PrimaryKey = 7L,
                             Category = "Terrains",
-                            ClaimCode = "terrain-delete",
+                            Identifier = "terrain-delete",
                             Title = "Terrain löschen"
                         },
                         new
                         {
-                            Id = 7L,
+                            PrimaryKey = 8L,
                             Category = "ModPacks",
-                            ClaimCode = "modpack-create",
+                            Identifier = "modpack-create",
                             Title = "ModPack anlegen"
                         },
                         new
                         {
-                            Id = 8L,
+                            PrimaryKey = 9L,
                             Category = "ModPacks",
-                            ClaimCode = "modpack-modify",
+                            Identifier = "modpack-modify",
                             Title = "ModPack bearbeiten"
                         },
                         new
                         {
-                            Id = 9L,
+                            PrimaryKey = 10L,
                             Category = "ModPacks",
-                            ClaimCode = "modpack-delete",
+                            Identifier = "modpack-delete",
                             Title = "ModPack löschen"
                         });
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.User", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("PrimaryKey")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
@@ -154,18 +161,43 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Property<decimal>("SteamId64")
                         .HasColumnType("numeric(20,0)");
 
-                    b.HasKey("Id");
+                    b.HasKey("PrimaryKey");
 
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.UserModPackMeta", b =>
+                {
+                    b.Property<Guid>("UserFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("ModPackFk")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("TimeStampDownloaded")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserFk", "ModPackFk");
+
+                    b.HasIndex("ModPackFk");
+
+                    b.ToTable("UserModPackMetas");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPack", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<long>("PrimaryKey")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PrimaryKey"));
+
+                    b.Property<string>("Html")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("OwnerFk")
                         .HasColumnType("uuid");
@@ -180,11 +212,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Xml")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
+                    b.HasKey("PrimaryKey");
 
                     b.HasIndex("OwnerFk");
 
@@ -193,11 +221,11 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.Terrain", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<long>("PrimaryKey")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PrimaryKey"));
 
                     b.Property<byte[]>("Image")
                         .IsRequired()
@@ -211,14 +239,14 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("PrimaryKey");
 
                     b.ToTable("Terrains");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Eventing.Event", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("PrimaryKey")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
@@ -259,7 +287,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("PrimaryKey");
 
                     b.HasIndex("CreatedByFk");
 
@@ -272,19 +300,38 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.ToTable("Events");
                 });
 
-            modelBuilder.Entity("PrivilegeUser", b =>
+            modelBuilder.Entity("RoleUser", b =>
                 {
-                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.Privilege", null)
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.Role", null)
                         .WithMany()
-                        .HasForeignKey("PrivilegesId")
+                        .HasForeignKey("RolesPrimaryKey")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", null)
                         .WithMany()
-                        .HasForeignKey("UsersId")
+                        .HasForeignKey("UsersPrimaryKey")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.UserModPackMeta", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPack", "ModPack")
+                        .WithMany("UserMetas")
+                        .HasForeignKey("ModPackFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "User")
+                        .WithMany("ModPackMetas")
+                        .HasForeignKey("UserFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ModPack");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPack", b =>
@@ -331,6 +378,16 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Navigation("ModPack");
 
                     b.Navigation("Terrain");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.User", b =>
+                {
+                    b.Navigation("ModPackMetas");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPack", b =>
+                {
+                    b.Navigation("UserMetas");
                 });
 #pragma warning restore 612, 618
         }

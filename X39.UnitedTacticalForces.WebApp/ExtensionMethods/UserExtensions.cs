@@ -6,7 +6,7 @@ public static class UserExtensions
 {
     public static string ToImageSource(this User user)
     {
-        if (user.Avatar is null)
+        if (user.Avatar is null || user.Avatar.Length is 0)
             throw new ArgumentException("User.Avatar is null");
         var builder = new StringBuilder();
         builder.Append("data:");

@@ -29,4 +29,67 @@
     <data name="Shared_NavMenu_Users" xml:space="preserve">
         <value>Benutzer</value>
     </data>
+    <data name="Pages_ModPacks_Title" xml:space="preserve">
+        <value>Mod-Pakete</value>
+    </data>
+    <data name="Pages_ModPacks_MyModPacks" xml:space="preserve">
+        <value>Meine Mod-Pakete</value>
+    </data>
+    <data name="Pages_ModPacks_AllModPacks" xml:space="preserve">
+        <value>Alle Mod-Pakete</value>
+    </data>
+    <data name="Pages_ModPacks_Table_Title" xml:space="preserve">
+        <value>Titel</value>
+    </data>
+    <data name="Shared_NavMenu_Logout" xml:space="preserve">
+        <value>Abmelden</value>
+    </data>
+    <data name="Pages_ModPacks_CreateNewModPack" xml:space="preserve">
+        <value>Neues Mod-Paket erstellen</value>
+    </data>
+    <data name="Pages_ModPacks_Table_Interacitons" xml:space="preserve">
+        <value>Interaktionen</value>
+    </data>
+    <data name="Pages_ModPacks_Table_Owner" xml:space="preserve">
+        <value>Besitzer</value>
+    </data>
+    <data name="Pages_ModPacks_Table_TimeStampCreated" xml:space="preserve">
+        <value>Erstellt</value>
+    </data>
+    <data name="Pages_ModPacks_Table_TimeStampUpdated" xml:space="preserve">
+        <value>Aktualisiert</value>
+    </data>
+    <data name="Dialogs_ModifyModPackDialog_Title" xml:space="preserve">
+        <value>Mod-Paket bearbeiten</value>
+    </data>
+    <data name="Dialogs_ModifyModPackDialog_TitleNew" xml:space="preserve">
+        <value>Mod-Paket erstellen</value>
+    </data>
+    <data name="Common_Cancel" xml:space="preserve">
+        <value>Abbrechen</value>
+    </data>
+    <data name="Common_Create" xml:space="preserve">
+        <value>Erstellen</value>
+    </data>
+    <data name="Common_Submit" xml:space="preserve">
+        <value>Abschicken</value>
+    </data>
+    <data name="Dialogs_ModifyModPackDialog_ReplaceModPackHtml" xml:space="preserve">
+        <value>Mod-Paket HTML ersetzen</value>
+    </data>
+    <data name="Common_Delete" xml:space="preserve">
+        <value>Löschen</value>
+    </data>
+    <data name="Pages_ModPacks_ConfirmDeleteOfModPack_Title" xml:space="preserve">
+        <value>Mod-Paket löschen bestätigen</value>
+    </data>
+    <data name="Pages_ModPacks_ConfirmDeleteOfModPack_Description" xml:space="preserve">
+        <value>Sind Sie sicher, dass Sie dieses Mod-Paket löschen wollen? Dies kann nicht rückgängig gemacht werden!</value>
+    </data>
+    <data name="Dialogs_ModifyModPackDialog_Inputs_Title" xml:space="preserve">
+        <value>Titel</value>
+    </data>
+    <data name="Dialogs_ModifyModPackDialog_SetModPackHtml" xml:space="preserve">
+        <value>Mod-Paket HTML setzen</value>
+    </data>
 </root>

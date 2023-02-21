@@ -64,7 +64,7 @@ public class EventsController : ControllerBase
         [FromBody] Event updatedEvent,
         CancellationToken cancellationToken)
     {
-        var existingEvent = await _apiDbContext.Events.SingleAsync((q) => q.Id == eventId, cancellationToken);
+        var existingEvent = await _apiDbContext.Events.SingleAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         existingEvent.Title = updatedEvent.Title;
         existingEvent.Description = updatedEvent.Description;
         existingEvent.ScheduledFor = updatedEvent.ScheduledFor;

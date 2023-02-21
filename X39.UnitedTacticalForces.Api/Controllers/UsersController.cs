@@ -39,108 +39,37 @@ public class UsersController : ControllerBase
     /// Only valid for browser clients as a redirect to the steam login page is mandatory.
     /// If a user logs in using steam and was not yet registered, he will be auto-registered.
     /// </summary>
-    /// <param name="redirectUrl">The url to get back to after the login process has completed.</param>
+    /// <param name="returnUrl">The url to get back to after the login process has completed.</param>
     [AllowAnonymous]
     [HttpGet("login/steam", Name = nameof(LoginSteamAsync))]
-    [ProducesResponseType(typeof(void), (int)HttpStatusCode.TemporaryRedirect)]
+    [HttpPost("login/steam", Name = nameof(LoginSteamAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.TemporaryRedirect)]
+    [ResponseCache(NoStore = true, Duration = 0)]
     public async Task<IActionResult> LoginSteamAsync(
-        [FromQuery] string redirectUrl)
+        [FromQuery] string returnUrl)
     {
         Contract.Assert(await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Steam));
         return Challenge(new AuthenticationProperties
-            {
-                RedirectUri = $"Users/login/steam/callback?redirectUrl={HttpUtility.UrlEncode(redirectUrl)}"
-            },
-            Constants.AuthorizationSchemas.Steam);
+        {
+            RedirectUri = returnUrl,
+            IsPersistent = true,
+            IssuedUtc = DateTime.UtcNow,
+            ExpiresUtc = DateTime.UtcNow.AddDays(Constants.Lifetime.SteamAuthDays),
+        }, Constants.AuthorizationSchemas.Steam);
     }
 
     /// <summary>
-    /// Not supposed to be called manually, will be called automatically when using the steam login.
+    /// Allows to logout a user.
     /// </summary>
-    /// <param name="steamRepository">
-    ///     The steam repository, injected via service,
-    ///     used to get additional information about a user in the case of a registration.
-    /// </param>
-    /// <param name="httpClient">
-    ///     The http client of the web-api, injected via service, used to receive the profile picture of a
-    ///     new user.
-    /// </param>
-    /// <param name="redirectUrl">
-    ///     The url to redirect to after the callback was handled.
-    /// </param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    /// <exception cref="Exception"></exception>
-    [Authorize(AuthenticationSchemes = Constants.AuthorizationSchemas.Steam)]
-    [HttpGet("login/steam/callback", Name = nameof(LoginSteamCallbackAsync))]
-    [ProducesResponseType(typeof(void), (int)HttpStatusCode.TemporaryRedirect)]
-    public async Task<IActionResult> LoginSteamCallbackAsync(
-        [FromServices] SteamRepository steamRepository,
-        [FromServices] HttpClient httpClient,
-        [FromQuery] string redirectUrl,
-        CancellationToken cancellationToken)
+    /// <param name="returnUrl">The url to get back to after the logout process has completed.</param>
+    [HttpGet("logout", Name = nameof(LogoutAsync))]
+    [HttpPost("logout", Name = nameof(LogoutAsync))]
+    public IActionResult LogoutAsync([FromQuery] string returnUrl)
     {
-        if (!HttpContext.User.TrySteamIdentity(out var steamIdentity))
-            throw new Exception();
-        if (!steamIdentity.IsAuthenticated)
-            throw new Exception();
-        if (!steamIdentity.TryGetSteamId64(out var steamId64))
-            throw new Exception();
-
-        var user = await _apiDbContext.Users
-            .Include((e) => e.Privileges)
-            .SingleOrDefaultAsync((user) => user.SteamId64 == steamId64, cancellationToken);
-        if (user is null)
+        return SignOut(new AuthenticationProperties
         {
-            var profile = await steamRepository.GetProfileAsync(steamId64);
-            var avatar = Array.Empty<byte>();
-            var avatarMimeType = string.Empty;
-            if (profile.AvatarUrl.IsNotNullOrWhiteSpace())
-            {
-                avatar = await httpClient.GetByteArrayAsync(profile.AvatarUrl, cancellationToken);
-                avatarMimeType = "image/jpeg";
-            }
-
-            user = new User
-            {
-                Id = Guid.NewGuid(),
-                Avatar = avatar,
-                AvatarMimeType = avatarMimeType,
-                EMail = null,
-                Nickname = profile.Nickname,
-                Privileges = new List<Privilege>(),
-                SteamId64 = steamId64,
-            };
-            await _apiDbContext.Users.AddAsync(user, cancellationToken);
-            await _apiDbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        var identity = await user
-            .ToIdentityAsync(cancellationToken: cancellationToken);
-        HttpContext.User.AddIdentity(identity);
-        
-        //var jwtSettings = Configuration.GetSection("Jwt");
-        //var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]));
-        //var signingCredentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
-        //var claims = new[]
-        //{
-        //    new Claim(ClaimTypes.NameIdentifier, "admin"),
-        //    new Claim(ClaimTypes.Role, "Admin")
-        //};
-        //var jwtToken = new JwtSecurityToken(
-        //    issuer: jwtSettings["Issuer"],
-        //    audience: jwtSettings["Audience"],
-        //    claims: claims,
-        //    expires: DateTime.Now.AddMinutes(30),
-        //    signingCredentials: signingCredentials
-        //);
-    
-        //// Return JWT token as response
-        //return Ok(new { Token = new JwtSecurityTokenHandler().WriteToken(jwtToken) });
-        
-        
-        await HttpContext.SignInAsync(JwtBearerDefaults.AuthenticationScheme, HttpContext.User);
-        return Redirect(redirectUrl);
+            RedirectUri = returnUrl,
+        }, Constants.AuthorizationSchemas.Cookie);
     }
 
     [Authorize]
@@ -150,12 +79,58 @@ public class UsersController : ControllerBase
         [FromBody] User updatedUser,
         CancellationToken cancellationToken)
     {
-        var existingUser = await _apiDbContext.Users.SingleAsync((q) => q.Id == userId, cancellationToken);
+        var existingUser = await _apiDbContext.Users.SingleAsync((q) => q.PrimaryKey == userId, cancellationToken);
         existingUser.Avatar = updatedUser.Avatar;
         existingUser.AvatarMimeType = updatedUser.AvatarMimeType;
         existingUser.Nickname = updatedUser.Nickname;
         existingUser.EMail = updatedUser.EMail;
         existingUser.SteamId64 = updatedUser.SteamId64;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns a <see cref="User"/> if one exists with the given id.
+    /// </summary>
+    /// <remarks>
+    /// Full user information is only available if it is the own <see cref="User"/> or the user
+    /// requesting has the admin role.
+    /// </remarks>
+    /// <param name="userId">The <see cref="Guid"/> of the <see cref="User"/>.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>
+    ///     A valid <see cref="User"/> if one was found, <see langkeyword="null"/> if not.
+    /// </returns>
+    [Authorize]
+    [HttpGet("{userId:guid}", Name = nameof(GetUserAsync))]
+    public async Task<User?> GetUserAsync(
+        [FromRoute] Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var existingUser = await _apiDbContext.Users.SingleOrDefaultAsync((q) => q.PrimaryKey == userId, cancellationToken);
+        // ToDo: Strip user info if not own user or admin.
+        return existingUser;
+    }
+
+    /// <summary>
+    /// Returns the <see cref="User"/> of the authorized user.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>
+    ///     The <see cref="User"/> of the current user.
+    /// </returns>
+    [HttpGet("me", Name = nameof(GetMeAsync))]
+    public async Task<ActionResult<User>> GetMeAsync(
+        CancellationToken cancellationToken)
+    {
+        var user = await User.GetUserWithRolesAsync(_apiDbContext, cancellationToken);
+        return user is null
+            ? Unauthorized()
+            : Ok(user);
     }
 }

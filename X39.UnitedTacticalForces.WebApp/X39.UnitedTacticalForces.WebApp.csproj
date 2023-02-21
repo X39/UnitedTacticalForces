@@ -29,6 +29,9 @@
         <AutoGen>True</AutoGen>
         <DependentUpon>Language.resx</DependentUpon>
       </Compile>
+      <Compile Update="Api.Generated.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
 

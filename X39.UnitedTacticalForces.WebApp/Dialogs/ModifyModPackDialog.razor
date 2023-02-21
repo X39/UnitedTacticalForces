@@ -1,0 +1,93 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using X39.Util
+@inject IStringLocalizer<Language> Localizer
+<MudDialog>
+    <DialogContent>
+        <MudTextField Label="@Localizer[nameof(Language.Dialogs_ModifyModPackDialog_Inputs_Title)]" @bind-Value="@ModPack.Title"/>
+        <MudFileUpload T="IBrowserFile" MaximumFileCount="1" OnFilesChanged="FilesChangedAsync" Accept=".html">
+            <ButtonTemplate>
+                <MudText Align="Align.Center">@_fileName</MudText>
+                <MudButton HtmlTag="label"
+                           Variant="@(_fileName.IsNullOrEmpty() ? Variant.Text : Variant.Outlined)"
+                           for="@context">
+                    @if (IsNew)
+                    {
+                        @Localizer[nameof(Language.Dialogs_ModifyModPackDialog_SetModPackHtml)]
+                    }
+                    else
+                    {
+                        @Localizer[nameof(Language.Dialogs_ModifyModPackDialog_ReplaceModPackHtml)]
+                    }
+                </MudButton>
+            </ButtonTemplate>
+        </MudFileUpload>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Localizer[nameof(Language.Common_Cancel)]</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="IsSubmitDisabled">@(IsNew ? Localizer[nameof(Language.Common_Create)] : Localizer[nameof(Language.Common_Submit)])</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired, Required]
+    public ModPack ModPack { get; set; } = null!;
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    private bool IsSubmitDisabled => IsNew && (ModPack.Title.IsNullOrWhiteSpace() || ModPack.Html.IsNullOrWhiteSpace());
+
+    private string _fileName = string.Empty;
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(ModPack));
+    void Cancel() => MudDialog.Cancel();
+
+
+    protected override Task OnInitializedAsync()
+    {
+        MudDialog.Title = IsNew
+            ? Localizer[nameof(Language.Dialogs_ModifyModPackDialog_TitleNew)]
+            : Localizer[nameof(Language.Dialogs_ModifyModPackDialog_Title)];
+        return Task.CompletedTask;
+    }
+
+    private async Task FilesChangedAsync(InputFileChangeEventArgs obj)
+    {
+        _fileName = obj.File.Name;
+        await using var stream = obj.File.OpenReadStream();
+        using var reader = new StreamReader(stream);
+        ModPack.Html = await reader.ReadToEndAsync()
+            .ConfigureAwait(false);
+    }
+
+    public static async Task<ModPack?> ShowAsync(
+        IDialogService dialogService,
+        ModPack? modPack = default,
+        bool? isNew = default)
+    {
+        isNew ??= modPack is null;
+        modPack ??= new ModPack();
+        var dialogReference = await dialogService.ShowAsync<ModifyModPackDialog>(
+            string.Empty,
+            new DialogParameters
+            {
+                {nameof(IsNew), isNew},
+                {nameof(modPack), modPack},
+            },
+            new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+            })
+            .ConfigureAwait(false);
+        var dialogResult = await dialogReference.Result
+            .ConfigureAwait(false);
+        if (dialogResult.Data is ModPack modifiedModPack)
+            return modifiedModPack;
+        return null;
+    }
+
+}
