@@ -10,25 +10,36 @@ internal class TerrainRepositoryImpl : RepositoryBase, ITerrainRepository
     {
     }
 
-    public async Task<long> GetTerrainCountAsync(CancellationToken cancellationToken = default)
+    public async Task<long> GetTerrainCountAsync(
+        CancellationToken cancellationToken = default)
     {
         return await Client.TerrainAllCountAsync(cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task<IReadOnlyCollection<Terrain>> GetTerrainsAsync(int skip, int take, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<Terrain>> GetTerrainsAsync(
+        int skip,
+        int take,
+        string? search = default,
+        CancellationToken cancellationToken = default)
     {
-        var terrains = await Client.TerrainAllAsync(skip, take, cancellationToken)
+        var terrains = await Client.TerrainAllAsync(skip, take, search, cancellationToken)
             .ConfigureAwait(false);
         return terrains.ToImmutableArray();
     }
-    public async Task<Terrain> CreateTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default)
+
+    public async Task<Terrain> CreateTerrainAsync(
+        Terrain terrain,
+        CancellationToken cancellationToken = default)
     {
         terrain = await Client.TerrainCreateAsync(terrain, cancellationToken)
             .ConfigureAwait(false);
         return terrain;
     }
-    public async Task ModifyTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default)
+
+    public async Task ModifyTerrainAsync(
+        Terrain terrain,
+        CancellationToken cancellationToken = default)
     {
         if (terrain.PrimaryKey is null)
             throw new ArgumentException("Terrain.PrimaryKey is null.", nameof(terrain));
@@ -36,7 +47,9 @@ internal class TerrainRepositoryImpl : RepositoryBase, ITerrainRepository
             .ConfigureAwait(false);
     }
 
-    public async Task DeleteTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default)
+    public async Task DeleteTerrainAsync(
+        Terrain terrain,
+        CancellationToken cancellationToken = default)
     {
         if (terrain.PrimaryKey is null)
             throw new ArgumentException("Terrain.PrimaryKey is null.", nameof(terrain));

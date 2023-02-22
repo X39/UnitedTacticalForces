@@ -2,5 +2,8 @@
 
 public interface IEventRepository
 {
-    Task<IReadOnlyCollection<Event>> GetEventsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<Event>> GetUpcomingEventsAsync(CancellationToken cancellationToken = default);
+    Task SetMeAcceptanceAsync(Guid eventItemPrimaryKey, EEventAcceptance acceptance, CancellationToken cancellationToken = default);
+    Task<Event> CreateEventAsync(Event eventItem, CancellationToken cancellationToken = default);
+    Task ModifyEventAsync(Event eventItem, CancellationToken cancellationToken = default);
 }

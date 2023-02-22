@@ -22,6 +22,7 @@ public class ApiDbContext : DbContext
     public DbSet<Event> Events { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<UserModPackMeta> UserModPackMetas { get; set; } = null!;
+    public DbSet<UserEventMeta> UserEventMetas { get; set; } = null!;
     public DbSet<Role> Privileges { get; set; } = null!;
     public DbSet<Terrain> Terrains { get; set; } = null!;
     public DbSet<ModPack> ModPacks { get; set; } = null!;

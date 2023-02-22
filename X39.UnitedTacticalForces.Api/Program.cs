@@ -55,6 +55,7 @@ var app = builder.Build();
     await using var dbContext = scope.ServiceProvider.GetService<ApiDbContext>();
     await dbContext!.Database.MigrateAsync();
 }
+app.UsePathBase(app.Configuration[Constants.Configuration.General.BasePath]);
 app.UseCors(cors => cors
     .SetIsOriginAllowed(_ => true)
     .AllowAnyMethod()

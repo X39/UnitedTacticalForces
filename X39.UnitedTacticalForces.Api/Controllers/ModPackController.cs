@@ -15,11 +15,11 @@ namespace X39.UnitedTacticalForces.Api.Controllers;
 public class ModPackController : ControllerBase
 {
     private readonly ILogger<ModPackController> _logger;
-    private readonly ApiDbContext _apiDbContext;
+    private readonly ApiDbContext               _apiDbContext;
 
     public ModPackController(ILogger<ModPackController> logger, ApiDbContext apiDbContext)
     {
-        _logger = logger;
+        _logger       = logger;
         _apiDbContext = apiDbContext;
     }
 
@@ -43,11 +43,12 @@ public class ModPackController : ControllerBase
             throw new UnauthorizedAccessException();
         var modPackData = await _apiDbContext.ModPacks
             .Where((q) => q.PrimaryKey == modPackId)
-            .Select((q) => new
-            {
-                q.Html,
-                q.Title,
-            })
+            .Select(
+                (q) => new
+                {
+                    q.Html,
+                    q.Title,
+                })
             .SingleAsync(cancellationToken);
         var user = await _apiDbContext.Users
             .Include((e) => e.ModPackMetas!.Where((q) => q.ModPackFk == modPackId))
@@ -56,11 +57,13 @@ public class ModPackController : ControllerBase
         var userModPackMeta = user.ModPackMetas?.FirstOrDefault((q) => q.ModPackFk == modPackId);
         if (userModPackMeta is null)
         {
-            var userModPackMetaEntity = await _apiDbContext.UserModPackMetas.AddAsync(new UserModPackMeta
-            {
-                UserFk = userId,
-                ModPackFk = modPackId,
-            }, cancellationToken);
+            var userModPackMetaEntity = await _apiDbContext.UserModPackMetas.AddAsync(
+                new UserModPackMeta
+                {
+                    UserFk    = userId,
+                    ModPackFk = modPackId,
+                },
+                cancellationToken);
             userModPackMeta = userModPackMetaEntity.Entity;
         }
 
@@ -68,11 +71,13 @@ public class ModPackController : ControllerBase
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         var htmlBytes = Encoding.UTF8.GetBytes(modPackData.Html);
         var fileName = new string(modPackData.Title.Where((q) => q.IsLetterOrDigit()).ToArray());
-        Response.Headers.Add("Content-Disposition", new System.Net.Mime.ContentDisposition
-        {
-            FileName = $"{fileName}.html",
-            Inline = false,
-        }.ToString());
+        Response.Headers.Add(
+            "Content-Disposition",
+            new System.Net.Mime.ContentDisposition
+            {
+                FileName = $"{fileName}.html",
+                Inline   = false,
+            }.ToString());
         return new FileContentResult(htmlBytes, "text/html")
         {
             FileDownloadName = ""
@@ -90,14 +95,15 @@ public class ModPackController : ControllerBase
     /// <returns>The created <see cref="ModPack"/>.</returns>
     [Authorize(Roles = Constants.Roles.Admin + "," + Constants.Roles.ModPackCreate)]
     [HttpPost("create", Name = nameof(CreateModPackAsync))]
-    public async Task<ActionResult<ModPack>> CreateModPackAsync([FromBody] ModPack modPack,
+    public async Task<ActionResult<ModPack>> CreateModPackAsync(
+        [FromBody] ModPack modPack,
         CancellationToken cancellationToken)
     {
         // ToDo: Add audit log
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
-        modPack.IsActive = true;
-        modPack.OwnerFk = userId;
+        modPack.IsActive         = true;
+        modPack.OwnerFk          = userId;
         modPack.TimeStampCreated = DateTimeOffset.Now;
         modPack.TimeStampUpdated = modPack.TimeStampCreated;
         var entity = await _apiDbContext.ModPacks.AddAsync(modPack, cancellationToken);
@@ -135,7 +141,7 @@ public class ModPackController : ControllerBase
         existingModPack.Title = updatedModPack.Title;
         if (updatedModPack.Html != existingModPack.Html)
         {
-            existingModPack.Html = updatedModPack.Html;
+            existingModPack.Html             = updatedModPack.Html;
             existingModPack.TimeStampUpdated = DateTimeOffset.Now;
         }
 
@@ -235,6 +241,9 @@ public class ModPackController : ControllerBase
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
     /// </param>
+    /// <param name="search">
+    ///     Searches the <see cref="ModPack.Title"/> with a function akin to <see cref="string.StartsWith(string)"/>
+    /// </param>
     /// <returns>
     ///     The available <see cref="ModPack"/>'s.
     /// </returns>
@@ -245,34 +254,50 @@ public class ModPackController : ControllerBase
         [FromQuery] int skip,
         [FromQuery] int take,
         CancellationToken cancellationToken,
+        [FromQuery] string? search = null,
         [FromQuery] bool myModPacksOnly = false)
     {
         if (take > 500)
             throw new ArgumentOutOfRangeException(nameof(take), take, "Take has a hard-maximum of 500.");
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
-        IEnumerable<ModPack> modPacks;
+        IQueryable<ModPack> modPacks;
         if (myModPacksOnly)
         {
-            modPacks = await _apiDbContext.ModPacks
+            modPacks = _apiDbContext.ModPacks
                 .Include((e) => e.UserMetas!.Where((q) => q.UserFk == userId))
                 .Where((q) => q.IsActive)
                 .Where((q) => q.OwnerFk == userId)
                 .Skip(skip)
-                .Take(take)
-                .ToArrayAsync(cancellationToken);
+                .Take(take);
         }
         else
         {
-            modPacks = await _apiDbContext.ModPacks
+            modPacks = _apiDbContext.ModPacks
                 .Include((e) => e.UserMetas!.Where((q) => q.UserFk == userId))
                 .Where((q) => q.IsActive)
                 .Skip(skip)
-                .Take(take)
-                .ToArrayAsync(cancellationToken);
+                .Take(take);
+        }
+        if (search.IsNotNullOrWhiteSpace())
+        {
+            search   = search.Trim();
+            search   = search.Replace("%", "\\%");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("_", "\\_");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("[", "\\[");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("]", "\\]");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("^", "\\^");
+            search   = search.Replace("\\", "\\\\");
+            search   = $"{search}%";
+            modPacks = modPacks.Where((q) => EF.Functions.ILike(q.Title, search, "\\"));
         }
 
-        return Ok(modPacks);
+        var result = await modPacks.ToArrayAsync(cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>

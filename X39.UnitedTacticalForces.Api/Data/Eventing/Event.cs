@@ -1,11 +1,13 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Core;
 
 namespace X39.UnitedTacticalForces.Api.Data.Eventing;
 
+[Index(nameof(ScheduledFor))]
 public class Event
 {
     [Key] public Guid PrimaryKey { get; set; }
@@ -29,12 +31,20 @@ public class Event
     public DateTimeOffset ScheduledFor { get; set; }
 
     public DateTimeOffset TimeStampCreated { get; set; }
+    
+    public int AcceptedCount { get; set; }
+    public int RejectedCount { get; set; }
+    public int MaybeCount { get; set; }
+    
+    public int MinimumAccepted { get; set; }
 
-    [ForeignKey(nameof(CreatedByFk))]
-    public User? CreatedBy { get; set; }
-    public Guid CreatedByFk { get; set; }
+    [ForeignKey(nameof(OwnerFk))]
+    public User? Owner { get; set; }
+    public Guid OwnerFk { get; set; }
 
     [ForeignKey(nameof(HostedByFk))]
     public User? HostedBy { get; set; }
     public Guid HostedByFk { get; set; }
+    
+    public ICollection<UserEventMeta>? UserMetas { get; set; }
 }

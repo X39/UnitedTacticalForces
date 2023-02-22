@@ -7,20 +7,20 @@ using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Core;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
+using X39.Util;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
-
 
 [ApiController]
 [Route("[controller]")]
 public class TerrainController : ControllerBase
 {
     private readonly ILogger<TerrainController> _logger;
-    private readonly ApiDbContext _apiDbContext;
+    private readonly ApiDbContext               _apiDbContext;
 
     public TerrainController(ILogger<TerrainController> logger, ApiDbContext apiDbContext)
     {
-        _logger = logger;
+        _logger       = logger;
         _apiDbContext = apiDbContext;
     }
 
@@ -35,7 +35,8 @@ public class TerrainController : ControllerBase
     /// <returns>The created <see cref="Terrain"/>.</returns>
     [Authorize(Roles = Constants.Roles.Admin + "," + Constants.Roles.TerrainCreate)]
     [HttpPost("create", Name = nameof(CreateTerrainAsync))]
-    public async Task<ActionResult<Terrain>> CreateTerrainAsync([FromBody] Terrain terrain,
+    public async Task<ActionResult<Terrain>> CreateTerrainAsync(
+        [FromBody] Terrain terrain,
         CancellationToken cancellationToken)
     {
         // ToDo: Add audit log
@@ -76,7 +77,7 @@ public class TerrainController : ControllerBase
         existingTerrain.Title = updatedTerrain.Title;
         if (existingTerrain.Image.Any())
         {
-            existingTerrain.Image = updatedTerrain.Image;
+            existingTerrain.Image         = updatedTerrain.Image;
             existingTerrain.ImageMimeType = updatedTerrain.ImageMimeType;
         }
 
@@ -139,6 +140,9 @@ public class TerrainController : ControllerBase
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
     /// </param>
+    /// <param name="search">
+    ///     Searches the <see cref="Terrain.Title"/> with a function akin to <see cref="string.StartsWith(string)"/>
+    /// </param>
     /// <returns>
     ///     The available <see cref="Terrain"/>'s.
     /// </returns>
@@ -148,17 +152,35 @@ public class TerrainController : ControllerBase
     public async Task<ActionResult<IEnumerable<Terrain>>> GetTerrainsAsync(
         [FromQuery] int skip,
         [FromQuery] int take,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] string? search = null)
     {
         if (take > 500)
             throw new ArgumentOutOfRangeException(nameof(take), take, "Take has a hard-maximum of 500.");
-        IEnumerable<Terrain> terrains = await _apiDbContext.Terrains
+        var terrains = _apiDbContext.Terrains
             .Where((q) => q.IsActive)
             .Skip(skip)
-            .Take(take)
-            .ToArrayAsync(cancellationToken);
+            .Take(take);
+        if (search.IsNotNullOrWhiteSpace())
+        {
+            search   = search.Trim();
+            search   = search.Replace("%", "\\%");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("_", "\\_");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("[", "\\[");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("]", "\\]");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("^", "\\^");
+            search   = search.Replace("\\", "\\\\");
+            search   = $"{search}%";
+            terrains = terrains.Where((q) => EF.Functions.ILike(q.Title, search, "\\"));
+        }
 
-        return Ok(terrains);
+        var result = await terrains.ToArrayAsync(cancellationToken);
+
+        return Ok(result);
     }
 
     /// <summary>

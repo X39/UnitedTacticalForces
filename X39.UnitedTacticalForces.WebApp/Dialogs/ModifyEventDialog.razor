@@ -1,0 +1,178 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.Util
+@inject IStringLocalizer<Language> Localizer
+@inject IUserRepository UserRepository
+@inject ITerrainRepository TerrainRepository
+@inject IModPackRepository ModPackRepository
+<MudDialog>
+    <DialogContent>
+        <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Title)]" @bind-Value="@Event.Title"/>
+        <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Description)]" Lines="5" @bind-Value="@Event.Description"/>
+        <MudDatePicker Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_ScheduledForDate)]"
+                       Date="@(Event.ScheduledFor?.Date)"
+                       DateChanged="@SetEventScheduledForDateAsync"/>
+        <MudTimePicker Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_ScheduledForTime)]"
+                       Time="@(Event.ScheduledFor?.TimeOfDay)"
+                       TimeChanged="@SetEventScheduledForTimeAsync"/>
+        <MudAutocomplete Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_HostedBy)]"
+                         @bind-Value="@Event.HostedBy"
+                         SearchFunc="@SearchUserAsync"
+                         ResetValueOnEmptyText="@true"
+                         AdornmentIcon="@Icons.Material.Filled.Search"
+                         AdornmentColor="Color.Primary"
+                         ToStringFunc="@(user => user.Nickname ?? user.SteamId64?.ToString() ?? user.PrimaryKey?.ToString() ?? string.Empty)"/>
+        <MudAutocomplete Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Terrain)]"
+                         @bind-Value="@Event.Terrain"
+                         SearchFunc="@SearchTerrainAsync"
+                         ResetValueOnEmptyText="@true"
+                         AdornmentIcon="@Icons.Material.Filled.Search"
+                         AdornmentColor="Color.Primary"
+                         ToStringFunc="@(terrain => terrain.Title ?? terrain.PrimaryKey?.ToString() ?? string.Empty)"/>
+        <MudAutocomplete Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_ModPack)]"
+                         @bind-Value="@Event.ModPack"
+                         SearchFunc="@SearchModPackAsync"
+                         ResetValueOnEmptyText="@true"
+                         AdornmentIcon="@Icons.Material.Filled.Search"
+                         AdornmentColor="Color.Primary"
+                         ToStringFunc="@(modPack => modPack.Title ?? modPack.PrimaryKey?.ToString() ?? string.Empty)"/>
+
+        <MudFileUpload Required="IsNew" T="IBrowserFile" MaximumFileCount="1" OnFilesChanged="FilesChangedAsync" Accept="image/*">
+            <ButtonTemplate>
+                <MudText Align="Align.Center">@_fileName</MudText>
+                <MudButton HtmlTag="label"
+                           Variant="@(_fileName.IsNullOrEmpty() ? Variant.Text : Variant.Outlined)"
+                           for="@context">
+                    @if (IsNew)
+                    {
+                        @Localizer[nameof(Language.Dialogs_ModifyEventDialog_SetEventImage)]
+                    }
+                    else
+                    {
+                        @Localizer[nameof(Language.Dialogs_ModifyEventDialog_ReplaceEventImage)]
+                    }
+                </MudButton>
+            </ButtonTemplate>
+        </MudFileUpload>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Localizer[nameof(Language.Common_Cancel)]</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="IsSubmitDisabled">@(IsNew ? Localizer[nameof(Language.Common_Create)] : Localizer[nameof(Language.Common_Submit)])</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired, Required]
+    public Event Event { get; set; } = null!;
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    private bool IsSubmitDisabled => IsNew && (Event.Title.IsNullOrWhiteSpace() || Event.ScheduledFor is null || Event.HostedBy is null || Event.Terrain is null || Event.ModPack is null);
+
+    private string _fileName = string.Empty;
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(Event));
+    void Cancel() => MudDialog.Cancel();
+
+
+    protected override Task OnInitializedAsync()
+    {
+        MudDialog.Title = IsNew
+            ? Localizer[nameof(Language.Dialogs_ModifyEventDialog_TitleNew)]
+            : Localizer[nameof(Language.Dialogs_ModifyEventDialog_Title)];
+        return Task.CompletedTask;
+    }
+
+    private async Task FilesChangedAsync(InputFileChangeEventArgs obj)
+    {
+        _fileName = obj.File.Name;
+        await using var stream = obj.File.OpenReadStream();
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream)
+            .ConfigureAwait(false);
+        Event.Image = memoryStream.ToArray();
+        Event.ImageMimeType = obj.File.ContentType;
+    }
+
+    public static async Task<Event?> ShowAsync(
+        IDialogService dialogService,
+        Event? eventItem = default,
+        bool? isNew = default)
+    {
+        isNew ??= eventItem is null;
+        eventItem ??= new Event();
+        var dialogReference = await dialogService.ShowAsync<ModifyEventDialog>(
+            string.Empty,
+            new DialogParameters
+            {
+                {nameof(IsNew), isNew},
+                {nameof(Event), eventItem.Clone()},
+            },
+            new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+            })
+            .ConfigureAwait(false);
+        var dialogResult = await dialogReference.Result
+            .ConfigureAwait(false);
+        if (dialogResult.Data is not Event modifiedEvent)
+            return null;
+        eventItem.Apply(modifiedEvent);
+        return modifiedEvent;
+    }
+
+    private async Task<IEnumerable<Terrain>> SearchTerrainAsync(string? arg)
+    {
+        return await TerrainRepository.GetTerrainsAsync(0, 100, arg ?? string.Empty)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<IEnumerable<User>> SearchUserAsync(string? arg)
+    {
+        return await UserRepository.GetUsersAsync(0, 100, arg ?? string.Empty)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<IEnumerable<ModPack>> SearchModPackAsync(string? arg)
+    {
+        return await ModPackRepository.GetModPacksAsync(0, 100, false, arg ?? string.Empty)
+            .ConfigureAwait(false);
+    }
+
+    private void SetEventScheduledForDateAsync(DateTime? obj)
+    {
+        var time = Event.ScheduledFor?.TimeOfDay;
+        var date = obj?.Date;
+        if (date is null)
+        {
+            Event.ScheduledFor = null;
+        }
+        else
+        {
+            var dateTime = date.Value.Add(time ?? TimeSpan.Zero);
+            Event.ScheduledFor = dateTime;
+        }
+    }
+
+    private void SetEventScheduledForTimeAsync(TimeSpan? obj)
+    {
+        var date = Event.ScheduledFor?.Date;
+        if (obj is null)
+        {
+            Event.ScheduledFor = null;
+        }
+        else
+        {
+            var dateTime = (date ?? DateTime.Today).Add(obj.Value);
+            Event.ScheduledFor = dateTime;
+        }
+    }
+
+}

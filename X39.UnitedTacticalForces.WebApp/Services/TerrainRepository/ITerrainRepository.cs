@@ -4,7 +4,10 @@ public interface ITerrainRepository
 {
     Task<long> GetTerrainCountAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<Terrain>> GetTerrainsAsync(int skip, int take,
+    Task<IReadOnlyCollection<Terrain>> GetTerrainsAsync(
+        int skip,
+        int take,
+        string? search = default,
         CancellationToken cancellationToken = default);
 
     Task<Terrain> CreateTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default);

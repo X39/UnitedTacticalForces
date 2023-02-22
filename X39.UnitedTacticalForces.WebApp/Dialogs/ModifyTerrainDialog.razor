@@ -78,7 +78,7 @@
             new DialogParameters
             {
                 {nameof(IsNew), isNew},
-                {nameof(terrain), terrain},
+                {nameof(Terrain), terrain.Clone()},
             },
             new DialogOptions
             {
@@ -87,9 +87,10 @@
             .ConfigureAwait(false);
         var dialogResult = await dialogReference.Result
             .ConfigureAwait(false);
-        if (dialogResult.Data is Terrain modifiedTerrain)
-            return modifiedTerrain;
-        return null;
+        if (dialogResult.Data is not Terrain modifiedTerrain)
+            return null;
+        terrain.Apply(modifiedTerrain);
+        return modifiedTerrain;
     }
 
 }

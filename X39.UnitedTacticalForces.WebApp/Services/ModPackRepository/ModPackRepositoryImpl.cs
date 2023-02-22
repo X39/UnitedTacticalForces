@@ -10,25 +10,38 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
     {
     }
 
-    public async Task<long> GetModPackCountAsync(bool myModPacksOnly, CancellationToken cancellationToken = default)
+    public async Task<long> GetModPackCountAsync(
+        bool myModPacksOnly,
+        CancellationToken cancellationToken = default)
     {
         return await Client.ModPackAllCountAsync(myModPacksOnly, cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task<IReadOnlyCollection<ModPack>> GetModPacksAsync(int skip, int take, bool myModPacksOnly, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyCollection<ModPack>> GetModPacksAsync(
+        int skip,
+        int take,
+        bool myModPacksOnly,
+        string? search = default,
+        CancellationToken cancellationToken = default)
     {
-        var modPacks = await Client.ModPackAllAsync(skip, take, myModPacksOnly, cancellationToken)
+        var modPacks = await Client.ModPackAllAsync(skip, take, search, myModPacksOnly, cancellationToken)
             .ConfigureAwait(false);
         return modPacks.ToImmutableArray();
     }
-    public async Task<ModPack> CreateModPackAsync(ModPack modPack, CancellationToken cancellationToken = default)
+
+    public async Task<ModPack> CreateModPackAsync(
+        ModPack modPack,
+        CancellationToken cancellationToken = default)
     {
         modPack = await Client.ModPackCreateAsync(modPack, cancellationToken)
             .ConfigureAwait(false);
         return modPack;
     }
-    public async Task ModifyModPackAsync(ModPack modPack, CancellationToken cancellationToken = default)
+
+    public async Task ModifyModPackAsync(
+        ModPack modPack,
+        CancellationToken cancellationToken = default)
     {
         if (modPack.PrimaryKey is null)
             throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));

@@ -12,6 +12,8 @@ public class User
     public string? EMail { get; set; }
     public ICollection<Role>? Roles { get; set; }
     public ICollection<UserModPackMeta>? ModPackMetas { get; set; }
+    
+    public ICollection<UserEventMeta>? EventMetas { get; set; }
 
     public byte[] Avatar { get; set; } = Array.Empty<byte>();
     public string AvatarMimeType { get; set; } = string.Empty;

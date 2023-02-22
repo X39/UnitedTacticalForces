@@ -76,7 +76,7 @@
             new DialogParameters
             {
                 {nameof(IsNew), isNew},
-                {nameof(modPack), modPack},
+                {nameof(ModPack), modPack.Clone()},
             },
             new DialogOptions
             {
@@ -85,9 +85,10 @@
             .ConfigureAwait(false);
         var dialogResult = await dialogReference.Result
             .ConfigureAwait(false);
-        if (dialogResult.Data is ModPack modifiedModPack)
-            return modifiedModPack;
-        return null;
+        if (dialogResult.Data is not ModPack modifiedModPack)
+            return null;
+        modPack.Apply(modifiedModPack);
+        return modifiedModPack;
     }
 
 }

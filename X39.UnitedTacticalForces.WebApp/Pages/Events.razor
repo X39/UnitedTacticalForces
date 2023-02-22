@@ -1,86 +1,296 @@
 ﻿@page "/"
 @using X39.UnitedTacticalForces.WebApp.Services.EventRepository
 @using System.Collections.Immutable
+@using System.Diagnostics.Contracts
+@using X39.UnitedTacticalForces.WebApp.Services
 @using X39.Util
 @inject IStringLocalizer<Language> Localizer
 @inject IEventRepository EventRepository
+@inject MeService MeService
+@inject IDialogService DialogService
+@inject BaseUrl BaseUrl
 
 <PageTitle>@Localizer[nameof(Language.Pages_Events_Title)]</PageTitle>
 @if (_events.Any())
 {
-    <MudTimeline>
-        @foreach (var it in _events)
-        {
-            <MudTimelineItem >
-                <ItemOpposite>
-                    <MudText Color="Color.Primary" Typo="Typo.h5">@it.ScheduledFor</MudText>
-                </ItemOpposite>
-                <ItemContent>
-                    <MudCard>
-                        <MudCardHeader>
-                            <CardHeaderAvatar>
-                                @if (it.HostedBy is not null && it.HostedBy.Avatar.Any() && it.HostedBy.AvatarMimeType.IsNotNullOrWhiteSpace())
-                                {
-                                    <MudAvatar Color="Color.Secondary" Image="@it.HostedBy.ToImageSource()"/>
-                                }
-                                else if (it.HostedBy is not null)
-                                {
-                                    <MudAvatar Color="Color.Secondary">@it.HostedBy.Nickname.FirstOrDefault()</MudAvatar>
-                                }
-                            </CardHeaderAvatar>
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.body1">@it.Title</MudText>
-                                @if (it.Terrain is not null)
-                                {
-                                    <MudText Typo="Typo.body2">@(it.Terrain.Title)</MudText>
-                                }
-                                @if (it.ModPack is not null)
-                                {
-                                    <MudText Typo="Typo.body2">@(it.ModPack.Title)</MudText>
-                                }
-                            </CardHeaderContent>
-                            <CardHeaderActions>
+    <MudContainer>
+        <MudTimeline>
+            @foreach (var it in _events)
+            {
+                <MudTimelineItem >
+                    <ItemOpposite>
+                        <MudText Color="@(it.AcceptedCount >= it.MinimumAccepted ? Color.Primary : Color.Error)" Typo="Typo.h5">@it.ScheduledFor?.ToString("g")</MudText>
+                    </ItemOpposite>
+                    <ItemContent>
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderAvatar>
+                                    @if (it.HostedBy is not null && it.HostedBy.Avatar.Any() && it.HostedBy.AvatarMimeType.IsNotNullOrWhiteSpace())
+                                    {
+                                        <MudAvatar Color="Color.Secondary" Image="@it.HostedBy.ToImageSource()"/>
+                                    }
+                                    else if (it.HostedBy is not null)
+                                    {
+                                        <MudAvatar Color="Color.Secondary">@it.HostedBy.Nickname.FirstOrDefault()</MudAvatar>
+                                    }
+                                </CardHeaderAvatar>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.body1">@it.Title</MudText>
+                                    @if (it.Terrain is not null)
+                                    {
+                                        <MudText Typo="Typo.body2">@(it.Terrain.Title)</MudText>
+                                    }
+                                    @if (it.ModPack is not null)
+                                    {
+                                        <MudText Typo="Typo.body2">@(it.ModPack.Title)</MudText>
+                                    }
+                                </CardHeaderContent>
+                                <CardHeaderActions>
+                                    <MudButtonGroup>
+                                        @if ((it.ModPack?.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MaxValue) < it.ModPack?.TimeStampUpdated)
+                                        {
+                                            <MudBadge Color="Color.Primary" Dot="true" Overlap="true">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Primary"
+                                                               Href="@BaseUrl.ResolveApiUrl($"/ModPack/{it.ModPack.PrimaryKey}/download")"
+                                                               target="_blank"
+                                                               OnClick="@(() => it.ModPack.UserMetas.First().TimeStampDownloaded = DateTimeOffset.MaxValue)"/>
+                                            </MudBadge>
+                                        }
+                                        else
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Primary"
+                                                           Href="@BaseUrl.ResolveApiUrl($"/ModPack/{it.ModPack?.PrimaryKey}/download")"
+                                                           target="_blank"/>
+                                        }
+                                        <AuthorizeView Roles="@string.Join(",", Constants.Roles.Admin, Constants.Roles.EventModify)" Context="_">
+                                            <Authorized>
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="@(() => ModifyEventAsync(it))"/>
+                                            </Authorized>
+                                            <NotAuthorized>
+                                                @if (it.OwnerFk == MeService.User.PrimaryKey)
+                                                {
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="@(() => ModifyEventAsync(it))"/>
+                                                }
+                                            </NotAuthorized>
+                                        </AuthorizeView>
+                                        <AuthorizeView Roles="@string.Join(",", Constants.Roles.Admin, Constants.Roles.EventCreate)" Context="_">
+                                            <MudIconButton Icon="@Icons.Material.Filled.CopyAll" Color="Color.Success" OnClick="@(() => CloneEventAsync(it))"/>
+                                        </AuthorizeView>
+                                    </MudButtonGroup>
+                                </CardHeaderActions>
+                            </MudCardHeader>
+                            @if (it.Image.Any() && it.ImageMimeType.IsNotNullOrWhiteSpace())
+                            {
+                                <MudCardMedia Image="@it.ToImageSource()" Height="250"/>
+                            }
+                            <MudCardContent>
+                                <MudText Typo="Typo.body2">@it.Description</MudText>
+                            </MudCardContent>
+                            <MudCardActions>
                                 <AuthorizeView>
-                                    <MudIconButton Icon="@Icons.Material.Filled.NotificationsOff" Color="Color.Default"/>
+                                    @if (it.AcceptedCount > 0)
+                                    {
+                                        <MudBadge Content="@(it.AcceptedCount)"
+                                                  Color="Color.Success"
+                                                  Overlap="true"
+                                                  BadgeClass="mx-n2 my-n2">
+                                            <MudToggleIconButton Icon="@Icons.Material.Filled.Check"
+                                                                 ToggledIcon="@Icons.Material.Filled.Check"
+                                                                 Color="Color.Default"
+                                                                 ToggledColor="Color.Success"
+                                                                 Toggled="@(it.UserMetas?.FirstOrDefault()?.Acceptance is EEventAcceptance._1)"
+                                                                 ToggledChanged="@(() => AcceptanceChangedAsync(it, EEventAcceptance._1))"/>
+                                        </MudBadge>
+                                    }
+                                    else
+                                    {
+                                        <MudToggleIconButton Icon="@Icons.Material.Filled.Check"
+                                                             ToggledIcon="@Icons.Material.Filled.Check"
+                                                             Color="Color.Default"
+                                                             ToggledColor="Color.Success"
+                                                             Toggled="@(it.UserMetas?.FirstOrDefault()?.Acceptance is EEventAcceptance._1)"
+                                                             ToggledChanged="@(() => AcceptanceChangedAsync(it, EEventAcceptance._1))"/>
+                                    }
+                                    @if (it.MaybeCount > 0)
+                                    {
+                                        <MudBadge Content="@(it.MaybeCount)"
+                                                  Color="Color.Tertiary"
+                                                  Overlap="true"
+                                                  BadgeClass="mx-n2 my-n2">
+                                            <MudToggleIconButton Icon="@Icons.Material.Filled.QuestionMark"
+                                                                 ToggledIcon="@Icons.Material.Filled.QuestionMark"
+                                                                 Color="Color.Default"
+                                                                 ToggledColor="Color.Tertiary"
+                                                                 Toggled="@(it.UserMetas?.FirstOrDefault()?.Acceptance is EEventAcceptance._0)"
+                                                                 ToggledChanged="@(() => AcceptanceChangedAsync(it, EEventAcceptance._0))"/>
+                                        </MudBadge>
+                                    }
+                                    else
+                                    {
+                                        <MudToggleIconButton Icon="@Icons.Material.Filled.QuestionMark"
+                                                             ToggledIcon="@Icons.Material.Filled.QuestionMark"
+                                                             Color="Color.Default"
+                                                             ToggledColor="Color.Tertiary"
+                                                             Toggled="@(it.UserMetas?.FirstOrDefault()?.Acceptance is EEventAcceptance._0)"
+                                                             ToggledChanged="@(() => AcceptanceChangedAsync(it, EEventAcceptance._0))"/>
+                                    }
+                                    @if (it.RejectedCount > 0)
+                                    {
+                                        <MudBadge Content="@(it.RejectedCount)"
+                                                  Color="Color.Error"
+                                                  Overlap="true"
+                                                  BadgeClass="mx-n2 my-n2">
+                                            <MudToggleIconButton Icon="@Icons.Material.Filled.Clear"
+                                                                 ToggledIcon="@Icons.Material.Filled.Clear"
+                                                                 Color="Color.Default"
+                                                                 ToggledColor="Color.Error"
+                                                                 Toggled="@(it.UserMetas?.FirstOrDefault()?.Acceptance is EEventAcceptance.__1)"
+                                                                 ToggledChanged="@(() => AcceptanceChangedAsync(it, EEventAcceptance.__1))"/>
+                                        </MudBadge>
+                                    }
+                                    else
+                                    {
+                                        <MudToggleIconButton Icon="@Icons.Material.Filled.Clear"
+                                                             ToggledIcon="@Icons.Material.Filled.Clear"
+                                                             Color="Color.Default"
+                                                             ToggledColor="Color.Error"
+                                                             Toggled="@(it.UserMetas?.FirstOrDefault()?.Acceptance is EEventAcceptance.__1)"
+                                                             ToggledChanged="@(() => AcceptanceChangedAsync(it, EEventAcceptance.__1))"/>
+                                    }
                                 </AuthorizeView>
-                            </CardHeaderActions>
-                        </MudCardHeader>
-                        @if (it.Image.Any() && it.ImageMimeType.IsNotNullOrWhiteSpace())
-                        {
-                            <MudCardMedia Image="@it.ToImageSource()" Height="250"/>
-                        }
-                        <MudCardContent>
-                            <MudText Typo="Typo.body2">@it.Description</MudText>
-                        </MudCardContent>
-                        <MudCardActions>
-                            <AuthorizeView>
-                                <MudIconButton Icon="@Icons.Material.Filled.NotificationsOff" Color="Color.Default"/>
-                                <MudBadge Content="7" Color="Color.Success" Overlap="true" Class="mx-6 my-4">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Default"/>
-                                </MudBadge>
-                                <MudBadge Content="2" Color="Color.Warning" Overlap="true" Class="mx-6 my-4">
-                                    <MudIconButton Icon="@Icons.Material.Filled.QuestionMark" Color="Color.Default"/>
-                                </MudBadge>
-                                <MudBadge Content="3" Color="Color.Error" Overlap="true" Class="mx-6 my-4">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Clear" Color="Color.Default"/>
-                                </MudBadge>
-                            </AuthorizeView>
-                        </MudCardActions>
-                    </MudCard>
-                </ItemContent>
-            </MudTimelineItem>
-        }
-    </MudTimeline>
+                            </MudCardActions>
+                        </MudCard>
+                    </ItemContent>
+                </MudTimelineItem>
+            }
+        </MudTimeline>
+    </MudContainer>
 }
 else
 {
     <div style="position: fixed; left: 0; top: 50%; transform: translate(0, -50%); width: min(100vw, 100%); justify-content: center; display: flex;">
         <MudPaper Class="d-inline-block mud-theme-primary px-5 py- 3align-self-center">
-                <MudText>@Localizer[nameof(Language.Pages_Events_NoUpcomingEvents)]</MudText>
+            <MudText>@Localizer[nameof(Language.Pages_Events_NoUpcomingEvents)]</MudText>
         </MudPaper>
     </div>
 }
+<div style="position: fixed; right: 3rem; bottom: 3rem;">
+    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@CreateNewEventAsync"/>
+</div>
 
 @code {
     private IReadOnlyCollection<Event> _events = ImmutableArray<Event>.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadEventsAsync()
+            .ConfigureAwait(false);
+    }
+
+    private async Task ReloadEventsAsync()
+    {
+        var events = await EventRepository.GetUpcomingEventsAsync();
+        _events = events;
+    }
+
+
+    private async Task CreateNewEventAsync()
+    {
+        var eventItem = await Dialogs.ModifyEventDialog.ShowAsync(DialogService)
+            .ConfigureAwait(false);
+        if (eventItem is null)
+            return;
+        await EventRepository.CreateEventAsync(eventItem)
+            .ConfigureAwait(false);
+    }
+
+    private async Task ModifyEventAsync(Event eventItem)
+    {
+        var updatedEvent = await Dialogs.ModifyEventDialog.ShowAsync(DialogService, eventItem)
+            .ConfigureAwait(false);
+        if (updatedEvent is null)
+            return;
+        Contract.Assert(updatedEvent == eventItem);
+        await EventRepository.ModifyEventAsync(eventItem)
+            .ConfigureAwait(false);
+    }
+
+    private async Task CloneEventAsync(Event eventItem)
+    {
+        eventItem = new Event
+        {
+            AcceptedCount = default,
+            PrimaryKey = default,
+            MaybeCount = default,
+            RejectedCount = default,
+            UserMetas = default,
+            ScheduledFor = default,
+            Owner = default,
+            ScheduledForOriginal = default,
+            TimeStampCreated = default,
+            MinimumAccepted = eventItem.MinimumAccepted,
+            Title = eventItem.Title,
+            Description = eventItem.Description,
+            Image = eventItem.Image,
+            ImageMimeType = eventItem.ImageMimeType,
+            Terrain = eventItem.Terrain,
+            HostedBy = eventItem.HostedBy,
+            OwnerFk = eventItem.OwnerFk,
+            ModPack = eventItem.ModPack,
+            TerrainFk = eventItem.TerrainFk,
+            HostedByFk = eventItem.HostedByFk,
+            ModPackFk = eventItem.ModPackFk,
+        };
+        var updatedEvent = await Dialogs.ModifyEventDialog.ShowAsync(DialogService, eventItem, isNew: true)
+            .ConfigureAwait(false);
+        if (updatedEvent is null)
+            return;
+        Contract.Assert(updatedEvent == eventItem);
+        await EventRepository.CreateEventAsync(eventItem)
+            .ConfigureAwait(false);
+    }
+
+    private async Task AcceptanceChangedAsync(Event eventItem, EEventAcceptance acceptance)
+    {
+        Contract.Assert(eventItem.PrimaryKey is not null);
+        var userMeta = eventItem.UserMetas?.FirstOrDefault();
+        await EventRepository.SetMeAcceptanceAsync(eventItem.PrimaryKey.Value, acceptance)
+            .ConfigureAwait(false);
+
+        if (userMeta is not null)
+        {
+            switch (userMeta.Acceptance)
+            {
+                case EEventAcceptance.__1:
+                    eventItem.RejectedCount--;
+                    break;
+                case EEventAcceptance._0:
+                    eventItem.MaybeCount--;
+                    break;
+                case EEventAcceptance._1:
+                    eventItem.AcceptedCount--;
+                    break;
+                case null:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            userMeta.Acceptance = acceptance;
+        }
+        switch (acceptance)
+        {
+            case EEventAcceptance.__1:
+                eventItem.RejectedCount++;
+                break;
+            case EEventAcceptance._0:
+                eventItem.MaybeCount++;
+                break;
+            case EEventAcceptance._1:
+                eventItem.AcceptedCount++;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
 }

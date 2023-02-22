@@ -133,4 +133,76 @@ public class UsersController : ControllerBase
             ? Unauthorized()
             : Ok(user);
     }
+
+    /// <summary>
+    /// Returns all <see cref="User"/>'s available.
+    /// </summary>
+    /// <param name="skip">The amount of <see cref="User"/>'s to skip. Paging argument.</param>
+    /// <param name="take">The amount of <see cref="User"/>'s to take after skip. Paging argument.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="search">
+    ///     Searches the <see cref="User.Nickname"/> with a function akin to <see cref="string.StartsWith(string)"/>
+    /// </param>
+    /// <returns>
+    ///     The available <see cref="User"/>'s.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="take"/> is greater then 500.</exception>
+    [Authorize]
+    [HttpPost("all", Name = nameof(GetUsersAsync))]
+    public async Task<ActionResult<IEnumerable<User>>> GetUsersAsync(
+        [FromQuery] int skip,
+        [FromQuery] int take,
+        CancellationToken cancellationToken,
+        [FromQuery] string? search = null)
+    {
+        if (take > 500)
+            throw new ArgumentOutOfRangeException(nameof(take), take, "Take has a hard-maximum of 500.");
+        var users = _apiDbContext.Users
+            .Skip(skip)
+            .Take(take);
+        if (search.IsNotNullOrWhiteSpace())
+        {
+            search   = search.Trim();
+            search   = search.Replace("%", "\\%");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("_", "\\_");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("[", "\\[");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("]", "\\]");
+            search   = search.Replace(",", "\\,");
+            search   = search.Replace("^", "\\^");
+            search   = search.Replace("\\", "\\\\");
+            search   = $"{search}%";
+            users = users.Where((q) => EF.Functions.ILike(q.Nickname, search, "\\"));
+        }
+
+        var result = await users.ToArrayAsync(cancellationToken);
+
+        return Ok(users);
+    }
+
+    /// <summary>
+    /// Returns the count of all <see cref="User"/>'s available.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>
+    ///     The count of available <see cref="User"/>'s.
+    /// </returns>
+    [Authorize]
+    [HttpPost("all/count", Name = nameof(GetUsersCountAsync))]
+    public async Task<ActionResult<long>> GetUsersCountAsync(
+        CancellationToken cancellationToken)
+    {
+        var count = await _apiDbContext.Users
+            .LongCountAsync(cancellationToken);
+
+        return count;
+    }
 }

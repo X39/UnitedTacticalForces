@@ -96,6 +96,105 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Description.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Inputs_Description {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hosted by.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Inputs_HostedBy {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_HostedBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mod pack.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Inputs_ModPack {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_ModPack", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scheduled for (date).
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Inputs_ScheduledForDate {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_ScheduledForDate", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scheduled for (time).
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Inputs_ScheduledForTime {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_ScheduledForTime", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Terrain.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Inputs_Terrain {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_Terrain", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Inputs_Title {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Replace image.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_ReplaceEventImage {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_ReplaceEventImage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set image.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_SetEventImage {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_SetEventImage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Modify event.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Title {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New event.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_TitleNew {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_TitleNew", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Title.
         /// </summary>
         internal static string Dialogs_ModifyModPackDialog_Inputs_Title {
