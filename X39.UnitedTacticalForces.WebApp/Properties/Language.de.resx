@@ -92,4 +92,7 @@
     <data name="Dialogs_ModifyModPackDialog_SetModPackHtml" xml:space="preserve">
         <value>Mod-Paket HTML setzen</value>
     </data>
+    <data name="Pages_ModPacks_MyModPacksOnly_ToolTip" xml:space="preserve">
+        <value>Nur meine Mod-Pakete</value>
+    </data>
 </root>

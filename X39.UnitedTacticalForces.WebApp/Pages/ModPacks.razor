@@ -38,10 +38,12 @@
             }
         </MudText>
         <MudSpacer/>
-        <MudToggleIconButton
-            Icon="@Icons.Material.Filled.PersonOff"
-            ToggledIcon="@Icons.Material.Filled.Person"
-            @bind-Toggled="@MyModPacksOnly"/>
+        <MudTooltip Text="@Localizer[nameof(Language.Pages_ModPacks_MyModPacksOnly_ToolTip)]">
+            <MudToggleIconButton
+                Icon="@Icons.Material.Filled.PersonOff"
+                ToggledIcon="@Icons.Material.Filled.Person"
+                @bind-Toggled="@MyModPacksOnly"/>
+        </MudTooltip>
     </ToolBarContent>
     <HeaderContent>
         <MudTh>@Localizer[nameof(Language.Pages_ModPacks_Table_Title)]</MudTh>

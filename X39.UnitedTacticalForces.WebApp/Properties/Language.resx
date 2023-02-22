@@ -99,4 +99,7 @@
     <data name="Dialogs_ModifyModPackDialog_SetModPackHtml" xml:space="preserve">
         <value>Set mod pack HTMl</value>
     </data>
+    <data name="Pages_ModPacks_MyModPacksOnly_ToolTip" xml:space="preserve">
+        <value>Only my mod packs</value>
+    </data>
 </root>

@@ -195,6 +195,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Only my mod packs.
+        /// </summary>
+        internal static string Pages_ModPacks_MyModPacksOnly_ToolTip {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_MyModPacksOnly_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Interactions.
         /// </summary>
         internal static string Pages_ModPacks_Table_Interacitons {

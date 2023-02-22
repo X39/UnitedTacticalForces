@@ -20,7 +20,7 @@
 <MudNavMenu>
     <AuthorizeView>
         <Authorized>
-            <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/logout")" Icon="@Icons.Material.Filled.Logout">
+            <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/logout?returnUrl={BaseUrl.SelfUrl}")" Icon="@Icons.Material.Filled.Logout">
                 <MudText>@Localizer[nameof(Language.Shared_NavMenu_Logout)]</MudText>
             </MudNavLink>
         </Authorized>

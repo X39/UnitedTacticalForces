@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using X39.Util.Collections;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services;
@@ -16,12 +17,15 @@ public class SteamAuthProvider : AuthenticationStateProvider
 
     private static IEnumerable<Claim> GetClaims(User user)
     {
+        var userClaims = user.Roles
+            ?.Select((q) => q.Identifier)
+            .NotNull()
+            .Select((q) => new Claim(ClaimTypes.Role, q));
         return new[]
         {
             new Claim(ClaimTypes.Name, user.Nickname ?? string.Empty),
             new Claim(ClaimTypes.NameIdentifier, (user.PrimaryKey ?? Guid.Empty).ToString()),
-            new Claim("SteamId", user.SteamId64?.ToString() ?? "0"),
-        };
+        }.Concat(userClaims ?? Enumerable.Empty<Claim>());
     }
 
     public override Task<AuthenticationState> GetAuthenticationStateAsync()
