@@ -1,52 +1,127 @@
-﻿@page "/terrains"
-@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
-@using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
-@inject ISnackbar Snackbar
+﻿@using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using System.Diagnostics.Contracts
+@using X39.UnitedTacticalForces.WebApp.Services
+@page "/terrains"
 @inject ITerrainRepository TerrainRepository
-<h3>ModPacks</h3>
+@inject IUserRepository UserRepository
+@inject IStringLocalizer<Language> Localizer
+@inject IDialogService DialogService
+@inject BaseUrl BaseUrl
+@inject MeService MeService
+@attribute [Authorize]
+<PageTitle>@Localizer[nameof(Language.Pages_Terrains_Title)]</PageTitle>
+<MudTable @ref="_mudTable"
+          Dense="true"
+          ServerData="ServerDataAsync"
+          RowsPerPage="50"
+          Virtualize="true"
+          Height="@Breakpoint.ToMudTableFullHeight()"
+          FixedFooter="true"
+          FixedHeader="true">
+    <ColGroup>
+        <col/>
+        <col style="width: 0"/>
+    </ColGroup>
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">
+            @Localizer[nameof(Language.Pages_Terrains_AllTerrains)]
+        </MudText>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>@Localizer[nameof(Language.Pages_Terrains_Table_Title)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_Terrains_Table_Interactions)]</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Terrains_Table_Title)]">@context.Title</MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Terrains_Table_Interactions)]">
+            <MudButtonGroup>
+                <AuthorizeView Roles="@string.Join(",", Constants.Roles.Admin, Constants.Roles.TerrainModify)" Context="_">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="@(() => ModifyTerrainAsync(context))"/>
+                </AuthorizeView>
+                <AuthorizeView Roles="@string.Join(",", Constants.Roles.Admin, Constants.Roles.TerrainDelete)" Context="_">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteTerrainAsync(context))"/>
+                </AuthorizeView>
+            </MudButtonGroup>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="@(new[] {50, 100, 250, 500})"/>
+    </PagerContent>
+    <FooterContent>
+        <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "2"}})">
+            <AuthorizeView Roles="@string.Join(",", Constants.Roles.Admin, Constants.Roles.TerrainCreate)" Context="_">
+                <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewTerrainAsync">
+                    @Localizer[nameof(Language.Pages_Terrains_CreateNewTerrain)]
+                </MudButton>
+            </AuthorizeView>
+        </MudTd>
+    </FooterContent>
+</MudTable>
 
-<MudStack Style="width: 100%">
-    <MudFileUpload T="IReadOnlyList<IBrowserFile>"
-                   OnFilesChanged="OnInputFileChanged"
-                   Hidden="false"
-                   Class="flex-1"
-                   MaximumFileCount="1"
-                   InputClass="absolute mud-width-full mud-height-full overflow-hidden z-20"
-                   InputStyle="opacity:0"
-                   @ondragenter="@SetDragClass" @ondragleave="@ClearDragClass" @ondragend="@ClearDragClass">
-        <ButtonTemplate>
-            <MudPaper Height="300px" Outlined="true" Class="@_dragClass">
-                <MudText Typo="Typo.h6">Drag and drop files here or click</MudText>
-            </MudPaper>
-        </ButtonTemplate>
-    </MudFileUpload>
-</MudStack>
 @code {
-    private const string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mt-4 mud-width-full mud-height-full z-10";
-    private string _dragClass = DefaultDragClass;
 
-    private async Task OnInputFileChanged(InputFileChangeEventArgs e)
+
+    [CascadingParameter]
+    public Breakpoint Breakpoint { get; private set; } = Breakpoint.Always;
+
+    protected override async Task OnInitializedAsync()
     {
-        ClearDragClass();
-        var file = e.GetMultipleFiles().Single();
-        await using var stream = file.OpenReadStream();
-        using var memoryStream = new MemoryStream();
-        await stream.CopyToAsync(memoryStream);
-        await TerrainRepository.CreateAsync(new Terrain
+        await Task.Delay(10);
+    }
+
+    private long _terrainCounts = -1;
+    private MudTable<Terrain> _mudTable = null!;
+
+    private async Task<TableData<Terrain>> ServerDataAsync(TableState arg)
+    {
+        if (_terrainCounts == -1)
+            _terrainCounts = await TerrainRepository.GetTerrainCountAsync()
+                .ConfigureAwait(false);
+        var items = await TerrainRepository.GetTerrainsAsync(
+            arg.Page * arg.PageSize, arg.PageSize)
+            .ConfigureAwait(false);
+        return new TableData<Terrain>
         {
-            Image = memoryStream.ToArray(),
-            ImageMimeType = "image/png",
-            Title = "Sample Terrain",
-        });
+            TotalItems = (int) _terrainCounts,
+            Items = items,
+        };
     }
 
-    private void SetDragClass()
+    private async Task CreateNewTerrainAsync()
     {
-        _dragClass = $"{DefaultDragClass} mud-border-primary";
+        var terrain = await Dialogs.ModifyTerrainDialog.ShowAsync(DialogService)
+            .ConfigureAwait(false);
+        if (terrain is null)
+            return;
+        await TerrainRepository.CreateTerrainAsync(terrain)
+            .ConfigureAwait(false);
+        await _mudTable.ReloadServerData()
+            .ConfigureAwait(false);
     }
 
-    private void ClearDragClass()
+    private async Task ModifyTerrainAsync(Terrain terrain)
     {
-        _dragClass = DefaultDragClass;
+        var updatedTerrain = await Dialogs.ModifyTerrainDialog.ShowAsync(DialogService, terrain)
+            .ConfigureAwait(false);
+        if (updatedTerrain is null)
+            return;
+        Contract.Assert(updatedTerrain == terrain);
+        await TerrainRepository.ModifyTerrainAsync(terrain)
+            .ConfigureAwait(false);
+        await _mudTable.ReloadServerData()
+            .ConfigureAwait(false);
+    }
+
+    private async Task DeleteTerrainAsync(Terrain terrain)
+    {
+        await Dialogs.ConfirmDeletionDialog.ShowAsync(
+            DialogService,
+            Localizer[nameof(Language.Pages_Terrains_ConfirmDeleteOfTerrain_Description)],
+            Localizer[nameof(Language.Pages_Terrains_ConfirmDeleteOfTerrain_Title)]);
+        await TerrainRepository.DeleteTerrainAsync(terrain)
+            .ConfigureAwait(false);
+        await _mudTable.ReloadServerData()
+            .ConfigureAwait(false);
     }
 }

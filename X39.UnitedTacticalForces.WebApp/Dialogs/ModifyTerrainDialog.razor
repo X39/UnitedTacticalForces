@@ -1,0 +1,95 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using X39.Util
+@using X39.Util.Collections
+@inject IStringLocalizer<Language> Localizer
+<MudDialog>
+    <DialogContent>
+        <MudTextField Label="@Localizer[nameof(Language.Dialogs_ModifyTerrainDialog_Inputs_Title)]" @bind-Value="@Terrain.Title"/>
+        <MudFileUpload T="IBrowserFile" MaximumFileCount="1" OnFilesChanged="FilesChangedAsync" Accept="image/*">
+            <ButtonTemplate>
+                <MudText Align="Align.Center">@_fileName</MudText>
+                <MudButton HtmlTag="label"
+                           Variant="@(_fileName.IsNullOrEmpty() ? Variant.Text : Variant.Outlined)"
+                           for="@context">
+                    @if (IsNew)
+                    {
+                        @Localizer[nameof(Language.Dialogs_ModifyTerrainDialog_SetTerrainImage)]
+                    }
+                    else
+                    {
+                        @Localizer[nameof(Language.Dialogs_ModifyTerrainDialog_ReplaceTerrainImage)]
+                    }
+                </MudButton>
+            </ButtonTemplate>
+        </MudFileUpload>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Localizer[nameof(Language.Common_Cancel)]</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="IsSubmitDisabled">@(IsNew ? Localizer[nameof(Language.Common_Create)] : Localizer[nameof(Language.Common_Submit)])</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired, Required]
+    public Terrain Terrain { get; set; } = null!;
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    private bool IsSubmitDisabled => IsNew && (Terrain.Title.IsNullOrWhiteSpace() || (Terrain.Image?.None() ?? true));
+
+    private string _fileName = string.Empty;
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(Terrain));
+    void Cancel() => MudDialog.Cancel();
+
+
+    protected override Task OnInitializedAsync()
+    {
+        MudDialog.Title = IsNew
+            ? Localizer[nameof(Language.Dialogs_ModifyTerrainDialog_TitleNew)]
+            : Localizer[nameof(Language.Dialogs_ModifyTerrainDialog_Title)];
+        return Task.CompletedTask;
+    }
+
+    private async Task FilesChangedAsync(InputFileChangeEventArgs obj)
+    {
+        _fileName = obj.File.Name;
+        await using var stream = obj.File.OpenReadStream();
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream).ConfigureAwait(false);
+        Terrain.Image = memoryStream.ToArray();
+        Terrain.ImageMimeType = obj.File.ContentType;
+    }
+
+    public static async Task<Terrain?> ShowAsync(
+        IDialogService dialogService,
+        Terrain? terrain = default,
+        bool? isNew = default)
+    {
+        isNew ??= terrain is null;
+        terrain ??= new Terrain();
+        var dialogReference = await dialogService.ShowAsync<ModifyTerrainDialog>(
+            string.Empty,
+            new DialogParameters
+            {
+                {nameof(IsNew), isNew},
+                {nameof(terrain), terrain},
+            },
+            new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+            })
+            .ConfigureAwait(false);
+        var dialogResult = await dialogReference.Result
+            .ConfigureAwait(false);
+        if (dialogResult.Data is Terrain modifiedTerrain)
+            return modifiedTerrain;
+        return null;
+    }
+
+}

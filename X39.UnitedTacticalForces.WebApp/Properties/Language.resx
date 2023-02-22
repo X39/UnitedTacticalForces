@@ -19,7 +19,7 @@
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
     <data name="Shared_NavMenu_Events" xml:space="preserve">
-        <value>Events</value>
+        <value>Upcoming events</value>
     </data>
     <data name="Shared_NavMenu_Calendar" xml:space="preserve">
         <value>Calendar</value>
@@ -101,5 +101,44 @@
     </data>
     <data name="Pages_ModPacks_MyModPacksOnly_ToolTip" xml:space="preserve">
         <value>Only my mod packs</value>
+    </data>
+    <data name="Pages_Terrains_AllTerrains" xml:space="preserve">
+        <value>All Terrains</value>
+    </data>
+    <data name="Pages_Terrains_Table_Title" xml:space="preserve">
+        <value>Title</value>
+    </data>
+    <data name="Pages_Terrains_CreateNewTerrain" xml:space="preserve">
+        <value>Create new terrain</value>
+    </data>
+    <data name="Pages_Terrains_ConfirmDeleteOfTerrain_Description" xml:space="preserve">
+        <value>Are you sure you want to delete this terrain? This cannot be undone!</value>
+    </data>
+    <data name="Pages_Terrains_ConfirmDeleteOfTerrain_Title" xml:space="preserve">
+        <value>Confirm deletion of terrain</value>
+    </data>
+    <data name="Pages_Terrains_Title" xml:space="preserve">
+        <value>Terrains</value>
+    </data>
+    <data name="Dialogs_ModifyTerrainDialog_Inputs_Title" xml:space="preserve">
+        <value>Title</value>
+    </data>
+    <data name="Dialogs_ModifyTerrainDialog_SetTerrainImage" xml:space="preserve">
+        <value>Set terrain image</value>
+    </data>
+    <data name="Dialogs_ModifyTerrainDialog_ReplaceTerrainImage" xml:space="preserve">
+        <value>Replace terrain image</value>
+    </data>
+    <data name="Dialogs_ModifyTerrainDialog_Title" xml:space="preserve">
+        <value>Modify terrain</value>
+    </data>
+    <data name="Dialogs_ModifyTerrainDialog_TitleNew" xml:space="preserve">
+        <value>New terrain</value>
+    </data>
+    <data name="Pages_Terrains_Table_Interactions" xml:space="preserve">
+        <value>Interactions</value>
+    </data>
+    <data name="Pages_Events_NoUpcomingEvents" xml:space="preserve">
+        <value>No upcoming events</value>
     </data>
 </root>

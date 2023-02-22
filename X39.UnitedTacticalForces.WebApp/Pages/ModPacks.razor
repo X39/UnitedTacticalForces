@@ -53,13 +53,19 @@
         <MudTh>@Localizer[nameof(Language.Pages_ModPacks_Table_Interacitons)]</MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel="@nameof(context.Title)">@context.Title</MudTd>
-        <MudTd DataLabel="@nameof(context.TimeStampCreated)">@(context.TimeStampCreated?.ToString("g"))</MudTd>
-        <MudTd DataLabel="@nameof(context.TimeStampUpdated)">@(context.TimeStampUpdated?.ToString("g"))</MudTd>
-        <MudTd DataLabel="@nameof(context.Owner)">
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Title)]">
+            @context.Title
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_TimeStampCreated)]">
+            @(context.TimeStampCreated?.ToString("g"))
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_TimeStampUpdated)]">
+            @(context.TimeStampUpdated?.ToString("g"))
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Owner)]">
             <UtfUser User="@context.Owner"/>
         </MudTd>
-        <MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Interacitons)]">
             <MudButtonGroup>
                 @if ((context.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MaxValue) < context.TimeStampUpdated)
                 {
@@ -109,9 +115,11 @@
     </PagerContent>
     <FooterContent>
         <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "5"}})">
-            <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewModPackAsync">
-                @Localizer[nameof(Language.Pages_ModPacks_CreateNewModPack)]
-            </MudButton>
+            <AuthorizeView Roles="@string.Join(",", Constants.Roles.Admin, Constants.Roles.ModPackCreate)" Context="_">
+                <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewModPackAsync">
+                    @Localizer[nameof(Language.Pages_ModPacks_CreateNewModPack)]
+                </MudButton>
+            </AuthorizeView>
         </MudTd>
     </FooterContent>
 </MudTable>
@@ -218,7 +226,7 @@
 
     private async Task DeleteModPackAsync(ModPack modPack)
     {
-        Dialogs.ConfirmDeletionDialog.ShowAsync(
+        await Dialogs.ConfirmDeletionDialog.ShowAsync(
             DialogService,
             Localizer[nameof(Language.Pages_ModPacks_ConfirmDeleteOfModPack_Description)],
             Localizer[nameof(Language.Pages_ModPacks_ConfirmDeleteOfModPack_Title)]);
@@ -226,11 +234,6 @@
             .ConfigureAwait(false);
         await _mudTable.ReloadServerData()
             .ConfigureAwait(false);
-    }
-
-    private Task DownloadModPackAsync(ModPack context)
-    {
-        throw new NotImplementedException();
     }
 
 }

@@ -6,69 +6,80 @@
 @inject IEventRepository EventRepository
 
 <PageTitle>@Localizer[nameof(Language.Pages_Events_Title)]</PageTitle>
-<MudTimeline>
-    @foreach (var it in _events)
-    {
-        <MudTimelineItem >
-            <ItemOpposite>
-                <MudText Color="Color.Primary" Typo="Typo.h5">@it.ScheduledFor</MudText>
-            </ItemOpposite>
-            <ItemContent>
-                <MudCard>
-                    <MudCardHeader>
-                        <CardHeaderAvatar>
-                            @if (it.HostedBy is not null && it.HostedBy.Avatar.Any() && it.HostedBy.AvatarMimeType.IsNotNullOrWhiteSpace())
-                            {
-                                <MudAvatar Color="Color.Secondary" Image="@it.HostedBy.ToImageSource()"/>
-                            }
-                            else if (it.HostedBy is not null)
-                            {
-                                <MudAvatar Color="Color.Secondary">@it.HostedBy.Nickname.FirstOrDefault()</MudAvatar>
-                            }
-                        </CardHeaderAvatar>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.body1">@it.Title</MudText>
-                            @if (it.Terrain is not null)
-                            {
-                                <MudText Typo="Typo.body2">@(it.Terrain.Title)</MudText>
-                            }
-                            @if (it.ModPack is not null)
-                            {
-                                <MudText Typo="Typo.body2">@(it.ModPack.Title)</MudText>
-                            }
-                        </CardHeaderContent>
-                        <CardHeaderActions>
+@if (_events.Any())
+{
+    <MudTimeline>
+        @foreach (var it in _events)
+        {
+            <MudTimelineItem >
+                <ItemOpposite>
+                    <MudText Color="Color.Primary" Typo="Typo.h5">@it.ScheduledFor</MudText>
+                </ItemOpposite>
+                <ItemContent>
+                    <MudCard>
+                        <MudCardHeader>
+                            <CardHeaderAvatar>
+                                @if (it.HostedBy is not null && it.HostedBy.Avatar.Any() && it.HostedBy.AvatarMimeType.IsNotNullOrWhiteSpace())
+                                {
+                                    <MudAvatar Color="Color.Secondary" Image="@it.HostedBy.ToImageSource()"/>
+                                }
+                                else if (it.HostedBy is not null)
+                                {
+                                    <MudAvatar Color="Color.Secondary">@it.HostedBy.Nickname.FirstOrDefault()</MudAvatar>
+                                }
+                            </CardHeaderAvatar>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.body1">@it.Title</MudText>
+                                @if (it.Terrain is not null)
+                                {
+                                    <MudText Typo="Typo.body2">@(it.Terrain.Title)</MudText>
+                                }
+                                @if (it.ModPack is not null)
+                                {
+                                    <MudText Typo="Typo.body2">@(it.ModPack.Title)</MudText>
+                                }
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <AuthorizeView>
+                                    <MudIconButton Icon="@Icons.Material.Filled.NotificationsOff" Color="Color.Default"/>
+                                </AuthorizeView>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        @if (it.Image.Any() && it.ImageMimeType.IsNotNullOrWhiteSpace())
+                        {
+                            <MudCardMedia Image="@it.ToImageSource()" Height="250"/>
+                        }
+                        <MudCardContent>
+                            <MudText Typo="Typo.body2">@it.Description</MudText>
+                        </MudCardContent>
+                        <MudCardActions>
                             <AuthorizeView>
                                 <MudIconButton Icon="@Icons.Material.Filled.NotificationsOff" Color="Color.Default"/>
+                                <MudBadge Content="7" Color="Color.Success" Overlap="true" Class="mx-6 my-4">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Default"/>
+                                </MudBadge>
+                                <MudBadge Content="2" Color="Color.Warning" Overlap="true" Class="mx-6 my-4">
+                                    <MudIconButton Icon="@Icons.Material.Filled.QuestionMark" Color="Color.Default"/>
+                                </MudBadge>
+                                <MudBadge Content="3" Color="Color.Error" Overlap="true" Class="mx-6 my-4">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Clear" Color="Color.Default"/>
+                                </MudBadge>
                             </AuthorizeView>
-                        </CardHeaderActions>
-                    </MudCardHeader>
-                    @if (it.Image.Any() && it.ImageMimeType.IsNotNullOrWhiteSpace())
-                    {
-                        <MudCardMedia Image="@it.ToImageSource()" Height="250"/>
-                    }
-                    <MudCardContent>
-                        <MudText Typo="Typo.body2">@it.Description</MudText>
-                    </MudCardContent>
-                    <MudCardActions>
-                        <AuthorizeView>
-                            <MudIconButton Icon="@Icons.Material.Filled.NotificationsOff" Color="Color.Default"/>
-                            <MudBadge Content="7" Color="Color.Success" Overlap="true" Class="mx-6 my-4">
-                                <MudIconButton Icon="@Icons.Material.Filled.Check" Color="Color.Default"/>
-                            </MudBadge>
-                            <MudBadge Content="2" Color="Color.Warning" Overlap="true" Class="mx-6 my-4">
-                                <MudIconButton Icon="@Icons.Material.Filled.QuestionMark" Color="Color.Default"/>
-                            </MudBadge>
-                            <MudBadge Content="3" Color="Color.Error" Overlap="true" Class="mx-6 my-4">
-                                <MudIconButton Icon="@Icons.Material.Filled.Clear" Color="Color.Default"/>
-                            </MudBadge>
-                        </AuthorizeView>
-                    </MudCardActions>
-                </MudCard>
-            </ItemContent>
-        </MudTimelineItem>
-    }
-</MudTimeline>
+                        </MudCardActions>
+                    </MudCard>
+                </ItemContent>
+            </MudTimelineItem>
+        }
+    </MudTimeline>
+}
+else
+{
+    <div style="position: fixed; left: 0; top: 50%; transform: translate(0, -50%); width: min(100vw, 100%); justify-content: center; display: flex;">
+        <MudPaper Class="d-inline-block mud-theme-primary px-5 py- 3align-self-center">
+                <MudText>@Localizer[nameof(Language.Pages_Events_NoUpcomingEvents)]</MudText>
+        </MudPaper>
+    </div>
+}
 
 @code {
     private IReadOnlyCollection<Event> _events = ImmutableArray<Event>.Empty;

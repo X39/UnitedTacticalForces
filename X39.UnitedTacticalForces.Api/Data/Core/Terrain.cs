@@ -10,4 +10,5 @@ public class Terrain
     public string Title { get; set; } = string.Empty;
     public byte[] Image { get; set; } = Array.Empty<byte>();
     public string ImageMimeType { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
 }

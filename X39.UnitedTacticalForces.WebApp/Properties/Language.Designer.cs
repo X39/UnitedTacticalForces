@@ -141,6 +141,60 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Dialogs_ModifyTerrainDialog_Inputs_Title {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyTerrainDialog_Inputs_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Replace terrain image.
+        /// </summary>
+        internal static string Dialogs_ModifyTerrainDialog_ReplaceTerrainImage {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyTerrainDialog_ReplaceTerrainImage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set terrain image.
+        /// </summary>
+        internal static string Dialogs_ModifyTerrainDialog_SetTerrainImage {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyTerrainDialog_SetTerrainImage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Modify terrain.
+        /// </summary>
+        internal static string Dialogs_ModifyTerrainDialog_Title {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyTerrainDialog_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New terrain.
+        /// </summary>
+        internal static string Dialogs_ModifyTerrainDialog_TitleNew {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyTerrainDialog_TitleNew", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No upcoming events.
+        /// </summary>
+        internal static string Pages_Events_NoUpcomingEvents {
+            get {
+                return ResourceManager.GetString("Pages_Events_NoUpcomingEvents", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Upcoming events.
         /// </summary>
         internal static string Pages_Events_Title {
@@ -258,6 +312,69 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to All Terrains.
+        /// </summary>
+        internal static string Pages_Terrains_AllTerrains {
+            get {
+                return ResourceManager.GetString("Pages_Terrains_AllTerrains", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to delete this terrain? This cannot be undone!.
+        /// </summary>
+        internal static string Pages_Terrains_ConfirmDeleteOfTerrain_Description {
+            get {
+                return ResourceManager.GetString("Pages_Terrains_ConfirmDeleteOfTerrain_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Confirm deletion of terrain.
+        /// </summary>
+        internal static string Pages_Terrains_ConfirmDeleteOfTerrain_Title {
+            get {
+                return ResourceManager.GetString("Pages_Terrains_ConfirmDeleteOfTerrain_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Create new terrain.
+        /// </summary>
+        internal static string Pages_Terrains_CreateNewTerrain {
+            get {
+                return ResourceManager.GetString("Pages_Terrains_CreateNewTerrain", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interactions.
+        /// </summary>
+        internal static string Pages_Terrains_Table_Interactions {
+            get {
+                return ResourceManager.GetString("Pages_Terrains_Table_Interactions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Pages_Terrains_Table_Title {
+            get {
+                return ResourceManager.GetString("Pages_Terrains_Table_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Terrains.
+        /// </summary>
+        internal static string Pages_Terrains_Title {
+            get {
+                return ResourceManager.GetString("Pages_Terrains_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Calendar.
         /// </summary>
         internal static string Shared_NavMenu_Calendar {
@@ -267,7 +384,7 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Events.
+        ///   Looks up a localized string similar to Upcoming events.
         /// </summary>
         internal static string Shared_NavMenu_Events {
             get {

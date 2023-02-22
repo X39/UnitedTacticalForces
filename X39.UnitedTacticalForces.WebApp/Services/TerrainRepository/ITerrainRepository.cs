@@ -2,5 +2,12 @@
 
 public interface ITerrainRepository
 {
-    Task<Terrain> CreateAsync(Terrain terrain, CancellationToken cancellationToken = default);
+    Task<long> GetTerrainCountAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<Terrain>> GetTerrainsAsync(int skip, int take,
+        CancellationToken cancellationToken = default);
+
+    Task<Terrain> CreateTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default);
+    Task ModifyTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default);
+    Task DeleteTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default);
 }
