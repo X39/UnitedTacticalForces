@@ -1,7 +1,7 @@
-﻿<MudMainContent Style="@(Breakpoint is Breakpoint.Sm or Breakpoint.Xs ? string.Empty : "padding-top: 0;")">
+﻿<MudMainContent Style="padding-top: 0;">
     <MudContainer
         MaxWidth="@(Breakpoint is Breakpoint.Sm or Breakpoint.Xs ? MaxWidth.Large : MaxWidth.False)"
-        Class="@(Breakpoint is Breakpoint.Sm or Breakpoint.Xs ? "my-16 pt-16" : "px-0")">
+        Class="@(Breakpoint is Breakpoint.Sm or Breakpoint.Xs ? "mt-14" : "px-0")">
         @ChildContent
     </MudContainer>
 </MudMainContent>

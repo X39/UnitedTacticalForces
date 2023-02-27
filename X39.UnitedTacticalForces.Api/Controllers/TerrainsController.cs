@@ -33,7 +33,7 @@ public class TerrainController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     /// <returns>The created <see cref="Terrain"/>.</returns>
-    [Authorize(Roles = Constants.Roles.Admin + "," + Constants.Roles.TerrainCreate)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.TerrainCreate)]
     [HttpPost("create", Name = nameof(CreateTerrainAsync))]
     public async Task<ActionResult<Terrain>> CreateTerrainAsync(
         [FromBody] Terrain terrain,

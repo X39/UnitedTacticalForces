@@ -1,0 +1,50 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using System.Diagnostics.Contracts
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@inject IEventRepository EventRepository
+@inject IDialogService DialogService
+<AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.EventCreate)" Context="_">
+    <MudIconButton Icon="@Icons.Material.Filled.CopyAll" Color="Color.Success" OnClick="CloneEventAsync"/>
+</AuthorizeView>
+
+@code {
+
+    [Parameter, Required, EditorRequired]
+    public Event Event { get; set; } = null!;
+
+
+    private async Task CloneEventAsync()
+    {
+        var eventItem = new Event
+        {
+            AcceptedCount = default,
+            PrimaryKey = default,
+            MaybeCount = default,
+            RejectedCount = default,
+            UserMetas = default,
+            ScheduledFor = default,
+            Owner = default,
+            ScheduledForOriginal = default,
+            TimeStampCreated = default,
+            MinimumAccepted = Event.MinimumAccepted,
+            Title = Event.Title,
+            Description = Event.Description,
+            Image = Event.Image,
+            ImageMimeType = Event.ImageMimeType,
+            Terrain = Event.Terrain,
+            HostedBy = Event.HostedBy,
+            OwnerFk = Event.OwnerFk,
+            ModPack = Event.ModPack,
+            TerrainFk = Event.TerrainFk,
+            HostedByFk = Event.HostedByFk,
+            ModPackFk = Event.ModPackFk,
+        };
+        var updatedEvent = await Dialogs.ModifyEventDialog.ShowAsync(DialogService, eventItem, isNew: true)
+            .ConfigureAwait(false);
+        if (updatedEvent is null)
+            return;
+        Contract.Assert(updatedEvent == eventItem);
+        await EventRepository.CreateEventAsync(eventItem)
+            .ConfigureAwait(false);
+    }
+}

@@ -12,8 +12,8 @@ using X39.UnitedTacticalForces.Api.Data;
 namespace X39.UnitedTacticalForces.Api.Data.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    [Migration("20230221220849_AddingUserModPackMeta")]
-    partial class AddingUserModPackMeta
+    [Migration("20230223143943_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -65,7 +65,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.HasIndex("Identifier")
                         .IsUnique();
 
-                    b.ToTable("Privileges");
+                    b.ToTable("Roles");
 
                     b.HasData(
                         new
@@ -80,63 +80,105 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                             PrimaryKey = 2L,
                             Category = "Events",
                             Identifier = "event-create",
-                            Title = "Events erstellen"
+                            Title = "Create events"
                         },
                         new
                         {
                             PrimaryKey = 3L,
                             Category = "Events",
                             Identifier = "event-modify",
-                            Title = "Alle events bearbeiten"
+                            Title = "Modify events"
                         },
                         new
                         {
                             PrimaryKey = 4L,
                             Category = "Events",
                             Identifier = "event-delete",
-                            Title = "Alle events löschen"
+                            Title = "Delete events"
                         },
                         new
                         {
                             PrimaryKey = 5L,
                             Category = "Terrains",
                             Identifier = "terrain-create",
-                            Title = "Terrain anlegen"
+                            Title = "Create terrain"
                         },
                         new
                         {
                             PrimaryKey = 6L,
                             Category = "Terrains",
                             Identifier = "terrain-modify",
-                            Title = "Terrain bearbeiten"
+                            Title = "Modify terrain"
                         },
                         new
                         {
                             PrimaryKey = 7L,
                             Category = "Terrains",
                             Identifier = "terrain-delete",
-                            Title = "Terrain löschen"
+                            Title = "Delete terrain"
                         },
                         new
                         {
                             PrimaryKey = 8L,
                             Category = "ModPacks",
                             Identifier = "modpack-create",
-                            Title = "ModPack anlegen"
+                            Title = "Create mod pack"
                         },
                         new
                         {
                             PrimaryKey = 9L,
                             Category = "ModPacks",
                             Identifier = "modpack-modify",
-                            Title = "ModPack bearbeiten"
+                            Title = "Modify mod pack"
                         },
                         new
                         {
                             PrimaryKey = 10L,
                             Category = "ModPacks",
                             Identifier = "modpack-delete",
-                            Title = "ModPack löschen"
+                            Title = "Delete mod pack"
+                        },
+                        new
+                        {
+                            PrimaryKey = 11L,
+                            Category = "User",
+                            Identifier = "user-view-steamid64",
+                            Title = "View SteamId64 of user"
+                        },
+                        new
+                        {
+                            PrimaryKey = 12L,
+                            Category = "User",
+                            Identifier = "user-view-mail",
+                            Title = "View E-Mail of user"
+                        },
+                        new
+                        {
+                            PrimaryKey = 13L,
+                            Category = "User",
+                            Identifier = "user-modify",
+                            Title = "Modify user"
+                        },
+                        new
+                        {
+                            PrimaryKey = 14L,
+                            Category = "User",
+                            Identifier = "user-ban",
+                            Title = "(Un-)Ban user"
+                        },
+                        new
+                        {
+                            PrimaryKey = 15L,
+                            Category = "User",
+                            Identifier = "user-roles-all",
+                            Title = "Manage user roles"
+                        },
+                        new
+                        {
+                            PrimaryKey = 16L,
+                            Category = "User",
+                            Identifier = "user-list",
+                            Title = "List users"
                         });
                 });
 
@@ -157,6 +199,9 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Property<string>("EMail")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsBanned")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Nickname")
                         .IsRequired()
                         .HasColumnType("text");
@@ -167,6 +212,24 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.HasKey("PrimaryKey");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.UserEventMeta", b =>
+                {
+                    b.Property<Guid>("UserFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EventFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Acceptance")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserFk", "EventFk");
+
+                    b.HasIndex("EventFk");
+
+                    b.ToTable("UserEventMetas");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.UserModPackMeta", b =>
@@ -238,6 +301,9 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text");
@@ -253,8 +319,8 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CreatedByFk")
-                        .HasColumnType("uuid");
+                    b.Property<int>("AcceptedCount")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -271,8 +337,20 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("MaybeCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MinimumAccepted")
+                        .HasColumnType("integer");
+
                     b.Property<long>("ModPackFk")
                         .HasColumnType("bigint");
+
+                    b.Property<Guid>("OwnerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RejectedCount")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("ScheduledFor")
                         .HasColumnType("timestamp with time zone");
@@ -292,11 +370,13 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
                     b.HasKey("PrimaryKey");
 
-                    b.HasIndex("CreatedByFk");
-
                     b.HasIndex("HostedByFk");
 
                     b.HasIndex("ModPackFk");
+
+                    b.HasIndex("OwnerFk");
+
+                    b.HasIndex("ScheduledFor");
 
                     b.HasIndex("TerrainFk");
 
@@ -316,6 +396,25 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .HasForeignKey("UsersPrimaryKey")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.UserEventMeta", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Eventing.Event", "Event")
+                        .WithMany("UserMetas")
+                        .HasForeignKey("EventFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "User")
+                        .WithMany("EventMetas")
+                        .HasForeignKey("UserFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.UserModPackMeta", b =>
@@ -350,12 +449,6 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Eventing.Event", b =>
                 {
-                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedByFk")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "HostedBy")
                         .WithMany()
                         .HasForeignKey("HostedByFk")
@@ -368,27 +461,40 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.Terrain", "Terrain")
                         .WithMany()
                         .HasForeignKey("TerrainFk")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("CreatedBy");
-
                     b.Navigation("HostedBy");
 
                     b.Navigation("ModPack");
+
+                    b.Navigation("Owner");
 
                     b.Navigation("Terrain");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.User", b =>
                 {
+                    b.Navigation("EventMetas");
+
                     b.Navigation("ModPackMetas");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPack", b =>
+                {
+                    b.Navigation("UserMetas");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Eventing.Event", b =>
                 {
                     b.Navigation("UserMetas");
                 });

@@ -1,0 +1,33 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using System.Diagnostics.Contracts
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@inject IUserRepository UserRepository
+@inject MeService MeService
+@if (MeService.IsAuthenticated && User.PrimaryKey != MeService.User.PrimaryKey)
+{
+    <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.UserModify)" Context="_">
+        <MudToggleIconButton
+            ToggledIcon="@Icons.Material.Filled.DoDisturb"
+            Icon="@Icons.Material.Filled.CheckCircleOutline"
+            Color="Color.Default"
+            ToggledColor="Color.Error"
+            Toggled="@(User.IsBanned ?? false)"
+            ToggledChanged="ToggleUserBannedAsync"/>
+    </AuthorizeView>
+}
+
+@code {
+
+    [Parameter, EditorRequired, Required]
+    public User User { get; set; } = null!;
+
+    private async Task ToggleUserBannedAsync()
+    {
+        Contract.Assert(User.PrimaryKey is not null);
+        await UserRepository.ToggleBanUserAsync(User.PrimaryKey.Value)
+            .ConfigureAwait(false);
+        User.IsBanned = !User.IsBanned;
+    }
+
+}

@@ -1,0 +1,41 @@
+﻿@using X39.UnitedTacticalForces.WebApp.Services
+@using System.ComponentModel.DataAnnotations
+@using System.Diagnostics.Contracts
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@inject MeService MeService
+@inject IDialogService DialogService
+@inject IEventRepository EventRepository
+<AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.EventModify)" Context="_">
+    <Authorized>
+        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="ModifyEventAsync"/>
+    </Authorized>
+    <NotAuthorized>
+        @if (MeService.IsAuthenticated && Event.OwnerFk == MeService.User.PrimaryKey)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="ModifyEventAsync"/>
+        }
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+
+    [Parameter, Required, EditorRequired]
+    public Event Event { get; set; } = null!;
+
+    [Parameter, EditorRequired, Required]
+    public EventCallback ParentStateHasChanged { get; set; }
+    
+
+    private async Task ModifyEventAsync()
+    {
+        var updatedEvent = await Dialogs.ModifyEventDialog.ShowAsync(DialogService, Event)
+            .ConfigureAwait(false);
+        if (updatedEvent is null)
+            return;
+        Contract.Assert(updatedEvent == Event);
+        await EventRepository.ModifyEventAsync(Event)
+            .ConfigureAwait(false);
+        await ParentStateHasChanged.InvokeAsync()
+            .ConfigureAwait(false);
+    }
+}

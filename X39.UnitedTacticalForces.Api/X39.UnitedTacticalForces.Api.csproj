@@ -4,6 +4,7 @@
         <TargetFramework>net7.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,6 +19,7 @@
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.3" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.Design" Version="1.1.0" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+        <PackageReference Include="Unchase.Swashbuckle.AspNetCore.Extensions" Version="2.7.1" />
         <PackageReference Include="X39.Util" Version="1.0.0.37" />
         <PackageReference Include="X39.Util.DependencyInjection" Version="2.0.0.4" />
     </ItemGroup>
@@ -37,6 +39,8 @@
     <ItemGroup>
       <ProjectReference Include="..\.submodules\SteamWebAPI2\src\Steam.Models\Steam.Models.csproj" />
       <ProjectReference Include="..\.submodules\SteamWebAPI2\src\SteamWebAPI2\SteamWebAPI2.csproj" />
+      <ProjectReference Include="..\X39.UnitedTacticalForces.Common\X39.UnitedTacticalForces.Common.csproj" />
+      <ProjectReference Include="..\X39.UnitedTacticalForces.Roles\X39.UnitedTacticalForces.Roles.csproj" />
     </ItemGroup>
 
 </Project>

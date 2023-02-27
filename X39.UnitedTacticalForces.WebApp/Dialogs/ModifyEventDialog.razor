@@ -38,6 +38,9 @@
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          AdornmentColor="Color.Primary"
                          ToStringFunc="@(modPack => modPack.Title ?? modPack.PrimaryKey?.ToString() ?? string.Empty)"/>
+        <MudTextField Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_MinimumAccepted)]"
+                      @bind-Value="@Event.MinimumAccepted"
+                      Pattern="[0-9]+"/>
 
         <MudFileUpload Required="IsNew" T="IBrowserFile" MaximumFileCount="1" OnFilesChanged="FilesChangedAsync" Accept="image/*">
             <ButtonTemplate>

@@ -1,6 +1,98 @@
 ﻿@page "/users"
-<h3>Users</h3>
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@inject IStringLocalizer<Language> Localizer
+@inject IUserRepository UserRepository
+@attribute [Authorize(Roles = Roles.Admin + "," + Roles.UserList)]
+<PageTitle>@Localizer[nameof(Language.Pages_Users_Title)]</PageTitle>
+<MudTable @ref="_mudTable"
+          Dense="true"
+          ServerData="ServerDataAsync"
+          RowsPerPage="50"
+          Virtualize="true"
+          Height="@Breakpoint.ToMudTableFullHeight()"
+          FixedFooter="true"
+          FixedHeader="true">
+    <ColGroup>
+        <col style="width: 0"/>
+        <col/>
+        <col style="width: 0"/>
+    </ColGroup>
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">
+            @Localizer[nameof(Language.Pages_Users_AllUsers)]
+        </MudText>
+        <MudSpacer/>
+        <MudTextField @bind-Value="SearchString"
+                      Placeholder="@Localizer[nameof(Language.Common_Search)]"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Class="mt-0"/>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Title)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Roles)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Interactions)]</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Title)]">
+            <UtfUser User="@context"/>
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Roles)]">
+            <Users_UserRoles User="context"/>
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Interactions)]">
+            <MudButtonGroup>
+                <Users_Interactions_ToggleBan User="context"/>
+            </MudButtonGroup>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="@(new[] {50, 100, 250, 500})"/>
+    </PagerContent>
+</MudTable>
 
 @code {
-    
+
+    private string? SearchString
+    {
+        get => _searchString;
+        set
+        {
+            _searchString = value;
+            _ = _mudTable.ReloadServerData()
+                .ConfigureAwait(false);
+        }
+    }
+
+    private MudTable<User> _mudTable = null!;
+    private long _userCounts = -1;
+    private string? _searchString;
+
+    [CascadingParameter]
+    public Breakpoint Breakpoint { get; private set; } = Breakpoint.Always;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(10);
+    }
+
+    private async Task<TableData<User>> ServerDataAsync(TableState arg)
+    {
+        if (_userCounts == -1)
+            _userCounts = await UserRepository.GetUserCountAsync()
+                .ConfigureAwait(false);
+        var items = await UserRepository.GetUsersAsync(
+            skip: arg.Page * arg.PageSize,
+            take: arg.PageSize,
+            search: SearchString,
+            includeRoles: true)
+            .ConfigureAwait(false);
+        return new TableData<User>
+        {
+            TotalItems = (int) _userCounts,
+            Items = items,
+        };
+    }
+
 }

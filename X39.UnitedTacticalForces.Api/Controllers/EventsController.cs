@@ -61,7 +61,7 @@ public class EventsController : ControllerBase
         return await query.ToArrayAsync(cancellationToken);
     }
 
-    [Authorize(Roles = Constants.Roles.Admin + "," + Constants.Roles.EventCreate)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.EventCreate)]
     [HttpPost("create", Name = nameof(CreateEventAsync))]
     public async Task<Event> CreateEventAsync([FromBody] Event newEvent, CancellationToken cancellationToken)
     {

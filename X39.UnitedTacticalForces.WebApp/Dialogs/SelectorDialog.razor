@@ -1,0 +1,90 @@
+﻿@typeparam T where T : notnull
+@using X39.Util
+@using System.ComponentModel.DataAnnotations
+@using System.Collections.Immutable
+@inject IStringLocalizer<Language> Localizer
+<MudDialog>
+    <DialogContent>
+        @if (!_isLoaded)
+        {
+            <MudSkeleton/>
+        }
+        else
+        {
+            <MudSelect SelectedValues="@Selected.MakeArray()"
+                       SelectedValuesChanged="@((IEnumerable<T> items) => Selected = items.FirstOrDefault())">
+                @foreach (var item in _data)
+                {
+                    <MudSelectItem Value="item">
+                        @ToStringFunc(item)
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Localizer[nameof(Language.Common_Cancel)]</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="IsSubmitDisabled">
+            @Localizer[nameof(Language.Common_Submit)]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    private bool IsSubmitDisabled => Selected is null;
+    private IReadOnlyCollection<T> _data = ImmutableArray<T>.Empty;
+    private bool _isLoaded;
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(Selected));
+    void Cancel() => MudDialog.Cancel();
+
+
+    [Parameter]
+    public T? Selected { get; set; }
+
+    [Parameter, Required, EditorRequired]
+    public Func<ValueTask<IEnumerable<T>>> GetDataFunc { get; set; } = null!;
+
+    [Parameter]
+    public Func<T, string> ToStringFunc { get; set; } = (t) => t.ToString() ?? string.Empty;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(1)
+            .ConfigureAwait(false);
+        var data = await GetDataFunc().ConfigureAwait(false);
+        _data = data.ToImmutableArray();
+        _isLoaded = true;
+    }
+
+    public static async Task<T?> ShowAsync(
+        IDialogService dialogService,
+        Func<ValueTask<IEnumerable<T>>> getDataFunc,
+        Func<T, string> toStringFunc,
+        T? selected = default,
+        string? title = default)
+    {
+        var dialogReference = await dialogService.ShowAsync<SelectorDialog<T>>(
+            title,
+            new DialogParameters
+            {
+                {nameof(GetDataFunc), getDataFunc},
+                {nameof(ToStringFunc), toStringFunc},
+                {nameof(Selected), selected},
+            },
+            new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+            })
+            .ConfigureAwait(false);
+        var dialogResult = await dialogReference.Result
+            .ConfigureAwait(false);
+        return dialogResult.Data is not T modifiedEvent ? default : modifiedEvent;
+    }
+
+}

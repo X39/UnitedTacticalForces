@@ -55,6 +55,14 @@ namespace X39.UnitedTacticalForces.WebApp
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response);
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns the upcoming X39.UnitedTacticalForces.Api.Data.Eventing.Event's.
+        /// </summary>
+        /// <remarks>
+        /// An X39.UnitedTacticalForces.Api.Data.Eventing.Event is considered upcoming for the whole day of its X39.UnitedTacticalForces.Api.Data.Eventing.Event.ScheduledFor time.
+        /// <br/>This means that if an X39.UnitedTacticalForces.Api.Data.Eventing.Event is scheduled for 2023-02-22T18:00:00+00:00, the event will stay
+        /// <br/>in the upcoming list until 2023-02-23T00:00:00+00:00.
+        /// </remarks>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<Event>> EventsUpcomingAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -460,6 +468,10 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Downloads the X39.UnitedTacticalForces.Api.Data.Core.ModPack and updates the last downloaded timestamp in the users meta data.
+        /// </summary>
+        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack to download.</param>
         /// <returns>Error</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<FileResponse> ModPackDownloadAsync(long modPackId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -523,6 +535,10 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new X39.UnitedTacticalForces.Api.Data.Core.ModPack.
+        /// </summary>
+        /// <param name="body">The X39.UnitedTacticalForces.Api.Data.Core.ModPack to create.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ModPack> ModPackCreateAsync(ModPack? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -594,6 +610,15 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Allows to change the contents of a X39.UnitedTacticalForces.Api.Data.Core.ModPack.
+        /// </summary>
+        /// <remarks>
+        /// Only non-system properties are allowed:
+        /// <br/>&lt;list type="bullet"&gt;&lt;item&gt;X39.UnitedTacticalForces.Api.Data.Core.ModPack.Title&lt;/item&gt;&lt;item&gt;X39.UnitedTacticalForces.Api.Data.Core.ModPack.Html&lt;/item&gt;&lt;/list&gt;
+        /// </remarks>
+        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack.</param>
+        /// <param name="body">The updated mod pack data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task ModPackUpdateAsync(long modPackId, ModPack? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -663,6 +688,15 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Modifies the owning user of a X39.UnitedTacticalForces.Api.Data.Core.ModPack.
+        /// </summary>
+        /// <remarks>
+        /// Operation is final and only allowed by either the owner or a user with the
+        /// <br/>X39.UnitedTacticalForces.Roles.Admin role.
+        /// </remarks>
+        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack.</param>
+        /// <param name="newUserId">The X39.UnitedTacticalForces.Api.Data.Authority.User.PrimaryKey of the new X39.UnitedTacticalForces.Api.Data.Authority.User.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task ModPackChangeOwnerAsync(long modPackId, System.Guid? newUserId = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -734,6 +768,10 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Receives a single X39.UnitedTacticalForces.Api.Data.Core.ModPack.
+        /// </summary>
+        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<ModPack> ModPackAsync(long modPackId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -805,6 +843,14 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Makes a X39.UnitedTacticalForces.Api.Data.Core.ModPack unavailable for further usage.
+        /// </summary>
+        /// <remarks>
+        /// To not break data consistency, this call will not actually delete a X39.UnitedTacticalForces.Api.Data.Core.ModPack but rather make it not appear in
+        /// <br/>any call but a direct one.
+        /// </remarks>
+        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task ModPackDeleteAsync(long modPackId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -871,6 +917,14 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns all X39.UnitedTacticalForces.Api.Data.Core.ModPack's available or, given myModPacksOnly is set, only those
+        /// <br/>of the currently authorized user.
+        /// </summary>
+        /// <param name="skip">The amount of X39.UnitedTacticalForces.Api.Data.Core.ModPack's to skip. Paging argument.</param>
+        /// <param name="take">The amount of X39.UnitedTacticalForces.Api.Data.Core.ModPack's to take after skip. Paging argument.</param>
+        /// <param name="search">Searches the X39.UnitedTacticalForces.Api.Data.Core.ModPack.Title with a function akin to M:System.String.StartsWith(System.String)</param>
+        /// <param name="myModPacksOnly">If true, only those X39.UnitedTacticalForces.Api.Data.Core.ModPack's of the current user are returned.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<ModPack>> ModPackAllAsync(int? skip = null, int? take = null, string? search = null, bool? myModPacksOnly = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -956,6 +1010,11 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns the count of all X39.UnitedTacticalForces.Api.Data.Core.ModPack's available or, given myModPacksOnly is set,
+        /// <br/>only those of the currently authorized user.
+        /// </summary>
+        /// <param name="myModPacksOnly">If true, only those X39.UnitedTacticalForces.Api.Data.Core.ModPack's of the current user are accounted for.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<long> ModPackAllCountAsync(bool? myModPacksOnly = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1029,6 +1088,10 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new X39.UnitedTacticalForces.Api.Data.Core.Terrain.
+        /// </summary>
+        /// <param name="body">The X39.UnitedTacticalForces.Api.Data.Core.Terrain to create.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<Terrain> TerrainCreateAsync(Terrain? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1100,6 +1163,15 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Allows to change the contents of a X39.UnitedTacticalForces.Api.Data.Core.Terrain.
+        /// </summary>
+        /// <remarks>
+        /// Only non-system properties are allowed:
+        /// <br/>&lt;list type="bullet"&gt;&lt;item&gt;X39.UnitedTacticalForces.Api.Data.Core.Terrain.Title&lt;/item&gt;&lt;item&gt;X39.UnitedTacticalForces.Api.Data.Core.Terrain.Image&lt;/item&gt;&lt;item&gt;X39.UnitedTacticalForces.Api.Data.Core.Terrain.ImageMimeType&lt;/item&gt;&lt;/list&gt;
+        /// </remarks>
+        /// <param name="terrainId">The X39.UnitedTacticalForces.Api.Data.Core.Terrain.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.Terrain.</param>
+        /// <param name="body">The updated mod pack data.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task TerrainUpdateAsync(long terrainId, Terrain? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1169,6 +1241,10 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Receives a single X39.UnitedTacticalForces.Api.Data.Core.Terrain.
+        /// </summary>
+        /// <param name="terrainId">The X39.UnitedTacticalForces.Api.Data.Core.Terrain.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.Terrain.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<Terrain> TerrainAsync(long terrainId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1240,6 +1316,14 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Makes a X39.UnitedTacticalForces.Api.Data.Core.Terrain unavailable for further usage.
+        /// </summary>
+        /// <remarks>
+        /// To not break data consistency, this call will not actually delete a X39.UnitedTacticalForces.Api.Data.Core.Terrain but rather make it not appear in
+        /// <br/>any call but a direct one.
+        /// </remarks>
+        /// <param name="terrainId">The X39.UnitedTacticalForces.Api.Data.Core.Terrain.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.Terrain.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task TerrainDeleteAsync(long terrainId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1306,6 +1390,12 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns all X39.UnitedTacticalForces.Api.Data.Core.Terrain's available.
+        /// </summary>
+        /// <param name="skip">The amount of X39.UnitedTacticalForces.Api.Data.Core.Terrain's to skip. Paging argument.</param>
+        /// <param name="take">The amount of X39.UnitedTacticalForces.Api.Data.Core.Terrain's to take after skip. Paging argument.</param>
+        /// <param name="search">Searches the X39.UnitedTacticalForces.Api.Data.Core.Terrain.Title with a function akin to M:System.String.StartsWith(System.String)</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<Terrain>> TerrainAllAsync(int? skip = null, int? take = null, string? search = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1387,6 +1477,9 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns the count of all X39.UnitedTacticalForces.Api.Data.Core.Terrain's available.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<long> TerrainAllCountAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1455,6 +1548,12 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Change location to this URL to start the steam login process.
+        /// <br/>Only valid for browser clients as a redirect to the steam login page is mandatory.
+        /// <br/>If a user logs in using steam and was not yet registered, he will be auto-registered.
+        /// </summary>
+        /// <param name="returnUrl">The url to get back to after the login process has completed.</param>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task UsersLoginSteamGetAsync(string? returnUrl = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
@@ -1528,6 +1627,12 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Change location to this URL to start the steam login process.
+        /// <br/>Only valid for browser clients as a redirect to the steam login page is mandatory.
+        /// <br/>If a user logs in using steam and was not yet registered, he will be auto-registered.
+        /// </summary>
+        /// <param name="returnUrl">The url to get back to after the login process has completed.</param>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task UsersLoginSteamPostAsync(string? returnUrl = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
@@ -1602,6 +1707,10 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Allows to logout a user.
+        /// </summary>
+        /// <param name="returnUrl">The url to get back to after the logout process has completed.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task UsersLogoutGetAsync(string? returnUrl = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1668,6 +1777,10 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Allows to logout a user.
+        /// </summary>
+        /// <param name="returnUrl">The url to get back to after the logout process has completed.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task UsersLogoutPostAsync(string? returnUrl = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1735,7 +1848,7 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
-        /// <returns>Success</returns>
+        /// <returns>No Content</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task UsersUpdateAsync(System.Guid userId, User? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
@@ -1779,7 +1892,7 @@ namespace X39.UnitedTacticalForces.WebApp
                         ProcessResponse(client_, response_);
 
                         var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
+                        if (status_ == 204)
                         {
                             return;
                         }
@@ -1804,6 +1917,85 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns all roles which are available to the current user for addition.
+        /// </summary>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<Role>> UsersRolesAvailableAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/Users/roles/available");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "text/plain");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<Role>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns a X39.UnitedTacticalForces.Api.Data.Authority.User if one exists with the given id.
+        /// </summary>
+        /// <remarks>
+        /// Full user information is only available if it is the own X39.UnitedTacticalForces.Api.Data.Authority.User or the user
+        /// <br/>requesting has the admin role.
+        /// </remarks>
+        /// <param name="userId">The System.Guid of the X39.UnitedTacticalForces.Api.Data.Authority.User.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<User> UsersAsync(System.Guid userId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1875,6 +2067,93 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Updates the roles of a given X39.UnitedTacticalForces.Api.Data.Authority.User.
+        /// </summary>
+        /// <remarks>
+        /// Method checks whether a role is already part of a user and will not add it twice or error in those cases.
+        /// </remarks>
+        /// <param name="userId">The System.Guid of the X39.UnitedTacticalForces.Api.Data.Authority.User to change the roles of.</param>
+        /// <param name="roleId">The role id to change on the X39.UnitedTacticalForces.Api.Data.Authority.User with the given userId.</param>
+        /// <param name="mode">If true, the roleId will be given to the X39.UnitedTacticalForces.Api.Data.Authority.User.
+        /// <br/>If  false, the roleId will be removed from the X39.UnitedTacticalForces.Api.Data.Authority.User.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task UsersSetRoleAsync(System.Guid userId, long roleId, bool mode, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (userId == null)
+                throw new System.ArgumentNullException("userId");
+
+            if (roleId == null)
+                throw new System.ArgumentNullException("roleId");
+
+            if (mode == null)
+                throw new System.ArgumentNullException("mode");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/Users/{userId}/set-role/{roleId}/{mode}");
+            urlBuilder_.Replace("{userId}", System.Uri.EscapeDataString(ConvertToString(userId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{roleId}", System.Uri.EscapeDataString(ConvertToString(roleId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{mode}", System.Uri.EscapeDataString(ConvertToString(mode, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns the X39.UnitedTacticalForces.Api.Data.Authority.User of the authorized user.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<User> UsersMeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -1942,9 +2221,16 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns all X39.UnitedTacticalForces.Api.Data.Authority.User's available.
+        /// </summary>
+        /// <param name="skip">The amount of X39.UnitedTacticalForces.Api.Data.Authority.User's to skip. Paging argument.</param>
+        /// <param name="take">The amount of X39.UnitedTacticalForces.Api.Data.Authority.User's to take after skip. Paging argument.</param>
+        /// <param name="search">Searches the X39.UnitedTacticalForces.Api.Data.Authority.User.Nickname with a function akin to M:System.String.StartsWith(System.String)</param>
+        /// <param name="includeRoles">If true, the users returned will contain their roles.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<User>> UsersAllAsync(int? skip = null, int? take = null, string? search = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<User>> UsersAllAsync(int? skip = null, int? take = null, string? search = null, bool? includeRoles = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/Users/all?");
@@ -1959,6 +2245,10 @@ namespace X39.UnitedTacticalForces.WebApp
             if (search != null)
             {
                 urlBuilder_.Append(System.Uri.EscapeDataString("search") + "=").Append(System.Uri.EscapeDataString(ConvertToString(search, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            if (includeRoles != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("includeRoles") + "=").Append(System.Uri.EscapeDataString(ConvertToString(includeRoles, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
             }
             urlBuilder_.Length--;
 
@@ -2023,6 +2313,9 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Returns the count of all X39.UnitedTacticalForces.Api.Data.Authority.User's available.
+        /// </summary>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<long> UsersAllCountAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -2190,15 +2483,24 @@ namespace X39.UnitedTacticalForces.WebApp
         }
     }
 
+    /// <summary>
+    /// 
+    /// <br/>
+    /// <br/>0 = Maybe
+    /// <br/>
+    /// <br/>1 = Accepted
+    /// <br/>
+    /// <br/>-1 = Rejected
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public enum EEventAcceptance
     {
 
-        _0 = 0,
+        Maybe = 0,
 
-        _1 = 1,
+        Accepted = 1,
 
-        __1 = -1,
+        Rejected = -1,
 
     }
 
@@ -2450,6 +2752,11 @@ namespace X39.UnitedTacticalForces.WebApp
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public string? EMail { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("isBanned")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? IsBanned { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("roles")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
@@ -2500,6 +2807,16 @@ namespace X39.UnitedTacticalForces.WebApp
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.Guid? EventFk { get; set; } = default!;
+
+        /// <summary>
+        /// 
+        /// <br/>
+        /// <br/>0 = Maybe
+        /// <br/>
+        /// <br/>1 = Accepted
+        /// <br/>
+        /// <br/>-1 = Rejected
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("acceptance")]
 

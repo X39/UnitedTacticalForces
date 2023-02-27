@@ -1,0 +1,83 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using X39.Util
+@inject IStringLocalizer<Language> Localizer
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderAvatar>
+            @if (EventItem.HostedBy is not null && EventItem.HostedBy.Avatar.Any() && EventItem.HostedBy.AvatarMimeType.IsNotNullOrWhiteSpace())
+            {
+                <MudAvatar Color="Color.Secondary" Image="@EventItem.HostedBy.ToImageSource()"/>
+            }
+            else if (EventItem.HostedBy is not null)
+            {
+                <MudAvatar Color="Color.Secondary">@EventItem.HostedBy.Nickname.FirstOrDefault()</MudAvatar>
+            }
+        </CardHeaderAvatar>
+        <CardHeaderContent>
+            <div class="d-inline">
+                <MudText Typo="Typo.body1">@EventItem.Title</MudText>
+                <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+                    <MudText Color="@(EventItem.AcceptedCount >= EventItem.MinimumAccepted ? Color.Success : Color.Error)">@EventItem.ScheduledFor?.ToString("g")</MudText>
+                </MudHidden>
+            </div>
+            @if (EventItem.Terrain is not null)
+            {
+                <MudText Typo="Typo.body2">@(EventItem.Terrain.Title)</MudText>
+            }
+            @if (EventItem.ModPack is not null)
+            {
+                <MudText Typo="Typo.body2">@(EventItem.ModPack.Title)</MudText>
+            }
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButtonGroup>
+                <Events_HeaderActions_DownloadButton Event="EventItem"/>
+                <Events_HeaderActions_ModifyButton Event="EventItem" ParentStateHasChanged="PropagateStateHasChanged"/>
+                <Events_HeaderActions_CloneButton Event="EventItem"/>
+            </MudButtonGroup>
+        </CardHeaderActions>
+    </MudCardHeader>
+    @if ((EventItem.Image?.Any() ?? false) && EventItem.ImageMimeType.IsNotNullOrWhiteSpace())
+    {
+        <MudCardMedia Image="@EventItem.ToImageSource()" Height="250"/>
+    }
+    <MudCardContent>
+        <MudText Typo="Typo.body2">@EventItem.Description</MudText>
+    </MudCardContent>
+    <MudCardActions>
+        <AuthorizeView>
+            <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+                                                  Acceptance="EEventAcceptance.Accepted"
+                                                  AcceptanceCount="EventItem.AcceptedCount"
+                                                  Event="EventItem"/>
+            <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+                                                  Acceptance="EEventAcceptance.Maybe"
+                                                  AcceptanceCount="EventItem.MaybeCount"
+                                                  Event="EventItem"/>
+            <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+                                                  Acceptance="EEventAcceptance.Rejected"
+                                                  AcceptanceCount="EventItem.RejectedCount"
+                                                  Event="EventItem"/>
+            <MudSpacer/>
+            <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock">@Localizer[nameof(Language.Pages_Events_EventCard_Slots)]</MudButton>
+        </AuthorizeView>
+    </MudCardActions>
+</MudCard>
+
+@code {
+
+    [Parameter, EditorRequired, Required]
+    public EventCallback ParentStateHasChanged { get; set; }
+
+    [Parameter, EditorRequired, Required]
+    public Event EventItem { get; set; } = null!;
+
+    private async Task PropagateStateHasChanged()
+    {
+        await ParentStateHasChanged.InvokeAsync()
+            .ConfigureAwait(false);
+        await InvokeAsync(StateHasChanged)
+            .ConfigureAwait(false);
+    }
+
+}

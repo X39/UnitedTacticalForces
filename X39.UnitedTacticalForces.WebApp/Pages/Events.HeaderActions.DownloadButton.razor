@@ -1,0 +1,25 @@
+﻿@using System.ComponentModel.DataAnnotations
+@inject BaseUrl BaseUrl
+
+@if ((Event.ModPack?.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MaxValue) < Event.ModPack?.TimeStampUpdated)
+{
+    <MudBadge Color="Color.Primary" Dot="true" Overlap="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Primary"
+                       Href="@BaseUrl.ResolveApiUrl($"/ModPack/{Event.ModPack.PrimaryKey}/download")"
+                       target="_blank"
+                       OnClick="@(() => Event.ModPack.UserMetas!.First().TimeStampDownloaded = DateTimeOffset.MaxValue)"/>
+    </MudBadge>
+}
+else
+{
+    <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Primary"
+                   Href="@BaseUrl.ResolveApiUrl($"/ModPack/{Event.ModPack?.PrimaryKey}/download")"
+                   target="_blank"/>
+}
+
+@code {
+
+    [Parameter, Required, EditorRequired]
+    public Event Event { get; set; } = null!;
+
+}

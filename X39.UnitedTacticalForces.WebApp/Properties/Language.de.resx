@@ -167,4 +167,31 @@
     <data name="Dialogs_ModifyEventDialog_Inputs_Terrain" xml:space="preserve">
         <value>Karte</value>
     </data>
+    <data name="Common_Search" xml:space="preserve">
+        <value>Suche</value>
+    </data>
+    <data name="Pages_Users_Title" xml:space="preserve">
+        <value>Benutzer</value>
+    </data>
+    <data name="Pages_Users_AllUsers" xml:space="preserve">
+        <value>Alle Benutzer</value>
+    </data>
+    <data name="Pages_Users_Table_Roles" xml:space="preserve">
+        <value>Rollen</value>
+    </data>
+    <data name="Pages_Users_Table_Title" xml:space="preserve">
+        <value>Titel</value>
+    </data>
+    <data name="Pages_Users_Table_Interactions" xml:space="preserve">
+        <value>Interaktionen</value>
+    </data>
+    <data name="Pages_Users_SelectRoleToAdd" xml:space="preserve">
+        <value>Rolle zum hinzufügen wählen</value>
+    </data>
+    <data name="Dialogs_ModifyEventDialog_Inputs_MinimumAccepted" xml:space="preserve">
+        <value>Mindestanzahl angenommen</value>
+    </data>
+    <data name="Pages_Events_EventCard_Slots" xml:space="preserve">
+        <value>Plätze</value>
+    </data>
 </root>

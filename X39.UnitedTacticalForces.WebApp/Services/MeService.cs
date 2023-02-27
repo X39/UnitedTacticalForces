@@ -28,7 +28,7 @@ public class MeService
     public User User => _user ?? throw new InvalidOperationException(
         $"User is not authenticated. Check authentication status prior to using property using {nameof(IsAuthenticated)}.");
 
-    public bool IsAuthenticated => _user is not null;
+    public bool IsAuthenticated => _user is not null && !(_user.IsBanned ?? false);
 
     /// <summary>
     /// Initializes the service.

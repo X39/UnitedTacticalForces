@@ -93,7 +93,7 @@ public class ModPackController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     /// <returns>The created <see cref="ModPack"/>.</returns>
-    [Authorize(Roles = Constants.Roles.Admin + "," + Constants.Roles.ModPackCreate)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ModPackCreate)]
     [HttpPost("create", Name = nameof(CreateModPackAsync))]
     public async Task<ActionResult<ModPack>> CreateModPackAsync(
         [FromBody] ModPack modPack,
@@ -154,7 +154,7 @@ public class ModPackController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Operation is final and only allowed by either the owner or a user with the
-    /// <see cref="Constants.Roles.Admin"/> role.
+    /// <see cref="Roles.Admin"/> role.
     /// </remarks>
     /// <param name="modPackId">The <see cref="ModPack.PrimaryKey"/> of the <see cref="ModPack"/>.</param>
     /// <param name="newUserId">The <see cref="User.PrimaryKey"/> of the new <see cref="User"/>.</param>

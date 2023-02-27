@@ -1,0 +1,129 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using System.Diagnostics.Contracts
+@using MudBlazor.Utilities
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@inject IEventRepository EventRepository
+@if (AcceptanceCount > 0)
+{
+    <MudBadge Content="@(AcceptanceCount)"
+              Color="@ToggledColor"
+              Overlap="true"
+              BadgeClass="mx-n2 my-n2">
+        <MudToggleIconButton Icon="@Icon"
+                             ToggledIcon="@Icon"
+                             Color="@UnToggledColor"
+                             ToggledColor="@ToggledColor"
+                             Toggled="@(Event.UserMetas?.FirstOrDefault()?.Acceptance == Acceptance)"
+                             ToggledChanged="AcceptanceChangedAsync"/>
+    </MudBadge>
+}
+else
+{
+    <MudToggleIconButton Icon="@Icon"
+                         ToggledIcon="@Icon"
+                         Color="@UnToggledColor"
+                         ToggledColor="@ToggledColor"
+                         Toggled="@(Event.UserMetas?.FirstOrDefault()?.Acceptance == Acceptance)"
+                         ToggledChanged="AcceptanceChangedAsync"/>
+}
+
+@code {
+
+    [Parameter, Required, EditorRequired]
+    public Event Event { get; set; } = null!;
+
+    [Parameter, Required, EditorRequired]
+    public EEventAcceptance Acceptance { get; set; }
+
+    [Parameter, Required, EditorRequired]
+    public EventCallback ParentStateHasChangedCallback { get; set; }
+
+    private Color UnToggledColor => Acceptance switch
+    {
+        EEventAcceptance.Rejected => Color.Default,
+        EEventAcceptance.Maybe => Color.Default,
+        EEventAcceptance.Accepted => Color.Default,
+        _ => throw new ArgumentOutOfRangeException(),
+        };
+
+    private Color ToggledColor => Acceptance switch
+    {
+        EEventAcceptance.Rejected => Color.Error,
+        EEventAcceptance.Maybe => Color.Tertiary,
+        EEventAcceptance.Accepted => Color.Primary,
+        _ => throw new ArgumentOutOfRangeException(),
+        };
+
+    [Parameter, EditorRequired, Required]
+    public int? AcceptanceCount { get; set; }
+    
+    /*
+    private int AcceptanceCount => Acceptance switch
+    {
+        EEventAcceptance.Rejected => Event.RejectedCount ?? 0,
+        EEventAcceptance.Maybe => Event.MaybeCount ?? 0,
+        EEventAcceptance.Accepted => Event.AcceptedCount ?? 0,
+        _ => throw new ArgumentOutOfRangeException(),
+        };
+    */
+    private string Icon => Acceptance switch
+    {
+        EEventAcceptance.Rejected => Icons.Material.Filled.Clear,
+        EEventAcceptance.Maybe => Icons.Material.Filled.QuestionMark,
+        EEventAcceptance.Accepted => Icons.Material.Filled.Check,
+        _ => throw new ArgumentOutOfRangeException(),
+        };
+
+    private async Task AcceptanceChangedAsync()
+    {
+        Contract.Assert(Event.PrimaryKey is not null);
+        Event.UserMetas ??= new List<UserEventMeta>();
+        var userMeta = Event.UserMetas.FirstOrDefault();
+        await EventRepository.SetMeAcceptanceAsync(Event.PrimaryKey.Value, Acceptance)
+            .ConfigureAwait(false);
+
+        if (userMeta is not null)
+        {
+            switch (userMeta.Acceptance)
+            {
+                case EEventAcceptance.Rejected:
+                    Event.RejectedCount--;
+                    break;
+                case EEventAcceptance.Maybe:
+                    Event.MaybeCount--;
+                    break;
+                case EEventAcceptance.Accepted:
+                    Event.AcceptedCount--;
+                    break;
+                case null:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            userMeta.Acceptance = Acceptance;
+        }
+        else
+        {
+            Event.UserMetas.Add(new UserEventMeta
+            {
+                Acceptance = Acceptance,
+            });
+        }
+        switch (Acceptance)
+        {
+            case EEventAcceptance.Rejected:
+                Event.RejectedCount++;
+                break;
+            case EEventAcceptance.Maybe:
+                Event.MaybeCount++;
+                break;
+            case EEventAcceptance.Accepted:
+                Event.AcceptedCount++;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+        await ParentStateHasChangedCallback.InvokeAsync();
+    }
+
+}

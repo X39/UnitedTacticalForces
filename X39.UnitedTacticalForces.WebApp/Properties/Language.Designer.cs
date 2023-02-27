@@ -87,6 +87,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Search.
+        /// </summary>
+        internal static string Common_Search {
+            get {
+                return ResourceManager.GetString("Common_Search", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Submit.
         /// </summary>
         internal static string Common_Submit {
@@ -110,6 +119,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Dialogs_ModifyEventDialog_Inputs_HostedBy {
             get {
                 return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_HostedBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minimum accepted.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Inputs_MinimumAccepted {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_MinimumAccepted", resourceCulture);
             }
         }
         
@@ -281,6 +299,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Dialogs_ModifyTerrainDialog_TitleNew {
             get {
                 return ResourceManager.GetString("Dialogs_ModifyTerrainDialog_TitleNew", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Slots.
+        /// </summary>
+        internal static string Pages_Events_EventCard_Slots {
+            get {
+                return ResourceManager.GetString("Pages_Events_EventCard_Slots", resourceCulture);
             }
         }
         
@@ -470,6 +497,60 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_Terrains_Title {
             get {
                 return ResourceManager.GetString("Pages_Terrains_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All users.
+        /// </summary>
+        internal static string Pages_Users_AllUsers {
+            get {
+                return ResourceManager.GetString("Pages_Users_AllUsers", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Select role to add.
+        /// </summary>
+        internal static string Pages_Users_SelectRoleToAdd {
+            get {
+                return ResourceManager.GetString("Pages_Users_SelectRoleToAdd", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interactions.
+        /// </summary>
+        internal static string Pages_Users_Table_Interactions {
+            get {
+                return ResourceManager.GetString("Pages_Users_Table_Interactions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Roles.
+        /// </summary>
+        internal static string Pages_Users_Table_Roles {
+            get {
+                return ResourceManager.GetString("Pages_Users_Table_Roles", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Pages_Users_Table_Title {
+            get {
+                return ResourceManager.GetString("Pages_Users_Table_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Users.
+        /// </summary>
+        internal static string Pages_Users_Title {
+            get {
+                return ResourceManager.GetString("Pages_Users_Title", resourceCulture);
             }
         }
         

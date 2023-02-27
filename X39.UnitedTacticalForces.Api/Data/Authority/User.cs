@@ -1,15 +1,19 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace X39.UnitedTacticalForces.Api.Data.Authority;
 
+[Index(nameof(SteamId64), IsUnique = true)]
+[Index(nameof(Nickname))]
 public class User
 {
     [Key] public Guid PrimaryKey { get; set; }
     public string Nickname { get; set; } = string.Empty;
     public ulong SteamId64 { get; set; }
     public string? EMail { get; set; }
+    public bool IsBanned { get; set; }
     public ICollection<Role>? Roles { get; set; }
     public ICollection<UserModPackMeta>? ModPackMetas { get; set; }
     
@@ -22,7 +26,7 @@ public class User
         ILazyLoader? lazyLoader = default,
         CancellationToken cancellationToken = default)
     {
-        var identity = new ClaimsIdentity(Constants.AuthorizationSchemas.Api);
+        var identity = new ClaimsIdentity(IsBanned ? Constants.AuthorizationSchemas.Banned : Constants.AuthorizationSchemas.Api);
         if (Roles is null)
             if (lazyLoader is null)
                 throw new ArgumentException("ILazyLoader must be provided if Privileges is not loaded",

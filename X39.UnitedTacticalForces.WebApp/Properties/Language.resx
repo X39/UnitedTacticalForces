@@ -174,4 +174,31 @@
     <data name="Dialogs_ModifyEventDialog_Inputs_ScheduledForTime" xml:space="preserve">
         <value>Scheduled for (time)</value>
     </data>
+    <data name="Common_Search" xml:space="preserve">
+        <value>Search</value>
+    </data>
+    <data name="Pages_Users_Title" xml:space="preserve">
+        <value>Users</value>
+    </data>
+    <data name="Pages_Users_AllUsers" xml:space="preserve">
+        <value>All users</value>
+    </data>
+    <data name="Pages_Users_Table_Title" xml:space="preserve">
+        <value>Title</value>
+    </data>
+    <data name="Pages_Users_Table_Roles" xml:space="preserve">
+        <value>Roles</value>
+    </data>
+    <data name="Pages_Users_Table_Interactions" xml:space="preserve">
+        <value>Interactions</value>
+    </data>
+    <data name="Pages_Users_SelectRoleToAdd" xml:space="preserve">
+        <value>Select role to add</value>
+    </data>
+    <data name="Dialogs_ModifyEventDialog_Inputs_MinimumAccepted" xml:space="preserve">
+        <value>Minimum accepted</value>
+    </data>
+    <data name="Pages_Events_EventCard_Slots" xml:space="preserve">
+        <value>Slots</value>
+    </data>
 </root>

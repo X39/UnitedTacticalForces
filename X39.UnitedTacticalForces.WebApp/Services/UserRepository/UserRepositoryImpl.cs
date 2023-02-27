@@ -18,6 +18,32 @@ internal class UserRepositoryImpl : RepositoryBase, IUserRepository
             .ConfigureAwait(false);
     }
 
+    public async Task<long> GetUserCountAsync(CancellationToken cancellationToken = default)
+    {
+        return await Client.UsersAllCountAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task SetUserRoleAsync(Guid userId, long roleId, bool roleActive, CancellationToken cancellationToken = default)
+    {
+        await Client.UsersSetRoleAsync(userId, roleId, roleActive, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyCollection<Role>> GetAllRolesAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await Client.UsersRolesAvailableAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return result.ToImmutableArray();
+    }
+
+    public async Task ToggleBanUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await Client.UsersAsync(userId, cancellationToken).ConfigureAwait(false);
+        user.IsBanned = !user.IsBanned;
+        await Client.UsersUpdateAsync(userId, user, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<User> GetMeAsync(
         CancellationToken cancellationToken = default)
     {
@@ -29,9 +55,10 @@ internal class UserRepositoryImpl : RepositoryBase, IUserRepository
         int skip,
         int take,
         string? search = default,
+        bool includeRoles = false,
         CancellationToken cancellationToken = default)
     {
-        var users = await Client.UsersAllAsync(skip, take, search, cancellationToken)
+        var users = await Client.UsersAllAsync(skip, take, search, includeRoles, cancellationToken)
             .ConfigureAwait(false);
         return users.ToImmutableArray();
     }

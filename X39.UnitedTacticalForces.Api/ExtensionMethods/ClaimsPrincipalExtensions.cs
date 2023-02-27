@@ -8,12 +8,14 @@ namespace X39.UnitedTacticalForces.Api.ExtensionMethods;
 
 public static class ClaimsPrincipalExtensions
 {
+
     public static bool TrySteamIdentity(
         this ClaimsPrincipal self,
         [NotNullWhen(true)] out ClaimsIdentity? steamIdentity)
     {
-        steamIdentity = self.Identities.FirstOrDefault((q) =>
-            q.AuthenticationType == Constants.AuthorizationSchemas.Steam);
+        steamIdentity = self.Identities.FirstOrDefault(
+            (q) =>
+                q.AuthenticationType == Constants.AuthorizationSchemas.Steam);
         return steamIdentity is not null;
     }
 
@@ -21,8 +23,9 @@ public static class ClaimsPrincipalExtensions
         this ClaimsPrincipal self,
         [NotNullWhen(true)] out ClaimsIdentity? apiIdentity)
     {
-        apiIdentity = self.Identities.FirstOrDefault((q) =>
-            q.AuthenticationType == Constants.AuthorizationSchemas.Api);
+        apiIdentity = self.Identities.FirstOrDefault(
+            (q) =>
+                q.AuthenticationType == Constants.AuthorizationSchemas.Api);
         return apiIdentity is not null;
     }
 
@@ -49,6 +52,7 @@ public static class ClaimsPrincipalExtensions
 
         return Guid.TryParse(apiIdentity.Name, out userId);
     }
+
     public static async Task<User?> GetUserAsync(
         this ClaimsPrincipal self,
         ApiDbContext apiDbContext,

@@ -62,7 +62,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.HasIndex("Identifier")
                         .IsUnique();
 
-                    b.ToTable("Privileges");
+                    b.ToTable("Roles");
 
                     b.HasData(
                         new
@@ -77,63 +77,105 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                             PrimaryKey = 2L,
                             Category = "Events",
                             Identifier = "event-create",
-                            Title = "Events erstellen"
+                            Title = "Create events"
                         },
                         new
                         {
                             PrimaryKey = 3L,
                             Category = "Events",
                             Identifier = "event-modify",
-                            Title = "Alle events bearbeiten"
+                            Title = "Modify events"
                         },
                         new
                         {
                             PrimaryKey = 4L,
                             Category = "Events",
                             Identifier = "event-delete",
-                            Title = "Alle events löschen"
+                            Title = "Delete events"
                         },
                         new
                         {
                             PrimaryKey = 5L,
                             Category = "Terrains",
                             Identifier = "terrain-create",
-                            Title = "Terrain anlegen"
+                            Title = "Create terrain"
                         },
                         new
                         {
                             PrimaryKey = 6L,
                             Category = "Terrains",
                             Identifier = "terrain-modify",
-                            Title = "Terrain bearbeiten"
+                            Title = "Modify terrain"
                         },
                         new
                         {
                             PrimaryKey = 7L,
                             Category = "Terrains",
                             Identifier = "terrain-delete",
-                            Title = "Terrain löschen"
+                            Title = "Delete terrain"
                         },
                         new
                         {
                             PrimaryKey = 8L,
                             Category = "ModPacks",
                             Identifier = "modpack-create",
-                            Title = "ModPack anlegen"
+                            Title = "Create mod pack"
                         },
                         new
                         {
                             PrimaryKey = 9L,
                             Category = "ModPacks",
                             Identifier = "modpack-modify",
-                            Title = "ModPack bearbeiten"
+                            Title = "Modify mod pack"
                         },
                         new
                         {
                             PrimaryKey = 10L,
                             Category = "ModPacks",
                             Identifier = "modpack-delete",
-                            Title = "ModPack löschen"
+                            Title = "Delete mod pack"
+                        },
+                        new
+                        {
+                            PrimaryKey = 11L,
+                            Category = "User",
+                            Identifier = "user-view-steamid64",
+                            Title = "View SteamId64 of user"
+                        },
+                        new
+                        {
+                            PrimaryKey = 12L,
+                            Category = "User",
+                            Identifier = "user-view-mail",
+                            Title = "View E-Mail of user"
+                        },
+                        new
+                        {
+                            PrimaryKey = 13L,
+                            Category = "User",
+                            Identifier = "user-modify",
+                            Title = "Modify user"
+                        },
+                        new
+                        {
+                            PrimaryKey = 14L,
+                            Category = "User",
+                            Identifier = "user-ban",
+                            Title = "(Un-)Ban user"
+                        },
+                        new
+                        {
+                            PrimaryKey = 15L,
+                            Category = "User",
+                            Identifier = "user-roles-all",
+                            Title = "Manage user roles"
+                        },
+                        new
+                        {
+                            PrimaryKey = 16L,
+                            Category = "User",
+                            Identifier = "user-list",
+                            Title = "List users"
                         });
                 });
 
@@ -153,6 +195,9 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
                     b.Property<string>("EMail")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsBanned")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Nickname")
                         .IsRequired()

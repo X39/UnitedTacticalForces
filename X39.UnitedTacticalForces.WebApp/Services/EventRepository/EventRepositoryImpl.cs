@@ -25,15 +25,15 @@ internal class EventRepositoryImpl : RepositoryBase, IEventRepository
     {
         switch (acceptance)
         {
-            case EEventAcceptance.__1:
+            case EEventAcceptance.Rejected:
                 await Client.EventsRejectAsync(eventItemPrimaryKey, cancellationToken)
                     .ConfigureAwait(false);
                 break;
-            case EEventAcceptance._0:
+            case EEventAcceptance.Maybe:
                 await Client.EventsMaybeAsync(eventItemPrimaryKey, cancellationToken)
                     .ConfigureAwait(false);
                 break;
-            case EEventAcceptance._1:
+            case EEventAcceptance.Accepted:
                 await Client.EventsAcceptAsync(eventItemPrimaryKey, cancellationToken)
                     .ConfigureAwait(false);
                 break;
