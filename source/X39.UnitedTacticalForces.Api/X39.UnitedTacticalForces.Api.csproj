@@ -37,8 +37,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\.submodules\SteamWebAPI2\src\Steam.Models\Steam.Models.csproj" />
-      <ProjectReference Include="..\.submodules\SteamWebAPI2\src\SteamWebAPI2\SteamWebAPI2.csproj" />
+      <ProjectReference Include="..\..\.submodules\SteamWebAPI2\src\Steam.Models\Steam.Models.csproj" />
+      <ProjectReference Include="..\..\.submodules\SteamWebAPI2\src\SteamWebAPI2\SteamWebAPI2.csproj" />
       <ProjectReference Include="..\X39.UnitedTacticalForces.Common\X39.UnitedTacticalForces.Common.csproj" />
       <ProjectReference Include="..\X39.UnitedTacticalForces.Roles\X39.UnitedTacticalForces.Roles.csproj" />
     </ItemGroup>

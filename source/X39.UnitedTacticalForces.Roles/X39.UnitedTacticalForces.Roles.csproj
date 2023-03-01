@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>X39.UnitedTacticalForces</RootNamespace>
+        <Title>UTF WebApp authorization roles</Title>
+        <Description>Offers the role definitions of the UTF WebApp in a convenient way.</Description>
+        <Copyright>X39 © 2023</Copyright>
+        <PackageProjectUrl>https://github.com/X39/UnitedTacticalForces/</PackageProjectUrl>
+        <PackageIcon>icon.ico</PackageIcon>
+        <RepositoryUrl>https://github.com/X39/UnitedTacticalForces/</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <None Include="..\..\icon.ico">
+        <Pack>True</Pack>
+        <PackagePath></PackagePath>
+        <Link>icon.ico</Link>
+      </None>
+    </ItemGroup>
+
+</Project>
