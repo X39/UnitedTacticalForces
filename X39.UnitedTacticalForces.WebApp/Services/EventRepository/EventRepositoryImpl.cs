@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Net;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services.EventRepository;
@@ -8,6 +9,22 @@ internal class EventRepositoryImpl : RepositoryBase, IEventRepository
 {
     public EventRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) : base(httpClient, baseUrl)
     {
+    }
+
+    public async Task<Event?> GetEventAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await Client.EventsAsync(eventId, cancellationToken)
+                .ConfigureAwait(false);
+            return response;
+        }
+        catch (ApiException apiException) when (apiException.StatusCode == (int) HttpStatusCode.NoContent)
+        {
+            return null;
+        }
     }
 
     public async Task<IReadOnlyCollection<Event>> GetUpcomingEventsAsync(

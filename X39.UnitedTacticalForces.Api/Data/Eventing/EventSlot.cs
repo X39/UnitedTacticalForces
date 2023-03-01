@@ -1,4 +1,8 @@
-﻿namespace X39.UnitedTacticalForces.Api.Data.Eventing;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using X39.UnitedTacticalForces.Api.Data.Authority;
+
+namespace X39.UnitedTacticalForces.Api.Data.Eventing;
 
 public class EventSlot
 {
@@ -10,4 +14,39 @@ public class EventSlot
     // ToDo: Add a way to block a slot from being available for assignment.
     // ToDo: Add an "IsAvailable" flag for events to allow authors to hold back on events until they are ready for release, admin and a new role should still be able to see events
     // ToDo: Block slotting if not accepted and unslot if acceptance state changes.
+
+    [Key]
+    public long PrimaryKey { get; set; }
+
+    [ForeignKey(nameof(AssignedToFk))]
+    public User? AssignedTo { get; set; }
+
+    public Guid? AssignedToFk { get; set; }
+
+    [ForeignKey(nameof(EventFk))]
+    public Event? Event { get; set; }
+    public Guid EventFk { get; set; }
+
+    /// <summary>
+    /// Denotes whether a non-author user may assign into this slot. 
+    /// </summary>
+    public bool IsSelfAssignable { get; set; }
+    
+    /// <summary>
+    /// The group this role is part of.
+    /// </summary>
+    public string Group { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// The title of this role.
+    /// </summary>
+    public string Title { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// The side of this role.
+    /// </summary>
+    public EArmaSide Side { get; set; }
+    
+    // UserAward or UserTraining ???? requirement to allow training-required slots to work by themself.
+    
 }

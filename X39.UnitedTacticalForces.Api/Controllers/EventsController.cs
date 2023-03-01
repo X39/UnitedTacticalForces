@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -59,6 +60,48 @@ public class EventsController : ControllerBase
         }
 
         return await query.ToArrayAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns a single <see cref="Event"/> by it's <paramref name="eventId"/>.
+    /// </summary>
+    /// <returns>
+    ///     The <see cref="Event"/> found or <see langword="null"/>
+    ///     if no event with that <paramref name="eventId"/> was found.
+    /// </returns>
+    [AllowAnonymous]
+    [HttpGet("{eventId:guid}", Name = nameof(GetEventAsync))]
+    [ProducesResponseType(typeof(Event), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int)HttpStatusCode.NoContent)]
+    public async Task<Event?> GetEventAsync(
+        [FromRoute] Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<Event> query;
+        if (User.TryGetUserId(out var userId))
+        {
+            query = _apiDbContext.Events
+                .Include((e) => e.Terrain)
+                .Include((e) => e.ModPack)
+                .ThenInclude((e) => e!.UserMetas!.Where((q) => q.UserFk == userId))
+                .Include((e) => e.Owner)
+                .Include((e) => e.HostedBy)
+                .Include((e) => e.UserMetas!.Where((q) => q.UserFk == userId))
+                .Where((q) => q.ScheduledFor >= DateTime.Today)
+                .OrderBy((q) => q.ScheduledFor);
+        }
+        else
+        {
+            query = _apiDbContext.Events
+                .Include((e) => e.Terrain)
+                .Include((e) => e.ModPack)
+                .Include((e) => e.Owner)
+                .Include((e) => e.HostedBy)
+                .Where((q) => q.ScheduledFor >= DateTime.Today)
+                .OrderBy((q) => q.ScheduledFor);
+        }
+
+        return await query.SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
     }
 
     [Authorize(Roles = Roles.Admin + "," + Roles.EventCreate)]

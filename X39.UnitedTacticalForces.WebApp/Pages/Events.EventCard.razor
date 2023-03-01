@@ -15,9 +15,9 @@
         </CardHeaderAvatar>
         <CardHeaderContent>
             <div class="d-inline">
-                <MudText Typo="Typo.body1">@EventItem.Title</MudText>
+                <MudText Typo="Typo.h4">@EventItem.Title</MudText>
                 <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
-                    <MudText Color="@(EventItem.AcceptedCount >= EventItem.MinimumAccepted ? Color.Success : Color.Error)">@EventItem.ScheduledFor?.ToString("g")</MudText>
+                    <MudText Color="@(EventItem.AcceptedCount >= EventItem.MinimumAccepted ? Color.Success : Color.Error)">@(EventItem.ScheduledFor?.ToString("g"))</MudText>
                 </MudHidden>
             </div>
             @if (EventItem.Terrain is not null)
@@ -31,9 +31,10 @@
         </CardHeaderContent>
         <CardHeaderActions>
             <MudButtonGroup>
-                <Events_HeaderActions_DownloadButton Event="EventItem"/>
+                <UtfModPackDownloadButton ModPack="EventItem.ModPack" Color="Color.Primary"/>
                 <Events_HeaderActions_ModifyButton Event="EventItem" ParentStateHasChanged="PropagateStateHasChanged"/>
                 <Events_HeaderActions_CloneButton Event="EventItem"/>
+                <MudIconButton Icon="@Icons.Material.Filled.Link" Color="Color.Primary" Href="@($"/events/{EventItem.PrimaryKey}")"/>
             </MudButtonGroup>
         </CardHeaderActions>
     </MudCardHeader>
@@ -42,7 +43,7 @@
         <MudCardMedia Image="@EventItem.ToImageSource()" Height="250"/>
     }
     <MudCardContent>
-        <MudText Typo="Typo.body2">@EventItem.Description</MudText>
+        <MudText Typo="Typo.body2" Style="max-height: 50vh; overflow-y: scroll;">@EventItem.Description</MudText>
     </MudCardContent>
     <MudCardActions>
         <AuthorizeView>

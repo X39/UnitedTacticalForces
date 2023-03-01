@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.UnitedTacticalForces.Ro
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.UnitedTacticalForces.Common", "X39.UnitedTacticalForces.Common\X39.UnitedTacticalForces.Common.csproj", "{38A7999D-1851-480D-98E3-39FE80AD7B9E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "source", "source", "{F5454DD1-AF43-472C-A209-800947311ADE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

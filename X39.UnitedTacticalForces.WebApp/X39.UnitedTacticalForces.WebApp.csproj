@@ -47,13 +47,13 @@
       <Content Update="Pages\Events.Interactions.AcceptanceButton.razor">
         <DependentUpon>Events.razor</DependentUpon>
       </Content>
-      <Content Update="Pages\Events.HeaderActions.DownloadButton.razor">
-        <DependentUpon>Events.razor</DependentUpon>
-      </Content>
       <Content Update="Pages\Events.HeaderActions.CloneButton.razor">
         <DependentUpon>Events.razor</DependentUpon>
       </Content>
       <Content Update="Pages\Events.HeaderActions.ModifyButton.razor">
+        <DependentUpon>Events.razor</DependentUpon>
+      </Content>
+      <Content Update="Pages\Events.EventCard.razor">
         <DependentUpon>Events.razor</DependentUpon>
       </Content>
     </ItemGroup>

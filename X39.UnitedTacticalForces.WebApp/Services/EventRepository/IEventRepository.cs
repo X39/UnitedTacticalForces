@@ -6,4 +6,8 @@ public interface IEventRepository
     Task SetMeAcceptanceAsync(Guid eventItemPrimaryKey, EEventAcceptance acceptance, CancellationToken cancellationToken = default);
     Task<Event> CreateEventAsync(Event eventItem, CancellationToken cancellationToken = default);
     Task ModifyEventAsync(Event eventItem, CancellationToken cancellationToken = default);
+
+    Task<Event?> GetEventAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default);
 }

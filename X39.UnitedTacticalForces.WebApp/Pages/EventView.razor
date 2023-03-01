@@ -1,0 +1,80 @@
+﻿@page "/events/{EventId:guid}"
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.Util
+@inject IEventRepository EventRepository
+@inject NavigationManager NavigationManager
+
+@if (_event is null)
+{
+    <MudGrid Spacing="0">
+        <MudItem xs="4" Style="height: 100vh;">
+            <MudSkeleton Height="100%" Width="100%"/>
+        </MudItem>
+        <MudItem xs="8" Style="height: 100vh;">
+            <MudSkeleton Height="100%" Width="100%"/>
+        </MudItem>
+    </MudGrid>
+}
+else
+{
+    <MudGrid Spacing="0">
+        <MudItem xs="4" Style="height: 100vh;" Class="mud-theme-primary d-flex flex-column flex-nowrap justify-space-between">
+            @if ((_event.Image?.Any() ?? false) && _event.ImageMimeType.IsNotNullOrWhiteSpace())
+            {
+                <MudImage Src="@_event.ToImageSource()" ObjectFit="ObjectFit.ScaleDown" ObjectPosition="ObjectPosition.Top" Fluid="true"/>
+                <MudDivider DividerType="DividerType.Middle" Class="my-6"/>
+            }
+            <MudText Class="mx-2" Typo="Typo.h6">@_event.Title</MudText>
+            <MudText Class="mx-2" Style="overflow-y: auto; overflow-x: clip; width: calc(100% - 8px);">@_event.Description</MudText>
+            <MudDivider DividerType="DividerType.Middle" Class="my-6"/>
+            <UtfUser class="mx-2" User="_event.HostedBy"/>
+            <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+                <MudText Color="@(_event.AcceptedCount >= _event.MinimumAccepted ? Color.Success : Color.Error)">@(_event.ScheduledFor?.ToString("g"))</MudText>
+            </MudHidden>
+            <div class="mx-2 d-flex align-center">
+                <UtfModPackDownloadButton ModPack="_event.ModPack"/>
+                <MudText>@(_event.ModPack?.Title)</MudText>
+            </div>
+            @if ((_event.Terrain?.Image?.Any() ?? false) && (_event.Terrain?.ImageMimeType.IsNotNullOrWhiteSpace() ?? false))
+            {
+                <MudDivider DividerType="DividerType.Middle" Class="my-6"/>
+                <MudImage Src="@_event.Terrain?.ToImageSource()" ObjectFit="ObjectFit.Cover" Fluid="true" Style="height: 25%"/>
+            }
+        </MudItem>
+        <MudItem xs="8" Style="height: 100vh;">
+            <MudTable>
+                <HeaderContent>
+                    
+                </HeaderContent>
+                <RowTemplate>
+                    
+                </RowTemplate>
+            </MudTable>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+
+    [CascadingParameter]
+    public Breakpoint Breakpoint { get; private set; } = Breakpoint.Always;
+
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    private Event? _event;
+    private bool _disableInteractions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tmp = await EventRepository.GetEventAsync(EventId);
+        if (tmp is null)
+        {
+            NavigationManager.NavigateTo("/events");
+            return;
+        }
+        _event = tmp;
+        _disableInteractions = _event.ScheduledFor < DateTimeOffset.Now;
+    }
+
+}
