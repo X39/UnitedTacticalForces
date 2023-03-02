@@ -20,10 +20,15 @@ public static class ConfigParser
     private static readonly Parser<char, char> Colon               = Parser.Char(':').Between(Parser.SkipWhitespaces);
     private static readonly Parser<char, char> SemiColon           = Parser.Char(';').Between(Parser.SkipWhitespaces);
     private static readonly Parser<char, char> Equality            = Parser.Char('=').Between(Parser.SkipWhitespaces);
+    private static readonly Parser<char, char> Minus               = Parser.Char('-').Between(Parser.SkipWhitespaces);
 
-    private static readonly Parser<char, double> Number = Parser.LetterOrDigit
+    private static readonly Parser<char, double> NonNegativeNumber = Parser.LetterOrDigit
         .AtLeastOnce()
         .Then(Parser.Char('.').Then(Parser.LetterOrDigit.AtLeastOnce()).Optional(), AssignDouble);
+
+    private static readonly Parser<char, double> Number = Parser.OneOf(
+        Minus.Then(NonNegativeNumber, (_, d) => -d),
+        NonNegativeNumber);
 
     private static readonly Parser<char, string> String = Parser.OneOf(
             Parser.AnyCharExcept('"'),
@@ -97,11 +102,13 @@ public static class ConfigParser
                     result.Error.Message ?? result.Error.ToString()));
         return new ParseResult(new ConfigCollection(result.Value), null);
     }
+
     public static ParseResult Parse(string input)
     {
         using var stringReader = new StringReader(input);
         return Parse(stringReader);
     }
+
     public static IConfig ParseOrThrow(TextReader input)
     {
         var (config, parserError) = Parse(input);
@@ -110,6 +117,7 @@ public static class ConfigParser
                 $"[L{parserError.Line}C{parserError.Column}O{parserError.Offset}] {parserError.Message}");
         return config;
     }
+
     public static IConfig ParseOrThrow(string input)
     {
         var (config, parserError) = Parse(input);

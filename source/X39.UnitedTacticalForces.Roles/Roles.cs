@@ -26,4 +26,22 @@ public static class Roles
     /// Available roles to manage depend on the own role unless admin role is given.
     /// </summary>
     public const string UserManageRoles   = "user-roles-all";
+
+    /// <summary>
+    /// Allows a user to ignore slotting rules.
+    /// </summary>
+    public const string EventSlotIgnore = "event-slot-ignore";
+
+    /// <summary>
+    /// Allows a user to assign other users into a slot regardless of slotting rules.
+    /// </summary>
+    public const string EventSlotAssign = "event-slot-assign";
+    /// <summary>
+    /// Allows a user to create new event slots for any events.
+    /// </summary>
+    public const string EventSlotCreate = "event-slot-create";
+    /// <summary>
+    /// Allows a user to delete existing event slots for any events.
+    /// </summary>
+    public const string EventSlotDelete = "event-slot-delete";
 }

@@ -26,6 +26,7 @@ public class ApiDbContext : DbContext
     public DbSet<Role> Roles { get; set; } = null!;
     public DbSet<Terrain> Terrains { get; set; } = null!;
     public DbSet<ModPack> ModPacks { get; set; } = null!;
+    public DbSet<EventSlot> EventSlots { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

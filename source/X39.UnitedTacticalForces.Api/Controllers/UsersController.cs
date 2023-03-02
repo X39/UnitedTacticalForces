@@ -14,7 +14,7 @@ using X39.Util;
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route(Constants.Routes.Users)]
 public class UsersController : ControllerBase
 {
     private readonly ILogger<UsersController> _logger;

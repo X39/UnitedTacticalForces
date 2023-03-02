@@ -12,7 +12,7 @@ using X39.Util;
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route(Constants.Routes.Terrains)]
 public class TerrainController : ControllerBase
 {
     private readonly ILogger<TerrainController> _logger;

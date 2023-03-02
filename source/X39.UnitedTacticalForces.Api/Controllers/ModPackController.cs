@@ -11,7 +11,7 @@ using X39.Util;
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route(Constants.Routes.ModPacks)]
 public class ModPackController : ControllerBase
 {
     private readonly ILogger<ModPackController> _logger;

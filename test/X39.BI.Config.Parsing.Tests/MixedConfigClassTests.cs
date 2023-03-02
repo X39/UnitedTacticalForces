@@ -21,6 +21,8 @@ public class MixedConfigClassTests
         var collection = (ConfigCollection) result;
         Assert.Single(collection);
         Assert.Single(collection.OfType<ConfigClass>());
+        Assert.Equivalent(expectedIdentifier, collection.OfType<ConfigClass>().First().Identifier);
+        Assert.Equivalent(expectedExtends, collection.OfType<ConfigClass>().First().Extends);
         Assert.Equivalent(fields.Length, collection.OfType<ConfigClass>().First().Children.Count);
         Assert.Equivalent(fields.Length, collection.OfType<ConfigClass>().First().Children.OfType<ConfigPair>().Count());
         Assert.Collection(
@@ -53,6 +55,8 @@ public class MixedConfigClassTests
         var collection = (ConfigCollection) result;
         Assert.Single(collection);
         Assert.Single(collection.OfType<ConfigClass>());
+        Assert.Equivalent(expectedIdentifier, collection.OfType<ConfigClass>().First().Identifier);
+        Assert.Equivalent(expectedExtends, collection.OfType<ConfigClass>().First().Extends);
         Assert.Equivalent(fields.Length, collection.OfType<ConfigClass>().First().Children.Count);
         Assert.Equivalent(fields.Length - 1, collection.OfType<ConfigClass>().First().Children.OfType<ConfigPair>().Count());
         Assert.Equivalent(1, collection.OfType<ConfigClass>().First().Children.OfType<ConfigClass>().Count());

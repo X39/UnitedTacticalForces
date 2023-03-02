@@ -10,7 +10,7 @@ using X39.UnitedTacticalForces.Api.ExtensionMethods;
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route(Constants.Routes.Events)]
 public class EventsController : ControllerBase
 {
     private readonly ILogger<EventsController> _logger;

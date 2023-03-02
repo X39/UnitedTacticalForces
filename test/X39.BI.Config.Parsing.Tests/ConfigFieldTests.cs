@@ -15,6 +15,16 @@ public class ConfigFieldTests
     [InlineData("123abc_", 17D, "123abc_ = 17; ")]
     [InlineData("fffff", 0.5D, "fffff = 0.5;")]
     [InlineData("___", 1.25D, "___ = 1.25;")]
+    [InlineData("abc", -1D, "abc = -1;")]
+    [InlineData("abc", -2D, "abc = -2;")]
+    [InlineData("ccc", -3D, "ccc= -3;")]
+    [InlineData("bbb", -3D, "bbb=-3;")]
+    [InlineData("cba", -3D, "cba =-3;")]
+    [InlineData("bac", -3D, "bac = -3 ;")]
+    [InlineData("bca", -3D, "bca = -3 ; ")]
+    [InlineData("123abc_", -17D, "123abc_ = -17; ")]
+    [InlineData("fffff", -0.5D, "fffff = -0.5;")]
+    [InlineData("___", -1.25D, "___ = -1.25;")]
     public void NumberFields(string expectedKey, double expectedNumber, string input)
     {
         var result = ConfigParser.ParseOrThrow(input);
@@ -38,6 +48,7 @@ public class ConfigFieldTests
     [InlineData("123abc_", "17", "123abc_ = \"17\"; ")]
     [InlineData("fffff", "0.5", "fffff = \"0.5\";")]
     [InlineData("___", "1.25", "___ = \"1.25\";")]
+    [InlineData("doubleString", "foo\"bar", "doubleString = \"foo\"\"bar\";")]
     public void StringFields(string expectedKey, string expectedString, string input)
     {
         var result = ConfigParser.ParseOrThrow(input);
@@ -88,6 +99,7 @@ public class ConfigFieldTests
     [Theory]
     [InlineData("arr", new object?[]{"abc", "123", "___", "a_2", "2a_"}, @"arr[]={""abc"",""123"",""___"",""a_2"",""2a_""} ;")]
     [InlineData("arr", new object?[]{"abc", "123", "___", "a_2", "2a_"}, @"arr [ ] = { ""abc"" , ""123"" , ""___"" , ""a_2"" , ""2a_"" } ;")]
+    [InlineData("arr", new object?[]{"abc", "123", "_\"_", "a_2", "2a_"}, @"arr [ ] = { ""abc"" , ""123"" , ""_""""_"" , ""a_2"" , ""2a_"" } ;")]
     public void StringArrayFields(string expectedKey, object?[] expectedValues, string input)
     {
         var result = ConfigParser.ParseOrThrow(input);
@@ -114,7 +126,7 @@ public class ConfigFieldTests
     }
     [Theory]
     [InlineData("arr", new object?[]{"123D", 0.5D, 1.25D, 1D, new object?[]{"123D", 0.5D, 1.25D, 1D}}, @"arr[]={""123D"",0.5,1.25,1,{""123D"",0.5,1.25,1}};")]
-    [InlineData("arr", new object?[]{"123D", 0.5D, 1.25D, 1D, new object?[]{"123D", 0.5D, 1.25D, 1D}}, @"arr [ ] = { ""123D"" , 0.5 , 1.25 , 1 , { ""123D"" , 0.5 , 1.25 , 1 } } ;")]
+    [InlineData("arr", new object?[]{"123D", 0.5D, 1.25D, 1D, new object?[]{"12\"3D", 0.5D, 1.25D, 1D}}, @"arr [ ] = { ""123D"" , 0.5 , 1.25 , 1 , { ""12""""3D"" , 0.5 , 1.25 , 1 } } ;")]
     public void MixedArrayFields(string expectedKey, object?[] expectedValues, string input)
     {
         var result = ConfigParser.ParseOrThrow(input);

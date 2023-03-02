@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using X39.UnitedTacticalForces.Api.Data.Eventing;
 
 namespace X39.UnitedTacticalForces.Api.Data.Authority;
 
@@ -18,6 +19,8 @@ public class User
     public ICollection<UserModPackMeta>? ModPackMetas { get; set; }
     
     public ICollection<UserEventMeta>? EventMetas { get; set; }
+    
+    public ICollection<EventSlot>? EventSlots { get; set; }
 
     public byte[] Avatar { get; set; } = Array.Empty<byte>();
     public string AvatarMimeType { get; set; } = string.Empty;
