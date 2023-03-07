@@ -45,7 +45,9 @@ public class EventSlottingController : ControllerBase
         if (!eventExists)
             return NotFound();
         var results = await _apiDbContext.EventSlots
+            .Include((e) => e.AssignedTo)
             .Where((q) => q.EventFk == eventId)
+            .OrderBy((q) => q.SlotNumber)
             .ToArrayAsync(cancellationToken);
         return Ok(results);
     }
@@ -131,9 +133,21 @@ public class EventSlottingController : ControllerBase
             .Where((q) => q.EventFk == eventId)
             .Where((q) => q.AssignedToFk == userId)
             .SingleOrDefaultAsync(cancellationToken);
+        var userEventMeta = await _apiDbContext.UserEventMetas
+            .SingleOrDefaultAsync((q) => q.EventFk == eventId && q.UserFk == userId, cancellationToken);
 
 
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
+        if (userEventMeta is null)
+            _apiDbContext.UserEventMetas.Add(
+                new UserEventMeta
+                {
+                    EventFk    = eventId,
+                    UserFk     = userId,
+                    Acceptance = EEventAcceptance.Accepted,
+                });
+        else
+            userEventMeta.Acceptance = EEventAcceptance.Accepted;
         if (existingEventSlot is not null)
             existingEventSlot.AssignedToFk = null;
         newEventSlot.AssignedToFk = userId;
@@ -186,7 +200,19 @@ public class EventSlottingController : ControllerBase
             .Where((q) => q.AssignedToFk == userId)
             .SingleOrDefaultAsync(cancellationToken);
 
+        var userEventMeta = await _apiDbContext.UserEventMetas
+            .SingleOrDefaultAsync((q) => q.EventFk == eventId && q.UserFk == userId, cancellationToken);
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
+        if (userEventMeta is null)
+            _apiDbContext.UserEventMetas.Add(
+                new UserEventMeta
+                {
+                    EventFk    = eventId,
+                    UserFk     = userId,
+                    Acceptance = EEventAcceptance.Accepted,
+                });
+        else
+            userEventMeta.Acceptance = EEventAcceptance.Accepted;
         if (existingEventSlot is not null)
             existingEventSlot.AssignedToFk = null;
         newEventSlot.AssignedToFk = userId;
@@ -267,14 +293,58 @@ public class EventSlottingController : ControllerBase
             && existingEvent.HostedByFk != userId)
             return Forbid();
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
-        var eventSlotCount = await _apiDbContext.EventSlots
+        var maxSlotNumber = await _apiDbContext.EventSlots
             .Where((q) => q.EventFk == eventId)
-            .CountAsync(cancellationToken);
+            .Select((q) => q.SlotNumber)
+            .DefaultIfEmpty()
+            .MaxAsync(cancellationToken);
         eventSlot.EventFk    = eventId;
-        eventSlot.SlotNumber = checked((short) (eventSlotCount + 1));
+        eventSlot.SlotNumber = checked((short) (maxSlotNumber + 1));
         await _apiDbContext.EventSlots.AddAsync(eventSlot, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
+        await dbTransaction.CommitAsync(cancellationToken);
         return Ok(eventSlot);
+    }
+
+    /// <summary>
+    /// Updates an existing <see cref="EventSlot"/> with new data.
+    /// </summary>
+    /// <param name="eventId">The <see cref="Event.PrimaryKey"/> of the <see cref="Event"/>.</param>
+    /// <param name="slotNumber">The <see cref="EventSlot.SlotNumber"/> of the <see cref="EventSlot"/>.</param>
+    /// <param name="updatedEventSlot">The <see cref="EventSlot"/> to create.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    [HttpPost("{slotNumber:int}/update", Name = nameof(UpdateEventSlotAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    public async Task<ActionResult<EventSlot>> UpdateEventSlotAsync(
+        [FromRoute] Guid eventId,
+        [FromRoute] int slotNumber,
+        [FromBody] EventSlot updatedEventSlot,
+        CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        var existingEvent = await _apiDbContext.Events
+            .SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
+        if (existingEvent is null)
+            return NotFound();
+        if (!User.IsInRoleOrAdmin(Roles.EventSlotUpdate)
+            && existingEvent.HostedByFk != userId)
+            return Forbid();
+        var existingEventSlot = await _apiDbContext.EventSlots
+            .SingleOrDefaultAsync((q) => q.EventFk == eventId && q.SlotNumber == slotNumber, cancellationToken);
+        if (existingEventSlot is null)
+            return NotFound();
+        existingEventSlot.Title = updatedEventSlot.Title;
+        existingEventSlot.Group = updatedEventSlot.Group;
+        existingEventSlot.Side  = updatedEventSlot.Side;
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        return NoContent();
     }
 
     /// <summary>

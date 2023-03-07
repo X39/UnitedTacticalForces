@@ -21,6 +21,8 @@ public class EmptyConfigClassTests
     }
 
     [Theory]
+    [InlineData("AbCdEf", "class AbCdEf{};")]
+    [InlineData("aBcDeF", "class aBcDeF{};")]
     [InlineData("testClass", "class testClass{};")]
     [InlineData("fancy", "class fancy{} ; ")]
     [InlineData("123", "class 123{} ;")]

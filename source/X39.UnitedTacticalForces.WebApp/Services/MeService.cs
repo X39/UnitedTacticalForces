@@ -52,4 +52,24 @@ public class MeService
             // empty
         }
     }
+
+    public bool IsInRoleOrAdmin(string role, params string[] roles)
+    {
+        if (!IsAuthenticated)
+            return false;
+        if (_user!.Roles is null)
+            throw new Exception("MeService.User.Roles is null");
+        return _user.Roles.Any((q) => q.Identifier == role || q.Identifier == Roles.Admin || roles.Contains(q.Identifier));
+    }
+
+    public bool IsInRolesOrAdmin(string role, params string[] roles)
+    {
+        if (!IsAuthenticated)
+            return false;
+        if (_user!.Roles is null)
+            throw new Exception("MeService.User.Roles is null");
+        var appended = roles.Prepend(role);
+        return _user.Roles.Any((q) => q.Identifier == Roles.Admin)
+               || appended.All((s) => _user.Roles.Any((q) => q.Identifier == s));
+    }
 }

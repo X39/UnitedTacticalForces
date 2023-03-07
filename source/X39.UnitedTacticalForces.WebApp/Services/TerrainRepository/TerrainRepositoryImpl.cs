@@ -13,7 +13,7 @@ internal class TerrainRepositoryImpl : RepositoryBase, ITerrainRepository
     public async Task<long> GetTerrainCountAsync(
         CancellationToken cancellationToken = default)
     {
-        return await Client.TerrainAllCountAsync(cancellationToken)
+        return await Client.TerrainsAllCountAsync(cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -23,7 +23,7 @@ internal class TerrainRepositoryImpl : RepositoryBase, ITerrainRepository
         string? search = default,
         CancellationToken cancellationToken = default)
     {
-        var terrains = await Client.TerrainAllAsync(skip, take, search, cancellationToken)
+        var terrains = await Client.TerrainsAllAsync(skip, take, search, cancellationToken)
             .ConfigureAwait(false);
         return terrains.ToImmutableArray();
     }
@@ -32,7 +32,7 @@ internal class TerrainRepositoryImpl : RepositoryBase, ITerrainRepository
         Terrain terrain,
         CancellationToken cancellationToken = default)
     {
-        terrain = await Client.TerrainCreateAsync(terrain, cancellationToken)
+        terrain = await Client.TerrainsCreateAsync(terrain, cancellationToken)
             .ConfigureAwait(false);
         return terrain;
     }
@@ -43,7 +43,7 @@ internal class TerrainRepositoryImpl : RepositoryBase, ITerrainRepository
     {
         if (terrain.PrimaryKey is null)
             throw new ArgumentException("Terrain.PrimaryKey is null.", nameof(terrain));
-        await Client.TerrainUpdateAsync(terrain.PrimaryKey.Value, terrain, cancellationToken)
+        await Client.TerrainsUpdateAsync(terrain.PrimaryKey.Value, terrain, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -53,7 +53,7 @@ internal class TerrainRepositoryImpl : RepositoryBase, ITerrainRepository
     {
         if (terrain.PrimaryKey is null)
             throw new ArgumentException("Terrain.PrimaryKey is null.", nameof(terrain));
-        await Client.TerrainDeleteAsync(terrain.PrimaryKey.Value, cancellationToken)
+        await Client.TerrainsDeleteAsync(terrain.PrimaryKey.Value, cancellationToken)
             .ConfigureAwait(false);
     }
 }

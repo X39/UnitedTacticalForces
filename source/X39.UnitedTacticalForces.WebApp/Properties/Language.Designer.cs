@@ -69,6 +69,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Copied to clipboard.
+        /// </summary>
+        internal static string Common_CopiedToClipboard {
+            get {
+                return ResourceManager.GetString("Common_CopiedToClipboard", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Create.
         /// </summary>
         internal static string Common_Create {
@@ -303,6 +312,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Please sign in using the Steam login option on the bottom left of your screen to access additional features..
+        /// </summary>
+        internal static string Hints_LogInUsingSteamAtTheBottomRightForAdditionalFeatures {
+            get {
+                return ResourceManager.GetString("Hints_LogInUsingSteamAtTheBottomRightForAdditionalFeatures", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Slots.
         /// </summary>
         internal static string Pages_Events_EventCard_Slots {
@@ -326,6 +344,87 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_Events_Title {
             get {
                 return ResourceManager.GetString("Pages_Events_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Assign to self.
+        /// </summary>
+        internal static string Pages_EventView_AssignToSelf {
+            get {
+                return ResourceManager.GetString("Pages_EventView_AssignToSelf", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Assign to user.
+        /// </summary>
+        internal static string Pages_EventView_AssignToUser {
+            get {
+                return ResourceManager.GetString("Pages_EventView_AssignToUser", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The file is binarized. Please change the save settings for the mission in 3DEN Editor and try again..
+        /// </summary>
+        internal static string Pages_EventView_FailedToParseConfig_ParsedConfigIsBinarized {
+            get {
+                return ResourceManager.GetString("Pages_EventView_FailedToParseConfig_ParsedConfigIsBinarized", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to File is not a valid mission file.
+        /// </summary>
+        internal static string Pages_EventView_FailedToParseConfig_ParsedConfigIsNoValidMissionFile {
+            get {
+                return ResourceManager.GetString("Pages_EventView_FailedToParseConfig_ParsedConfigIsNoValidMissionFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The data type at &apos;{0}&apos; was not of the expected type {1}, but was {2}..
+        /// </summary>
+        internal static string Pages_EventView_InvalidDataType_0path_1expected_2got {
+            get {
+                return ResourceManager.GetString("Pages_EventView_InvalidDataType_0path_1expected_2got", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The path &apos;{0}&apos; does not exist..
+        /// </summary>
+        internal static string Pages_EventView_PathDoesNotExists_0path {
+            get {
+                return ResourceManager.GetString("Pages_EventView_PathDoesNotExists_0path", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Self assignable.
+        /// </summary>
+        internal static string Pages_EventView_SelfAssignable {
+            get {
+                return ResourceManager.GetString("Pages_EventView_SelfAssignable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Some slots have the same role name. This is NOT recommended as the system cannot properly identify which slots have been removed/added. Please consider making all names unique, e.g. by adding different explicit groups with the syntax &quot;Group@Role&quot; in the role name..
+        /// </summary>
+        internal static string Pages_EventView_SlotsSharingSameNameIsNotRecommended {
+            get {
+                return ResourceManager.GetString("Pages_EventView_SlotsSharingSameNameIsNotRecommended", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Synchronize slots with mission.
+        /// </summary>
+        internal static string Pages_EventView_SynchronizeSlotsWithMission {
+            get {
+                return ResourceManager.GetString("Pages_EventView_SynchronizeSlotsWithMission", resourceCulture);
             }
         }
         

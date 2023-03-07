@@ -1,0 +1,62 @@
+﻿@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@inject IUserRepository UserRepository
+@inject IStringLocalizer<Language> Localizer
+<MudDialog>
+    <DialogContent>
+        <MudAutocomplete SearchFunc="FindUserAsync"
+                         @bind-Value="Selected"
+                         ToStringFunc="@((u) => u.Nickname ?? u.SteamId64?.ToString() ?? u.PrimaryKey?.ToString() ?? string.Empty)"/>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Localizer[nameof(Language.Common_Cancel)]</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="IsSubmitDisabled">
+            @Localizer[nameof(Language.Common_Submit)]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    private bool IsSubmitDisabled => Selected is null;
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(Selected));
+    void Cancel() => MudDialog.Cancel();
+
+
+    [Parameter]
+    public User? Selected { get; set; }
+
+
+    public static async Task<User?> ShowAsync(
+        IDialogService dialogService,
+        User? selected = default,
+        string? title = default)
+    {
+        var dialogReference = await dialogService.ShowAsync<SelectUserDialog>(
+            title,
+            new DialogParameters
+            {
+                {nameof(Selected), selected},
+            },
+            new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+                FullWidth = true,
+                MaxWidth = MaxWidth.Large,
+            })
+            .ConfigureAwait(false);
+        var dialogResult = await dialogReference.Result
+            .ConfigureAwait(false);
+        return dialogResult.Data is not User user ? default : user;
+    }
+
+    private async Task<IEnumerable<User>> FindUserAsync(string input)
+    {
+        return await UserRepository.GetUsersAsync(0, 10, input)
+            .ConfigureAwait(false);
+    }
+
+}

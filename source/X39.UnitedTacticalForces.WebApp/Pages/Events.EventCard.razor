@@ -1,6 +1,11 @@
 ﻿@using System.ComponentModel.DataAnnotations
+@using X39.UnitedTacticalForces.WebApp.Services
 @using X39.Util
 @inject IStringLocalizer<Language> Localizer
+@inject BaseUrl BaseUrl
+@inject MeService Me
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
 <MudCard>
     <MudCardHeader>
         <CardHeaderAvatar>
@@ -34,7 +39,7 @@
                 <UtfModPackDownloadButton ModPack="EventItem.ModPack" Color="Color.Primary"/>
                 <Events_HeaderActions_ModifyButton Event="EventItem" ParentStateHasChanged="PropagateStateHasChanged"/>
                 <Events_HeaderActions_CloneButton Event="EventItem"/>
-                <MudIconButton Icon="@Icons.Material.Filled.Link" Color="Color.Primary" Href="@($"/events/{EventItem.PrimaryKey}")"/>
+                <MudIconButton Icon="@Icons.Material.Filled.Link" Color="Color.Primary" OnClick="CopyEventUrlToClipboardAsync"/>
             </MudButtonGroup>
         </CardHeaderActions>
     </MudCardHeader>
@@ -46,7 +51,8 @@
         <MudText Typo="Typo.body2" Style="max-height: 50vh; overflow-y: scroll;">@EventItem.Description</MudText>
     </MudCardContent>
     <MudCardActions>
-        <AuthorizeView>
+        @if (Me.IsAuthenticated)
+        {
             <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
                                                   Acceptance="EEventAcceptance.Accepted"
                                                   AcceptanceCount="EventItem.AcceptedCount"
@@ -60,8 +66,10 @@
                                                   AcceptanceCount="EventItem.RejectedCount"
                                                   Event="EventItem"/>
             <MudSpacer/>
-            <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock">@Localizer[nameof(Language.Pages_Events_EventCard_Slots)]</MudButton>
-        </AuthorizeView>
+            <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock" Href="@($"/events/{EventItem.PrimaryKey}")">
+                @Localizer[nameof(Language.Pages_Events_EventCard_Slots)]
+            </MudButton>
+        }
     </MudCardActions>
 </MudCard>
 
@@ -79,6 +87,14 @@
             .ConfigureAwait(false);
         await InvokeAsync(StateHasChanged)
             .ConfigureAwait(false);
+    }
+
+    private async Task CopyEventUrlToClipboardAsync()
+    {
+        var url = BaseUrl.ResolveSelfUrl($"/events/{EventItem.PrimaryKey}");
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url)
+            .ConfigureAwait(false);
+        Snackbar.Add(Localizer[nameof(Language.Common_CopiedToClipboard)]);
     }
 
 }

@@ -1,4 +1,8 @@
-﻿<MudMainContent Style="padding-top: 0;">
+﻿@using X39.UnitedTacticalForces.WebApp.Services
+@inject MeService Me
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<Language> Localizer
+<MudMainContent Style="padding-top: 0;">
     <MudContainer
         MaxWidth="@(Breakpoint is Breakpoint.Sm or Breakpoint.Xs ? MaxWidth.Large : MaxWidth.False)"
         Class="@(Breakpoint is Breakpoint.Sm or Breakpoint.Xs ? "mt-14" : "px-0")">
@@ -12,5 +16,14 @@
 
     [CascadingParameter]
     public Breakpoint Breakpoint { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(10);
+        if (!Me.IsAuthenticated)
+        {
+            Snackbar.Add(Localizer[nameof(Language.Hints_LogInUsingSteamAtTheBottomRightForAdditionalFeatures)], Severity.Info, (options) => options.VisibleStateDuration = int.MaxValue);
+        }
+    }
 
 }

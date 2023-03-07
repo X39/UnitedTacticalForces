@@ -5,17 +5,11 @@
 @inject MeService MeService
 @inject IDialogService DialogService
 @inject IEventRepository EventRepository
-<AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.EventModify)" Context="_">
-    <Authorized>
-        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="ModifyEventAsync"/>
-    </Authorized>
-    <NotAuthorized>
-        @if (MeService.IsAuthenticated && Event.OwnerFk == MeService.User.PrimaryKey)
-        {
-            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="ModifyEventAsync"/>
-        }
-    </NotAuthorized>
-</AuthorizeView>
+@inject MeService Me
+@if (Me.IsInRoleOrAdmin(Roles.EventModify) || MeService.IsAuthenticated && Event.OwnerFk == MeService.User.PrimaryKey)
+{
+    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="ModifyEventAsync"/>
+}
 
 @code {
 
@@ -24,7 +18,7 @@
 
     [Parameter, EditorRequired, Required]
     public EventCallback ParentStateHasChanged { get; set; }
-    
+
 
     private async Task ModifyEventAsync()
     {
@@ -38,4 +32,5 @@
         await ParentStateHasChanged.InvokeAsync()
             .ConfigureAwait(false);
     }
+
 }

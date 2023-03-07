@@ -25,6 +25,15 @@ public class ConfigFieldTests
     [InlineData("123abc_", -17D, "123abc_ = -17; ")]
     [InlineData("fffff", -0.5D, "fffff = -0.5;")]
     [InlineData("___", -1.25D, "___ = -1.25;")]
+    [InlineData("Exp1", 1.250000E-001D, "Exp1 = 1.250000E-001;")]
+    [InlineData("Exp2", -1.250000E-001D, "Exp2 = -1.250000E-001;")]
+    [InlineData("Exp3", 1.125000E+000D, "Exp3 = 1.125000E+000;")]
+    [InlineData("Exp4", -1.125000E+000D, "Exp4 = -1.125000E+000;")]
+    [InlineData("exp1", 1.250000E-001D, "exp1 = 1.250000e-001;")]
+    [InlineData("exp2", -1.250000E-001D, "exp2 = -1.250000e-001;")]
+    [InlineData("exp3", 1.125000E+000D, "exp3 = 1.125000e+000;")]
+    [InlineData("exp4", -1.125000E+000D, "exp4 = -1.125000e+000;")]
+    [InlineData("internal", -3.1170201999999999E-08D, "internal = -3.1170202e-008;")]
     public void NumberFields(string expectedKey, double expectedNumber, string input)
     {
         var result = ConfigParser.ParseOrThrow(input);
@@ -35,6 +44,20 @@ public class ConfigFieldTests
         Assert.Equal(expectedKey, collection.OfType<ConfigPair>().First().Key);
         Assert.IsType<double>(collection.OfType<ConfigPair>().First().Value);
         Assert.Equivalent(expectedNumber, (double) collection.OfType<ConfigPair>().First().Value!);
+    }
+    
+    [Theory]
+    [InlineData("multiline", "foo\"bar\nfoo\"bar", "multiline = \"foo\"\"bar\" \\n \"foo\"\"bar\";")]
+    public void MultilineStringField(string expectedKey, string expectedString, string input)
+    {
+        var result = ConfigParser.ParseOrThrow(input);
+        Assert.IsType<ConfigCollection>(result);
+        var collection = (ConfigCollection) result;
+        Assert.Single(collection);
+        Assert.Single(collection.OfType<ConfigPair>());
+        Assert.Equal(expectedKey, collection.OfType<ConfigPair>().First().Key);
+        Assert.IsType<string>(collection.OfType<ConfigPair>().First().Value);
+        Assert.Equivalent(expectedString, (string) collection.OfType<ConfigPair>().First().Value!);
     }
     
     [Theory]
@@ -85,6 +108,10 @@ public class ConfigFieldTests
     [Theory]
     [InlineData("arr", new object?[]{new object?[]{},new object?[]{new object?[]{},new object?[]{new object?[]{}}}}, "arr[]={{},{{},{{}}}};")]
     [InlineData("abc", new object?[]{new object?[]{},new object?[]{new object?[]{},new object?[]{new object?[]{}}}}, "abc [ ] = { { } , { { } , { { } } } } ;")]
+    [InlineData("singleWide", new object?[]{new object?[]{}}, "singleWide [ ] = { { } } ;")]
+    [InlineData("doubleWide", new object?[]{new object?[]{new object?[]{}}}, "doubleWide [ ] = { { { } } } ;")]
+    [InlineData("singleNarrow", new object?[]{new object?[]{}}, "singleNarrow[]={{}};")]
+    [InlineData("doubleNarrow", new object?[]{new object?[]{new object?[]{}}}, "doubleNarrow[]={{{}}};")]
     public void NestedArrayFields(string expectedKey, object?[] expectedValues, string input)
     {
         var result = ConfigParser.ParseOrThrow(input);

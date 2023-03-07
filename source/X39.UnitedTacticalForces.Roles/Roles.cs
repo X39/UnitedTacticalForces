@@ -41,6 +41,10 @@ public static class Roles
     /// </summary>
     public const string EventSlotCreate = "event-slot-create";
     /// <summary>
+    /// Allows a user to update existing event slots for any events.
+    /// </summary>
+    public const string EventSlotUpdate = "event-slot-update";
+    /// <summary>
     /// Allows a user to delete existing event slots for any events.
     /// </summary>
     public const string EventSlotDelete = "event-slot-delete";

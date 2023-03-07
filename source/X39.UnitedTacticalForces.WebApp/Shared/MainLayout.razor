@@ -17,7 +17,7 @@
                 <MudSpacer/>
                 <MudImage Src="Insignia.svg" Height="40" ObjectFit="ObjectFit.ScaleDown" @onclick="@(() => _dark = !_dark)"/>
             </MudAppBar>
-            <MudDrawer @bind-Open="_normalDrawerOpen" Elevation="1">
+            <MudDrawer Style="top: 0;" @bind-Open="_normalDrawerOpen" Elevation="1">
                 <NavMenu/>
             </MudDrawer>
         </MudHidden>

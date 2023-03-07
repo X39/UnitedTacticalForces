@@ -17,7 +17,18 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\source\X39.BI.Config.Parsing\X39.BI.Config.Parsing.csproj" />
+        <ProjectReference Include="..\..\source\X39.BI.Config.Parsing\X39.BI.Config.Parsing.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Remove="Resources\mission-1.sqm" />
+        <Content Include="Resources\mission-1.sqm">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <None Remove="Resources\borked-string-1.sqm" />
+        <Content Include="Resources\borked-string-1.sqm">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
 </Project>

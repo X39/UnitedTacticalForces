@@ -20,22 +20,44 @@ public static class ConfigParser
     private static readonly Parser<char, char> Colon               = Parser.Char(':').Between(Parser.SkipWhitespaces);
     private static readonly Parser<char, char> SemiColon           = Parser.Char(';').Between(Parser.SkipWhitespaces);
     private static readonly Parser<char, char> Equality            = Parser.Char('=').Between(Parser.SkipWhitespaces);
-    private static readonly Parser<char, char> Minus               = Parser.Char('-').Between(Parser.SkipWhitespaces);
+    private static readonly Parser<char, char> Minus               = Parser.Char('-');
+    private static readonly Parser<char, char> Plus                = Parser.Char('+');
+    private static readonly Parser<char, char> Dot                 = Parser.Char('.');
+    private static readonly Parser<char, char> NumberExponentChar  = Parser<char>.Token((c) => c is 'e' or 'E');
 
-    private static readonly Parser<char, double> NonNegativeNumber = Parser.LetterOrDigit
-        .AtLeastOnce()
-        .Then(Parser.Char('.').Then(Parser.LetterOrDigit.AtLeastOnce()).Optional(), AssignDouble);
+    private static readonly Parser<char, IEnumerable<char>> Digits = Parser<char>
+        .Token((c) => c is >= '0' and <= '9')
+        .AtLeastOnce();
 
-    private static readonly Parser<char, double> Number = Parser.OneOf(
-        Minus.Then(NonNegativeNumber, (_, d) => -d),
+    private static readonly Parser<char, IEnumerable<char>> NonNegativeNumber = Digits
+        .Then(Dot.Then(Digits).Optional(), (l, r) => NumberMerge(l, r, '.'));
+
+    private static readonly Parser<char, IEnumerable<char>> SignableNumber = Parser.OneOf(
+        Minus.Then(NonNegativeNumber, (_, right) => right.Prepend('-')),
+        Plus.Then(NonNegativeNumber, (_, right) => right.Prepend('+')),
         NonNegativeNumber);
+
+    private static readonly Parser<char, double> Number = SignableNumber
+        .Then(NumberExponentChar.Then(SignableNumber).Optional(), (l, r) => NumberMerge(l, r, 'e'))
+        .Select(
+            (chars) =>
+            {
+                var str = new string(chars.ToArray());
+                return double.Parse(
+                    str,
+                    NumberStyles.AllowExponent | NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
+                    CultureInfo.InvariantCulture);
+            });
 
     private static readonly Parser<char, string> String = Parser.OneOf(
             Parser.AnyCharExcept('"'),
             Parser.Try(DoubleQuotationMark.Repeat(2).Select((_) => '"')))
         .Many()
         .Between(DoubleQuotationMark)
-        .Select(AssignString);
+        .Select(AssignString)
+        .SeparatedAtLeastOnce(Parser.String("\\n"))
+        .Select((strings) => string.Join('\n', strings));
+
 
     private static readonly Parser<char, string> ClassKeyword = Parser.String("class");
 
@@ -48,7 +70,10 @@ public static class ConfigParser
         Parser.Rec(() => Array).Select((q) => (object?) q));
 
     private static readonly Parser<char, object?[]> Array = CurlyBracketOpen
-        .Then(Value.Between(Parser.SkipWhitespaces).Separated(Comma), (_, objs) => objs.ToArray())
+        .Then(
+            Value.Between(Parser.SkipWhitespaces)
+                .Separated(Comma),
+            (_, objs) => objs.ToArray())
         .Before(CurlyBracketClose);
 
     private static readonly Parser<char, object?> PairAssignment = Parser.OneOf(
@@ -114,7 +139,7 @@ public static class ConfigParser
         var (config, parserError) = Parse(input);
         if (parserError is not null)
             throw new FormatException(
-                $"[L{parserError.Line}C{parserError.Column}O{parserError.Offset}] {parserError.Message}");
+                $"[L{parserError.Line}|C{parserError.Column}|O{parserError.Offset}] {parserError.Message}");
         return config;
     }
 
@@ -156,24 +181,17 @@ public static class ConfigParser
         return pair;
     }
 
-    private static double AssignDouble(IEnumerable<char> arg1, Maybe<IEnumerable<char>> arg2)
-    {
-        var builder = new StringBuilder();
-        foreach (var c in arg1)
-            builder.Append(c);
-        if (!arg2.HasValue)
-            return double.Parse(builder.ToString(), CultureInfo.InvariantCulture);
-        builder.Append('.');
-        foreach (var c in arg2.Value)
-            builder.Append(c);
-        return double.Parse(builder.ToString(), CultureInfo.InvariantCulture);
-    }
-
     private static string AssignString(IEnumerable<char> arg)
     {
         var builder = new StringBuilder();
         foreach (var c in arg)
             builder.Append(c);
+
         return builder.ToString();
     }
+
+    private static IEnumerable<char> NumberMerge(IEnumerable<char> left, Maybe<IEnumerable<char>> right, char c)
+        => right.HasValue
+            ? left.Append(c).Concat(right.Value)
+            : left;
 }

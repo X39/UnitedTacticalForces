@@ -1,12 +1,14 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using System.Diagnostics.Contracts
+@using X39.UnitedTacticalForces.WebApp.Services
 @using X39.UnitedTacticalForces.WebApp.Services.EventRepository
 @inject IEventRepository EventRepository
 @inject IDialogService DialogService
-<AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.EventCreate)" Context="_">
+@inject MeService Me
+@if (Me.IsInRoleOrAdmin(Roles.EventCreate))
+{
     <MudIconButton Icon="@Icons.Material.Filled.CopyAll" Color="Color.Success" OnClick="CloneEventAsync"/>
-</AuthorizeView>
-
+}
 @code {
 
     [Parameter, Required, EditorRequired]

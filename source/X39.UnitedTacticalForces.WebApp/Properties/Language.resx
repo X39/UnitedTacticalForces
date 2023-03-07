@@ -201,4 +201,37 @@
     <data name="Pages_Events_EventCard_Slots" xml:space="preserve">
         <value>Slots</value>
     </data>
+    <data name="Pages_EventView_FailedToParseConfig_ParsedConfigIsNoValidMissionFile" xml:space="preserve">
+        <value>File is not a valid mission file</value>
+    </data>
+    <data name="Pages_EventView_InvalidDataType_0path_1expected_2got" xml:space="preserve">
+        <value>The data type at '{0}' was not of the expected type {1}, but was {2}.</value>
+    </data>
+    <data name="Pages_EventView_PathDoesNotExists_0path" xml:space="preserve">
+        <value>The path '{0}' does not exist.</value>
+    </data>
+    <data name="Pages_EventView_SlotsSharingSameNameIsNotRecommended" xml:space="preserve">
+        <value>Some slots have the same role name. This is NOT recommended as the system cannot properly identify which slots have been removed/added. Please consider making all names unique, e.g. by adding different explicit groups with the syntax "Group@Role" in the role name.</value>
+    </data>
+    <data name="Pages_EventView_SynchronizeSlotsWithMission" xml:space="preserve">
+        <value>Synchronize slots with mission</value>
+    </data>
+    <data name="Pages_EventView_AssignToSelf" xml:space="preserve">
+        <value>Assign to self</value>
+    </data>
+    <data name="Common_CopiedToClipboard" xml:space="preserve">
+        <value>Copied to clipboard</value>
+    </data>
+    <data name="Hints_LogInUsingSteamAtTheBottomRightForAdditionalFeatures" xml:space="preserve">
+        <value>Please sign in using the Steam login option on the bottom left of your screen to access additional features.</value>
+    </data>
+    <data name="Pages_EventView_FailedToParseConfig_ParsedConfigIsBinarized" xml:space="preserve">
+        <value>The file is binarized. Please change the save settings for the mission in 3DEN Editor and try again.</value>
+    </data>
+    <data name="Pages_EventView_SelfAssignable" xml:space="preserve">
+        <value>Self assignable</value>
+    </data>
+    <data name="Pages_EventView_AssignToUser" xml:space="preserve">
+        <value>Assign to user</value>
+    </data>
 </root>

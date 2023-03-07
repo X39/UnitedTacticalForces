@@ -2,12 +2,47 @@
 @page "/events"
 @using X39.UnitedTacticalForces.WebApp.Services.EventRepository
 @using System.Collections.Immutable
+@using X39.UnitedTacticalForces.WebApp.Services
 @inject IStringLocalizer<Language> Localizer
 @inject IEventRepository EventRepository
 @inject IDialogService DialogService
+@inject MeService Me
 
 <PageTitle>@Localizer[nameof(Language.Pages_Events_Title)]</PageTitle>
-@if (_events.Any())
+@if (_events is null)
+{
+    <MudContainer>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudTimeline TimelinePosition="TimelinePosition.Alternate">
+                @for (var i = 0; i < 2; i++)
+                {
+                    <MudTimelineItem Color="Color.Transparent">
+                        <ItemOpposite>
+                            <MudSkeleton Width="128px"/>
+                        </ItemOpposite>
+                        <ItemContent>
+                            <MudPaper>
+                                <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" />
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="256px" />
+                            </MudPaper>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+            </MudTimeline>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+            <MudStack Class="pt-4">
+                @for (var i = 0; i < 2; i++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" />
+                    <MudSkeleton Width="128px"/>
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="200px" Height="110px" />
+                }
+            </MudStack>
+        </MudHidden>
+    </MudContainer>
+}
+else if (_events.Any())
 {
     <MudContainer>
         <MudHidden Breakpoint="Breakpoint.SmAndDown">
@@ -37,6 +72,12 @@
             </MudStack>
         </MudHidden>
     </MudContainer>
+    @if (Me.IsInRoleOrAdmin(Roles.EventCreate))
+    {
+        <div style="position: fixed; right: 2rem; bottom: 2rem;">
+            <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@CreateNewEventAsync"/>
+        </div>
+    }
 }
 else
 {
@@ -45,17 +86,20 @@ else
             <MudText>@Localizer[nameof(Language.Pages_Events_NoUpcomingEvents)]</MudText>
         </MudPaper>
     </div>
+    @if (Me.IsInRoleOrAdmin(Roles.EventCreate))
+    {
+        <div style="position: fixed; right: 2rem; bottom: 2rem;">
+            <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@CreateNewEventAsync"/>
+        </div>
+    }
 }
-<div style="position: fixed; right: 2rem; bottom: 2rem;">
-    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@CreateNewEventAsync"/>
-</div>
 
 @code {
 
     [CascadingParameter]
     public Breakpoint Breakpoint { get; set; }
 
-    private IReadOnlyCollection<Event> _events = ImmutableArray<Event>.Empty;
+    private IReadOnlyCollection<Event>? _events;
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,7 +122,7 @@ else
             return;
         await EventRepository.CreateEventAsync(eventItem)
             .ConfigureAwait(false);
-        await InvokeAsync(StateHasChanged)
+        await ReloadEventsAsync()
             .ConfigureAwait(false);
     }
 

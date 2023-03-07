@@ -28,13 +28,6 @@ public static class Constants
             public const string ApiKey = "Steam:ApiKey";
         }
 
-        public static class Jwt
-        {
-            public const string Issuer    = nameof(Jwt) + ":" + nameof(Issuer);
-            public const string Audience  = nameof(Jwt) + ":" + nameof(Audience);
-            public const string SecretKey = nameof(Jwt) + ":" + nameof(SecretKey);
-        }
-
         public static class General
         {
             public const string BasePath = "General:BasePath";

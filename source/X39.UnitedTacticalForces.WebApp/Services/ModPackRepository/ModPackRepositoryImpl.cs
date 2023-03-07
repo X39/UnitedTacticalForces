@@ -14,7 +14,7 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
         bool myModPacksOnly,
         CancellationToken cancellationToken = default)
     {
-        return await Client.ModPackAllCountAsync(myModPacksOnly, cancellationToken)
+        return await Client.ModPacksAllCountAsync(myModPacksOnly, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -25,7 +25,7 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
         string? search = default,
         CancellationToken cancellationToken = default)
     {
-        var modPacks = await Client.ModPackAllAsync(skip, take, search, myModPacksOnly, cancellationToken)
+        var modPacks = await Client.ModPacksAllAsync(skip, take, search, myModPacksOnly, cancellationToken)
             .ConfigureAwait(false);
         return modPacks.ToImmutableArray();
     }
@@ -34,7 +34,7 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
         ModPack modPack,
         CancellationToken cancellationToken = default)
     {
-        modPack = await Client.ModPackCreateAsync(modPack, cancellationToken)
+        modPack = await Client.ModPacksCreateAsync(modPack, cancellationToken)
             .ConfigureAwait(false);
         return modPack;
     }
@@ -45,7 +45,7 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
     {
         if (modPack.PrimaryKey is null)
             throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));
-        await Client.ModPackUpdateAsync(modPack.PrimaryKey.Value, modPack, cancellationToken)
+        await Client.ModPacksUpdateAsync(modPack.PrimaryKey.Value, modPack, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -53,7 +53,7 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
     {
         if (modPack.PrimaryKey is null)
             throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));
-        await Client.ModPackDeleteAsync(modPack.PrimaryKey.Value, cancellationToken)
+        await Client.ModPacksDeleteAsync(modPack.PrimaryKey.Value, cancellationToken)
             .ConfigureAwait(false);
     }
 }

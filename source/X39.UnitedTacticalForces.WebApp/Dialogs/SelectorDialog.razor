@@ -80,6 +80,8 @@
             new DialogOptions
             {
                 CloseOnEscapeKey = true,
+                FullWidth = true,
+                MaxWidth = MaxWidth.Large,
             })
             .ConfigureAwait(false);
         var dialogResult = await dialogReference.Result

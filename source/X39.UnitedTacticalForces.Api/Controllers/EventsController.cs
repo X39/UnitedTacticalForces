@@ -198,6 +198,10 @@ public class EventsController : ControllerBase
                     break;
                 case EEventAcceptance.Accepted:
                     existingEvent.AcceptedCount--;
+                    var slotCandidate = await _apiDbContext.EventSlots
+                        .SingleOrDefaultAsync((q) => q.AssignedToFk == userId, cancellationToken);
+                    if (slotCandidate is not null)
+                        slotCandidate.AssignedToFk = null;
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
