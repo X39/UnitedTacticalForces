@@ -30,7 +30,7 @@ public class MeService
 
     public bool IsAuthenticated => _user is not null && !(_user.IsBanned ?? false);
 
-    public bool IsVerified => _user?.Verified ?? false;
+    public bool IsVerified => _user?.IsVerified ?? false;
     /// <summary>
     /// Initializes the service.
     /// </summary>

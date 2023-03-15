@@ -92,7 +92,7 @@ public class UsersController : ControllerBase
         if (User.IsInRoleOrAdmin(Roles.UserBan))
             existingUser.IsBanned = updatedUser.IsBanned;
         if (User.IsInRoleOrAdmin(Roles.UserVerify))
-            existingUser.Verified = updatedUser.Verified;
+            existingUser.IsVerified = updatedUser.IsVerified;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -296,7 +296,7 @@ public class UsersController : ControllerBase
 
         if (!(includeUnverified ?? false))
         {
-            users = users.Where((q) => q.Verified);
+            users = users.Where((q) => q.IsVerified);
         }
         else
         {
@@ -378,7 +378,7 @@ public class UsersController : ControllerBase
 
         if (!(includeUnverified ?? false))
         {
-            users = users.Where((q) => q.Verified);
+            users = users.Where((q) => q.IsVerified);
         }
         else
         {

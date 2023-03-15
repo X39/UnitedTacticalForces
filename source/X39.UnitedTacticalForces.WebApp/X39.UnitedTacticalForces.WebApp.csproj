@@ -56,6 +56,9 @@
       <Content Update="Pages\Events.EventCard.razor">
         <DependentUpon>Events.razor</DependentUpon>
       </Content>
+      <Content Update="Pages\Users.Interactions.ToggleVerified.razor">
+        <DependentUpon>Users.razor</DependentUpon>
+      </Content>
     </ItemGroup>
 
     <ItemGroup>

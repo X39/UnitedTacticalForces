@@ -570,9 +570,11 @@ internal class ConfigToSlots
                         slots.Add(
                             new EventSlot
                             {
-                                Title = string.Join("@", descriptionSplatted.Skip(1)),
-                                Group = descriptionSplatted.Length > 1
+                                Title = descriptionSplatted.Length > 1
                                     ? descriptionSplatted.First()
+                                    : description,
+                                Group = descriptionSplatted.Length > 1
+                                    ? string.Join("@", descriptionSplatted.Skip(1))
                                     : $"Alpha-{++groupIndex}",
                                 Side             = EArmaSide.Logic,
                                 IsSelfAssignable = true,
@@ -599,10 +601,10 @@ internal class ConfigToSlots
                             new EventSlot
                             {
                                 Title = descriptionSplatted.Length > 1
-                                    ? string.Join("@", descriptionSplatted.Skip(1))
+                                    ? descriptionSplatted.First()
                                     : description,
                                 Group = descriptionSplatted.Length > 1
-                                    ? descriptionSplatted.First()
+                                    ? string.Join("@", descriptionSplatted.Skip(1))
                                     : $"Alpha-{++groupIndex}",
                                 Side             = side,
                                 IsSelfAssignable = true,
@@ -645,10 +647,10 @@ internal class ConfigToSlots
                                         new EventSlot
                                         {
                                             Title = descriptionSplatted.Length > 1
-                                                ? string.Join("@", descriptionSplatted.Skip(1))
+                                                ? descriptionSplatted.First()
                                                 : description,
                                             Group = descriptionSplatted.Length > 1
-                                                ? descriptionSplatted.First()
+                                                ? string.Join("@", descriptionSplatted.Skip(1))
                                                 : $"Alpha-{++groupIndex}",
                                             Side = EArmaSide.Logic,
                                             IsSelfAssignable = true,
@@ -683,11 +685,11 @@ internal class ConfigToSlots
                                         new EventSlot
                                         {
                                             Title = descriptionSplatted.Length > 1
-                                                ? string.Join("@", descriptionSplatted.Skip(1))
+                                                ? descriptionSplatted.First()
                                                 : description,
                                             Group = descriptionSplatted.Length > 1
-                                                ? descriptionSplatted.First()
-                                                : $"Alpha-{groupIndex}",
+                                                ? string.Join("@", descriptionSplatted.Skip(1))
+                                                : $"Alpha-{++groupIndex}",
                                             Side             = side,
                                             IsSelfAssignable = true,
                                         });

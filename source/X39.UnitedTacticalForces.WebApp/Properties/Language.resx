@@ -240,4 +240,7 @@
     <data name="Pages_Users_ToggleBan_ToolTip" xml:space="preserve">
         <value>Toggle ban status</value>
     </data>
+    <data name="Pages_Users_Table_IsVerified" xml:space="preserve">
+        <value>Verified</value>
+    </data>
 </root>

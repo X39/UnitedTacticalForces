@@ -5,7 +5,7 @@
 @inject IUserRepository UserRepository
 @inject MeService MeService
 @inject IStringLocalizer<Language> Localizer
-@if (MeService.IsAuthenticated && User.PrimaryKey != MeService.User.PrimaryKey && MeService.IsInRolesOrAdmin(Roles.UserVerify))
+@if (MeService.IsAuthenticated && User.PrimaryKey != MeService.User.PrimaryKey && MeService.IsInRoleOrAdmin(Roles.UserVerify))
 {
     <MudTooltip>
         <TooltipContent>
@@ -13,10 +13,10 @@
         </TooltipContent>
         <ChildContent>
             <MudSwitch
-                ThumbIcon="@((User.Verified ?? false) ? Icons.Material.Filled.DoDisturb : Icons.Material.Filled.CheckCircleOutline)"
+                ThumbIcon="@((User.IsVerified ?? false) ? Icons.Material.Filled.CheckCircleOutline : Icons.Material.Filled.DoDisturb)"
                 Color="Color.Success"
-                Checked="@(User.Verified ?? false)"
-                CheckedChanged="ToggleUserVerifiedAsync"/>
+                Checked="@(User.IsVerified ?? false)"
+                CheckedChanged="@((bool flag) => ToggleUserVerifiedAsync(flag))"/>
         </ChildContent>
     </MudTooltip>
 }
@@ -26,12 +26,12 @@
     [Parameter, EditorRequired, Required]
     public User User { get; set; } = null!;
 
-    private async Task ToggleUserVerifiedAsync()
+    private async Task ToggleUserVerifiedAsync(bool flag)
     {
         Contract.Assert(User.PrimaryKey is not null);
-        await UserRepository.ToggleVerifiedUserAsync(User.PrimaryKey.Value)
+        await UserRepository.ToggleVerifiedUserAsync(User.PrimaryKey.Value, flag)
             .ConfigureAwait(false);
-        User.IsBanned = !User.IsBanned;
+        User.IsVerified = flag;
     }
 
 }

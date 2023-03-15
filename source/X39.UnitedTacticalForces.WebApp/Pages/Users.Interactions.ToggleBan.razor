@@ -12,13 +12,13 @@
             <MudText>@Localizer[nameof(Language.Pages_Users_ToggleBan_ToolTip)]</MudText>
         </TooltipContent>
         <ChildContent>
-    <MudToggleIconButton
-        ToggledIcon="@Icons.Material.Filled.DoDisturb"
-        Icon="@Icons.Material.Filled.CheckCircleOutline"
-        Color="Color.Success"
-        ToggledColor="Color.Error"
-        Toggled="@(User.IsBanned ?? false)"
-        ToggledChanged="ToggleUserBannedAsync"/>
+            <MudToggleIconButton
+                ToggledIcon="@Icons.Material.Filled.DoDisturb"
+                Icon="@Icons.Material.Filled.CheckCircleOutline"
+                Color="Color.Success"
+                ToggledColor="Color.Error"
+                Toggled="@(User.IsBanned ?? false)"
+                ToggledChanged="@(ToggleUserBannedAsync)"/>
         </ChildContent>
     </MudTooltip>
 }
@@ -28,12 +28,12 @@
     [Parameter, EditorRequired, Required]
     public User User { get; set; } = null!;
 
-    private async Task ToggleUserBannedAsync()
+    private async Task ToggleUserBannedAsync(bool flag)
     {
         Contract.Assert(User.PrimaryKey is not null);
-        await UserRepository.ToggleBanUserAsync(User.PrimaryKey.Value)
+        await UserRepository.ToggleBanUserAsync(User.PrimaryKey.Value, flag)
             .ConfigureAwait(false);
-        User.IsBanned = !User.IsBanned;
+        User.IsBanned = flag;
     }
 
 }

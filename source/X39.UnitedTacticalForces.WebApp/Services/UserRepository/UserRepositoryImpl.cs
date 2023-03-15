@@ -20,11 +20,15 @@ internal class UserRepositoryImpl : RepositoryBase, IUserRepository
 
     public async Task<long> GetUserCountAsync(CancellationToken cancellationToken = default)
     {
-        return await Client.UsersAllCountAsync(cancellationToken)
+        return await Client.UsersAllCountAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task SetUserRoleAsync(Guid userId, long roleId, bool roleActive, CancellationToken cancellationToken = default)
+    public async Task SetUserRoleAsync(
+        Guid userId,
+        long roleId,
+        bool roleActive,
+        CancellationToken cancellationToken = default)
     {
         await Client.UsersSetRoleAsync(userId, roleId, roleActive, cancellationToken)
             .ConfigureAwait(false);
@@ -37,16 +41,17 @@ internal class UserRepositoryImpl : RepositoryBase, IUserRepository
         return result.ToImmutableArray();
     }
 
-    public async Task ToggleBanUserAsync(Guid userId, CancellationToken cancellationToken)
+    public async Task ToggleBanUserAsync(Guid userId, bool isBanned, CancellationToken cancellationToken)
     {
         var user = await Client.UsersAsync(userId, cancellationToken).ConfigureAwait(false);
-        user.IsBanned = !(user.IsBanned ?? false);
+        user.IsBanned = isBanned;
         await Client.UsersUpdateAsync(userId, user, cancellationToken).ConfigureAwait(false);
     }
-    public async Task ToggleVerifiedUserAsync(Guid userId, CancellationToken cancellationToken)
+
+    public async Task ToggleVerifiedUserAsync(Guid userId, bool isVerified, CancellationToken cancellationToken)
     {
         var user = await Client.UsersAsync(userId, cancellationToken).ConfigureAwait(false);
-        user.Verified = !(user.Verified ?? false);
+        user.IsVerified = isVerified;
         await Client.UsersUpdateAsync(userId, user, cancellationToken).ConfigureAwait(false);
     }
 
@@ -62,11 +67,11 @@ internal class UserRepositoryImpl : RepositoryBase, IUserRepository
         int take,
         string? search = default,
         bool includeRoles = false,
+        bool includeUnverified = false,
         CancellationToken cancellationToken = default)
     {
-        var users = await Client.UsersAllAsync(skip, take, search, includeRoles, cancellationToken)
+        var users = await Client.UsersAllAsync(skip, take, search, includeRoles, includeUnverified, cancellationToken)
             .ConfigureAwait(false);
         return users.ToImmutableArray();
     }
-
 }

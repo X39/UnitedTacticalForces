@@ -1306,6 +1306,695 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Returns all available X39.UnitedTacticalForces.Api.Data.Hosting.GameServer's and their state.
+        /// </summary>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<GameServerInfo>> GameServersAllAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/all");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<GameServerInfo>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Starts the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer if it can be started.
+        /// </summary>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to start.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task GameServersStartAsync(long gameServerId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/start");
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Forbidden", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Starts the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer if it can be stopped.
+        /// </summary>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to stop.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task GameServersStopAsync(long gameServerId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/stop");
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Forbidden", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Starts the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer if it can be upgraded.
+        /// </summary>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to upgrade.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task GameServersUpgradeAsync(long gameServerId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/upgrade");
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Forbidden", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Return the configuration of the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+        /// </summary>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to start.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task GameServersConfigurationGetAsync(long gameServerId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/configuration");
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Sets the configuration of the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+        /// </summary>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to start.</param>
+        /// <param name="body">The X39.UnitedTacticalForces.Api.Data.Hosting.ConfigurationEntry's to set.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<ConfigurationEntry>> GameServersConfigurationPostAsync(long gameServerId, System.Collections.Generic.IEnumerable<ConfigurationEntry>? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/configuration");
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
+                    var content_ = new System.Net.Http.StringContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<ConfigurationEntry>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Forbidden", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Return the configuration of the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+        /// </summary>
+        /// <remarks>
+        /// Latest logs will always be received first.
+        /// </remarks>
+        /// <param name="skip">The amount of log entries to skip</param>
+        /// <param name="take">The amount of logs to receive</param>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to start.</param>
+        /// <param name="referenceTimeStamp">Timestamp to allow consistent results.
+        /// <br/>If provided, this will prevent logs newer then the timestamp to appear in the result
+        /// <br/>and consideration with !:skip and !:take.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<GameServerLog>> GameServersLogsAsync(int skip, int take, long gameServerId, System.DateTimeOffset referenceTimeStamp, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (skip == null)
+                throw new System.ArgumentNullException("skip");
+
+            if (take == null)
+                throw new System.ArgumentNullException("take");
+
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
+
+            if (referenceTimeStamp == null)
+                throw new System.ArgumentNullException("referenceTimeStamp");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/logs");
+            urlBuilder_.Replace("{skip}", System.Uri.EscapeDataString(ConvertToString(skip, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{take}", System.Uri.EscapeDataString(ConvertToString(take, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{referenceTimeStamp}", System.Uri.EscapeDataString(referenceTimeStamp.ToString("s", System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<GameServerLog>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Return the configuration of the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+        /// </summary>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to start.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<ConfigurationEntryDefinition>> GameServersConfigurationDefinitionsAsync(long gameServerId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/configuration/definitions");
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<ConfigurationEntryDefinition>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Downloads the X39.UnitedTacticalForces.Api.Data.Core.ModPack and updates the last downloaded timestamp in the users meta data.
         /// </summary>
         /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack to download.</param>
@@ -3065,9 +3754,10 @@ namespace X39.UnitedTacticalForces.WebApp
         /// <param name="take">The amount of X39.UnitedTacticalForces.Api.Data.Authority.User's to take after skip. Paging argument.</param>
         /// <param name="search">Searches the X39.UnitedTacticalForces.Api.Data.Authority.User.Nickname with a function akin to M:System.String.StartsWith(System.String)</param>
         /// <param name="includeRoles">If true, the users returned will contain their roles.</param>
+        /// <param name="includeUnverified">If true, the users returned will also contain unverified users.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<User>> UsersAllAsync(int? skip = null, int? take = null, string? search = null, bool? includeRoles = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<User>> UsersAllAsync(int? skip = null, int? take = null, string? search = null, bool? includeRoles = null, bool? includeUnverified = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/users/all?");
@@ -3086,6 +3776,10 @@ namespace X39.UnitedTacticalForces.WebApp
             if (includeRoles != null)
             {
                 urlBuilder_.Append(System.Uri.EscapeDataString("includeRoles") + "=").Append(System.Uri.EscapeDataString(ConvertToString(includeRoles, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            if (includeUnverified != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("includeUnverified") + "=").Append(System.Uri.EscapeDataString(ConvertToString(includeUnverified, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
             }
             urlBuilder_.Length--;
 
@@ -3153,12 +3847,28 @@ namespace X39.UnitedTacticalForces.WebApp
         /// <summary>
         /// Returns the count of all X39.UnitedTacticalForces.Api.Data.Authority.User's available.
         /// </summary>
+        /// <param name="search">Searches the X39.UnitedTacticalForces.Api.Data.Authority.User.Nickname with a function akin to M:System.String.StartsWith(System.String)</param>
+        /// <param name="includeRoles">If true, the users returned will contain their roles.</param>
+        /// <param name="includeUnverified">If true, the users returned will also contain unverified users.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<long> UsersAllCountAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<long> UsersAllCountAsync(string? search = null, bool? includeRoles = null, bool? includeUnverified = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/users/all/count");
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/users/all/count?");
+            if (search != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("search") + "=").Append(System.Uri.EscapeDataString(ConvertToString(search, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            if (includeRoles != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("includeRoles") + "=").Append(System.Uri.EscapeDataString(ConvertToString(includeRoles, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            if (includeUnverified != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("includeUnverified") + "=").Append(System.Uri.EscapeDataString(ConvertToString(includeUnverified, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            urlBuilder_.Length--;
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -3321,6 +4031,228 @@ namespace X39.UnitedTacticalForces.WebApp
     }
 
     /// <summary>
+    /// Represents configuration entries for a X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ConfigurationEntry
+    {
+        /// <summary>
+        /// The primary key of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("primaryKey")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? PrimaryKey { get; set; } = default!;
+
+        /// <summary>
+        /// The filename for the configuration.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("realm")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Realm { get; set; } = default!;
+
+        /// <summary>
+        /// The path for the configuration.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("path")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Path { get; set; } = default!;
+
+        /// <summary>
+        /// The value held.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Value { get; set; } = default!;
+
+        /// <summary>
+        /// The related X39.UnitedTacticalForces.Api.Data.Hosting.GameServer that has changed its lifetime.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("gameServer")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public GameServer? GameServer { get; set; } = default!;
+
+        /// <summary>
+        /// Foreign key of X39.UnitedTacticalForces.Api.Data.Hosting.ConfigurationEntry.GameServer.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("gameServerFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? GameServerFk { get; set; } = default!;
+
+        /// <summary>
+        /// The user that caused the lifetime event.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("changedBy")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public User? ChangedBy { get; set; } = default!;
+
+        /// <summary>
+        /// Foreign key of X39.UnitedTacticalForces.Api.Data.Hosting.ConfigurationEntry.ChangedBy.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("changedByFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Guid? ChangedByFk { get; set; } = default!;
+
+        /// <summary>
+        /// Timestamp when this entity was created.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeStamp")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.DateTimeOffset? TimeStamp { get; set; } = default!;
+
+        /// <summary>
+        /// If an information is sensitive, it must be blanked prior to being received.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("isSensitive")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? IsSensitive { get; set; } = default!;
+
+        /// <summary>
+        /// If an information gets changed, the old one will stay but with "IsActive" false.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? IsActive { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Offers definitions for X39.UnitedTacticalForces.Api.Data.Hosting.ConfigurationEntry's to user-interfaces.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ConfigurationEntryDefinition
+    {
+        /// <summary>
+        /// Whether this is a required entry.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("required")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? Required { get; set; } = default!;
+
+        /// <summary>
+        /// The realm (eg. File) this entry lives in. A UI should group corresponding realms together.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("realm")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Realm { get; set; } = default!;
+
+        /// <summary>
+        /// The data-type this expects. Hints to the UI what is supposed to be inserted here.
+        /// <br/>
+        /// <br/>0 = Text (Plain-Text.)
+        /// <br/>
+        /// <br/>1 = Password (Password input. UIs should prevent showing the actual value to users for privacy reasons. (Equivalent to X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.Text in every other relation.))
+        /// <br/>
+        /// <br/>2 = Boolean (Boolean value. UIs should provide "true" for true and "false" for false.)
+        /// <br/>
+        /// <br/>3 = Number (Number value. Value is expected to be in the format ```[0-9]+(?:\.[0-9]+)?```.)
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("kind")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public EConfigurationEntryKind? Kind { get; set; } = default!;
+
+        /// <summary>
+        /// The actual path. A UI should not display this as primary means of identification.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("path")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Path { get; set; } = default!;
+
+        /// <summary>
+        /// An optional RegEx to validate inputs.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("regex")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Regex { get; set; } = default!;
+
+        /// <summary>
+        /// A human-readable group for grouping different realm-based paths together. This should be used as a sub-group in UIs.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayGroup")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? DisplayGroup { get; set; } = default!;
+
+        /// <summary>
+        /// A human-readable name for this entry.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayName")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? DisplayName { get; set; } = default!;
+
+        /// <summary>
+        /// A human-readable description for this entry. UIs should prefer tooltips over displaying the description directly here.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayDescription")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? DisplayDescription { get; set; } = default!;
+
+        /// <summary>
+        /// The minimum value for this entry. Only relevant for X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition.Kind's of the type X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.Number.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("minValue")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public double? MinValue { get; set; } = default!;
+
+        /// <summary>
+        /// The maximum value for this entry. Only relevant for X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition.Kind's of the type X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.Number.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxValue")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public double? MaxValue { get; set; } = default!;
+
+        /// <summary>
+        /// Combined values of X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition.Realm and X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition.Path.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("identifier")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Identifier { get; set; } = default!;
+
+    }
+
+    /// <summary>
     /// Enum values for Arma related sides.
     /// <br/>
     /// <br/>0 = Empty (Enum value for &lt;see href="https://community.bistudio.com/wiki/sideEmpty" /&gt;)
@@ -3358,6 +4290,31 @@ namespace X39.UnitedTacticalForces.WebApp
     }
 
     /// <summary>
+    /// Different value-kinds for X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition's.
+    /// <br/>
+    /// <br/>0 = Text (Plain-Text.)
+    /// <br/>
+    /// <br/>1 = Password (Password input. UIs should prevent showing the actual value to users for privacy reasons. (Equivalent to X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.Text in every other relation.))
+    /// <br/>
+    /// <br/>2 = Boolean (Boolean value. UIs should provide "true" for true and "false" for false.)
+    /// <br/>
+    /// <br/>3 = Number (Number value. Value is expected to be in the format ```[0-9]+(?:\.[0-9]+)?```.)
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum EConfigurationEntryKind
+    {
+
+        Text = 0,
+
+        Password = 1,
+
+        Boolean = 2,
+
+        Number = 3,
+
+    }
+
+    /// <summary>
     /// 
     /// <br/>
     /// <br/>0 = Maybe
@@ -3375,6 +4332,31 @@ namespace X39.UnitedTacticalForces.WebApp
         Accepted = 1,
 
         Rejected = -1,
+
+    }
+
+    /// <summary>
+    /// 
+    /// <br/>
+    /// <br/>0 = Stopped (Status indicating that something is currently not running in any way.)
+    /// <br/>
+    /// <br/>1 = Starting (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running. (Implies that a lifetime change was requested.))
+    /// <br/>
+    /// <br/>2 = Stopping (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped. (Implies that a lifetime change was requested.))
+    /// <br/>
+    /// <br/>3 = Running (Status indicating that something is currently running.)
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum ELifetimeStatus
+    {
+
+        Stopped = 0,
+
+        Starting = 1,
+
+        Stopping = 2,
+
+        Running = 3,
 
     }
 
@@ -3574,6 +4556,380 @@ namespace X39.UnitedTacticalForces.WebApp
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class GameServer
+    {
+        /// <summary>
+        /// The primary key of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("primaryKey")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? PrimaryKey { get; set; } = default!;
+
+        /// <summary>
+        /// The human-readable title of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Title { get; set; } = default!;
+
+        /// <summary>
+        /// f
+        /// <br/>            The timestamp this entity got created.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeStampCreated")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.DateTimeOffset? TimeStampCreated { get; set; } = default!;
+
+        /// <summary>
+        /// The timestamp this entity last was upgraded (that is: The application itself got updated).
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeStampUpgraded")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.DateTimeOffset? TimeStampUpgraded { get; set; } = default!;
+
+        /// <summary>
+        /// The active mod-pack of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("activeModPack")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public ModPack? ActiveModPack { get; set; } = default!;
+
+        /// <summary>
+        /// Foreign key of X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.ActiveModPack.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("activeModPackFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? ActiveModPackFk { get; set; } = default!;
+
+        /// <summary>
+        /// The X39.UnitedTacticalForces.Api.Data.Core.ModPack that is supposed to be loaded when the server is started.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedModPack")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public ModPack? SelectedModPack { get; set; } = default!;
+
+        /// <summary>
+        /// Foreign key of X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.SelectedModPack.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("selectedModPackFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? SelectedModPackFk { get; set; } = default!;
+
+        /// <summary>
+        /// The lifetime state of this entity.
+        /// <br/>
+        /// <br/>0 = Stopped (Status indicating that something is currently not running in any way.)
+        /// <br/>
+        /// <br/>1 = Starting (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running. (Implies that a lifetime change was requested.))
+        /// <br/>
+        /// <br/>2 = Stopping (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped. (Implies that a lifetime change was requested.))
+        /// <br/>
+        /// <br/>3 = Running (Status indicating that something is currently running.)
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public ELifetimeStatus? Status { get; set; } = default!;
+
+        /// <summary>
+        /// The last known server-version.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("version")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public Version? Version { get; set; } = default!;
+
+        /// <summary>
+        /// Serialization property for X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.Version.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("versionString")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? VersionString { get; set; } = default!;
+
+        /// <summary>
+        /// The X39.UnitedTacticalForces.Api.Data.Hosting.LifetimeEvent's of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("lifetimeEvents")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Collections.Generic.ICollection<LifetimeEvent>? LifetimeEvents { get; set; } = default!;
+
+        /// <summary>
+        /// The X39.UnitedTacticalForces.Api.Data.Hosting.ConfigurationEntry's of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("configurationEntries")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Collections.Generic.ICollection<ConfigurationEntry>? ConfigurationEntries { get; set; } = default!;
+
+        /// <summary>
+        /// The game server this represents.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("controllerIdentifier")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? ControllerIdentifier { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Class containing a virtual X39.UnitedTacticalForces.Api.Controllers.GameServersController.GameServerInfo.GameServer and corresponding information about
+    /// <br/>the physical instance of it.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class GameServerInfo
+    {
+        /// <summary>
+        /// The virtual server.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("gameServer")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public GameServer? GameServer { get; set; } = default!;
+
+        /// <summary>
+        /// Whether the server is running or not.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("isRunning")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? IsRunning { get; set; } = default!;
+
+        /// <summary>
+        /// Whether the server can be started or not.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("canStart")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? CanStart { get; set; } = default!;
+
+        /// <summary>
+        /// Whether the server can be stopped or not.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("canStop")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? CanStop { get; set; } = default!;
+
+        /// <summary>
+        /// Whether the server can be upgraded or not.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("canUpgrade")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? CanUpgrade { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class GameServerLog
+    {
+        /// <summary>
+        /// The primary key of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("primaryKey")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? PrimaryKey { get; set; } = default!;
+
+        /// <summary>
+        /// The log level of the message.
+        /// <br/>
+        /// <br/>0 = Trace
+        /// <br/>
+        /// <br/>1 = Debug
+        /// <br/>
+        /// <br/>2 = Information
+        /// <br/>
+        /// <br/>3 = Warning
+        /// <br/>
+        /// <br/>4 = Error
+        /// <br/>
+        /// <br/>5 = Critical
+        /// <br/>
+        /// <br/>6 = None
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("logLevel")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public LogLevel? LogLevel { get; set; } = default!;
+
+        /// <summary>
+        /// The time-stamp this message was created.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeStamp")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.DateTimeOffset? TimeStamp { get; set; } = default!;
+
+        /// <summary>
+        /// Contents of the message.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Message { get; set; } = default!;
+
+        /// <summary>
+        /// The source of this log message.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("source")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Source { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Represents lifetime events for a X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class LifetimeEvent
+    {
+        /// <summary>
+        /// The primary key of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("primaryKey")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? PrimaryKey { get; set; } = default!;
+
+        /// <summary>
+        /// The related X39.UnitedTacticalForces.Api.Data.Hosting.GameServer that has changed its lifetime.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("gameServer")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public GameServer? GameServer { get; set; } = default!;
+
+        /// <summary>
+        /// Foreign key of X39.UnitedTacticalForces.Api.Data.Hosting.LifetimeEvent.GameServer.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("gameServerFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? GameServerFk { get; set; } = default!;
+
+        /// <summary>
+        /// The user that caused the lifetime event.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("executedBy")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public User? ExecutedBy { get; set; } = default!;
+
+        /// <summary>
+        /// Foreign key of X39.UnitedTacticalForces.Api.Data.Hosting.LifetimeEvent.ExecutedBy.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("executedByFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Guid? ExecutedByFk { get; set; } = default!;
+
+        /// <summary>
+        /// Timestamp when this event was registred.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeStamp")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.DateTimeOffset? TimeStamp { get; set; } = default!;
+
+        /// <summary>
+        /// The status changed into.
+        /// <br/>
+        /// <br/>0 = Stopped (Status indicating that something is currently not running in any way.)
+        /// <br/>
+        /// <br/>1 = Starting (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running. (Implies that a lifetime change was requested.))
+        /// <br/>
+        /// <br/>2 = Stopping (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped. (Implies that a lifetime change was requested.))
+        /// <br/>
+        /// <br/>3 = Running (Status indicating that something is currently running.)
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public ELifetimeStatus? Status { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// 
+    /// <br/>
+    /// <br/>0 = Trace
+    /// <br/>
+    /// <br/>1 = Debug
+    /// <br/>
+    /// <br/>2 = Information
+    /// <br/>
+    /// <br/>3 = Warning
+    /// <br/>
+    /// <br/>4 = Error
+    /// <br/>
+    /// <br/>5 = Critical
+    /// <br/>
+    /// <br/>6 = None
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum LogLevel
+    {
+
+        Trace = 0,
+
+        Debug = 1,
+
+        Information = 2,
+
+        Warning = 3,
+
+        Error = 4,
+
+        Critical = 5,
+
+        None = 6,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class ModPack
     {
 
@@ -3745,6 +5101,11 @@ namespace X39.UnitedTacticalForces.WebApp
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public string? AvatarMimeType { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("isVerified")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? IsVerified { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -3816,6 +5177,42 @@ namespace X39.UnitedTacticalForces.WebApp
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.DateTimeOffset? TimeStampDownloaded { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Version
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("major")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public int? Major { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minor")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public int? Minor { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("build")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public int? Build { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("revision")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public int? Revision { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("majorRevision")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public int? MajorRevision { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minorRevision")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public int? MinorRevision { get; set; } = default!;
 
     }
 

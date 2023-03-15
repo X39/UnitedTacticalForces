@@ -233,4 +233,7 @@
     <data name="Pages_Users_ToggleVerified_ToolTip" xml:space="preserve">
         <value>Verifiziertstatus umschalten</value>
     </data>
+    <data name="Pages_Users_Table_IsVerified" xml:space="preserve">
+        <value>Verifiziert</value>
+    </data>
 </root>

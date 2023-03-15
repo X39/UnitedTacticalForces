@@ -627,6 +627,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Verified.
+        /// </summary>
+        internal static string Pages_Users_Table_IsVerified {
+            get {
+                return ResourceManager.GetString("Pages_Users_Table_IsVerified", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Roles.
         /// </summary>
         internal static string Pages_Users_Table_Roles {

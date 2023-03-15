@@ -2,7 +2,7 @@
 @using X39.UnitedTacticalForces.WebApp.Services.UserRepository
 @inject IStringLocalizer<Language> Localizer
 @inject IUserRepository UserRepository
-@attribute [Authorize(Roles = Roles.Admin + "," + Roles.UserList)]
+@attribute [Authorize]
 <PageTitle>@Localizer[nameof(Language.Pages_Users_Title)]</PageTitle>
 <MudTable @ref="_mudTable"
           Dense="true"
@@ -13,6 +13,7 @@
           FixedFooter="true"
           FixedHeader="true">
     <ColGroup>
+        <col style="width: 0"/>
         <col style="width: 0"/>
         <col/>
         <col style="width: 0"/>
@@ -30,11 +31,15 @@
                       Class="mt-0"/>
     </ToolBarContent>
     <HeaderContent>
+        <MudTh>@Localizer[nameof(Language.Pages_Users_Table_IsVerified)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Title)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Roles)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Interactions)]</MudTh>
     </HeaderContent>
     <RowTemplate>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_IsVerified)]">
+            <Users_Interactions_ToggleVerified User="context"/>
+        </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Title)]">
             <UtfUser User="@context"/>
         </MudTd>

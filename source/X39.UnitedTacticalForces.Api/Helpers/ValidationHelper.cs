@@ -60,7 +60,7 @@ namespace X39.UnitedTacticalForces.Api.Helpers;
                     Nickname = profile.Nickname,
                     Roles = new List<Role>(),
                     SteamId64 = steamId64,
-                    Verified = Convert.ToBoolean(configuration[Constants.Configuration.General.AutoVerifyNewUsers] ?? "False"),
+                    IsVerified = Convert.ToBoolean(configuration[Constants.Configuration.General.AutoVerifyNewUsers] ?? "False"),
                 };
                 await apiDbContext.Users.AddAsync(user)
                     .ConfigureAwait(false);

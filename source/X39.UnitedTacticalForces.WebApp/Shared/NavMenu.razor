@@ -4,30 +4,40 @@
 @inject BaseUrl BaseUrl
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_Events)]</MudNavLink>
-    <AuthorizeView>
-        <MudNavLink Href="modpacks" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Extension">
-             @Localizer[nameof(Language.Shared_NavMenu_ModPacks)]
-        </MudNavLink>
-        <MudNavLink Href="terrains" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Map">
-            @Localizer[nameof(Language.Shared_NavMenu_Terrains)]
-        </MudNavLink>
-        <MudNavLink Href="users" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.People">
-            @Localizer[nameof(Language.Shared_NavMenu_Users)]
-        </MudNavLink>
-    </AuthorizeView>
+    @if (Me.IsVerified)
+    {
+        @if (Me.IsInRoleOrAdmin(Roles.ModPackCreate, Roles.ModPackDelete, Roles.ModPackModify))
+        {
+            <MudNavLink Href="modpacks" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Extension">
+                @Localizer[nameof(Language.Shared_NavMenu_ModPacks)]
+            </MudNavLink>
+        }
+        @if (Me.IsInRoleOrAdmin(Roles.TerrainCreate, Roles.TerrainDelete, Roles.TerrainModify))
+        {
+            <MudNavLink Href="terrains" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Map">
+                @Localizer[nameof(Language.Shared_NavMenu_Terrains)]
+            </MudNavLink>
+        }
+        @if (Me.IsInRoleOrAdmin(Roles.UserList))
+        {
+            <MudNavLink Href="users" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.People">
+                @Localizer[nameof(Language.Shared_NavMenu_Users)]
+            </MudNavLink>
+        }
+    }
 </MudNavMenu>
 <MudSpacer/>
 <MudNavMenu>
-    <AuthorizeView Roles="@(string.Join(",", Roles.Admin, Roles.UserList))">
-        <Authorized>
-            <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/logout?returnUrl={BaseUrl.SelfUrl}")" Icon="@Icons.Material.Filled.Logout">
-                <MudText>@Localizer[nameof(Language.Shared_NavMenu_Logout)]</MudText>
-            </MudNavLink>
-        </Authorized>
-        <NotAuthorized>
-            <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/login/steam?returnUrl={BaseUrl.SelfUrl}")" Icon="@Icons.Material.Filled.Login">
-                <MudImage Src="https://steamcdn-a.akamaihd.net/steamcommunity/public/images/steamworks_docs/german/sits_small.png"/>
-            </MudNavLink>
-        </NotAuthorized>
-    </AuthorizeView>
+    @if (Me.IsAuthenticated)
+    {
+        <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/logout?returnUrl={BaseUrl.SelfUrl}")" Icon="@Icons.Material.Filled.Logout">
+            <MudText>@Localizer[nameof(Language.Shared_NavMenu_Logout)]</MudText>
+        </MudNavLink>
+    }
+    else
+    {
+        <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/login/steam?returnUrl={BaseUrl.SelfUrl}")" Icon="@Icons.Material.Filled.Login">
+            <MudImage Src="https://steamcdn-a.akamaihd.net/steamcommunity/public/images/steamworks_docs/german/sits_small.png"/>
+        </MudNavLink>
+    }
 </MudNavMenu>
