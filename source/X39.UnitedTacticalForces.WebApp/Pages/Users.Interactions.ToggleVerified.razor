@@ -5,20 +5,18 @@
 @inject IUserRepository UserRepository
 @inject MeService MeService
 @inject IStringLocalizer<Language> Localizer
-@if (MeService.IsAuthenticated && User.PrimaryKey != MeService.User.PrimaryKey && MeService.IsInRolesOrAdmin(Roles.UserBan))
+@if (MeService.IsAuthenticated && User.PrimaryKey != MeService.User.PrimaryKey && MeService.IsInRolesOrAdmin(Roles.UserVerify))
 {
     <MudTooltip>
         <TooltipContent>
-            <MudText>@Localizer[nameof(Language.Pages_Users_ToggleBan_ToolTip)]</MudText>
+            <MudText>@Localizer[nameof(Language.Pages_Users_ToggleVerified_ToolTip)]</MudText>
         </TooltipContent>
         <ChildContent>
-    <MudToggleIconButton
-        ToggledIcon="@Icons.Material.Filled.DoDisturb"
-        Icon="@Icons.Material.Filled.CheckCircleOutline"
-        Color="Color.Success"
-        ToggledColor="Color.Error"
-        Toggled="@(User.IsBanned ?? false)"
-        ToggledChanged="ToggleUserBannedAsync"/>
+            <MudSwitch
+                ThumbIcon="@((User.Verified ?? false) ? Icons.Material.Filled.DoDisturb : Icons.Material.Filled.CheckCircleOutline)"
+                Color="Color.Success"
+                Checked="@(User.Verified ?? false)"
+                CheckedChanged="ToggleUserVerifiedAsync"/>
         </ChildContent>
     </MudTooltip>
 }
@@ -28,10 +26,10 @@
     [Parameter, EditorRequired, Required]
     public User User { get; set; } = null!;
 
-    private async Task ToggleUserBannedAsync()
+    private async Task ToggleUserVerifiedAsync()
     {
         Contract.Assert(User.PrimaryKey is not null);
-        await UserRepository.ToggleBanUserAsync(User.PrimaryKey.Value)
+        await UserRepository.ToggleVerifiedUserAsync(User.PrimaryKey.Value)
             .ConfigureAwait(false);
         User.IsBanned = !User.IsBanned;
     }

@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
@@ -41,6 +42,21 @@
       <ProjectReference Include="..\..\.submodules\SteamWebAPI2\src\SteamWebAPI2\SteamWebAPI2.csproj" />
       <ProjectReference Include="..\X39.UnitedTacticalForces.Common\X39.UnitedTacticalForces.Common.csproj" />
       <ProjectReference Include="..\X39.UnitedTacticalForces.Roles\X39.UnitedTacticalForces.Roles.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Update="Properties\Language.resx">
+        <Generator>ResXFileCodeGenerator</Generator>
+        <LastGenOutput>Language.Designer.cs</LastGenOutput>
+      </EmbeddedResource>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="Properties\Language.Designer.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Language.resx</DependentUpon>
+      </Compile>
     </ItemGroup>
 
 </Project>

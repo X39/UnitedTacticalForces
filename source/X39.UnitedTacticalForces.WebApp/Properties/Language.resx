@@ -234,4 +234,10 @@
     <data name="Pages_EventView_AssignToUser" xml:space="preserve">
         <value>Assign to user</value>
     </data>
+    <data name="Pages_Users_ToggleVerified_ToolTip" xml:space="preserve">
+        <value>Toggle verified status</value>
+    </data>
+    <data name="Pages_Users_ToggleBan_ToolTip" xml:space="preserve">
+        <value>Toggle ban status</value>
+    </data>
 </root>

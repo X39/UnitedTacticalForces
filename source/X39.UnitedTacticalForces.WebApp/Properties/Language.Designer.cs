@@ -654,6 +654,24 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Toggle ban status.
+        /// </summary>
+        internal static string Pages_Users_ToggleBan_ToolTip {
+            get {
+                return ResourceManager.GetString("Pages_Users_ToggleBan_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Toggle verified status.
+        /// </summary>
+        internal static string Pages_Users_ToggleVerified_ToolTip {
+            get {
+                return ResourceManager.GetString("Pages_Users_ToggleVerified_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Calendar.
         /// </summary>
         internal static string Shared_NavMenu_Calendar {

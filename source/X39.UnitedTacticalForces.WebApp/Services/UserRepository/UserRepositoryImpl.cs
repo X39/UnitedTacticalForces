@@ -40,7 +40,13 @@ internal class UserRepositoryImpl : RepositoryBase, IUserRepository
     public async Task ToggleBanUserAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await Client.UsersAsync(userId, cancellationToken).ConfigureAwait(false);
-        user.IsBanned = !user.IsBanned;
+        user.IsBanned = !(user.IsBanned ?? false);
+        await Client.UsersUpdateAsync(userId, user, cancellationToken).ConfigureAwait(false);
+    }
+    public async Task ToggleVerifiedUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await Client.UsersAsync(userId, cancellationToken).ConfigureAwait(false);
+        user.Verified = !(user.Verified ?? false);
         await Client.UsersUpdateAsync(userId, user, cancellationToken).ConfigureAwait(false);
     }
 

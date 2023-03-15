@@ -1,0 +1,94 @@
+<root>
+    <resheader name="resmimetype">
+        <value>text/microsoft-resx</value>
+    </resheader>
+    <resheader name="version">
+        <value>1.3</value>
+    </resheader>
+    <resheader name="reader">
+        <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <resheader name="writer">
+        <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    </resheader>
+    <data name="ServerController_Arma3_ServerCfg_PasswordAdmin_Title" xml:space="preserve">
+        <value>Admin Passwort</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_PasswordAdmin_Description" xml:space="preserve">
+        <value>Passwort zum Schutz des Admin-Zugangs über "#login &lt;PASSWORD&gt;".</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Password_Title" xml:space="preserve">
+        <value>Server Passwort</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Password_Description" xml:space="preserve">
+        <value>Passwort für die Verbindung zum Server.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_ServerCommandPassword_Title" xml:space="preserve">
+        <value>SQF Kommando Passwort</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_ServerCommandPassword_Description" xml:space="preserve">
+        <value>Kennwort, das für die alternative Syntax der serverseitigen Skripterstellung von serverCommand erforderlich ist (Groß-/Kleinschreibung wird berücksichtigt).</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_GeneralGroup" xml:space="preserve">
+        <value>Allgemein</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Hostname_Title" xml:space="preserve">
+        <value>Servername</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Hostname_Description" xml:space="preserve">
+        <value>Im Spielbrowser sichtbarer Servername.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxPlayers_Description" xml:space="preserve">
+        <value>Die maximale Anzahl von Spielern, die sich mit dem Server verbinden können. Die endgültige Zahl ist der kleinere Wert zwischen der hier angegebenen Zahl und der Anzahl der Missionsslots.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxPlayers_Title" xml:space="preserve">
+        <value>Maximale Spieleranzahl</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Motd_Description" xml:space="preserve">
+        <value>Meldung, die bei der Verbindung mit dem Server angezeigt wird.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Motd_Title" xml:space="preserve">
+        <value>MOTD</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Admins_Description" xml:space="preserve">
+        <value>Liste der Spieler-Uids (SteamID64), die in der Lage sind, sich ohne Angabe eines Passworts anzumelden.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Admins_Title" xml:space="preserve">
+        <value>Administratoren</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_HeadlessClients_Description" xml:space="preserve">
+        <value>Headless Client IPs. Multiple connections and addresses are allowed in the case of multiple headless clients.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_HeadlessClients_Title" xml:space="preserve">
+        <value>Headless-Client IPs</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_LocalClient_Title" xml:space="preserve">
+        <value>Lokale-Client IPs</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_LocalClient_Description" xml:space="preserve">
+        <value>Deklariert Clients mit unbegrenzter Bandbreite und fast ohne Latenz. Siehe Arma 3: Headless Client.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_FilePatchingExceptions_Title" xml:space="preserve">
+        <value>File-Patching ausnahmen</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_FilePatchingExceptions_Description" xml:space="preserve">
+        <value>Liste der Spieler-Uids (SteamId64), die die Regeln von allowedFilePatching und verifySignatures ignorieren dürfen, damit sie dem Server mit beliebigen Mods ihrer Wahl beitreten können.
+Signaturfehler werden immer noch vom Server bei der Verbindung protokolliert und können den Benutzer kicken, wenn der Fehler auftritt, bevor der Server die SteamID des Clients kennt, z. B. wenn sie versuchen, mit völlig unsignierten pbo's beizutreten.</value>
+    </data>
+    <data name="ServerController_Arma3_Host" xml:space="preserve">
+        <value>Host</value>
+    </data>
+    <data name="ServerController_Arma3_Host_ServerMod_Title" xml:space="preserve">
+        <value>Lädt die angegebenen Unterordner für verschiedene serverseitige (nicht an Clients übertragene) Mods. Getrennt durch Semikolons. Absoluter Pfad und mehrere gestapelte Ordner sind möglich.
+In Linux benötigen Argumente für mehrere Ordner die folgende Trennsyntax: -mod=mod1\;mod2\;mod3.</value>
+    </data>
+    <data name="ServerController_Arma3_Host_ServerMod_Description" xml:space="preserve">
+        <value>Server Modifikationen</value>
+    </data>
+    <data name="ServerController_Arma3_Host_Port_Title" xml:space="preserve">
+        <value>Port</value>
+    </data>
+    <data name="ServerController_Arma3_Host_Port_Description" xml:space="preserve">
+        <value>Port, auf dem der dedizierte Server lauschen soll.</value>
+    </data>
+</root>

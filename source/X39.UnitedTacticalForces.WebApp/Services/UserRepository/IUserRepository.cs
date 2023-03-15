@@ -15,4 +15,5 @@ public interface IUserRepository
     Task SetUserRoleAsync(Guid userId, long roleId, bool roleActive, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<Role>> GetAllRolesAsync(CancellationToken cancellationToken = default);
     Task ToggleBanUserAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task ToggleVerifiedUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }

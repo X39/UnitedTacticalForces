@@ -227,4 +227,10 @@
     <data name="Pages_EventView_AssignToUser" xml:space="preserve">
         <value>Benutzer zuweisen</value>
     </data>
+    <data name="Pages_Users_ToggleBan_ToolTip" xml:space="preserve">
+        <value>Banstatus umschalten</value>
+    </data>
+    <data name="Pages_Users_ToggleVerified_ToolTip" xml:space="preserve">
+        <value>Verifiziertstatus umschalten</value>
+    </data>
 </root>

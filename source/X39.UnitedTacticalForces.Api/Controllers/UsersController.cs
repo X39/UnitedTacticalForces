@@ -89,8 +89,10 @@ public class UsersController : ControllerBase
             existingUser.EMail = updatedUser.EMail;
         if (User.IsInRoleOrAdmin(Roles.UserViewSteamId64) || isSelf)
             existingUser.SteamId64 = updatedUser.SteamId64;
-        if (User.IsInRoleOrAdmin(Roles.UserBan) || isSelf)
+        if (User.IsInRoleOrAdmin(Roles.UserBan))
             existingUser.IsBanned = updatedUser.IsBanned;
+        if (User.IsInRoleOrAdmin(Roles.UserVerify))
+            existingUser.Verified = updatedUser.Verified;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -253,6 +255,9 @@ public class UsersController : ControllerBase
     /// <param name="includeRoles">
     ///     If <see langword="true"/>, the users returned will contain their roles.
     /// </param>
+    /// <param name="includeUnverified">
+    ///     If <see langword="true"/>, the users returned will also contain unverified users.
+    /// </param>
     /// <returns>
     ///     The available <see cref="User"/>'s.
     /// </returns>
@@ -264,7 +269,8 @@ public class UsersController : ControllerBase
         [FromQuery] int take,
         CancellationToken cancellationToken,
         [FromQuery] string? search = null,
-        [FromQuery] bool? includeRoles = false)
+        [FromQuery] bool? includeRoles = false,
+        [FromQuery] bool? includeUnverified = false)
     {
         if (take > 500)
             throw new ArgumentOutOfRangeException(nameof(take), take, "Take has a hard-maximum of 500.");
@@ -288,10 +294,98 @@ public class UsersController : ControllerBase
             }
         }
 
+        if (!(includeUnverified ?? false))
+        {
+            users = users.Where((q) => q.Verified);
+        }
+        else
+        {
+            if (User.IsInRoleOrAdmin(Roles.UserVerify))
+                return Unauthorized();
+        }
+
+        if (search.IsNotNullOrWhiteSpace())
+        {
+            search = search.Trim();
+            search = search.Replace("%", "\\%");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("_", "\\_");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("[", "\\[");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("]", "\\]");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("^", "\\^");
+            search = search.Replace("\\", "\\\\");
+            search = $"{search}%";
+            users  = users.Where((q) => EF.Functions.ILike(q.Nickname, search, "\\"));
+        }
         users = users
             .OrderBy((q) => q.Nickname)
             .Skip(skip)
             .Take(take);
+
+        var result = await users.ToArrayAsync(cancellationToken);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Returns the count of all <see cref="User"/>'s available.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="search">
+    ///     Searches the <see cref="User.Nickname"/> with a function akin to <see cref="string.StartsWith(string)"/>
+    /// </param>
+    /// <param name="includeRoles">
+    ///     If <see langword="true"/>, the users returned will contain their roles.
+    /// </param>
+    /// <param name="includeUnverified">
+    ///     If <see langword="true"/>, the users returned will also contain unverified users.
+    /// </param>
+    /// <returns>
+    ///     The count of available <see cref="User"/>'s.
+    /// </returns>
+    [Authorize]
+    [HttpPost("all/count", Name = nameof(GetUsersCountAsync))]
+    public async Task<ActionResult<long>> GetUsersCountAsync(
+        CancellationToken cancellationToken,
+        [FromQuery] string? search = null,
+        [FromQuery] bool? includeRoles = false,
+        [FromQuery] bool? includeUnverified = false)
+    {
+        IQueryable<User> users = _apiDbContext.Users;
+        User? currentUser = null;
+        if (includeRoles ?? false)
+        {
+            currentUser ??= await User.GetUserWithRolesAsync(_apiDbContext, cancellationToken);
+            if (currentUser is null)
+                return Unauthorized();
+
+            if (User.IsAdmin())
+            {
+                users = users.Include((e) => e.Roles);
+            }
+            else
+            {
+                var roleIds = currentUser.Roles?.Select((q) => q.PrimaryKey).ToArray() ?? Array.Empty<long>();
+                users = users.Include((e) => e.Roles!.Where((q) => roleIds.Contains(q.PrimaryKey)));
+            }
+        }
+
+        if (!(includeUnverified ?? false))
+        {
+            users = users.Where((q) => q.Verified);
+        }
+        else
+        {
+            if (User.IsInRoleOrAdmin(Roles.UserVerify))
+                return Unauthorized();
+        }
+
         if (search.IsNotNullOrWhiteSpace())
         {
             search = search.Trim();
@@ -309,29 +403,8 @@ public class UsersController : ControllerBase
             users  = users.Where((q) => EF.Functions.ILike(q.Nickname, search, "\\"));
         }
 
-        var result = await users.ToArrayAsync(cancellationToken);
+        var result = await users.CountAsync(cancellationToken);
 
-        return Ok(users);
-    }
-
-    /// <summary>
-    /// Returns the count of all <see cref="User"/>'s available.
-    /// </summary>
-    /// <param name="cancellationToken">
-    ///     A <see cref="CancellationToken"/> to cancel the operation.
-    ///     Passed automatically by ASP.Net framework.
-    /// </param>
-    /// <returns>
-    ///     The count of available <see cref="User"/>'s.
-    /// </returns>
-    [Authorize]
-    [HttpPost("all/count", Name = nameof(GetUsersCountAsync))]
-    public async Task<ActionResult<long>> GetUsersCountAsync(
-        CancellationToken cancellationToken)
-    {
-        var count = await _apiDbContext.Users
-            .LongCountAsync(cancellationToken);
-
-        return count;
+        return Ok(result);
     }
 }

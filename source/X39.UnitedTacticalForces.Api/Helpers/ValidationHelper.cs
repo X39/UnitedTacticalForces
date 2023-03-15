@@ -22,6 +22,7 @@ namespace X39.UnitedTacticalForces.Api.Helpers;
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
 
+            var configuration = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
             var steamRepository = context.HttpContext.RequestServices.GetRequiredService<SteamRepository>();
             var httpClient = context.HttpContext.RequestServices.GetRequiredService<HttpClient>();
             var apiDbContext = context.HttpContext.RequestServices.GetRequiredService<ApiDbContext>();
@@ -59,6 +60,7 @@ namespace X39.UnitedTacticalForces.Api.Helpers;
                     Nickname = profile.Nickname,
                     Roles = new List<Role>(),
                     SteamId64 = steamId64,
+                    Verified = Convert.ToBoolean(configuration[Constants.Configuration.General.AutoVerifyNewUsers] ?? "False"),
                 };
                 await apiDbContext.Users.AddAsync(user)
                     .ConfigureAwait(false);

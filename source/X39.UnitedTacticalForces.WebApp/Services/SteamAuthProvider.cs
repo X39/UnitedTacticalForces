@@ -25,7 +25,8 @@ public class SteamAuthProvider : AuthenticationStateProvider
         {
             new Claim(ClaimTypes.Name, user.Nickname ?? string.Empty),
             new Claim(ClaimTypes.NameIdentifier, (user.PrimaryKey ?? Guid.Empty).ToString()),
-        }.Concat(userClaims ?? Enumerable.Empty<Claim>());
+            user.Verified is true ? new Claim(ClaimTypes.Role, Roles.Verified) : default,
+        }.Concat(userClaims ?? Enumerable.Empty<Claim>()).NotNull();
     }
 
     public override Task<AuthenticationState> GetAuthenticationStateAsync()

@@ -24,6 +24,7 @@ public class User
 
     public byte[] Avatar { get; set; } = Array.Empty<byte>();
     public string AvatarMimeType { get; set; } = string.Empty;
+    public bool Verified { get; set; }
 
     public async ValueTask<ClaimsIdentity> ToIdentityAsync(
         ILazyLoader? lazyLoader = default,
@@ -47,6 +48,8 @@ public class User
         identity.AddClaim(new Claim(ClaimTypes.Name, PrimaryKey.ToString(), null, Constants.AuthorizationSchemas.Api));
         if (EMail is not null)
             identity.AddClaim(new Claim(ClaimTypes.Email, EMail, null, Constants.AuthorizationSchemas.Api));
+        if (Verified)
+            identity.AddClaim(new Claim(ClaimTypes.Role, X39.UnitedTacticalForces.Roles.Verified, null, Constants.AuthorizationSchemas.Api));
         return identity;
     }
 }

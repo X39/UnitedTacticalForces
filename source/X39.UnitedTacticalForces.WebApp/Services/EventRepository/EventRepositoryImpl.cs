@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Net;
+using X39.UnitedTacticalForces.WebApp.ExtensionMethods;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services.EventRepository;
@@ -74,7 +75,12 @@ internal class EventRepositoryImpl : RepositoryBase, IEventRepository
     {
         if (eventItem.PrimaryKey is null)
             throw new ArgumentException("Event.PrimaryKey is null.", nameof(eventItem));
-        await Client.EventsUpdateAsync(eventItem.PrimaryKey.Value, eventItem, cancellationToken)
+        var clone = eventItem.Clone();
+        clone.Owner = null;
+        clone.HostedBy = null;
+        clone.ModPack  = null;
+        clone.Terrain  = null;
+        await Client.EventsUpdateAsync(eventItem.PrimaryKey.Value, clone, cancellationToken)
             .ConfigureAwait(false);
     }
 }
