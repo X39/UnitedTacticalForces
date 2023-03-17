@@ -10,6 +10,9 @@ using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.Properties;
+using X39.Util;
+using X39.Util.Collections;
+using StreamWriter = System.IO.StreamWriter;
 
 namespace X39.UnitedTacticalForces.Api.Services.GameServerController.Controllers;
 
@@ -71,6 +74,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
 
     private const string RealmHost      = "host";
     private const string RealmServerCfg = "server.cfg";
+    private const string RealmBasicCfg  = "basic.cfg";
 
     /// <inheritdoc />
     public override IEnumerable<ConfigurationEntryDefinition> GetConfigurationEntryDefinitions(CultureInfo cultureInfo)
@@ -91,6 +95,15 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Text, "localClient[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_LocalClient_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_LocalClient_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Text, "filePatchingExceptions[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_FilePatchingExceptions_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_FilePatchingExceptions_Description), cultureInfo) ?? string.Empty);
         // https://community.bistudio.com/wiki/Arma_3:_Basic_Server_Config_File
+        yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxMsgSend", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxMsgSend_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxMsgSend_Description), cultureInfo) ?? string.Empty, DefaultValue: "128");
+        yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxSizeGuaranteed", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Description), cultureInfo) ?? string.Empty, DefaultValue: "512");
+        yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxSizeNonguaranteed", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Description), cultureInfo) ?? string.Empty, DefaultValue: "256");
+        yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MinBandwidth", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MinBandwidth_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MinBandwidth_Description), cultureInfo) ?? string.Empty, DefaultValue: "131072");
+        yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxBandwidth", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxBandwidth_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxBandwidth_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MinErrorToSend", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MinErrorToSend_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MinErrorToSend_Description), cultureInfo) ?? string.Empty, DefaultValue: "0.001");
+        yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MinErrorToSendNear", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MinErrorToSendNear_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MinErrorToSendNear_Description), cultureInfo) ?? string.Empty, DefaultValue: "0.01");
+        yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxCustomFileSize", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxCustomFileSize_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxCustomFileSize_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "sockets/maxPacketSize", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Description), cultureInfo) ?? string.Empty, DefaultValue: "1400");
         // https://community.bistudio.com/wiki/Arma_3:_Server_Profile
         // https://community.bistudio.com/wiki/Arma_3:_Startup_Parameters
         // ReSharper restore StringLiteralTypo
@@ -120,6 +133,29 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             fileStreamOptions);
     }
 
+    private StreamWriter CreateBasicConfigurationWriter()
+    {
+        var fileStreamOptions = new FileStreamOptions
+        {
+            Mode    = FileMode.Create,
+            Access  = FileAccess.Write,
+            Share   = FileShare.Read,
+            Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
+        };
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            fileStreamOptions.UnixCreateMode =
+                UnixFileMode.UserRead
+                | UnixFileMode.GroupRead
+                | UnixFileMode.OtherRead;
+        }
+
+        return new StreamWriter(
+            BasicConfigurationPath,
+            Encoding.UTF8,
+            fileStreamOptions);
+    }
+
     private static string ToArmaString(string input)
     {
         var builder = new StringBuilder(input.Length + input.Count((c) => c is '"') + 2);
@@ -135,50 +171,71 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         return builder.ToString();
     }
 
-    private string BattleEyePath => Path.Combine(GameInstallPath, "battle-eye");
+    private string BattleEyePath => Path.Combine(GameServerPath, "battle-eye");
 
-    private string ServerConfigurationPath => Path.Combine(GameInstallPath, "server.cfg");
+    private string ServerConfigurationPath => Path.Combine(GameServerPath, "server.cfg");
 
-    private string BasicConfigurationPath => Path.Combine(GameInstallPath, "basic.cfg");
+    private string BasicConfigurationPath => Path.Combine(GameServerPath, "basic.cfg");
 
-    private string PidPath => Path.Combine(GameInstallPath, "server.pid");
+    private string PidPath => Path.Combine(GameServerPath, "server.pid");
 
-    private string ProfilesPath => Path.Combine(GameInstallPath, "profiles");
+    private string ProfilesPath => Path.Combine(GameServerPath, "profiles");
 
     /// <inheritdoc />
     protected override async Task DoUpdateConfigurationAsync()
     {
+        var activePathSegment = Array.Empty<string>();
+        static string Tab(int len) => len <= 0 ? string.Empty : new string(' ', len * 4);
+
+        async Task WritePathSegmentsIfNeeded(StreamWriter streamWriter, string[] pathSegments)
+        {
+            if (activePathSegment.SequenceEqual(pathSegments))
+                return;
+            var remainingMatchingPathSegments = activePathSegment
+                .Zip(pathSegments)
+                .TakeWhile((q) => q.First == q.Second)
+                .Select((q) => q.First)
+                .ToArray();
+            for (var i = activePathSegment.Length; i > remainingMatchingPathSegments.Length; i--)
+                await streamWriter.WriteLineAsync($"{Tab(i - 1)}}};").ConfigureAwait(false);
+            for (var i = activePathSegment.Length; i < pathSegments.Length; i++)
+                await streamWriter.WriteLineAsync($"{Tab(i)}class {pathSegments[i]} {{")
+                    .ConfigureAwait(false);
+            activePathSegment = pathSegments;
+        }
+
         await using var dbContext = await DbContextFactory.CreateDbContextAsync()
             .ConfigureAwait(false);
         var gameServerPk = GameServer.PrimaryKey;
-        var configurationEntries = dbContext.ConfigurationEntries
+        var configurationEntries = await dbContext.ConfigurationEntries
             .Where((q) => q.GameServerFk == gameServerPk)
             .Where((q) => q.IsActive)
             .Where((q) => q.Realm != RealmHost)
             .OrderBy((q) => q.Realm)
             .ThenBy((q) => q.Path)
-            .AsAsyncEnumerable();
-        StreamWriter? streamWriter = null;
+            .ToArrayAsync();
         var entryDefinitions = GetConfigurationEntryDefinitions(CultureInfo.CurrentUICulture)
             .ToDictionary((q) => (q.Realm, q.Path));
-        try
+        await CreateBasicConfigurationWriter().DisposeAsync().ConfigureAwait(false);
+        await CreateServerConfigurationWriter().DisposeAsync().ConfigureAwait(false);
+        foreach (var group in configurationEntries.GroupBy((q) => q.Realm))
         {
-            var realm = string.Empty;
-            await foreach (var configurationEntry in configurationEntries.ConfigureAwait(false))
+            await using var streamWriter = group.Key switch
             {
-                if (configurationEntry.Realm != realm || streamWriter is null)
-                {
-                    realm = configurationEntry.Realm;
-                    if (streamWriter is not null)
-                        await streamWriter.DisposeAsync()
-                            .ConfigureAwait(false);
-                    streamWriter = realm switch
-                    {
-                        RealmHost      => throw new Exception($"Query fault. Query should not return {realm} but did."),
-                        RealmServerCfg => CreateServerConfigurationWriter(),
-                        _              => throw new InvalidDataException($"Unknown realm {realm}")
-                    };
-                }
+                RealmHost      => throw new Exception($"Query fault. Query should not return {group.Key} but did."),
+                RealmBasicCfg  => CreateBasicConfigurationWriter(),
+                RealmServerCfg => CreateServerConfigurationWriter(),
+                _              => throw new InvalidDataException($"Unknown realm {group.Key}"),
+            };
+
+            foreach (var configurationEntry in group
+                         .OrderBy((q) => q.Path))
+            {
+                var splattedPath = configurationEntry.Path.Split('/');
+                var pathSegments = splattedPath.SkipLast(1).ToArray();
+                var actualPath = splattedPath.Last();
+                await WritePathSegmentsIfNeeded(streamWriter, pathSegments)
+                    .ConfigureAwait(false);
 
                 var path = configurationEntry.Path;
                 var definition = entryDefinitions.GetValueOrDefault(
@@ -186,14 +243,11 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                 var value = definition?.Kind is EConfigurationEntryKind.Text
                     ? ToArmaString(configurationEntry.Value)
                     : configurationEntry.Value;
-                await streamWriter.WriteLineAsync($"{path} = {value};");
+                await streamWriter.WriteLineAsync($"{Tab(pathSegments.Length)}{actualPath} = {value};");
             }
-        }
-        finally
-        {
-            if (streamWriter is not null)
-                await streamWriter.DisposeAsync()
-                    .ConfigureAwait(false);
+
+            await WritePathSegmentsIfNeeded(streamWriter, Array.Empty<string>())
+                .ConfigureAwait(false);
         }
     }
 
@@ -211,24 +265,8 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                 : "arma3server_x64");
         var modList = await GetWorkshopPathsAsync(dbContext)
             .ConfigureAwait(false);
-        return new ProcessStartInfo
+        var psi = new ProcessStartInfo
         {
-            ArgumentList =
-            {
-                // ReSharper disable StringLiteralTypo
-                $"-profiles={ProfilesPath}",
-                $"-pid={PidPath}",
-                $"-cfg={BasicConfigurationPath}",
-                $"-config={ServerConfigurationPath}",
-                $"-bepath{BattleEyePath}",
-                $"-port={await GetAsync("host:://port", 12345).ConfigureAwait(false)}",
-                $"-serverMod={await GetAsync("host:://serverMod", 12345).ConfigureAwait(false)}",
-                $"-bandwidthAlg={2}",
-                $"-limitFPS={50}",
-                $"-mods={string.Join(';', modList)}",
-                "-loadMissionToMemory",
-                // ReSharper restore StringLiteralTypo
-            },
             FileName               = fileName,
             RedirectStandardError  = true,
             RedirectStandardInput  = false,
@@ -240,6 +278,37 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             WindowStyle            = ProcessWindowStyle.Hidden,
             UseShellExecute        = false,
         };
+        // ReSharper disable StringLiteralTypo
+        psi.ArgumentList.Add($"-pid={PidPath}");
+        psi.ArgumentList.Add($"-bandwidthAlg={2}");
+        psi.ArgumentList.Add($"-limitFPS={120}");
+        psi.ArgumentList.Add("-loadMissionToMemory");
+
+        if (File.Exists(BasicConfigurationPath))
+            psi.ArgumentList.Add($"-cfg={BasicConfigurationPath}");
+
+        if (File.Exists(ServerConfigurationPath))
+            psi.ArgumentList.Add($"-config={ServerConfigurationPath}");
+
+        Directory.CreateDirectory(BattleEyePath);
+        psi.ArgumentList.Add($"-bepath={BattleEyePath}");
+
+        Directory.CreateDirectory(ProfilesPath);
+        psi.ArgumentList.Add($"-profiles={ProfilesPath}");
+
+        var port = await GetAsync("host://port", -1).ConfigureAwait(false);
+        if (port > 0)
+            psi.ArgumentList.Add($"-port={port.ToString()}");
+        var serverMod = await GetAsync("host://serverMod").ConfigureAwait(false);
+        if (serverMod.IsNotNullOrWhiteSpace())
+            psi.ArgumentList.Add($"-serverMod={serverMod}");
+
+        var mods = await GetWorkshopPathsAsync(dbContext).ConfigureAwait(false);
+        if (mods.Any())
+            psi.ArgumentList.Add($"-mods={string.Join(';', modList)}");
+        // ReSharper restore StringLiteralTypo
+
+        return psi;
     }
 
     /// <inheritdoc />

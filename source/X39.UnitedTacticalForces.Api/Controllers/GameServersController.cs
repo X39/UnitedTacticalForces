@@ -409,10 +409,13 @@ public class GameServersController : ControllerBase
 
         foreach (var configurationEntry in configurationEntries)
         {
-            configurationEntry.PrimaryKey  = default;
-            configurationEntry.IsActive    = true;
-            configurationEntry.TimeStamp   = now;
-            configurationEntry.ChangedByFk = user.PrimaryKey;
+            configurationEntry.PrimaryKey   = default;
+            configurationEntry.IsActive     = true;
+            configurationEntry.TimeStamp    = now;
+            configurationEntry.ChangedByFk  = user.PrimaryKey;
+            configurationEntry.ChangedBy    = default;
+            configurationEntry.GameServer   = default;
+            configurationEntry.GameServerFk = gameServerId;
             if (definitions.TryGetValue($"{configurationEntry.Realm}://{configurationEntry.Path}", out var definition))
             {
                 configurationEntry.IsSensitive = definition.Kind is EConfigurationEntryKind.Password;

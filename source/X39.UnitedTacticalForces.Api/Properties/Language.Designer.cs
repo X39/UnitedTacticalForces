@@ -60,6 +60,15 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to General.
+        /// </summary>
+        internal static string ServerController_Arma3_BasicCfg_GeneralGroup {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BasicCfg_GeneralGroup", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Host.
         /// </summary>
         internal static string ServerController_Arma3_Host {
@@ -206,6 +215,60 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Bandwidth that is guaranteed never to be available to the server (in bps). This value helps the server estimate the available bandwidth..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxBandwidth_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxBandwidth_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum bandwidth.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxBandwidth_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxBandwidth_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Users with a custom face or custom tone larger than this size will be rejected when attempting to connect..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxCustomFileSize_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxCustomFileSize_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum custom file size.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxCustomFileSize_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxCustomFileSize_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum number of packets (grouped messages) that can be sent in one simulation cycle (&quot;frame&quot;). Increasing this value can reduce the delay on servers with high upload bandwidth..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxMsgSend_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxMsgSend_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum messages per frame.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxMsgSend_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxMsgSend_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The maximum number of players that can connect to the server. The final number is the smaller value between the number given here and the number of mission slots..
         /// </summary>
         internal static string ServerController_Arma3_ServerCfg_MaxPlayers_Description {
@@ -220,6 +283,101 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         internal static string ServerController_Arma3_ServerCfg_MaxPlayers_Title {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxPlayers_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum size (payload) of the guaranteed packet in bytes (without header). Small messages are packed into larger packets (aggregate messages). Guaranteed packets (aggregate messages) are used for non-recurring events like firing..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum TCP package size.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum size (payload) of the non-guaranteed packet in bytes (without header). Small messages are packed into larger packets (aggregate messages). Non-guaranteed packets (aggregate messages) are used for repetitive updates such as the position of soldiers or vehicles. Increasing this value can improve the bandwidth requirement, but may increase the delay..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum UDP package size.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Bandwidth guaranteed to the server (in bps). This value helps the server estimate the available bandwidth. An overly optimistic value can increase delay and CPU load because too many messages are sent but discarded..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MinBandwidth_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MinBandwidth_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Expected minimal bandwidth.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MinBandwidth_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MinBandwidth_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minimal bug when sending updates over the network. Using a smaller value can cause units observed with binoculars or sniper rifles to move more smoothly, but this comes with increased network traffic.
+        ///Example: A unit 1 km (distance d = 1 km) from the player with MinErrorToSend = 0.001 (METS = 0.001) would send an update if that unit moved 50 m (error value E = 50).
+        ///Formula: d = sqrt[(20E)/METS] ; 1000 = sqrt[(20E)/0.001] -&gt; E = 50
+        ///In reality, other factors of the object are also considered according to a [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MinErrorToSend_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MinErrorToSend_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minmal error to send.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MinErrorToSend_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MinErrorToSend_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minimal error when sending updates over the network for nearby units. Using a larger value may reduce traffic for nearby units. Also used to control traffic between client and server.
+        ///Using MinErrorToSend alone, for small distance values (d), the frequency of high errors (E) would result in excessive network messages that are not necessary but could negatively affect FPS.
+        ///Too large a value for METSN may prevent desirable network update messages from being sent in a timely manner, causing units to appear t [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MinErrorToSendNear_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MinErrorToSendNear_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minimal error to send near.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MinErrorToSendNear_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MinErrorToSendNear_Title", resourceCulture);
             }
         }
         
@@ -292,6 +450,26 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         internal static string ServerController_Arma3_ServerCfg_ServerCommandPassword_Title {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_ServerCfg_ServerCommandPassword_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum size of the packet sent over the network. This can be set independently for both client-to-server and server-to-client(s)!
+        ///!!! Only use if your router or ISP enforces a smaller packet size and you have connection problems with the game.
+        ///Desync could happen if MaxSizeGuaranteed/MaxSizeNonuaranteed values above maxPacketSize are used..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Max package size.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Title", resourceCulture);
             }
         }
     }

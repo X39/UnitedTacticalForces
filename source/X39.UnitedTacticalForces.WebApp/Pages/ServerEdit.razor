@@ -287,7 +287,8 @@ else
         {
             Realm = realm;
             Entries = entries
-                .OrderBy((q) => q.Definition.DisplayGroup)
+                .OrderByDescending((q) => q.Definition.Required)
+                .ThenBy((q) => q.Definition.DisplayGroup)
                 .ThenBy((q) => q.Definition.DisplayName)
                 .ToImmutableArray();
         }

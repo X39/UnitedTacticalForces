@@ -91,4 +91,69 @@ In Linux benötigen Argumente für mehrere Ordner die folgende Trennsyntax: -mod
     <data name="ServerController_Arma3_Host_ServerMod_Title" xml:space="preserve">
         <value>Server Modifikationen</value>
     </data>
+    <data name="ServerController_Arma3_BasicCfg_GeneralGroup" xml:space="preserve">
+        <value>Allgemein</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxBandwidth_Title" xml:space="preserve">
+        <value>Maximale Bandbreite</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxCustomFileSize_Title" xml:space="preserve">
+        <value>Maximale Dateigröße für Benutzerdateien</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxMsgSend_Title" xml:space="preserve">
+        <value>Maximale Anzahl an Nachrichten pro Frame</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Title" xml:space="preserve">
+        <value>Maximale TCP Paketgröße</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Title" xml:space="preserve">
+        <value>Maximale UDP Paketgröße</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinBandwidth_Title" xml:space="preserve">
+        <value>Erwartete minimale Bandbreite</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinErrorToSendNear_Title" xml:space="preserve">
+        <value>Minimal zu versendende Fehler Nah</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinErrorToSend_Title" xml:space="preserve">
+        <value>Minimal zu versendende Fehler</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxMsgSend_Description" xml:space="preserve">
+        <value>Maximale Anzahl von Paketen (zusammengefasste Nachrichten), die in einem Simulationszyklus ("Frame") gesendet werden können. Eine Erhöhung dieses Wertes kann die Verzögerung auf Servern mit hoher Upload-Bandbreite verringern.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Description" xml:space="preserve">
+        <value>Maximale Größe (Nutzlast) des garantierten Pakets in Bytes (ohne Header). Kleine Nachrichten werden zu größeren Paketen (Aggregatnachrichten) gepackt. Garantierte Pakete (Aggregatnachrichten) werden für nicht wiederkehrende Ereignisse wie Schießen verwendet.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Description" xml:space="preserve">
+        <value>Maximale Größe (Nutzlast) des nicht garantierten Pakets in Bytes (ohne Header). Kleine Nachrichten werden zu größeren Paketen (Aggregatnachrichten) gepackt. Nicht garantierte Pakete (aggregierte Nachrichten) werden für sich wiederholende Aktualisierungen wie die Position von Soldaten oder Fahrzeugen verwendet. Eine Erhöhung dieses Wertes kann die Bandbreitenanforderung verbessern, kann aber die Verzögerung erhöhen.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinBandwidth_Description" xml:space="preserve">
+        <value>Bandbreite, die dem Server garantiert wird (in bps). Dieser Wert hilft dem Server bei der Einschätzung der verfügbaren Bandbreite. Ein zu optimistischer Wert kann die Verzögerung und die CPU-Last erhöhen, da zu viele Nachrichten gesendet, aber verworfen werden.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxBandwidth_Description" xml:space="preserve">
+        <value>Bandbreite, die dem Server garantiert nie zur Verfügung steht (in bps). Dieser Wert hilft dem Server bei der Einschätzung der verfügbaren Bandbreite.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinErrorToSend_Description" xml:space="preserve">
+        <value>Minimaler Fehler beim Senden von Aktualisierungen über das Netzwerk. Die Verwendung eines kleineren Wertes kann dazu führen, dass Einheiten, die mit einem Fernglas oder Scharfschützengewehr beobachtet werden, sich flüssiger bewegen, was jedoch mit einem erhöhten Netzwerkverkehr einhergeht.
+Beispiel: Eine Einheit, die 1 km (Entfernung d = 1 km) vom Spieler entfernt ist, mit MinErrorToSend = 0,001 (METS = 0,001) würde eine Aktualisierung senden, wenn sich diese Einheit 50 m bewegt (Fehlerwert E = 50).
+Formel: d = sqrt[(20E)/METS] ; 1000 = sqrt[(20E)/0.001] -&gt; E = 50
+In der Realität werden auch andere Faktoren des Objekts nach einer gewichteten Skala berücksichtigt.
+Wenn der Fehlerwert (E) zwischen der Master-Kopie eines Objekts (wem auch immer das Objekt "gehört") und der von einem Client wahrgenommenen/simulierten Kopie desselben Objekts &gt;= MinErrorToSend (METS) ist, wird eine Netzwerkaktualisierungsnachricht für dieses Objekt gesendet.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinErrorToSendNear_Description" xml:space="preserve">
+        <value>Minimaler Fehler beim Senden von Aktualisierungen über das Netz für nahe Einheiten. Die Verwendung eines größeren Wertes kann den Datenverkehr für nahe Einheiten reduzieren. Wird auch zur Kontrolle des Datenverkehrs zwischen Client und Server verwendet.
+Bei der Verwendung von MinErrorToSend allein würde bei kleinen Entfernungswerten (d) die Häufigkeit von hohen Fehlern (E) zu übermäßigen Netzwerkmeldungen führen, die nicht notwendig sind, aber die FPS negativ beeinflussen könnten.
+Ein zu großer Wert für METSN kann verhindern, dass rechtzeitig wünschenswerte Netzwerk-Update-Nachrichten gesendet werden, was dazu führen kann, dass sich die Einheiten zu "verziehen" scheinen.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Description" xml:space="preserve">
+        <value>Maximale Größe des über das Netz gesendeten Pakets. Dies kann sowohl für Client-to-Server als auch für Server-to-Client(s) unabhängig voneinander eingestellt werden!
+!!! Nur verwenden, wenn Ihr Router oder ISP eine geringere Paketgröße erzwingt und Sie Verbindungsprobleme mit dem Spiel haben.
+Desync könnte passieren, wenn MaxSizeGuaranteed/MaxSizeNonuaranteed Werte über der maxPacketSize verwendet werden.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Title" xml:space="preserve">
+        <value>Maximale Paketgröße</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxCustomFileSize_Description" xml:space="preserve">
+        <value>Benutzer mit einem benutzerdefinierten Gesicht oder einem benutzerdefinierten Ton, der größer als diese Größe ist, werden beim Verbindungsversuch abgewiesen.</value>
+    </data>
 </root>

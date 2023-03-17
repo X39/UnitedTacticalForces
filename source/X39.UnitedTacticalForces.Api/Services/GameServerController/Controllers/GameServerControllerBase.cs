@@ -51,6 +51,7 @@ public abstract class GameServerControllerBase : IGameServerController
             var path = identifier[(splitIndex + 3)..];
             var gameServerPk = GameServer.PrimaryKey;
             var value = await dbContext.ConfigurationEntries
+                .Where((q) => q.IsActive)
                 .Where((q) => q.GameServerFk == gameServerPk)
                 .Where((q) => q.Realm == realm && q.Path == path)
                 .Select((q) => q.Value)

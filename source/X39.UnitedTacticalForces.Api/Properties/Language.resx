@@ -98,4 +98,69 @@ Signature errors are still logged by the server on connection and can kick the u
         <value>Loads the specified subfolders for various server-side (not transferred to clients) mods. Separated by semicolons. Absolute path and multiple stacked folders are possible.
 In Linux, arguments for multiple folders require the following separator syntax: -mod=mod1\;mod2\;mod3.</value>
     </data>
+    <data name="ServerController_Arma3_BasicCfg_GeneralGroup" xml:space="preserve">
+        <value>General</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxMsgSend_Title" xml:space="preserve">
+        <value>Maximum messages per frame</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Title" xml:space="preserve">
+        <value>Maximum TCP package size</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Title" xml:space="preserve">
+        <value>Maximum UDP package size</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinBandwidth_Title" xml:space="preserve">
+        <value>Expected minimal bandwidth</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxBandwidth_Title" xml:space="preserve">
+        <value>Maximum bandwidth</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinErrorToSend_Title" xml:space="preserve">
+        <value>Minmal error to send</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinErrorToSendNear_Title" xml:space="preserve">
+        <value>Minimal error to send near</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxCustomFileSize_Title" xml:space="preserve">
+        <value>Maximum custom file size</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Title" xml:space="preserve">
+        <value>Max package size</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxMsgSend_Description" xml:space="preserve">
+        <value>Maximum number of packets (grouped messages) that can be sent in one simulation cycle ("frame"). Increasing this value can reduce the delay on servers with high upload bandwidth.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Description" xml:space="preserve">
+        <value>Maximum size (payload) of the guaranteed packet in bytes (without header). Small messages are packed into larger packets (aggregate messages). Guaranteed packets (aggregate messages) are used for non-recurring events like firing.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Description" xml:space="preserve">
+        <value>Maximum size (payload) of the non-guaranteed packet in bytes (without header). Small messages are packed into larger packets (aggregate messages). Non-guaranteed packets (aggregate messages) are used for repetitive updates such as the position of soldiers or vehicles. Increasing this value can improve the bandwidth requirement, but may increase the delay.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinBandwidth_Description" xml:space="preserve">
+        <value>Bandwidth guaranteed to the server (in bps). This value helps the server estimate the available bandwidth. An overly optimistic value can increase delay and CPU load because too many messages are sent but discarded.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxBandwidth_Description" xml:space="preserve">
+        <value>Bandwidth that is guaranteed never to be available to the server (in bps). This value helps the server estimate the available bandwidth.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinErrorToSend_Description" xml:space="preserve">
+        <value>Minimal bug when sending updates over the network. Using a smaller value can cause units observed with binoculars or sniper rifles to move more smoothly, but this comes with increased network traffic.
+Example: A unit 1 km (distance d = 1 km) from the player with MinErrorToSend = 0.001 (METS = 0.001) would send an update if that unit moved 50 m (error value E = 50).
+Formula: d = sqrt[(20E)/METS] ; 1000 = sqrt[(20E)/0.001] -&gt; E = 50
+In reality, other factors of the object are also considered according to a weighted scale.
+If the error value (E) between the master copy of an object (whoever "owns" the object) and the perceived/simulated copy of the same object by a client is &gt;= MinErrorToSend (METS), a network update message is sent for that object.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MinErrorToSendNear_Description" xml:space="preserve">
+        <value>Minimal error when sending updates over the network for nearby units. Using a larger value may reduce traffic for nearby units. Also used to control traffic between client and server.
+Using MinErrorToSend alone, for small distance values (d), the frequency of high errors (E) would result in excessive network messages that are not necessary but could negatively affect FPS.
+Too large a value for METSN may prevent desirable network update messages from being sent in a timely manner, causing units to appear to "warp".</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_MaxCustomFileSize_Description" xml:space="preserve">
+        <value>Users with a custom face or custom tone larger than this size will be rejected when attempting to connect.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Description" xml:space="preserve">
+        <value>Maximum size of the packet sent over the network. This can be set independently for both client-to-server and server-to-client(s)!
+!!! Only use if your router or ISP enforces a smaller packet size and you have connection problems with the game.
+Desync could happen if MaxSizeGuaranteed/MaxSizeNonuaranteed values above maxPacketSize are used.</value>
+    </data>
 </root>

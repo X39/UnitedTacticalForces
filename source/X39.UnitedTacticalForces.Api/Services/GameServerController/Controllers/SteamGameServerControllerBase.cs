@@ -118,7 +118,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         "User {User} has requested starting of server {GameServer} ({GameServerPk}) with {LaunchArgs}",
                         GameServer.Title,
                         GameServer.PrimaryKey,
-                        processStartInfo.ArgumentList,
+                        $"{processStartInfo.FileName} {string.Join(' ', processStartInfo.ArgumentList.Select((q)=>string.Concat('"', q, '"')))}",
                         executingUser?.PrimaryKey);
                     var process = new Process
                     {
@@ -131,10 +131,15 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                     try
                     {
                         var startResult = process.Start();
+                        Process = process;
                         process.BeginErrorReadLine();
                         process.BeginOutputReadLine();
                         await OnStartAsync(executingUser, dbContext, process).ConfigureAwait(false);
+                        await Task.Delay(TimeSpan.FromSeconds(1))
+                            .ConfigureAwait(false);
                         if (startResult is false)
+                            throw new FailedToStartProcessException(processStartInfo);
+                        if (Process.HasExited)
                             throw new FailedToStartProcessException(processStartInfo);
                         GameServer.Status = ELifetimeStatus.Running;
                         await dbContext.LifetimeEvents.AddAsync(
@@ -166,10 +171,12 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                             GameServer.PrimaryKey,
                             processStartInfo.ArgumentList,
                             executingUser?.PrimaryKey);
+                        Process           = null;
+                        GameServer.Status = ELifetimeStatus.Stopped;
+                        await dbContext.SaveChangesAsync()
+                            .ConfigureAwait(false);
                         throw;
                     }
-
-                    Process = process;
                 })
             .ConfigureAwait(false);
     }
@@ -217,7 +224,8 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         else
                             Process.Kill();
 
-                        while (!Process.HasExited)
+                        // ReSharper disable once MergeIntoPattern
+                        while (Process is {} process && !process.HasExited)
                         {
                             await Task.Delay(250);
                         }
@@ -237,16 +245,16 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                             GameServer.PrimaryKey,
                             executingUser?.PrimaryKey);
                         // ReSharper disable once AccessToDisposedClosure
-                        Fault.Ignore(() => Process.Kill(true));
+                        Fault.Ignore(() => Process?.Kill(true));
                     }
                     finally
                     {
-                        Process.CancelErrorRead();
-                        Process.CancelOutputRead();
-                        Process.Close();
+                        Process?.CancelErrorRead();
+                        Process?.CancelOutputRead();
+                        Process?.Close();
                         var tmp = Process;
                         Process = null;
-                        tmp.Dispose();
+                        tmp?.Dispose();
                     }
 
                     GameServer.Status = ELifetimeStatus.Stopped;
@@ -269,9 +277,26 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
     }
 
     /// <summary>
-    /// Returns the path where the game server is installed.
+    /// Returns the path where the actual game server is installed.
     /// </summary>
     public string GameInstallPath
+    {
+        get
+        {
+            var installBasePath = GetInstallBasePath();
+            var installPath = Path.Combine(
+                installBasePath,
+                ServerAppId.ToString(),
+                GameServer.PrimaryKey.ToString("00000000"),
+                "server-instance");
+            return installPath;
+        }
+    }
+
+    /// <summary>
+    /// Returns the path where the game server is living.
+    /// </summary>
+    public string GameServerPath
     {
         get
         {
@@ -641,8 +666,11 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                                 TimeStamp = now,
                                 LogLevel  = logLevel,
                                 Message   = message,
+                                Source = $"[{GameServer.PrimaryKey}] {GameServer.Title}",
                             },
                             _cancellationTokenSource.Token)
+                        .ConfigureAwait(false);
+                    await dbContext.SaveChangesAsync()
                         .ConfigureAwait(false);
                 }
                 catch (Exception ex)
@@ -661,6 +689,23 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
 
     private void ProcessOnExited(object? sender, EventArgs e)
     {
-        BeginWritingServerLog(LogLevel.Information, "-----Process exited-----");
+        using var dbContext = DbContextFactory.CreateDbContext();
+        dbContext.GameServers.Attach(GameServer);
+        GameServer.Status = ELifetimeStatus.Stopped;
+        dbContext.SaveChanges();
+        if (Process is { } process)
+        {
+            var exitCode = process.ExitCode;
+            var exitTime = process.ExitTime;
+            Process = null;
+            // ReSharper disable once AccessToDisposedClosure
+            Fault.Ignore(() => process.Kill());
+            process.Dispose();
+            BeginWritingServerLog(exitCode is 0 ? LogLevel.Information : LogLevel.Error, $"-----Process exited with {exitCode:X} at {exitTime}-----");
+        }
+        else
+        {
+            BeginWritingServerLog(LogLevel.Information, "-----Process exited-----");
+        }
     }
 }
