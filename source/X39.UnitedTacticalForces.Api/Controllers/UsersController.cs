@@ -300,7 +300,7 @@ public class UsersController : ControllerBase
         }
         else
         {
-            if (User.IsInRoleOrAdmin(Roles.UserVerify))
+            if (!User.IsInRoleOrAdmin(Roles.UserVerify))
                 return Unauthorized();
         }
 

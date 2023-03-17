@@ -24,4 +24,6 @@ public interface IModPackRepository
     Task DeleteModPackAsync(
         ModPack modPack,
         CancellationToken cancellationToken = default);
+
+    Task<ModPack?> GetModPackAsync(long modPackPk, CancellationToken cancellationToken = default);
 }

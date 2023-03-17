@@ -24,6 +24,10 @@
         {
             Snackbar.Add(Localizer[nameof(Language.Hints_LogInUsingSteamAtTheBottomRightForAdditionalFeatures)], Severity.Info, (options) => options.VisibleStateDuration = int.MaxValue);
         }
+        else if (!Me.IsVerified)
+        {
+            Snackbar.Add(Localizer[nameof(Language.Hints_VerificationStatusPending)], Severity.Info, (options) => options.VisibleStateDuration = int.MaxValue);
+        }
     }
 
 }

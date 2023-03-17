@@ -10,7 +10,8 @@ internal static class Constants
     {
         public static class AppId
         {
-            public const long Arma3 = 107410;
+            public const long Arma3Server = 233780;
+            public const long Arma3       = 107410;
         }
     }
 
@@ -41,7 +42,6 @@ internal static class Constants
             public const string ApiKey          = nameof(Steam) + ":" + nameof(ApiKey);
             public const string SteamCmdPath    = nameof(Steam) + ":" + nameof(SteamCmdPath);
             public const string InstallBasePath = nameof(Steam) + ":" + nameof(InstallBasePath);
-            public const string AnonymousOnly   = nameof(Steam) + ":" + nameof(AnonymousOnly);
             public const string Username        = nameof(Steam) + ":" + nameof(Username);
             public const string Password        = nameof(Steam) + ":" + nameof(Password);
         }

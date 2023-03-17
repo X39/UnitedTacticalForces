@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 using X39.UnitedTacticalForces.Api.Data.Core;
 
@@ -69,6 +70,7 @@ public class GameServer
     /// The last known server-version.
     /// </summary>
     [NotMapped]
+    [JsonIgnore]
     public Version Version { get; set; } = new(0, 0, 0, 0);
 
     /// <summary>
@@ -97,4 +99,12 @@ public class GameServer
     /// The game server this represents.
     /// </summary>
     public string ControllerIdentifier { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether this game server is active or not.
+    /// </summary>
+    /// <remarks>
+    /// Inactive game servers are considered deleted.
+    /// </remarks>
+    public bool IsActive { get; set; }
 }

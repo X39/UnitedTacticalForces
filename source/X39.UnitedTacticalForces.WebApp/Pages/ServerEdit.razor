@@ -1,0 +1,331 @@
+﻿@page "/servers/{GameServerId:long}"
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@using System.Collections.Immutable
+@using System.Text.RegularExpressions
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.Util
+@using X39.Util.Collections
+@inject IStringLocalizer<Language> Localizer
+@inject IGameServerRepository GameServerRepository
+@inject IModPackRepository ModPackRepository
+@inject NavigationManager NavigationManager
+<PageTitle>@(_gameServer?.Title ?? Localizer[nameof(Language.Pages_GameServerEdit_TitleWhileLoading)])</PageTitle>
+@if (_gameServer is null)
+{
+    <MudStack>
+        <MudSkeleton Height="5rem" Width="100%"/>
+        <MudSkeleton Height="5rem" Width="100%"/>
+        <MudSkeleton Height="5rem" Width="100%"/>
+        <MudSkeleton Height="5rem" Width="100%"/>
+    </MudStack>
+}
+else
+{
+    <div style="position: fixed; top: 0; left: 0; opacity: 0; height: 0; width: 0; overflow: hidden; z-index: -100000;">
+        <p>
+            This is fixing Chromes very wise decision of disabling detection for autocomplete="off" on inputs.
+            That decision was so wise, that this page will pretty much break for chrome users unless this is present.
+            Thanks google for your, always, smart decision making.
+            @* ReSharper disable CommentTypo *@
+            @*
+            Some search stuff for that very google and other search engines:
+            disable autocomplete on input
+            disable autocomplete
+            noautocomplete
+            autocomplete="off"
+            noautocomplete
+            input auto fill disable
+            *@
+            @* ReSharper restore CommentTypo *@
+        </p>
+        <input tabindex="-1" type="text"/>
+        <input tabindex="-1" type="password"/>
+    </div>
+    <div class="d-flex flex-column gap-5 pa-2" style="@("height: 100vh; height: 100dvh;")">
+        <MudPaper Class="flex-shrink-1">
+            <MudStack Class="pa-2">
+                <MudTextField T="string"
+                              @bind-Value="@(_gameServer.Title)"
+                              Label="@(Localizer[nameof(Language.Pages_GameServerEdit_GameServerTitle)])"
+                              HelperText="@(Localizer[nameof(Language.Pages_GameServerEdit_GameServerTitle_HelperText)])"
+                              HelperTextOnFocus="true"
+                              Required="true"/>
+                <MudAutocomplete T="ModPack?"
+                                 @bind-Value="@(_gameServer.SelectedModPack)"
+                                 Label="@(Localizer[nameof(Language.Pages_GameServerEdit_GameServerSelectedModPack)])"
+                                 HelperText="@(Localizer[nameof(Language.Pages_GameServerEdit_GameServerSelectedModPack_HelperText)])"
+                                 HelperTextOnFocus="true"
+                                 Clearable="true"
+                                 OnClearButtonClick="@(() => _gameServer.SelectedModPack = null)"
+                                 ToStringFunc="@((q) => q?.Title ?? string.Empty)"
+                                 SearchFuncWithCancel="SearchModPacksAsync"/>
+            </MudStack>
+        </MudPaper>
+        <MudExpansionPanels Class="flex-grow-1">
+            @foreach (var group in _configurationGroups)
+            {
+                <MudExpansionPanel Text="@group.Realm">
+                    <MudStack Class="overflow-y-scroll">
+                        @foreach (var configurationEntry in group.Entries)
+                        {
+                            switch (configurationEntry.Definition.Kind)
+                            {
+                                case EConfigurationEntryKind.Text:
+                                    <MudTextField T="string"
+                                                  Value="@(configurationEntry.ValueAsText)"
+                                                  ValueChanged="@(configurationEntry.ChangeValue)"
+                                                  Validation="@(configurationEntry.ValidateWeak)"
+                                                  Label="@($"[{configurationEntry.Definition.DisplayGroup}] {configurationEntry.Definition.DisplayName}")"
+                                                  InputType="InputType.Text"
+                                                  HelperText="@(configurationEntry.Definition.DisplayDescription)"
+                                                  HelperTextOnFocus="true"
+                                                  OnClearButtonClick="@(configurationEntry.ClearValue)"
+                                                  Required="@(configurationEntry.Definition.Required ?? false)"
+                                                  Clearable="true"
+                                                  Placeholder="@(configurationEntry.Definition.DefaultValue)"/>
+                                    break;
+                                case EConfigurationEntryKind.Password:
+                                    <MudTextField T="string"
+                                                  Value="@(configurationEntry.ValueAsText)"
+                                                  ValueChanged="@(configurationEntry.ChangeValue)"
+                                                  Validation="@(configurationEntry.ValidateWeak)"
+                                                  Label="@($"[{configurationEntry.Definition.DisplayGroup}] {configurationEntry.Definition.DisplayName}")"
+                                                  InputType="InputType.Password"
+                                                  AdornmentIcon="@Icons.Material.Filled.Lock"
+                                                  HelperText="@(configurationEntry.Definition.DisplayDescription)"
+                                                  HelperTextOnFocus="true"
+                                                  Required="@(configurationEntry.Definition.Required ?? false)"
+                                                  Clearable="true"
+                                                  Placeholder="@(configurationEntry.Definition.DefaultValue)"/>
+                                    break;
+                                case EConfigurationEntryKind.Boolean:
+                                    <MudTooltip>
+                                        <TooltipContent>
+                                            <MudText>@(configurationEntry.Definition.DisplayDescription)</MudText>
+                                        </TooltipContent>
+                                        <ChildContent>
+                                            <MudCheckBox T="bool?"
+                                                         Checked="@(configurationEntry.ValueAsBool)"
+                                                         CheckedChanged="@(configurationEntry.ChangeValue)"
+                                                         Validation="@(configurationEntry.ValidateWeak)"
+                                                         Required="@(configurationEntry.Definition.Required ?? false)">
+                                                <MudText>@($"[{configurationEntry.Definition.DisplayGroup}] {configurationEntry.Definition.DisplayName}")</MudText>
+                                            </MudCheckBox>
+                                        </ChildContent>
+                                    </MudTooltip>
+                                    break;
+                                case EConfigurationEntryKind.Number:
+                                    <MudNumericField T="double?"
+                                                     Value="@(configurationEntry.ValueAsDouble)"
+                                                     ValueChanged="@(configurationEntry.ChangeValue)"
+                                                     Validation="@(configurationEntry.ValidateWeak)"
+                                                     Label="@($"[{configurationEntry.Definition.DisplayGroup}] {configurationEntry.Definition.DisplayName}")"
+                                                     HelperText="@(configurationEntry.Definition.DisplayDescription)"
+                                                     HelperTextOnFocus="true"
+                                                     Min="@(configurationEntry.Definition.MinValue ?? double.MinValue)"
+                                                     Max="@(configurationEntry.Definition.MaxValue ?? double.MaxValue)"
+                                                     Required="@(configurationEntry.Definition.Required ?? false)"
+                                                     Clearable="true"
+                                                     Placeholder="@(configurationEntry.Definition.DefaultValue)"/>
+                                    break;
+                                default:
+                                    throw new ArgumentOutOfRangeException();
+                            }
+                        }
+                    </MudStack>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+        <MudPaper>
+            <MudStack Row="true" Class="pa-2">
+                <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                           Color="@(HasChanges ? Color.Error : Color.Primary)"
+                           Href="servers/">
+                    @Localizer[nameof(Language.Common_Cancel)]
+                </MudButton>
+                <MudSpacer/>
+                <MudButton StartIcon="@Icons.Material.Filled.Save"
+                           Color="Color.Success"
+                           Disabled="@(!HasChanges)"
+                           OnClick="SubmitAsync">
+                    @Localizer[nameof(Language.Common_Submit)]
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public long GameServerId { get; set; }
+
+    private GameServer? _gameServer;
+    private GameServer? _gameServerOriginal;
+    private ImmutableArray<ConfigurationDataGroup> _configurationGroups = ImmutableArray<ConfigurationDataGroup>.Empty;
+
+    private bool HasChanges => HasConfigurationChanges || HasGameServerChanges;
+    private bool HasConfigurationChanges => _configurationGroups.SelectMany((q) => q.Entries).Any((q) => q.HasChanges);
+
+    private bool HasGameServerChanges => !GameServer.GameServerComparer.Equals(_gameServer, _gameServerOriginal);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var gameServerInfo = await GameServerRepository.GetGameServerAsync(GameServerId).ConfigureAwait(false);
+        var gameServer = gameServerInfo.GameServer;
+        if (gameServer is null)
+            throw new NullReferenceException("API resolved with GameServerInfo.GameServer == null");
+        var configurationDefinitions = await GameServerRepository.GetConfigurationDefinitionsAsync(gameServer).ConfigureAwait(false);
+        var configurations = await GameServerRepository.GetConfigurationAsync(gameServer).ConfigureAwait(false);
+        var confMap = configurations.ToDictionary((q) => string.Concat(q.Realm, "://", q.Path));
+        _configurationGroups = configurationDefinitions
+            .Select((q) => new ConfigurationData(GameServerId, q, confMap.GetValueOrDefault(q.Identifier ?? string.Empty)))
+            .GroupBy((q) => q.Definition.Realm)
+            .Select((q) => new ConfigurationDataGroup(q.Key ?? string.Empty, q.AsEnumerable()))
+            .ToImmutableArray();
+        _gameServerOriginal = gameServer;
+        _gameServer = gameServer.DeepCopy();
+    }
+
+    public class ConfigurationData
+    {
+        public ConfigurationEntryDefinition Definition { get; }
+        public ConfigurationEntry? Entry { get; private set; }
+        private readonly long _gameServerId;
+        private readonly ConfigurationEntry? _originalEntry;
+        public bool HasChanges => !ReferenceEquals(Entry, _originalEntry);
+        public string ValueAsText => Entry?.Value ?? string.Empty;
+        public bool? ValueAsBool => bool.TryParse(ValueAsText, out var value) ? value : null;
+        public double? ValueAsDouble => double.TryParse(ValueAsText, out var value) ? value : null;
+
+        public ConfigurationData(long gameServerId, ConfigurationEntryDefinition definition, ConfigurationEntry? entry)
+        {
+            Definition = definition;
+            Entry = entry;
+            _gameServerId = gameServerId;
+            _originalEntry = entry;
+        }
+
+        public bool ValidateWeak(string input)
+        {
+            if (Definition.Regex is null)
+                return true;
+            if (Definition.Required is false && input.IsNullOrEmpty())
+                return true;
+
+            return Regex.IsMatch(input, Definition.Regex);
+        }
+
+        public void ChangeValue(string newValue)
+        {
+            if (Definition.Required is false && newValue.IsNullOrEmpty())
+                return;
+            Entry = new()
+            {
+                Path = Definition.Path,
+                Realm = Definition.Realm,
+                Value = newValue,
+                GameServer = null,
+                ChangedBy = null,
+                ChangedByFk = null,
+                IsActive = true,
+                IsSensitive = Definition.Kind is EConfigurationEntryKind.Password,
+                PrimaryKey = default,
+                TimeStamp = DateTimeOffset.Now,
+                GameServerFk = _gameServerId,
+            };
+        }
+
+        public void ChangeValue(bool? newValue)
+        {
+            Entry = new()
+            {
+                Path = Definition.Path,
+                Realm = Definition.Realm,
+                Value = newValue?.ToString() ?? string.Empty,
+                GameServer = null,
+                ChangedBy = null,
+                ChangedByFk = null,
+                IsActive = true,
+                IsSensitive = Definition.Kind is EConfigurationEntryKind.Password,
+                PrimaryKey = default,
+                TimeStamp = DateTimeOffset.Now,
+                GameServerFk = _gameServerId,
+            };
+        }
+
+        public void ChangeValue(double? newValue)
+        {
+            Entry = new()
+            {
+                Path = Definition.Path,
+                Realm = Definition.Realm,
+                Value = newValue?.ToString("G17") ?? string.Empty,
+                GameServer = null,
+                ChangedBy = null,
+                ChangedByFk = null,
+                IsActive = true,
+                IsSensitive = Definition.Kind is EConfigurationEntryKind.Password,
+                PrimaryKey = default,
+                TimeStamp = DateTimeOffset.Now,
+                GameServerFk = _gameServerId,
+            };
+        }
+
+        public void ClearValue()
+        {
+            Entry = null;
+        }
+    }
+
+    public class ConfigurationDataGroup
+    {
+        public string Realm { get; }
+        public ImmutableArray<ConfigurationData> Entries { get; }
+
+        public ConfigurationDataGroup(string realm, IEnumerable<ConfigurationData> entries)
+        {
+            Realm = realm;
+            Entries = entries
+                .OrderBy((q) => q.Definition.DisplayGroup)
+                .ThenBy((q) => q.Definition.DisplayName)
+                .ToImmutableArray();
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_gameServer is null)
+            throw new NullReferenceException("_gameServer is null");
+        _gameServer.ActiveModPackFk = _gameServer.ActiveModPack?.PrimaryKey ?? _gameServer.ActiveModPackFk;
+        _gameServer.SelectedModPackFk = _gameServer.SelectedModPack?.PrimaryKey ?? _gameServer.SelectedModPackFk;
+        if (HasGameServerChanges)
+        {
+            await GameServerRepository.UpdateAsync(_gameServer).ConfigureAwait(false);
+        }
+        if (HasConfigurationChanges)
+        {
+            var configuration = _configurationGroups
+                .SelectMany((q) => q.Entries)
+                .Select((q) => q.Entry)
+                .NotNull();
+            await GameServerRepository.SetConfigurationAsync(_gameServer, configuration).ConfigureAwait(false);
+        }
+        NavigationManager.NavigateTo("servers");
+    }
+
+    private async Task<IEnumerable<ModPack>> SearchModPacksAsync(string input, CancellationToken cancellationToken)
+    {
+        var results = new List<ModPack>();
+        int skip;
+        do
+        {
+            skip = results.Count;
+            var response = await ModPackRepository.GetModPacksAsync(skip, 100, false, input, cancellationToken)
+                .ConfigureAwait(false);
+            results.AddRange(response);
+        } while (results.Count == skip);
+        return results;
+    }
+
+}

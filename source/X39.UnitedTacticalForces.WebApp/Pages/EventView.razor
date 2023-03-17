@@ -5,8 +5,6 @@
 @using System.Collections
 @using System.Collections.Immutable
 @using System.Diagnostics
-@using System.Diagnostics.CodeAnalysis
-@using X39.BI.Config.Parsing
 @using X39.UnitedTacticalForces.WebApp.Helpers
 @using X39.UnitedTacticalForces.WebApp.Services
 @inject IEventRepository EventRepository
@@ -46,19 +44,54 @@ else
                           ObjectPosition="ObjectPosition.Center"
                           Fluid="true"/>
             }
-            <MudText Class="mx-2" Typo="Typo.h6">@_event.Title</MudText>
-            <MudText Class="mx-2" Style="overflow-y: auto; overflow-x: clip; width: calc(100% - 8px);">@_event.Description</MudText>
-            <MudDivider DividerType="DividerType.Middle" Class="my-6"/>
-            <div>
-                <UtfUser Class="mx-2" User="_event.HostedBy"/>
-            </div>
-            <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
-                <MudText Color="@(_event.AcceptedCount >= _event.MinimumAccepted ? Color.Success : Color.Error)">@(_event.ScheduledFor?.ToString("g"))</MudText>
-            </MudHidden>
-            <div class="mx-2 d-flex align-center">
-                <UtfModPackDownloadButton ModPack="_event.ModPack"/>
-                <MudText>@(_event.ModPack?.Title)</MudText>
-            </div>
+            <MudStack Class="pa-3" Style="height: 50%;">
+                <MudStack Row="true">
+                    <MudStack Class="flex-grow-1">
+                        <div class="d-inline">
+                            <MudText Typo="Typo.h5">@_event.Title</MudText>
+                            <MudText Color="@(_event.AcceptedCount >= _event.MinimumAccepted ? Color.Success : Color.Error)">@(_event.ScheduledFor?.ToLocalTime().ToString("g"))</MudText>
+                        </div>
+                        @if (_event.HostedBy is not null && _event.HostedBy.Avatar is not null && _event.HostedBy.Avatar.Any() && _event.HostedBy.AvatarMimeType.IsNotNullOrWhiteSpace())
+                        {
+                            <MudAvatar Color="Color.Secondary" Image="@_event.HostedBy.ToImageSource()"/>
+                        }
+                        else if (_event.HostedBy is not null)
+                        {
+                            <MudAvatar Color="Color.Secondary">@_event.HostedBy.Nickname?.FirstOrDefault()</MudAvatar>
+                        }
+                        @if (_event.Terrain is not null)
+                        {
+                            <MudText Typo="Typo.body2">@(_event.Terrain.Title)</MudText>
+                        }
+                        @if (_event.ModPack is not null)
+                        {
+                            <MudText Typo="Typo.body2">@(_event.ModPack.Title)</MudText>
+                        }
+                    </MudStack>
+                    <MudButtonGroup>
+                        <UtfModPackDownloadButton ModPack="_event.ModPack" Color="Color.Surface"/>
+                    </MudButtonGroup>
+                </MudStack>
+                <MudText Typo="Typo.body2" Style="max-height: 50vh; overflow-y: scroll;">@_event.Description</MudText>
+                <MudSpacer/>
+                <MudStack Row="true" Style="@("border-radius: 10rem; background: var(--mud-palette-background); width: min-content;")">
+                    @if (Me.IsAuthenticated)
+                    {
+                        <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+                                                              Acceptance="EEventAcceptance.Accepted"
+                                                              AcceptanceCount="_event.AcceptedCount"
+                                                              Event="_event"/>
+                        <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+                                                              Acceptance="EEventAcceptance.Maybe"
+                                                              AcceptanceCount="_event.MaybeCount"
+                                                              Event="_event"/>
+                        <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+                                                              Acceptance="EEventAcceptance.Rejected"
+                                                              AcceptanceCount="_event.RejectedCount"
+                                                              Event="_event"/>
+                    }
+                </MudStack>
+            </MudStack>
             @if ((_event.Terrain?.Image?.Any() ?? false) && (_event.Terrain?.ImageMimeType.IsNotNullOrWhiteSpace() ?? false))
             {
                 <MudImage Src="@_event.Terrain?.ToImageSource()"
@@ -71,9 +104,10 @@ else
         <MudItem xs="8"
                  Style="@(Breakpoint is Breakpoint.Xs or Breakpoint.Sm ? "height: calc(100vh - 56px)" : "height: 100vh;")">
             <div class="d-flex flex-column justify-space-between" style="height: 100%;">
-                @if (Me.IsAuthenticated && Me.User.PrimaryKey == _event.PrimaryKey || Me.IsInRolesOrAdmin(Roles.EventSlotCreate, Roles.EventSlotDelete, Roles.EventSlotUpdate))
+                @if (Me.Eval((user) => user.PrimaryKey == _event.PrimaryKey) || Me.IsInRolesOrAdmin(Roles.EventSlotCreate, Roles.EventSlotDelete, Roles.EventSlotUpdate))
                 {
-                    <MudFileUpload T="IBrowserFile" FilesChanged="MergeSlotsFromMissionFileAsync"
+                    <MudFileUpload T="IBrowserFile"
+                                   FilesChanged="MergeSlotsFromMissionFileAsync"
                                    MaximumFileCount="1"
                                    Accept=".sqm"
                                    Class="ma-0">
@@ -103,12 +137,12 @@ else
                                         <UtfUser Class="@(Breakpoint is not (Breakpoint.Xs or Breakpoint.Sm) ? "mx-4" : "")" User="@slot.AssignedTo"/>
                                         <MudSpacer/>
                                         <MudButton StartIcon="@Icons.Material.Filled.AssignmentTurnedIn"
-                                                   Disabled="@(_disableInteractions || slot.AssignedToFk is not null || !Me.IsAuthenticated || (!(slot.IsSelfAssignable ?? true) && !Me.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotIgnore, Roles.EventSlotUpdate) && _event.HostedByFk != Me.User.PrimaryKey))"
+                                                   Disabled="@(GetDisableSelfInteraction(slot))"
                                                    Color="Color.Primary"
                                                    OnClick="@(() => AssignToSelfAsync(slot))">
                                             @Localizer[nameof(Language.Pages_EventView_AssignToSelf)]
                                         </MudButton>
-                                        @if (!_disableInteractions && (Me.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotIgnore, Roles.EventSlotUpdate) || _event.HostedByFk == Me.User.PrimaryKey))
+                                        @if (!_disableInteractions && (Me.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotIgnore, Roles.EventSlotUpdate) || Me.Eval((user) => user.PrimaryKey == _event.HostedByFk)))
                                         {
                                             <MudButton StartIcon="@Icons.Material.Filled.AssignmentInd"
                                                        Color="Color.Primary"
@@ -137,6 +171,14 @@ else
 
 
 @code {
+
+    private async Task PropagateStateHasChanged()
+    {
+        await ReloadAsync()
+            .ConfigureAwait(false);
+        await InvokeAsync(StateHasChanged)
+            .ConfigureAwait(false);
+    }
 
     [CascadingParameter]
     public Breakpoint Breakpoint { get; private set; } = Breakpoint.Always;
@@ -349,6 +391,26 @@ else
     {
         slot.IsSelfAssignable = flag;
         await SlotRepository.UpdateSlotAsync(slot, slot);
+    }
+
+    private bool GetDisableSelfInteraction(EventSlot slot)
+    {
+        if (!Me.IsAuthenticated)
+    // User is not logged in.
+            return true;
+        if (_disableInteractions)
+    // All interactions are disabled for this UI.
+            return true;
+        if (slot.AssignedToFk is not null)
+    // Slot is already assigned.
+            return true;
+        if (!(slot.IsSelfAssignable ?? true)
+            && !Me.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotIgnore, Roles.EventSlotUpdate)
+            && _event is not null
+            && !Me.Eval((user) => user.PrimaryKey == _event.HostedByFk))
+    // Slot cannot be self-assigned
+            return true;
+        return false;
     }
 
 }

@@ -78,17 +78,17 @@ Signaturfehler werden immer noch vom Server bei der Verbindung protokolliert und
     <data name="ServerController_Arma3_Host" xml:space="preserve">
         <value>Host</value>
     </data>
-    <data name="ServerController_Arma3_Host_ServerMod_Title" xml:space="preserve">
+    <data name="ServerController_Arma3_Host_ServerMod_Description" xml:space="preserve">
         <value>Lädt die angegebenen Unterordner für verschiedene serverseitige (nicht an Clients übertragene) Mods. Getrennt durch Semikolons. Absoluter Pfad und mehrere gestapelte Ordner sind möglich.
 In Linux benötigen Argumente für mehrere Ordner die folgende Trennsyntax: -mod=mod1\;mod2\;mod3.</value>
-    </data>
-    <data name="ServerController_Arma3_Host_ServerMod_Description" xml:space="preserve">
-        <value>Server Modifikationen</value>
     </data>
     <data name="ServerController_Arma3_Host_Port_Title" xml:space="preserve">
         <value>Port</value>
     </data>
     <data name="ServerController_Arma3_Host_Port_Description" xml:space="preserve">
         <value>Port, auf dem der dedizierte Server lauschen soll.</value>
+    </data>
+    <data name="ServerController_Arma3_Host_ServerMod_Title" xml:space="preserve">
+        <value>Server Modifikationen</value>
     </data>
 </root>

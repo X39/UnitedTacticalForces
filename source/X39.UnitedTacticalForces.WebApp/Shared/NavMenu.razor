@@ -24,6 +24,12 @@
                 @Localizer[nameof(Language.Shared_NavMenu_Users)]
             </MudNavLink>
         }
+        @if (Me.IsInRoleOrAdmin(Roles.ServerAccess))
+        {
+            <MudNavLink Href="servers" Match="NavLinkMatch.All" Icon="@Constants.Icons.X39.Server">
+                @Localizer[nameof(Language.Shared_NavMenu_GameServers)]
+            </MudNavLink>
+        }
     }
 </MudNavMenu>
 <MudSpacer/>

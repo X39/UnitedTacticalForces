@@ -50,28 +50,28 @@
         <MudTh>@Localizer[nameof(Language.Pages_ModPacks_Table_TimeStampCreated)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_ModPacks_Table_TimeStampUpdated)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_ModPacks_Table_Owner)]</MudTh>
-        <MudTh>@Localizer[nameof(Language.Pages_ModPacks_Table_Interacitons)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_ModPacks_Table_Interactions)]</MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Title)]">
             @context.Title
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_TimeStampCreated)]">
-            @(context.TimeStampCreated?.ToString("g"))
+            @(context.TimeStampCreated?.ToLocalTime().ToString("g"))
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_TimeStampUpdated)]">
-            @(context.TimeStampUpdated?.ToString("g"))
+            @(context.TimeStampUpdated?.ToLocalTime().ToString("g"))
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Owner)]">
             <UtfUser User="@context.Owner"/>
         </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Interacitons)]">
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Interactions)]">
             <MudButtonGroup>
                 @if ((context.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MaxValue) < context.TimeStampUpdated)
                 {
                     <MudBadge Color="Color.Primary" Dot="true" Overlap="true">
                         <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Primary"
-                                       Href="@BaseUrl.ResolveApiUrl($"/ModPack/{context.PrimaryKey}/download")"
+                                       Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{context.PrimaryKey}/download")"
                                        target="_blank"
                                        OnClick="@(() => context.UserMetas.First().TimeStampDownloaded = DateTimeOffset.MaxValue)"/>
                     </MudBadge>
@@ -79,7 +79,7 @@
                 else
                 {
                     <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Primary"
-                                   Href="@BaseUrl.ResolveApiUrl($"/ModPack/{context.PrimaryKey}/download")"
+                                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{context.PrimaryKey}/download")"
                                    target="_blank"/>
                 }
                 <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.ModPackModify)" Context="_">

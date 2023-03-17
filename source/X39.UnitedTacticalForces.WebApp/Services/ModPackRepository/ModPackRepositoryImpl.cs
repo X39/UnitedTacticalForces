@@ -56,4 +56,10 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
         await Client.ModPacksDeleteAsync(modPack.PrimaryKey.Value, cancellationToken)
             .ConfigureAwait(false);
     }
+
+    public async Task<ModPack?> GetModPackAsync(long modPackPk, CancellationToken cancellationToken = default)
+    {
+        return await Client.ModPacksAsync(modPackPk, cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

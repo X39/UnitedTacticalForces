@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -18,7 +19,6 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerController.Controllers
 [UsedImplicitly(ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature)]
 public sealed class Arma3GameServerController : SteamGameServerControllerBase, IGameServerControllerCreatable
 {
-
     private static readonly Regex HtmlARegex = new Regex(
         """<a href="(?<HREF>.+?)" .*?>(?<LABEL>.+?)</a>""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -32,7 +32,19 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     }
 
     /// <inheritdoc />
-    public static string Identifier { get; } = Constants.Steam.AppId.Arma3.ToString();
+    protected override long ServerAppId => Constants.Steam.AppId.Arma3Server;
+
+    /// <inheritdoc />
+    protected override long GameAppId => Constants.Steam.AppId.Arma3;
+
+    /// <inheritdoc/>
+    protected override bool RequireLogin => true;
+
+    /// <inheritdoc/>
+    protected override bool RequirePurchaseForWorkshop => true;
+
+    /// <inheritdoc />
+    public static string Identifier { get; } = $"arma3-{Constants.Steam.AppId.Arma3Server}";
 
     /// <inheritdoc />
     public static Task<IGameServerController> CreateAsync(
@@ -65,14 +77,14 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     {
         // @formatter:max_line_length 1000
         // ReSharper disable StringLiteralTypo
-        yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Number, "port", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Port_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Port_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Number, "port", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Port_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Port_Description), cultureInfo) ?? string.Empty, DefaultValue: "2302");
         yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Text, "serverMod", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_ServerMod_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_ServerMod_Description), cultureInfo) ?? string.Empty);
         // https://community.bistudio.com/wiki/Arma_3:_Server_Config_File top to bottom
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Password, "passwordAdmin", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_PasswordAdmin_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_PasswordAdmin_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Password, "password", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Password_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Password_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Password, "serverCommandPassword", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerCommandPassword_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerCommandPassword_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(true, RealmServerCfg, EConfigurationEntryKind.Text, "hostname", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Hostname_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Hostname_Description), cultureInfo) ?? string.Empty);
-        yield return new ConfigurationEntryDefinition(true, RealmServerCfg, EConfigurationEntryKind.Number, "maxPlayers", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxPlayers_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxPlayers_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(true, RealmServerCfg, EConfigurationEntryKind.Number, "maxPlayers", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxPlayers_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxPlayers_Description), cultureInfo) ?? string.Empty, MinValue: 0);
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Text, "motd[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Motd_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Motd_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Text, "admins[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Admins_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Admins_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Text, "headlessClients[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_HeadlessClients_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_HeadlessClients_Description), cultureInfo) ?? string.Empty);
@@ -123,18 +135,15 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         return builder.ToString();
     }
 
-    private string BattleEyePath => Path.Combine(GameServer.PrimaryKey.ToString("0000000"), "battle-eye");
+    private string BattleEyePath => Path.Combine(GameInstallPath, "battle-eye");
 
-    private string ServerConfigurationPath => Path.Combine(GameServer.PrimaryKey.ToString("0000000"), "server.cfg");
+    private string ServerConfigurationPath => Path.Combine(GameInstallPath, "server.cfg");
 
-    private string BasicConfigurationPath => Path.Combine(GameServer.PrimaryKey.ToString("0000000"), "basic.cfg");
+    private string BasicConfigurationPath => Path.Combine(GameInstallPath, "basic.cfg");
 
-    private string PidPath => Path.Combine(GameServer.PrimaryKey.ToString("0000000"), "server.pid");
+    private string PidPath => Path.Combine(GameInstallPath, "server.pid");
 
-    private string ProfilesPath => Path.Combine(GameServer.PrimaryKey.ToString("0000000"), "profiles");
-
-    /// <inheritdoc />
-    protected override long SteamAppId => 107410;
+    private string ProfilesPath => Path.Combine(GameInstallPath, "profiles");
 
     /// <inheritdoc />
     protected override async Task DoUpdateConfigurationAsync()
@@ -200,7 +209,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? "arma3server_x64.exe"
                 : "arma3server_x64");
-        var modList = await GetAndUpdateSelectedWorkshopItemsAsync(dbContext, executingUser)
+        var modList = await GetWorkshopPathsAsync(dbContext)
             .ConfigureAwait(false);
         return new ProcessStartInfo
         {
@@ -225,7 +234,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             RedirectStandardInput  = false,
             RedirectStandardOutput = true,
             StandardErrorEncoding  = Encoding.UTF8,
-            StandardInputEncoding  = Encoding.UTF8,
+            // StandardInputEncoding  = Encoding.UTF8,
             StandardOutputEncoding = Encoding.UTF8,
             CreateNoWindow         = true,
             WindowStyle            = ProcessWindowStyle.Hidden,
@@ -237,23 +246,21 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     protected override async Task OnInstallOrUpgradeAsync(User? executingUser)
     {
         await using var dbContext = await DbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
-        _ = await GetAndUpdateSelectedWorkshopItemsAsync(dbContext, executingUser)
+        await UpdateWorkshopItemsOfActiveModPackAsync(dbContext, executingUser)
             .ConfigureAwait(false);
     }
 
-    private async Task<IReadOnlyCollection<string>> GetAndUpdateSelectedWorkshopItemsAsync(
-        ApiDbContext dbContext,
-        User? executingUser)
+    private async Task<IReadOnlyCollection<long>> GetWorkshopIdsAsync(ApiDbContext dbContext)
     {
         const string workshopBase = "https://steamcommunity.com/sharedfiles/filedetails/?id=";
         var modPackPk = GameServer.SelectedModPackFk;
         if (modPackPk is null)
-            return ArraySegment<string>.Empty;
+            return ArraySegment<long>.Empty;
         var mod = await dbContext.ModPacks.SingleOrDefaultAsync((q) => q.PrimaryKey == modPackPk).ConfigureAwait(false);
         if (mod is null)
             throw new NullReferenceException($"Failed to receive mod with the id {modPackPk} from database");
         var matches = HtmlARegex.Matches(mod.Html);
-        var workshopItemPaths = new List<string>();
+        var workshopIds = new List<long>();
         foreach (Match match in matches)
         {
             var href = match.Groups["HREF"].Value;
@@ -264,11 +271,36 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             var workshopItemIdString = href[workshopBase.Length..];
             if (!long.TryParse(workshopItemIdString, out var workshopItemId))
                 continue;
-            var workshopItemPath = await DoUpdateWorkshopMod(workshopItemId, executingUser)
-                .ConfigureAwait(false);
-            workshopItemPaths.Add(workshopItemPath);
+            workshopIds.Add(workshopItemId);
         }
 
-        return workshopItemPaths;
+        return workshopIds;
+    }
+
+    private async Task<IReadOnlyCollection<string>> GetWorkshopPathsAsync(
+        ApiDbContext dbContext)
+    {
+        var workshopIds = await GetWorkshopIdsAsync(dbContext).ConfigureAwait(false);
+        return workshopIds.Select(
+                (q) => Path.Combine(
+                    GetWorkshopPath(q),
+                    "steamapps",
+                    "workshop",
+                    "content",
+                    GameAppId.ToString(),
+                    q.ToString()))
+            .ToImmutableArray();
+    }
+
+    private async Task UpdateWorkshopItemsOfActiveModPackAsync(
+        ApiDbContext dbContext,
+        User? executingUser)
+    {
+        var workshopItemIds = await GetWorkshopIdsAsync(dbContext).ConfigureAwait(false);
+        foreach (var workshopItemId in workshopItemIds)
+        {
+            _ = await DoUpdateWorkshopMod(workshopItemId, executingUser)
+                .ConfigureAwait(false);
+        }
     }
 }

@@ -35,6 +35,9 @@
       <Compile Update="Constants.Icons.Feather.cs">
         <DependentUpon>Constants.cs</DependentUpon>
       </Compile>
+      <Compile Update="Api.GameServer.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>

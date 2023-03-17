@@ -12,29 +12,30 @@
         <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Title)]" @bind-Value="@Event.Title"/>
         <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Description)]" Lines="5" @bind-Value="@Event.Description"/>
         <MudDatePicker Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_ScheduledForDate)]"
-                       Date="@(Event.ScheduledFor?.Date)"
+                       Date="@(Event.ScheduledFor?.ToLocalTime().Date)"
                        DateChanged="@SetEventScheduledForDateAsync"/>
-        <MudTimePicker Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_ScheduledForTime)]"
-                       Time="@(Event.ScheduledFor?.TimeOfDay)"
+        <MudTimePicker Required="IsNew"
+                       Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_ScheduledForTime)]"
+                       Time="@(Event.ScheduledFor?.ToLocalTime().TimeOfDay)"
                        TimeChanged="@SetEventScheduledForTimeAsync"/>
         <MudAutocomplete Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_HostedBy)]"
                          @bind-Value="@Event.HostedBy"
                          SearchFunc="@SearchUserAsync"
-                         ResetValueOnEmptyText="@true"
+                         ResetValueOnEmptyText="true"
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          AdornmentColor="Color.Primary"
                          ToStringFunc="@(user => user.Nickname ?? user.SteamId64?.ToString() ?? user.PrimaryKey?.ToString() ?? string.Empty)"/>
         <MudAutocomplete Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Terrain)]"
                          @bind-Value="@Event.Terrain"
                          SearchFunc="@SearchTerrainAsync"
-                         ResetValueOnEmptyText="@true"
+                         ResetValueOnEmptyText="true"
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          AdornmentColor="Color.Primary"
                          ToStringFunc="@(terrain => terrain.Title ?? terrain.PrimaryKey?.ToString() ?? string.Empty)"/>
         <MudAutocomplete Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_ModPack)]"
                          @bind-Value="@Event.ModPack"
                          SearchFunc="@SearchModPackAsync"
-                         ResetValueOnEmptyText="@true"
+                         ResetValueOnEmptyText="true"
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          AdornmentColor="Color.Primary"
                          ToStringFunc="@(modPack => modPack.Title ?? modPack.PrimaryKey?.ToString() ?? string.Empty)"/>
@@ -129,6 +130,10 @@
             .ConfigureAwait(false);
         if (dialogResult.Data is not Event modifiedEvent)
             return null;
+        modifiedEvent.ModPackFk = modifiedEvent.ModPack?.PrimaryKey ?? modifiedEvent.ModPackFk;
+        modifiedEvent.OwnerFk = modifiedEvent.Owner?.PrimaryKey ?? modifiedEvent.OwnerFk;
+        modifiedEvent.TerrainFk = modifiedEvent.Terrain?.PrimaryKey ?? modifiedEvent.TerrainFk;
+        modifiedEvent.HostedByFk = modifiedEvent.HostedBy?.PrimaryKey ?? modifiedEvent.HostedByFk;
         eventItem.Apply(modifiedEvent);
         return modifiedEvent;
     }

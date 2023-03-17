@@ -87,7 +87,8 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Server mods.
+        ///   Looks up a localized string similar to Loads the specified subfolders for various server-side (not transferred to clients) mods. Separated by semicolons. Absolute path and multiple stacked folders are possible.
+        ///In Linux, arguments for multiple folders require the following separator syntax: -mod=mod1\;mod2\;mod3..
         /// </summary>
         internal static string ServerController_Arma3_Host_ServerMod_Description {
             get {
@@ -96,8 +97,7 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Loads the specified subfolders for various server-side (not transferred to clients) mods. Separated by semicolons. Absolute path and multiple stacked folders are possible.
-        ///In Linux, arguments for multiple folders require the following separator syntax: -mod=mod1\;mod2\;mod3..
+        ///   Looks up a localized string similar to Server mods.
         /// </summary>
         internal static string ServerController_Arma3_Host_ServerMod_Title {
             get {

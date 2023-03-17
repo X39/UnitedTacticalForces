@@ -14,6 +14,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{ECF906FE
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
 		.editorconfig = .editorconfig
+		ReadMe.md = ReadMe.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.UnitedTacticalForces.Roles", "source\X39.UnitedTacticalForces.Roles\X39.UnitedTacticalForces.Roles.csproj", "{85E03A91-4161-40A3-BFF5-DD574F1DCADA}"

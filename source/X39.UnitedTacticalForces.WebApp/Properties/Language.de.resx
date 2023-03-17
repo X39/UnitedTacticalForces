@@ -47,7 +47,7 @@
     <data name="Pages_ModPacks_CreateNewModPack" xml:space="preserve">
         <value>Neues Mod-Paket erstellen</value>
     </data>
-    <data name="Pages_ModPacks_Table_Interacitons" xml:space="preserve">
+    <data name="Pages_ModPacks_Table_Interactions" xml:space="preserve">
         <value>Interaktionen</value>
     </data>
     <data name="Pages_ModPacks_Table_Owner" xml:space="preserve">
@@ -235,5 +235,77 @@
     </data>
     <data name="Pages_Users_Table_IsVerified" xml:space="preserve">
         <value>Verifiziert</value>
+    </data>
+    <data name="Hints_VerificationStatusPending" xml:space="preserve">
+        <value>Ihr Zugang ist noch nicht bestätigt. Bitte geben Sie den Administratoren etwas Zeit, um Ihren Zugang zu aktivieren und laden Sie die Seite nach der Aktivierung neu. Das Neuladen der Seite ist zwingend erforderlich, damit die Zugangsänderung wirksam wird.</value>
+    </data>
+    <data name="Pages_GameServers_CreateNewGameServer" xml:space="preserve">
+        <value>Neuen Server erstellen</value>
+    </data>
+    <data name="Pages_GameServers_Table_ActiveModPack" xml:space="preserve">
+        <value>Aktives Mod-Paket</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions" xml:space="preserve">
+        <value>Interaktionen</value>
+    </data>
+    <data name="Pages_GameServers_Table_SelectedModPack" xml:space="preserve">
+        <value>Gewähltes Mod-Paket</value>
+    </data>
+    <data name="Pages_GameServers_Table_Status" xml:space="preserve">
+        <value>Status</value>
+    </data>
+    <data name="Pages_GameServers_Table_TimeStampCreated" xml:space="preserve">
+        <value>Erstellt</value>
+    </data>
+    <data name="Pages_GameServers_Table_TimeStampUpgraded" xml:space="preserve">
+        <value>Aktuallisiert</value>
+    </data>
+    <data name="Pages_GameServers_Table_Title" xml:space="preserve">
+        <value>Titel</value>
+    </data>
+    <data name="Pages_GameServers_Title" xml:space="preserve">
+        <value>Spieleserver</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmDeleteOfGameServer_Description" xml:space="preserve">
+        <value>Sind Sie sicher, dass Sie diesen Server löschen wollen? Dies kann nicht rückgängig gemacht werden!</value>
+    </data>
+    <data name="Pages_GameServers_AllGameServers" xml:space="preserve">
+        <value>Alle Spieleserver</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmDeleteOfGameServer_Title" xml:space="preserve">
+        <value>Server löschen bestätigen</value>
+    </data>
+    <data name="Shared_NavMenu_GameServers" xml:space="preserve">
+        <value>Spieleserver</value>
+    </data>
+    <data name="Pages_GameServerEdit_TitleWhileLoading" xml:space="preserve">
+        <value>Lade Spieleserver Konfiguration</value>
+    </data>
+    <data name="Pages_GameServerEdit_GameServerTitle_HelperText" xml:space="preserve">
+        <value>Der Name des Servers in dieser Oberfläche</value>
+    </data>
+    <data name="Pages_GameServerEdit_GameServerSelectedModPack_HelperText" xml:space="preserve">
+        <value>Das für diesen Server ausgewählte Mod-Paket</value>
+    </data>
+    <data name="Pages_GameServerEdit_GameServerSelectedModPack" xml:space="preserve">
+        <value>Gewähltes Mod-Paket</value>
+    </data>
+    <data name="Pages_GameServerEdit_GameServerTitle" xml:space="preserve">
+        <value>Servertitel</value>
+    </data>
+    <data name="Pages_GameServers_Status_UpgradingTooltip" xml:space="preserve">
+        <value>Spieleserver wird Aktuallisiert</value>
+    </data>
+    <data name="Pages_GameServers_Status_RunningTooltip" xml:space="preserve">
+        <value>Spieleserver läuft</value>
+    </data>
+    <data name="Pages_GameServers_Status_StartingTooltip" xml:space="preserve">
+        <value>Spieleserver startet</value>
+    </data>
+    <data name="Pages_GameServers_Status_StoppedTooltip" xml:space="preserve">
+        <value>Spieleserver ist heruntergefahren</value>
+    </data>
+    <data name="Pages_GameServers_Status_StoppingTooltip" xml:space="preserve">
+        <value>Spieleserver wird heruntergefahren</value>
     </data>
 </root>

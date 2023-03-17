@@ -16,6 +16,7 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerController;
 /// <param name="DisplayDescription">A human-readable description for this entry. UIs should prefer tooltips over displaying the description directly here.</param>
 /// <param name="MinValue">The minimum value for this entry. Only relevant for <see cref="Kind"/>'s of the type <see cref="EConfigurationEntryKind.Number"/>.</param>
 /// <param name="MaxValue">The maximum value for this entry. Only relevant for <see cref="Kind"/>'s of the type <see cref="EConfigurationEntryKind.Number"/>.</param>
+/// <param name="DefaultValue">The default value set.</param>
 [PublicAPI]
 public record ConfigurationEntryDefinition(
     bool Required,
@@ -26,8 +27,9 @@ public record ConfigurationEntryDefinition(
     string DisplayGroup,
     string DisplayName,
     string DisplayDescription,
-    double MinValue = default,
-    double MaxValue = default)
+    double MinValue = double.MinValue,
+    double MaxValue = double.MaxValue,
+    string? DefaultValue = default)
 {
     /// <summary>
     /// Combined values of <see cref="Realm"/> and <see cref="Path"/>.

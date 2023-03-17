@@ -80,6 +80,7 @@ internal class EventRepositoryImpl : RepositoryBase, IEventRepository
         clone.HostedBy = null;
         clone.ModPack  = null;
         clone.Terrain  = null;
+        clone.UserMetas  = null;
         await Client.EventsUpdateAsync(eventItem.PrimaryKey.Value, clone, cancellationToken)
             .ConfigureAwait(false);
     }

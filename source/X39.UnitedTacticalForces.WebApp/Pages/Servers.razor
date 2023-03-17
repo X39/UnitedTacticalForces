@@ -1,0 +1,320 @@
+﻿@page "/servers"
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.UnitedTacticalForces.WebApp.Dialogs
+@inject IGameServerRepository GameServerRepository
+@inject IStringLocalizer<Language> Localizer
+@inject IDialogService DialogService
+@inject IModPackRepository ModPackRepository
+@inject MeService Me
+@attribute [Authorize]
+<PageTitle>@Localizer[nameof(Language.Pages_GameServers_Title)]</PageTitle>
+<MudTable @ref="_mudTable"
+          Dense="true"
+          ServerData="ServerDataAsync"
+          RowsPerPage="50"
+          Virtualize="true"
+          Height="@Breakpoint.ToMudTableFullHeight()"
+          FixedFooter="true"
+          FixedHeader="true">
+    <ColGroup>
+        <col style="width: 0"/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col/>
+        <col style="width: 0"/>
+    </ColGroup>
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">
+            @Localizer[nameof(Language.Pages_GameServers_AllGameServers)]
+        </MudText>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_Status)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_Title)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampCreated)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampUpgraded)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_ActiveModPack)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_SelectedModPack)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions)]</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_Status)]">
+            <MudTooltip>
+                <TooltipContent>
+                    <MudText>@GetStatusToolTip(context)</MudText>
+                </TooltipContent>
+                <ChildContent>
+                    <MudIcon Icon="@(GetStatusIcon(context))" Color="Color.Primary"/>
+                </ChildContent>
+            </MudTooltip>
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_Title)]">
+            @(context.GameServer?.Title)
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampCreated)]">
+            @(context.GameServer?.TimeStampCreated?.ToLocalTime().ToString("g"))
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampUpgraded)]">
+            @(context.GameServer?.TimeStampUpgraded?.ToLocalTime().ToString("g"))
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_ActiveModPack)]">
+            @if (context.GameServer?.ActiveModPack is not null)
+            {
+                <div class="d-inline-flex align-center">
+                    <UtfModPackDownloadButton ModPack="@(context.GameServer.ActiveModPack)"/>
+                    <MudText>@(context.GameServer.ActiveModPack.Title)</MudText>
+                </div>
+            }
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_SelectedModPack)]">
+            @if (context.GameServer?.SelectedModPack is not null)
+            {
+                <div class="d-inline-flex align-center">
+                    <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack)"/>
+                    <MudText>@(context.GameServer.SelectedModPack.Title)</MudText>
+                </div>
+            }
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_Interactions)]">
+            <MudButtonGroup>
+                @if (Me.IsInRoleOrAdmin(Roles.ServerStartStop))
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow"
+                                   Color="Color.Success"
+                                   Disabled="@(!context.CanStart ?? false)"
+                                   OnClick="@(() => StartGameServerAsync(context))"/>
+                    <MudIconButton Icon="@Icons.Material.Filled.Stop"
+                                   Color="Color.Error"
+                                   Disabled="@(!context.CanStop ?? false)"
+                                   OnClick="@(() => StopGameServerAsync(context))"/>
+                }
+                @if (Me.IsInRoleOrAdmin(Roles.ServerUpgrade))
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Upgrade"
+                                   Color="Color.Primary"
+                                   Disabled="@(!context.CanUpgrade ?? false)"
+                                   OnClick="@(() => UpgradeGameServerAsync(context))"/>
+                }
+                @if (Me.IsInRoleOrAdmin(Roles.Admin)) @* ToDo: Create new role & add logic to show logs here *@
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.TextSnippet"
+                                   Color="Color.Primary"
+                                   Disabled="@(!context.IsRunning ?? false)"/>
+                }
+                @if (Me.IsInRoleOrAdmin(Roles.ServerUpdate))
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Color="Color.Secondary"
+                                   Disabled="@(!context.CanUpdateConfiguration ?? false)"
+                                   Href="@($"/servers/{context.GameServer!.PrimaryKey!.Value}")"/>
+                }
+                @if (Me.IsInRoleOrAdmin(Roles.ServerCreateOrDelete))
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
+                                   Color="Color.Error"
+                                   Disabled="@(context.IsRunning ?? false)"
+                                   OnClick="@(() => DeleteGameServerAsync(context))"/>
+                }
+            </MudButtonGroup>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager PageSizeOptions="@(new[] {50, 100, 250, 500})"/>
+    </PagerContent>
+    <FooterContent>
+        <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "7"}})">
+            @if (Me.IsInRoleOrAdmin(Roles.ServerCreateOrDelete))
+            {
+                <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewGameServerAsync">
+                    @Localizer[nameof(Language.Pages_GameServers_CreateNewGameServer)]
+                </MudButton>
+            }
+        </MudTd>
+    </FooterContent>
+</MudTable>
+
+@code {
+
+    [CascadingParameter]
+    public Breakpoint Breakpoint { get; private set; } = Breakpoint.Always;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(10);
+    }
+
+    private long _gameServerCounts = -1;
+    private MudTable<GameServerInfo> _mudTable = null!;
+    private readonly Dictionary<long, ModPack> _modPacks = new();
+
+    private async Task<TableData<GameServerInfo>> ServerDataAsync(TableState arg)
+    {
+        if (_gameServerCounts == -1)
+            _gameServerCounts = await GameServerRepository.GetGameServerCountAsync()
+                .ConfigureAwait(false);
+        var items = await GameServerRepository.GetGameServersAsync()
+            .ConfigureAwait(false);
+        foreach (var gameServerInfo in items)
+        {
+            if (gameServerInfo.GameServer is null)
+                continue;
+            if (gameServerInfo.GameServer.ActiveModPackFk is not null)
+            {
+                var modPackPk = gameServerInfo.GameServer.ActiveModPackFk.Value;
+                if (!_modPacks.TryGetValue(modPackPk, out var modPack))
+                {
+                    var tmp = await ModPackRepository.GetModPackAsync(modPackPk, CancellationToken.None)
+                        .ConfigureAwait(false);
+                    if (tmp is null)
+                        continue;
+                    _modPacks[modPackPk] = modPack = tmp;
+                }
+                gameServerInfo.GameServer.ActiveModPack = modPack;
+            }
+            if (gameServerInfo.GameServer.SelectedModPackFk is not null)
+            {
+                var modPackPk = gameServerInfo.GameServer.SelectedModPackFk.Value;
+                if (!_modPacks.TryGetValue(modPackPk, out var modPack))
+                {
+                    var tmp = await ModPackRepository.GetModPackAsync(modPackPk, CancellationToken.None)
+                        .ConfigureAwait(false);
+                    if (tmp is null)
+                        continue;
+                    _modPacks[modPackPk] = modPack = tmp;
+                }
+                gameServerInfo.GameServer.SelectedModPack = modPack;
+            }
+        }
+        return new TableData<GameServerInfo>
+        {
+            TotalItems = (int) _gameServerCounts,
+            Items = items,
+        };
+    }
+
+    private async Task CreateNewGameServerAsync()
+    {
+        var result = await SelectorDialog<string>.ShowAsync(
+            DialogService,
+            async () => await GameServerRepository.GetGameServerControllersAsync().ConfigureAwait(false),
+            (s) => s)
+            .ConfigureAwait(false);
+        if (result is null)
+            return;
+        _ = await GameServerRepository.CreateGameServerAsync(result, new GameServer()).ConfigureAwait(false);
+        await _mudTable.ReloadServerData()
+            .ConfigureAwait(false);
+    }
+
+    private async Task ModifyGameServerAsync(GameServer gameServer)
+    {
+    // var updatedGameServer = await Dialogs.ModifyGameServerDialog.ShowAsync(DialogService, gameServer)
+    //     .ConfigureAwait(false);
+    // if (updatedGameServer is null)
+    //     return;
+    // Contract.Assert(updatedGameServer == gameServer);
+    // await GameServerRepository.ModifyGameServerAsync(gameServer)
+    //     .ConfigureAwait(false);
+    // await _mudTable.ReloadServerData()
+    //     .ConfigureAwait(false);
+        throw new NotImplementedException();
+    }
+
+    private async Task CloneGameServerAsync(GameServer gameServer)
+    {
+    // gameServer = new GameServer
+    // {
+    //     Title = gameServer.Title,
+    //     Html = gameServer.Html,
+    // };
+    // var updatedGameServer = await Dialogs.ModifyGameServerDialog.ShowAsync(DialogService, gameServer, isNew: true)
+    //     .ConfigureAwait(false);
+    // if (updatedGameServer is null)
+    //     return;
+    // Contract.Assert(updatedGameServer == gameServer);
+    // await GameServerRepository.CreateGameServerAsync(gameServer)
+    //     .ConfigureAwait(false);
+    // await _mudTable.ReloadServerData()
+    //     .ConfigureAwait(false);
+        throw new NotImplementedException();
+    }
+
+    private async Task DeleteGameServerAsync(GameServerInfo gameServerInfo)
+    {
+        if (gameServerInfo.GameServer is null)
+            throw new NullReferenceException("gameServerInfo.GameServer is null");
+        await Dialogs.ConfirmDeletionDialog.ShowAsync(
+            DialogService,
+            Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfGameServer_Description)],
+            Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfGameServer_Title)]);
+        await GameServerRepository.DeleteGameServerAsync(gameServerInfo.GameServer)
+            .ConfigureAwait(false);
+        await _mudTable.ReloadServerData()
+            .ConfigureAwait(false);
+    }
+
+    private async Task StartGameServerAsync(GameServerInfo gameServerInfo)
+    {
+        if (gameServerInfo.GameServer is null)
+            throw new NullReferenceException("gameServerInfo.GameServer is null");
+        var result = await GameServerRepository.StartGameServerAsync(gameServerInfo.GameServer)
+            .ConfigureAwait(false);
+        UpdateGameServerInfoFromResult(gameServerInfo, result);
+    }
+
+    private async Task StopGameServerAsync(GameServerInfo gameServerInfo)
+    {
+        if (gameServerInfo.GameServer is null)
+            throw new NullReferenceException("gameServerInfo.GameServer is null");
+        var result = await GameServerRepository.StopGameServerAsync(gameServerInfo.GameServer)
+            .ConfigureAwait(false);
+        UpdateGameServerInfoFromResult(gameServerInfo, result);
+    }
+
+    private async Task UpgradeGameServerAsync(GameServerInfo gameServerInfo)
+    {
+        if (gameServerInfo.GameServer is null)
+            throw new NullReferenceException("gameServerInfo.GameServer is null");
+        var result = await GameServerRepository.UpgradeGameServerAsync(gameServerInfo.GameServer)
+            .ConfigureAwait(false);
+        UpdateGameServerInfoFromResult(gameServerInfo, result);
+    }
+
+    private static void UpdateGameServerInfoFromResult(GameServerInfo gameServerInfo, GameServerInfo result)
+    {
+        if (gameServerInfo.GameServer is null)
+            throw new NullReferenceException("gameServerInfo.GameServer is null");
+        gameServerInfo.GameServer.Status      = result.GameServer?.Status ?? gameServerInfo.GameServer.Status;
+        gameServerInfo.IsRunning              = result.IsRunning ?? gameServerInfo.IsRunning;
+        gameServerInfo.CanStart               = result.CanStart ?? gameServerInfo.CanStart;
+        gameServerInfo.CanUpgrade             = result.CanUpgrade ?? gameServerInfo.CanUpgrade;
+        gameServerInfo.CanStop                = result.CanStop ?? gameServerInfo.CanStop;
+        gameServerInfo.CanUpdateConfiguration = result.CanUpdateConfiguration ?? gameServerInfo.CanUpdateConfiguration;
+    }
+
+    private static string? GetStatusIcon(GameServerInfo context)
+    {
+        return context is {IsRunning: true, GameServer.Status: ELifetimeStatus.Stopped}
+            ? Icons.Material.Filled.SwapVerticalCircle
+            : context.GameServer?.Status.ToIcon();
+    }
+
+    private string GetStatusToolTip(GameServerInfo context)
+    {
+        return context is {IsRunning: true, GameServer.Status: ELifetimeStatus.Stopped}
+            ? Localizer[nameof(Language.Pages_GameServers_Status_UpgradingTooltip)]
+            : context.GameServer?.Status switch {
+                ELifetimeStatus.Stopped => Localizer[nameof(Language.Pages_GameServers_Status_StoppedTooltip)],
+                ELifetimeStatus.Starting => Localizer[nameof(Language.Pages_GameServers_Status_StartingTooltip)],
+                ELifetimeStatus.Stopping => Localizer[nameof(Language.Pages_GameServers_Status_StoppingTooltip)],
+                ELifetimeStatus.Running => Localizer[nameof(Language.Pages_GameServers_Status_RunningTooltip)],
+                null => string.Empty,
+                _ => throw new ArgumentOutOfRangeException()
+                };
+    }
+
+}

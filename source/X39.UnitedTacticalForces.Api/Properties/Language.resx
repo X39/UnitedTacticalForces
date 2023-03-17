@@ -89,13 +89,13 @@ Signature errors are still logged by the server on connection and can kick the u
         <value>Port</value>
     </data>
     <data name="ServerController_Arma3_Host_ServerMod_Title" xml:space="preserve">
-        <value>Loads the specified subfolders for various server-side (not transferred to clients) mods. Separated by semicolons. Absolute path and multiple stacked folders are possible.
-In Linux, arguments for multiple folders require the following separator syntax: -mod=mod1\;mod2\;mod3.</value>
+        <value>Server mods</value>
     </data>
     <data name="ServerController_Arma3_Host_Port_Description" xml:space="preserve">
         <value>Port on which the dedicated server should listen.</value>
     </data>
     <data name="ServerController_Arma3_Host_ServerMod_Description" xml:space="preserve">
-        <value>Server mods</value>
+        <value>Loads the specified subfolders for various server-side (not transferred to clients) mods. Separated by semicolons. Absolute path and multiple stacked folders are possible.
+In Linux, arguments for multiple folders require the following separator syntax: -mod=mod1\;mod2\;mod3.</value>
     </data>
 </root>

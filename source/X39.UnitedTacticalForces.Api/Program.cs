@@ -49,7 +49,7 @@ builder.Services.AddSwaggerGen(
                 o.IncludeXmlCommentsFrom(xmlFilePath);
             });
     });
-builder.Services.AddDbContext<ApiDbContext>(
+builder.Services.AddDbContextFactory<ApiDbContext>(
     options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("ApiDbContext")));
 builder.Services.AddAttributedServicesFromAssemblyOf<Program>(builder.Configuration);

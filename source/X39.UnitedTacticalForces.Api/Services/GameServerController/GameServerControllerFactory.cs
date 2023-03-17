@@ -11,7 +11,7 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerController;
 [Singleton<GameServerControllerFactory, IGameServerControllerFactory>]
 public class GameServerControllerFactory : IGameServerControllerFactory, IAsyncDisposable
 {
-    private readonly ImmutableArray<GameControllerInfo>                    _controllerTypes;
+    private readonly ImmutableArray<GameControllerInfo>                _controllerTypes;
     private readonly ConcurrentDictionary<long, IGameServerController> _gameServerControllers;
     private readonly SemaphoreSlim                                     _semaphoreSlim;
 
@@ -40,7 +40,14 @@ public class GameServerControllerFactory : IGameServerControllerFactory, IAsyncD
             return (Task<IGameServerController>) typeof(GameServerControllerFactory)
                 .GetMethod(nameof(GenericCreateAsync), BindingFlags.Static | BindingFlags.NonPublic)!
                 .MakeGenericMethod(type)
-                .Invoke(null, Array.Empty<object?>())!;
+                .Invoke(
+                    null,
+                    new object?[]
+                    {
+                        serviceProvider,
+                        configuration,
+                        gameServer,
+                    })!;
         }
 
         string GetIdentifierMethod(Type type)
@@ -52,7 +59,8 @@ public class GameServerControllerFactory : IGameServerControllerFactory, IAsyncD
         }
 
         _controllerTypes = typeof(GameServerControllerFactory).Assembly.GetTypes()
-            .Where((q) => q.IsAssignableTo(typeof(IGameServerControllerFactory)))
+            .Where((q) => q.IsAssignableTo(typeof(IGameServerControllerCreatable)))
+            .Where((q) => !q.IsEquivalentTo(typeof(IGameServerControllerCreatable)))
             .Select(
                 (q) =>
                 {
@@ -63,7 +71,7 @@ public class GameServerControllerFactory : IGameServerControllerFactory, IAsyncD
                 })
             .ToImmutableArray();
         _gameServerControllers = new ConcurrentDictionary<long, IGameServerController>();
-        _semaphoreSlim         = new SemaphoreSlim(0, 1);
+        _semaphoreSlim         = new SemaphoreSlim(1, 1);
     }
 
     /// <inheritdoc/>
@@ -72,17 +80,18 @@ public class GameServerControllerFactory : IGameServerControllerFactory, IAsyncD
         if (_gameServerControllers.TryGetValue(gameServer.PrimaryKey, out var gameServerController))
             return gameServerController;
         return await _semaphoreSlim.LockedAsync(
-            async () =>
-            {
-                if (_gameServerControllers.TryGetValue(gameServer.PrimaryKey, out gameServerController))
+                async () =>
+                {
+                    if (_gameServerControllers.TryGetValue(gameServer.PrimaryKey, out gameServerController))
+                        return gameServerController;
+                    var gameServerControllerInfo = _controllerTypes
+                        .Single((q) => q.Identifier == gameServer.ControllerIdentifier);
+                    gameServerController = await gameServerControllerInfo.CreateController(gameServer)
+                        .ConfigureAwait(false);
+                    _gameServerControllers[gameServer.PrimaryKey] = gameServerController;
                     return gameServerController;
-                gameServerController = await _controllerTypes
-                    .FirstOrDefault((q) => q.Identifier == gameServer.ControllerIdentifier)
-                    .CreateController(gameServer)
-                    .ConfigureAwait(false);
-                _gameServerControllers[gameServer.PrimaryKey] = gameServerController;
-                return gameServerController;
-            }).ConfigureAwait(false);
+                })
+            .ConfigureAwait(false);
     }
 
     /// <inheritdoc/>

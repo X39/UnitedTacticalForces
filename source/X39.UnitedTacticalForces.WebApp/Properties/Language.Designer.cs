@@ -321,6 +321,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Your access is not confirmed yet. Please give the administrators some time to activate your access and reload the page after activation. Reloading the page is mandatory for the access change to take effect..
+        /// </summary>
+        internal static string Hints_VerificationStatusPending {
+            get {
+                return ResourceManager.GetString("Hints_VerificationStatusPending", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Slots.
         /// </summary>
         internal static string Pages_Events_EventCard_Slots {
@@ -429,6 +438,204 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Selected mod pack.
+        /// </summary>
+        internal static string Pages_GameServerEdit_GameServerSelectedModPack {
+            get {
+                return ResourceManager.GetString("Pages_GameServerEdit_GameServerSelectedModPack", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The mod pack selected for this server.
+        /// </summary>
+        internal static string Pages_GameServerEdit_GameServerSelectedModPack_HelperText {
+            get {
+                return ResourceManager.GetString("Pages_GameServerEdit_GameServerSelectedModPack_HelperText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Server title.
+        /// </summary>
+        internal static string Pages_GameServerEdit_GameServerTitle {
+            get {
+                return ResourceManager.GetString("Pages_GameServerEdit_GameServerTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The name of the server in this interface.
+        /// </summary>
+        internal static string Pages_GameServerEdit_GameServerTitle_HelperText {
+            get {
+                return ResourceManager.GetString("Pages_GameServerEdit_GameServerTitle_HelperText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Loading game server configuration.
+        /// </summary>
+        internal static string Pages_GameServerEdit_TitleWhileLoading {
+            get {
+                return ResourceManager.GetString("Pages_GameServerEdit_TitleWhileLoading", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All game servers.
+        /// </summary>
+        internal static string Pages_GameServers_AllGameServers {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_AllGameServers", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to delete this server? This cannot be undone!.
+        /// </summary>
+        internal static string Pages_GameServers_ConfirmDeleteOfGameServer_Description {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_ConfirmDeleteOfGameServer_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Confirm deletion of server.
+        /// </summary>
+        internal static string Pages_GameServers_ConfirmDeleteOfGameServer_Title {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_ConfirmDeleteOfGameServer_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Create new server.
+        /// </summary>
+        internal static string Pages_GameServers_CreateNewGameServer {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_CreateNewGameServer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game server is running.
+        /// </summary>
+        internal static string Pages_GameServers_Status_RunningTooltip {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Status_RunningTooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game server is starting.
+        /// </summary>
+        internal static string Pages_GameServers_Status_StartingTooltip {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Status_StartingTooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game server is stopped.
+        /// </summary>
+        internal static string Pages_GameServers_Status_StoppedTooltip {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Status_StoppedTooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game server is shuting down.
+        /// </summary>
+        internal static string Pages_GameServers_Status_StoppingTooltip {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Status_StoppingTooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game server is upgrading.
+        /// </summary>
+        internal static string Pages_GameServers_Status_UpgradingTooltip {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Status_UpgradingTooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Active mod pack.
+        /// </summary>
+        internal static string Pages_GameServers_Table_ActiveModPack {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_ActiveModPack", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interactions.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Chosen mod pack.
+        /// </summary>
+        internal static string Pages_GameServers_Table_SelectedModPack {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_SelectedModPack", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Status.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Status {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Status", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Created.
+        /// </summary>
+        internal static string Pages_GameServers_Table_TimeStampCreated {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_TimeStampCreated", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Updated.
+        /// </summary>
+        internal static string Pages_GameServers_Table_TimeStampUpgraded {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_TimeStampUpgraded", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Title {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game Servers.
+        /// </summary>
+        internal static string Pages_GameServers_Title {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to All mod packs.
         /// </summary>
         internal static string Pages_ModPacks_AllModPacks {
@@ -485,9 +692,9 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         /// <summary>
         ///   Looks up a localized string similar to Interactions.
         /// </summary>
-        internal static string Pages_ModPacks_Table_Interacitons {
+        internal static string Pages_ModPacks_Table_Interactions {
             get {
-                return ResourceManager.GetString("Pages_ModPacks_Table_Interacitons", resourceCulture);
+                return ResourceManager.GetString("Pages_ModPacks_Table_Interactions", resourceCulture);
             }
         }
         
@@ -695,6 +902,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Shared_NavMenu_Events {
             get {
                 return ResourceManager.GetString("Shared_NavMenu_Events", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game servers.
+        /// </summary>
+        internal static string Shared_NavMenu_GameServers {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_GameServers", resourceCulture);
             }
         }
         

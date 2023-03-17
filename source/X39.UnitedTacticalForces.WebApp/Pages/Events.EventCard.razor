@@ -22,7 +22,7 @@
             <div class="d-inline">
                 <MudText Typo="Typo.h4">@EventItem.Title</MudText>
                 <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
-                    <MudText Color="@(EventItem.AcceptedCount >= EventItem.MinimumAccepted ? Color.Success : Color.Error)">@(EventItem.ScheduledFor?.ToString("g"))</MudText>
+                    <MudText Color="@(EventItem.AcceptedCount >= EventItem.MinimumAccepted ? Color.Success : Color.Error)">@(EventItem.ScheduledFor?.ToLocalTime().ToString("g"))</MudText>
                 </MudHidden>
             </div>
             @if (EventItem.Terrain is not null)

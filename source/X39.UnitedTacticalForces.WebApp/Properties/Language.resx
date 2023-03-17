@@ -63,7 +63,7 @@
     <data name="Pages_ModPacks_Table_Owner" xml:space="preserve">
         <value>Owner</value>
     </data>
-    <data name="Pages_ModPacks_Table_Interacitons" xml:space="preserve">
+    <data name="Pages_ModPacks_Table_Interactions" xml:space="preserve">
         <value>Interactions</value>
     </data>
     <data name="Dialogs_ModifyModPackDialog_Title" xml:space="preserve">
@@ -242,5 +242,77 @@
     </data>
     <data name="Pages_Users_Table_IsVerified" xml:space="preserve">
         <value>Verified</value>
+    </data>
+    <data name="Hints_VerificationStatusPending" xml:space="preserve">
+        <value>Your access is not confirmed yet. Please give the administrators some time to activate your access and reload the page after activation. Reloading the page is mandatory for the access change to take effect.</value>
+    </data>
+    <data name="Pages_GameServers_Title" xml:space="preserve">
+        <value>Game Servers</value>
+    </data>
+    <data name="Pages_GameServers_AllGameServers" xml:space="preserve">
+        <value>All game servers</value>
+    </data>
+    <data name="Pages_GameServers_Table_Title" xml:space="preserve">
+        <value>Title</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions" xml:space="preserve">
+        <value>Interactions</value>
+    </data>
+    <data name="Pages_GameServers_CreateNewGameServer" xml:space="preserve">
+        <value>Create new server</value>
+    </data>
+    <data name="Pages_GameServers_Table_SelectedModPack" xml:space="preserve">
+        <value>Chosen mod pack</value>
+    </data>
+    <data name="Pages_GameServers_Table_ActiveModPack" xml:space="preserve">
+        <value>Active mod pack</value>
+    </data>
+    <data name="Pages_GameServers_Table_TimeStampUpgraded" xml:space="preserve">
+        <value>Updated</value>
+    </data>
+    <data name="Pages_GameServers_Table_Status" xml:space="preserve">
+        <value>Status</value>
+    </data>
+    <data name="Pages_GameServers_Table_TimeStampCreated" xml:space="preserve">
+        <value>Created</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmDeleteOfGameServer_Description" xml:space="preserve">
+        <value>Are you sure you want to delete this server? This cannot be undone!</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmDeleteOfGameServer_Title" xml:space="preserve">
+        <value>Confirm deletion of server</value>
+    </data>
+    <data name="Shared_NavMenu_GameServers" xml:space="preserve">
+        <value>Game servers</value>
+    </data>
+    <data name="Pages_GameServerEdit_TitleWhileLoading" xml:space="preserve">
+        <value>Loading game server configuration</value>
+    </data>
+    <data name="Pages_GameServerEdit_GameServerTitle_HelperText" xml:space="preserve">
+        <value>The name of the server in this interface</value>
+    </data>
+    <data name="Pages_GameServerEdit_GameServerSelectedModPack_HelperText" xml:space="preserve">
+        <value>The mod pack selected for this server</value>
+    </data>
+    <data name="Pages_GameServerEdit_GameServerTitle" xml:space="preserve">
+        <value>Server title</value>
+    </data>
+    <data name="Pages_GameServerEdit_GameServerSelectedModPack" xml:space="preserve">
+        <value>Selected mod pack</value>
+    </data>
+    <data name="Pages_GameServers_Status_UpgradingTooltip" xml:space="preserve">
+        <value>Game server is upgrading</value>
+    </data>
+    <data name="Pages_GameServers_Status_StoppedTooltip" xml:space="preserve">
+        <value>Game server is stopped</value>
+    </data>
+    <data name="Pages_GameServers_Status_StartingTooltip" xml:space="preserve">
+        <value>Game server is starting</value>
+    </data>
+    <data name="Pages_GameServers_Status_StoppingTooltip" xml:space="preserve">
+        <value>Game server is shuting down</value>
+    </data>
+    <data name="Pages_GameServers_Status_RunningTooltip" xml:space="preserve">
+        <value>Game server is running</value>
     </data>
 </root>

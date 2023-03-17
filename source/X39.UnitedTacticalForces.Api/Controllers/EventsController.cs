@@ -6,6 +6,7 @@ using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
+using X39.UnitedTacticalForces.Common;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
@@ -114,28 +115,33 @@ public class EventsController : ControllerBase
         newEvent.OwnerFk              = userId;
         newEvent.UserMetas            = null;
         newEvent.TimeStampCreated     = DateTimeOffset.Now;
-        newEvent.ScheduledForOriginal = newEvent.ScheduledForOriginal;
+        newEvent.ScheduledForOriginal = newEvent.ScheduledFor;
         newEvent.HostedByFk           = newEvent.HostedBy?.PrimaryKey ?? newEvent.HostedByFk;
         newEvent.HostedBy             = null;
         newEvent.ModPackFk            = newEvent.ModPack?.PrimaryKey ?? newEvent.ModPackFk;
         newEvent.ModPack              = null;
         newEvent.TerrainFk            = newEvent.Terrain?.PrimaryKey ?? newEvent.TerrainFk;
         newEvent.Terrain              = null;
-        // ToDo: Authorize
         var entity = await _apiDbContext.Events.AddAsync(newEvent, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return entity.Entity;
     }
 
     [Authorize]
+    [ProducesResponseType(typeof(void), (int)HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(void), (int)HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(void), (int)HttpStatusCode.Forbidden)]
     [HttpPost("{eventId:guid}/update", Name = nameof(UpdateEventAsync))]
-    public async Task UpdateEventAsync(
+    public async Task<ActionResult> UpdateEventAsync(
         [FromRoute] Guid eventId,
         [FromBody] Event updatedEvent,
         CancellationToken cancellationToken)
     {
-        // ToDo: Authorize
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
         var existingEvent = await _apiDbContext.Events.SingleAsync((q) => q.PrimaryKey == eventId, cancellationToken);
+        if (!User.IsInRoleOrAdmin(Roles.EventModify) && existingEvent.HostedByFk != userId)
+            return Forbid();
         existingEvent.Title           = updatedEvent.Title;
         existingEvent.Description     = updatedEvent.Description;
         existingEvent.ScheduledFor    = updatedEvent.ScheduledFor;
@@ -146,6 +152,7 @@ public class EventsController : ControllerBase
         existingEvent.TerrainFk       = updatedEvent.Terrain?.PrimaryKey ?? updatedEvent.TerrainFk;
         existingEvent.MinimumAccepted = updatedEvent.MinimumAccepted;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
+        return NoContent();
     }
 
     [Authorize]

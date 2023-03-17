@@ -1,6 +1,8 @@
 ﻿@page "/users"
 @using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.UnitedTacticalForces.WebApp.Services
 @inject IStringLocalizer<Language> Localizer
+@inject MeService Me
 @inject IUserRepository UserRepository
 @attribute [Authorize]
 <PageTitle>@Localizer[nameof(Language.Pages_Users_Title)]</PageTitle>
@@ -87,11 +89,13 @@
         if (_userCounts == -1)
             _userCounts = await UserRepository.GetUserCountAsync()
                 .ConfigureAwait(false);
+
         var items = await UserRepository.GetUsersAsync(
             skip: arg.Page * arg.PageSize,
             take: arg.PageSize,
             search: SearchString,
-            includeRoles: true)
+            includeRoles: true,
+            includeUnverified: Me.IsInRoleOrAdmin(Roles.UserVerify))
             .ConfigureAwait(false);
         return new TableData<User>
         {
@@ -99,5 +103,4 @@
             Items = items,
         };
     }
-
 }

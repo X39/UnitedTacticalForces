@@ -53,7 +53,7 @@ else if (_events.Any())
                         <ItemOpposite>
                             <MudText Color="@(it.AcceptedCount >= it.MinimumAccepted ? Color.Success : Color.Error)"
                                      Typo="Typo.h5">
-                                @it.ScheduledFor?.ToString("g")
+                                @it.ScheduledFor?.ToLocalTime().ToString("g")
                             </MudText>
                         </ItemOpposite>
                         <ItemContent>

@@ -31,6 +31,9 @@ public class MeService
     public bool IsAuthenticated => _user is not null && !(_user.IsBanned ?? false);
 
     public bool IsVerified => _user?.IsVerified ?? false;
+
+    public bool Eval(Func<User, bool> func) => IsAuthenticated && func(User);
+
     /// <summary>
     /// Initializes the service.
     /// </summary>
