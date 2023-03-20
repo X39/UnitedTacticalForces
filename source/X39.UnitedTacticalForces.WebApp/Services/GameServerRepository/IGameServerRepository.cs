@@ -44,4 +44,16 @@ public interface IGameServerRepository
         CancellationToken cancellationToken = default);
 
     Task UpdateAsync(GameServer gameServer, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<GameServerLog>> GetLogsAsync(
+        GameServer gameServer,
+        int skip,
+        int take,
+        DateTimeOffset? referenceTimeStamp = null,
+        bool descendingByTimestamp = false,
+        CancellationToken cancellationToken = default);
+    Task<long> GetLogsCountAsync(
+        GameServer gameServer,
+        DateTimeOffset? referenceTimeStamp = null,
+        CancellationToken cancellationToken = default);
 }

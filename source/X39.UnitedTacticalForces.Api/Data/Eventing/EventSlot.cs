@@ -33,6 +33,11 @@ public class EventSlot
     /// Denotes whether a non-author user may assign himself into this slot. 
     /// </summary>
     public bool IsSelfAssignable { get; set; }
+
+    /// <summary>
+    /// Denotes whether a non-author user may view this slot. 
+    /// </summary>
+    public bool IsVisible { get; set; }
     
     /// <summary>
     /// The group this role is part of.

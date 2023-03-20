@@ -7,6 +7,7 @@
 @inject IUserRepository UserRepository
 @inject ITerrainRepository TerrainRepository
 @inject IModPackRepository ModPackRepository
+@inject ISnackbar Snackbar
 <MudDialog>
     <DialogContent>
         <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Title)]" @bind-Value="@Event.Title"/>
@@ -96,13 +97,20 @@
 
     private async Task FilesChangedAsync(InputFileChangeEventArgs obj)
     {
-        _fileName = obj.File.Name;
-        await using var stream = obj.File.OpenReadStream();
-        using var memoryStream = new MemoryStream();
-        await stream.CopyToAsync(memoryStream)
-            .ConfigureAwait(false);
-        Event.Image = memoryStream.ToArray();
-        Event.ImageMimeType = obj.File.ContentType;
+        try
+        {
+            _fileName = obj.File.Name;
+            await using var stream = obj.File.OpenReadStream(1 /*mb*/* 1024 /*kb*/* 1024 /*b*/);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream)
+                .ConfigureAwait(false);
+            Event.Image = memoryStream.ToArray();
+            Event.ImageMimeType = obj.File.ContentType;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     public static async Task<Event?> ShowAsync(

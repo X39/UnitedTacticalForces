@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
@@ -110,5 +111,21 @@ public abstract class GameServerControllerBase : IGameServerController
         {
             await dbContext.DisposeAsync().ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Creates a directory in accordance with OS-Platform user rights.
+    /// </summary>
+    /// <param name="directory">The directory to create.</param>
+    protected static void CreateDirectory(string directory)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            Directory.CreateDirectory(
+                directory,
+                UnixFileMode.UserRead
+                | UnixFileMode.UserWrite
+                | UnixFileMode.UserExecute);
+        else
+            Directory.CreateDirectory(directory);
     }
 }

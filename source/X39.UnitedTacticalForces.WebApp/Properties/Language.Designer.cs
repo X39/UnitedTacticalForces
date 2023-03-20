@@ -69,6 +69,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Close.
+        /// </summary>
+        internal static string Common_Close {
+            get {
+                return ResourceManager.GetString("Common_Close", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Copied to clipboard.
         /// </summary>
         internal static string Common_CopiedToClipboard {
@@ -312,6 +321,42 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Severity.
+        /// </summary>
+        internal static string Dialogs_ShowGameServerLogs_LogLevel {
+            get {
+                return ResourceManager.GetString("Dialogs_ShowGameServerLogs_LogLevel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Message.
+        /// </summary>
+        internal static string Dialogs_ShowGameServerLogs_Message {
+            get {
+                return ResourceManager.GetString("Dialogs_ShowGameServerLogs_Message", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Source.
+        /// </summary>
+        internal static string Dialogs_ShowGameServerLogs_Source {
+            get {
+                return ResourceManager.GetString("Dialogs_ShowGameServerLogs_Source", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Timestamp.
+        /// </summary>
+        internal static string Dialogs_ShowGameServerLogs_TimeStamp {
+            get {
+                return ResourceManager.GetString("Dialogs_ShowGameServerLogs_TimeStamp", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Please sign in using the Steam login option on the bottom left of your screen to access additional features..
         /// </summary>
         internal static string Hints_LogInUsingSteamAtTheBottomRightForAdditionalFeatures {
@@ -434,6 +479,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_EventView_SynchronizeSlotsWithMission {
             get {
                 return ResourceManager.GetString("Pages_EventView_SynchronizeSlotsWithMission", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Visible.
+        /// </summary>
+        internal static string Pages_EventView_Visible {
+            get {
+                return ResourceManager.GetString("Pages_EventView_Visible", resourceCulture);
             }
         }
         

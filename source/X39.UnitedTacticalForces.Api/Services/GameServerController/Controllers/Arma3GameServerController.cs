@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using System.Security.AccessControl;
 using System.Text;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
@@ -112,6 +114,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
 
     private StreamWriter CreateServerConfigurationWriter()
     {
+        CreateDirectory(GameServerPath);
         var fileStreamOptions = new FileStreamOptions
         {
             Mode    = FileMode.Create,
@@ -135,6 +138,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
 
     private StreamWriter CreateBasicConfigurationWriter()
     {
+        CreateDirectory(GameServerPath);
         var fileStreamOptions = new FileStreamOptions
         {
             Mode    = FileMode.Create,
@@ -263,7 +267,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? "arma3server_x64.exe"
                 : "arma3server_x64");
-        var modList = await GetWorkshopPathsAsync(dbContext)
+        var modList = await GetWorkshopPathsAsync(dbContext, true)
             .ConfigureAwait(false);
         var psi = new ProcessStartInfo
         {
@@ -290,10 +294,10 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         if (File.Exists(ServerConfigurationPath))
             psi.ArgumentList.Add($"-config={ServerConfigurationPath}");
 
-        Directory.CreateDirectory(BattleEyePath);
+        CreateDirectory(BattleEyePath);
         psi.ArgumentList.Add($"-bepath={BattleEyePath}");
 
-        Directory.CreateDirectory(ProfilesPath);
+        CreateDirectory(ProfilesPath);
         psi.ArgumentList.Add($"-profiles={ProfilesPath}");
 
         var port = await GetAsync("host://port", -1).ConfigureAwait(false);
@@ -303,8 +307,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         if (serverMod.IsNotNullOrWhiteSpace())
             psi.ArgumentList.Add($"-serverMod={serverMod}");
 
-        var mods = await GetWorkshopPathsAsync(dbContext).ConfigureAwait(false);
-        if (mods.Any())
+        if (modList.Any())
             psi.ArgumentList.Add($"-mods={string.Join(';', modList)}");
         // ReSharper restore StringLiteralTypo
 
@@ -347,12 +350,13 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     }
 
     private async Task<IReadOnlyCollection<string>> GetWorkshopPathsAsync(
-        ApiDbContext dbContext)
+        ApiDbContext dbContext,
+        bool lowercased)
     {
         var workshopIds = await GetWorkshopIdsAsync(dbContext).ConfigureAwait(false);
         return workshopIds.Select(
                 (q) => Path.Combine(
-                    GetWorkshopPath(q),
+                    lowercased ? GetLowercasedWorkshopPath(q) : GetWorkshopPath(q),
                     "steamapps",
                     "workshop",
                     "content",
@@ -368,8 +372,111 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         var workshopItemIds = await GetWorkshopIdsAsync(dbContext).ConfigureAwait(false);
         foreach (var workshopItemId in workshopItemIds)
         {
-            _ = await DoUpdateWorkshopMod(workshopItemId, executingUser)
+            var workshopPath = await DoUpdateWorkshopMod(workshopItemId, executingUser)
                 .ConfigureAwait(false);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                var lowerCaseWorkshopPath = GetLowercasedWorkshopPath(workshopItemId);
+                CopyAndReplaceFiles(workshopPath, lowerCaseWorkshopPath);
+                LowercaseFiles(lowerCaseWorkshopPath);
+            }
+        }
+    }
+
+    private string GetLowercasedWorkshopPath(long workshopId)
+    {
+        var lowerCaseWorkshopPath = GetWorkshopPath(workshopId);
+        lowerCaseWorkshopPath = Path.Combine(
+            Path.GetDirectoryName(lowerCaseWorkshopPath) ??
+            throw new NullReferenceException($"Failed to receive directory name of '{lowerCaseWorkshopPath}'"),
+            $"{Path.GetFileName(lowerCaseWorkshopPath)}-lowercased");
+        return lowerCaseWorkshopPath;
+    }
+
+
+    [SupportedOSPlatform("linux")]
+    private void CopyAndReplaceFiles(string source, string target)
+    {
+        using var logScope = Logger.BeginScope(source);
+        if (!Directory.Exists(target))
+        {
+            // Create directory
+            var di = new DirectoryInfo(source).UnixFileMode;
+
+            Logger.LogTrace("Creating directory {NewFilePath}", target);
+            Directory.CreateDirectory(target, di);
+        }
+
+        var files = Directory.GetFiles(source, "*", SearchOption.TopDirectoryOnly);
+        foreach (var fullFileName in files)
+        {
+            var fileName = fullFileName[source.Length..].TrimStart('/', '\\');
+            var newFullFileName = Path.Combine(target, fileName);
+            var fi = new FileInfo(fullFileName).UnixFileMode;
+            if (File.Exists(newFullFileName))
+            {
+                Logger.LogTrace("Deleting file {FilePath}", newFullFileName);
+                File.Delete(newFullFileName);
+            }
+
+            Logger.LogTrace("Copying file {FilePath} to {NewFilePath}", fullFileName, newFullFileName);
+            File.Copy(fullFileName, newFullFileName);
+            File.SetUnixFileMode(newFullFileName, fi);
+        }
+
+        var directories = Directory.GetDirectories(source, "*", SearchOption.TopDirectoryOnly);
+        foreach (var fullDirectoryName in directories)
+        {
+            var directoryName = fullDirectoryName[source.Length..].TrimStart('/', '\\');
+            var newFullDirectoryName = Path.Combine(target, directoryName);
+            CopyAndReplaceFiles(fullDirectoryName, newFullDirectoryName);
+        }
+    }
+
+    [SupportedOSPlatform("linux")]
+    private void LowercaseFiles(string source)
+    {
+        using var logScope = Logger.BeginScope(source);
+        var files = Directory.GetFiles(source, "*", SearchOption.TopDirectoryOnly);
+        foreach (var fullFileName in files)
+        {
+            var fileName = fullFileName[source.Length..].TrimStart('/', '\\');
+            var lowerCasedFileName = fileName.ToLower();
+            var lowerCasedFullFileName = Path.Combine(source, lowerCasedFileName);
+            if (fullFileName == lowerCasedFullFileName)
+                continue;
+            if (File.Exists(lowerCasedFullFileName))
+            {
+                Logger.LogTrace("Deleting file {FilePath}", lowerCasedFullFileName);
+                File.Delete(lowerCasedFullFileName);
+            }
+
+            Logger.LogTrace("Moving file {FilePath} to {NewFilePath}", fullFileName, lowerCasedFullFileName);
+            File.Move(fullFileName, lowerCasedFullFileName);
+        }
+
+        var directories = Directory.GetDirectories(source, "*", SearchOption.TopDirectoryOnly);
+        foreach (var fullDirectoryName in directories)
+        {
+            var directoryName = fullDirectoryName[source.Length..].TrimStart('/', '\\');
+            var lowerCasedDirectoryName = directoryName.ToLower();
+            var lowerCasedFullDirectoryName = Path.Combine(source, lowerCasedDirectoryName);
+            if (fullDirectoryName != lowerCasedFullDirectoryName)
+            {
+                if (Directory.Exists(lowerCasedFullDirectoryName))
+                {
+                    Logger.LogTrace("Deleting directory {DirectoryPath}", lowerCasedFullDirectoryName);
+                    Directory.Delete(lowerCasedFullDirectoryName, true);
+                }
+
+                Logger.LogTrace(
+                    "Moving file {FilePath} to {NewFilePath}",
+                    fullDirectoryName,
+                    lowerCasedFullDirectoryName);
+                Directory.Move(fullDirectoryName, lowerCasedFullDirectoryName);
+            }
+
+            LowercaseFiles(lowerCasedFullDirectoryName);
         }
     }
 }

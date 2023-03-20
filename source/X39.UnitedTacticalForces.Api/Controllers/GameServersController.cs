@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data;
+using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Services.GameServerController;
@@ -210,7 +211,31 @@ public class GameServersController : ControllerBase
         var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
         if (!controller.CanStart)
             return Forbid();
-        _ = controller.StartAsync(user)
+        _ = Task.Run(
+                async () =>
+                {
+                    _logger.LogDebug(
+                        "Starting game server {GameServerTitle} ({GameServerPk})",
+                        gameServer.Title,
+                        gameServer.PrimaryKey);
+                    try
+                    {
+                        await controller.StartAsync(user)
+                            .ConfigureAwait(false);
+                        _logger.LogDebug(
+                            "Start completed without exception for {GameServerTitle} ({GameServerPk})",
+                            gameServer.Title,
+                            gameServer.PrimaryKey);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Exception while starting {GameServerTitle} ({GameServerPk})",
+                            gameServer.Title,
+                            gameServer.PrimaryKey);
+                    }
+                })
             .ConfigureAwait(false);
         await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
         return Ok(new GameServerInfo(gameServer, controller));
@@ -245,10 +270,111 @@ public class GameServersController : ControllerBase
         var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
         if (!controller.CanStop)
             return Forbid();
-        _ = controller.StopAsync(user)
-            .ConfigureAwait(false);
+        _ = ExecuteStopGameServerAsync(gameServer, controller, user).ConfigureAwait(false);
         await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
         return Ok(new GameServerInfo(gameServer, controller));
+    }
+
+    private async Task ExecuteUpgradeGameServerAsync(GameServer gameServer, IGameServerController controller, User user)
+    {
+        _logger.LogDebug(
+            "Upgrading game server {GameServerTitle} ({GameServerPk})",
+            gameServer.Title,
+            gameServer.PrimaryKey);
+        try
+        {
+            if (controller.IsRunning)
+                await ExecuteStopGameServerAsync(gameServer, controller, user)
+                    .ConfigureAwait(false);
+
+            await ExecuteUpdateConfigurationAsync(gameServer, controller, user)
+                .ConfigureAwait(false);
+            await ExecuteInstallOrUpgradeAsync(gameServer, controller, user)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Exception while stopping {GameServerTitle} ({GameServerPk})",
+                gameServer.Title,
+                gameServer.PrimaryKey);
+        }
+    }
+    private async Task ExecuteStopGameServerAsync(GameServer gameServer, IGameServerController controller, User user)
+    {
+        _logger.LogDebug(
+            "Stopping game server {GameServerTitle} ({GameServerPk})",
+            gameServer.Title,
+            gameServer.PrimaryKey);
+        try
+        {
+            await controller.StopAsync(user)
+                .ConfigureAwait(false);
+            _logger.LogDebug(
+                "Stop completed without exception for {GameServerTitle} ({GameServerPk})",
+                gameServer.Title,
+                gameServer.PrimaryKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Exception while stopping {GameServerTitle} ({GameServerPk})",
+                gameServer.Title,
+                gameServer.PrimaryKey);
+            throw;
+        }
+    }
+    private async Task ExecuteInstallOrUpgradeAsync(GameServer gameServer, IGameServerController controller, User user)
+    {
+        _logger.LogDebug(
+            "Upgrading (or installing) game server {GameServerTitle} ({GameServerPk})",
+            gameServer.Title,
+            gameServer.PrimaryKey);
+        try
+        {
+            await controller.InstallOrUpgradeAsync(user)
+                .ConfigureAwait(false);
+            _logger.LogDebug(
+                "Upgrade (or install) completed without exception for {GameServerTitle} ({GameServerPk})",
+                gameServer.Title,
+                gameServer.PrimaryKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Exception while upgrading (or installing) {GameServerTitle} ({GameServerPk})",
+                gameServer.Title,
+                gameServer.PrimaryKey);
+            throw;
+        }
+    }
+    private async Task ExecuteUpdateConfigurationAsync(GameServer gameServer, IGameServerController controller, User user)
+    {
+        _logger.LogDebug(
+            "Updating configuration of game server {GameServerTitle} ({GameServerPk})",
+            gameServer.Title,
+            gameServer.PrimaryKey);
+        try
+        {
+            await controller.UpdateConfigurationAsync()
+                .ConfigureAwait(false);
+            _logger.LogDebug(
+                "Updating configuration completed without exception for {GameServerTitle} ({GameServerPk})",
+                gameServer.Title,
+                gameServer.PrimaryKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Exception while updating configuration of {GameServerTitle} ({GameServerPk})",
+                gameServer.Title,
+                gameServer.PrimaryKey);
+            throw;
+        }
     }
 
     /// <summary>
@@ -281,17 +407,7 @@ public class GameServersController : ControllerBase
         if (!controller.CanInstallOrUpgrade || !controller.CanUpdateConfiguration ||
             controller is {IsRunning: true, CanStop: false})
             return Forbid(); // Forbid because not possible pre-applying, preventing work.
-        _ = Task.Run(
-            async () =>
-            {
-                if (controller.IsRunning)
-                    await controller.StopAsync(user);
-                await controller.InstallOrUpgradeAsync(user)
-                    .ConfigureAwait(false);
-                await controller.UpdateConfigurationAsync()
-                    .ConfigureAwait(false);
-            },
-            cancellationToken);
+        _ = ExecuteUpgradeGameServerAsync(gameServer, controller, user).ConfigureAwait(false);
 
         await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
         return Ok(new GameServerInfo(gameServer, controller));
@@ -322,10 +438,40 @@ public class GameServersController : ControllerBase
     }
 
     /// <summary>
-    /// Return the configuration of the given <see cref="GameServer"/>.
+    /// Return the count of logs for the given <see cref="GameServer"/>.
+    /// </summary>
+    /// <param name="referenceTimeStamp">
+    ///     Timestamp to allow consistent results.
+    ///     If provided, this will prevent logs newer then the timestamp to appear in the result
+    ///     and consideration with <paramref cref="skip"/> and <paramref cref="take"/>.
+    /// </param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to start.</param>
+    [ProducesResponseType(typeof(long), (int) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [HttpGet("{gameServerId:long}/logs/count", Name = nameof(GetLogsCountAsync))]
+    public async Task<ActionResult<long>> GetLogsCountAsync(
+        [FromRoute] long gameServerId,
+        CancellationToken cancellationToken,
+        [FromQuery] DateTimeOffset? referenceTimeStamp = null)
+    {
+        if (!await _apiDbContext.GameServers.AnyAsync((q) => q.PrimaryKey == gameServerId, cancellationToken))
+            return NotFound();
+        var query = _apiDbContext.GameServerLogs.AsQueryable();
+        if (referenceTimeStamp is not null)
+            query = query.Where((q) => q.TimeStamp >= referenceTimeStamp);
+        var count = await query.LongCountAsync(cancellationToken);
+        return Ok(count);
+    }
+
+    /// <summary>
+    /// Return the logs of the given <see cref="GameServer"/>.
     /// </summary>
     /// <remarks>
-    /// Latest logs will always be received first.
+    /// Logs are ordered by <see cref="GameServerLog.TimeStamp"/>.
     /// </remarks>
     /// <param name="referenceTimeStamp">
     ///     Timestamp to allow consistent results.
@@ -339,23 +485,27 @@ public class GameServersController : ControllerBase
     /// <param name="take">The amount of logs to receive</param>
     /// <param name="gameServerId">The id of the <see cref="GameServer"/> to start.</param>
     /// <param name="skip">The amount of log entries to skip</param>
+    /// <param name="descendingByTimeStamp">If true, order of returned logs will be descending (newest one first).</param>
     [ProducesResponseType(typeof(IEnumerable<GameServerLog>), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/logs", Name = nameof(GetLogsAsync))]
     public async Task<ActionResult<IEnumerable<GameServerLog>>> GetLogsAsync(
-        [FromRoute] int skip,
-        [FromRoute] int take,
+        [FromQuery] int skip,
+        [FromQuery] int take,
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken,
-        [FromRoute] DateTimeOffset? referenceTimeStamp = null)
+        [FromQuery] DateTimeOffset? referenceTimeStamp = null,
+        [FromQuery] bool descendingByTimeStamp = false)
     {
         if (!await _apiDbContext.GameServers.AnyAsync((q) => q.PrimaryKey == gameServerId, cancellationToken))
             return NotFound();
         var query = _apiDbContext.GameServerLogs.AsQueryable();
         if (referenceTimeStamp is not null)
             query = query.Where((q) => q.TimeStamp >= referenceTimeStamp);
+        query = descendingByTimeStamp
+            ? query.OrderByDescending((q) => q.TimeStamp)
+            : query.OrderBy((q) => q.TimeStamp);
         var configurationEntries = await query
-            .OrderBy((q) => q.TimeStamp)
             .Skip(skip)
             .Take(take)
             .ToArrayAsync(cancellationToken);
@@ -540,7 +690,7 @@ public class GameServersController : ControllerBase
         await _apiDbContext.GameServers.AddAsync(gameServer, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
-        _ = controller.InstallOrUpgradeAsync(user).ConfigureAwait(false);
+        _ = ExecuteInstallOrUpgradeAsync(gameServer, controller, user).ConfigureAwait(false);
         await Task.Delay(1000, cancellationToken);
         return Ok(
             new GameServerInfo(

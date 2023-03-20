@@ -1,6 +1,7 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using X39.Util
 @inject IStringLocalizer<Language> Localizer
+@inject ISnackbar Snackbar
 <MudDialog>
     <DialogContent>
         <MudTextField Label="@Localizer[nameof(Language.Dialogs_ModifyModPackDialog_Inputs_Title)]" @bind-Value="@ModPack.Title"/>
@@ -57,11 +58,18 @@
 
     private async Task FilesChangedAsync(InputFileChangeEventArgs obj)
     {
-        _fileName = obj.File.Name;
-        await using var stream = obj.File.OpenReadStream();
-        using var reader = new StreamReader(stream);
-        ModPack.Html = await reader.ReadToEndAsync()
-            .ConfigureAwait(false);
+        try
+        {
+            _fileName = obj.File.Name;
+            await using var stream = obj.File.OpenReadStream();
+            using var reader = new StreamReader(stream);
+            ModPack.Html = await reader.ReadToEndAsync()
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     public static async Task<ModPack?> ShowAsync(

@@ -1,0 +1,116 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@inject IStringLocalizer<Language> Localizer
+@inject IUserRepository UserRepository
+@inject ITerrainRepository TerrainRepository
+@inject IGameServerRepository GameServerRepository
+@inject IModPackRepository ModPackRepository
+@inject ISnackbar Snackbar
+<MudDialog>
+    <DialogContent>
+        <MudTable @ref="_mudTable"
+                  Dense="true"
+                  ServerData="GetLogsAsync"
+                  RowsPerPage="50"
+                  Virtualize="true"
+                  FixedFooter="true"
+                  FixedHeader="true"
+                  Height="50vh">
+            <ColGroup>
+                <col style="width: 0"/>
+                <col style="width: 0"/>
+                <col style="width: 0"/>
+                <col/>
+            </ColGroup>
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">@GameServer.Title</MudText>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_TimeStamp)]</MudTh>
+                <MudTh>@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_Source)]</MudTh>
+                <MudTh>@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_LogLevel)]</MudTh>
+                <MudTh>@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_Message)]</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_TimeStamp)]">
+                    <MudText Style="white-space: nowrap">@(context.TimeStamp?.ToLocalTime().ToString("u"))</MudText>
+                </MudTd>
+                <MudTd DataLabel="@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_Source)]">
+                    <MudText>@(context.Source)</MudText>
+                </MudTd>
+                <MudTd DataLabel="@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_LogLevel)]">
+                    <MudText>@(context.LogLevel)</MudText>
+                </MudTd>
+                <MudTd DataLabel="@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_Message)]">
+                    <MudText>@(context.Message)</MudText>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="@(new[] {50, 100, 250, 500})"/>
+            </PagerContent>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Close">@(Localizer[nameof(Language.Common_Close)])</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    private MudTable<GameServerLog> _mudTable = null!;
+
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired, Required]
+    public GameServer GameServer { get; set; } = null!;
+
+    void Close() => MudDialog.Close();
+
+
+    protected override Task OnInitializedAsync()
+    {
+        MudDialog.Title = GameServer.Title;
+        return Task.CompletedTask;
+    }
+
+    public static async Task ShowAsync(
+        IDialogService dialogService,
+        GameServer gameServer)
+    {
+        if (gameServer.PrimaryKey is null)
+            throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
+        await dialogService.ShowAsync<ShowGameServerLogs>(
+            string.Empty,
+            new DialogParameters
+            {
+                {nameof(GameServer), gameServer},
+            },
+            new DialogOptions
+            {
+                CloseOnEscapeKey = true,
+                FullWidth = true,
+                MaxWidth = MaxWidth.False,
+            })
+            .ConfigureAwait(false);
+    }
+
+    private async Task<TableData<GameServerLog>> GetLogsAsync(TableState arg)
+    {
+        var count = await GameServerRepository.GetLogsCountAsync(GameServer)
+            .ConfigureAwait(false);
+        var items = await GameServerRepository.GetLogsAsync(GameServer,
+            skip: arg.Page * arg.PageSize,
+            take: arg.PageSize)
+            .ConfigureAwait(false);
+        return new TableData<GameServerLog>
+        {
+            TotalItems = (int)count,
+            Items = items,
+        };
+    }
+
+}

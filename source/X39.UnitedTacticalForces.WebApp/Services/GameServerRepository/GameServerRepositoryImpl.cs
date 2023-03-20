@@ -64,6 +64,43 @@ internal class GameServerRepositoryImpl : RepositoryBase, IGameServerRepository
         return gameServers.ToImmutableArray();
     }
 
+    public async Task<IReadOnlyCollection<GameServerLog>> GetLogsAsync(
+        GameServer gameServer,
+        int skip,
+        int take,
+        DateTimeOffset? referenceTimeStamp = null,
+        bool descendingByTimestamp = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (gameServer.PrimaryKey is null)
+            throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
+        var gameServers = await Client.GameServersLogsAsync(
+                gameServer.PrimaryKey.Value,
+                skip,
+                take,
+                referenceTimeStamp,
+                descendingByTimestamp,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        return gameServers.ToImmutableArray();
+    }
+    public async Task<long> GetLogsCountAsync(
+        GameServer gameServer,
+        DateTimeOffset? referenceTimeStamp = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (gameServer.PrimaryKey is null)
+            throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
+        var logsCount = await Client.GameServersLogsCountAsync(
+                gameServer.PrimaryKey.Value,
+                referenceTimeStamp,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        return logsCount;
+    }
+
     public async Task<GameServerInfo> GetGameServerAsync(
         long gameServerId,
         CancellationToken cancellationToken = default)

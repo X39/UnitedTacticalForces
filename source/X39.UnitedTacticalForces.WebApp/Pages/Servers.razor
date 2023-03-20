@@ -103,7 +103,7 @@
                 {
                     <MudIconButton Icon="@Icons.Material.Filled.TextSnippet"
                                    Color="Color.Primary"
-                                   Disabled="@(!context.IsRunning ?? false)"/>
+                                   OnClick="@(() => ShowLogsAsync(context))"/>
                 }
                 @if (Me.IsInRoleOrAdmin(Roles.ServerUpdate))
                 {
@@ -315,6 +315,14 @@
                 null => string.Empty,
                 _ => throw new ArgumentOutOfRangeException()
                 };
+    }
+
+    private async Task ShowLogsAsync(GameServerInfo context)
+    {
+        if (context.GameServer is null)
+            throw new ArgumentException("GameServerInfo.GameServer is null.", nameof(context));
+        await ShowGameServerLogs.ShowAsync(DialogService, context.GameServer)
+            .ConfigureAwait(false);
     }
 
 }

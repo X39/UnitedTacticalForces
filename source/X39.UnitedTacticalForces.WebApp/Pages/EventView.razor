@@ -132,8 +132,8 @@ else
                             <MudStack>
                                 @foreach (var slot in slotGroup)
                                 {
-                                    <div class="d-flex @(Breakpoint is not (Breakpoint.Xs or Breakpoint.Sm) ? "flex-row" : "flex-column")">
-                                        <MudText Class="align-self-center">@($"{slot.SlotNumber}: {slot.Title}")</MudText>
+                                    <div class="d-flex @(Breakpoint is not (Breakpoint.Xs or Breakpoint.Sm) ? "flex-row" : "flex-column")" style="@((slot.IsVisible ?? false) ? string.Empty : "opacity: 50%")">
+                                        <MudText Class="align-self-center">@($"{slot.Title}")</MudText>
                                         <UtfUser Class="@(Breakpoint is not (Breakpoint.Xs or Breakpoint.Sm) ? "mx-4" : "")" User="@slot.AssignedTo"/>
                                         <MudSpacer/>
                                         <MudButton StartIcon="@Icons.Material.Filled.AssignmentTurnedIn"
@@ -153,6 +153,10 @@ else
                                                          Class="align-self-center"
                                                          CheckedChanged="@((bool v) => SetIsSelfAssignableAsync(slot, v))"
                                                          Label="@Localizer[nameof(Language.Pages_EventView_SelfAssignable)]"/>
+                                            <MudCheckBox Checked="@(slot.IsVisible ?? true)"
+                                                         Class="align-self-center"
+                                                         CheckedChanged="@((bool v) => SetIsVisibleAsync(slot, v))"
+                                                         Label="@Localizer[nameof(Language.Pages_EventView_Visible)]"/>
                                         }
                                     </div>
                                 }
@@ -252,93 +256,100 @@ else
 
     private async Task MergeSlotsFromMissionFileAsync(IBrowserFile arg)
     {
-        [Conditional("DEBUG")]
-        static void DebugLine(string s) => Console.WriteLine(s);
-
-        using var isParsingDisposable = new Disposable(
-            () => _isParsing = true,
-            () => _isParsing = false);
-
-        IReadOnlyCollection<EventSlot> parsedSlots;
-        await using (var stream = arg.OpenReadStream(100 /*mb*/* 1024 /*kb*/* 1024 /*b*/))
-        using (var memoryStream = new MemoryStream())
-        {
-            await stream.CopyToAsync(memoryStream)
-                .ConfigureAwait(false);
-            memoryStream.Seek(0, SeekOrigin.Begin);
-            var configToSlots = new ConfigToSlots(Localizer, Snackbar);
-            try
-            {
-                (parsedSlots, var success) = configToSlots.GetSlots(memoryStream);
-                if (!success)
-                    return;
-            }
-            catch
-            {
-                return;
-            }
-        }
-        if (parsedSlots.Select((eventSlot) => $"{eventSlot.Group}@{eventSlot.Title}").Distinct().Count() == parsedSlots.Count)
-        {
-            Snackbar.Add(Localizer[nameof(Language.Pages_EventView_SlotsSharingSameNameIsNotRecommended)], Severity.Warning);
-        }
-
-        var parsedEventSlotWasHit = parsedSlots.ToDictionary((q) => q, (_) => false);
-        var existingEventSlots = _slotGroups.SelectMany((q) => q).ToArray();
-        var existingEventSlotWasHit = existingEventSlots.ToDictionary((q) => q, (_) => false);
-        var slotMatch = new Dictionary<EventSlot, EventSlot>();
-
-        foreach (var existingEventSlot in existingEventSlots)
-        {
-            var parsedEventSlot = parsedEventSlotWasHit
-                .Where((q) => !q.Value && existingEventSlot.EqualIdentificationData(q.Key))
-                .Select((q) => q.Key)
-                .FirstOrDefault();
-            if (parsedEventSlot is null)
-                continue;
-            DebugLine($"Slot {existingEventSlot.EventFk}--{existingEventSlot.SlotNumber} {existingEventSlot.Group}@{existingEventSlot.Title} was found with {parsedEventSlot.Group}@{parsedEventSlot.Title}");
-            existingEventSlotWasHit[existingEventSlot] = true;
-            parsedEventSlotWasHit[parsedEventSlot] = true;
-            slotMatch[existingEventSlot] = parsedEventSlot;
-        }
-        var slotsToRemove = existingEventSlotWasHit
-            .Where((q) => !q.Value)
-            .Select((q) => q.Key)
-            .ToArray();
-        var slotsToAdd = parsedEventSlotWasHit
-            .Where((q) => !q.Value)
-            .Select((q) => q.Key)
-            .ToArray();
-        var slotsToUpdate = slotMatch
-            .Where((q) => !q.Key.EqualData(q.Value))
-            .Select((q) => (existing: q.Key, parsed:q.Value))
-            .ToArray();
         try
         {
-            foreach (var eventSlot in slotsToRemove)
+            [Conditional("DEBUG")]
+            static void DebugLine(string s) => Console.WriteLine(s);
+
+            using var isParsingDisposable = new Disposable(
+                () => _isParsing = true,
+                () => _isParsing = false);
+
+            IReadOnlyCollection<EventSlot> parsedSlots;
+            await using (var stream = arg.OpenReadStream(100 /*mb*/* 1024 /*kb*/* 1024 /*b*/))
+            using (var memoryStream = new MemoryStream())
             {
-                await SlotRepository.DeleteSlotAsync(eventSlot)
+                await stream.CopyToAsync(memoryStream)
                     .ConfigureAwait(false);
+                memoryStream.Seek(0, SeekOrigin.Begin);
+                var configToSlots = new ConfigToSlots(Localizer, Snackbar);
+                try
+                {
+                    (parsedSlots, var success) = configToSlots.GetSlots(memoryStream);
+                    if (!success)
+                        return;
+                }
+                catch
+                {
+                    return;
+                }
             }
-            foreach (var (existingEventSlot, parsedEventSlot) in slotsToUpdate)
+            if (parsedSlots.Select((eventSlot) => $"{eventSlot.Group}@{eventSlot.Title}").Distinct().Count() == parsedSlots.Count)
             {
-                await SlotRepository.UpdateSlotAsync(existingEventSlot, parsedEventSlot)
-                    .ConfigureAwait(false);
+                Snackbar.Add(Localizer[nameof(Language.Pages_EventView_SlotsSharingSameNameIsNotRecommended)], Severity.Warning);
             }
-            foreach (var eventSlot in slotsToAdd)
+
+            var parsedEventSlotWasHit = parsedSlots.ToDictionary((q) => q, (_) => false);
+            var existingEventSlots = _slotGroups.SelectMany((q) => q).ToArray();
+            var existingEventSlotWasHit = existingEventSlots.ToDictionary((q) => q, (_) => false);
+            var slotMatch = new Dictionary<EventSlot, EventSlot>();
+
+            foreach (var existingEventSlot in existingEventSlots)
             {
-                await SlotRepository.CreateSlotAsync(_event, eventSlot)
+                var parsedEventSlot = parsedEventSlotWasHit
+                    .Where((q) => !q.Value && existingEventSlot.EqualIdentificationData(q.Key))
+                    .Select((q) => q.Key)
+                    .FirstOrDefault();
+                if (parsedEventSlot is null)
+                    continue;
+                DebugLine($"Slot {existingEventSlot.EventFk}--{existingEventSlot.SlotNumber} {existingEventSlot.Group}@{existingEventSlot.Title} was found with {parsedEventSlot.Group}@{parsedEventSlot.Title}");
+                existingEventSlotWasHit[existingEventSlot] = true;
+                parsedEventSlotWasHit[parsedEventSlot] = true;
+                slotMatch[existingEventSlot] = parsedEventSlot;
+            }
+            var slotsToRemove = existingEventSlotWasHit
+                .Where((q) => !q.Value)
+                .Select((q) => q.Key)
+                .ToArray();
+            var slotsToAdd = parsedEventSlotWasHit
+                .Where((q) => !q.Value)
+                .Select((q) => q.Key)
+                .ToArray();
+            var slotsToUpdate = slotMatch
+                .Where((q) => !q.Key.EqualData(q.Value))
+                .Select((q) => (existing: q.Key, parsed:q.Value))
+                .ToArray();
+            try
+            {
+                foreach (var eventSlot in slotsToRemove)
+                {
+                    await SlotRepository.DeleteSlotAsync(eventSlot)
+                        .ConfigureAwait(false);
+                }
+                foreach (var (existingEventSlot, parsedEventSlot) in slotsToUpdate)
+                {
+                    await SlotRepository.UpdateSlotAsync(existingEventSlot, parsedEventSlot)
+                        .ConfigureAwait(false);
+                }
+                foreach (var eventSlot in slotsToAdd)
+                {
+                    await SlotRepository.CreateSlotAsync(_event, eventSlot)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message);
+            }
+            finally
+            {
+                await ReloadAsync()
                     .ConfigureAwait(false);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add(ex.Message);
-        }
-        finally
-        {
-            await ReloadAsync()
-                .ConfigureAwait(false);
+            Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 
@@ -390,6 +401,12 @@ else
     private async Task SetIsSelfAssignableAsync(EventSlot slot, bool flag)
     {
         slot.IsSelfAssignable = flag;
+        await SlotRepository.UpdateSlotAsync(slot, slot);
+    }
+
+    private async Task SetIsVisibleAsync(EventSlot slot, bool flag)
+    {
+        slot.IsVisible = flag;
         await SlotRepository.UpdateSlotAsync(slot, slot);
     }
 

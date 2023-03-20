@@ -44,9 +44,15 @@ public class EventSlottingController : ControllerBase
             .AnyAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         if (!eventExists)
             return NotFound();
-        var results = await _apiDbContext.EventSlots
+        var query = _apiDbContext.EventSlots
             .Include((e) => e.AssignedTo)
             .Where((q) => q.EventFk == eventId)
+            .AsQueryable();
+        if (!User.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotUpdate, Roles.EventSlotIgnore))
+        {
+            query = query.Where((q) => q.IsVisible);
+        }
+        var results = await query
             .OrderBy((q) => q.SlotNumber)
             .ToArrayAsync(cancellationToken);
         return Ok(results);
@@ -340,9 +346,11 @@ public class EventSlottingController : ControllerBase
             .SingleOrDefaultAsync((q) => q.EventFk == eventId && q.SlotNumber == slotNumber, cancellationToken);
         if (existingEventSlot is null)
             return NotFound();
-        existingEventSlot.Title = updatedEventSlot.Title;
-        existingEventSlot.Group = updatedEventSlot.Group;
-        existingEventSlot.Side  = updatedEventSlot.Side;
+        existingEventSlot.Title            = updatedEventSlot.Title;
+        existingEventSlot.Group            = updatedEventSlot.Group;
+        existingEventSlot.IsSelfAssignable = updatedEventSlot.IsSelfAssignable;
+        existingEventSlot.IsVisible        = updatedEventSlot.IsVisible;
+        existingEventSlot.Side             = updatedEventSlot.Side;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }

@@ -15,6 +15,7 @@ using Unchase.Swashbuckle.AspNetCore.Extensions.Extensions;
 using Unchase.Swashbuckle.AspNetCore.Extensions.Options;
 using X39.UnitedTacticalForces.Api;
 using X39.UnitedTacticalForces.Api.Data;
+using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.Util.DependencyInjection;
 
@@ -85,6 +86,12 @@ var app = builder.Build();
     await using var scope = app.Services.CreateAsyncScope();
     await using var dbContext = scope.ServiceProvider.GetService<ApiDbContext>();
     await dbContext!.Database.MigrateAsync();
+    await foreach (var gameServer in dbContext.GameServers)
+    {
+        gameServer.Status = ELifetimeStatus.Stopped;
+    }
+
+    await dbContext.SaveChangesAsync();
 }
 app.UsePathBase(app.Configuration[Constants.Configuration.General.BasePath]);
 app.UseCors(
@@ -108,4 +115,4 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Run();
+await app.RunAsync().ConfigureAwait(false);

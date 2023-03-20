@@ -3,7 +3,7 @@
   &lt;Solution /&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
 	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=source_002FX39_002EUnitedTacticalForces_002EApi_002FProperties_002FLanguage/@EntryIndexedValue">True</s:Boolean>
-	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=source_002FX39_002EUnitedTacticalForces_002EWebApp_002FProperties_002FLanguage/@EntryIndexedValue">False</s:Boolean>
+	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=source_002FX39_002EUnitedTacticalForces_002EWebApp_002FProperties_002FLanguage/@EntryIndexedValue">True</s:Boolean>
 	
 	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=X39_002EUnitedTacticalForces_002EWebApp_002FProperties_002FLanguage/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=_002Esubmodules_002FSteamWebAPI2_002FErrorMessages/@EntryIndexedValue">False</s:Boolean>

@@ -2146,39 +2146,134 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Return the configuration of the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+        /// Return the count of logs for the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
         /// </summary>
-        /// <remarks>
-        /// Latest logs will always be received first.
-        /// </remarks>
-        /// <param name="skip">The amount of log entries to skip</param>
-        /// <param name="take">The amount of logs to receive</param>
         /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to start.</param>
         /// <param name="referenceTimeStamp">Timestamp to allow consistent results.
         /// <br/>If provided, this will prevent logs newer then the timestamp to appear in the result
         /// <br/>and consideration with !:skip and !:take.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<GameServerLog>> GameServersLogsAsync(int skip, int take, long gameServerId, System.DateTimeOffset referenceTimeStamp, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<long> GameServersLogsCountAsync(long gameServerId, System.DateTimeOffset? referenceTimeStamp = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
-            if (skip == null)
-                throw new System.ArgumentNullException("skip");
-
-            if (take == null)
-                throw new System.ArgumentNullException("take");
-
             if (gameServerId == null)
                 throw new System.ArgumentNullException("gameServerId");
 
-            if (referenceTimeStamp == null)
-                throw new System.ArgumentNullException("referenceTimeStamp");
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/logs/count?");
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+            if (referenceTimeStamp != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("referenceTimeStamp") + "=").Append(System.Uri.EscapeDataString(referenceTimeStamp.Value.ToString("s", System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            urlBuilder_.Length--;
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<long>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Return the logs of the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+        /// </summary>
+        /// <remarks>
+        /// Logs are ordered by X39.UnitedTacticalForces.Api.Data.Hosting.GameServerLog.TimeStamp.
+        /// </remarks>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to start.</param>
+        /// <param name="skip">The amount of log entries to skip</param>
+        /// <param name="take">The amount of logs to receive</param>
+        /// <param name="referenceTimeStamp">Timestamp to allow consistent results.
+        /// <br/>If provided, this will prevent logs newer then the timestamp to appear in the result
+        /// <br/>and consideration with !:skip and !:take.</param>
+        /// <param name="descendingByTimeStamp">If true, order of returned logs will be descending (newest one first).</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<GameServerLog>> GameServersLogsAsync(long gameServerId, int? skip = null, int? take = null, System.DateTimeOffset? referenceTimeStamp = null, bool? descendingByTimeStamp = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/logs");
-            urlBuilder_.Replace("{skip}", System.Uri.EscapeDataString(ConvertToString(skip, System.Globalization.CultureInfo.InvariantCulture)));
-            urlBuilder_.Replace("{take}", System.Uri.EscapeDataString(ConvertToString(take, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/logs?");
             urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
-            urlBuilder_.Replace("{referenceTimeStamp}", System.Uri.EscapeDataString(referenceTimeStamp.ToString("s", System.Globalization.CultureInfo.InvariantCulture)));
+            if (skip != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("skip") + "=").Append(System.Uri.EscapeDataString(ConvertToString(skip, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            if (take != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("take") + "=").Append(System.Uri.EscapeDataString(ConvertToString(take, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            if (referenceTimeStamp != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("referenceTimeStamp") + "=").Append(System.Uri.EscapeDataString(referenceTimeStamp.Value.ToString("s", System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            if (descendingByTimeStamp != null)
+            {
+                urlBuilder_.Append(System.Uri.EscapeDataString("descendingByTimeStamp") + "=").Append(System.Uri.EscapeDataString(ConvertToString(descendingByTimeStamp, System.Globalization.CultureInfo.InvariantCulture))).Append("&");
+            }
+            urlBuilder_.Length--;
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -5039,6 +5134,15 @@ namespace X39.UnitedTacticalForces.WebApp
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public bool? IsSelfAssignable { get; set; } = default!;
+
+        /// <summary>
+        /// Denotes whether a non-author user may view this slot.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("isVisible")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? IsVisible { get; set; } = default!;
 
         /// <summary>
         /// The group this role is part of.

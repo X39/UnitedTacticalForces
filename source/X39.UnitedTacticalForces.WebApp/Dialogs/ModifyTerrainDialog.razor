@@ -2,6 +2,7 @@
 @using X39.Util
 @using X39.Util.Collections
 @inject IStringLocalizer<Language> Localizer
+@inject ISnackbar Snackbar
 <MudDialog>
     <DialogContent>
         <MudTextField Label="@Localizer[nameof(Language.Dialogs_ModifyTerrainDialog_Inputs_Title)]" @bind-Value="@Terrain.Title"/>
@@ -58,12 +59,19 @@
 
     private async Task FilesChangedAsync(InputFileChangeEventArgs obj)
     {
-        _fileName = obj.File.Name;
-        await using var stream = obj.File.OpenReadStream();
-        using var memoryStream = new MemoryStream();
-        await stream.CopyToAsync(memoryStream).ConfigureAwait(false);
-        Terrain.Image = memoryStream.ToArray();
-        Terrain.ImageMimeType = obj.File.ContentType;
+        try
+        {
+            _fileName = obj.File.Name;
+            await using var stream = obj.File.OpenReadStream();
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream).ConfigureAwait(false);
+            Terrain.Image = memoryStream.ToArray();
+            Terrain.ImageMimeType = obj.File.ContentType;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     public static async Task<Terrain?> ShowAsync(

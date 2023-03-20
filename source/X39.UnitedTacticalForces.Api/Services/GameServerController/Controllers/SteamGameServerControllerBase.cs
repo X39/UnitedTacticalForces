@@ -601,7 +601,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 $"{Constants.Configuration.Steam.InstallBasePath} in appsettings.json is null");
         installBasePath = Path.GetFullPath(installBasePath);
 
-        Directory.CreateDirectory(installBasePath);
+        CreateDirectory(installBasePath);
         return installBasePath;
     }
 

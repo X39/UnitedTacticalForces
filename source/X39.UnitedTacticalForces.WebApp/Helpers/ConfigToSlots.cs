@@ -578,6 +578,7 @@ internal class ConfigToSlots
                                     : $"Alpha-{++groupIndex}",
                                 Side             = EArmaSide.Logic,
                                 IsSelfAssignable = true,
+                                IsVisible = true,
                             });
                     }
 
@@ -608,6 +609,7 @@ internal class ConfigToSlots
                                     : $"Alpha-{++groupIndex}",
                                 Side             = side,
                                 IsSelfAssignable = true,
+                                IsVisible        = true,
                             });
                     }
 
@@ -652,8 +654,9 @@ internal class ConfigToSlots
                                             Group = descriptionSplatted.Length > 1
                                                 ? string.Join("@", descriptionSplatted.Skip(1))
                                                 : $"Alpha-{++groupIndex}",
-                                            Side = EArmaSide.Logic,
+                                            Side             = EArmaSide.Logic,
                                             IsSelfAssignable = true,
+                                            IsVisible        = true,
                                         });
                                 }
 
@@ -692,6 +695,7 @@ internal class ConfigToSlots
                                                 : $"Alpha-{++groupIndex}",
                                             Side             = side,
                                             IsSelfAssignable = true,
+                                            IsVisible        = true,
                                         });
                                 }
 

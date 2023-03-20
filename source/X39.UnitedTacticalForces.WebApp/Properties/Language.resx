@@ -315,4 +315,22 @@
     <data name="Pages_GameServers_Status_RunningTooltip" xml:space="preserve">
         <value>Game server is running</value>
     </data>
+    <data name="Pages_EventView_Visible" xml:space="preserve">
+        <value>Visible</value>
+    </data>
+    <data name="Common_Close" xml:space="preserve">
+        <value>Close</value>
+    </data>
+    <data name="Dialogs_ShowGameServerLogs_TimeStamp" xml:space="preserve">
+        <value>Timestamp</value>
+    </data>
+    <data name="Dialogs_ShowGameServerLogs_Source" xml:space="preserve">
+        <value>Source</value>
+    </data>
+    <data name="Dialogs_ShowGameServerLogs_LogLevel" xml:space="preserve">
+        <value>Severity</value>
+    </data>
+    <data name="Dialogs_ShowGameServerLogs_Message" xml:space="preserve">
+        <value>Message</value>
+    </data>
 </root>
