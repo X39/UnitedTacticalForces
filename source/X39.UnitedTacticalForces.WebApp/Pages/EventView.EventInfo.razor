@@ -1,0 +1,95 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SlotRepository
+@using X39.Util
+@inject MeService Me
+@if ((Event.Image?.Any() ?? false) && Event.ImageMimeType.IsNotNullOrWhiteSpace())
+{
+    <MudImage Src="@Event.ToImageSource()"
+              Style="height: 25%;"
+              ObjectFit="ObjectFit.Cover"
+              ObjectPosition="ObjectPosition.Center"
+              Fluid="true"/>
+}
+<MudStack Class="pa-3" Style="height: 50%;">
+    <MudStack Row="true">
+        <MudStack Class="flex-grow-1">
+            <div class="d-inline">
+                <MudText Typo="Typo.h5">@Event.Title</MudText>
+                <MudText Color="@(Event.AcceptedCount >= Event.MinimumAccepted ? Color.Success : Color.Error)">@(Event.ScheduledFor?.ToLocalTime().ToString("g"))</MudText>
+            </div>
+            @if (Event.HostedBy?.Avatar is not null && Event.HostedBy.Avatar.Any() && Event.HostedBy.AvatarMimeType.IsNotNullOrWhiteSpace())
+            {
+                <MudAvatar Color="Color.Secondary" Image="@Event.HostedBy.ToImageSource()"/>
+            }
+            else if (Event.HostedBy is not null)
+            {
+                <MudAvatar Color="Color.Secondary">@Event.HostedBy.Nickname?.FirstOrDefault()</MudAvatar>
+            }
+            @if (Event.Terrain is not null)
+            {
+                <MudText Typo="Typo.body2">@(Event.Terrain.Title)</MudText>
+            }
+            @if (Event.ModPack is not null)
+            {
+                <MudText Typo="Typo.body2">@(Event.ModPack.Title)</MudText>
+            }
+        </MudStack>
+        <MudButtonGroup>
+            <UtfModPackDownloadButton ModPack="Event.ModPack" Color="Color.Surface"/>
+        </MudButtonGroup>
+    </MudStack>
+    <MudText Typo="Typo.body2" Style="max-height: 50vh; overflow-y: scroll;">@Event.Description</MudText>
+    <MudSpacer/>
+    <MudStack Row="true" Style="@("border-radius: 10rem; background: var(--mud-palette-background); width: min-content;")">
+        @if (Me.IsAuthenticated)
+        {
+            <UpcommingEvents_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+                                                           Acceptance="EEventAcceptance.Accepted"
+                                                           AcceptanceCount="Event.AcceptedCount"
+                                                           Event="Event"
+                                                           Disabled="Disabled"/>
+            <UpcommingEvents_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+                                                           Acceptance="EEventAcceptance.Maybe"
+                                                           AcceptanceCount="Event.MaybeCount"
+                                                           Event="Event"
+                                                           Disabled="Disabled"/>
+            <UpcommingEvents_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+                                                           Acceptance="EEventAcceptance.Rejected"
+                                                           AcceptanceCount="Event.RejectedCount"
+                                                           Event="Event"
+                                                           Disabled="Disabled"/>
+        }
+    </MudStack>
+</MudStack>
+@if ((Event.Terrain?.Image?.Any() ?? false) && (Event.Terrain?.ImageMimeType.IsNotNullOrWhiteSpace() ?? false))
+{
+    <MudImage Src="@Event.Terrain?.ToImageSource()"
+              ObjectFit="ObjectFit.Cover"
+              ObjectPosition="ObjectPosition.Center"
+              Fluid="true"
+              Style="height: 25%"/>
+}
+
+@code {
+    
+    [Parameter, EditorRequired, Required]
+    public EventCallback Reload { get; set; }
+
+    [Parameter, EditorRequired, Required]
+    public bool Disabled { get; set; }
+
+    [Parameter, EditorRequired, Required]
+    public EventCallback ParentStateHasChanged { get; set; }
+
+    [Parameter, EditorRequired, Required]
+    public Event Event { get; set; } = null!;
+
+    private async Task PropagateStateHasChanged()
+    {
+        await Reload.InvokeAsync()
+            .ConfigureAwait(false);
+    }
+
+}

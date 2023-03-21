@@ -20,7 +20,7 @@
         </CardHeaderAvatar>
         <CardHeaderContent>
             <div class="d-inline">
-                <MudText Typo="Typo.h4">@EventItem.Title</MudText>
+                <MudLink Typo="Typo.h4" Href="@($"/events/{EventItem.PrimaryKey}")" Underline="Underline.Hover">@EventItem.Title</MudLink>
                 <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
                     <MudText Color="@(EventItem.AcceptedCount >= EventItem.MinimumAccepted ? Color.Success : Color.Error)">@(EventItem.ScheduledFor?.ToLocalTime().ToString("g"))</MudText>
                 </MudHidden>
@@ -37,8 +37,8 @@
         <CardHeaderActions>
             <MudButtonGroup>
                 <UtfModPackDownloadButton ModPack="EventItem.ModPack" Color="Color.Primary"/>
-                <Events_HeaderActions_ModifyButton Event="EventItem" ParentStateHasChanged="PropagateStateHasChanged"/>
-                <Events_HeaderActions_CloneButton Event="EventItem"/>
+                <UpcommingEvents_HeaderActions_ModifyButton Event="EventItem" ParentStateHasChanged="PropagateStateHasChanged"/>
+                <UpcommingEvents_HeaderActions_CloneButton Event="EventItem"/>
                 <MudIconButton Icon="@Icons.Material.Filled.Link" Color="Color.Primary" OnClick="CopyEventUrlToClipboardAsync"/>
             </MudButtonGroup>
         </CardHeaderActions>
@@ -53,20 +53,20 @@
     <MudCardActions>
         @if (Me.IsAuthenticated)
         {
-            <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+            <UpcommingEvents_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
                                                   Acceptance="EEventAcceptance.Accepted"
                                                   AcceptanceCount="EventItem.AcceptedCount"
                                                   Event="EventItem"/>
-            <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+            <UpcommingEvents_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
                                                   Acceptance="EEventAcceptance.Maybe"
                                                   AcceptanceCount="EventItem.MaybeCount"
                                                   Event="EventItem"/>
-            <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
+            <UpcommingEvents_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
                                                   Acceptance="EEventAcceptance.Rejected"
                                                   AcceptanceCount="EventItem.RejectedCount"
                                                   Event="EventItem"/>
             <MudSpacer/>
-            <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock" Href="@($"/events/{EventItem.PrimaryKey}")">
+            <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock" Href="@($"/events/{EventItem.PrimaryKey}")" Color="Color.Primary">
                 @Localizer[nameof(Language.Pages_Events_EventCard_Slots)]
             </MudButton>
         }

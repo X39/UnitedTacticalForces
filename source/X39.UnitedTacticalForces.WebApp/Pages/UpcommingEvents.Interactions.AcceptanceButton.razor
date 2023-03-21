@@ -2,32 +2,67 @@
 @using System.Diagnostics.Contracts
 @using MudBlazor.Utilities
 @using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SlotRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.Util
 @inject IEventRepository EventRepository
-@if (AcceptanceCount > 0)
-{
-    <MudBadge Content="@(AcceptanceCount)"
-              Color="@ToggledColor"
-              Overlap="true"
-              BadgeClass="mx-n2 my-n2">
-        <MudToggleIconButton Icon="@Icon"
-                             ToggledIcon="@Icon"
-                             Color="@UnToggledColor"
-                             ToggledColor="@ToggledColor"
-                             Toggled="@(Event.UserMetas?.FirstOrDefault()?.Acceptance == Acceptance)"
-                             ToggledChanged="AcceptanceChangedAsync"/>
-    </MudBadge>
-}
-else
-{
-    <MudToggleIconButton Icon="@Icon"
-                         ToggledIcon="@Icon"
-                         Color="@UnToggledColor"
-                         ToggledColor="@ToggledColor"
-                         Toggled="@(Event.UserMetas?.FirstOrDefault()?.Acceptance == Acceptance)"
-                         ToggledChanged="AcceptanceChangedAsync"/>
-}
+@inject ISlotRepository SlotRepository
+@inject IDialogService DialogService
+<MudTooltip IsVisibleChanged="LoadToolTipContentAsync" ShowOnClick="false" ShowOnFocus="@(AcceptanceCount > 0)" ShowOnHover="@(AcceptanceCount > 0)">
+    <TooltipContent>
+        <MudStack Style="max-height: 50rem">
+            @if (_users is null)
+            {
+                for (var i = 0; i < AcceptanceCount; i++)
+                {
+                    <MudSkeleton Height="3rem" Width="16rem"/>
+                }
+            }
+            else
+            {
+                foreach (var user in _users)
+                {
+                    <UtfUser User="@user"/>
+                }
+            }
+        </MudStack>
+    </TooltipContent>
+    <ChildContent>
+        @if (AcceptanceCount > 0)
+        {
+            <MudBadge Content="@(AcceptanceCount)"
+                      Color="@ToggledColor"
+                      Overlap="true"
+                      BadgeClass="mx-n2 my-n2">
+                <MudToggleIconButton Icon="@Icon"
+                                     ToggledIcon="@Icon"
+                                     Color="@UnToggledColor"
+                                     ToggledColor="@ToggledColor"
+                                     Toggled="@(Event.UserMetas?.FirstOrDefault()?.Acceptance == Acceptance)"
+                                     ToggledChanged="AcceptanceChangedAsync"
+                                     Disabled="Disabled"/>
+            </MudBadge>
+        }
+        else
+        {
+            <MudToggleIconButton Icon="@Icon"
+                                 ToggledIcon="@Icon"
+                                 Color="@UnToggledColor"
+                                 ToggledColor="@ToggledColor"
+                                 Toggled="@(Event.UserMetas?.FirstOrDefault()?.Acceptance == Acceptance)"
+                                 ToggledChanged="AcceptanceChangedAsync"
+                                 Disabled="Disabled"/>
+        }
+    </ChildContent>
+</MudTooltip>
 
 @code {
+    private IReadOnlyCollection<User>? _users;
+    private bool _pollingUsers;
+
+
+    [Parameter]
+    public bool Disabled { get; set; }
 
     [Parameter, Required, EditorRequired]
     public Event Event { get; set; } = null!;
@@ -56,7 +91,7 @@ else
 
     [Parameter, EditorRequired, Required]
     public int? AcceptanceCount { get; set; }
-    
+
     /*
     private int AcceptanceCount => Acceptance switch
     {
@@ -66,6 +101,8 @@ else
         _ => throw new ArgumentOutOfRangeException(),
         };
     */
+
+
     private string Icon => Acceptance switch
     {
         EEventAcceptance.Rejected => Icons.Material.Filled.Clear,
@@ -76,9 +113,23 @@ else
 
     private async Task AcceptanceChangedAsync()
     {
+        if (Acceptance is not EEventAcceptance.Accepted)
+        {
+            var slot = await SlotRepository.MySlotAsync(Event).ConfigureAwait(false);
+            if (slot is not null)
+            {
+                var result = await Dialogs.ConfirmSlotLoss.ShowAsync(DialogService)
+                    .ConfigureAwait(false);
+                if (!result)
+                    return;
+            }
+        }
+
         Contract.Assert(Event.PrimaryKey is not null);
         Event.UserMetas ??= new List<UserEventMeta>();
         var userMeta = Event.UserMetas.FirstOrDefault();
+        if (userMeta?.Acceptance == Acceptance)
+            return;
         await EventRepository.SetMeAcceptanceAsync(Event.PrimaryKey.Value, Acceptance)
             .ConfigureAwait(false);
 
@@ -124,6 +175,16 @@ else
                 throw new ArgumentOutOfRangeException();
         }
         await ParentStateHasChangedCallback.InvokeAsync();
+    }
+
+    private async Task LoadToolTipContentAsync(bool arg)
+    {
+        if (arg && _users is null && !_pollingUsers)
+        {
+            using var disposable = new Disposable(() => _pollingUsers = true, () => _pollingUsers = false);
+            _users = await EventRepository.GetEventParticipantsAsync(Event, Acceptance)
+                .ConfigureAwait(false);
+        }
     }
 
 }

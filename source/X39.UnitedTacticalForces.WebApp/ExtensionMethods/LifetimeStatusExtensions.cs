@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Localization;
-using MudBlazor;
-using X39.UnitedTacticalForces.WebApp.Properties;
+﻿using MudBlazor;
 
 namespace X39.UnitedTacticalForces.WebApp.ExtensionMethods;
 

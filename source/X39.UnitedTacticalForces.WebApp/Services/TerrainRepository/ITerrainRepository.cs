@@ -13,4 +13,5 @@ public interface ITerrainRepository
     Task<Terrain> CreateTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default);
     Task ModifyTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default);
     Task DeleteTerrainAsync(Terrain terrain, CancellationToken cancellationToken = default);
+    Task<Terrain?> GetTerrainAsync(long terrainFk, CancellationToken cancellationToken = default);
 }

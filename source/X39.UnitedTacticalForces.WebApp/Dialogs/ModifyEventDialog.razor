@@ -10,6 +10,9 @@
 @inject ISnackbar Snackbar
 <MudDialog>
     <DialogContent>
+        <MudCheckBox @bind-Checked="@Event.IsVisible">
+            <MudText>@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_IsVisible)]</MudText>
+        </MudCheckBox>
         <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Title)]" @bind-Value="@Event.Title"/>
         <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Description)]" Lines="5" @bind-Value="@Event.Description"/>
         <MudDatePicker Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_ScheduledForDate)]"

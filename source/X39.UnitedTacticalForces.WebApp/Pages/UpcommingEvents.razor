@@ -1,0 +1,128 @@
+﻿@page "/"
+@page "/events/upcomming"
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject IStringLocalizer<Language> Localizer
+@inject IEventRepository EventRepository
+@inject IDialogService DialogService
+@inject MeService Me
+
+<PageTitle>@Localizer[nameof(Language.Pages_Events_Title)]</PageTitle>
+@if (_events is null)
+{
+    <MudContainer>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudTimeline TimelinePosition="TimelinePosition.Alternate">
+                @for (var i = 0; i < 2; i++)
+                {
+                    <MudTimelineItem Color="Color.Transparent">
+                        <ItemOpposite>
+                            <MudSkeleton Width="128px"/>
+                        </ItemOpposite>
+                        <ItemContent>
+                            <MudPaper>
+                                <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" />
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="256px" />
+                            </MudPaper>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+            </MudTimeline>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+            <MudStack Class="pt-4">
+                @for (var i = 0; i < 2; i++)
+                {
+                    <MudSkeleton SkeletonType="SkeletonType.Circle" Width="50px" Height="50px" />
+                    <MudSkeleton Width="128px"/>
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="200px" Height="110px" />
+                }
+            </MudStack>
+        </MudHidden>
+    </MudContainer>
+}
+else if (_events.Any())
+{
+    <MudContainer>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown">
+            <MudTimeline TimelinePosition="TimelinePosition.Alternate">
+                @foreach (var it in _events)
+                {
+                    <MudTimelineItem Color="@(it.AcceptedCount >= it.MinimumAccepted ? Color.Success : Color.Error)">
+                        <ItemOpposite>
+                            <MudText Color="@(it.AcceptedCount >= it.MinimumAccepted ? Color.Success : Color.Error)"
+                                     Typo="Typo.h5">
+                                @it.ScheduledFor?.ToLocalTime().ToString("g")
+                            </MudText>
+                        </ItemOpposite>
+                        <ItemContent>
+                            <UpcommingEvents_EventCard EventItem="it" ParentStateHasChanged="StateHasChanged"/>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+            </MudTimeline>
+        </MudHidden>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+            <MudStack Class="pt-4">
+                @foreach (var it in _events)
+                {
+                    <UpcommingEvents_EventCard ParentStateHasChanged="StateHasChanged" EventItem="it"/>
+                }
+            </MudStack>
+        </MudHidden>
+    </MudContainer>
+    @if (Me.IsInRoleOrAdmin(Roles.EventCreate))
+    {
+        <div style="position: fixed; right: 2rem; bottom: 2rem;">
+            <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@CreateNewEventAsync"/>
+        </div>
+    }
+}
+else
+{
+    <div style="position: fixed; left: 0; top: 50%; transform: translate(0, -50%); width: min(100vw, 100%); justify-content: center; display: flex;">
+        <MudPaper Class="d-inline-block mud-theme-primary px-5 py- 3align-self-center">
+            <MudText>@Localizer[nameof(Language.Pages_Events_NoUpcomingEvents)]</MudText>
+        </MudPaper>
+    </div>
+    @if (Me.IsInRoleOrAdmin(Roles.EventCreate))
+    {
+        <div style="position: fixed; right: 2rem; bottom: 2rem;">
+            <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@CreateNewEventAsync"/>
+        </div>
+    }
+}
+
+@code {
+
+    [CascadingParameter]
+    public Breakpoint Breakpoint { get; set; }
+
+    private IReadOnlyCollection<Event>? _events;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadEventsAsync()
+            .ConfigureAwait(false);
+    }
+
+    private async Task ReloadEventsAsync()
+    {
+        var events = await EventRepository.GetUpcomingEventsAsync();
+        _events = events;
+    }
+
+
+    private async Task CreateNewEventAsync()
+    {
+        var eventItem = await Dialogs.ModifyEventDialog.ShowAsync(DialogService)
+            .ConfigureAwait(false);
+        if (eventItem is null)
+            return;
+        await EventRepository.CreateEventAsync(eventItem)
+            .ConfigureAwait(false);
+        await ReloadEventsAsync()
+            .ConfigureAwait(false);
+    }
+
+}

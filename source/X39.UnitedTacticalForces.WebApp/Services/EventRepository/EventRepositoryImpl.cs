@@ -1,6 +1,5 @@
 ﻿using System.Collections.Immutable;
 using System.Net;
-using X39.UnitedTacticalForces.WebApp.ExtensionMethods;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services.EventRepository;
@@ -26,6 +25,36 @@ internal class EventRepositoryImpl : RepositoryBase, IEventRepository
         {
             return null;
         }
+    }
+
+    public async Task<IReadOnlyCollection<User>> GetEventParticipantsAsync(
+        Event eventItem,
+        EEventAcceptance? acceptance = default,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventItem.PrimaryKey is null)
+            throw new ArgumentException("Event.PrimaryKey is null.", nameof(eventItem));
+        var result = await Client.EventsUsersAsync(eventItem.PrimaryKey.Value, acceptance, cancellationToken)
+            .ConfigureAwait(false);
+        return result.ToImmutableArray();
+    }
+
+    public async Task<long> GetEventCountAsync(bool onlyHostedByMe, CancellationToken cancellationToken = default)
+    {
+        var response = await Client.EventsAllCountAsync(onlyHostedByMe, cancellationToken)
+            .ConfigureAwait(false);
+        return response;
+    }
+
+    public async Task<IReadOnlyCollection<Event>> GetEventsAsync(
+        int skip,
+        int take,
+        bool onlyHostedByMe,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await Client.EventsAllAsync(skip, take, onlyHostedByMe, true, cancellationToken)
+            .ConfigureAwait(false);
+        return response.ToImmutableArray();
     }
 
     public async Task<IReadOnlyCollection<Event>> GetUpcomingEventsAsync(
@@ -76,11 +105,11 @@ internal class EventRepositoryImpl : RepositoryBase, IEventRepository
         if (eventItem.PrimaryKey is null)
             throw new ArgumentException("Event.PrimaryKey is null.", nameof(eventItem));
         var clone = eventItem.Clone();
-        clone.Owner = null;
-        clone.HostedBy = null;
-        clone.ModPack  = null;
-        clone.Terrain  = null;
-        clone.UserMetas  = null;
+        clone.Owner     = null;
+        clone.HostedBy  = null;
+        clone.ModPack   = null;
+        clone.Terrain   = null;
+        clone.UserMetas = null;
         await Client.EventsUpdateAsync(eventItem.PrimaryKey.Value, clone, cancellationToken)
             .ConfigureAwait(false);
     }

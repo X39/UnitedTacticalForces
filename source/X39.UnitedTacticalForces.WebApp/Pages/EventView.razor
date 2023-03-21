@@ -1,176 +1,56 @@
 ﻿@page "/events/{EventId:guid}"
 @using X39.UnitedTacticalForces.WebApp.Services.EventRepository
 @using X39.UnitedTacticalForces.WebApp.Services.SlotRepository
-@using X39.Util
 @using System.Collections
 @using System.Collections.Immutable
-@using System.Diagnostics
-@using X39.UnitedTacticalForces.WebApp.Helpers
-@using X39.UnitedTacticalForces.WebApp.Services
 @inject IEventRepository EventRepository
 @inject ISlotRepository SlotRepository
 @inject NavigationManager NavigationManager
-@inject ISnackbar Snackbar
-@inject IStringLocalizer<Language> Localizer
-@inject MeService Me
-@inject IDialogService DialogService
 
-
-@if (_event is null)
+@if (Breakpoint is (Breakpoint.Xs or Breakpoint.Sm))
 {
-    <MudGrid Spacing="0">
-        <MudItem xs="4"
-                 Style="@(Breakpoint is Breakpoint.Xs or Breakpoint.Sm ? "height: calc(100vh - 56px)" : "height: 100vh;")"
-                 Class="mud-theme-primary d-flex flex-column flex-nowrap justify-space-between">
-            <MudSkeleton Height="100%" Width="100%" Style="transform: none"/>
-        </MudItem>
-        <MudItem xs="8"
-                 Style="@(Breakpoint is Breakpoint.Xs or Breakpoint.Sm ? "height: calc(100vh - 56px)" : "height: 100vh;")">
-            <MudSkeleton Height="100%" Width="100%" Style="transform: none"/>
-        </MudItem>
-    </MudGrid>
+    @if (_event is null)
+    {
+        <MudSkeleton Height="100%" Width="100%" Style="transform: none"/>
+    }
+    else
+    {
+        <MudStack>
+            <EventView_EventInfo Disabled="_disableInteractions" Event="_event" ParentStateHasChanged="StateHasChanged" Reload="ReloadAsync"/>
+            <EventView_SlotInfo Disabled="_disableInteractions" Event="_event" ParentStateHasChanged="PropagateStateHasChanged" SlotGroups="_slotGroups" Reload="ReloadAsync"/>
+        </MudStack>
+    }
 }
 else
 {
-    <MudGrid Spacing="0">
-        <MudItem xs="4"
-                 Style="@(Breakpoint is Breakpoint.Xs or Breakpoint.Sm ? "height: calc(100vh - 56px)" : "height: 100vh;")"
-                 Class="mud-theme-primary d-flex flex-column flex-nowrap justify-space-between">
-            @if ((_event.Image?.Any() ?? false) && _event.ImageMimeType.IsNotNullOrWhiteSpace())
-            {
-                <MudImage Src="@_event.ToImageSource()"
-                          Style="height: 25%;"
-                          ObjectFit="ObjectFit.Cover"
-                          ObjectPosition="ObjectPosition.Center"
-                          Fluid="true"/>
-            }
-            <MudStack Class="pa-3" Style="height: 50%;">
-                <MudStack Row="true">
-                    <MudStack Class="flex-grow-1">
-                        <div class="d-inline">
-                            <MudText Typo="Typo.h5">@_event.Title</MudText>
-                            <MudText Color="@(_event.AcceptedCount >= _event.MinimumAccepted ? Color.Success : Color.Error)">@(_event.ScheduledFor?.ToLocalTime().ToString("g"))</MudText>
-                        </div>
-                        @if (_event.HostedBy is not null && _event.HostedBy.Avatar is not null && _event.HostedBy.Avatar.Any() && _event.HostedBy.AvatarMimeType.IsNotNullOrWhiteSpace())
-                        {
-                            <MudAvatar Color="Color.Secondary" Image="@_event.HostedBy.ToImageSource()"/>
-                        }
-                        else if (_event.HostedBy is not null)
-                        {
-                            <MudAvatar Color="Color.Secondary">@_event.HostedBy.Nickname?.FirstOrDefault()</MudAvatar>
-                        }
-                        @if (_event.Terrain is not null)
-                        {
-                            <MudText Typo="Typo.body2">@(_event.Terrain.Title)</MudText>
-                        }
-                        @if (_event.ModPack is not null)
-                        {
-                            <MudText Typo="Typo.body2">@(_event.ModPack.Title)</MudText>
-                        }
-                    </MudStack>
-                    <MudButtonGroup>
-                        <UtfModPackDownloadButton ModPack="_event.ModPack" Color="Color.Surface"/>
-                    </MudButtonGroup>
-                </MudStack>
-                <MudText Typo="Typo.body2" Style="max-height: 50vh; overflow-y: scroll;">@_event.Description</MudText>
-                <MudSpacer/>
-                <MudStack Row="true" Style="@("border-radius: 10rem; background: var(--mud-palette-background); width: min-content;")">
-                    @if (Me.IsAuthenticated)
-                    {
-                        <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
-                                                              Acceptance="EEventAcceptance.Accepted"
-                                                              AcceptanceCount="_event.AcceptedCount"
-                                                              Event="_event"/>
-                        <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
-                                                              Acceptance="EEventAcceptance.Maybe"
-                                                              AcceptanceCount="_event.MaybeCount"
-                                                              Event="_event"/>
-                        <Events_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
-                                                              Acceptance="EEventAcceptance.Rejected"
-                                                              AcceptanceCount="_event.RejectedCount"
-                                                              Event="_event"/>
-                    }
-                </MudStack>
-            </MudStack>
-            @if ((_event.Terrain?.Image?.Any() ?? false) && (_event.Terrain?.ImageMimeType.IsNotNullOrWhiteSpace() ?? false))
-            {
-                <MudImage Src="@_event.Terrain?.ToImageSource()"
-                          ObjectFit="ObjectFit.Cover"
-                          ObjectPosition="ObjectPosition.Center"
-                          Fluid="true"
-                          Style="height: 25%"/>
-            }
-        </MudItem>
-        <MudItem xs="8"
-                 Style="@(Breakpoint is Breakpoint.Xs or Breakpoint.Sm ? "height: calc(100vh - 56px)" : "height: 100vh;")">
-            <div class="d-flex flex-column justify-space-between" style="height: 100%;">
-                @if (Me.Eval((user) => user.PrimaryKey == _event.PrimaryKey) || Me.IsInRolesOrAdmin(Roles.EventSlotCreate, Roles.EventSlotDelete, Roles.EventSlotUpdate))
-                {
-                    <MudFileUpload T="IBrowserFile"
-                                   FilesChanged="MergeSlotsFromMissionFileAsync"
-                                   MaximumFileCount="1"
-                                   Accept=".sqm"
-                                   Class="ma-0">
-                        <ButtonTemplate>
-                            <MudButton HtmlTag="label"
-                                       Disabled="_disableInteractions"
-                                       Style="border-radius: 0;"
-                                       FullWidth="true"
-                                       Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.CloudUpload"
-                                       for="@context">
-                                @Localizer[nameof(Language.Pages_EventView_SynchronizeSlotsWithMission)]
-                            </MudButton>
-                        </ButtonTemplate>
-                    </MudFileUpload>
-                }
-                <MudExpansionPanels MultiExpansion="true" Class="overflow-y-scroll">
-                    @foreach (var slotGroup in _slotGroups)
-                    {
-                        <MudExpansionPanel @key="slotGroup.Name" Text="@slotGroup.Name" IsInitiallyExpanded="true">
-                            <MudStack>
-                                @foreach (var slot in slotGroup)
-                                {
-                                    <div class="d-flex @(Breakpoint is not (Breakpoint.Xs or Breakpoint.Sm) ? "flex-row" : "flex-column")" style="@((slot.IsVisible ?? false) ? string.Empty : "opacity: 50%")">
-                                        <MudText Class="align-self-center">@($"{slot.Title}")</MudText>
-                                        <UtfUser Class="@(Breakpoint is not (Breakpoint.Xs or Breakpoint.Sm) ? "mx-4" : "")" User="@slot.AssignedTo"/>
-                                        <MudSpacer/>
-                                        <MudButton StartIcon="@Icons.Material.Filled.AssignmentTurnedIn"
-                                                   Disabled="@(GetDisableSelfInteraction(slot))"
-                                                   Color="Color.Primary"
-                                                   OnClick="@(() => AssignToSelfAsync(slot))">
-                                            @Localizer[nameof(Language.Pages_EventView_AssignToSelf)]
-                                        </MudButton>
-                                        @if (!_disableInteractions && (Me.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotIgnore, Roles.EventSlotUpdate) || Me.Eval((user) => user.PrimaryKey == _event.HostedByFk)))
-                                        {
-                                            <MudButton StartIcon="@Icons.Material.Filled.AssignmentInd"
-                                                       Color="Color.Primary"
-                                                       OnClick="@(() => AssignToUserAsync(slot))">
-                                                @Localizer[nameof(Language.Pages_EventView_AssignToUser)]
-                                            </MudButton>
-                                            <MudCheckBox Checked="@(slot.IsSelfAssignable ?? true)"
-                                                         Class="align-self-center"
-                                                         CheckedChanged="@((bool v) => SetIsSelfAssignableAsync(slot, v))"
-                                                         Label="@Localizer[nameof(Language.Pages_EventView_SelfAssignable)]"/>
-                                            <MudCheckBox Checked="@(slot.IsVisible ?? true)"
-                                                         Class="align-self-center"
-                                                         CheckedChanged="@((bool v) => SetIsVisibleAsync(slot, v))"
-                                                         Label="@Localizer[nameof(Language.Pages_EventView_Visible)]"/>
-                                        }
-                                    </div>
-                                }
-                            </MudStack>
-                        </MudExpansionPanel>
-                    }
-                </MudExpansionPanels>
-            </div>
-        </MudItem>
-    </MudGrid>
-}
-@if (_isParsing)
-{
-    <MudProgressCircular Style="position: absolute; left: calc(66.666667%); top: calc(50%);" Indeterminate="true"/>
+    @if (_event is null)
+    {
+        <MudGrid Spacing="0">
+            <MudItem xs="4"
+                     Style="@(Breakpoint is Breakpoint.Xs or Breakpoint.Sm ? "height: calc(100vh - 56px)" : "height: 100vh;")"
+                     Class="mud-theme-primary d-flex flex-column flex-nowrap justify-space-between">
+                <MudSkeleton Height="100%" Width="100%" Style="transform: none"/>
+            </MudItem>
+            <MudItem xs="8"
+                     Style="@(Breakpoint is Breakpoint.Xs or Breakpoint.Sm ? "height: calc(100vh - 56px)" : "height: 100vh;")">
+                <MudSkeleton Height="100%" Width="100%" Style="transform: none"/>
+            </MudItem>
+        </MudGrid>
+    }
+    else
+    {
+        <MudGrid Spacing="0">
+            <MudItem xs="4"
+                     Style="@(Breakpoint is Breakpoint.Xs or Breakpoint.Sm ? "height: calc(100vh - 56px)" : "height: 100vh;")"
+                     Class="mud-theme-primary d-flex flex-column flex-nowrap justify-space-between">
+                <EventView_EventInfo Disabled="_disableInteractions" Event="_event" ParentStateHasChanged="StateHasChanged" Reload="ReloadAsync"/>
+            </MudItem>
+            <MudItem xs="8"
+                     Style="@(Breakpoint is Breakpoint.Xs or Breakpoint.Sm ? "height: calc(100vh - 56px)" : "height: 100vh;")">
+                <EventView_SlotInfo Disabled="_disableInteractions" Event="_event" ParentStateHasChanged="PropagateStateHasChanged" SlotGroups="_slotGroups" Reload="ReloadAsync"/>
+            </MudItem>
+        </MudGrid>
+    }
 }
 
 
@@ -192,7 +72,6 @@ else
 
     private Event? _event;
     private bool _disableInteractions;
-    private bool _isParsing;
     private IReadOnlyCollection<SlotGroup> _slotGroups = ArraySegment<SlotGroup>.Empty;
 
     protected override async Task OnInitializedAsync()
@@ -228,7 +107,7 @@ else
             .ToImmutableArray();
     }
 
-    private class SlotGroup : IReadOnlyCollection<EventSlot>
+    public class SlotGroup : IReadOnlyCollection<EventSlot>
     {
         private readonly List<EventSlot> _data;
         public string Name { get; }
@@ -252,182 +131,6 @@ else
             Name = name;
             _data = slots.OrderBy((q) => q.SlotNumber).ToList();
         }
-    }
-
-    private async Task MergeSlotsFromMissionFileAsync(IBrowserFile arg)
-    {
-        try
-        {
-            [Conditional("DEBUG")]
-            static void DebugLine(string s) => Console.WriteLine(s);
-
-            using var isParsingDisposable = new Disposable(
-                () => _isParsing = true,
-                () => _isParsing = false);
-
-            IReadOnlyCollection<EventSlot> parsedSlots;
-            await using (var stream = arg.OpenReadStream(100 /*mb*/* 1024 /*kb*/* 1024 /*b*/))
-            using (var memoryStream = new MemoryStream())
-            {
-                await stream.CopyToAsync(memoryStream)
-                    .ConfigureAwait(false);
-                memoryStream.Seek(0, SeekOrigin.Begin);
-                var configToSlots = new ConfigToSlots(Localizer, Snackbar);
-                try
-                {
-                    (parsedSlots, var success) = configToSlots.GetSlots(memoryStream);
-                    if (!success)
-                        return;
-                }
-                catch
-                {
-                    return;
-                }
-            }
-            if (parsedSlots.Select((eventSlot) => $"{eventSlot.Group}@{eventSlot.Title}").Distinct().Count() == parsedSlots.Count)
-            {
-                Snackbar.Add(Localizer[nameof(Language.Pages_EventView_SlotsSharingSameNameIsNotRecommended)], Severity.Warning);
-            }
-
-            var parsedEventSlotWasHit = parsedSlots.ToDictionary((q) => q, (_) => false);
-            var existingEventSlots = _slotGroups.SelectMany((q) => q).ToArray();
-            var existingEventSlotWasHit = existingEventSlots.ToDictionary((q) => q, (_) => false);
-            var slotMatch = new Dictionary<EventSlot, EventSlot>();
-
-            foreach (var existingEventSlot in existingEventSlots)
-            {
-                var parsedEventSlot = parsedEventSlotWasHit
-                    .Where((q) => !q.Value && existingEventSlot.EqualIdentificationData(q.Key))
-                    .Select((q) => q.Key)
-                    .FirstOrDefault();
-                if (parsedEventSlot is null)
-                    continue;
-                DebugLine($"Slot {existingEventSlot.EventFk}--{existingEventSlot.SlotNumber} {existingEventSlot.Group}@{existingEventSlot.Title} was found with {parsedEventSlot.Group}@{parsedEventSlot.Title}");
-                existingEventSlotWasHit[existingEventSlot] = true;
-                parsedEventSlotWasHit[parsedEventSlot] = true;
-                slotMatch[existingEventSlot] = parsedEventSlot;
-            }
-            var slotsToRemove = existingEventSlotWasHit
-                .Where((q) => !q.Value)
-                .Select((q) => q.Key)
-                .ToArray();
-            var slotsToAdd = parsedEventSlotWasHit
-                .Where((q) => !q.Value)
-                .Select((q) => q.Key)
-                .ToArray();
-            var slotsToUpdate = slotMatch
-                .Where((q) => !q.Key.EqualData(q.Value))
-                .Select((q) => (existing: q.Key, parsed:q.Value))
-                .ToArray();
-            try
-            {
-                foreach (var eventSlot in slotsToRemove)
-                {
-                    await SlotRepository.DeleteSlotAsync(eventSlot)
-                        .ConfigureAwait(false);
-                }
-                foreach (var (existingEventSlot, parsedEventSlot) in slotsToUpdate)
-                {
-                    await SlotRepository.UpdateSlotAsync(existingEventSlot, parsedEventSlot)
-                        .ConfigureAwait(false);
-                }
-                foreach (var eventSlot in slotsToAdd)
-                {
-                    await SlotRepository.CreateSlotAsync(_event, eventSlot)
-                        .ConfigureAwait(false);
-                }
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add(ex.Message);
-            }
-            finally
-            {
-                await ReloadAsync()
-                    .ConfigureAwait(false);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-    }
-
-    private async Task AssignToSelfAsync(EventSlot slot)
-    {
-        try
-        {
-            await SlotRepository.SelfAssignSlotAsync(slot)
-                .ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-        finally
-        {
-            await ReloadAsync()
-                .ConfigureAwait(false);
-        }
-    }
-
-    private async Task AssignToUserAsync(EventSlot slot)
-    {
-        try
-        {
-            var user = await Dialogs.SelectUserDialog.ShowAsync(DialogService, slot.AssignedTo)
-                .ConfigureAwait(false);
-            if (user is null)
-                return;
-            if (user.PrimaryKey != slot.AssignedToFk)
-            {
-                await SlotRepository.AssignSlotAsync(slot, user)
-                    .ConfigureAwait(false);
-                slot.AssignedTo = user;
-                slot.AssignedToFk = user.PrimaryKey;
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-        finally
-        {
-            await ReloadAsync()
-                .ConfigureAwait(false);
-        }
-    }
-
-    private async Task SetIsSelfAssignableAsync(EventSlot slot, bool flag)
-    {
-        slot.IsSelfAssignable = flag;
-        await SlotRepository.UpdateSlotAsync(slot, slot);
-    }
-
-    private async Task SetIsVisibleAsync(EventSlot slot, bool flag)
-    {
-        slot.IsVisible = flag;
-        await SlotRepository.UpdateSlotAsync(slot, slot);
-    }
-
-    private bool GetDisableSelfInteraction(EventSlot slot)
-    {
-        if (!Me.IsAuthenticated)
-    // User is not logged in.
-            return true;
-        if (_disableInteractions)
-    // All interactions are disabled for this UI.
-            return true;
-        if (slot.AssignedToFk is not null)
-    // Slot is already assigned.
-            return true;
-        if (!(slot.IsSelfAssignable ?? true)
-            && !Me.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotIgnore, Roles.EventSlotUpdate)
-            && _event is not null
-            && !Me.Eval((user) => user.PrimaryKey == _event.HostedByFk))
-    // Slot cannot be self-assigned
-            return true;
-        return false;
     }
 
 }

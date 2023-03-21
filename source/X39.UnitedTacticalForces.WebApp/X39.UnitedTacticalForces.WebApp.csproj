@@ -38,6 +38,15 @@
       <Compile Update="Api.GameServer.cs">
         <DependentUpon>Api.cs</DependentUpon>
       </Compile>
+      <Compile Update="Api.ConfigurationEntry.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Api.Event.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Api.LifetimeEvent.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>
@@ -47,20 +56,35 @@
       <Content Update="Pages\Users.Interactions.ToggleBan.razor">
         <DependentUpon>Users.razor</DependentUpon>
       </Content>
-      <Content Update="Pages\Events.Interactions.AcceptanceButton.razor">
-        <DependentUpon>Events.razor</DependentUpon>
+      <Content Update="Pages\UpcommingEvents.Interactions.AcceptanceButton.razor">
+        <DependentUpon>UpcommingEvents.razor</DependentUpon>
       </Content>
-      <Content Update="Pages\Events.HeaderActions.CloneButton.razor">
-        <DependentUpon>Events.razor</DependentUpon>
+      <Content Update="Pages\UpcommingEvents.HeaderActions.CloneButton.razor">
+        <DependentUpon>UpcommingEvents.razor</DependentUpon>
       </Content>
-      <Content Update="Pages\Events.HeaderActions.ModifyButton.razor">
-        <DependentUpon>Events.razor</DependentUpon>
+      <Content Update="Pages\UpcommingEvents.HeaderActions.ModifyButton.razor">
+        <DependentUpon>UpcommingEvents.razor</DependentUpon>
       </Content>
-      <Content Update="Pages\Events.EventCard.razor">
-        <DependentUpon>Events.razor</DependentUpon>
+      <Content Update="Pages\UpcommingEvents.EventCard.razor">
+        <DependentUpon>UpcommingEvents.razor</DependentUpon>
       </Content>
       <Content Update="Pages\Users.Interactions.ToggleVerified.razor">
         <DependentUpon>Users.razor</DependentUpon>
+      </Content>
+      <Content Update="Pages\ServerEdit.razor">
+        <DependentUpon>Servers.razor</DependentUpon>
+      </Content>
+      <Content Update="Pages\UpcommingEvents.razor">
+        <DependentUpon>Events.razor</DependentUpon>
+      </Content>
+      <Content Update="Pages\EventView.razor">
+        <DependentUpon>Events.razor</DependentUpon>
+      </Content>
+      <Content Update="Pages\EventView.EventInfo.razor">
+        <DependentUpon>EventView.razor</DependentUpon>
+      </Content>
+      <Content Update="Pages\EventView.SlotInfo.razor">
+        <DependentUpon>EventView.razor</DependentUpon>
       </Content>
     </ItemGroup>
 

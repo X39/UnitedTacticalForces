@@ -1,11 +1,11 @@
 ﻿using System.Net;
-using System.Reflection.Metadata;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
+using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Common;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
@@ -52,10 +52,46 @@ public class EventSlottingController : ControllerBase
         {
             query = query.Where((q) => q.IsVisible);
         }
+
         var results = await query
             .OrderBy((q) => q.SlotNumber)
             .ToArrayAsync(cancellationToken);
         return Ok(results);
+    }
+
+    /// <summary>
+    /// Receives the slot of the calling user (if available) on an <see cref="Event"/>, identified via the
+    /// <paramref name="eventId"/>.
+    /// </summary>
+    /// <param name="eventId">The id of the <see cref="Event"/>.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>All <see cref="EventSlot"/>'s currently available on an <see cref="Event"/> or NoContent if no slot was found.</returns>
+    [HttpGet("my-slot", Name = nameof(MySlotAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(EventSlot), (int) HttpStatusCode.OK)]
+    public async Task<ActionResult<EventSlot?>> MySlotAsync(
+        [FromRoute] Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        var eventExists = await _apiDbContext.Events
+            .AnyAsync((q) => q.PrimaryKey == eventId, cancellationToken);
+        if (!eventExists)
+            return NotFound();
+        var query = _apiDbContext.EventSlots
+            .Include((e) => e.AssignedTo)
+            .Where((q) => q.EventFk == eventId)
+            .Where((q) => q.AssignedToFk == userId)
+            .AsQueryable();
+        var single = await query.SingleOrDefaultAsync(cancellationToken);
+
+        return single is null ? NoContent() : Ok(single);
     }
 
     /// <summary>
@@ -139,21 +175,16 @@ public class EventSlottingController : ControllerBase
             .Where((q) => q.EventFk == eventId)
             .Where((q) => q.AssignedToFk == userId)
             .SingleOrDefaultAsync(cancellationToken);
-        var userEventMeta = await _apiDbContext.UserEventMetas
-            .SingleOrDefaultAsync((q) => q.EventFk == eventId && q.UserFk == userId, cancellationToken);
-
 
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
-        if (userEventMeta is null)
-            _apiDbContext.UserEventMetas.Add(
-                new UserEventMeta
-                {
-                    EventFk    = eventId,
-                    UserFk     = userId,
-                    Acceptance = EEventAcceptance.Accepted,
-                });
-        else
-            userEventMeta.Acceptance = EEventAcceptance.Accepted;
+        await EventUtils.SetAcceptanceOfEventAsync(
+            _logger,
+            _apiDbContext,
+            eventId,
+            userId,
+            EEventAcceptance.Accepted,
+            cancellationToken);
+
         if (existingEventSlot is not null)
             existingEventSlot.AssignedToFk = null;
         newEventSlot.AssignedToFk = userId;
@@ -206,19 +237,14 @@ public class EventSlottingController : ControllerBase
             .Where((q) => q.AssignedToFk == userId)
             .SingleOrDefaultAsync(cancellationToken);
 
-        var userEventMeta = await _apiDbContext.UserEventMetas
-            .SingleOrDefaultAsync((q) => q.EventFk == eventId && q.UserFk == userId, cancellationToken);
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
-        if (userEventMeta is null)
-            _apiDbContext.UserEventMetas.Add(
-                new UserEventMeta
-                {
-                    EventFk    = eventId,
-                    UserFk     = userId,
-                    Acceptance = EEventAcceptance.Accepted,
-                });
-        else
-            userEventMeta.Acceptance = EEventAcceptance.Accepted;
+        await EventUtils.SetAcceptanceOfEventAsync(
+            _logger,
+            _apiDbContext,
+            eventId,
+            userId,
+            EEventAcceptance.Accepted,
+            cancellationToken);
         if (existingEventSlot is not null)
             existingEventSlot.AssignedToFk = null;
         newEventSlot.AssignedToFk = userId;

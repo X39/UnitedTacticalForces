@@ -1,9 +1,6 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using Steam.Models.SteamCommunity;
-using SteamWebAPI2.Interfaces;
-using SteamWebAPI2.Utilities;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;

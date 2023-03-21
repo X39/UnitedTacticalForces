@@ -56,4 +56,10 @@ internal class TerrainRepositoryImpl : RepositoryBase, ITerrainRepository
         await Client.TerrainsDeleteAsync(terrain.PrimaryKey.Value, cancellationToken)
             .ConfigureAwait(false);
     }
+
+    public async Task<Terrain?> GetTerrainAsync(long terrainFk, CancellationToken cancellationToken = default)
+    {
+        return await Client.TerrainsAsync(terrainFk, cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

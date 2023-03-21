@@ -105,6 +105,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Ok.
+        /// </summary>
+        internal static string Common_Ok {
+            get {
+                return ResourceManager.GetString("Common_Ok", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Search.
         /// </summary>
         internal static string Common_Search {
@@ -123,6 +132,42 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Confirm the loss of the slot selection.
+        /// </summary>
+        internal static string Dialogs_ConfirmSlotLoss_ConfirmSlotLossOnAcceptanceChange {
+            get {
+                return ResourceManager.GetString("Dialogs_ConfirmSlotLoss_ConfirmSlotLossOnAcceptanceChange", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to If you change the acceptance status, the selected slot will also be removed..
+        /// </summary>
+        internal static string Dialogs_ConfirmSlotLoss_SelectingSlotWillRemoveSlotSelection {
+            get {
+                return ResourceManager.GetString("Dialogs_ConfirmSlotLoss_SelectingSlotWillRemoveSlotSelection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Confirm the change of the acceptance status.
+        /// </summary>
+        internal static string Dialogs_ConfirmSlotSelection_ConfirmAcceptanceStatusChange {
+            get {
+                return ResourceManager.GetString("Dialogs_ConfirmSlotSelection_ConfirmAcceptanceStatusChange", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to When you select a slot, your acceptance will be changed to &quot;accepted&quot;..
+        /// </summary>
+        internal static string Dialogs_ConfirmSlotSelection_SelectingSlotWillChangeAcceptanceToAccepted {
+            get {
+                return ResourceManager.GetString("Dialogs_ConfirmSlotSelection_SelectingSlotWillChangeAcceptanceToAccepted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Description.
         /// </summary>
         internal static string Dialogs_ModifyEventDialog_Inputs_Description {
@@ -137,6 +182,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Dialogs_ModifyEventDialog_Inputs_HostedBy {
             get {
                 return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_HostedBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Visible to users.
+        /// </summary>
+        internal static string Dialogs_ModifyEventDialog_Inputs_IsVisible {
+            get {
+                return ResourceManager.GetString("Dialogs_ModifyEventDialog_Inputs_IsVisible", resourceCulture);
             }
         }
         
@@ -375,6 +429,24 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to All events.
+        /// </summary>
+        internal static string Pages_Events_AllEvents {
+            get {
+                return ResourceManager.GetString("Pages_Events_AllEvents", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Create event.
+        /// </summary>
+        internal static string Pages_Events_CreateNewEvent {
+            get {
+                return ResourceManager.GetString("Pages_Events_CreateNewEvent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Slots.
         /// </summary>
         internal static string Pages_Events_EventCard_Slots {
@@ -384,11 +456,101 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to My events.
+        /// </summary>
+        internal static string Pages_Events_MyEvents {
+            get {
+                return ResourceManager.GetString("Pages_Events_MyEvents", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only events hosted by me.
+        /// </summary>
+        internal static string Pages_Events_MyEventsOnly_ToolTip {
+            get {
+                return ResourceManager.GetString("Pages_Events_MyEventsOnly_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to No upcoming events.
         /// </summary>
         internal static string Pages_Events_NoUpcomingEvents {
             get {
                 return ResourceManager.GetString("Pages_Events_NoUpcomingEvents", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hosted by.
+        /// </summary>
+        internal static string Pages_Events_Table_HostedBy {
+            get {
+                return ResourceManager.GetString("Pages_Events_Table_HostedBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interactions.
+        /// </summary>
+        internal static string Pages_Events_Table_Interactions {
+            get {
+                return ResourceManager.GetString("Pages_Events_Table_Interactions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mod pack.
+        /// </summary>
+        internal static string Pages_Events_Table_ModPack {
+            get {
+                return ResourceManager.GetString("Pages_Events_Table_ModPack", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scheduled for.
+        /// </summary>
+        internal static string Pages_Events_Table_ScheduledFor {
+            get {
+                return ResourceManager.GetString("Pages_Events_Table_ScheduledFor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This event has already taken place and can no longer be attended..
+        /// </summary>
+        internal static string Pages_Events_Table_ScheduledFor_EventAlreadyOccured {
+            get {
+                return ResourceManager.GetString("Pages_Events_Table_ScheduledFor_EventAlreadyOccured", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Terrain.
+        /// </summary>
+        internal static string Pages_Events_Table_Terrain {
+            get {
+                return ResourceManager.GetString("Pages_Events_Table_Terrain", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Created.
+        /// </summary>
+        internal static string Pages_Events_Table_TimeStampCreated {
+            get {
+                return ResourceManager.GetString("Pages_Events_Table_TimeStampCreated", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Pages_Events_Table_Title {
+            get {
+                return ResourceManager.GetString("Pages_Events_Table_Title", resourceCulture);
             }
         }
         
@@ -951,7 +1113,7 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Upcoming events.
+        ///   Looks up a localized string similar to Events.
         /// </summary>
         internal static string Shared_NavMenu_Events {
             get {
@@ -992,6 +1154,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Shared_NavMenu_Terrains {
             get {
                 return ResourceManager.GetString("Shared_NavMenu_Terrains", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Upcoming events.
+        /// </summary>
+        internal static string Shared_NavMenu_UpcommingEvents {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_UpcommingEvents", resourceCulture);
             }
         }
         

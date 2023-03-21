@@ -1,6 +1,6 @@
 ﻿@using System.ComponentModel.DataAnnotations
 
-<div class="d-flex gap-2 align-center align-self-center @Class">
+<div class="d-flex gap-2 align-center align-self-center @Class" style="@Style">
     @if (User is not null)
     {
         @if (User.Avatar is not null && User.Avatar.Length is not 0)
@@ -15,6 +15,9 @@
 
     [Parameter]
     public string Class { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Style { get; set; } = string.Empty;
 
     [Required, EditorRequired, Parameter]
     public User? User { get; set; } = null!;

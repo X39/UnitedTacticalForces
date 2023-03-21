@@ -4,7 +4,6 @@ using Microsoft.Extensions.Localization;
 using MudBlazor;
 using X39.BI.Config.Parsing;
 using X39.UnitedTacticalForces.WebApp.Properties;
-using X39.Util;
 
 namespace X39.UnitedTacticalForces.WebApp.Helpers;
 

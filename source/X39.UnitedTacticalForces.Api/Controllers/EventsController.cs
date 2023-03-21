@@ -6,6 +6,7 @@ using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
+using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Common;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
@@ -47,6 +48,7 @@ public class EventsController : ControllerBase
                 .Include((e) => e.HostedBy)
                 .Include((e) => e.UserMetas!.Where((q) => q.UserFk == userId))
                 .Where((q) => q.ScheduledFor >= DateTime.Today)
+                .Where((q) => q.IsVisible)
                 .OrderBy((q) => q.ScheduledFor);
         }
         else
@@ -57,10 +59,90 @@ public class EventsController : ControllerBase
                 .Include((e) => e.Owner)
                 .Include((e) => e.HostedBy)
                 .Where((q) => q.ScheduledFor >= DateTime.Today)
+                .Where((q) => q.IsVisible)
                 .OrderBy((q) => q.ScheduledFor);
         }
 
         return await query.ToArrayAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns all <see cref="Event"/>'s.
+    /// </summary>
+    /// <remarks>
+    /// Referred entities are not be included.
+    /// </remarks>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="take">The amount of logs to receive</param>
+    /// <param name="skip">The amount of log entries to skip</param>
+    /// <param name="hostedByMeOnly">
+    ///     If <see langword="true"/>, will only return events where the <see cref="Event.HostedBy"/> is the calling user.
+    /// </param>
+    /// <param name="descendingByScheduledFor">
+    ///     If <see langword="true"/>, order of returned logs will be descending (next one first).
+    /// </param>
+    /// <returns>The upcoming <see cref="Event"/>'ss and the data required to display them to the current user.</returns>
+    [Authorize]
+    [HttpGet("all", Name = nameof(GetEventsAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(IEnumerable<Event>), (int) HttpStatusCode.OK)]
+    public async Task<ActionResult<IEnumerable<Event>>> GetEventsAsync(
+        [FromQuery] int skip,
+        [FromQuery] int take,
+        [FromQuery] bool hostedByMeOnly = false,
+        [FromQuery] bool descendingByScheduledFor = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        var query = _apiDbContext.Events
+            .AsQueryable();
+        if (hostedByMeOnly)
+            query = query.Where((q) => q.HostedByFk == userId);
+        else if (!User.IsInRoleOrAdmin(Roles.EventModify, Roles.EventDelete))
+            query = query.Where((q) => q.IsVisible || q.HostedByFk == userId);
+
+        query = descendingByScheduledFor
+            ? query.OrderByDescending((q) => q.ScheduledFor)
+            : query.OrderBy((q) => q.ScheduledFor);
+        query = query.Skip(skip).Take(take);
+
+        return await query.ToArrayAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns the count of all <see cref="Event"/>'s.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="hostedByMeOnly">
+    ///     If <see langword="true"/>, will only account for events where the <see cref="Event.HostedBy"/> is the calling user.
+    /// </param>
+    /// <returns>The upcoming <see cref="Event"/>'ss and the data required to display them to the current user.</returns>
+    [Authorize]
+    [HttpGet("all/count", Name = nameof(GetEventsCountAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(long), (int) HttpStatusCode.OK)]
+    public async Task<ActionResult<long>> GetEventsCountAsync(
+        [FromQuery] bool hostedByMeOnly = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        var query = _apiDbContext.Events
+            .AsQueryable();
+        if (hostedByMeOnly)
+            query = query.Where((q) => q.HostedByFk == userId);
+        else if (!User.IsInRoleOrAdmin(Roles.EventModify, Roles.EventDelete))
+            query = query.Where((q) => q.IsVisible || q.HostedByFk == userId);
+
+
+        return await query.LongCountAsync(cancellationToken);
     }
 
     /// <summary>
@@ -72,8 +154,8 @@ public class EventsController : ControllerBase
     /// </returns>
     [AllowAnonymous]
     [HttpGet("{eventId:guid}", Name = nameof(GetEventAsync))]
-    [ProducesResponseType(typeof(Event), (int)HttpStatusCode.OK)]
-    [ProducesResponseType(typeof(void), (int)HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(Event), (int) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     public async Task<Event?> GetEventAsync(
         [FromRoute] Guid eventId,
         CancellationToken cancellationToken)
@@ -105,12 +187,74 @@ public class EventsController : ControllerBase
         return await query.SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
     }
 
+    /// <summary>
+    /// Returns the users which have interacted with an <see cref="Event"/>'s acceptance status.
+    /// </summary>
+    /// <param name="eventId">
+    ///     The <see cref="Event.PrimaryKey"/> of the <see cref="Event"/> to get the <see cref="User"/>'s from.
+    /// </param>
+    /// <param name="acceptance">
+    ///     If provided, only <see cref="User"/>'s with the given
+    ///     <see cref="UserEventMeta.Acceptance"/> will be returned.
+    /// </param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>
+    ///     The <see cref="User"/>'s which have set their status for the <see cref="Event"/> to either
+    ///     <see cref="EEventAcceptance.Accepted"/>, <see cref="EEventAcceptance.Maybe"/>
+    ///     or <see cref="EEventAcceptance.Rejected"/>.
+    /// </returns>
+    [AllowAnonymous]
+    [HttpGet("{eventId:guid}/users", Name = nameof(GetEventUsersAsync))]
+    [ProducesResponseType(typeof(User[]), (int) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
+    public async Task<ActionResult<User[]>> GetEventUsersAsync(
+        [FromRoute] Guid eventId,
+        [FromQuery] EEventAcceptance? acceptance = default,
+        CancellationToken cancellationToken = default)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        var eventItem = await _apiDbContext.Events
+            .SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
+        if (eventItem is null)
+            return NotFound();
+        if (!eventItem.IsVisible
+            && eventItem.HostedByFk != userId
+            && User.IsInRoleOrAdmin(Roles.EventModify, Roles.EventDelete))
+            return Forbid();
+        User[] usersQuery;
+        if (acceptance is not null)
+        {
+            var tmp = acceptance.Value;
+            usersQuery = await _apiDbContext.UserEventMetas
+                .Where(meta => meta.EventFk == eventId)
+                .Where(meta => meta.Acceptance == tmp)
+                .Select(meta => meta.User!)
+                .ToArrayAsync(cancellationToken);
+        }
+        else
+        {
+            usersQuery = await _apiDbContext.UserEventMetas
+                .Where(meta => meta.EventFk == eventId)
+                .Select(meta => meta.User!)
+                .ToArrayAsync(cancellationToken);
+        }
+
+        return Ok(usersQuery);
+    }
+
     [Authorize(Roles = Roles.Admin + "," + Roles.EventCreate)]
     [HttpPost("create", Name = nameof(CreateEventAsync))]
     public async Task<Event> CreateEventAsync([FromBody] Event newEvent, CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var userId))
             throw new UnauthorizedAccessException();
+        // ToDo: Log audit
         newEvent.Owner                = null;
         newEvent.OwnerFk              = userId;
         newEvent.UserMetas            = null;
@@ -128,9 +272,9 @@ public class EventsController : ControllerBase
     }
 
     [Authorize]
-    [ProducesResponseType(typeof(void), (int)HttpStatusCode.Unauthorized)]
-    [ProducesResponseType(typeof(void), (int)HttpStatusCode.NoContent)]
-    [ProducesResponseType(typeof(void), (int)HttpStatusCode.Forbidden)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
     [HttpPost("{eventId:guid}/update", Name = nameof(UpdateEventAsync))]
     public async Task<ActionResult> UpdateEventAsync(
         [FromRoute] Guid eventId,
@@ -142,6 +286,7 @@ public class EventsController : ControllerBase
         var existingEvent = await _apiDbContext.Events.SingleAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         if (!User.IsInRoleOrAdmin(Roles.EventModify) && existingEvent.HostedByFk != userId)
             return Forbid();
+        // ToDo: Log audit
         existingEvent.Title           = updatedEvent.Title;
         existingEvent.Description     = updatedEvent.Description;
         existingEvent.ScheduledFor    = updatedEvent.ScheduledFor;
@@ -151,101 +296,100 @@ public class EventsController : ControllerBase
         existingEvent.ModPackFk       = updatedEvent.ModPack?.PrimaryKey ?? updatedEvent.ModPackFk;
         existingEvent.TerrainFk       = updatedEvent.Terrain?.PrimaryKey ?? updatedEvent.TerrainFk;
         existingEvent.MinimumAccepted = updatedEvent.MinimumAccepted;
+        existingEvent.IsVisible       = updatedEvent.IsVisible;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
 
+    /// <summary>
+    /// Changes the calling users acceptance status for the given event to <see cref="EEventAcceptance.Accepted"/>.
+    /// </summary>
+    /// <param name="eventId">The id for the <see cref="Event"/> to change the acceptance of.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
     [Authorize]
     [HttpPost("{eventId:guid}/accept", Name = nameof(AcceptEventAsync))]
-    public async Task AcceptEventAsync(
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    public async Task<ActionResult> AcceptEventAsync(
         [FromRoute] Guid eventId,
         CancellationToken cancellationToken)
     {
-        await SetAcceptanceOfEventAsync(eventId, EEventAcceptance.Accepted, cancellationToken);
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        await EventUtils.SetAcceptanceOfEventAsync(
+            _logger,
+            _apiDbContext,
+            eventId,
+            userId,
+            EEventAcceptance.Accepted,
+            cancellationToken);
+        return NoContent();
     }
 
+    /// <summary>
+    /// Changes the calling users acceptance status for the given event to <see cref="EEventAcceptance.Maybe"/>.
+    /// </summary>
+    /// <remarks>
+    /// Any slot selection for the <see cref="Event"/> will be removed in this process.
+    /// </remarks>
+    /// <param name="eventId">The id for the <see cref="Event"/> to change the acceptance of.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <exception cref="UnauthorizedAccessException"></exception>
     [Authorize]
     [HttpPost("{eventId:guid}/maybe", Name = nameof(MaybeEventAsync))]
-    public async Task MaybeEventAsync(
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    public async Task<ActionResult> MaybeEventAsync(
         [FromRoute] Guid eventId,
         CancellationToken cancellationToken)
     {
-        await SetAcceptanceOfEventAsync(eventId, EEventAcceptance.Maybe, cancellationToken);
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        await EventUtils.SetAcceptanceOfEventAsync(
+            _logger,
+            _apiDbContext,
+            eventId,
+            userId,
+            EEventAcceptance.Maybe,
+            cancellationToken);
+        return NoContent();
     }
 
+    /// <summary>
+    /// Changes the calling users acceptance status for the given event to <see cref="EEventAcceptance.Rejected"/>.
+    /// </summary>
+    /// <remarks>
+    /// Any slot selection for the <see cref="Event"/> will be removed in this process.
+    /// </remarks>
+    /// <param name="eventId">The id for the <see cref="Event"/> to change the acceptance of.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <exception cref="UnauthorizedAccessException"></exception>
     [Authorize]
     [HttpPost("{eventId:guid}/reject", Name = nameof(RejectEventAsync))]
-    public async Task RejectEventAsync(
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    public async Task<ActionResult> RejectEventAsync(
         [FromRoute] Guid eventId,
         CancellationToken cancellationToken)
     {
-        await SetAcceptanceOfEventAsync(eventId, EEventAcceptance.Rejected, cancellationToken);
-    }
-
-    private async Task SetAcceptanceOfEventAsync(
-        Guid eventId,
-        EEventAcceptance acceptance,
-        CancellationToken cancellationToken)
-    {
-        await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
         if (!User.TryGetUserId(out var userId))
-            throw new UnauthorizedAccessException();
-        var existingEvent = await _apiDbContext.Events
-            .Include((e) => e.UserMetas!.Where((q) => q.UserFk == userId))
-            .SingleAsync((q) => q.PrimaryKey == eventId, cancellationToken);
-        if (existingEvent.UserMetas?.FirstOrDefault() is { } userEventMeta)
-        {
-            switch (userEventMeta.Acceptance)
-            {
-                case EEventAcceptance.Rejected:
-                    existingEvent.RejectedCount--;
-                    break;
-                case EEventAcceptance.Maybe:
-                    existingEvent.MaybeCount--;
-                    break;
-                case EEventAcceptance.Accepted:
-                    existingEvent.AcceptedCount--;
-                    var slotCandidate = await _apiDbContext.EventSlots
-                        .SingleOrDefaultAsync((q) => q.AssignedToFk == userId, cancellationToken);
-                    if (slotCandidate is not null)
-                        slotCandidate.AssignedToFk = null;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-
-            userEventMeta.Acceptance = acceptance;
-        }
-        else
-        {
-            await _apiDbContext.UserEventMetas.AddAsync(
-                new UserEventMeta
-                {
-                    User       = default,
-                    UserFk     = userId,
-                    Event      = default,
-                    EventFk    = existingEvent.PrimaryKey,
-                    Acceptance = acceptance,
-                },
-                cancellationToken);
-        }
-
-        switch (acceptance)
-        {
-            case EEventAcceptance.Rejected:
-                existingEvent.RejectedCount++;
-                break;
-            case EEventAcceptance.Maybe:
-                existingEvent.MaybeCount++;
-                break;
-            case EEventAcceptance.Accepted:
-                existingEvent.AcceptedCount++;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(acceptance), acceptance, null);
-        }
-
-        await _apiDbContext.SaveChangesAsync(cancellationToken);
-        await dbTransaction.CommitAsync(cancellationToken);
+            return Unauthorized();
+        await EventUtils.SetAcceptanceOfEventAsync(
+            _logger,
+            _apiDbContext,
+            eventId,
+            userId,
+            EEventAcceptance.Rejected,
+            cancellationToken);
+        return NoContent();
     }
 }

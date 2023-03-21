@@ -39,10 +39,10 @@
                     <MudText Style="white-space: nowrap">@(context.TimeStamp?.ToLocalTime().ToString("u"))</MudText>
                 </MudTd>
                 <MudTd DataLabel="@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_Source)]">
-                    <MudText>@(context.Source)</MudText>
+                    <MudText Style="white-space: nowrap">@(context.Source)</MudText>
                 </MudTd>
                 <MudTd DataLabel="@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_LogLevel)]">
-                    <MudText>@(context.LogLevel)</MudText>
+                    <MudText Style="white-space: nowrap">@(context.LogLevel)</MudText>
                 </MudTd>
                 <MudTd DataLabel="@Localizer[nameof(Language.Dialogs_ShowGameServerLogs_Message)]">
                     <MudText>@(context.Message)</MudText>

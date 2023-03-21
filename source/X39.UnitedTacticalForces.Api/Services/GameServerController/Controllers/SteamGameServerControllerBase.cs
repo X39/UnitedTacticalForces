@@ -98,38 +98,40 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         GameServer.Title,
                         GameServer.PrimaryKey,
                         executingUser?.PrimaryKey);
-                    GameServer.Status = ELifetimeStatus.Starting;
-                    await dbContext.LifetimeEvents.AddAsync(
-                            new LifetimeEvent
-                            {
-                                GameServerFk = GameServer.PrimaryKey,
-                                TimeStamp    = DateTimeOffset.Now,
-                                ExecutedByFk = executingUser?.PrimaryKey,
-                                Status       = ELifetimeStatus.Starting,
-                                GameServer   = default,
-                                PrimaryKey   = default,
-                                ExecutedBy   = default,
-                            })
-                        .ConfigureAwait(false);
-                    await dbContext.SaveChangesAsync()
-                        .ConfigureAwait(false);
-                    var processStartInfo = await GetProcessStartInfoAsync(dbContext, executingUser);
-                    Logger.LogInformation(
-                        "User {User} has requested starting of server {GameServer} ({GameServerPk}) with {LaunchArgs}",
-                        GameServer.Title,
-                        GameServer.PrimaryKey,
-                        $"{processStartInfo.FileName} {string.Join(' ', processStartInfo.ArgumentList.Select((q)=>string.Concat('"', q, '"')))}",
-                        executingUser?.PrimaryKey);
-                    var process = new Process
-                    {
-                        StartInfo            = processStartInfo,
-                        EnableRaisingEvents  = true,
-                    };
-                    process.Exited             += ProcessOnExited;
-                    process.ErrorDataReceived  += ProcessOnErrorDataReceived;
-                    process.OutputDataReceived += ProcessOnOutputDataReceived;
+                    Process? process = null;
+                    ProcessStartInfo? processStartInfo = null;
                     try
                     {
+                        GameServer.Status = ELifetimeStatus.Starting;
+                        await dbContext.LifetimeEvents.AddAsync(
+                                new LifetimeEvent
+                                {
+                                    GameServerFk = GameServer.PrimaryKey,
+                                    TimeStamp    = DateTimeOffset.Now,
+                                    ExecutedByFk = executingUser?.PrimaryKey,
+                                    Status       = ELifetimeStatus.Starting,
+                                    GameServer   = default,
+                                    PrimaryKey   = default,
+                                    ExecutedBy   = default,
+                                })
+                            .ConfigureAwait(false);
+                        await dbContext.SaveChangesAsync()
+                            .ConfigureAwait(false);
+                        processStartInfo = await GetProcessStartInfoAsync(dbContext, executingUser);
+                        Logger.LogInformation(
+                            "User {User} has requested starting of server {GameServer} ({GameServerPk}) with {LaunchArgs}",
+                            GameServer.Title,
+                            GameServer.PrimaryKey,
+                            $"{processStartInfo.FileName} {string.Join(' ', processStartInfo.ArgumentList.Select((q) => string.Concat('"', q, '"')))}",
+                            executingUser?.PrimaryKey);
+                        process = new Process
+                        {
+                            StartInfo           = processStartInfo,
+                            EnableRaisingEvents = true,
+                        };
+                        process.Exited             += ProcessOnExited;
+                        process.ErrorDataReceived  += ProcessOnErrorDataReceived;
+                        process.OutputDataReceived += ProcessOnOutputDataReceived;
                         var startResult = process.Start();
                         Process = process;
                         process.BeginErrorReadLine();
@@ -159,17 +161,21 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                     }
                     catch (Exception ex)
                     {
-                        // ReSharper disable once AccessToDisposedClosure
-                        Fault.Ignore(() => process.Kill());
-                        // ReSharper disable once AccessToDisposedClosure
-                        Fault.Ignore(() => process.Close());
-                        process.Dispose();
+                        if (process is not null)
+                        {
+                            // ReSharper disable once AccessToDisposedClosure
+                            Fault.Ignore(() => process.Kill());
+                            // ReSharper disable once AccessToDisposedClosure
+                            Fault.Ignore(() => process.Close());
+                            process.Dispose();
+                        }
+
                         Logger.LogError(
                             ex,
                             "Failed starting server {GameServer} ({GameServerPk}) with {LaunchArgs} requested by user {User}",
                             GameServer.Title,
                             GameServer.PrimaryKey,
-                            processStartInfo.ArgumentList,
+                            processStartInfo?.ArgumentList,
                             executingUser?.PrimaryKey);
                         Process           = null;
                         GameServer.Status = ELifetimeStatus.Stopped;
@@ -225,7 +231,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                             Process.Kill();
 
                         // ReSharper disable once MergeIntoPattern
-                        while (Process is {} process && !process.HasExited)
+                        while (Process is { } process && !process.HasExited)
                         {
                             await Task.Delay(250);
                         }
@@ -323,7 +329,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         _) = GetSteamCmdInformationTuple();
                     var appId = ServerAppId;
                     var installPath = GameInstallPath;
-                    GameServer.ActiveModPack = GameServer.SelectedModPack;
+                    GameServer.ActiveModPack   = GameServer.SelectedModPack;
                     GameServer.ActiveModPackFk = GameServer.SelectedModPackFk;
                     await DoUpdateGameAsync(
                             steamCmdPath,
@@ -375,6 +381,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             RedirectStandardOutput = true,
             StandardErrorEncoding  = Encoding.ASCII,
             StandardOutputEncoding = Encoding.ASCII,
+            WorkingDirectory       = Path.GetDirectoryName(steamCmdPath),
         };
         psi.ArgumentList.Add("+force_install_dir");
         psi.ArgumentList.Add(installPath);
@@ -463,6 +470,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             RedirectStandardOutput = true,
             StandardErrorEncoding  = Encoding.ASCII,
             StandardOutputEncoding = Encoding.ASCII,
+            WorkingDirectory       = Path.GetDirectoryName(steamCmdPath),
         };
         psi.ArgumentList.Add("+force_install_dir");
         psi.ArgumentList.Add(installPath);
@@ -649,39 +657,46 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         Task.Run(
             async () =>
             {
-                Logger.LogDebug(
-                    "{GameServer} ({GameServerPk}): [{LogLevel}] {Message}",
-                    GameServer.Title,
-                    GameServer.PrimaryKey,
-                    logLevel,
-                    message);
-                try
+                const int maxAttempts = 3;
+                for (var i = 1; i < maxAttempts; i++)
                 {
-                    await using var dbContext = await DbContextFactory
-                        .CreateDbContextAsync(_cancellationTokenSource.Token)
-                        .ConfigureAwait(false);
-                    await dbContext.GameServerLogs.AddAsync(
-                            new GameServerLog
-                            {
-                                TimeStamp = now,
-                                LogLevel  = logLevel,
-                                Message   = message,
-                                Source = $"[{GameServer.PrimaryKey}] {GameServer.Title}",
-                            },
-                            _cancellationTokenSource.Token)
-                        .ConfigureAwait(false);
-                    await dbContext.SaveChangesAsync()
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(
-                        ex,
-                        "Failed to register the following log message for {GameServer} ({GameServerPk}): [{LogLevel}] {Message}",
+                    Logger.LogDebug(
+                        "{GameServer} ({GameServerPk}): [{LogLevel}] {Message}",
                         GameServer.Title,
                         GameServer.PrimaryKey,
                         logLevel,
                         message);
+                    try
+                    {
+                        await using var dbContext = await DbContextFactory
+                            .CreateDbContextAsync(_cancellationTokenSource.Token)
+                            .ConfigureAwait(false);
+                        await dbContext.GameServerLogs.AddAsync(
+                                new GameServerLog
+                                {
+                                    TimeStamp = now,
+                                    LogLevel  = logLevel,
+                                    Message   = message,
+                                    Source    = $"[{GameServer.PrimaryKey}] {GameServer.Title}",
+                                },
+                                _cancellationTokenSource.Token)
+                            .ConfigureAwait(false);
+                        await dbContext.SaveChangesAsync()
+                            .ConfigureAwait(false);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(
+                            ex,
+                            "Failed to register the following in attempt {Attempt}/{MaxAttempts} log message for {GameServer} ({GameServerPk}): [{LogLevel}] {Message}",
+                            i,
+                            maxAttempts,
+                            GameServer.Title,
+                            GameServer.PrimaryKey,
+                            logLevel,
+                            message);
+                    }
                 }
             },
             _cancellationTokenSource.Token);
@@ -701,7 +716,9 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             // ReSharper disable once AccessToDisposedClosure
             Fault.Ignore(() => process.Kill());
             process.Dispose();
-            BeginWritingServerLog(exitCode is 0 ? LogLevel.Information : LogLevel.Error, $"-----Process exited with {exitCode:X} at {exitTime}-----");
+            BeginWritingServerLog(
+                exitCode is 0 ? LogLevel.Information : LogLevel.Error,
+                $"-----Process exited with {exitCode:X} at {exitTime}-----");
         }
         else
         {

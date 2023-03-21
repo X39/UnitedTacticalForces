@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Core;
@@ -31,6 +30,8 @@ public class Event
     public DateTimeOffset ScheduledFor { get; set; }
 
     public DateTimeOffset TimeStampCreated { get; set; }
+    
+    public bool IsVisible { get; set; }
     
     public int AcceptedCount { get; set; }
     public int RejectedCount { get; set; }

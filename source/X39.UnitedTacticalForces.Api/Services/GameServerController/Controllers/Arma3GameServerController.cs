@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Security.AccessControl;
 using System.Text;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
@@ -13,7 +12,6 @@ using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.Properties;
 using X39.Util;
-using X39.Util.Collections;
 using StreamWriter = System.IO.StreamWriter;
 
 namespace X39.UnitedTacticalForces.Api.Services.GameServerController.Controllers;
@@ -281,6 +279,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             CreateNoWindow         = true,
             WindowStyle            = ProcessWindowStyle.Hidden,
             UseShellExecute        = false,
+            WorkingDirectory       = GameInstallPath,
         };
         // ReSharper disable StringLiteralTypo
         psi.ArgumentList.Add($"-pid={PidPath}");
@@ -308,10 +307,70 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             psi.ArgumentList.Add($"-serverMod={serverMod}");
 
         if (modList.Any())
-            psi.ArgumentList.Add($"-mods={string.Join(';', modList)}");
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                var modsPath = Path.Combine(GameInstallPath, $"{GameServer.PrimaryKey}-mods");
+                Directory.CreateDirectory(modsPath);
+                var symLinks = await CreateOrReplaceSymlinksForAsync(
+                        modList,
+                        modsPath)
+                    .ConfigureAwait(false);
+                modList = symLinks.Select((q) => q.PathRelativeTo(GameInstallPath)).ToImmutableArray();
+            }
+
+            psi.ArgumentList.Add($"-mod={string.Join(';', modList)}");
+        }
         // ReSharper restore StringLiteralTypo
 
         return psi;
+    }
+
+    [SupportedOSPlatform("linux")]
+    private Task<IReadOnlyCollection<string>> CreateOrReplaceSymlinksForAsync(
+        IReadOnlyCollection<string> directories,
+        string target)
+    {
+        var result = new List<string>(directories.Count);
+        foreach (var directory in directories)
+        {
+            var relative = directory.PathRelativeTo(target);
+            var directoryName = Path.GetFileName(directory);
+            var file = Path.Combine(target, directoryName);
+            var fileInfo = new FileInfo(file);
+            result.Add(file);
+            if (Directory.Exists(file) || fileInfo.Exists)
+            {
+                if (fileInfo.LinkTarget != relative)
+                {
+                    Logger.LogDebug(
+                        "Deleting SymLink at {FilePath} pointing towards {SymLinkTarget}",
+                        file,
+                        fileInfo.LinkTarget);
+                    fileInfo.Delete();
+                }
+                else
+                {
+                    Logger.LogTrace(
+                        "Skipping {FilePath} as SymLink already points towards {SymLinkTarget}",
+                        file,
+                        relative);
+                    continue;
+                }
+            }
+            else
+            {
+                Logger.LogTrace(
+                    "No file exists at {FilePath}, proceeding to create SymLink",
+                    file);
+            }
+            Logger.LogDebug(
+                "Creating SymLink at {FilePath} pointing towards {SymLinkTarget}",
+                file,
+                relative);
+            fileInfo.CreateAsSymbolicLink(relative);
+        }
+        return Task.FromResult<IReadOnlyCollection<string>>(result.AsReadOnly());
     }
 
     /// <inheritdoc />

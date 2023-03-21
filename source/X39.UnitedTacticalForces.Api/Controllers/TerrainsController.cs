@@ -1,12 +1,8 @@
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data;
-using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Core;
-using X39.UnitedTacticalForces.Api.Data.Eventing;
-using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.Util;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;

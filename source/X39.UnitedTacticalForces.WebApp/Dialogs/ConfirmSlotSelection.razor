@@ -1,12 +1,11 @@
-﻿@using System.ComponentModel.DataAnnotations
-@inject IStringLocalizer<Language> Localizer
+﻿@inject IStringLocalizer<Language> Localizer
 <MudDialog>
     <DialogContent>
-        <MudText>@Description</MudText>
+        <MudText>@Localizer[nameof(Language.Dialogs_ConfirmSlotSelection_SelectingSlotWillChangeAcceptanceToAccepted)]</MudText>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">@Localizer[nameof(Language.Common_Cancel)]</MudButton>
-        <MudButton Color="Color.Error" OnClick="Submit">@Localizer[nameof(Language.Common_Delete)]</MudButton>
+        <MudButton Color="Color.Error" OnClick="Submit">@Localizer[nameof(Language.Common_Ok)]</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -15,22 +14,20 @@
     [CascadingParameter]
     public MudDialogInstance MudDialog { get; set; } = null!;
 
-    [Parameter, EditorRequired, Required]
-    public string Description { get; set; } = null!;
-
     void Submit() => MudDialog.Close(DialogResult.Ok(true));
     void Cancel() => MudDialog.Cancel();
-
-    public static async Task<bool> ShowAsync(
-        IDialogService dialogService,
-        string description,
-        string title)
+    protected override Task OnInitializedAsync()
     {
-        var dialogReference = await dialogService.ShowAsync<ConfirmDeletionDialog>(
-            title,
+        MudDialog.Title = Localizer[nameof(Language.Dialogs_ConfirmSlotSelection_ConfirmAcceptanceStatusChange)];
+        return base.OnInitializedAsync();
+    }
+
+    public static async Task<bool> ShowAsync(IDialogService dialogService)
+    {
+        var dialogReference = await dialogService.ShowAsync<ConfirmSlotSelection>(
+            "",
             new DialogParameters
             {
-                {nameof(Description), description},
             },
             new DialogOptions
             {

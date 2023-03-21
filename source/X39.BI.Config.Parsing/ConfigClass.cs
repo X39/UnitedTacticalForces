@@ -1,7 +1,4 @@
-﻿using System.Collections.Immutable;
-using System.Collections.ObjectModel;
-
-namespace X39.BI.Config.Parsing;
+﻿namespace X39.BI.Config.Parsing;
 
 public class ConfigClass : IConfig
 {

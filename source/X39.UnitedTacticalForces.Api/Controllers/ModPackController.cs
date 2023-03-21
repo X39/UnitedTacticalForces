@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -191,15 +192,20 @@ public class ModPackController : ControllerBase
     /// </param>
     [Authorize]
     [HttpGet("{modPackId:long}", Name = nameof(GetModPackAsync))]
-    public async Task<ModPack> GetModPackAsync(
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(ModPack), (int) HttpStatusCode.OK)]
+    public async Task<ActionResult<ModPack>> GetModPackAsync(
         [FromRoute] long modPackId,
         CancellationToken cancellationToken)
     {
         // ToDo: Check roles
         // ToDo: Add audit log
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
         var existingModPack = await _apiDbContext.ModPacks
+            .Include((e) => e.UserMetas!.Where((q) => q.UserFk == userId))
             .SingleAsync((q) => q.PrimaryKey == modPackId, cancellationToken);
-        return existingModPack;
+        return Ok(existingModPack);
     }
 
     /// <summary>
@@ -279,6 +285,7 @@ public class ModPackController : ControllerBase
                 .Skip(skip)
                 .Take(take);
         }
+
         if (search.IsNotNullOrWhiteSpace())
         {
             search   = search.Trim();

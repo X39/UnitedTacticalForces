@@ -1,7 +1,4 @@
-﻿using System.Collections.Immutable;
-using X39.UnitedTacticalForces.WebApp.ExtensionMethods;
-
-namespace X39.UnitedTacticalForces.WebApp;
+﻿namespace X39.UnitedTacticalForces.WebApp;
 
 public partial class ConfigurationEntry
 {

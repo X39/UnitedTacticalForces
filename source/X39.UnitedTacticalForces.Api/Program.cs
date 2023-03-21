@@ -1,15 +1,6 @@
-using System.Diagnostics;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
 using AspNet.Security.OpenId.Steam;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Unchase.Swashbuckle.AspNetCore.Extensions.Extensions;
 using Unchase.Swashbuckle.AspNetCore.Extensions.Options;

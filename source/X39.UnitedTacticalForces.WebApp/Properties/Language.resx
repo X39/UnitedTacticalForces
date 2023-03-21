@@ -19,7 +19,7 @@
         <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
     </resheader>
     <data name="Shared_NavMenu_Events" xml:space="preserve">
-        <value>Upcoming events</value>
+        <value>Events</value>
     </data>
     <data name="Shared_NavMenu_Calendar" xml:space="preserve">
         <value>Calendar</value>
@@ -332,5 +332,62 @@
     </data>
     <data name="Dialogs_ShowGameServerLogs_Message" xml:space="preserve">
         <value>Message</value>
+    </data>
+    <data name="Pages_Events_MyEvents" xml:space="preserve">
+        <value>My events</value>
+    </data>
+    <data name="Pages_Events_AllEvents" xml:space="preserve">
+        <value>All events</value>
+    </data>
+    <data name="Pages_Events_MyEventsOnly_ToolTip" xml:space="preserve">
+        <value>Only events hosted by me</value>
+    </data>
+    <data name="Pages_Events_Table_Title" xml:space="preserve">
+        <value>Title</value>
+    </data>
+    <data name="Pages_Events_Table_TimeStampCreated" xml:space="preserve">
+        <value>Created</value>
+    </data>
+    <data name="Pages_Events_Table_ScheduledFor" xml:space="preserve">
+        <value>Scheduled for</value>
+    </data>
+    <data name="Pages_Events_Table_HostedBy" xml:space="preserve">
+        <value>Hosted by</value>
+    </data>
+    <data name="Pages_Events_Table_Interactions" xml:space="preserve">
+        <value>Interactions</value>
+    </data>
+    <data name="Pages_Events_Table_ModPack" xml:space="preserve">
+        <value>Mod pack</value>
+    </data>
+    <data name="Pages_Events_Table_Terrain" xml:space="preserve">
+        <value>Terrain</value>
+    </data>
+    <data name="Pages_Events_CreateNewEvent" xml:space="preserve">
+        <value>Create event</value>
+    </data>
+    <data name="Shared_NavMenu_UpcommingEvents" xml:space="preserve">
+        <value>Upcoming events</value>
+    </data>
+    <data name="Dialogs_ModifyEventDialog_Inputs_IsVisible" xml:space="preserve">
+        <value>Visible to users</value>
+    </data>
+    <data name="Pages_Events_Table_ScheduledFor_EventAlreadyOccured" xml:space="preserve">
+        <value>This event has already taken place and can no longer be attended.</value>
+    </data>
+    <data name="Common_Ok" xml:space="preserve">
+        <value>Ok</value>
+    </data>
+    <data name="Dialogs_ConfirmSlotSelection_SelectingSlotWillChangeAcceptanceToAccepted" xml:space="preserve">
+        <value>When you select a slot, your acceptance will be changed to "accepted".</value>
+    </data>
+    <data name="Dialogs_ConfirmSlotSelection_ConfirmAcceptanceStatusChange" xml:space="preserve">
+        <value>Confirm the change of the acceptance status</value>
+    </data>
+    <data name="Dialogs_ConfirmSlotLoss_SelectingSlotWillRemoveSlotSelection" xml:space="preserve">
+        <value>If you change the acceptance status, the selected slot will also be removed.</value>
+    </data>
+    <data name="Dialogs_ConfirmSlotLoss_ConfirmSlotLossOnAcceptanceChange" xml:space="preserve">
+        <value>Confirm the loss of the slot selection</value>
     </data>
 </root>

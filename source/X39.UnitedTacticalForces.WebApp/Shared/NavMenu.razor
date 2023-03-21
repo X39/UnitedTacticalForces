@@ -3,9 +3,12 @@
 @inject MeService Me
 @inject BaseUrl BaseUrl
 <MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_Events)]</MudNavLink>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_UpcommingEvents)]</MudNavLink>
     @if (Me.IsVerified)
     {
+        <MudNavLink Href="events" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Event">
+            @Localizer[nameof(Language.Shared_NavMenu_Events)]
+        </MudNavLink>
         @if (Me.IsInRoleOrAdmin(Roles.ModPackCreate, Roles.ModPackDelete, Roles.ModPackModify))
         {
             <MudNavLink Href="modpacks" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Extension">
@@ -26,7 +29,7 @@
         }
         @if (Me.IsInRoleOrAdmin(Roles.ServerAccess))
         {
-            <MudNavLink Href="servers" Match="NavLinkMatch.All" Icon="@Constants.Icons.X39.Server">
+            <MudNavLink Href="servers" Match="NavLinkMatch.Prefix" Icon="@Constants.Icons.X39.Server">
                 @Localizer[nameof(Language.Shared_NavMenu_GameServers)]
             </MudNavLink>
         }
