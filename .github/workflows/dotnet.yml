@@ -1,0 +1,48 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: .NET
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 6.0.x
+    - name: Restore dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --no-restore
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+    - name: Publish Backend
+      run: dotnet publish source/X39.UnitedTacticalForces.Api -c Release --no-restore
+    - name: Upload backend artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        # Artifact name
+        name: "Backend"
+        # A file, directory or wildcard pattern that describes what to upload
+        path: "source/X39.UnitedTacticalForces.Api/bin/Release/net7.0/publish"
+    - name: Publish frontend
+      run: dotnet publish source/X39.UnitedTacticalForces.WebApp -c Release --no-restore
+    - name: Upload frontend artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        # Artifact name
+        name: "Frontend"
+        # A file, directory or wildcard pattern that describes what to upload
+        path: "source/X39.UnitedTacticalForces.WebApp/bin/Release/net7.0/publish"
