@@ -78,6 +78,27 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Loads the specified subfolders for different mods. Separated by semicolons. Absolute path and multiple stacked folders are possible.
+        ///In Linux, arguments for multiple folders require the following separation syntax: mod1\;mod2\;modn.
+        ///The &quot;relative path&quot; starts with the directory from which the Arma 3 executable was launched, and is not always the same as where the executable is located, as in betas.
+        ///Usually this is the same as the installation path and the same as the one entered in the Windows registry.  [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ServerController_Arma3_Host_Mod_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_Host_Mod_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mods.
+        /// </summary>
+        internal static string ServerController_Arma3_Host_Mod_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_Host_Mod_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Port on which the dedicated server should listen..
         /// </summary>
         internal static string ServerController_Arma3_Host_Port_Description {
@@ -115,7 +136,7 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to List of player uids (SteamID64) that are able to #login without providing a password..
+        ///   Looks up a localized string similar to List of player uids (SteamID64) that are able to #login without providing a password. Format: {&quot;1234567890&quot;, &quot;2345678901&quot;}.
         /// </summary>
         internal static string ServerController_Arma3_ServerCfg_Admins_Description {
             get {
@@ -129,6 +150,358 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         internal static string ServerController_Arma3_ServerCfg_Admins_Title {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Admins_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Prevent or allow file changes at runtime for the clients (including HC)..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedFilePatching_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedFilePatching_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to File patching.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedFilePatching_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedFilePatching_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Disabled for both headless clients and normal clients.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Disabled.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Name {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Allowed for headless client, disabled for normal clients.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to HC Only.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Name {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Allowed for both headless clients and normal clients.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enabled.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Name {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedHTMLLoadExtensionsArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedHTMLLoadExtensionsArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedHTMLLoadExtensionsArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedHTMLLoadExtensionsArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedHTMLLoadURIsArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedHTMLLoadURIsArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedHTMLLoadURIsArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedHTMLLoadURIsArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedLoadFileExtensionsArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedLoadFileExtensionsArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedLoadFileExtensionsArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedLoadFileExtensionsArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedPreprocessFileExtensionsArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedPreprocessFileExtensionsArray_Description" +
+                        "", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedPreprocessFileExtensionsArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedPreprocessFileExtensionsArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to allowedVoteCmds[] = {{&lt;commandName&gt;, &lt;preMissionStart&gt;, &lt;postMissionStart&gt;, &lt;votingThreshold&gt;}, ...};, where:
+        ///&lt;commandName&gt;: string - name of the command, for example &quot;admin&quot;.
+        ///&lt;preMissionStart&gt; (Optional): Boolean value - true to allow the command before the mission start. Default: true
+        ///&lt;postMissionStart&gt; (Optional): Boolean value - true to allow the command after the mission start. Default: true
+        ///&lt;votingThreshold&gt; (Optional): Number - voting threshold 0...1. Default: value assigned to voteThreshold para [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Allowed #vote commands.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to allowedVoteAdminCmds[] = {{&lt;commandName&gt;, &lt;preMissionStart&gt;}, ...};, where:
+        ///&lt;commandName&gt;: string - name of the command, for example &quot;admin&quot;.
+        ///&lt;preMissionStart&gt; (Optional): Boolean value - true to allow the command before the mission start. Default: true
+        ///&lt;postMissionStart&gt; (Optional): Boolean value - true to allow the command after the mission start. Default: true
+        ///If no command is specified ( allowedVotedAdminCmds[] = {}; ), it means that such commands are disabled for the selected administrator.
+        ///No spe [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Allowed commands for voted administrator.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AutoSelectMission_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AutoSelectMission_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AutoSelectMission_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AutoSelectMission_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_BriefingTimeOut_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_BriefingTimeOut_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_BriefingTimeOut_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_BriefingTimeOut_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_BriefingTimeOutArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_BriefingTimeOutArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_BriefingTimeOutArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_BriefingTimeOutArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_CallExtReportLimit_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_CallExtReportLimit_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_CallExtReportLimit_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_CallExtReportLimit_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DebriefingTimeOut_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DebriefingTimeOut_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DebriefingTimeOut_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DebriefingTimeOut_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DebriefingTimeOutArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DebriefingTimeOutArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DebriefingTimeOutArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DebriefingTimeOutArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DisableChannelsArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DisableChannelsArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DisableChannelsArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DisableChannelsArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DisconnectTimeout_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DisconnectTimeout_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DisconnectTimeout_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DisconnectTimeout_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_EnablePlayerDiag_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_EnablePlayerDiag_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_EnablePlayerDiag_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_EnablePlayerDiag_Title", resourceCulture);
             }
         }
         
@@ -197,6 +570,78 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_KickClientsOnSlowNetworkArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_KickClientsOnSlowNetworkArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_KickClientsOnSlowNetworkArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_KickClientsOnSlowNetworkArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to If this option is enabled, duplicate player IDs will not be allowed. The second player with an existing ID will be kicked automatically..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Kickduplicate_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Kickduplicate_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Kick duplicate players.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Kickduplicate_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Kickduplicate_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_KickTimeoutArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_KickTimeoutArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_KickTimeoutArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_KickTimeoutArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_LobbyIdleTimeout_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_LobbyIdleTimeout_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_LobbyIdleTimeout_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_LobbyIdleTimeout_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Declares clients with unlimited bandwidth and almost no latency..
         /// </summary>
         internal static string ServerController_Arma3_ServerCfg_LocalClient_Description {
@@ -211,6 +656,24 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         internal static string ServerController_Arma3_ServerCfg_LocalClient_Title {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_ServerCfg_LocalClient_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to When this option is enabled, the server is set to LAN mode. This allows multiple local instances of the game to connect to the server for testing purposes. At the same time, all non-local instances are prevented from connecting..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Loopback_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Loopback_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to LAN mode.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Loopback_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Loopback_Title", resourceCulture);
             }
         }
         
@@ -251,6 +714,24 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Maxdesync_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Maxdesync_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Maxdesync_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Maxdesync_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Maximum number of packets (grouped messages) that can be sent in one simulation cycle (&quot;frame&quot;). Increasing this value can reduce the delay on servers with high upload bandwidth..
         /// </summary>
         internal static string ServerController_Arma3_ServerCfg_MaxMsgSend_Description {
@@ -265,6 +746,42 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         internal static string ServerController_Arma3_ServerCfg_MaxMsgSend_Title {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MaxMsgSend_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Maxpacketloss_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Maxpacketloss_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Maxpacketloss_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Maxpacketloss_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Maxping_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Maxping_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Maxping_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Maxping_Title", resourceCulture);
             }
         }
         
@@ -382,6 +899,42 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MissionsToServerRestart_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MissionsToServerRestart_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MissionsToServerRestart_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MissionsToServerRestart_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MissionsToShutdown_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MissionsToShutdown_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_MissionsToShutdown_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_MissionsToShutdown_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Message displayed when connecting to the server..
         /// </summary>
         internal static string ServerController_Arma3_ServerCfg_Motd_Description {
@@ -396,6 +949,15 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         internal static string ServerController_Arma3_ServerCfg_Motd_Title {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Motd_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Other options.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_OtherOptions {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_OtherOptions", resourceCulture);
             }
         }
         
@@ -436,6 +998,69 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_RandomMissionOrder_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_RandomMissionOrder_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_RandomMissionOrder_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_RandomMissionOrder_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_RoleTimeOut_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_RoleTimeOut_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_RoleTimeOut_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_RoleTimeOut_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_RoleTimeOutArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_RoleTimeOutArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_RoleTimeOutArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_RoleTimeOutArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Server behavior.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_ServerBehavior {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_ServerBehavior", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Password required for the alternative syntax of serverCommand&apos;s server-side scripting (case-sensitive)..
         /// </summary>
         internal static string ServerController_Arma3_ServerCfg_ServerCommandPassword_Description {
@@ -470,6 +1095,116 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         internal static string ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Title {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Limit value for the maximum length of Steam Query packets. Increasing this value is dangerous, as it can cause the Arma 3 server to send UDP packets that are larger than the MTU. This causes UDP packets to be fragmented, which is not supported by some older routers. However, increasing this value fixes the length limitation of the modlists in Arma 3: Launcher..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Max steam package size.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Creates an automatic port mapping on a UPNP/IGD enabled router, if enabled. This option allows you to create a server behind NAT (the router must have a public IP and support UPNP/IGD protocol).
+        ///
+        ///If this setting is enabled, the server startup may be delayed by 600 seconds (default UDP timeout of 10 minutes) if it is blocked by a firewall, bad routing, etc. Therefore, it is recommended to disable this setting in such cases..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Upnp_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Upnp_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to UPNP.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Upnp_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Upnp_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Required number of players for the start of the mission selection.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_VoteMissionPlayers_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_VoteMissionPlayers_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Vote mission players.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_VoteMissionPlayers_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_VoteMissionPlayers_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Percentage of votes needed to confirm a vote..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_VoteThreshold_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_VoteThreshold_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Vote threshold.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_VoteThreshold_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_VoteThreshold_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_VotingTimeOut_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_VotingTimeOut_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_VotingTimeOut_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_VotingTimeOut_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_VotingTimeOutArray_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_VotingTimeOutArray_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_VotingTimeOutArray_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_VotingTimeOutArray_Title", resourceCulture);
             }
         }
     }

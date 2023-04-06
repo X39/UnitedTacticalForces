@@ -26,6 +26,7 @@ else
             This is fixing Chromes very wise decision of disabling detection for autocomplete="off" on inputs.
             That decision was so wise, that this page will pretty much break for chrome users unless this is present.
             Thanks google for your, always, smart decision making.
+            Note that this will NOT disable the neat prompt that chrome gives you when you want to save your "password".
             @* ReSharper disable CommentTypo *@
             @*
             Some search stuff for that very google and other search engines:
@@ -70,7 +71,21 @@ else
                         {
                             switch (configurationEntry.Definition.Kind)
                             {
-                                case EConfigurationEntryKind.Text:
+                                case EConfigurationEntryKind.String:
+                                    <MudTextField T="string"
+                                                  Value="@(configurationEntry.ValueAsText)"
+                                                  ValueChanged="@(configurationEntry.ChangeValue)"
+                                                  Validation="@(configurationEntry.ValidateWeak)"
+                                                  Label="@($"[{configurationEntry.Definition.DisplayGroup}] {configurationEntry.Definition.DisplayName}")"
+                                                  InputType="InputType.Text"
+                                                  HelperText="@(configurationEntry.Definition.DisplayDescription)"
+                                                  HelperTextOnFocus="true"
+                                                  OnClearButtonClick="@(configurationEntry.ClearValue)"
+                                                  Required="@(configurationEntry.Definition.Required ?? false)"
+                                                  Clearable="true"
+                                                  Placeholder="@(configurationEntry.Definition.DefaultValue)"/>
+                                    break;
+                                case EConfigurationEntryKind.Raw:
                                     <MudTextField T="string"
                                                   Value="@(configurationEntry.ValueAsText)"
                                                   ValueChanged="@(configurationEntry.ChangeValue)"
@@ -127,6 +142,31 @@ else
                                                      Required="@(configurationEntry.Definition.Required ?? false)"
                                                      Clearable="true"
                                                      Placeholder="@(configurationEntry.Definition.DefaultValue)"/>
+                                    break;
+                                case EConfigurationEntryKind.Selection:
+                                    <MudSelect T="ValuePair"
+                                               Value="@(configurationEntry.ValueAsValuePair)"
+                                               ValueChanged="@(configurationEntry.ChangeValue)"
+                                               Label="@($"[{configurationEntry.Definition.DisplayGroup}] {configurationEntry.Definition.DisplayName}")"
+                                               HelperText="@(configurationEntry.Definition.DisplayDescription)"
+                                               HelperTextOnFocus="true"
+                                               Required="@(configurationEntry.Definition.Required ?? false)"
+                                               Clearable="true"
+                                               Placeholder="@(configurationEntry.Definition.DefaultValue)">
+                                        @foreach (var valuePair in (configurationEntry.Definition.AllowedValues ?? ArraySegment<ValuePair>.Empty))
+                                        {
+                                            <MudSelectItem Value="@(valuePair)">
+                                                <MudTooltip>
+                                                    <TooltipContent>
+                                                        <MudText>@(valuePair.DisplayDescription)</MudText>
+                                                    </TooltipContent>
+                                                    <ChildContent>
+                                                        <MudText>@(valuePair.DisplayName)</MudText>
+                                                    </ChildContent>
+                                                </MudTooltip>
+                                            </MudSelectItem>
+                                        }
+                                    </MudSelect>
                                     break;
                                 default:
                                     throw new ArgumentOutOfRangeException();
@@ -197,6 +237,7 @@ else
         public string ValueAsText => Entry?.Value ?? string.Empty;
         public bool? ValueAsBool => bool.TryParse(ValueAsText, out var value) ? value : null;
         public double? ValueAsDouble => double.TryParse(ValueAsText, out var value) ? value : null;
+        public ValuePair? ValueAsValuePair => Definition.AllowedValues?.FirstOrDefault((q) => q.Value == ValueAsText);
 
         public ConfigurationData(long gameServerId, ConfigurationEntryDefinition definition, ConfigurationEntry? entry)
         {
@@ -214,6 +255,24 @@ else
                 return true;
 
             return Regex.IsMatch(input, Definition.Regex);
+        }
+
+        public void ChangeValue(ValuePair newValue)
+        {
+            Entry = new()
+            {
+                Path = Definition.Path,
+                Realm = Definition.Realm,
+                Value = newValue.Value,
+                GameServer = null,
+                ChangedBy = null,
+                ChangedByFk = null,
+                IsActive = true,
+                IsSensitive = Definition.Kind is EConfigurationEntryKind.Password,
+                PrimaryKey = default,
+                TimeStamp = DateTimeOffset.Now,
+                GameServerFk = _gameServerId,
+            };
         }
 
         public void ChangeValue(string newValue)

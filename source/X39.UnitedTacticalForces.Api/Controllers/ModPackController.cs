@@ -11,6 +11,9 @@ using X39.Util;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
+/// <summary>
+/// Provides API endpoints for <see cref="ModPack"/>s.
+/// </summary>
 [ApiController]
 [Route(Constants.Routes.ModPacks)]
 public class ModPackController : ControllerBase
@@ -18,6 +21,11 @@ public class ModPackController : ControllerBase
     private readonly ILogger<ModPackController> _logger;
     private readonly ApiDbContext               _apiDbContext;
 
+    /// <summary>
+    ///  Initializes a new instance of the <see cref="ModPackController"/> class.
+    /// </summary>
+    /// <param name="logger">The <see cref="ILogger"/> to use.</param>
+    /// <param name="apiDbContext">The <see cref="ApiDbContext"/> to use.</param>
     public ModPackController(ILogger<ModPackController> logger, ApiDbContext apiDbContext)
     {
         _logger       = logger;

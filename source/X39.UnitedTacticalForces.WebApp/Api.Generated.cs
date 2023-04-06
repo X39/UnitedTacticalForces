@@ -498,6 +498,10 @@ namespace X39.UnitedTacticalForces.WebApp
         }
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new X39.UnitedTacticalForces.Api.Data.Eventing.Event.
+        /// </summary>
+        /// <param name="body">The event to create.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<Event> EventsCreateAsync(Event? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -547,6 +551,12 @@ namespace X39.UnitedTacticalForces.WebApp
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
                         }
                         else
                         {
@@ -5202,13 +5212,17 @@ namespace X39.UnitedTacticalForces.WebApp
         /// <summary>
         /// The data-type this expects. Hints to the UI what is supposed to be inserted here.
         /// <br/>
-        /// <br/>0 = Text (Plain-Text.)
+        /// <br/>0 = Raw (Raw content.)
         /// <br/>
-        /// <br/>1 = Password (Password input. UIs should prevent showing the actual value to users for privacy reasons. (Equivalent to X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.Text in every other relation.))
+        /// <br/>1 = String (String that will be stringified.)
         /// <br/>
-        /// <br/>2 = Boolean (Boolean value. UIs should provide "true" for true and "false" for false.)
+        /// <br/>2 = Password (Password input. UIs should prevent showing the actual value to users for privacy reasons. (Equivalent to X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.String in every other relation.))
         /// <br/>
-        /// <br/>3 = Number (Number value. Value is expected to be in the format ```[0-9]+(?:\.[0-9]+)?```.)
+        /// <br/>3 = Boolean (Boolean value. UIs should provide "true" for true and "false" for false.)
+        /// <br/>
+        /// <br/>4 = Number (Number value. Value is expected to be in the format ```[0-9]+(?:\.[0-9]+)?```.)
+        /// <br/>
+        /// <br/>5 = Selection (Any value. Allowed values will be provided by the configuration entry.)
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("kind")]
@@ -5289,6 +5303,15 @@ namespace X39.UnitedTacticalForces.WebApp
         public string? DefaultValue { get; set; } = default!;
 
         /// <summary>
+        /// The selection of values to choose from. Only relevant for X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition.Kind's of the type X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.Selection.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowedValues")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Collections.Generic.ICollection<ValuePair>? AllowedValues { get; set; } = default!;
+
+        /// <summary>
         /// Combined values of X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition.Realm and X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition.Path.
         /// </summary>
 
@@ -5339,25 +5362,33 @@ namespace X39.UnitedTacticalForces.WebApp
     /// <summary>
     /// Different value-kinds for X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition's.
     /// <br/>
-    /// <br/>0 = Text (Plain-Text.)
+    /// <br/>0 = Raw (Raw content.)
     /// <br/>
-    /// <br/>1 = Password (Password input. UIs should prevent showing the actual value to users for privacy reasons. (Equivalent to X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.Text in every other relation.))
+    /// <br/>1 = String (String that will be stringified.)
     /// <br/>
-    /// <br/>2 = Boolean (Boolean value. UIs should provide "true" for true and "false" for false.)
+    /// <br/>2 = Password (Password input. UIs should prevent showing the actual value to users for privacy reasons. (Equivalent to X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.String in every other relation.))
     /// <br/>
-    /// <br/>3 = Number (Number value. Value is expected to be in the format ```[0-9]+(?:\.[0-9]+)?```.)
+    /// <br/>3 = Boolean (Boolean value. UIs should provide "true" for true and "false" for false.)
+    /// <br/>
+    /// <br/>4 = Number (Number value. Value is expected to be in the format ```[0-9]+(?:\.[0-9]+)?```.)
+    /// <br/>
+    /// <br/>5 = Selection (Any value. Allowed values will be provided by the configuration entry.)
     /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public enum EConfigurationEntryKind
     {
 
-        Text = 0,
+        Raw = 0,
 
-        Password = 1,
+        String = 1,
 
-        Boolean = 2,
+        Password = 2,
 
-        Number = 3,
+        Boolean = 3,
+
+        Number = 4,
+
+        Selection = 5,
 
     }
 
@@ -6247,6 +6278,41 @@ namespace X39.UnitedTacticalForces.WebApp
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.DateTimeOffset? TimeStampDownloaded { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// Values available for X39.UnitedTacticalForces.Api.Services.GameServerController.ConfigurationEntryDefinition's of the type X39.UnitedTacticalForces.Api.Services.GameServerController.EConfigurationEntryKind.Selection.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ValuePair
+    {
+        /// <summary>
+        /// The name to display the user.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayName")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? DisplayName { get; set; } = default!;
+
+        /// <summary>
+        /// The actual value to use.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Value { get; set; } = default!;
+
+        /// <summary>
+        /// The description of the value, if applicable.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("displayDescription")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? DisplayDescription { get; set; } = default!;
 
     }
 

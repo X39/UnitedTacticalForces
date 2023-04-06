@@ -10,6 +10,9 @@ using X39.UnitedTacticalForces.Common;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
+/// <summary>
+/// Offers API endpoints for slotting on <see cref="Event"/>'s.
+/// </summary>
 [ApiController]
 [Route(Constants.Routes.Events + "/{eventId:guid}/" + Constants.Routes.EventSlotting)]
 public class EventSlottingController : ControllerBase
@@ -17,6 +20,11 @@ public class EventSlottingController : ControllerBase
     private readonly ILogger<EventSlottingController> _logger;
     private readonly ApiDbContext                     _apiDbContext;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="EventSlottingController"/>.
+    /// </summary>
+    /// <param name="logger">The <see cref="ILogger"/> to use.</param>
+    /// <param name="apiDbContext">The <see cref="ApiDbContext"/> to use.</param>
     public EventSlottingController(ILogger<EventSlottingController> logger, ApiDbContext apiDbContext)
     {
         _logger       = logger;

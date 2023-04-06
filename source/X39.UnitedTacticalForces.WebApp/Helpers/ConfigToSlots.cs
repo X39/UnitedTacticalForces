@@ -227,7 +227,7 @@ internal class ConfigToSlots
                 $"/Mission/Entities/{groupConfig.Identifier}/Entities");
             _snackbar.Add(
                 text,
-                Severity.Error);
+                Severity.Warning);
             Console.Error.WriteLine(text);
             return false;
         }
@@ -617,7 +617,7 @@ internal class ConfigToSlots
                 case "Group":
                 {
                     if (!GetGroupEntities(itemClassConfig, out var groupEntitiesConfigClass))
-                        return (ArraySegment<EventSlot>.Empty, false);
+                        break;
                     ++groupIndex;
                     foreach (var groupItemConfigClass in groupEntitiesConfigClass.Children
                                  .OfType<ConfigClass>())

@@ -11,6 +11,9 @@ using X39.UnitedTacticalForces.Common;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
+/// <summary>
+/// Provides API endpoints for <see cref="Event"/>'s.
+/// </summary>
 [ApiController]
 [Route(Constants.Routes.Events)]
 public class EventsController : ControllerBase
@@ -18,6 +21,11 @@ public class EventsController : ControllerBase
     private readonly ILogger<EventsController> _logger;
     private readonly ApiDbContext              _apiDbContext;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="EventsController"/>.
+    /// </summary>
+    /// <param name="logger">The <see cref="ILogger"/> to use.</param>
+    /// <param name="apiDbContext">The <see cref="ApiDbContext"/> to use.</param>
     public EventsController(ILogger<EventsController> logger, ApiDbContext apiDbContext)
     {
         _logger       = logger;
@@ -248,12 +256,24 @@ public class EventsController : ControllerBase
         return Ok(usersQuery);
     }
 
+    /// <summary>
+    /// Creates a new <see cref="Event"/>.
+    /// </summary>
+    /// <param name="newEvent">The event to create.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>The created event</returns>
+    /// <exception cref="UnauthorizedAccessException"></exception>
     [Authorize(Roles = Roles.Admin + "," + Roles.EventCreate)]
     [HttpPost("create", Name = nameof(CreateEventAsync))]
-    public async Task<Event> CreateEventAsync([FromBody] Event newEvent, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(Event), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int)HttpStatusCode.Unauthorized)]
+    public async Task<ActionResult<Event>> CreateEventAsync([FromBody] Event newEvent, CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var userId))
-            throw new UnauthorizedAccessException();
+            return Unauthorized();
         // ToDo: Log audit
         newEvent.Owner                = null;
         newEvent.OwnerFk              = userId;
@@ -268,7 +288,7 @@ public class EventsController : ControllerBase
         newEvent.Terrain              = null;
         var entity = await _apiDbContext.Events.AddAsync(newEvent, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
-        return entity.Entity;
+        return Ok(entity.Entity);
     }
 
     [Authorize]

@@ -9,15 +9,20 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerController;
 public enum EConfigurationEntryKind
 {
     /// <summary>
-    /// Plain-Text.
+    /// Raw content.
     /// </summary>
-    Text,
+    Raw,
+    
+    /// <summary>
+    /// String that will be stringified.
+    /// </summary>
+    String,
 
     /// <summary>
     /// Password input. UIs should prevent showing the actual value to users for privacy reasons.
     /// </summary>
     /// <remarks>
-    /// Equivalent to <see cref="Text"/> in every other relation.
+    /// Equivalent to <see cref="String"/> in every other relation.
     /// </remarks>
     Password,
 
@@ -30,4 +35,9 @@ public enum EConfigurationEntryKind
     /// Number value. Value is expected to be in the format <code>[0-9]+(?:\.[0-9]+)?</code>.
     /// </summary>
     Number,
+    
+    /// <summary>
+    /// Any value. Allowed values will be provided by the configuration entry.
+    /// </summary>
+    Selection,
 }

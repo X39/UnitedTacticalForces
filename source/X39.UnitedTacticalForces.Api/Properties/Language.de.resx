@@ -51,7 +51,7 @@
         <value>MOTD</value>
     </data>
     <data name="ServerController_Arma3_ServerCfg_Admins_Description" xml:space="preserve">
-        <value>Liste der Spieler-Uids (SteamID64), die in der Lage sind, sich ohne Angabe eines Passworts anzumelden.</value>
+        <value>Liste der Spieler-Uids (SteamID64), die in der Lage sind, sich ohne Angabe eines Passworts anzumelden. Format: {"1234567890", "2345678901"}</value>
     </data>
     <data name="ServerController_Arma3_ServerCfg_Admins_Title" xml:space="preserve">
         <value>Administratoren</value>
@@ -155,5 +155,107 @@ Desync könnte passieren, wenn MaxSizeGuaranteed/MaxSizeNonuaranteed Werte über
     </data>
     <data name="ServerController_Arma3_ServerCfg_MaxCustomFileSize_Description" xml:space="preserve">
         <value>Benutzer mit einem benutzerdefinierten Gesicht oder einem benutzerdefinierten Ton, der größer als diese Größe ist, werden beim Verbindungsversuch abgewiesen.</value>
+    </data>
+    <data name="ServerController_Arma3_Host_Mod_Title" xml:space="preserve">
+        <value>Modifikationen</value>
+    </data>
+    <data name="ServerController_Arma3_Host_Mod_Description" xml:space="preserve">
+        <value>Lädt die angegebenen Unterordner für verschiedene Mods. Getrennt durch Semikolons. Absoluter Pfad und mehrere gestapelte Ordner sind möglich.
+In Linux benötigen Argumente für mehrere Ordner die folgende Trennsyntax: mod1\;mod2\;modn
+Der "relative Pfad" beginnt mit dem Verzeichnis, aus dem die ausführbare Datei von Arma 3 gestartet wurde, und ist nicht immer derselbe, in dem sich die ausführbare Datei befindet, wie in Betas.
+Normalerweise ist dies derselbe wie der Installationspfad und derselbe, der in der Windows-Registrierung eingetragen ist. Wenn Sie jedoch die erforderlichen Dateien und Ordner kopieren oder mit Symlinks versehen, können Sie unterschiedliche Wurzeln haben. Dies ist nützlich, wenn Sie mehrere dedizierte Server haben.
+
+Übersetzt mit www.DeepL.com/Translator (kostenlose Version)</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_ServerBehavior" xml:space="preserve">
+        <value>Server Verhalten</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_VoteThreshold_Description" xml:space="preserve">
+        <value>Prozentsatz der Stimmen, die zur Bestätigung einer Abstimmung erforderlich sind.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_VoteThreshold_Title" xml:space="preserve">
+        <value>Abstimmungsschwelle</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_VoteMissionPlayers_Title" xml:space="preserve">
+        <value>Missionswahl Spielerzahl</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_VoteMissionPlayers_Description" xml:space="preserve">
+        <value>Erforderliche Anzahl von Spielern für den Start der Missionsauswahl</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Title" xml:space="preserve">
+        <value>Erlaubte #vote-Befehle</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Title" xml:space="preserve">
+        <value>Erlaubte Befehle für den gewählten Administrator</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Description" xml:space="preserve">
+        <value>allowedVoteCmds[] = {{&lt;commandName&gt;, &lt;preMissionStart&gt;, &lt;postMissionStart&gt;, &lt;votingThreshold&gt;}, ...};, wobei:
+&lt;Befehlsname&gt;: String - Name des Befehls, zum Beispiel "admin"
+&lt;preMissionStart&gt; (Optional): Boolescher Wert - true, um den Befehl vor dem Missionsstart zuzulassen. Standard: true
+&lt;postMissionStart&gt; (Optional): Boolescher Wert - true, um den Befehl nach dem Missionsstart zuzulassen. Standardwert: true
+&lt;votingThreshold&gt; (Optional): Zahl - Abstimmungsschwelle 0...1. Standard: Wert, der dem Parameter voteThreshold zugewiesen ist. Sonst 0.5
+&lt;percentSideVotingThreshold&gt; (Optional): Zahl - Prozentualer Seitenschwellenwert 0...1. Standard: 0.5 (seit Arma 3 1.90+ PerformaceBranch)</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Description" xml:space="preserve">
+        <value>allowedVoteAdminCmds[] = {{&lt;commandName&gt;, &lt;preMissionStart&gt;}, ...};, wobei:
+&lt;commandName&gt;: String - Name des Befehls, zum Beispiel "admin"
+&lt;preMissionStart&gt; (Optional): Boolescher Wert - true, um den Befehl vor dem Missionsstart zuzulassen. Standard: true
+&lt;postMissionStart&gt; (Optional): Boolescher Wert - true, um den Befehl nach dem Missionsstart zuzulassen. Voreinstellung: true
+Wenn kein Befehl angegeben wird ( allowedVotedAdminCmds[] = {}; ), bedeutet dies, dass solche Befehle für den gewählten Administrator deaktiviert sind.
+Keine Angabe von allowedVotedAdminCmds bedeutet, dass alles für den gewählten Admin jederzeit erlaubt ist!
+</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Kickduplicate_Title" xml:space="preserve">
+        <value>Doppelte Spieler entfernen</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Kickduplicate_Description" xml:space="preserve">
+        <value>Wenn diese Option aktiviert ist, werden doppelte Spieler-IDs nicht zugelassen. Der zweite Spieler mit einer bestehenden ID wird automatisch gekickt.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Loopback_Description" xml:space="preserve">
+        <value>Wenn diese Option aktiviert ist, wird der Server in den LAN-Modus versetzt. Dies ermöglicht es mehreren lokalen Instanzen des Spiels, zu Testzwecken eine Verbindung zum Server herzustellen. Gleichzeitig werden alle nicht-lokalen Instanzen an der Verbindung gehindert.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Loopback_Title" xml:space="preserve">
+        <value>LAN Modus</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Upnp_Title" xml:space="preserve">
+        <value>UPNP</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Upnp_Description" xml:space="preserve">
+        <value>Erstellt eine automatische Port-Zuordnung auf einem UPNP/IGD-fähigen Router, falls aktiviert. Mit dieser Option können Sie einen Server hinter NAT erstellen (der Router muss eine öffentliche IP haben und das UPNP/IGD-Protokoll unterstützen).
+
+Wenn diese Einstellung aktiviert ist, kann sich der Start des Servers um 600 Sekunden verzögern (Standard-UDP-Timeout von 10 Minuten), wenn er durch eine Firewall oder schlechtes Routing usw. blockiert wird. Es wird daher empfohlen, diese Einstellung in solchen Fällen zu deaktivieren.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Description" xml:space="preserve">
+        <value>Verhindern oder Zulassen von Dateiänderungen zur Laufzeit für die Clients (einschließlich HC)</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Title" xml:space="preserve">
+        <value>File Patching</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Name" xml:space="preserve">
+        <value>Deaktiviert</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Name" xml:space="preserve">
+        <value>Aktiviert</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Name" xml:space="preserve">
+        <value>Nur HC</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Description" xml:space="preserve">
+        <value>Deaktiviert sowohl für Headless Clients als auch für normale Clients</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Description" xml:space="preserve">
+        <value>Erlaubt für Headless Client, deaktiviert für normale Clients</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Description" xml:space="preserve">
+        <value>Erlaubt sowohl für Headless Clients als auch für normale Clients</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Title" xml:space="preserve">
+        <value>Maximale Steam Paket Größe</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Description" xml:space="preserve">
+        <value>Grenzwert für die maximale Länge von Steam Query-Paketen. Eine Erhöhung dieses Wertes ist gefährlich, da dies dazu führen kann, dass der Arma 3 Server UDP-Pakete sendet, die größer als die MTU sind. Dies führt dazu, dass UDP-Pakete fragmentiert werden, was von einigen älteren Routern nicht unterstützt wird. Eine Erhöhung dieses Wertes behebt jedoch die Längenbegrenzung der Modlisten in Arma 3: Launcher.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_OtherOptions" xml:space="preserve">
+        <value>Andere optionen</value>
     </data>
 </root>
