@@ -153,7 +153,7 @@
                                                    MaximumFileCount="1"
                                                    Accept="@string.Join(";", folder.AllowedExtensions ?? Enumerable.Empty<string>())"
                                                    FilesChanged="@((IBrowserFile browserFile) => UploadGameFolderFileAsync(context.GameServer!, folder, browserFile))"
-                                                   Disabled="@context.IsRunning">
+                                                   Disabled="@(context.IsRunning ?? false)">
                                         <ButtonTemplate Context="buttonContext">
                                             <MudButton HtmlTag="label"
                                                        StartIcon="@Icons.Material.Filled.Add"
@@ -175,7 +175,7 @@
                                                 <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
                                                                Color="Color.Error"
                                                                OnClick="@(() => DeleteFileAsync(context.GameServer, folder, file))"
-                                                               Disabled="@context.IsRunning"/>
+                                                               Disabled="@(context.IsRunning ?? false)"/>
                                             </div>
                                         </MudListItem>
                                     }
