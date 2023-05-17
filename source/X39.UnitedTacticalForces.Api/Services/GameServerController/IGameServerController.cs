@@ -122,4 +122,67 @@ public interface IGameServerController
     /// </returns>
     /// <exception cref="InvalidOperationException">Thrown when the method was called but <see cref="CanInstallOrUpgrade"/> was <see langword="false"/>.</exception>
     Task InstallOrUpgradeAsync(User? executingUser);
+
+    /// <summary>
+    /// <see langword="bool"/> indicating whether the method <see cref="UploadFileAsync"/>
+    /// or <see cref="DeleteFileAsync"/> may be called right now.
+    /// </summary>
+    bool CanModifyGameFiles { get; }
+
+    /// <summary>
+    /// Returns existing or virtual game folders, users can upload files to.
+    /// </summary>
+    /// <param name="cultureInfo">The locale to use for display <see cref="string"/>'s.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns>The available game folders.</returns>
+    Task<IEnumerable<GameFolder>> GetGameFoldersAsync(
+        CultureInfo cultureInfo,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns existing or virtual game folders, users can upload files to.
+    /// </summary>
+    /// <param name="cultureInfo">The locale to use for display <see cref="string"/>'s.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <param name="folder">The folder to get files from.</param>
+    /// <returns>The available files in a <see cref="GameFolder"/>.</returns>
+    Task<IEnumerable<GameFileInfo>> GetGameFolderFilesAsync(
+        GameFolder folder,
+        CultureInfo cultureInfo,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the data of an existing or a virtual game file.
+    /// </summary>
+    /// <remarks>
+    /// Caller is responsible of disposing the returned <see cref="Stream"/>.
+    /// </remarks>
+    /// <param name="folder">The folder to get a file from.</param>
+    /// <param name="file">The file to get.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>An awaitable <see cref="Task"/> which completes once the file was uploaded and contains the files stream.</returns>
+    Task<Stream> GetGameFolderFileAsync(
+        GameFolder folder,
+        GameFileInfo file,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Uploads a file to a game folder.
+    /// </summary>
+    /// <remarks>
+    /// May also be used to update an existing file.
+    /// </remarks>
+    /// <param name="folder">The folder to upload a file into.</param>
+    /// <param name="file">Information about the file.</param>
+    /// <param name="stream">The data to upload.</param>
+    /// <returns>An awaitable <see cref="Task"/> which completes once the file was uploaded.</returns>
+    Task UploadFileAsync(GameFolder folder, GameFileInfo file, Stream stream);
+
+    /// <summary>
+    /// Deletes a file from a game folder.
+    /// </summary>
+    /// <param name="folder">The folder to upload a file into.</param>
+    /// <param name="file">Information about the file.</param>
+    /// <returns>An awaitable <see cref="Task"/> which completes once the file was uploaded.</returns>
+    Task DeleteFileAsync(GameFolder folder, GameFileInfo file);
 }

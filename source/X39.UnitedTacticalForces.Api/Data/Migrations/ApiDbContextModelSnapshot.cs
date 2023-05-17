@@ -260,6 +260,20 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                             Category = "Server",
                             Identifier = "server-change-modpack",
                             Title = "Server mod-pack"
+                        },
+                        new
+                        {
+                            PrimaryKey = 29L,
+                            Category = "Server",
+                            Identifier = "server-modify-files",
+                            Title = "Server files"
+                        },
+                        new
+                        {
+                            PrimaryKey = 30L,
+                            Category = "Wiki",
+                            Identifier = "wiki-editor",
+                            Title = "Wiki Editor"
                         });
                 });
 
@@ -283,6 +297,9 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Property<bool>("IsBanned")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean");
 
@@ -297,8 +314,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
                     b.HasIndex("Nickname");
 
-                    b.HasIndex("SteamId64")
-                        .IsUnique();
+                    b.HasIndex("SteamId64");
 
                     b.ToTable("Users");
                 });
@@ -663,6 +679,96 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.ToTable("LifetimeEvents");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Wiki.WikiPage", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("Title");
+
+                    b.ToTable("WikiPages");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Wiki.WikiPageAudit", b =>
+                {
+                    b.Property<long>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PrimaryKey"));
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Data")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("PageForeignKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserForeignKey")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("UserForeignKey");
+
+                    b.HasIndex("PageForeignKey", "TimeStampCreated")
+                        .IsDescending();
+
+                    b.ToTable("WikiPageAudits");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Wiki.WikiPageRevision", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuthorForeignKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Markdown")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PageForeignKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("AuthorForeignKey");
+
+                    b.HasIndex("PageForeignKey", "TimeStampCreated")
+                        .IsDescending();
+
+                    b.ToTable("WikiPageRevisions");
+                });
+
             modelBuilder.Entity("RoleUser", b =>
                 {
                     b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.Role", null)
@@ -830,6 +936,44 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Navigation("GameServer");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Wiki.WikiPageAudit", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Wiki.WikiPage", "Page")
+                        .WithMany()
+                        .HasForeignKey("PageForeignKey")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserForeignKey")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Wiki.WikiPageRevision", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorForeignKey")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Wiki.WikiPage", "Page")
+                        .WithMany("Revisions")
+                        .HasForeignKey("PageForeignKey")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("Page");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.User", b =>
                 {
                     b.Navigation("EventMetas");
@@ -854,6 +998,11 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Navigation("ConfigurationEntries");
 
                     b.Navigation("LifetimeEvents");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Wiki.WikiPage", b =>
+                {
+                    b.Navigation("Revisions");
                 });
 #pragma warning restore 612, 618
         }

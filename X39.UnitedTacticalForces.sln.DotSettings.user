@@ -3,8 +3,8 @@
 	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=07caa8f6_002D5853_002D40f3_002Da299_002D60e9c399d245/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="All tests from Solution" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;&#xD;
   &lt;Solution /&gt;&#xD;
 &lt;/SessionState&gt;</s:String>
-	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=source_002FX39_002EUnitedTacticalForces_002EApi_002FProperties_002FLanguage/@EntryIndexedValue">True</s:Boolean>
-	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=source_002FX39_002EUnitedTacticalForces_002EWebApp_002FProperties_002FLanguage/@EntryIndexedValue">False</s:Boolean>
+	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=source_002FX39_002EUnitedTacticalForces_002EApi_002FProperties_002FLanguage/@EntryIndexedValue">False</s:Boolean>
+	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=source_002FX39_002EUnitedTacticalForces_002EWebApp_002FProperties_002FLanguage/@EntryIndexedValue">True</s:Boolean>
 	
 	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=X39_002EUnitedTacticalForces_002EWebApp_002FProperties_002FLanguage/@EntryIndexedValue">True</s:Boolean>
 	<s:Boolean x:Key="/Default/ResxEditorPersonal/CheckedGroups/=_002Esubmodules_002FSteamWebAPI2_002FErrorMessages/@EntryIndexedValue">False</s:Boolean>

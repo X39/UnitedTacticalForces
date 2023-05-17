@@ -329,8 +329,13 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         _) = GetSteamCmdInformationTuple();
                     var appId = ServerAppId;
                     var installPath = GameInstallPath;
-                    GameServer.ActiveModPack   = GameServer.SelectedModPack;
-                    GameServer.ActiveModPackFk = GameServer.SelectedModPackFk;
+                    await using (var dbContext = await DbContextFactory.CreateDbContextAsync().ConfigureAwait(false))
+                    {
+                        dbContext.Attach(GameServer);
+                        GameServer.ActiveModPack   = GameServer.SelectedModPack;
+                        GameServer.ActiveModPackFk = GameServer.SelectedModPackFk;
+                        await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                    }
                     await DoUpdateGameAsync(
                             steamCmdPath,
                             installPath,
@@ -341,10 +346,12 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         .ConfigureAwait(false);
                     await OnInstallOrUpgradeAsync(executingUser)
                         .ConfigureAwait(false);
-                    await using var dbContext = await DbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
-                    dbContext.Attach(GameServer);
-                    GameServer.TimeStampUpgraded = DateTimeOffset.Now;
-                    await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                    await using (var dbContext = await DbContextFactory.CreateDbContextAsync().ConfigureAwait(false))
+                    {
+                        dbContext.Attach(GameServer);
+                        GameServer.TimeStampUpgraded = DateTimeOffset.Now;
+                        await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                    }
                 })
             .ConfigureAwait(false);
     }

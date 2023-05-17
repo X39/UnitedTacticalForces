@@ -215,6 +215,8 @@ else
         var gameServer = gameServerInfo.GameServer;
         if (gameServer is null)
             throw new NullReferenceException("API resolved with GameServerInfo.GameServer == null");
+        if (gameServer.SelectedModPackFk.HasValue)
+            gameServer.SelectedModPack ??= await ModPackRepository.GetModPackAsync(gameServer.SelectedModPackFk.Value);
         var configurationDefinitions = await GameServerRepository.GetConfigurationDefinitionsAsync(gameServer).ConfigureAwait(false);
         var configurations = await GameServerRepository.GetConfigurationAsync(gameServer).ConfigureAwait(false);
         var confMap = configurations.ToDictionary((q) => string.Concat(q.Realm, "://", q.Path));

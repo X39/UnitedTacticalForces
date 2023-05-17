@@ -1,0 +1,107 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.UnitedTacticalForces.WebApp.Services.WikiRepository
+@using X39.Util
+@inject IStringLocalizer<Language> Localizer
+@inject IUserRepository UserRepository
+@inject ITerrainRepository TerrainRepository
+@inject IModPackRepository ModPackRepository
+@inject ISnackbar Snackbar
+<MudDialog>
+    <DialogContent>
+        <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_CreateWikiRevisionDialog_Inputs_Title)]" @bind-Value="@Title"/>
+        <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_CreateWikiRevisionDialog_Inputs_Markdown)]" Lines="20" @bind-Value="@Markdown"/>
+        <MudTextField Required="IsNew" Label="@Localizer[nameof(Language.Dialogs_CreateWikiRevisionDialog_Inputs_Comment)]" @bind-Value="@Comment"/>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@Localizer[nameof(Language.Common_Cancel)]</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="IsSubmitDisabled">@(IsNew ? Localizer[nameof(Language.Common_Create)] : Localizer[nameof(Language.Common_Submit)])</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter, EditorRequired, Required]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired, Required]
+    public string Markdown { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired, Required]
+    public string Comment { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool IsNew { get; set; }
+
+    [Parameter]
+    public Guid PageId { get; set; }
+
+    private bool IsSubmitDisabled => IsNew && (Title.IsNullOrWhiteSpace() || Markdown.IsNullOrWhiteSpace() || Comment.IsNullOrWhiteSpace());
+
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel() => MudDialog.Cancel();
+
+
+    protected override Task OnInitializedAsync()
+    {
+        MudDialog.Title = IsNew
+            ? Localizer[nameof(Language.Dialogs_CreateWikiRevisionDialog_TitleNew)]
+            : Localizer[nameof(Language.Dialogs_CreateWikiRevisionDialog_Title)];
+        return Task.CompletedTask;
+    }
+
+    public static async Task ShowAsync(
+        IDialogService dialogService,
+        IWikiRepository wikiRepository,
+        WikiPage? existingWikiPage = null,
+        WikiPageRevision? currentRevision = null)
+    {
+        var pageId = currentRevision?.PageForeignKey ?? existingWikiPage?.PrimaryKey;
+        var markdown = currentRevision?.Markdown;
+        var previousTitle = existingWikiPage?.Title ?? string.Empty;
+        var isNew = pageId is null;
+        var dialogReference = await dialogService.ShowAsync<CreateWikiRevisionDialog>(
+            string.Empty,
+            new DialogParameters
+            {
+                {nameof(IsNew), existingWikiPage is null},
+                {nameof(PageId), pageId ?? Guid.Empty},
+                {nameof(Title), previousTitle},
+                {nameof(Comment), string.Empty},
+                {nameof(Markdown), markdown ?? string.Empty},
+            }, new DialogOptions
+            {
+                MaxWidth = MaxWidth.Large,
+                FullWidth = true,
+                CloseOnEscapeKey = true,
+            })
+            .ConfigureAwait(false);
+        var result = await dialogReference.Result
+            .ConfigureAwait(false);
+        if (result.Canceled)
+            return;
+        if (dialogReference.Dialog is not CreateWikiRevisionDialog self)
+            return;
+        if (isNew)
+        {
+            await wikiRepository.CreatePageAsync(self.Title, self.Markdown, self.Comment)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            if (previousTitle != self.Title)
+                await wikiRepository.RenameAsync(pageId ?? Guid.Empty, self.Title)
+                    .ConfigureAwait(false);
+            if (markdown != self.Markdown)
+                await wikiRepository.CreateRevisionAsync(pageId ?? Guid.Empty, self.Markdown, self.Comment)
+                    .ConfigureAwait(false);
+        }
+    }
+
+}

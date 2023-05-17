@@ -48,23 +48,25 @@
         <MudCardMedia Image="@EventItem.ToImageSource()" Height="250"/>
     }
     <MudCardContent>
-        <MudText Typo="Typo.body2" Style="max-height: 50vh; overflow-y: scroll;">@EventItem.Description</MudText>
+        <div style="max-height: 50vh; overflow-y: scroll;">
+            <MudMarkdown>@EventItem.Description</MudMarkdown>
+        </div>
     </MudCardContent>
     <MudCardActions>
         @if (Me.IsAuthenticated)
         {
             <UpcommingEvents_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
-                                                  Acceptance="EEventAcceptance.Accepted"
-                                                  AcceptanceCount="EventItem.AcceptedCount"
-                                                  Event="EventItem"/>
+                                                           Acceptance="EEventAcceptance.Accepted"
+                                                           AcceptanceCount="EventItem.AcceptedCount"
+                                                           Event="EventItem"/>
             <UpcommingEvents_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
-                                                  Acceptance="EEventAcceptance.Maybe"
-                                                  AcceptanceCount="EventItem.MaybeCount"
-                                                  Event="EventItem"/>
+                                                           Acceptance="EEventAcceptance.Maybe"
+                                                           AcceptanceCount="EventItem.MaybeCount"
+                                                           Event="EventItem"/>
             <UpcommingEvents_Interactions_AcceptanceButton ParentStateHasChangedCallback="@(PropagateStateHasChanged)"
-                                                  Acceptance="EEventAcceptance.Rejected"
-                                                  AcceptanceCount="EventItem.RejectedCount"
-                                                  Event="EventItem"/>
+                                                           Acceptance="EEventAcceptance.Rejected"
+                                                           AcceptanceCount="EventItem.RejectedCount"
+                                                           Event="EventItem"/>
             <MudSpacer/>
             <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock" Href="@($"/events/{EventItem.PrimaryKey}")" Color="Color.Primary">
                 @Localizer[nameof(Language.Pages_Events_EventCard_Slots)]

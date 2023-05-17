@@ -1,0 +1,72 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using System.Text
+@inject BaseUrl BaseUrl
+
+@if (Category.Name is "")
+{
+    <MudList Clickable="true">
+        @foreach (var it in Category.SubCategories)
+        {
+            <Wiki_Category Category="@it"/>
+        }
+        @foreach (var it in Category.Pages)
+        {
+            <MudListItem Href="@(BaseUrl.ResolveSelfUrl($"/wiki/{it.PrimaryKey}#{EscapePageName(it.Name ?? string.Empty)}"))">
+                <MudText>@LastPart(it.Name ?? string.Empty)</MudText>
+            </MudListItem>
+        }
+    </MudList>
+}
+else
+{
+    <MudListItem Text="@Category.Name">
+        <NestedList>
+            @foreach (var it in Category.SubCategories)
+            {
+                <Wiki_Category Category="@it"/>
+            }
+            @foreach (var it in Category.Pages)
+            {
+                <MudListItem Href="@(BaseUrl.ResolveSelfUrl($"/wiki/{it.PrimaryKey}#{EscapePageName(it.Name ?? string.Empty)}"))">
+                    <MudText>@LastPart(it.Name ?? string.Empty)</MudText>
+                </MudListItem>
+            }
+        </NestedList>
+    </MudListItem>
+}
+
+@code {
+
+    [Parameter, EditorRequired, Required]
+    public Wiki.WikiCategory Category { get; set; } = new(string.Empty, new List<WikiPageHeader>(), new List<Wiki.WikiCategory>());
+
+    private string LastPart(string input)
+    {
+        var lastPart = input
+            .Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Last();
+        return lastPart;
+    }
+
+    private string EscapePageName(string input)
+    {
+        var builder = new StringBuilder(input.Length);
+        foreach (var c in input)
+        {
+            if (char.IsLetterOrDigit(c))
+                builder.Append(c);
+            else switch (c)
+            {
+                case ' ':
+                    builder.Append('-');
+                    break;
+                case '/':
+                    builder.Append('/');
+                    break;
+            }
+        }
+        return builder.ToString();
+    }
+
+}
+

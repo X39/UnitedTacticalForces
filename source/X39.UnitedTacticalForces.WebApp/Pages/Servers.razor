@@ -3,6 +3,9 @@
 @using X39.UnitedTacticalForces.WebApp.Services
 @using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
 @using X39.UnitedTacticalForces.WebApp.Dialogs
+@using System.Collections
+@using X39.Util
+@using X39.Util.Collections
 @inject IGameServerRepository GameServerRepository
 @inject IStringLocalizer<Language> Localizer
 @inject IDialogService DialogService
@@ -15,7 +18,7 @@
           ServerData="ServerDataAsync"
           RowsPerPage="50"
           Virtualize="true"
-          Height="@Breakpoint.ToMudTableFullHeight()"
+          Height="@Breakpoint.ToFullPageTableHeight()"
           FixedFooter="true"
           FixedHeader="true">
     <ColGroup>
@@ -135,6 +138,55 @@
             }
         </MudTd>
     </FooterContent>
+    <ChildRowContent>
+        @if (Me.IsInRoleOrAdmin(Roles.ServerFiles))
+        {
+            <td colspan="7">
+                <MudExpansionPanels MultiExpansion="true">
+                    @foreach (var folder in GetGameFolders(context))
+                    {
+                        <MudExpansionPanel IsInitiallyExpanded="true" Dense="true">
+                            <TitleContent>
+                                <div class="d-flex align-center justify-space-between">
+                                    <MudText>@folder.Name</MudText>
+                                    <MudFileUpload T="IBrowserFile"
+                                                   MaximumFileCount="1"
+                                                   Accept="@string.Join(";", folder.AllowedExtensions ?? Enumerable.Empty<string>())"
+                                                   FilesChanged="@((IBrowserFile browserFile) => UploadGameFolderFileAsync(context.GameServer!, folder, browserFile))"
+                                                   Disabled="@context.IsRunning">
+                                        <ButtonTemplate Context="buttonContext">
+                                            <MudButton HtmlTag="label"
+                                                       StartIcon="@Icons.Material.Filled.Add"
+                                                       Color="Color.Success"
+                                                       for="@buttonContext">
+                                                <MudText>@Localizer[nameof(Language.Pages_GameServers_UploadFile)]</MudText>
+                                            </MudButton>
+                                        </ButtonTemplate>
+                                    </MudFileUpload>
+                                </div>
+                            </TitleContent>
+                            <ChildContent>
+                                <MudList Clickable="false" Dense="true">
+                                    @foreach (var file in GetGameFolderFiles(folder))
+                                    {
+                                        <MudListItem>
+                                            <div class="d-flex align-center justify-space-between">
+                                                <MudText>@file.Name</MudText>
+                                                <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
+                                                               Color="Color.Error"
+                                                               OnClick="@(() => DeleteFileAsync(context.GameServer, folder, file))"
+                                                               Disabled="@context.IsRunning"/>
+                                            </div>
+                                        </MudListItem>
+                                    }
+                                </MudList>
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            </td>
+        }
+    </ChildRowContent>
 </MudTable>
 
 @code {
@@ -150,6 +202,8 @@
     private long _gameServerCounts = -1;
     private MudTable<GameServerInfo> _mudTable = null!;
     private readonly Dictionary<long, ModPack> _modPacks = new();
+    private readonly Dictionary<GameServer, List<GameFolder>> _gameFolders = new();
+    private readonly Dictionary<GameFolder, List<GameFileInfo>> _gameFolderFiles = new();
 
     private async Task<TableData<GameServerInfo>> ServerDataAsync(TableState arg)
     {
@@ -187,6 +241,17 @@
                     _modPacks[modPackPk] = modPack = tmp;
                 }
                 gameServerInfo.GameServer.SelectedModPack = modPack;
+            }
+            var folders = await GameServerRepository
+                .GetGameServerFoldersAsync(gameServerInfo.GameServer)
+                .ConfigureAwait(false);
+            _gameFolders.Add(gameServerInfo.GameServer, folders.ToList());
+            foreach (var folder in folders)
+            {
+                var files = await GameServerRepository
+                    .GetGameServerFolderFilesAsync(gameServerInfo.GameServer, folder)
+                    .ConfigureAwait(false);
+                _gameFolderFiles.Add(folder, files.ToList());
             }
         }
         return new TableData<GameServerInfo>
@@ -288,11 +353,11 @@
     {
         if (gameServerInfo.GameServer is null)
             throw new NullReferenceException("gameServerInfo.GameServer is null");
-        gameServerInfo.GameServer.Status      = result.GameServer?.Status ?? gameServerInfo.GameServer.Status;
-        gameServerInfo.IsRunning              = result.IsRunning ?? gameServerInfo.IsRunning;
-        gameServerInfo.CanStart               = result.CanStart ?? gameServerInfo.CanStart;
-        gameServerInfo.CanUpgrade             = result.CanUpgrade ?? gameServerInfo.CanUpgrade;
-        gameServerInfo.CanStop                = result.CanStop ?? gameServerInfo.CanStop;
+        gameServerInfo.GameServer.Status = result.GameServer?.Status ?? gameServerInfo.GameServer.Status;
+        gameServerInfo.IsRunning = result.IsRunning ?? gameServerInfo.IsRunning;
+        gameServerInfo.CanStart = result.CanStart ?? gameServerInfo.CanStart;
+        gameServerInfo.CanUpgrade = result.CanUpgrade ?? gameServerInfo.CanUpgrade;
+        gameServerInfo.CanStop = result.CanStop ?? gameServerInfo.CanStop;
         gameServerInfo.CanUpdateConfiguration = result.CanUpdateConfiguration ?? gameServerInfo.CanUpdateConfiguration;
     }
 
@@ -323,6 +388,53 @@
             throw new ArgumentException("GameServerInfo.GameServer is null.", nameof(context));
         await ShowGameServerLogs.ShowAsync(DialogService, context.GameServer)
             .ConfigureAwait(false);
+    }
+
+    private IEnumerable<GameFolder> GetGameFolders(GameServerInfo gameServerInfo)
+        => gameServerInfo.GameServer is null
+            ? Enumerable.Empty<GameFolder>()
+            : _gameFolders.GetValueOrDefault(gameServerInfo.GameServer) ?? Enumerable.Empty<GameFolder>();
+
+    private IEnumerable<GameFileInfo> GetGameFolderFiles(GameFolder gameFolder)
+        => _gameFolderFiles.GetValueOrDefault(gameFolder) ?? Enumerable.Empty<GameFileInfo>();
+
+    private async Task DeleteFileAsync(GameServer gameServer, GameFolder gameFolder, GameFileInfo file)
+    {
+        var result = await Dialogs.ConfirmDeletionDialog.ShowAsync(
+            DialogService,
+            Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfFile_Description)],
+            Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfFile_Title)]);
+        if (!result)
+            return;
+        var list = _gameFolderFiles.GetOrAdd(gameFolder, () => new List<GameFileInfo>());
+        await GameServerRepository
+            .DeleteGameServerFolderFileAsync(gameServer, gameFolder, file)
+            .ConfigureAwait(false);
+        list.Remove(file);
+    }
+
+    private async Task UploadGameFolderFileAsync(GameServer gameServer, GameFolder gameFolder, IBrowserFile browserFile)
+    {
+        await using var stream = browserFile.OpenReadStream(100 /*mb*/* 1024 /*kb*/* 1024 /*b*/);
+        await GameServerRepository.UploadGameServerFolderFileAsync(
+            gameServer,
+            gameFolder,
+            new FileParameter(
+                stream,
+                browserFile.Name,
+                browserFile.ContentType.IsNullOrEmpty()
+                    ? "application/octet-stream"
+                    : browserFile.ContentType))
+            .ConfigureAwait(false);
+        var list = _gameFolderFiles.GetOrAdd(gameFolder, () => new List<GameFileInfo>());
+        if (list.Any((q) => q.Name == browserFile.Name))
+            return;
+        list.Add(new GameFileInfo
+        {
+            Name = browserFile.Name,
+            Size = browserFile.Size,
+            MimeType = browserFile.ContentType,
+        });
     }
 
 }

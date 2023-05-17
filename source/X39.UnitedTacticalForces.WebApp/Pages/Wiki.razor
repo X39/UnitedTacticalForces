@@ -1,0 +1,146 @@
+﻿@page "/wiki/{PageId:guid}"
+@page "/wiki"
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.WikiRepository
+@using X39.Util
+@using X39.UnitedTacticalForces.WebApp.Dialogs
+@inject MeService MeService
+@inject IWikiRepository WikiRepository
+@inject IDialogService DialogService
+@inject IStringLocalizer<Language> Localizer
+
+<div class="d-flex flex-row flex-nowrap gap-2 pa-2" style="height: @Breakpoint.ToFullPageHeight()">
+    <MudPaper MinWidth="200px">
+        <Wiki_Category Category="@GetRootCategory()"/>
+    </MudPaper>
+    <div class="d-flex flex-column flex-nowrap flex-grow-1 gap-2">
+        @if (MeService.IsInRoleOrAdmin(Roles.WikiEditor))
+        {
+            <MudPaper Class="flex-shrink-1 d-flex flex-row">
+                <MudSelect T="WikiPageRevision"
+                           MultiSelection="false"
+                           SelectedValues="@(_revision?.MakeArray() ?? Array.Empty<WikiPageRevision>())"
+                           SelectedValuesChanged="@((revisions) => _revision = revisions.FirstOrDefault())">
+                    @foreach (var revision in _page?.Revisions ?? ArraySegment<WikiPageRevision>.Empty)
+                    {
+                        <MudSelectItem T="WikiPageRevision" Value="@revision">@(revision.TimeStampCreated?.ToString("s"))</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSpacer/>
+                <MudButtonGroup>
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Color="Color.Error" Disabled="@(_page is null)" OnClick="DeleteWikiPageAsync"/>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Disabled="@(_page is null)" OnClick="ModifyWikiPageAsync"/>
+                </MudButtonGroup>
+            </MudPaper>
+            <div style="position: fixed; right: 2rem; bottom: 2rem;">
+                <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddWikiPageAsync"/>
+            </div>
+        }
+        <MudPaper Class="flex-grow-1 overflow-x-scroll pa-2">
+            @if (_revision is not null)
+            {
+                <MudMarkdown Value="@(_revision.Markdown ?? string.Empty)"/>
+            }
+        </MudPaper>
+    </div>
+</div>
+
+@code {
+
+    [CascadingParameter]
+    public Breakpoint Breakpoint { get; private set; } = Breakpoint.Always;
+
+    [Parameter]
+    public Guid? PageId { get; set; }
+
+    [Parameter]
+    public string? PageName { get; set; }
+
+    private WikiPage? _page;
+    private WikiPageRevision? _revision;
+    private readonly List<WikiPageHeader> _wikiPageHeaders = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (PageId is not null)
+        {
+            _page = await WikiRepository.GetWikiPageAsync(PageId.Value, MeService.IsInRoleOrAdmin(Roles.WikiEditor))
+                .ConfigureAwait(false);
+            _revision = _page.Revisions?.MaxBy((q) => q.TimeStampCreated);
+        }
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var wikiPageHeaders = await WikiRepository.GetWikiPageHeadersAsync()
+            .ConfigureAwait(false);
+        _wikiPageHeaders.AddRange(wikiPageHeaders);
+        await base.OnInitializedAsync();
+    }
+
+    private WikiCategory GetRootCategory()
+    {
+        var rootCategory = new WikiCategory(string.Empty, new(), new());
+        foreach (var pageHeader in _wikiPageHeaders)
+        {
+            var path = pageHeader.Name?.Split('/') ?? Array.Empty<string>();
+            var currentCategory = rootCategory;
+            for (var i = 0; i < path.Length - 1; i++)
+            {
+                var subCategory = currentCategory.SubCategories.FirstOrDefault(c => c.Name == path[i]);
+                if (subCategory is null)
+                {
+                    subCategory = new WikiCategory(path[i], new(), new());
+                    currentCategory.SubCategories.Add(subCategory);
+                }
+                currentCategory = subCategory;
+            }
+            currentCategory.Pages.Add(pageHeader);
+        }
+        return rootCategory;
+    }
+
+    public record WikiCategory(string Name, List<WikiPageHeader> Pages, List<WikiCategory> SubCategories);
+
+    private async Task AddWikiPageAsync()
+    {
+        await CreateWikiRevisionDialog.ShowAsync(DialogService, WikiRepository)
+            .ConfigureAwait(false);
+        var wikiPageHeaders = await WikiRepository.GetWikiPageHeadersAsync()
+            .ConfigureAwait(false);
+        _wikiPageHeaders.Clear();
+        _wikiPageHeaders.AddRange(wikiPageHeaders);
+    }
+
+    private async Task ModifyWikiPageAsync()
+    {
+        if (_page is null)
+            throw new ArgumentNullException(nameof(_page));
+        if (_page.PrimaryKey is null)
+            throw new NullReferenceException();
+        await CreateWikiRevisionDialog.ShowAsync(DialogService, WikiRepository, _page, _revision)
+            .ConfigureAwait(false);
+        _page = await WikiRepository.GetWikiPageAsync(_page.PrimaryKey.Value, MeService.IsInRoleOrAdmin(Roles.WikiEditor))
+            .ConfigureAwait(false);
+        _revision = _page.Revisions?.MaxBy((q) => q.TimeStampCreated);
+    }
+
+    private async Task DeleteWikiPageAsync()
+    {
+        if (_page is null)
+            throw new ArgumentNullException(nameof(_page));
+        if (_page.PrimaryKey is null)
+            throw new NullReferenceException();
+        var confirm = await ConfirmDeletionDialog.ShowAsync(DialogService, Localizer[nameof(Language.Pages_Wiki_ConfirmDeletePage_Description)], Localizer[nameof(Language.Pages_Wiki_ConfirmDeletePage_Title)])
+            .ConfigureAwait(false);
+        if (!confirm)
+            return;
+        await WikiRepository.DeleteWikiPageAsync(_page.PrimaryKey.Value)
+            .ConfigureAwait(false);
+        _wikiPageHeaders.RemoveAll((q) => q.PrimaryKey == _page.PrimaryKey.Value);
+        _page = null;
+        _revision = null;
+    }
+
+}

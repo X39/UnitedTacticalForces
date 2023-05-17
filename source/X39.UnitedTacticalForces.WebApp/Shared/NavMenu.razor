@@ -34,11 +34,17 @@
             </MudNavLink>
         }
     }
+    <MudNavLink Href="wiki" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MenuBook">
+        @Localizer[nameof(Language.Shared_NavMenu_Wiki)]
+    </MudNavLink>
 </MudNavMenu>
 <MudSpacer/>
 <MudNavMenu>
     @if (Me.IsAuthenticated)
     {
+        <MudNavLink Href="settings" Icon="@Icons.Material.Filled.Settings">
+            <MudText>@Localizer[nameof(Language.Shared_NavMenu_Settings)]</MudText>
+        </MudNavLink>
         <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/logout?returnUrl={BaseUrl.SelfUrl}")" Icon="@Icons.Material.Filled.Logout">
             <MudText>@Localizer[nameof(Language.Shared_NavMenu_Logout)]</MudText>
         </MudNavLink>
@@ -49,4 +55,7 @@
             <MudImage Src="https://steamcdn-a.akamaihd.net/steamcommunity/public/images/steamworks_docs/german/sits_small.png"/>
         </MudNavLink>
     }
+    <MudNavLink Href="GDPR" Icon="@Icons.Material.Filled.PrivacyTip">
+            <MudText>@Localizer[nameof(Language.Shared_NavMenu_GDPR)]</MudText>
+    </MudNavLink>
 </MudNavMenu>

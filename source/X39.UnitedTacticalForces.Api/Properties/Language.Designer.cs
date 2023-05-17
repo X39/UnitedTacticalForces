@@ -69,11 +69,65 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The folder in which the missions are to be stored..
+        /// </summary>
+        internal static string ServerController_Arma3_GameFolders_MPMissions_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_GameFolders_MPMissions_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Missions.
+        /// </summary>
+        internal static string ServerController_Arma3_GameFolders_MPMissions_Name {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_GameFolders_MPMissions_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Host.
         /// </summary>
         internal static string ServerController_Arma3_Host {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_Host", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The ip address to connect the headless client to..
+        /// </summary>
+        internal static string ServerController_Arma3_Host_HeadlessClientIp_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_Host_HeadlessClientIp_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Headless Client IP.
+        /// </summary>
+        internal static string ServerController_Arma3_Host_HeadlessClientIp_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_Host_HeadlessClientIp_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The password of the server to connect the client to..
+        /// </summary>
+        internal static string ServerController_Arma3_Host_HeadlessClientPassword_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_Host_HeadlessClientPassword_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Headless Client password.
+        /// </summary>
+        internal static string ServerController_Arma3_Host_HeadlessClientPassword_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_Host_HeadlessClientPassword_Title", resourceCulture);
             }
         }
         

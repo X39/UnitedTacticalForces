@@ -37,6 +37,16 @@ public abstract class GameServerControllerBase : IGameServerController
     public abstract bool CanInstallOrUpgrade { get; }
     public abstract bool IsRunning { get; }
     public abstract Task InstallOrUpgradeAsync(User? executingUser);
+    public abstract bool CanModifyGameFiles { get; }
+    public abstract Task<IEnumerable<GameFolder>> GetGameFoldersAsync(CultureInfo cultureInfo, CancellationToken cancellationToken = default);
+    public abstract Task<IEnumerable<GameFileInfo>> GetGameFolderFilesAsync(GameFolder folder, CultureInfo cultureInfo, CancellationToken cancellationToken = default);
+
+    public abstract Task<Stream> GetGameFolderFileAsync(
+        GameFolder folder,
+        GameFileInfo file,
+        CancellationToken cancellationToken = default);
+    public abstract Task UploadFileAsync(GameFolder folder, GameFileInfo file, Stream stream);
+    public abstract Task DeleteFileAsync(GameFolder folder, GameFileInfo file);
 
 
     protected async ValueTask<string> GetAsync(

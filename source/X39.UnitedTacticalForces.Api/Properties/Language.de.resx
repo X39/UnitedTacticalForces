@@ -258,4 +258,22 @@ Wenn diese Einstellung aktiviert ist, kann sich der Start des Servers um 600 Sek
     <data name="ServerController_Arma3_ServerCfg_OtherOptions" xml:space="preserve">
         <value>Andere optionen</value>
     </data>
+    <data name="ServerController_Arma3_GameFolders_MPMissions_Name" xml:space="preserve">
+        <value>Missionen</value>
+    </data>
+    <data name="ServerController_Arma3_GameFolders_MPMissions_Description" xml:space="preserve">
+        <value>Der Ordner, in dem die Missionen abgelegt werden sollen.</value>
+    </data>
+    <data name="ServerController_Arma3_Host_HeadlessClientPassword_Title" xml:space="preserve">
+        <value>Headless Client Passwort</value>
+    </data>
+    <data name="ServerController_Arma3_Host_HeadlessClientIp_Title" xml:space="preserve">
+        <value>Headless Client IP</value>
+    </data>
+    <data name="ServerController_Arma3_Host_HeadlessClientIp_Description" xml:space="preserve">
+        <value>Die IP Adresse des Servers, mit dem sich der Headless Client verbinden soll.</value>
+    </data>
+    <data name="ServerController_Arma3_Host_HeadlessClientPassword_Description" xml:space="preserve">
+        <value>Das Passwort des Servers, mit dem sich der Headless Client verbinden soll.</value>
+    </data>
 </root>

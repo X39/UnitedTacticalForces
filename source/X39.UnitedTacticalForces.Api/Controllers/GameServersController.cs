@@ -8,6 +8,7 @@ using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
+using X39.UnitedTacticalForces.Api.GarbageWorkarounds;
 using X39.UnitedTacticalForces.Api.Services.GameServerController;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
@@ -301,6 +302,7 @@ public class GameServersController : ControllerBase
                 gameServer.PrimaryKey);
         }
     }
+
     private async Task ExecuteStopGameServerAsync(GameServer gameServer, IGameServerController controller, User user)
     {
         _logger.LogDebug(
@@ -326,6 +328,7 @@ public class GameServersController : ControllerBase
             throw;
         }
     }
+
     private async Task ExecuteInstallOrUpgradeAsync(GameServer gameServer, IGameServerController controller, User user)
     {
         _logger.LogDebug(
@@ -351,7 +354,11 @@ public class GameServersController : ControllerBase
             throw;
         }
     }
-    private async Task ExecuteUpdateConfigurationAsync(GameServer gameServer, IGameServerController controller, User user)
+
+    private async Task ExecuteUpdateConfigurationAsync(
+        GameServer gameServer,
+        IGameServerController controller,
+        User user)
     {
         _logger.LogDebug(
             "Updating configuration of game server {GameServerTitle} ({GameServerPk})",
@@ -438,12 +445,222 @@ public class GameServersController : ControllerBase
     }
 
     /// <summary>
+    /// Returns the folders of the given <see cref="GameServer"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to receive the folders from.</param>
+    [ProducesResponseType(typeof(IEnumerable<GameFolder>), (int) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [HttpGet("{gameServerId:long}/folders", Name = nameof(GetGameFoldersAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    public async Task<ActionResult<IEnumerable<GameFolder>>> GetGameFoldersAsync(
+        [FromRoute] long gameServerId,
+        CancellationToken cancellationToken)
+    {
+        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        if (user is null)
+            return Unauthorized();
+        var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
+            (q) => q.PrimaryKey == gameServerId,
+            cancellationToken);
+        if (gameServer is null)
+            return NotFound();
+        var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
+        var folders = await controller.GetGameFoldersAsync(Request.GetCultureInfo(), cancellationToken);
+        return Ok(folders);
+    }
+
+    /// <summary>
+    /// Returns the folders of the given <see cref="GameServer"/>.
+    /// </summary>
+    /// <param name="folder">Identifier of the folder to receive.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to receive the files from.</param>
+    [ProducesResponseType(typeof(IEnumerable<GameFileInfo>), (int) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [HttpGet("{gameServerId:long}/{folder}/files", Name = nameof(GetGameFolderFilesAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    public async Task<ActionResult<IEnumerable<GameFileInfo>>> GetGameFolderFilesAsync(
+        [FromRoute] long gameServerId,
+        [FromRoute] string folder,
+        CancellationToken cancellationToken)
+    {
+        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        if (user is null)
+            return Unauthorized();
+        var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
+            (q) => q.PrimaryKey == gameServerId,
+            cancellationToken);
+        if (gameServer is null)
+            return NotFound();
+        var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
+        var folders = await controller.GetGameFoldersAsync(Request.GetCultureInfo(), cancellationToken);
+        var gameFolder = folders.FirstOrDefault((q) => q.Identifier == folder);
+        if (gameFolder is null)
+            return NotFound();
+        var files = await controller.GetGameFolderFilesAsync(gameFolder, Request.GetCultureInfo(), cancellationToken);
+        return Ok(files);
+    }
+
+    /// <summary>
+    /// Creates or updates a file in a folder of the given <see cref="GameServer"/>.
+    /// </summary>
+    /// <param name="folder">Identifier of the folder to change a file in.</param>
+    /// <param name="bullshitWrapper">A wrapper containing the data of the file to upload</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to change the file from.</param>
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
+    [HttpPost("{gameServerId:long}/{folder}/upload", Name = nameof(UploadGameFolderFileAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    public async Task<ActionResult> UploadGameFolderFileAsync(
+        [FromRoute] long gameServerId,
+        [FromRoute] string folder,
+        [FromForm] FuckYouNSwagAspNetCoreAndTheBloodyShawbuckleFile bullshitWrapper,
+        CancellationToken cancellationToken)
+    {
+        var file = bullshitWrapper.File;
+        if (file.FileName.Contains('/') || file.FileName.Contains('\\') || file.FileName is ".." or ".")
+            return BadRequest();
+        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        if (user is null)
+            return Unauthorized();
+        var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
+            (q) => q.PrimaryKey == gameServerId,
+            cancellationToken);
+        if (gameServer is null)
+            return NotFound();
+        var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
+        if (!controller.CanModifyGameFiles)
+            return Forbid(); // Forbid because not possible, preventing work.
+        var folders = await controller.GetGameFoldersAsync(Request.GetCultureInfo(), cancellationToken);
+        var gameFolder = folders.FirstOrDefault((q) => q.Identifier == folder);
+        if (gameFolder is null)
+            return NotFound();
+        await controller.UploadFileAsync(
+            gameFolder,
+            new GameFileInfo(file.FileName, file.Length, file.ContentType),
+            file.OpenReadStream());
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Deletes a file from a folder the given <see cref="GameServer"/>.
+    /// </summary>
+    /// <param name="folder">Identifier of the folder to delete a file from.</param>
+    /// <param name="file">Name of the file to delete.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to receive the folders from.</param>
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [HttpPost("{gameServerId:long}/{folder}/{file}/delete", Name = nameof(DeleteGameFolderFileAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    public async Task<ActionResult> DeleteGameFolderFileAsync(
+        [FromRoute] long gameServerId,
+        [FromRoute] string folder,
+        [FromRoute] string file,
+        CancellationToken cancellationToken)
+    {
+        if (file.Contains('/') || file.Contains('\\') || file is ".." or ".")
+            return BadRequest();
+        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        if (user is null)
+            return Unauthorized();
+        var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
+            (q) => q.PrimaryKey == gameServerId,
+            cancellationToken);
+        if (gameServer is null)
+            return NotFound();
+        var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
+        if (!controller.CanModifyGameFiles)
+            return Forbid(); // Forbid because not possible, preventing work.
+        var folders = await controller.GetGameFoldersAsync(Request.GetCultureInfo(), cancellationToken);
+        var gameFolder = folders.FirstOrDefault((q) => q.Identifier == folder);
+        if (gameFolder is null)
+            return NotFound();
+        await controller.DeleteFileAsync(
+            gameFolder,
+            new GameFileInfo(file, 0, string.Empty));
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Receive a file from a folder the given <see cref="GameServer"/>.
+    /// </summary>
+    /// <param name="folder">Identifier of the folder to delete a file from.</param>
+    /// <param name="file">Name of the file to delete.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to receive the folders from.</param>
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [HttpPost("{gameServerId:long}/{folder}/{file}/get", Name = nameof(GetGameFolderFileAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    public async Task<ActionResult<Stream>> GetGameFolderFileAsync(
+        [FromRoute] long gameServerId,
+        [FromRoute] string folder,
+        [FromRoute] string file,
+        CancellationToken cancellationToken)
+    {
+        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        if (user is null)
+            return Unauthorized();
+        var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
+            (q) => q.PrimaryKey == gameServerId,
+            cancellationToken);
+        if (gameServer is null)
+            return NotFound();
+        var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
+        if (!controller.CanModifyGameFiles)
+            return Forbid(); // Forbid because not possible, preventing work.
+        var folders = await controller.GetGameFoldersAsync(Request.GetCultureInfo(), cancellationToken);
+        var gameFolder = folders.FirstOrDefault((q) => q.Identifier == folder);
+        if (gameFolder is null)
+            return NotFound();
+        var fileInfos = await controller.GetGameFolderFilesAsync(
+            gameFolder,
+            Request.GetCultureInfo(),
+            cancellationToken);
+        var fileInfo = fileInfos.FirstOrDefault((q) => q.Name == file);
+        if (fileInfo is null)
+            return NotFound();
+        Response.Headers.Add(
+            "Content-Disposition",
+            new System.Net.Mime.ContentDisposition
+            {
+                FileName = fileInfo.Name,
+                Inline   = false,
+            }.ToString());
+        var stream = await controller.GetGameFolderFileAsync(
+            gameFolder,
+            new GameFileInfo(file, 0, string.Empty),
+            cancellationToken);
+        return new FileStreamResult(stream, fileInfo.MimeType) {FileDownloadName = fileInfo.Name};
+    }
+
+    /// <summary>
     /// Return the count of logs for the given <see cref="GameServer"/>.
     /// </summary>
     /// <param name="referenceTimeStamp">
     ///     Timestamp to allow consistent results.
-    ///     If provided, this will prevent logs newer then the timestamp to appear in the result
-    ///     and consideration with <paramref cref="skip"/> and <paramref cref="take"/>.
+    ///     If provided, this will prevent logs newer then the timestamp to appear in the result.
     /// </param>
     /// <param name="cancellationToken">
     ///     A <see cref="CancellationToken"/> to cancel the operation.
@@ -610,9 +827,7 @@ public class GameServersController : ControllerBase
         if (gameServer is null)
             return NotFound();
         var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
-        var cultureInfo = new CultureInfo(
-            Request.Headers.AcceptLanguage.FirstOrDefault()?.Split(',', ';').FirstOrDefault() ?? "en-US");
-        return Ok(controller.GetConfigurationEntryDefinitions(cultureInfo));
+        return Ok(controller.GetConfigurationEntryDefinitions(Request.GetCultureInfo()));
     }
 
     /// <summary>
@@ -631,7 +846,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
-    [HttpGet("{gameServerId:long}/delete", Name = nameof(DeleteGameServerAsync))]
+    [HttpPost("{gameServerId:long}/delete", Name = nameof(DeleteGameServerAsync))]
     public async Task<ActionResult> DeleteGameServerAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)

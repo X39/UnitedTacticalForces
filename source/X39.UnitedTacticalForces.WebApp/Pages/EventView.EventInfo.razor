@@ -40,7 +40,9 @@
             <UtfModPackDownloadButton ModPack="Event.ModPack" Color="Color.Surface"/>
         </MudButtonGroup>
     </MudStack>
-    <MudText Typo="Typo.body2" Style="max-height: 50vh; overflow-y: scroll;">@Event.Description</MudText>
+    <div style="max-height: 50vh; overflow-y: scroll;">
+        <MudMarkdown>@Event.Description</MudMarkdown>
+    </div>
     <MudSpacer/>
     <MudStack Row="true" Style="@("border-radius: 10rem; background: var(--mud-palette-background); width: min-content;")">
         @if (Me.IsAuthenticated)
@@ -73,7 +75,7 @@
 }
 
 @code {
-    
+
     [Parameter, EditorRequired, Required]
     public EventCallback Reload { get; set; }
 

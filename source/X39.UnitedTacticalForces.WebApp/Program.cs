@@ -19,8 +19,10 @@ builder.Services.AddSingleton(new BaseUrl(
     builder.HostEnvironment.BaseAddress));
 
 builder.Services.AddAttributedServicesFromAssemblyOf<Program>(builder.Configuration);
+builder.Services.AddAttributedServicesFromAssemblyOf<X39.Util.Blazor.WebAssembly.Assembly>(builder.Configuration);
 // https://learn.microsoft.com/de-de/aspnet/core/blazor/security/webassembly/standalone-with-authentication-library?view=aspnetcore-7.0&tabs=visual-studio
 var host = builder.Build();
 // ToDo: Build into X39.Util.DependencyInjection
 await host.Services.GetRequiredService<MeService>().InitializeAsync();
+await host.Services.GetRequiredService<UiConfiguration>().InitializeAsync();
 await host.RunAsync();

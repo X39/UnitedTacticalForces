@@ -87,6 +87,8 @@ else
             .ConfigureAwait(false);
         if (tmp is null)
         {
+            await Console.Error.WriteLineAsync($"No event with {EventId} was found")
+                .ConfigureAwait(false);
             NavigationManager.NavigateTo("/events");
             return;
         }

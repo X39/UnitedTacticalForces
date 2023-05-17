@@ -10,6 +10,7 @@ public interface IUserRepository
         bool includeUnverified = false,
         CancellationToken cancellationToken = default);
 
+    Task UpdateUserAsync(User user, CancellationToken cancellationToken = default);
     Task<User> GetMeAsync(CancellationToken cancellationToken = default);
     Task<User?> GetUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<long> GetUserCountAsync(CancellationToken cancellationToken = default);
@@ -17,4 +18,5 @@ public interface IUserRepository
     Task<IReadOnlyCollection<Role>> GetAllRolesAsync(CancellationToken cancellationToken = default);
     Task ToggleBanUserAsync(Guid userId, bool isBanned, CancellationToken cancellationToken = default);
     Task ToggleVerifiedUserAsync(Guid userId, bool isVerified, CancellationToken cancellationToken = default);
+    Task DeleteMeAsync(CancellationToken cancellationToken = default);
 }

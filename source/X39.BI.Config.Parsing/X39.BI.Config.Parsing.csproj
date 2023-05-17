@@ -12,6 +12,6 @@
     </ItemGroup>
     <ItemGroup>
       <PackageReference Include="Pidgin" Version="3.2.1" />
-      <PackageReference Include="X39.Util" Version="1.0.0.37" />
+      <PackageReference Include="X39.Util" Version="1.0.0.38" />
     </ItemGroup>
 </Project>

@@ -168,6 +168,51 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Comment.
+        /// </summary>
+        internal static string Dialogs_CreateWikiRevisionDialog_Inputs_Comment {
+            get {
+                return ResourceManager.GetString("Dialogs_CreateWikiRevisionDialog_Inputs_Comment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Content.
+        /// </summary>
+        internal static string Dialogs_CreateWikiRevisionDialog_Inputs_Markdown {
+            get {
+                return ResourceManager.GetString("Dialogs_CreateWikiRevisionDialog_Inputs_Markdown", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Dialogs_CreateWikiRevisionDialog_Inputs_Title {
+            get {
+                return ResourceManager.GetString("Dialogs_CreateWikiRevisionDialog_Inputs_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Update wiki page.
+        /// </summary>
+        internal static string Dialogs_CreateWikiRevisionDialog_Title {
+            get {
+                return ResourceManager.GetString("Dialogs_CreateWikiRevisionDialog_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Create wiki page.
+        /// </summary>
+        internal static string Dialogs_CreateWikiRevisionDialog_TitleNew {
+            get {
+                return ResourceManager.GetString("Dialogs_CreateWikiRevisionDialog_TitleNew", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Description.
         /// </summary>
         internal static string Dialogs_ModifyEventDialog_Inputs_Description {
@@ -411,7 +456,7 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Please sign in using the Steam login option on the bottom left of your screen to access additional features..
+        ///   Looks up a localized string similar to Please sign in via the Steam sign-in option in the sidebar on the left (desktop) or in the menu at the top left (mobile) of your screen to access additional features..
         /// </summary>
         internal static string Hints_LogInUsingSteamAtTheBottomRightForAdditionalFeatures {
             get {
@@ -708,6 +753,24 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to delete that file?.
+        /// </summary>
+        internal static string Pages_GameServers_ConfirmDeleteOfFile_Description {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_ConfirmDeleteOfFile_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Confirm file deletion.
+        /// </summary>
+        internal static string Pages_GameServers_ConfirmDeleteOfFile_Title {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_ConfirmDeleteOfFile_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Are you sure you want to delete this server? This cannot be undone!.
         /// </summary>
         internal static string Pages_GameServers_ConfirmDeleteOfGameServer_Description {
@@ -852,6 +915,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Upload file.
+        /// </summary>
+        internal static string Pages_GameServers_UploadFile {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_UploadFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to All mod packs.
         /// </summary>
         internal static string Pages_ModPacks_AllModPacks {
@@ -956,6 +1028,106 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_ModPacks_Title {
             get {
                 return ResourceManager.GetString("Pages_ModPacks_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Account.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Dark mode.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_DarkMode {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_DarkMode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete account.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_DeleteAccount {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_DeleteAccount", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The deletion of your account is irrevocable! Are you really sure you want to delete your account?.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_DeleteAccount_Confirm_Message {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_DeleteAccount_Confirm_Message", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Confirmation of account deletion.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_DeleteAccount_Confirm_Title {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_DeleteAccount_Confirm_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Yes, I am sure I want to delete my account.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_DeleteAccount_Confirm_YesIamSureIWantToDeleteMyAccount {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_DeleteAccount_Confirm_YesIamSureIWantToDeleteMyAcc" +
+                        "ount", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to E-Mail.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_EMail {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_EMail", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nickname.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_Nickname {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_Nickname", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set avatar.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_SetAvatar {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_SetAvatar", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Steam ID.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_SteamId64 {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_SteamId64", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Website.
+        /// </summary>
+        internal static string Pages_Settings_PageSettings {
+            get {
+                return ResourceManager.GetString("Pages_Settings_PageSettings", resourceCulture);
             }
         }
         
@@ -1104,6 +1276,24 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Confirm deletetion of the wiki page.
+        /// </summary>
+        internal static string Pages_Wiki_ConfirmDeletePage_Description {
+            get {
+                return ResourceManager.GetString("Pages_Wiki_ConfirmDeletePage_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete confirmation.
+        /// </summary>
+        internal static string Pages_Wiki_ConfirmDeletePage_Title {
+            get {
+                return ResourceManager.GetString("Pages_Wiki_ConfirmDeletePage_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Calendar.
         /// </summary>
         internal static string Shared_NavMenu_Calendar {
@@ -1131,6 +1321,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to GDPR.
+        /// </summary>
+        internal static string Shared_NavMenu_GDPR {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_GDPR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Logout.
         /// </summary>
         internal static string Shared_NavMenu_Logout {
@@ -1145,6 +1344,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Shared_NavMenu_ModPacks {
             get {
                 return ResourceManager.GetString("Shared_NavMenu_ModPacks", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Settings.
+        /// </summary>
+        internal static string Shared_NavMenu_Settings {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_Settings", resourceCulture);
             }
         }
         
@@ -1172,6 +1380,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Shared_NavMenu_Users {
             get {
                 return ResourceManager.GetString("Shared_NavMenu_Users", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wiki.
+        /// </summary>
+        internal static string Shared_NavMenu_Wiki {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_Wiki", resourceCulture);
             }
         }
     }

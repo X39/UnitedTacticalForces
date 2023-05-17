@@ -67,6 +67,34 @@ public class UsersController : ControllerBase
             Constants.AuthorizationSchemas.Cookie);
     }
 
+    /// <summary>
+    /// Deletes the current user.
+    /// </summary>
+    /// <param name="returnUrl">The url to get back to after the logout process has completed.</param>
+    [HttpPost("me/delete", Name = nameof(MeDeleteAsync))]
+    [Authorize]
+    public async Task<IActionResult> MeDeleteAsync([FromQuery] string returnUrl)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        var user = await _apiDbContext.Users.SingleOrDefaultAsync((q) => q.PrimaryKey == userId);
+        if (user is null)
+            return NotFound();
+        user.SteamId64      = 0;
+        user.Nickname       = "[anonymous]";
+        user.Avatar         = Array.Empty<byte>();
+        user.AvatarMimeType = string.Empty;
+        user.EMail          = null;
+        user.IsDeleted      = true;
+        await _apiDbContext.SaveChangesAsync();
+        return SignOut(
+            new AuthenticationProperties
+            {
+                RedirectUri = returnUrl,
+            },
+            Constants.AuthorizationSchemas.Cookie);
+    }
+
     [Authorize]
     [HttpPost("{userId:guid}/update", Name = nameof(UpdateUserAsync))]
     [ProducesResponseType((int) HttpStatusCode.NoContent)]

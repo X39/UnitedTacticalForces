@@ -55,6 +55,18 @@ internal class UserRepositoryImpl : RepositoryBase, IUserRepository
         await Client.UsersUpdateAsync(userId, user, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task DeleteMeAsync(CancellationToken cancellationToken)
+    {
+        await Client.UsersMeDeleteAsync(null, cancellationToken);
+    }
+
+    public async Task UpdateUserAsync(User user, CancellationToken cancellationToken = default)
+    {
+        if (user.PrimaryKey is null)
+            throw new ArgumentException("User.PrimaryKey is null.", nameof(user));
+        await Client.UsersUpdateAsync(user.PrimaryKey.Value, user, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<User> GetMeAsync(
         CancellationToken cancellationToken = default)
     {

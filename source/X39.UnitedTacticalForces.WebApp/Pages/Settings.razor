@@ -1,0 +1,120 @@
+﻿@page "/settings"
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@inject MeService Me
+@inject UiConfiguration UiConfiguration
+@inject IStringLocalizer<Language> Localizer
+@inject IUserRepository UserRepository
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+<MudExpansionPanels>
+    <MudExpansionPanel Text="@Localizer[nameof(Language.Pages_Settings_AccountSettings)]">
+        <MudStack>
+            <MudFileUpload T="IBrowserFile" MaximumFileCount="1" OnFilesChanged="AvatarChangedAsync" Accept="image/*">
+                <ButtonTemplate>
+                    <MudImage Src="@Me.User.ToImageSource()"/>
+                    <MudButton HtmlTag="label"
+                               for="@context">
+                        <MudText>@Localizer[nameof(Language.Pages_Settings_AccountSettings_SetAvatar)]</MudText>
+                    </MudButton>
+                </ButtonTemplate>
+            </MudFileUpload>
+            <MudTextField Value="@Me.User.SteamId64" ReadOnly="true"
+                          Label="@Localizer[nameof(Language.Pages_Settings_AccountSettings_SteamId64)]"/>
+            <MudTextField T="string"
+                          Value="@Me.User.Nickname"
+                          ValueChanged="NicknameChangedAsync"
+                          Label="@Localizer[nameof(Language.Pages_Settings_AccountSettings_Nickname)]"/>
+            <MudTextField T="string"
+                          Value="@Me.User.EMail"
+                          ValueChanged="EMailChangedAsync"
+                          Label="@Localizer[nameof(Language.Pages_Settings_AccountSettings_EMail)]"/>
+            <MudButton OnClick="DeleteAccountAsync" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteForever">
+                <MudText>@Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount)]</MudText>
+            </MudButton>
+        </MudStack>
+    </MudExpansionPanel>
+    <MudExpansionPanel Text="@Localizer[nameof(Language.Pages_Settings_PageSettings)]">
+        <MudStack>
+            <MudSwitch T="bool"
+                       @bind-Checked="@UiConfiguration.DarkMode"
+                       Label="@Localizer[nameof(Language.Pages_Settings_AccountSettings_DarkMode)]"/>
+        </MudStack>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+
+    private async Task DeleteAccountAsync()
+    {
+        var result = await DialogService.ShowMessageBox(
+            Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_Title)],
+            Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_Message)],
+            Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_YesIamSureIWantToDeleteMyAccount)],
+            null,
+            Localizer[nameof(Language.Common_Cancel)],
+            new DialogOptions { FullScreen = true });
+        if (result is not true)
+            return;
+        await UserRepository.DeleteMeAsync()
+            .ConfigureAwait(false);
+        NavigationManager.NavigateTo("/");
+    }
+
+    private async Task AvatarChangedAsync(InputFileChangeEventArgs obj)
+    {
+        var avatar = Me.User.Avatar;
+        var avatarMimeType = Me.User.AvatarMimeType;
+        try
+        {
+            await using var stream = obj.File.OpenReadStream(128 /*kb*/* 1024 /*b*/);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream)
+                .ConfigureAwait(false);
+            Me.User.Avatar = memoryStream.ToArray();
+            Me.User.AvatarMimeType = obj.File.ContentType;
+            await UserRepository.UpdateUserAsync(Me.User)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            Me.User.Avatar = avatar;
+            Me.User.AvatarMimeType = avatarMimeType;
+        }
+    }
+
+    private async Task NicknameChangedAsync(string arg)
+    {
+        var nickname = Me.User.Nickname;
+        try
+        {
+            Me.User.Nickname = arg;
+            await UserRepository.UpdateUserAsync(Me.User)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            Me.User.Nickname = nickname;
+        }
+    }
+
+    private async Task EMailChangedAsync(string arg)
+    {
+        var eMail = Me.User.EMail;
+        try
+        {
+            Me.User.EMail = arg;
+            await UserRepository.UpdateUserAsync(Me.User)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            Me.User.EMail = eMail;
+        }
+    }
+
+}

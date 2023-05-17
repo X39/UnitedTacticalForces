@@ -3,12 +3,13 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
+using X39.UnitedTacticalForces.Api.Data.Meta;
 
 namespace X39.UnitedTacticalForces.Api.Data.Authority;
 
-[Index(nameof(SteamId64), IsUnique = true)]
+[Index(nameof(SteamId64))]
 [Index(nameof(Nickname))]
-public class User
+public class User : IPrimaryKey<Guid>
 {
     [Key] public Guid PrimaryKey { get; set; }
     public string Nickname { get; set; } = string.Empty;
@@ -25,6 +26,7 @@ public class User
     public byte[] Avatar { get; set; } = Array.Empty<byte>();
     public string AvatarMimeType { get; set; } = string.Empty;
     public bool IsVerified { get; set; }
+    public bool IsDeleted { get; set; }
 
     public async ValueTask<ClaimsIdentity> ToIdentityAsync(
         ILazyLoader? lazyLoader = default,

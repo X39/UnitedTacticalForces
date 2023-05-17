@@ -23,6 +23,7 @@ internal static class Constants
         public const string Users         = "users";
         public const string ModPacks      = "mod-packs";
         public const string Terrains      = "terrains";
+        public const string Wiki          = "wiki";
     }
 
     public static class AuthorizationSchemas

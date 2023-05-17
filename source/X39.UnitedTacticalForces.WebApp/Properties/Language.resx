@@ -223,7 +223,7 @@
         <value>Copied to clipboard</value>
     </data>
     <data name="Hints_LogInUsingSteamAtTheBottomRightForAdditionalFeatures" xml:space="preserve">
-        <value>Please sign in using the Steam login option on the bottom left of your screen to access additional features.</value>
+        <value>Please sign in via the Steam sign-in option in the sidebar on the left (desktop) or in the menu at the top left (mobile) of your screen to access additional features.</value>
     </data>
     <data name="Pages_EventView_FailedToParseConfig_ParsedConfigIsBinarized" xml:space="preserve">
         <value>The file is binarized. Please change the save settings for the mission in 3DEN Editor and try again.</value>
@@ -389,5 +389,77 @@
     </data>
     <data name="Dialogs_ConfirmSlotLoss_ConfirmSlotLossOnAcceptanceChange" xml:space="preserve">
         <value>Confirm the loss of the slot selection</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings" xml:space="preserve">
+        <value>Account</value>
+    </data>
+    <data name="Shared_NavMenu_GDPR" xml:space="preserve">
+        <value>GDPR</value>
+    </data>
+    <data name="Shared_NavMenu_Settings" xml:space="preserve">
+        <value>Settings</value>
+    </data>
+    <data name="Pages_Settings_PageSettings" xml:space="preserve">
+        <value>Website</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DarkMode" xml:space="preserve">
+        <value>Dark mode</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DeleteAccount" xml:space="preserve">
+        <value>Delete account</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_SteamId64" xml:space="preserve">
+        <value>Steam ID</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_SetAvatar" xml:space="preserve">
+        <value>Set avatar</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_Nickname" xml:space="preserve">
+        <value>Nickname</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_EMail" xml:space="preserve">
+        <value>E-Mail</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DeleteAccount_Confirm_Title" xml:space="preserve">
+        <value>Confirmation of account deletion</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DeleteAccount_Confirm_Message" xml:space="preserve">
+        <value>The deletion of your account is irrevocable! Are you really sure you want to delete your account?</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DeleteAccount_Confirm_YesIamSureIWantToDeleteMyAccount" xml:space="preserve">
+        <value>Yes, I am sure I want to delete my account</value>
+    </data>
+    <data name="Pages_GameServers_UploadFile" xml:space="preserve">
+        <value>Upload file</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmDeleteOfFile_Description" xml:space="preserve">
+        <value>Are you sure you want to delete that file?</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmDeleteOfFile_Title" xml:space="preserve">
+        <value>Confirm file deletion</value>
+    </data>
+    <data name="Shared_NavMenu_Wiki" xml:space="preserve">
+        <value>Wiki</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_Inputs_Title" xml:space="preserve">
+        <value>Title</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_Inputs_Markdown" xml:space="preserve">
+        <value>Content</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_Inputs_Comment" xml:space="preserve">
+        <value>Comment</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_TitleNew" xml:space="preserve">
+        <value>Create wiki page</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_Title" xml:space="preserve">
+        <value>Update wiki page</value>
+    </data>
+    <data name="Pages_Wiki_ConfirmDeletePage_Description" xml:space="preserve">
+        <value>Confirm deletetion of the wiki page</value>
+    </data>
+    <data name="Pages_Wiki_ConfirmDeletePage_Title" xml:space="preserve">
+        <value>Delete confirmation</value>
     </data>
 </root>

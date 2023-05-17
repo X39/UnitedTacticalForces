@@ -290,4 +290,22 @@ Usually this is the same as the installation path and the same as the one entere
     <data name="ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Description" xml:space="preserve">
         <value>Limit value for the maximum length of Steam Query packets. Increasing this value is dangerous, as it can cause the Arma 3 server to send UDP packets that are larger than the MTU. This causes UDP packets to be fragmented, which is not supported by some older routers. However, increasing this value fixes the length limitation of the modlists in Arma 3: Launcher.</value>
     </data>
+    <data name="ServerController_Arma3_GameFolders_MPMissions_Name" xml:space="preserve">
+        <value>Missions</value>
+    </data>
+    <data name="ServerController_Arma3_GameFolders_MPMissions_Description" xml:space="preserve">
+        <value>The folder in which the missions are to be stored.</value>
+    </data>
+    <data name="ServerController_Arma3_Host_HeadlessClientIp_Title" xml:space="preserve">
+        <value>Headless Client IP</value>
+    </data>
+    <data name="ServerController_Arma3_Host_HeadlessClientPassword_Title" xml:space="preserve">
+        <value>Headless Client password</value>
+    </data>
+    <data name="ServerController_Arma3_Host_HeadlessClientIp_Description" xml:space="preserve">
+        <value>The ip address to connect the headless client to.</value>
+    </data>
+    <data name="ServerController_Arma3_Host_HeadlessClientPassword_Description" xml:space="preserve">
+        <value>The password of the server to connect the client to.</value>
+    </data>
 </root>

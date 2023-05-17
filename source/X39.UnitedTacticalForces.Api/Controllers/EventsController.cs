@@ -178,7 +178,6 @@ public class EventsController : ControllerBase
                 .Include((e) => e.Owner)
                 .Include((e) => e.HostedBy)
                 .Include((e) => e.UserMetas!.Where((q) => q.UserFk == userId))
-                .Where((q) => q.ScheduledFor >= DateTime.Today)
                 .OrderBy((q) => q.ScheduledFor);
         }
         else
@@ -188,11 +187,15 @@ public class EventsController : ControllerBase
                 .Include((e) => e.ModPack)
                 .Include((e) => e.Owner)
                 .Include((e) => e.HostedBy)
-                .Where((q) => q.ScheduledFor >= DateTime.Today)
                 .OrderBy((q) => q.ScheduledFor);
         }
 
-        return await query.SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
+        var single = await query.SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
+        if (single is null)
+            return null;
+        if (!single.IsVisible && single.HostedByFk != userId && !User.IsInRoleOrAdmin(Roles.EventModify))
+            return null;
+        return single;
     }
 
     /// <summary>

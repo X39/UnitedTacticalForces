@@ -216,7 +216,7 @@
         <value>In Zwischenablage kopiert</value>
     </data>
     <data name="Hints_LogInUsingSteamAtTheBottomRightForAdditionalFeatures" xml:space="preserve">
-        <value>Bitte melden Sie sich über die Steam-Login-Option unten links auf Ihrem Bildschirm an, um zusätzliche Funktionen zu nutzen.</value>
+        <value>Bitte melden Sie sich über die Steam-Anmeldeoption in der Seitenleiste links (Desktop) oder im Menü oben links (Mobil) auf deinem Bildschirm an, um auf zusätzliche Funktionen zuzugreifen.</value>
     </data>
     <data name="Pages_EventView_FailedToParseConfig_ParsedConfigIsBinarized" xml:space="preserve">
         <value>Die Datei ist binarisiert. Bitte ändern Sie die Speichereinstellungen für die Mission im 3DEN Editor und versuchen Sie es erneut.</value>
@@ -382,5 +382,77 @@
     </data>
     <data name="Dialogs_ConfirmSlotLoss_SelectingSlotWillRemoveSlotSelection" xml:space="preserve">
         <value>Wenn Sie den Annahmestatus ändern, wird auch der ausgewählte Platz entfernt.</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings" xml:space="preserve">
+        <value>Konto</value>
+    </data>
+    <data name="Shared_NavMenu_GDPR" xml:space="preserve">
+        <value>DSGVO</value>
+    </data>
+    <data name="Shared_NavMenu_Settings" xml:space="preserve">
+        <value>Einstellungen</value>
+    </data>
+    <data name="Pages_Settings_PageSettings" xml:space="preserve">
+        <value>Webseite</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DarkMode" xml:space="preserve">
+        <value>Dunkelmodus</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DeleteAccount" xml:space="preserve">
+        <value>Konto Löschen</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_SteamId64" xml:space="preserve">
+        <value>Steam ID</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_SetAvatar" xml:space="preserve">
+        <value>Avatar setzen</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_Nickname" xml:space="preserve">
+        <value>Spitzname</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_EMail" xml:space="preserve">
+        <value>E-Mail</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DeleteAccount_Confirm_Message" xml:space="preserve">
+        <value>Die Löschung Ihres Kontos ist unwiderruflich! Sind Sie wirklich sicher, dass Sie Ihr Konto löschen wollen?</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DeleteAccount_Confirm_Title" xml:space="preserve">
+        <value>Bestätigung der Kontolöschung</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DeleteAccount_Confirm_YesIamSureIWantToDeleteMyAccount" xml:space="preserve">
+        <value>Ja, ich bin sicher, dass ich mein Konto löschen möchte</value>
+    </data>
+    <data name="Pages_GameServers_UploadFile" xml:space="preserve">
+        <value>Datei hochladen</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmDeleteOfFile_Title" xml:space="preserve">
+        <value>Dateilöschung bestätigen</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmDeleteOfFile_Description" xml:space="preserve">
+        <value>Sind Sie sicher, dass Sie die Datei löschen möchten?</value>
+    </data>
+    <data name="Shared_NavMenu_Wiki" xml:space="preserve">
+        <value>Wiki</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_Inputs_Comment" xml:space="preserve">
+        <value>Kommentar</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_Inputs_Markdown" xml:space="preserve">
+        <value>Inhalt</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_Inputs_Title" xml:space="preserve">
+        <value>Titel</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_Title" xml:space="preserve">
+        <value>Wikiseite bearbeiten</value>
+    </data>
+    <data name="Dialogs_CreateWikiRevisionDialog_TitleNew" xml:space="preserve">
+        <value>Wikiseite erstellen</value>
+    </data>
+    <data name="Pages_Wiki_ConfirmDeletePage_Description" xml:space="preserve">
+        <value>Bestätigen Sie die Löschung der Wikiseite</value>
+    </data>
+    <data name="Pages_Wiki_ConfirmDeletePage_Title" xml:space="preserve">
+        <value>Löschbestätigung</value>
     </data>
 </root>

@@ -2,10 +2,10 @@
 @using MudBlazor.Utilities
 @using JetBrains.Annotations
 @inherits LayoutComponentBase
-@inject BaseUrl BaseUrl
-@inject MeService Me
+@inject IJSRuntime JsRuntime
+@inject UiConfiguration UiConfig
 
-<MudThemeProvider Theme="_theme" IsDarkMode="_dark"/>
+<MudThemeProvider Theme="_theme" IsDarkMode="@UiConfig.DarkMode"/>
 <MudDialogProvider/>
 <MudSnackbarProvider/>
 
@@ -15,7 +15,7 @@
             <MudAppBar Elevation="0">
                 <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => ToggleNormalDrawer())"/>
                 <MudSpacer/>
-                <MudImage Src="Insignia.svg" Height="40" ObjectFit="ObjectFit.ScaleDown" @onclick="@(() => _dark = !_dark)"/>
+                <MudImage Src="Insignia.svg" Height="40" ObjectFit="ObjectFit.ScaleDown"/>
             </MudAppBar>
             <MudDrawer Style="top: 0;" @bind-Open="_normalDrawerOpen" Elevation="1">
                 <NavMenu/>
@@ -23,7 +23,7 @@
         </MudHidden>
         <MudHidden Breakpoint="Breakpoint.SmAndDown">
             <MudDrawer @bind-Open="_miniDrawerOpen" Elevation="1" Variant="DrawerVariant.Mini" OpenMiniOnHover="true">
-                <MudImage Src="Insignia.svg" Height="40" ObjectFit="ObjectFit.ScaleDown" ObjectPosition="ObjectPosition.Center" @onclick="@(() => _dark = !_dark)"/>
+                <MudImage Src="Insignia.svg" Height="40" ObjectFit="ObjectFit.ScaleDown" ObjectPosition="ObjectPosition.Center"/>
                 <NavMenu/>
             </MudDrawer>
         </MudHidden>
@@ -36,10 +36,15 @@
 
 @code {
     bool _normalDrawerOpen = true;
-    private bool _dark;
 
     bool _miniDrawerOpen = false;
     void ToggleNormalDrawer() => _normalDrawerOpen = !_normalDrawerOpen;
+
+    protected override async Task OnInitializedAsync()
+    {
+        UiConfig.RegisterComponent(this);
+        await JsRuntime.InvokeVoidAsync("page_clear_init_dark_mode");
+    }
 
 
     private static MudColor ToColor([LanguageInjection(InjectedLanguage.CSS, Prefix = ".any {color: ", Suffix = "}")] string color)
@@ -47,7 +52,7 @@
         return new MudColor(color);
     }
 
-    private MudTheme _theme = new()
+    private readonly MudTheme _theme = new()
     {
         Palette = new Palette
         {

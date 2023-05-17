@@ -15,9 +15,11 @@ public interface IGameServerRepository
     Task<GameServerInfo> StartGameServerAsync(
         GameServer gameServer,
         CancellationToken cancellationToken = default);
+
     Task<GameServerInfo> StopGameServerAsync(
         GameServer gameServer,
         CancellationToken cancellationToken = default);
+
     Task<GameServerInfo> UpgradeGameServerAsync(
         GameServer gameServer,
         CancellationToken cancellationToken = default);
@@ -28,16 +30,16 @@ public interface IGameServerRepository
 
     Task<IReadOnlyCollection<ConfigurationEntryDefinition>> GetConfigurationDefinitionsAsync(
         GameServer gameServer,
-        CancellationToken cancellationToken=default);
+        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<ConfigurationEntry>> GetConfigurationAsync(
         GameServer gameServer,
-        CancellationToken cancellationToken=default);
+        CancellationToken cancellationToken = default);
 
     Task SetConfigurationAsync(
         GameServer gameServer,
         IEnumerable<ConfigurationEntry> configurationEntries,
-        CancellationToken cancellationToken=default);
+        CancellationToken cancellationToken = default);
 
     Task<GameServerInfo> GetGameServerAsync(
         long gameServerId,
@@ -52,8 +54,30 @@ public interface IGameServerRepository
         DateTimeOffset? referenceTimeStamp = null,
         bool descendingByTimestamp = false,
         CancellationToken cancellationToken = default);
+
     Task<long> GetLogsCountAsync(
         GameServer gameServer,
         DateTimeOffset? referenceTimeStamp = null,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<GameFolder>> GetGameServerFoldersAsync(
+        GameServer gameServer,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<GameFileInfo>> GetGameServerFolderFilesAsync(
+        GameServer gameServer,
+        GameFolder gameFolder,
+        CancellationToken cancellationToken = default);
+
+    Task UploadGameServerFolderFileAsync(
+        GameServer gameServer,
+        GameFolder gameFolder,
+        FileParameter file,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteGameServerFolderFileAsync(
+        GameServer gameServer,
+        GameFolder gameFolder,
+        GameFileInfo gameFileInfo,
         CancellationToken cancellationToken = default);
 }

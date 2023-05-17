@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using System.Globalization;
+using AngleSharp.Io;
+using Microsoft.AspNetCore.Authentication;
 
 namespace X39.UnitedTacticalForces.Api.ExtensionMethods;
 
@@ -22,5 +24,13 @@ public static class HttpContextExtensions
         return (from scheme in await context.GetExternalProvidersAsync()
             where string.Equals(scheme.Name, provider, StringComparison.OrdinalIgnoreCase)
             select scheme).Any();
+    }
+
+    public static CultureInfo GetCultureInfo(this HttpRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var cultureInfo = new CultureInfo(
+            request.Headers.AcceptLanguage.FirstOrDefault()?.Split(',', ';').FirstOrDefault() ?? "en-US");
+        return cultureInfo;
     }
 }

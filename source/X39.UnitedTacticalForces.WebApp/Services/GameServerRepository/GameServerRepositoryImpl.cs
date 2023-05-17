@@ -85,6 +85,7 @@ internal class GameServerRepositoryImpl : RepositoryBase, IGameServerRepository
             .ConfigureAwait(false);
         return gameServers.ToImmutableArray();
     }
+
     public async Task<long> GetLogsCountAsync(
         GameServer gameServer,
         DateTimeOffset? referenceTimeStamp = null,
@@ -147,7 +148,7 @@ internal class GameServerRepositoryImpl : RepositoryBase, IGameServerRepository
     {
         if (gameServer.PrimaryKey is null)
             throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
-        await Client.GameServersDeleteAsync(gameServer.PrimaryKey.Value, cancellationToken)
+        await Client.GameServersDeletePostAsync(gameServer.PrimaryKey.Value, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -178,6 +179,72 @@ internal class GameServerRepositoryImpl : RepositoryBase, IGameServerRepository
         if (gameServer.PrimaryKey is null)
             throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
         return await Client.GameServersUpgradeAsync(gameServer.PrimaryKey.Value, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyCollection<GameFolder>> GetGameServerFoldersAsync(
+        GameServer gameServer,
+        CancellationToken cancellationToken = default)
+    {
+        if (gameServer.PrimaryKey is null)
+            throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
+        var folders = await Client.GameServersFoldersAsync(gameServer.PrimaryKey.Value, cancellationToken)
+            .ConfigureAwait(false);
+        return folders.ToImmutableArray();
+    }
+
+    public async Task<IReadOnlyCollection<GameFileInfo>> GetGameServerFolderFilesAsync(
+        GameServer gameServer,
+        GameFolder gameFolder,
+        CancellationToken cancellationToken = default)
+    {
+        if (gameServer.PrimaryKey is null)
+            throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
+        if (gameFolder.Identifier is null)
+            throw new ArgumentException("GameFolder.Identifier is null.", nameof(gameFolder));
+        var folders = await Client.GameServersFilesAsync(
+                gameServer.PrimaryKey.Value,
+                gameFolder.Identifier,
+                cancellationToken)
+            .ConfigureAwait(false);
+        return folders.ToImmutableArray();
+    }
+
+    public async Task UploadGameServerFolderFileAsync(
+        GameServer gameServer,
+        GameFolder gameFolder,
+        FileParameter file,
+        CancellationToken cancellationToken = default)
+    {
+        if (gameServer.PrimaryKey is null)
+            throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
+        if (gameFolder.Identifier is null)
+            throw new ArgumentException("GameFolder.Identifier is null.", nameof(gameFolder));
+        await Client.GameServersUploadAsync(
+                gameServer.PrimaryKey.Value,
+                gameFolder.Identifier,
+                file,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task DeleteGameServerFolderFileAsync(
+        GameServer gameServer,
+        GameFolder gameFolder,
+        GameFileInfo gameFileInfo,
+        CancellationToken cancellationToken = default)
+    {
+        if (gameServer.PrimaryKey is null)
+            throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
+        if (gameFolder.Identifier is null)
+            throw new ArgumentException("GameFolder.Identifier is null.", nameof(gameFolder));
+        if (gameFileInfo.Name is null)
+            throw new ArgumentException("GameFileInfo.Name is null.", nameof(gameFolder));
+        await Client.GameServersDeletePostAsync(
+                gameServer.PrimaryKey.Value,
+                gameFolder.Identifier,
+                gameFileInfo.Name,
+                cancellationToken)
             .ConfigureAwait(false);
     }
 }

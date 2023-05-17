@@ -49,6 +49,8 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     /// <inheritdoc />
     public static string Identifier { get; } = $"arma3-{Constants.Steam.AppId.Arma3Server}";
 
+    private string MpMissionsPath => Path.Combine(GameInstallPath, MpMissionsFolder);
+
     /// <inheritdoc />
     public static Task<IGameServerController> CreateAsync(
         IServiceProvider serviceProvider,
@@ -66,22 +68,25 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     /// <inheritdoc />
     public override bool AllowAnyConfigurationEntry => false;
 
-
     private const string RegExNumber  = """\A[0-9]+\z""";
     private const string RegExBoolean = """\A[01]\z""";
     private const string RegExDecimal = """\A[0-9]+(?:\.[0-9]+)?\z""";
+
 
     private const string RegExArrayOfStrings =
         """\A\{\s*(?:(?<String>"(?:[^"]|"")+?")(?:,(?<String>\s*"(?:[^"]|"")+?"))*)?\}+\z""";
 
     private const string RegExAllowedVoteCmds =
         """\A\{(?:\s*{\s*(?<CommandName>"(?:[^"]|"")+?")(?<PreMissionStart>\s*,\s*(?:true|false)(?<PostMissionStart>\s*,\s*(?:true|false)(?<VotingThreshold>\s*,\s*[0-9]+(?:\.[0-9]+)?(?<PercentSideVotingThreshold>\s*,\s*[0-9]+(?:\.[0-9]+)?)?)?)?)?\s*}\s*(?:,\s*{\s*(?<CommandName>"(?:[^"]|"")+?")(?<PreMissionStart>\s*,\s*(?:true|false)(?<PostMissionStart>\s*,\s*(?:true|false)(?<VotingThreshold>\s*,\s*[0-9]+(?:\.[0-9]+)?(?<PercentSideVotingThreshold>\s*,\s*[0-9]+(?:\.[0-9]+)?)?)?)?)?\s*}\s*)*)?\}+\z""";
+
     private const string RegExAllowedVotedAdminCmds =
         """\A\{(?:\s*{\s*(?<CommandName>"(?:[^"]|"")+?")(?<PreMissionStart>\s*,\s*(?:true|false)(?<PostMissionStart>\s*,\s*(?:true|false))?)?\s*}\s*(?:,\s*{\s*(?<CommandName>"(?:[^"]|"")+?")(?<PreMissionStart>\s*,\s*(?:true|false)(?<PostMissionStart>\s*,\s*(?:true|false))?)?\s*}\s*)*)?\}+\z""";
 
-    private const string RealmHost      = "host";
-    private const string RealmServerCfg = "server.cfg";
-    private const string RealmBasicCfg  = "basic.cfg";
+    private const string RealmHost        = "host";
+    private const string RealmServerCfg   = "server.cfg";
+    private const string RealmBasicCfg    = "basic.cfg";
+    private const string MpMissionsFolder = "mpmissions";
+
 
     /// <inheritdoc />
     public override IEnumerable<ConfigurationEntryDefinition> GetConfigurationEntryDefinitions(CultureInfo cultureInfo)
@@ -92,26 +97,28 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Number, "port", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Port_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Port_Description), cultureInfo) ?? string.Empty, DefaultValue: "2302");
         yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Raw, "serverMod", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_ServerMod_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_ServerMod_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Raw, "mod", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Mod_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Mod_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Raw, "headless-client-ip", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_HeadlessClientIp_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_HeadlessClientIp_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Raw, "headless-client-password", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_HeadlessClientPassword_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_HeadlessClientPassword_Description), cultureInfo) ?? string.Empty);
         // https://community.bistudio.com/wiki/Arma_3:_Server_Config_File top to bottom
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Password, "passwordAdmin", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_PasswordAdmin_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_PasswordAdmin_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Password, "password", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Password_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Password_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Password, "serverCommandPassword", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerCommandPassword_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerCommandPassword_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(true, RealmServerCfg, EConfigurationEntryKind.String, "hostname", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Hostname_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Hostname_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(true, RealmServerCfg, EConfigurationEntryKind.Number, "maxPlayers", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxPlayers_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxPlayers_Description), cultureInfo) ?? string.Empty, MinValue: 0);
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "motd[]",                            RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Motd_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Motd_Description), cultureInfo) ?? string.Empty);
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "admins[]",                          RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Admins_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Admins_Description), cultureInfo) ?? string.Empty);
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "headlessClients[]",                 RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_HeadlessClients_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_HeadlessClients_Description), cultureInfo) ?? string.Empty);
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "localClient[]",                     RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_LocalClient_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_LocalClient_Description), cultureInfo) ?? string.Empty);
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "filePatchingExceptions[]",          RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_FilePatchingExceptions_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_FilePatchingExceptions_Description), cultureInfo) ?? string.Empty);
-        
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Number, "voteThreshold",                     RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_VoteThreshold_Title), cultureInfo) ?? string.Empty,                        Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_VoteThreshold_Description), cultureInfo) ?? string.Empty                                                                                           );
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Number, "voteMissionPlayers",                RegExDecimal, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_VoteMissionPlayers_Title), cultureInfo) ?? string.Empty,                   Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_VoteMissionPlayers_Description), cultureInfo) ?? string.Empty                                                                                           );
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "allowedVoteCmds[]",                 RegExAllowedVoteCmds, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Title), cultureInfo) ?? string.Empty,                 Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Description), cultureInfo) ?? string.Empty , DefaultValue: "{}"                                                                                          );
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "allowedVotedAdminCmds[]",           RegExAllowedVotedAdminCmds, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Title), cultureInfo) ?? string.Empty,           Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Description), cultureInfo) ?? string.Empty         ,DefaultValue: "{}"                                                                                  );
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "kickduplicate",                     RegExBoolean, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Kickduplicate_Title), cultureInfo) ?? string.Empty,                        Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Kickduplicate_Description), cultureInfo) ?? string.Empty                                                                                           );
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "loopback",                          RegExBoolean, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Loopback_Title), cultureInfo) ?? string.Empty,                             Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Loopback_Description), cultureInfo) ?? string.Empty                                                                                           );
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "upnp",                              RegExBoolean, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Upnp_Title), cultureInfo) ?? string.Empty,                                 Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Upnp_Description), cultureInfo) ?? string.Empty                                                                                           );
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Selection, "allowedFilePatching",               null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Title), cultureInfo) ?? string.Empty,                  Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Description), cultureInfo) ?? string.Empty    , DefaultValue: "0", AllowedValues:new ValuePair[]{new(Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Name), cultureInfo) ?? string.Empty, "0", Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Description), cultureInfo) ?? string.Empty), new(Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Name), cultureInfo) ?? string.Empty, "1", Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Description), cultureInfo) ?? string.Empty), new(Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Name), cultureInfo) ?? string.Empty, "2", Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Description), cultureInfo) ?? string.Empty)}                                                                                       );
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "motd[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Motd_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Motd_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "admins[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Admins_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Admins_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "headlessClients[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_HeadlessClients_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_HeadlessClients_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "localClient[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_LocalClient_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_LocalClient_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "filePatchingExceptions[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_FilePatchingExceptions_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_FilePatchingExceptions_Description), cultureInfo) ?? string.Empty);
+
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Number, "voteThreshold", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_VoteThreshold_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_VoteThreshold_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Number, "voteMissionPlayers", RegExDecimal, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_VoteMissionPlayers_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_VoteMissionPlayers_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "allowedVoteCmds[]", RegExAllowedVoteCmds, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Description), cultureInfo) ?? string.Empty, DefaultValue: "{}");
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "allowedVotedAdminCmds[]", RegExAllowedVotedAdminCmds, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Description), cultureInfo) ?? string.Empty, DefaultValue: "{}");
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "kickduplicate", RegExBoolean, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Kickduplicate_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Kickduplicate_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "loopback", RegExBoolean, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Loopback_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Loopback_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "upnp", RegExBoolean, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Upnp_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Upnp_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Selection, "allowedFilePatching", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Description), cultureInfo) ?? string.Empty, DefaultValue: "0", AllowedValues: new ValuePair[] {new(Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Name), cultureInfo) ?? string.Empty, "0", Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Description), cultureInfo) ?? string.Empty), new(Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Name), cultureInfo) ?? string.Empty, "1", Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Description), cultureInfo) ?? string.Empty), new(Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Name), cultureInfo) ?? string.Empty, "2", Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Description), cultureInfo) ?? string.Empty)});
         // yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "allowedLoadFileExtensions[]",       RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedLoadFileExtensionsArray_Title), cultureInfo) ?? string.Empty,       Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedLoadFileExtensionsArray_Description), cultureInfo) ?? string.Empty                                                                                           );
         // yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "allowedPreprocessFileExtensions[]", RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedPreprocessFileExtensionsArray_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedPreprocessFileExtensionsArray_Description), cultureInfo) ?? string.Empty                                                                                           );
         // yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "allowedHTMLLoadExtensions[]",       RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedHTMLLoadExtensionsArray_Title), cultureInfo) ?? string.Empty,       Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AllowedHTMLLoadExtensionsArray_Description), cultureInfo) ?? string.Empty                                                                                           );
@@ -139,7 +146,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         // yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "randomMissionOrder",                RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_RandomMissionOrder_Title), cultureInfo) ?? string.Empty,                   Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_RandomMissionOrder_Description), cultureInfo) ?? string.Empty                                                                                           );
         // yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "disableChannels[]",                 RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_DisableChannelsArray_Title), cultureInfo) ?? string.Empty,                 Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_DisableChannelsArray_Description), cultureInfo) ?? string.Empty                                                                                           );
         // Other Options
-        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "steamProtocolMaxDataSize",                 RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_OtherOptions), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Title), cultureInfo) ?? string.Empty,                 Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Description), cultureInfo) ?? string.Empty                                                                                           );
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Number, "steamProtocolMaxDataSize", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_OtherOptions), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Description), cultureInfo) ?? string.Empty);
         // https://community.bistudio.com/wiki/Arma_3:_Basic_Server_Config_File
         yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxMsgSend", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxMsgSend_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxMsgSend_Description), cultureInfo) ?? string.Empty, DefaultValue: "128");
         yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxSizeGuaranteed", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Description), cultureInfo) ?? string.Empty, DefaultValue: "512");
@@ -153,6 +160,136 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         // https://community.bistudio.com/wiki/Arma_3:_Server_Profile
         // ReSharper restore StringLiteralTypo
         // @formatter:max_line_length restore
+    }
+
+    /// <inheritdoc />
+    public override Task<IEnumerable<GameFolder>> GetGameFoldersAsync(
+        CultureInfo cultureInfo,
+        CancellationToken cancellationToken = default)
+    {
+        IEnumerable<GameFolder> Yield()
+        {
+            yield return new GameFolder
+            {
+                Identifier = MpMissionsFolder,
+                Name = Language.ResourceManager.GetString(
+                    nameof(Language.ServerController_Arma3_GameFolders_MPMissions_Name),
+                    cultureInfo) ?? string.Empty,
+                Description = Language.ResourceManager.GetString(
+                    nameof(Language.ServerController_Arma3_GameFolders_MPMissions_Description),
+                    cultureInfo) ?? string.Empty,
+                AllowedExtensions = new []{".pbo"},
+            };
+        }
+
+        return Task.FromResult(Yield());
+    }
+
+    /// <inheritdoc />
+    public override Task<IEnumerable<GameFileInfo>> GetGameFolderFilesAsync(GameFolder folder, CultureInfo cultureInfo, CancellationToken cancellationToken = default)
+    {
+        switch (folder.Identifier)
+        {
+            case MpMissionsFolder:
+            {
+                Directory.CreateDirectory(MpMissionsPath);
+                return Task.FromResult<IEnumerable<GameFileInfo>>(Directory.GetFiles(MpMissionsPath, "*.pbo", SearchOption.TopDirectoryOnly)
+                    .Select(
+                        pboPath => new GameFileInfo(
+                            Path.GetFileName(pboPath),
+                            new FileInfo(pboPath).Length,
+                            "application/octet-stream"))
+                    .ToArray());
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(folder));
+        }
+        
+    }
+
+    /// <inheritdoc />
+    public override bool CanModifyGameFiles => CanStart;
+
+    /// <inheritdoc />
+    public override async Task<Stream> GetGameFolderFileAsync(
+        GameFolder folder,
+        GameFileInfo file,
+        CancellationToken cancellationToken = default)
+    {
+        var filePath = Path.Combine(MpMissionsPath, file.Name);
+        if (!file.Name.EndsWith(".pbo", StringComparison.OrdinalIgnoreCase))
+            // ReSharper disable once LocalizableElement
+            throw new ArgumentException("Invalid file", nameof(file));
+        if (file.Name.Contains('/', StringComparison.OrdinalIgnoreCase)
+            || file.Name.Contains('\\', StringComparison.OrdinalIgnoreCase))
+            // ReSharper disable once LocalizableElement
+            throw new ArgumentException("Invalid file", nameof(file));
+        switch (folder.Identifier)
+        {
+            case MpMissionsFolder:
+            {
+                if (!File.Exists(filePath))
+                    throw new IOException("File not found");
+                return File.OpenRead(filePath);
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(folder));
+        }
+    }
+
+    /// <inheritdoc />
+    public override async Task UploadFileAsync(GameFolder folder, GameFileInfo file, Stream stream)
+    {
+        if (!CanStart)
+            throw new InvalidOperationException("Server is running");
+        switch (folder.Identifier)
+        {
+            case MpMissionsFolder:
+            {
+                if (!file.Name.EndsWith(".pbo", StringComparison.OrdinalIgnoreCase))
+                    // ReSharper disable once LocalizableElement
+                    throw new ArgumentException("Invalid file", nameof(file));
+                if (file.Name.Contains('/', StringComparison.OrdinalIgnoreCase)
+                    || file.Name.Contains('\\', StringComparison.OrdinalIgnoreCase))
+                    // ReSharper disable once LocalizableElement
+                    throw new ArgumentException("Invalid file", nameof(file));
+                Directory.CreateDirectory(MpMissionsPath);
+                await using var fileStream = File.OpenWrite(Path.Combine(MpMissionsPath, file.Name));
+                await stream.CopyToAsync(fileStream)
+                    .ConfigureAwait(false);
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(folder));
+        }
+    }
+
+    /// <inheritdoc />
+    public override Task DeleteFileAsync(GameFolder folder, GameFileInfo file)
+    {
+        if (!CanStart)
+            throw new InvalidOperationException("Server is running");
+        switch (folder.Identifier)
+        {
+            case MpMissionsFolder:
+            {
+                if (!file.Name.EndsWith(".pbo", StringComparison.OrdinalIgnoreCase))
+                    // ReSharper disable once LocalizableElement
+                    throw new ArgumentException("Invalid file", nameof(file));
+                if (file.Name.Contains('/', StringComparison.OrdinalIgnoreCase)
+                    || file.Name.Contains('\\', StringComparison.OrdinalIgnoreCase))
+                    // ReSharper disable once LocalizableElement
+                    throw new ArgumentException("Invalid file", nameof(file));
+                Directory.CreateDirectory(MpMissionsPath);
+                if (File.Exists(Path.Combine(MpMissionsPath, file.Name)))
+                    File.Delete(Path.Combine(MpMissionsPath, file.Name));
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(folder));
+        }
+
+        return Task.CompletedTask;
     }
 
     private StreamWriter CreateServerConfigurationWriter()
@@ -284,7 +421,6 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                 await WritePathSegmentsIfNeeded(streamWriter, pathSegments)
                     .ConfigureAwait(false);
 
-                var path = configurationEntry.Path;
                 var definition = entryDefinitions.GetValueOrDefault(
                     (configurationEntry.Realm, configurationEntry.Path));
                 var value = definition?.Kind is EConfigurationEntryKind.String or EConfigurationEntryKind.Password
@@ -343,6 +479,17 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
 
         CreateDirectory(ProfilesPath);
         psi.ArgumentList.Add($"-profiles={ProfilesPath}");
+        var headlessClientIp = await GetAsync("host://headless-client-ip", "").ConfigureAwait(false);
+        var headlessClientPassword = await GetAsync("host://headless-client-password", "").ConfigureAwait(false);
+        if (headlessClientIp.IsNotNullOrWhiteSpace())
+        {
+            psi.ArgumentList.Add("-client");
+            psi.ArgumentList.Add($"-connect={headlessClientIp}");
+            if (headlessClientPassword.IsNotNullOrWhiteSpace())
+            {
+                psi.ArgumentList.Add($"-password={headlessClientPassword}");
+            }
+        }
 
         var port = await GetAsync("host://port", -1).ConfigureAwait(false);
         if (port > 0)
@@ -409,12 +556,14 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                     "No file exists at {FilePath}, proceeding to create SymLink",
                     file);
             }
+
             Logger.LogDebug(
                 "Creating SymLink at {FilePath} pointing towards {SymLinkTarget}",
                 file,
                 relative);
             fileInfo.CreateAsSymbolicLink(relative);
         }
+
         return Task.FromResult<IReadOnlyCollection<string>>(result.AsReadOnly());
     }
 
@@ -429,7 +578,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     private async Task<IReadOnlyCollection<long>> GetWorkshopIdsAsync(ApiDbContext dbContext)
     {
         const string workshopBase = "https://steamcommunity.com/sharedfiles/filedetails/?id=";
-        var modPackPk = GameServer.SelectedModPackFk;
+        var modPackPk = GameServer.ActiveModPackFk;
         if (modPackPk is null)
             return ArraySegment<long>.Empty;
         var mod = await dbContext.ModPacks.SingleOrDefaultAsync((q) => q.PrimaryKey == modPackPk).ConfigureAwait(false);
@@ -478,6 +627,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         {
             var workshopPath = await DoUpdateWorkshopMod(workshopItemId, executingUser)
                 .ConfigureAwait(false);
+            // ReSharper disable once InvertIf
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 var lowerCaseWorkshopPath = GetLowercasedWorkshopPath(workshopItemId);

@@ -46,6 +46,8 @@ public class Role
         yield return new Role {PrimaryKey = ++id, Category = "Server",         Title = "Server config",          Identifier = Roles.ServerUpdate};
         yield return new Role {PrimaryKey = ++id, Category = "Server",         Title = "Server upgrade",         Identifier = Roles.ServerUpgrade};
         yield return new Role {PrimaryKey = ++id, Category = "Server",         Title = "Server mod-pack",        Identifier = Roles.ServerChangeModPack};
+        yield return new Role {PrimaryKey = ++id, Category = "Server",         Title = "Server files",           Identifier = Roles.ServerFiles};
+        yield return new Role {PrimaryKey = ++id, Category = "Wiki",           Title = "Wiki Editor",            Identifier = Roles.WikiEditor};
         // @formatter:max_line_length restore
     }
 }

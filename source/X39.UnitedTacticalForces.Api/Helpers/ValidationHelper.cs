@@ -31,9 +31,11 @@ namespace X39.UnitedTacticalForces.Api.Helpers;
                 throw new Exception();
             if (!steamIdentity.TryGetSteamId64(out var steamId64))
                 throw new Exception();
+            if (steamId64 is 0)
+                throw new Exception();
             var user = await apiDbContext.Users
                 .Include((e) => e.Roles)
-                .SingleOrDefaultAsync((user) => user.SteamId64 == steamId64)
+                .SingleOrDefaultAsync((user) => user.SteamId64 == steamId64 && !user.IsDeleted)
                 .ConfigureAwait(false);
             if (user is null)
             {
@@ -80,7 +82,7 @@ namespace X39.UnitedTacticalForces.Api.Helpers;
                 throw new Exception();
             var user = await apiDbContext.Users
                 .Include((e) => e.Roles)
-                .SingleOrDefaultAsync((user) => user.SteamId64 == steamId64)
+                .SingleOrDefaultAsync((user) => user.SteamId64 == steamId64 && !user.IsDeleted)
                 .ConfigureAwait(false);
             if (user is null)
                 throw new Exception();

@@ -44,6 +44,14 @@ public class ApiDbContext : DbContext
 
     #endregion
 
+    #region Wiki
+
+    public DbSet<Wiki.WikiPage> WikiPages { get; set; } = null!;
+    public DbSet<Wiki.WikiPageRevision> WikiPageRevisions { get; set; } = null!;
+    public DbSet<Wiki.WikiPageAudit> WikiPageAudits { get; set; } = null!;
+
+    #endregion
+
     #region Hosting
 
     public DbSet<ConfigurationEntry> ConfigurationEntries { get; set; } = null!;
