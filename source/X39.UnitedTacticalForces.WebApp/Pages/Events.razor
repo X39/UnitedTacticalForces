@@ -89,11 +89,11 @@
             }
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Events_Table_ModPack)]">
-            @if (context.ModPack is not null)
+            @if (context.ModPackRevision is not null)
             {
                 <div class="d-inline-flex align-center" style="white-space: nowrap">
-                    <MudText>@(context.ModPack.Title)</MudText>
-                    <UtfModPackDownloadButton ModPack="@(context.ModPack)"></UtfModPackDownloadButton>
+                    <MudText>@(context.ModPackRevision?.Definition?.Title)</MudText>
+                    <UtfModPackDownloadButton ModPack="@(context.ModPackRevision)"></UtfModPackDownloadButton>
                 </div>
             }
         </MudTd>
@@ -148,7 +148,7 @@
     private long _eventCounts = -1;
     private MudTable<Event> _mudTable = null!;
     private readonly Dictionary<Guid, User> _users = new();
-    private readonly Dictionary<long, ModPack> _modPacks = new();
+    private readonly Dictionary<long, ModPackRevision> _modPacks = new();
     private readonly Dictionary<long, Terrain> _terrains = new();
 
     private async Task<TableData<Event>> ServerDataAsync(TableState arg)
@@ -187,18 +187,18 @@
                 }
                 eventItem.HostedBy = user;
             }
-            if (eventItem.ModPackFk is not null)
+            if (eventItem.ModPackRevisionFk is not null)
             {
-                var modPackFk = eventItem.ModPackFk.Value;
-                if (!_modPacks.TryGetValue(modPackFk, out var modPack))
+                var modPackRevisionFk = eventItem.ModPackRevisionFk.Value;
+                if (!_modPacks.TryGetValue(modPackRevisionFk, out var modPack))
                 {
-                    var tmp = await ModPackRepository.GetModPackAsync(modPackFk, CancellationToken.None)
+                    var tmp = await ModPackRepository.GetModPackRevisionAsync(modPackRevisionFk, CancellationToken.None)
                         .ConfigureAwait(false);
                     if (tmp is null)
                         continue;
-                    _modPacks[modPackFk] = modPack = tmp;
+                    _modPacks[modPackRevisionFk] = modPack = tmp;
                 }
-                eventItem.ModPack = modPack;
+                eventItem.ModPackRevision = modPack;
             }
             if (eventItem.TerrainFk is not null)
             {

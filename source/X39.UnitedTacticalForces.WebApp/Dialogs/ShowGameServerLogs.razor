@@ -14,7 +14,7 @@
         <MudTable @ref="_mudTable"
                   Dense="true"
                   ServerData="GetLogsAsync"
-                  RowsPerPage="50"
+                  RowsPerPage="500"
                   Virtualize="true"
                   FixedFooter="true"
                   FixedHeader="true"
@@ -49,7 +49,7 @@
                 </MudTd>
             </RowTemplate>
             <PagerContent>
-                <MudTablePager PageSizeOptions="@(new[] {50, 100, 250, 500})"/>
+                <MudTablePager PageSizeOptions="@(new[] {500, 1000, 5000})"/>
             </PagerContent>
         </MudTable>
     </DialogContent>

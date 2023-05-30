@@ -31,4 +31,37 @@ public partial class EventSlot
                && obj.Side == Side
                && obj.Group == Group;
     }
+    public EventSlot DeepCopy()
+    {
+        return new EventSlot
+        {
+            Event = Event?.DeepCopy(),
+            Group = Group,
+            Side = Side,
+            Title = Title,
+            AssignedTo = AssignedTo?.PartialCopy(),
+            EventFk = EventFk,
+            IsVisible = IsVisible,
+            SlotNumber = SlotNumber,
+            AssignedToFk = AssignedToFk,
+            IsSelfAssignable = IsSelfAssignable,
+        };
+    }
+
+    public EventSlot ShallowCopy()
+    {
+        return new EventSlot
+        {
+            Event            = null,
+            Group            = Group,
+            Side             = Side,
+            Title            = Title,
+            AssignedTo       = null,
+            EventFk          = EventFk,
+            IsVisible        = IsVisible,
+            SlotNumber       = SlotNumber,
+            AssignedToFk     = AssignedToFk,
+            IsSelfAssignable = IsSelfAssignable,
+        };
+    }
 }

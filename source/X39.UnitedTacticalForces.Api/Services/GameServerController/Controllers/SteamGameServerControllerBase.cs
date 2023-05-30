@@ -92,21 +92,22 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 {
                     await using var dbContext = await DbContextFactory.CreateDbContextAsync()
                         .ConfigureAwait(false);
-                    dbContext.GameServers.Attach(GameServer);
+                    var gameServer = await GetGameServerAsync(dbContext)
+                        .ConfigureAwait(false);
                     Logger.LogInformation(
                         "User {UserId} initialized stopping of server {GameServer} ({GameServerPk})",
-                        GameServer.Title,
-                        GameServer.PrimaryKey,
+                        gameServer.Title,
+                        gameServer.PrimaryKey,
                         executingUser?.PrimaryKey);
                     Process? process = null;
                     ProcessStartInfo? processStartInfo = null;
                     try
                     {
-                        GameServer.Status = ELifetimeStatus.Starting;
+                        gameServer.Status = ELifetimeStatus.Starting;
                         await dbContext.LifetimeEvents.AddAsync(
                                 new LifetimeEvent
                                 {
-                                    GameServerFk = GameServer.PrimaryKey,
+                                    GameServerFk = gameServer.PrimaryKey,
                                     TimeStamp    = DateTimeOffset.Now,
                                     ExecutedByFk = executingUser?.PrimaryKey,
                                     Status       = ELifetimeStatus.Starting,
@@ -120,8 +121,8 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         processStartInfo = await GetProcessStartInfoAsync(dbContext, executingUser);
                         Logger.LogInformation(
                             "User {User} has requested starting of server {GameServer} ({GameServerPk}) with {LaunchArgs}",
-                            GameServer.Title,
-                            GameServer.PrimaryKey,
+                            gameServer.Title,
+                            gameServer.PrimaryKey,
                             $"{processStartInfo.FileName} {string.Join(' ', processStartInfo.ArgumentList.Select((q) => string.Concat('"', q, '"')))}",
                             executingUser?.PrimaryKey);
                         process = new Process
@@ -143,11 +144,11 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                             throw new FailedToStartProcessException(processStartInfo);
                         if (Process.HasExited)
                             throw new FailedToStartProcessException(processStartInfo);
-                        GameServer.Status = ELifetimeStatus.Running;
+                        gameServer.Status = ELifetimeStatus.Running;
                         await dbContext.LifetimeEvents.AddAsync(
                                 new LifetimeEvent
                                 {
-                                    GameServerFk = GameServer.PrimaryKey,
+                                    GameServerFk = gameServer.PrimaryKey,
                                     TimeStamp    = DateTimeOffset.Now,
                                     ExecutedByFk = executingUser?.PrimaryKey,
                                     Status       = ELifetimeStatus.Running,
@@ -173,12 +174,12 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         Logger.LogError(
                             ex,
                             "Failed starting server {GameServer} ({GameServerPk}) with {LaunchArgs} requested by user {User}",
-                            GameServer.Title,
-                            GameServer.PrimaryKey,
+                            gameServer.Title,
+                            gameServer.PrimaryKey,
                             processStartInfo?.ArgumentList,
                             executingUser?.PrimaryKey);
                         Process           = null;
-                        GameServer.Status = ELifetimeStatus.Stopped;
+                        gameServer.Status = ELifetimeStatus.Stopped;
                         await dbContext.SaveChangesAsync()
                             .ConfigureAwait(false);
                         throw;
@@ -197,17 +198,19 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 {
                     await using var dbContext = await DbContextFactory.CreateDbContextAsync()
                         .ConfigureAwait(false);
-                    dbContext.GameServers.Attach(GameServer);
+                    var gameServer = await GetGameServerAsync(dbContext)
+                        .ConfigureAwait(false);
+                    dbContext.GameServers.Attach(gameServer);
                     Logger.LogInformation(
                         "User {UserId} initialized stopping of server {GameServer} ({GameServerPk})",
-                        GameServer.Title,
-                        GameServer.PrimaryKey,
+                        gameServer.Title,
+                        gameServer.PrimaryKey,
                         executingUser?.PrimaryKey);
-                    GameServer.Status = ELifetimeStatus.Stopping;
+                    gameServer.Status = ELifetimeStatus.Stopping;
                     await dbContext.LifetimeEvents.AddAsync(
                             new LifetimeEvent
                             {
-                                GameServerFk = GameServer.PrimaryKey,
+                                GameServerFk = gameServer.PrimaryKey,
                                 TimeStamp    = DateTimeOffset.Now,
                                 ExecutedByFk = executingUser?.PrimaryKey,
                                 Status       = ELifetimeStatus.Stopping,
@@ -238,8 +241,8 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
 
                         Logger.LogInformation(
                             "Stopped the process of {GameServer} ({GameServerPk}) requested by user {UserId}",
-                            GameServer.Title,
-                            GameServer.PrimaryKey,
+                            gameServer.Title,
+                            gameServer.PrimaryKey,
                             executingUser?.PrimaryKey);
                     }
                     catch (Exception ex)
@@ -247,8 +250,8 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         Logger.LogError(
                             ex,
                             "Failed to gracefully stop the process of {GameServer} ({GameServerPk}) requested by user {UserId}",
-                            GameServer.Title,
-                            GameServer.PrimaryKey,
+                            gameServer.Title,
+                            gameServer.PrimaryKey,
                             executingUser?.PrimaryKey);
                         // ReSharper disable once AccessToDisposedClosure
                         Fault.Ignore(() => Process?.Kill(true));
@@ -263,11 +266,11 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         tmp?.Dispose();
                     }
 
-                    GameServer.Status = ELifetimeStatus.Stopped;
+                    gameServer.Status = ELifetimeStatus.Stopped;
                     await dbContext.LifetimeEvents.AddAsync(
                             new LifetimeEvent
                             {
-                                GameServerFk = GameServer.PrimaryKey,
+                                GameServerFk = gameServer.PrimaryKey,
                                 TimeStamp    = DateTimeOffset.Now,
                                 ExecutedByFk = executingUser?.PrimaryKey,
                                 Status       = ELifetimeStatus.Stopped,
@@ -293,7 +296,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             var installPath = Path.Combine(
                 installBasePath,
                 ServerAppId.ToString(),
-                GameServer.PrimaryKey.ToString("00000000"),
+                GameServerPrimaryKey.ToString("00000000"),
                 "server-instance");
             return installPath;
         }
@@ -310,7 +313,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             var installPath = Path.Combine(
                 installBasePath,
                 ServerAppId.ToString(),
-                GameServer.PrimaryKey.ToString("00000000"));
+                GameServerPrimaryKey.ToString("00000000"));
             return installPath;
         }
     }
@@ -331,11 +334,40 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                     var installPath = GameInstallPath;
                     await using (var dbContext = await DbContextFactory.CreateDbContextAsync().ConfigureAwait(false))
                     {
-                        dbContext.Attach(GameServer);
-                        GameServer.ActiveModPack   = GameServer.SelectedModPack;
-                        GameServer.ActiveModPackFk = GameServer.SelectedModPackFk;
+                        var gameServer = await GetGameServerAsync(dbContext)
+                            .ConfigureAwait(false);
+                        var modPackDefinition = gameServer.SelectedModPackFk is not null
+                            ? await dbContext.ModPackDefinitions
+                                .Include((e) => e.ModPackRevisions!.Where((q) => q.IsActive))
+                                .SingleOrDefaultAsync((q) => q.PrimaryKey == gameServer.SelectedModPackFk)
+                                .ConfigureAwait(false)
+                            : null;
+                        Logger.LogInformation(
+                            "Changing ModPack of {GameServerTitle} ({GameServerPrimaryKey}) to {ModPackTitle} ({ModPackId})",
+                            gameServer.Title,
+                            gameServer.PrimaryKey,
+                            modPackDefinition?.Title ?? "null",
+                            modPackDefinition?.ModPackRevisions!.First().PrimaryKey);
+                        await dbContext.GameServerLogs.AddAsync(
+                                new GameServerLog
+                                {
+                                    GameServerFk = gameServer.PrimaryKey,
+                                    TimeStamp    = DateTimeOffset.Now,
+                                    Message = string.Format(
+                                        "Changing ModPack of {0} ({1}) to {2} ({3})",
+                                        gameServer.Title,
+                                        gameServer.PrimaryKey,
+                                        modPackDefinition?.Title ?? "null",
+                                        modPackDefinition?.ModPackRevisions!.First().PrimaryKey),
+                                    Source   = "Server-Upgrade",
+                                    LogLevel = LogLevel.Information,
+                                })
+                            .ConfigureAwait(false);
+                        gameServer.ActiveModPack   = modPackDefinition?.ModPackRevisions!.First();
+                        gameServer.ActiveModPackFk = modPackDefinition?.ModPackRevisions!.First().PrimaryKey;
                         await dbContext.SaveChangesAsync().ConfigureAwait(false);
                     }
+
                     await DoUpdateGameAsync(
                             steamCmdPath,
                             installPath,
@@ -348,8 +380,9 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         .ConfigureAwait(false);
                     await using (var dbContext = await DbContextFactory.CreateDbContextAsync().ConfigureAwait(false))
                     {
-                        dbContext.Attach(GameServer);
-                        GameServer.TimeStampUpgraded = DateTimeOffset.Now;
+                        var gameServer = await GetGameServerAsync(dbContext)
+                            .ConfigureAwait(false);
+                        gameServer.TimeStampUpgraded = DateTimeOffset.Now;
                         await dbContext.SaveChangesAsync().ConfigureAwait(false);
                     }
                 })
@@ -377,8 +410,8 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
     {
         Logger.LogInformation(
             "Starting update of {GameServer} ({GameServerPk}) via SteamCmd, requested by user {UserId}",
-            GameServer.Title,
-            GameServer.PrimaryKey,
+            GameServerLastKnownTitle,
+            GameServerPrimaryKey,
             executingUser?.PrimaryKey);
         var psi = new ProcessStartInfo
         {
@@ -419,21 +452,31 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             throw new Exception("SteamCmd operation failed.");
         Logger.LogInformation(
             "Finished update of {GameServer} ({GameServerPk}) via SteamCmd, requested by user {UserId}",
-            GameServer.Title,
-            GameServer.PrimaryKey,
+            GameServerLastKnownTitle,
+            GameServerPrimaryKey,
             executingUser?.PrimaryKey);
     }
 
     private async Task SteamCmdLogAsync(LogLevel logLevel, string message, DateTimeOffset timeStamp)
     {
         await using var dbContext = await DbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        var gameServer = await GetGameServerAsync(dbContext)
+            .ConfigureAwait(false);
+        Logger.Log(
+            logLevel,
+            "[{TimeStamp}] SteamCmd for {GameServer} ({GameServerId}): {Message}",
+            timeStamp,
+            gameServer.Title,
+            gameServer.PrimaryKey,
+            message);
         dbContext.GameServerLogs.Add(
             new GameServerLog
             {
-                Message   = message,
-                TimeStamp = timeStamp,
-                LogLevel  = logLevel,
-                Source    = "SteamCmd",
+                Message      = message,
+                TimeStamp    = timeStamp,
+                LogLevel     = logLevel,
+                Source       = "SteamCmd",
+                GameServerFk = gameServer.PrimaryKey,
             });
         await dbContext.SaveChangesAsync().ConfigureAwait(false);
     }
@@ -463,7 +506,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         var (steamCmdPath,
             steamUsername,
             steamPassword,
-            installBasePath) = GetSteamCmdInformationTuple();
+            _) = GetSteamCmdInformationTuple();
         var installPath = GetWorkshopPath(workshopId);
         Logger.LogInformation(
             "Starting update of workshop item {WorkshopId} via SteamCmd, requested by user {UserId}",
@@ -664,15 +707,15 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         Task.Run(
             async () =>
             {
+                Logger.LogDebug(
+                    "{GameServer} ({GameServerPk}): [{LogLevel}] {Message}",
+                    GameServerLastKnownTitle,
+                    GameServerPrimaryKey,
+                    logLevel,
+                    message);
                 const int maxAttempts = 3;
                 for (var i = 1; i < maxAttempts; i++)
                 {
-                    Logger.LogDebug(
-                        "{GameServer} ({GameServerPk}): [{LogLevel}] {Message}",
-                        GameServer.Title,
-                        GameServer.PrimaryKey,
-                        logLevel,
-                        message);
                     try
                     {
                         await using var dbContext = await DbContextFactory
@@ -681,10 +724,11 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         await dbContext.GameServerLogs.AddAsync(
                                 new GameServerLog
                                 {
-                                    TimeStamp = now,
-                                    LogLevel  = logLevel,
-                                    Message   = message,
-                                    Source    = $"[{GameServer.PrimaryKey}] {GameServer.Title}",
+                                    TimeStamp    = now,
+                                    LogLevel     = logLevel,
+                                    Message      = message,
+                                    Source       = $"[{GameServerPrimaryKey}] {GameServerLastKnownTitle}",
+                                    GameServerFk = GameServerPrimaryKey,
                                 },
                                 _cancellationTokenSource.Token)
                             .ConfigureAwait(false);
@@ -699,8 +743,8 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                             "Failed to register the following in attempt {Attempt}/{MaxAttempts} log message for {GameServer} ({GameServerPk}): [{LogLevel}] {Message}",
                             i,
                             maxAttempts,
-                            GameServer.Title,
-                            GameServer.PrimaryKey,
+                            GameServerLastKnownTitle,
+                            GameServerPrimaryKey,
                             logLevel,
                             message);
                     }
@@ -711,10 +755,13 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
 
     private void ProcessOnExited(object? sender, EventArgs e)
     {
-        using var dbContext = DbContextFactory.CreateDbContext();
-        dbContext.GameServers.Attach(GameServer);
-        GameServer.Status = ELifetimeStatus.Stopped;
-        dbContext.SaveChanges();
+        using (var dbContext = DbContextFactory.CreateDbContext())
+        {
+            var gameServer = dbContext.GameServers.Single((q) => q.PrimaryKey == GameServerPrimaryKey);
+            gameServer.Status = ELifetimeStatus.Stopped;
+            dbContext.SaveChanges();
+        }
+
         if (Process is { } process)
         {
             var exitCode = process.ExitCode;

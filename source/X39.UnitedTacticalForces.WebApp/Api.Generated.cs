@@ -3221,6 +3221,164 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Downloads the logs of the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+        /// </summary>
+        /// <remarks>
+        /// Logs are ordered by X39.UnitedTacticalForces.Api.Data.Hosting.GameServerLog.TimeStamp.
+        /// </remarks>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to download the logs of.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<FileResponse> GameServersLogsDownloadAsync(long gameServerId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/logs/download");
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 200 || status_ == 206)
+                        {
+                            var responseStream_ = response_.Content == null ? System.IO.Stream.Null : await response_.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                            var fileResponse_ = new FileResponse(status_, headers_, responseStream_, null, response_);
+                            disposeClient_ = false; disposeResponse_ = false; // response and client are disposed by FileResponse
+                            return fileResponse_;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Clears all logs of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer given.
+        /// </summary>
+        /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to clear the logs of.</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task GameServersLogsClearAsync(long gameServerId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (gameServerId == null)
+                throw new System.ArgumentNullException("gameServerId");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/game-servers/{gameServerId}/logs/clear");
+            urlBuilder_.Replace("{gameServerId}", System.Uri.EscapeDataString(ConvertToString(gameServerId, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Return the configuration of the given X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
         /// </summary>
         /// <param name="gameServerId">The id of the X39.UnitedTacticalForces.Api.Data.Hosting.GameServer to start.</param>
@@ -3489,19 +3647,24 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Downloads the X39.UnitedTacticalForces.Api.Data.Core.ModPack and updates the last downloaded timestamp in the users meta data.
+        /// Downloads the X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision and updates the last downloaded timestamp in the users meta data.
         /// </summary>
-        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack to download.</param>
+        /// <param name="modPackDefinitionId">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition to download.</param>
+        /// <param name="modPackRevisionId">The X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision to download.</param>
         /// <returns>Error</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<FileResponse> ModPacksDownloadAsync(long modPackId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<FileResponse> ModPacksDownloadAsync(long modPackDefinitionId, long modPackRevisionId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
-            if (modPackId == null)
-                throw new System.ArgumentNullException("modPackId");
+            if (modPackDefinitionId == null)
+                throw new System.ArgumentNullException("modPackDefinitionId");
+
+            if (modPackRevisionId == null)
+                throw new System.ArgumentNullException("modPackRevisionId");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/{modPackId}/download");
-            urlBuilder_.Replace("{modPackId}", System.Uri.EscapeDataString(ConvertToString(modPackId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/{modPackDefinitionId}/download/{modPackRevisionId}");
+            urlBuilder_.Replace("{modPackDefinitionId}", System.Uri.EscapeDataString(ConvertToString(modPackDefinitionId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Replace("{modPackRevisionId}", System.Uri.EscapeDataString(ConvertToString(modPackRevisionId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -3556,12 +3719,15 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Creates a new X39.UnitedTacticalForces.Api.Data.Core.ModPack.
+        /// Creates a new X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition and a corresponding X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision.
         /// </summary>
-        /// <param name="body">The X39.UnitedTacticalForces.Api.Data.Core.ModPack to create.</param>
+        /// <remarks>
+        /// The initial X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision must be provided in the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition object.
+        /// </remarks>
+        /// <param name="body">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition to create.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ModPack> ModPacksCreateAsync(ModPack? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<ModPackDefinition> ModPacksCreateAsync(ModPackDefinition? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/create");
@@ -3600,14 +3766,26 @@ namespace X39.UnitedTacticalForces.WebApp
                         ProcessResponse(client_, response_);
 
                         var status_ = (int)response_.StatusCode;
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<ModPack>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<ModPackDefinition>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
                             }
                             return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Bad Request", status_, responseText_, headers_, null);
                         }
                         else
                         {
@@ -3631,24 +3809,22 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Allows to change the contents of a X39.UnitedTacticalForces.Api.Data.Core.ModPack.
+        /// Allows to update the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition title or set a new X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision
+        /// <br/>as active X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision.
         /// </summary>
-        /// <remarks>
-        /// Only non-system properties are allowed:
-        /// <br/>&lt;list type="bullet"&gt;&lt;item&gt;X39.UnitedTacticalForces.Api.Data.Core.ModPack.Title&lt;/item&gt;&lt;item&gt;X39.UnitedTacticalForces.Api.Data.Core.ModPack.Html&lt;/item&gt;&lt;/list&gt;
-        /// </remarks>
-        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack.</param>
-        /// <param name="body">The updated mod pack data.</param>
-        /// <returns>Success</returns>
+        /// <param name="modPackDefinitionId">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.</param>
+        /// <param name="body">JSON object containing the new title of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition (or null)
+        /// <br/>and the new html of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition mod pack data (or null).</param>
+        /// <returns>No Content</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task ModPacksUpdateAsync(long modPackId, ModPack? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task ModPacksUpdateAsync(long modPackDefinitionId, ModPackUpdate? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
-            if (modPackId == null)
-                throw new System.ArgumentNullException("modPackId");
+            if (modPackDefinitionId == null)
+                throw new System.ArgumentNullException("modPackDefinitionId");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/{modPackId}/update");
-            urlBuilder_.Replace("{modPackId}", System.Uri.EscapeDataString(ConvertToString(modPackId, System.Globalization.CultureInfo.InvariantCulture)));
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/{modPackDefinitionId}/update");
+            urlBuilder_.Replace("{modPackDefinitionId}", System.Uri.EscapeDataString(ConvertToString(modPackDefinitionId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -3683,9 +3859,21 @@ namespace X39.UnitedTacticalForces.WebApp
                         ProcessResponse(client_, response_);
 
                         var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
+                        if (status_ == 204)
                         {
                             return;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
                         }
                         else
                         {
@@ -3709,15 +3897,15 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Modifies the owning user of a X39.UnitedTacticalForces.Api.Data.Core.ModPack.
+        /// Modifies the owning user of a X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.
         /// </summary>
         /// <remarks>
         /// Operation is final and only allowed by either the owner or a user with the
         /// <br/>X39.UnitedTacticalForces.Roles.Admin role.
         /// </remarks>
-        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack.</param>
+        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.</param>
         /// <param name="newUserId">The X39.UnitedTacticalForces.Api.Data.Authority.User.PrimaryKey of the new X39.UnitedTacticalForces.Api.Data.Authority.User.</param>
-        /// <returns>Success</returns>
+        /// <returns>No Content</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task ModPacksChangeOwnerAsync(long modPackId, System.Guid? newUserId = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
@@ -3763,9 +3951,21 @@ namespace X39.UnitedTacticalForces.WebApp
                         ProcessResponse(client_, response_);
 
                         var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 204)
                         {
                             return;
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
                         }
                         else
                         {
@@ -3789,12 +3989,12 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Receives a single X39.UnitedTacticalForces.Api.Data.Core.ModPack.
+        /// Receives a single X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition and the latest active X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision.
         /// </summary>
-        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack.</param>
+        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ModPack> ModPacksAsync(long modPackId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<ModPackDefinition> ModPacksAsync(long modPackId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (modPackId == null)
                 throw new System.ArgumentNullException("modPackId");
@@ -3841,7 +4041,7 @@ namespace X39.UnitedTacticalForces.WebApp
                         else
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<ModPack>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<ModPackDefinition>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -3870,14 +4070,95 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Makes a X39.UnitedTacticalForces.Api.Data.Core.ModPack unavailable for further usage.
+        /// Receives a single X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision and the parent X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.
+        /// </summary>
+        /// <param name="modPackRevisionPk">The X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ModPackRevision> ModPacksRevisionAsync(long modPackRevisionPk, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (modPackRevisionPk == null)
+                throw new System.ArgumentNullException("modPackRevisionPk");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/revision/{modPackRevisionPk}");
+            urlBuilder_.Replace("{modPackRevisionPk}", System.Uri.EscapeDataString(ConvertToString(modPackRevisionPk, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ModPackRevision>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Makes a X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition unavailable for further usage.
         /// </summary>
         /// <remarks>
-        /// To not break data consistency, this call will not actually delete a X39.UnitedTacticalForces.Api.Data.Core.ModPack but rather make it not appear in
+        /// To not break data consistency, this call will not actually delete a X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition but rather make it not appear in
         /// <br/>any call but a direct one.
         /// </remarks>
-        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPack.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPack.</param>
-        /// <returns>Success</returns>
+        /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.</param>
+        /// <returns>No Content</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task ModPacksDeleteAsync(long modPackId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
@@ -3918,9 +4199,21 @@ namespace X39.UnitedTacticalForces.WebApp
                         ProcessResponse(client_, response_);
 
                         var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
+                        if (status_ == 204)
                         {
                             return;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
                         }
                         else
                         {
@@ -3944,16 +4237,16 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Returns all X39.UnitedTacticalForces.Api.Data.Core.ModPack's available or, given myModPacksOnly is set, only those
+        /// Returns all X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition's available or, given myModPacksOnly is set, only those
         /// <br/>of the currently authorized user.
         /// </summary>
-        /// <param name="skip">The amount of X39.UnitedTacticalForces.Api.Data.Core.ModPack's to skip. Paging argument.</param>
-        /// <param name="take">The amount of X39.UnitedTacticalForces.Api.Data.Core.ModPack's to take after skip. Paging argument.</param>
-        /// <param name="search">Searches the X39.UnitedTacticalForces.Api.Data.Core.ModPack.Title with a function akin to M:System.String.StartsWith(System.String)</param>
-        /// <param name="myModPacksOnly">If true, only those X39.UnitedTacticalForces.Api.Data.Core.ModPack's of the current user are returned.</param>
+        /// <param name="skip">The amount of X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition's to skip. Paging argument.</param>
+        /// <param name="take">The amount of X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition's to take after skip. Paging argument.</param>
+        /// <param name="search">Searches the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.Title with a function akin to M:System.String.StartsWith(System.String)</param>
+        /// <param name="myModPacksOnly">If true, only those X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition's of the current user are returned.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<ModPack>> ModPacksAllAsync(int? skip = null, int? take = null, string? search = null, bool? myModPacksOnly = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<ModPackDefinition>> ModPacksAllAsync(int? skip = null, int? take = null, string? search = null, bool? myModPacksOnly = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var urlBuilder_ = new System.Text.StringBuilder();
             urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/all?");
@@ -3981,8 +4274,7 @@ namespace X39.UnitedTacticalForces.WebApp
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "text/plain");
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -4008,7 +4300,7 @@ namespace X39.UnitedTacticalForces.WebApp
                         var status_ = (int)response_.StatusCode;
                         if (status_ == 200)
                         {
-                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<ModPack>>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<ModPackDefinition>>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -4037,10 +4329,10 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Returns the count of all X39.UnitedTacticalForces.Api.Data.Core.ModPack's available or, given myModPacksOnly is set,
+        /// Returns the count of all X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition's available or, given myModPacksOnly is set,
         /// <br/>only those of the currently authorized user.
         /// </summary>
-        /// <param name="myModPacksOnly">If true, only those X39.UnitedTacticalForces.Api.Data.Core.ModPack's of the current user are accounted for.</param>
+        /// <param name="myModPacksOnly">If true, only those X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition's of the current user are accounted for.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         public virtual async System.Threading.Tasks.Task<long> ModPacksAllCountAsync(bool? myModPacksOnly = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
@@ -4059,8 +4351,7 @@ namespace X39.UnitedTacticalForces.WebApp
             {
                 using (var request_ = new System.Net.Http.HttpRequestMessage())
                 {
-                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "text/plain");
-                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
                     request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
 
                     PrepareRequest(client_, request_, urlBuilder_);
@@ -6835,15 +7126,15 @@ namespace X39.UnitedTacticalForces.WebApp
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public long? TerrainFk { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("modPack")]
+        [System.Text.Json.Serialization.JsonPropertyName("modPackRevision")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public ModPack? ModPack { get; set; } = default!;
+        public ModPackRevision? ModPackRevision { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("modPackFk")]
+        [System.Text.Json.Serialization.JsonPropertyName("modPackRevisionFk")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public long? ModPackFk { get; set; } = default!;
+        public long? ModPackRevisionFk { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("image")]
 
@@ -7141,7 +7432,7 @@ namespace X39.UnitedTacticalForces.WebApp
         [System.Text.Json.Serialization.JsonPropertyName("activeModPack")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public ModPack? ActiveModPack { get; set; } = default!;
+        public ModPackRevision? ActiveModPack { get; set; } = default!;
 
         /// <summary>
         /// Foreign key of X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.ActiveModPack.
@@ -7153,13 +7444,13 @@ namespace X39.UnitedTacticalForces.WebApp
         public long? ActiveModPackFk { get; set; } = default!;
 
         /// <summary>
-        /// The X39.UnitedTacticalForces.Api.Data.Core.ModPack that is supposed to be loaded when the server is started.
+        /// The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition that is supposed to be loaded when the server is started.
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("selectedModPack")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public ModPack? SelectedModPack { get; set; } = default!;
+        public ModPackDefinition? SelectedModPack { get; set; } = default!;
 
         /// <summary>
         /// Foreign key of X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.SelectedModPack.
@@ -7213,6 +7504,15 @@ namespace X39.UnitedTacticalForces.WebApp
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.Collections.Generic.ICollection<ConfigurationEntry>? ConfigurationEntries { get; set; } = default!;
+
+        /// <summary>
+        /// The X39.UnitedTacticalForces.Api.Data.Hosting.GameServerLog's of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("gameServerLogs")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Collections.Generic.ICollection<GameServerLog>? GameServerLogs { get; set; } = default!;
 
         /// <summary>
         /// The game server this represents.
@@ -7359,6 +7659,24 @@ namespace X39.UnitedTacticalForces.WebApp
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public string? Source { get; set; } = default!;
 
+        /// <summary>
+        /// The related X39.UnitedTacticalForces.Api.Data.Hosting.GameServer.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("gameServer")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public GameServer? GameServer { get; set; } = default!;
+
+        /// <summary>
+        /// Foreign key of X39.UnitedTacticalForces.Api.Data.Hosting.GameServerLog.GameServer.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("gameServerFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? GameServerFk { get; set; } = default!;
+
     }
 
     /// <summary>
@@ -7478,7 +7796,7 @@ namespace X39.UnitedTacticalForces.WebApp
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ModPack
+    public partial class ModPackDefinition
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("primaryKey")]
@@ -7490,16 +7808,6 @@ namespace X39.UnitedTacticalForces.WebApp
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.DateTimeOffset? TimeStampCreated { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("timeStampUpdated")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public System.DateTimeOffset? TimeStampUpdated { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("html")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public string? Html { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
@@ -7521,10 +7829,77 @@ namespace X39.UnitedTacticalForces.WebApp
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public bool? IsActive { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("modPackRevisions")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Collections.Generic.ICollection<ModPackRevision>? ModPackRevisions { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ModPackRevision
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("primaryKey")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? PrimaryKey { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeStampCreated")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.DateTimeOffset? TimeStampCreated { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("html")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Html { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("updatedBy")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public User? UpdatedBy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("updatedByFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Guid? UpdatedByFk { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? IsActive { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("userMetas")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.Collections.Generic.ICollection<UserModPackMeta>? UserMetas { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("definition")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public ModPackDefinition? Definition { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("definitionFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? DefinitionFk { get; set; } = default!;
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ModPackUpdate
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("html")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Html { get; set; } = default!;
 
     }
 
@@ -7716,20 +8091,30 @@ namespace X39.UnitedTacticalForces.WebApp
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.Guid? UserFk { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("modPack")]
+        [System.Text.Json.Serialization.JsonPropertyName("modPackDefinition")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public ModPack? ModPack { get; set; } = default!;
+        public ModPackDefinition? ModPackDefinition { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("modPackFk")]
+        [System.Text.Json.Serialization.JsonPropertyName("modPackDefinitionFk")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public long? ModPackFk { get; set; } = default!;
+        public long? ModPackDefinitionFk { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("timeStampDownloaded")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.DateTimeOffset? TimeStampDownloaded { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modPackRevision")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public ModPackRevision? ModPackRevision { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("modPackRevisionFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? ModPackRevisionFk { get; set; } = default!;
 
     }
 

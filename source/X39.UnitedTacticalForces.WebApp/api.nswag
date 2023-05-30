@@ -76,7 +76,7 @@
       "generateDataAnnotations": true,
       "excludedTypeNames": [],
       "excludedParameterNames": [],
-      "handleReferences": false,
+      "handleReferences": true,
       "generateImmutableArrayProperties": false,
       "generateImmutableDictionaryProperties": false,
       "jsonSerializerSettingsTransformationMethod": null,

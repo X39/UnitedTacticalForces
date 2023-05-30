@@ -2,26 +2,26 @@
 @using X39.Util.Collections
 @inject BaseUrl BaseUrl
 
-@if ((ModPack?.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MinValue) < ModPack?.TimeStampUpdated)
+@if ((ModPack?.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MinValue) < ModPack?.TimeStampCreated)
 {
     <MudBadge Color="Color" Dot="true" Overlap="true">
         <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color"
-                       Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack.PrimaryKey}/download")"
+                       Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack.DefinitionFk}/download/{ModPack?.PrimaryKey}")"
                        target="_blank"
-                       OnClick="@(() => ModPack.UserMetas!.FirstOrAdd((_) => true, () => new UserModPackMeta()).TimeStampDownloaded = DateTimeOffset.MaxValue)"/>
+                       OnClick="@(() => ModPack!.UserMetas!.FirstOrAdd((_) => true, () => new UserModPackMeta()).TimeStampDownloaded = DateTimeOffset.MaxValue)"/>
     </MudBadge>
 }
 else
 {
     <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color"
-                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack?.PrimaryKey}/download")"
+                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack?.DefinitionFk}/download/{ModPack?.PrimaryKey}")"
                    target="_blank"/>
 }
 
 @code {
 
     [Parameter, Required, EditorRequired]
-    public ModPack? ModPack { get; set; } = null!;
+    public ModPackRevision? ModPack { get; set; } = null!;
     
     [Parameter]
     public Color Color { get; set; }

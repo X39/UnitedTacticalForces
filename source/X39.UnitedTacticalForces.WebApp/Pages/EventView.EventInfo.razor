@@ -31,13 +31,13 @@
             {
                 <MudText Typo="Typo.body2">@(Event.Terrain.Title)</MudText>
             }
-            @if (Event.ModPack is not null)
+            @if (Event.ModPackRevision is not null)
             {
-                <MudText Typo="Typo.body2">@(Event.ModPack.Title)</MudText>
+                <MudText Typo="Typo.body2">@(Event.ModPackRevision.Definition?.Title)</MudText>
             }
         </MudStack>
         <MudButtonGroup>
-            <UtfModPackDownloadButton ModPack="Event.ModPack" Color="Color.Surface"/>
+            <UtfModPackDownloadButton ModPack="Event.ModPackRevision" Color="Color.Surface"/>
         </MudButtonGroup>
     </MudStack>
     <div style="max-height: 50vh; overflow-y: scroll;">

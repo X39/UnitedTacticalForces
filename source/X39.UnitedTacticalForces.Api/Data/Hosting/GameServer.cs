@@ -36,10 +36,10 @@ public class GameServer
     /// </summary>
     /// <remarks>
     /// This is supposed to be only changed by a controlling service, representing the currently active mod pack only.
-    /// Use <see cref="SelectedModPack"/> for choosing a <see cref="ModPack"/>.
+    /// Use <see cref="SelectedModPack"/> for choosing a <see cref="ModPackRevision"/>.
     /// </remarks>
     [ForeignKey(nameof(ActiveModPackFk))]
-    public ModPack? ActiveModPack { get; set; }
+    public ModPackRevision? ActiveModPack { get; set; }
 
     /// <summary>
     /// Foreign key of <see cref="ActiveModPack"/>.
@@ -47,14 +47,14 @@ public class GameServer
     public long? ActiveModPackFk { get; set; }
 
     /// <summary>
-    /// The <see cref="ModPack"/> that is supposed to be loaded when the server is started.
+    /// The <see cref="ModPackDefinition"/> that is supposed to be loaded when the server is started.
     /// </summary>
     /// <remarks>
-    /// This may differ from <see cref="ActiveModPack"/> if the intended <see cref="ModPack"/> was changed but the
+    /// This may differ from <see cref="ActiveModPack"/> if the intended <see cref="ModPackDefinition"/> was changed but the
     /// server has not restarted yet.
     /// </remarks>
     [ForeignKey(nameof(SelectedModPackFk))]
-    public ModPack? SelectedModPack { get; set; }
+    public ModPackDefinition? SelectedModPack { get; set; }
 
     /// <summary>
     /// Foreign key of <see cref="SelectedModPack"/>.
@@ -94,6 +94,12 @@ public class GameServer
     /// </summary>
     [InverseProperty(nameof(ConfigurationEntry.GameServer))]
     public ICollection<ConfigurationEntry>? ConfigurationEntries { get; set; }
+    
+    /// <summary>
+    /// The <see cref="GameServerLog"/>'s of this entity.
+    /// </summary>
+    [InverseProperty(nameof(ConfigurationEntry.GameServer))]
+    public ICollection<GameServerLog>? GameServerLogs { get; set; }
 
     /// <summary>
     /// The game server this represents.

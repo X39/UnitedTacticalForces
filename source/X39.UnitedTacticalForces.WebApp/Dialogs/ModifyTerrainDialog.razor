@@ -86,7 +86,7 @@
             new DialogParameters
             {
                 {nameof(IsNew), isNew},
-                {nameof(Terrain), terrain.Clone()},
+                {nameof(Terrain), terrain.DeepCopy()},
             },
             new DialogOptions
             {

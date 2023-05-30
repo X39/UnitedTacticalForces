@@ -104,12 +104,7 @@ internal class EventRepositoryImpl : RepositoryBase, IEventRepository
     {
         if (eventItem.PrimaryKey is null)
             throw new ArgumentException("Event.PrimaryKey is null.", nameof(eventItem));
-        var clone = eventItem.Clone();
-        clone.Owner     = null;
-        clone.HostedBy  = null;
-        clone.ModPack   = null;
-        clone.Terrain   = null;
-        clone.UserMetas = null;
+        var clone = eventItem.ShallowCopy();
         await Client.EventsUpdateAsync(eventItem.PrimaryKey.Value, clone, cancellationToken)
             .ConfigureAwait(false);
     }

@@ -3,11 +3,11 @@
 @using X39.UnitedTacticalForces.WebApp.Services
 @using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
 @using X39.UnitedTacticalForces.WebApp.Dialogs
-@using System.Collections
 @using X39.Util
 @using X39.Util.Collections
 @inject IGameServerRepository GameServerRepository
 @inject IStringLocalizer<Language> Localizer
+@inject BaseUrl BaseUrl
 @inject IDialogService DialogService
 @inject IModPackRepository ModPackRepository
 @inject MeService Me
@@ -69,7 +69,7 @@
             {
                 <div class="d-inline-flex align-center">
                     <UtfModPackDownloadButton ModPack="@(context.GameServer.ActiveModPack)"/>
-                    <MudText>@(context.GameServer.ActiveModPack.Title)</MudText>
+                    <MudText>@(context.GameServer.ActiveModPack.Definition?.Title)</MudText>
                 </div>
             }
         </MudTd>
@@ -77,7 +77,7 @@
             @if (context.GameServer?.SelectedModPack is not null)
             {
                 <div class="d-inline-flex align-center">
-                    <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack)"/>
+                    <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack.GetActiveRevision())"/>
                     <MudText>@(context.GameServer.SelectedModPack.Title)</MudText>
                 </div>
             }
@@ -107,6 +107,12 @@
                     <MudIconButton Icon="@Icons.Material.Filled.TextSnippet"
                                    Color="Color.Primary"
                                    OnClick="@(() => ShowLogsAsync(context))"/>
+                    <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                   Color="Color.Primary"
+                                    Href="@BaseUrl.ResolveApiUrl($"/game-servers/{context.GameServer!.PrimaryKey!.Value}/logs/download")"/>
+                    <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => ClearLogsAsync(context))"/>
                 }
                 @if (Me.IsInRoleOrAdmin(Roles.ServerUpdate))
                 {
@@ -201,7 +207,8 @@
 
     private long _gameServerCounts = -1;
     private MudTable<GameServerInfo> _mudTable = null!;
-    private readonly Dictionary<long, ModPack> _modPacks = new();
+    private readonly Dictionary<long, ModPackRevision> _modPackRevisions = new();
+    private readonly Dictionary<long, ModPackDefinition> _modPackDefinitions = new();
     private readonly Dictionary<GameServer, List<GameFolder>> _gameFolders = new();
     private readonly Dictionary<GameFolder, List<GameFileInfo>> _gameFolderFiles = new();
 
@@ -219,26 +226,26 @@
             if (gameServerInfo.GameServer.ActiveModPackFk is not null)
             {
                 var modPackPk = gameServerInfo.GameServer.ActiveModPackFk.Value;
-                if (!_modPacks.TryGetValue(modPackPk, out var modPack))
+                if (!_modPackRevisions.TryGetValue(modPackPk, out var modPack))
                 {
-                    var tmp = await ModPackRepository.GetModPackAsync(modPackPk, CancellationToken.None)
+                    var tmp = await ModPackRepository.GetModPackRevisionAsync(modPackPk, CancellationToken.None)
                         .ConfigureAwait(false);
                     if (tmp is null)
                         continue;
-                    _modPacks[modPackPk] = modPack = tmp;
+                    _modPackRevisions[modPackPk] = modPack = tmp;
                 }
                 gameServerInfo.GameServer.ActiveModPack = modPack;
             }
             if (gameServerInfo.GameServer.SelectedModPackFk is not null)
             {
                 var modPackPk = gameServerInfo.GameServer.SelectedModPackFk.Value;
-                if (!_modPacks.TryGetValue(modPackPk, out var modPack))
+                if (!_modPackDefinitions.TryGetValue(modPackPk, out var modPack))
                 {
-                    var tmp = await ModPackRepository.GetModPackAsync(modPackPk, CancellationToken.None)
+                    var tmp = await ModPackRepository.GetModPackDefinitionAsync(modPackPk, CancellationToken.None)
                         .ConfigureAwait(false);
                     if (tmp is null)
                         continue;
-                    _modPacks[modPackPk] = modPack = tmp;
+                    _modPackDefinitions[modPackPk] = modPack = tmp;
                 }
                 gameServerInfo.GameServer.SelectedModPack = modPack;
             }
@@ -390,6 +397,14 @@
             .ConfigureAwait(false);
     }
 
+    private async Task ClearLogsAsync(GameServerInfo context)
+    {
+        if (context.GameServer is null)
+            throw new ArgumentException("GameServerInfo.GameServer is null.", nameof(context));
+        await GameServerRepository.ClearAsync(context.GameServer)
+            .ConfigureAwait(false);
+    }
+
     private IEnumerable<GameFolder> GetGameFolders(GameServerInfo gameServerInfo)
         => gameServerInfo.GameServer is null
             ? Enumerable.Empty<GameFolder>()
@@ -436,5 +451,6 @@
             MimeType = browserFile.ContentType,
         });
     }
+
 
 }

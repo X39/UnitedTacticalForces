@@ -9,6 +9,7 @@
 {
     <MudIconButton Icon="@Icons.Material.Filled.CopyAll" Color="Color.Success" OnClick="CloneEventAsync"/>
 }
+
 @code {
 
     [Parameter, Required, EditorRequired]
@@ -17,30 +18,19 @@
 
     private async Task CloneEventAsync()
     {
-        var eventItem = new Event
-        {
-            AcceptedCount = default,
-            PrimaryKey = default,
-            MaybeCount = default,
-            RejectedCount = default,
-            UserMetas = default,
-            ScheduledFor = default,
-            Owner = default,
-            ScheduledForOriginal = default,
-            TimeStampCreated = default,
-            MinimumAccepted = Event.MinimumAccepted,
-            Title = Event.Title,
-            Description = Event.Description,
-            Image = Event.Image,
-            ImageMimeType = Event.ImageMimeType,
-            Terrain = Event.Terrain,
-            HostedBy = Event.HostedBy,
-            OwnerFk = Event.OwnerFk,
-            ModPack = Event.ModPack,
-            TerrainFk = Event.TerrainFk,
-            HostedByFk = Event.HostedByFk,
-            ModPackFk = Event.ModPackFk,
-        };
+        var eventItem = Event.ShallowCopy();
+        eventItem.AcceptedCount = default;
+        eventItem.PrimaryKey = default;
+        eventItem.MaybeCount = default;
+        eventItem.RejectedCount = default;
+        eventItem.UserMetas = default;
+        eventItem.ScheduledFor = default;
+        eventItem.Owner = default;
+        eventItem.ScheduledForOriginal = default;
+        eventItem.TimeStampCreated = default;
+        eventItem.Terrain = Event.Terrain;
+        eventItem.HostedBy = Event.HostedBy;
+        eventItem.ModPackRevision = Event.ModPackRevision;
         var updatedEvent = await Dialogs.ModifyEventDialog.ShowAsync(DialogService, eventItem, isNew: true)
             .ConfigureAwait(false);
         if (updatedEvent is null)
@@ -49,4 +39,5 @@
         await EventRepository.CreateEventAsync(eventItem)
             .ConfigureAwait(false);
     }
+
 }

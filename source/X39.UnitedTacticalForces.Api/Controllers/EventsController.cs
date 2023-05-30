@@ -50,8 +50,10 @@ public class EventsController : ControllerBase
         {
             query = _apiDbContext.Events
                 .Include((e) => e.Terrain)
-                .Include((e) => e.ModPack)
+                .Include((e) => e.ModPackRevision)
                 .ThenInclude((e) => e!.UserMetas!.Where((q) => q.UserFk == userId))
+                .Include((e) => e.ModPackRevision)
+                .ThenInclude((e) => e.Definition)
                 .Include((e) => e.Owner)
                 .Include((e) => e.HostedBy)
                 .Include((e) => e.UserMetas!.Where((q) => q.UserFk == userId))
@@ -63,7 +65,10 @@ public class EventsController : ControllerBase
         {
             query = _apiDbContext.Events
                 .Include((e) => e.Terrain)
-                .Include((e) => e.ModPack)
+                .Include((e) => e.ModPackRevision)
+                .ThenInclude((e) => e!.UserMetas!.Where((q) => q.UserFk == userId))
+                .Include((e) => e.ModPackRevision)
+                .ThenInclude((e) => e.Definition)
                 .Include((e) => e.Owner)
                 .Include((e) => e.HostedBy)
                 .Where((q) => q.ScheduledFor >= DateTime.Today)
@@ -173,8 +178,10 @@ public class EventsController : ControllerBase
         {
             query = _apiDbContext.Events
                 .Include((e) => e.Terrain)
-                .Include((e) => e.ModPack)
+                .Include((e) => e.ModPackRevision)
                 .ThenInclude((e) => e!.UserMetas!.Where((q) => q.UserFk == userId))
+                .Include((e) => e.ModPackRevision)
+                .ThenInclude((e) => e.Definition)
                 .Include((e) => e.Owner)
                 .Include((e) => e.HostedBy)
                 .Include((e) => e.UserMetas!.Where((q) => q.UserFk == userId))
@@ -184,7 +191,10 @@ public class EventsController : ControllerBase
         {
             query = _apiDbContext.Events
                 .Include((e) => e.Terrain)
-                .Include((e) => e.ModPack)
+                .Include((e) => e.ModPackRevision)
+                .ThenInclude((e) => e!.UserMetas!.Where((q) => q.UserFk == userId))
+                .Include((e) => e.ModPackRevision)
+                .ThenInclude((e) => e.Definition)
                 .Include((e) => e.Owner)
                 .Include((e) => e.HostedBy)
                 .OrderBy((q) => q.ScheduledFor);
@@ -271,9 +281,11 @@ public class EventsController : ControllerBase
     /// <exception cref="UnauthorizedAccessException"></exception>
     [Authorize(Roles = Roles.Admin + "," + Roles.EventCreate)]
     [HttpPost("create", Name = nameof(CreateEventAsync))]
-    [ProducesResponseType(typeof(Event), (int)HttpStatusCode.OK)]
-    [ProducesResponseType(typeof(void), (int)HttpStatusCode.Unauthorized)]
-    public async Task<ActionResult<Event>> CreateEventAsync([FromBody] Event newEvent, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(Event), (int) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    public async Task<ActionResult<Event>> CreateEventAsync(
+        [FromBody] Event newEvent,
+        CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
@@ -285,8 +297,8 @@ public class EventsController : ControllerBase
         newEvent.ScheduledForOriginal = newEvent.ScheduledFor;
         newEvent.HostedByFk           = newEvent.HostedBy?.PrimaryKey ?? newEvent.HostedByFk;
         newEvent.HostedBy             = null;
-        newEvent.ModPackFk            = newEvent.ModPack?.PrimaryKey ?? newEvent.ModPackFk;
-        newEvent.ModPack              = null;
+        newEvent.ModPackRevisionFk    = newEvent.ModPackRevision?.PrimaryKey ?? newEvent.ModPackRevisionFk;
+        newEvent.ModPackRevision      = null;
         newEvent.TerrainFk            = newEvent.Terrain?.PrimaryKey ?? newEvent.TerrainFk;
         newEvent.Terrain              = null;
         var entity = await _apiDbContext.Events.AddAsync(newEvent, cancellationToken);
@@ -310,16 +322,16 @@ public class EventsController : ControllerBase
         if (!User.IsInRoleOrAdmin(Roles.EventModify) && existingEvent.HostedByFk != userId)
             return Forbid();
         // ToDo: Log audit
-        existingEvent.Title           = updatedEvent.Title;
-        existingEvent.Description     = updatedEvent.Description;
-        existingEvent.ScheduledFor    = updatedEvent.ScheduledFor;
-        existingEvent.Image           = updatedEvent.Image;
-        existingEvent.ImageMimeType   = updatedEvent.ImageMimeType;
-        existingEvent.HostedByFk      = updatedEvent.HostedBy?.PrimaryKey ?? updatedEvent.HostedByFk;
-        existingEvent.ModPackFk       = updatedEvent.ModPack?.PrimaryKey ?? updatedEvent.ModPackFk;
-        existingEvent.TerrainFk       = updatedEvent.Terrain?.PrimaryKey ?? updatedEvent.TerrainFk;
-        existingEvent.MinimumAccepted = updatedEvent.MinimumAccepted;
-        existingEvent.IsVisible       = updatedEvent.IsVisible;
+        existingEvent.Title             = updatedEvent.Title;
+        existingEvent.Description       = updatedEvent.Description;
+        existingEvent.ScheduledFor      = updatedEvent.ScheduledFor;
+        existingEvent.Image             = updatedEvent.Image;
+        existingEvent.ImageMimeType     = updatedEvent.ImageMimeType;
+        existingEvent.HostedByFk        = updatedEvent.HostedBy?.PrimaryKey ?? updatedEvent.HostedByFk;
+        existingEvent.ModPackRevisionFk = updatedEvent.ModPackRevision?.PrimaryKey ?? updatedEvent.ModPackRevisionFk;
+        existingEvent.TerrainFk         = updatedEvent.Terrain?.PrimaryKey ?? updatedEvent.TerrainFk;
+        existingEvent.MinimumAccepted   = updatedEvent.MinimumAccepted;
+        existingEvent.IsVisible         = updatedEvent.IsVisible;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }

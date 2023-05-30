@@ -18,8 +18,8 @@ public class Event
     public long TerrainFk { get; set; }
 
 
-    [ForeignKey(nameof(ModPackFk))] public ModPack? ModPack { get; set; }
-    public long ModPackFk { get; set; }
+    [ForeignKey(nameof(ModPackRevisionFk))] public ModPackRevision? ModPackRevision { get; set; }
+    public long ModPackRevisionFk { get; set; }
 
 
     public byte[] Image { get; set; } = Array.Empty<byte>();

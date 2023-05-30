@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using X39.UnitedTacticalForces.WebApp.Services.UserRepository;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services.WikiRepository;

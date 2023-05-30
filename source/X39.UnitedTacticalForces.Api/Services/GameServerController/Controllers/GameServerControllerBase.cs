@@ -11,7 +11,8 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerController.Controllers
 
 public abstract class GameServerControllerBase : IGameServerController
 {
-    protected GameServer GameServer { get; }
+    protected string GameServerLastKnownTitle { get; private set; }
+    protected long GameServerPrimaryKey { get; }
     protected IDbContextFactory<ApiDbContext> DbContextFactory { get; }
     protected ILogger Logger { get; }
 
@@ -21,9 +22,10 @@ public abstract class GameServerControllerBase : IGameServerController
         IDbContextFactory<ApiDbContext> dbContextFactory,
         ILogger logger)
     {
-        GameServer       = gameServer;
-        DbContextFactory = dbContextFactory;
-        Logger           = logger;
+        GameServerPrimaryKey     = gameServer.PrimaryKey;
+        GameServerLastKnownTitle = gameServer.Title;
+        DbContextFactory         = dbContextFactory;
+        Logger                   = logger;
     }
 
     public abstract bool AllowAnyConfigurationEntry { get; }
@@ -38,13 +40,22 @@ public abstract class GameServerControllerBase : IGameServerController
     public abstract bool IsRunning { get; }
     public abstract Task InstallOrUpgradeAsync(User? executingUser);
     public abstract bool CanModifyGameFiles { get; }
-    public abstract Task<IEnumerable<GameFolder>> GetGameFoldersAsync(CultureInfo cultureInfo, CancellationToken cancellationToken = default);
-    public abstract Task<IEnumerable<GameFileInfo>> GetGameFolderFilesAsync(GameFolder folder, CultureInfo cultureInfo, CancellationToken cancellationToken = default);
+
+    public abstract Task<IEnumerable<GameFolder>> GetGameFoldersAsync(
+        CultureInfo cultureInfo,
+        CancellationToken cancellationToken = default);
+
+    public abstract Task<IEnumerable<GameFileInfo>> GetGameFolderFilesAsync(
+        GameFolder folder,
+        CultureInfo cultureInfo,
+        CancellationToken cancellationToken = default);
+
 
     public abstract Task<Stream> GetGameFolderFileAsync(
         GameFolder folder,
         GameFileInfo file,
         CancellationToken cancellationToken = default);
+
     public abstract Task UploadFileAsync(GameFolder folder, GameFileInfo file, Stream stream);
     public abstract Task DeleteFileAsync(GameFolder folder, GameFileInfo file);
 
@@ -60,7 +71,7 @@ public abstract class GameServerControllerBase : IGameServerController
             var splitIndex = identifier.IndexOf("://", StringComparison.Ordinal);
             var realm = identifier[..splitIndex];
             var path = identifier[(splitIndex + 3)..];
-            var gameServerPk = GameServer.PrimaryKey;
+            var gameServerPk = GameServerPrimaryKey;
             var value = await dbContext.ConfigurationEntries
                 .Where((q) => q.IsActive)
                 .Where((q) => q.GameServerFk == gameServerPk)
@@ -137,5 +148,25 @@ public abstract class GameServerControllerBase : IGameServerController
                 | UnixFileMode.UserExecute);
         else
             Directory.CreateDirectory(directory);
+    }
+
+    /// <summary>
+    /// Returns the <see cref="GameServer"/> of this controller from the database.
+    /// </summary>
+    /// <param name="dbContext">The <see cref="ApiDbContext"/> to use.</param>
+    /// <param name="cancellationToken"><see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns>The <see cref="GameServer"/> of this controller from the database.</returns>
+    /// <exception cref="NullReferenceException">Thrown when the <see cref="GameServer"/> could not be loaded from the database.</exception>
+    protected async ValueTask<GameServer> GetGameServerAsync(
+        ApiDbContext dbContext,
+        CancellationToken cancellationToken = default)
+    {
+        var gameServer = await dbContext.GameServers
+            .SingleOrDefaultAsync((q) => q.PrimaryKey == GameServerPrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
+        if (gameServer is null)
+            throw new NullReferenceException("Failed to load GameServer from database.");
+        GameServerLastKnownTitle = gameServer.Title;
+        return gameServer;
     }
 }

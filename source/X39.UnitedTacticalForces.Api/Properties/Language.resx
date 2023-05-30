@@ -308,4 +308,28 @@ Usually this is the same as the installation path and the same as the one entere
     <data name="ServerController_Arma3_Host_HeadlessClientPassword_Description" xml:space="preserve">
         <value>The password of the server to connect the client to.</value>
     </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Title" xml:space="preserve">
+        <value>Log object not found</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Title" xml:space="preserve">
+        <value>Skip parsing description.ext</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Title" xml:space="preserve">
+        <value>Ignore errors when loading missions</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Title" xml:space="preserve">
+        <value>Log large queue sizes</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Description" xml:space="preserve">
+        <value>If set, "Server: Object not found" messages are logged</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Description" xml:space="preserve">
+        <value>Set to skip parsing description.ext/mission.sqm. Shows the pbo filename instead of the configured mission name. OverviewText and similar will not work, but loading the mission list is much faster when there are many missions</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Description" xml:space="preserve">
+        <value>If set to , the mission is loaded regardless of the number of load errors. If not set, the server will abort loading the mission and return to the mission selection.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Description" xml:space="preserve">
+        <value>If #monitor is running and the size of a player's guaranteed message queue (listed as G: in #monitor) exceeds the threshold, all message types and sizes of that player are written to a log file in the RPT directory (see Crash Files); the writing itself is logged server-side.</value>
+    </data>
 </root>

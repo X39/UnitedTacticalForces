@@ -101,8 +101,6 @@
         return rootCategory;
     }
 
-    public record WikiCategory(string Name, List<WikiPageHeader> Pages, List<WikiCategory> SubCategories);
-
     private async Task AddWikiPageAsync()
     {
         await CreateWikiRevisionDialog.ShowAsync(DialogService, WikiRepository)

@@ -80,4 +80,9 @@ public interface IGameServerRepository
         GameFolder gameFolder,
         GameFileInfo gameFileInfo,
         CancellationToken cancellationToken = default);
+    
+    Task ClearAsync(
+        GameServer gameServer,
+        CancellationToken cancellationToken = default);
+    
 }

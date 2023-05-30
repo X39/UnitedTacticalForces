@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using X39.UnitedTacticalForces.Api.Data;
@@ -11,9 +12,11 @@ using X39.UnitedTacticalForces.Api.Data;
 namespace X39.UnitedTacticalForces.Api.Data.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    partial class ApiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230521232259_AddingRelationBetweenGameServerAndLogs")]
+    partial class AddingRelationBetweenGameServerAndLogs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -342,31 +345,30 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Property<Guid>("UserFk")
                         .HasColumnType("uuid");
 
-                    b.Property<long>("ModPackDefinitionFk")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("ModPackRevisionFk")
+                    b.Property<long>("ModPackFk")
                         .HasColumnType("bigint");
 
                     b.Property<DateTimeOffset>("TimeStampDownloaded")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("UserFk", "ModPackDefinitionFk", "ModPackRevisionFk");
+                    b.HasKey("UserFk", "ModPackFk");
 
-                    b.HasIndex("ModPackDefinitionFk");
-
-                    b.HasIndex("ModPackRevisionFk");
+                    b.HasIndex("ModPackFk");
 
                     b.ToTable("UserModPackMetas");
                 });
 
-            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition", b =>
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPack", b =>
                 {
                     b.Property<long>("PrimaryKey")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PrimaryKey"));
+
+                    b.Property<string>("Html")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -377,6 +379,9 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Property<DateTimeOffset>("TimeStampCreated")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset>("TimeStampUpdated")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text");
@@ -385,40 +390,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
                     b.HasIndex("OwnerFk");
 
-                    b.ToTable("ModPackDefinitions");
-                });
-
-            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision", b =>
-                {
-                    b.Property<long>("PrimaryKey")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PrimaryKey"));
-
-                    b.Property<long>("DefinitionFk")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Html")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset>("TimeStampCreated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UpdatedByFk")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("PrimaryKey");
-
-                    b.HasIndex("DefinitionFk");
-
-                    b.HasIndex("UpdatedByFk");
-
-                    b.ToTable("ModPackRevisions");
+                    b.ToTable("ModPacks");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.Terrain", b =>
@@ -482,7 +454,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Property<int>("MinimumAccepted")
                         .HasColumnType("integer");
 
-                    b.Property<long>("ModPackRevisionFk")
+                    b.Property<long>("ModPackFk")
                         .HasColumnType("bigint");
 
                     b.Property<Guid>("OwnerFk")
@@ -511,7 +483,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
                     b.HasIndex("HostedByFk");
 
-                    b.HasIndex("ModPackRevisionFk");
+                    b.HasIndex("ModPackFk");
 
                     b.HasIndex("OwnerFk");
 
@@ -841,15 +813,9 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Authority.UserModPackMeta", b =>
                 {
-                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition", "ModPackDefinition")
-                        .WithMany()
-                        .HasForeignKey("ModPackDefinitionFk")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision", "ModPackRevision")
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPack", "ModPack")
                         .WithMany("UserMetas")
-                        .HasForeignKey("ModPackRevisionFk")
+                        .HasForeignKey("ModPackFk")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -859,14 +825,12 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ModPackDefinition");
-
-                    b.Navigation("ModPackRevision");
+                    b.Navigation("ModPack");
 
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition", b =>
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPack", b =>
                 {
                     b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "Owner")
                         .WithMany()
@@ -877,25 +841,6 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision", b =>
-                {
-                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition", "Definition")
-                        .WithMany("ModPackRevisions")
-                        .HasForeignKey("DefinitionFk")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "UpdatedBy")
-                        .WithMany()
-                        .HasForeignKey("UpdatedByFk")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Definition");
-
-                    b.Navigation("UpdatedBy");
-                });
-
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Eventing.Event", b =>
                 {
                     b.HasOne("X39.UnitedTacticalForces.Api.Data.Authority.User", "HostedBy")
@@ -904,9 +849,9 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision", "ModPackRevision")
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPack", "ModPack")
                         .WithMany()
-                        .HasForeignKey("ModPackRevisionFk")
+                        .HasForeignKey("ModPackFk")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -924,7 +869,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
                     b.Navigation("HostedBy");
 
-                    b.Navigation("ModPackRevision");
+                    b.Navigation("ModPack");
 
                     b.Navigation("Owner");
 
@@ -969,11 +914,11 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Hosting.GameServer", b =>
                 {
-                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision", "ActiveModPack")
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPack", "ActiveModPack")
                         .WithMany()
                         .HasForeignKey("ActiveModPackFk");
 
-                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition", "SelectedModPack")
+                    b.HasOne("X39.UnitedTacticalForces.Api.Data.Core.ModPack", "SelectedModPack")
                         .WithMany()
                         .HasForeignKey("SelectedModPackFk");
 
@@ -1057,12 +1002,7 @@ namespace X39.UnitedTacticalForces.Api.Data.Migrations
                     b.Navigation("ModPackMetas");
                 });
 
-            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition", b =>
-                {
-                    b.Navigation("ModPackRevisions");
-                });
-
-            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision", b =>
+            modelBuilder.Entity("X39.UnitedTacticalForces.Api.Data.Core.ModPack", b =>
                 {
                     b.Navigation("UserMetas");
                 });

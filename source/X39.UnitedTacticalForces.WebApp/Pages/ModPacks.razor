@@ -7,7 +7,6 @@
 @inject IUserRepository UserRepository
 @inject IStringLocalizer<Language> Localizer
 @inject IDialogService DialogService
-@inject BaseUrl BaseUrl
 @inject MeService MeService
 @attribute [Authorize]
 <PageTitle>@Localizer[nameof(Language.Pages_ModPacks_Title)]</PageTitle>
@@ -60,28 +59,14 @@
             @(context.TimeStampCreated?.ToLocalTime().ToString("g"))
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_TimeStampUpdated)]">
-            @(context.TimeStampUpdated?.ToLocalTime().ToString("g"))
+            @(context.GetActiveRevision()?.TimeStampCreated?.ToLocalTime().ToString("g"))
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Owner)]">
             <UtfUser User="@context.Owner"/>
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Interactions)]">
             <MudButtonGroup>
-                @if ((context.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MaxValue) < context.TimeStampUpdated)
-                {
-                    <MudBadge Color="Color.Primary" Dot="true" Overlap="true">
-                        <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Primary"
-                                       Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{context.PrimaryKey}/download")"
-                                       target="_blank"
-                                       OnClick="@(() => context.UserMetas.First().TimeStampDownloaded = DateTimeOffset.MaxValue)"/>
-                    </MudBadge>
-                }
-                else
-                {
-                    <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Primary"
-                                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{context.PrimaryKey}/download")"
-                                   target="_blank"/>
-                }
+                <UtfModPackDownloadButton ModPack="context.GetActiveRevision()"/>
                 <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.ModPackModify)" Context="_">
                     <Authorized>
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="@(() => ModifyModPackAsync(context))"/>
@@ -148,10 +133,10 @@
     }
 
     private long _modPackCounts = -1;
-    private MudTable<ModPack> _mudTable = null!;
+    private MudTable<ModPackDefinition> _mudTable = null!;
     private readonly Dictionary<Guid, User> _users = new();
 
-    private async Task<TableData<ModPack>> ServerDataAsync(TableState arg)
+    private async Task<TableData<ModPackDefinition>> ServerDataAsync(TableState arg)
     {
         if (_modPackCounts == -1)
             _modPackCounts = await ModPackRepository.GetModPackCountAsync(MyModPacksOnly)
@@ -174,7 +159,7 @@
             }
             modPack.Owner = user;
         }
-        return new TableData<ModPack>
+        return new TableData<ModPackDefinition>
         {
             TotalItems = (int) _modPackCounts,
             Items = items,
@@ -193,26 +178,24 @@
             .ConfigureAwait(false);
     }
 
-    private async Task ModifyModPackAsync(ModPack modPack)
+    private async Task ModifyModPackAsync(ModPackDefinition modPack)
     {
         var updatedModPack = await Dialogs.ModifyModPackDialog.ShowAsync(DialogService, modPack)
             .ConfigureAwait(false);
         if (updatedModPack is null)
             return;
         Contract.Assert(updatedModPack == modPack);
-        await ModPackRepository.ModifyModPackAsync(modPack)
+        await ModPackRepository.ModifyModPackAsync(modPack, modPack.Title, modPack.GetActiveRevision()?.Html)
             .ConfigureAwait(false);
         await _mudTable.ReloadServerData()
             .ConfigureAwait(false);
     }
 
-    private async Task CloneModPackAsync(ModPack modPack)
+    private async Task CloneModPackAsync(ModPackDefinition modPack)
     {
-        modPack = new ModPack
-        {
-            Title = modPack.Title,
-            Html = modPack.Html,
-        };
+        modPack = modPack.DeepCopy();
+        modPack.PrimaryKey = null;
+        modPack.Owner = null;
         var updatedModPack = await Dialogs.ModifyModPackDialog.ShowAsync(DialogService, modPack, isNew: true)
             .ConfigureAwait(false);
         if (updatedModPack is null)
@@ -224,7 +207,7 @@
             .ConfigureAwait(false);
     }
 
-    private async Task DeleteModPackAsync(ModPack modPack)
+    private async Task DeleteModPackAsync(ModPackDefinition modPack)
     {
         await Dialogs.ConfirmDeletionDialog.ShowAsync(
             DialogService,

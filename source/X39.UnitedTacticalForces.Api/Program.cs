@@ -67,7 +67,10 @@ builder.Services.AddAuthentication(options => { options.DefaultScheme = Constant
         options => { builder.Configuration.Bind("Steam:CorrelationCookie", options.CorrelationCookie); });
 builder.Services.AddControllers()
     .AddJsonOptions(
-        (jsonOptions) => jsonOptions.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
+        (jsonOptions) =>
+        {
+            jsonOptions.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+        });
 builder.Services.AddHttpClient();
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

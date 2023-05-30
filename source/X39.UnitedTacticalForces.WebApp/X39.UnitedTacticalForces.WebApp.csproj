@@ -55,6 +55,30 @@
       <Compile Update="Api.EventSlot.cs">
         <DependentUpon>Api.cs</DependentUpon>
       </Compile>
+      <Compile Update="Api.ModPackDefinition.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Api.Role.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Api.User.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Api.UserEventMeta.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Pages\Wiki.WikiCategory.cs">
+        <DependentUpon>Wiki.razor</DependentUpon>
+      </Compile>
+      <Compile Update="Api.ModPackRevision.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Api.Terrain.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
+      <Compile Update="Api.UserModPackMeta.cs">
+        <DependentUpon>Api.cs</DependentUpon>
+      </Compile>
     </ItemGroup>
 
     <ItemGroup>
@@ -95,6 +119,9 @@
         <DependentUpon>EventView.razor</DependentUpon>
       </Content>
       <Content Update="Pages\Wiki.Category.razor">
+        <DependentUpon>Wiki.razor</DependentUpon>
+      </Content>
+      <Content Update="Pages\Wiki.Edit.razor">
         <DependentUpon>Wiki.razor</DependentUpon>
       </Content>
     </ItemGroup>

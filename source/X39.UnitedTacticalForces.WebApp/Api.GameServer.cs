@@ -1,5 +1,5 @@
 ﻿using System.Collections.Immutable;
-using X39.UnitedTacticalForces.WebApp.ExtensionMethods;
+using X39.Util.Collections;
 
 namespace X39.UnitedTacticalForces.WebApp;
 
@@ -32,14 +32,14 @@ public partial class GameServer
     {
         return new GameServer
         {
-            ActiveModPack        = ActiveModPack?.Clone(),
-            SelectedModPack      = SelectedModPack?.Clone(),
+            ActiveModPack        = ActiveModPack?.PartialCopy(),
+            SelectedModPack      = SelectedModPack?.DeepCopy(),
             ActiveModPackFk      = ActiveModPackFk,
             PrimaryKey           = PrimaryKey,
             SelectedModPackFk    = SelectedModPackFk,
             Title                = Title,
             Status               = Status,
-            ConfigurationEntries = ConfigurationEntries?.Select((q) => q.ShallowCopy()).ToImmutableArray(),
+            ConfigurationEntries = ConfigurationEntries?.NotNull().Select((q) => q.ShallowCopy()).ToImmutableArray(),
             ControllerIdentifier = ControllerIdentifier,
             IsActive             = IsActive,
             LifetimeEvents       = LifetimeEvents?.Select((q) => q.ShallowCopy()).ToImmutableArray(),

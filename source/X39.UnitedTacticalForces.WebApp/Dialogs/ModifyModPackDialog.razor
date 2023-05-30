@@ -1,5 +1,6 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using X39.Util
+@using X39.Util.Collections
 @inject IStringLocalizer<Language> Localizer
 @inject ISnackbar Snackbar
 <MudDialog>
@@ -35,12 +36,17 @@
     public MudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter, EditorRequired, Required]
-    public ModPack ModPack { get; set; } = null!;
+    public ModPackDefinition ModPack { get; set; } = null!;
 
     [Parameter]
     public bool IsNew { get; set; }
 
-    private bool IsSubmitDisabled => IsNew && (ModPack.Title.IsNullOrWhiteSpace() || ModPack.Html.IsNullOrWhiteSpace());
+    private bool IsSubmitDisabled => IsNew
+                                     && (
+                                         ModPack.Title.IsNullOrWhiteSpace()
+                                         || ModPack.ModPackRevisions is null
+                                         || ModPack.ModPackRevisions.None()
+                                         || ModPack.ModPackRevisions.First().Html.IsNullOrWhiteSpace());
 
     private string _fileName = string.Empty;
 
@@ -63,28 +69,30 @@
             _fileName = obj.File.Name;
             await using var stream = obj.File.OpenReadStream();
             using var reader = new StreamReader(stream);
-            ModPack.Html = await reader.ReadToEndAsync()
+            ModPack.ModPackRevisions ??= new List<ModPackRevision> {new()};
+            ModPack.ModPackRevisions.First().Html = await reader.ReadToEndAsync()
                 .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
+            await Console.Error.WriteLineAsync(ex.StackTrace);
             Snackbar.Add(ex.Message, Severity.Error);
         }
     }
 
-    public static async Task<ModPack?> ShowAsync(
+    public static async Task<ModPackDefinition?> ShowAsync(
         IDialogService dialogService,
-        ModPack? modPack = default,
+        ModPackDefinition? modPack = default,
         bool? isNew = default)
     {
         isNew ??= modPack is null;
-        modPack ??= new ModPack();
+        modPack ??= new ModPackDefinition();
         var dialogReference = await dialogService.ShowAsync<ModifyModPackDialog>(
             string.Empty,
             new DialogParameters
             {
                 {nameof(IsNew), isNew},
-                {nameof(ModPack), modPack.Clone()},
+                {nameof(ModPack), modPack.DeepCopy()},
             },
             new DialogOptions
             {
@@ -95,7 +103,7 @@
             .ConfigureAwait(false);
         var dialogResult = await dialogReference.Result
             .ConfigureAwait(false);
-        if (dialogResult.Data is not ModPack modifiedModPack)
+        if (dialogResult.Data is not ModPackDefinition modifiedModPack)
             return null;
         modPack.Apply(modifiedModPack);
         return modifiedModPack;

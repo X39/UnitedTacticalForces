@@ -18,7 +18,7 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
             .ConfigureAwait(false);
     }
 
-    public async Task<IReadOnlyCollection<ModPack>> GetModPacksAsync(
+    public async Task<IReadOnlyCollection<ModPackDefinition>> GetModPacksAsync(
         int skip,
         int take,
         bool myModPacksOnly,
@@ -30,8 +30,8 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
         return modPacks.ToImmutableArray();
     }
 
-    public async Task<ModPack> CreateModPackAsync(
-        ModPack modPack,
+    public async Task<ModPackDefinition> CreateModPackAsync(
+        ModPackDefinition modPack,
         CancellationToken cancellationToken = default)
     {
         modPack = await Client.ModPacksCreateAsync(modPack, cancellationToken)
@@ -40,16 +40,25 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
     }
 
     public async Task ModifyModPackAsync(
-        ModPack modPack,
+        ModPackDefinition modPack,
+        string? title = null,
+        string? html = null,
         CancellationToken cancellationToken = default)
     {
         if (modPack.PrimaryKey is null)
             throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));
-        await Client.ModPacksUpdateAsync(modPack.PrimaryKey.Value, modPack, cancellationToken)
+        await Client.ModPacksUpdateAsync(
+                modPack.PrimaryKey.Value,
+                new ModPackUpdate
+                {
+                    Html  = html,
+                    Title = title,
+                },
+                cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task DeleteModPackAsync(ModPack modPack, CancellationToken cancellationToken = default)
+    public async Task DeleteModPackAsync(ModPackDefinition modPack, CancellationToken cancellationToken = default)
     {
         if (modPack.PrimaryKey is null)
             throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));
@@ -57,9 +66,19 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
             .ConfigureAwait(false);
     }
 
-    public async Task<ModPack?> GetModPackAsync(long modPackPk, CancellationToken cancellationToken = default)
+    public async Task<ModPackDefinition?> GetModPackDefinitionAsync(
+        long modPackDefinitionPk,
+        CancellationToken cancellationToken = default)
     {
-        return await Client.ModPacksAsync(modPackPk, cancellationToken)
+        return await Client.ModPacksAsync(modPackDefinitionPk, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ModPackRevision?> GetModPackRevisionAsync(
+        long modPackRevisionPk,
+        CancellationToken cancellationToken = default)
+    {
+        return await Client.ModPacksRevisionAsync(modPackRevisionPk, cancellationToken)
             .ConfigureAwait(false);
     }
 }

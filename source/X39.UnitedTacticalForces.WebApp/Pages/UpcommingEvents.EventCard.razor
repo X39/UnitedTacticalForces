@@ -29,14 +29,14 @@
             {
                 <MudText Typo="Typo.body2">@(EventItem.Terrain.Title)</MudText>
             }
-            @if (EventItem.ModPack is not null)
+            @if (EventItem.ModPackRevision is not null)
             {
-                <MudText Typo="Typo.body2">@(EventItem.ModPack.Title)</MudText>
+                <MudText Typo="Typo.body2">@(EventItem.ModPackRevision.Definition?.Title)</MudText>
             }
         </CardHeaderContent>
         <CardHeaderActions>
             <MudButtonGroup>
-                <UtfModPackDownloadButton ModPack="EventItem.ModPack" Color="Color.Primary"/>
+                <UtfModPackDownloadButton ModPack="EventItem.ModPackRevision" Color="Color.Primary"/>
                 <UpcommingEvents_HeaderActions_ModifyButton Event="EventItem" ParentStateHasChanged="PropagateStateHasChanged"/>
                 <UpcommingEvents_HeaderActions_CloneButton Event="EventItem"/>
                 <MudIconButton Icon="@Icons.Material.Filled.Link" Color="Color.Primary" OnClick="CopyEventUrlToClipboardAsync"/>

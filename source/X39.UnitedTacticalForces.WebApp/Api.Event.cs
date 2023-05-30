@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using X39.Util.Collections;
 
 namespace X39.UnitedTacticalForces.WebApp;
 
@@ -16,32 +17,6 @@ public partial class Event
         return builder.ToString();
     }
 
-    public Event Clone() => new()
-    {
-        PrimaryKey           = PrimaryKey,
-        Owner                = Owner,
-        Title                = Title,
-        OwnerFk              = OwnerFk,
-        UserMetas            = UserMetas,
-        TimeStampCreated     = TimeStampCreated,
-        ModPack              = ModPack,
-        Terrain              = Terrain,
-        Description          = Description,
-        Image                = Image,
-        AcceptedCount        = AcceptedCount,
-        HostedBy             = HostedBy,
-        MaybeCount           = MaybeCount,
-        MinimumAccepted      = MinimumAccepted,
-        RejectedCount        = RejectedCount,
-        ScheduledFor         = ScheduledFor,
-        TerrainFk            = TerrainFk,
-        HostedByFk           = HostedByFk,
-        ImageMimeType        = ImageMimeType,
-        ModPackFk            = ModPackFk,
-        ScheduledForOriginal = ScheduledForOriginal,
-        IsVisible            = IsVisible,
-    };
-
     public void Apply(Event other)
     {
         PrimaryKey           = other.PrimaryKey;
@@ -50,7 +25,7 @@ public partial class Event
         OwnerFk              = other.OwnerFk;
         UserMetas            = other.UserMetas;
         TimeStampCreated     = other.TimeStampCreated;
-        ModPack              = other.ModPack;
+        ModPackRevision      = other.ModPackRevision;
         Terrain              = other.Terrain;
         Description          = other.Description;
         Image                = other.Image;
@@ -63,8 +38,65 @@ public partial class Event
         TerrainFk            = other.TerrainFk;
         HostedByFk           = other.HostedByFk;
         ImageMimeType        = other.ImageMimeType;
-        ModPackFk            = other.ModPackFk;
+        ModPackRevisionFk    = other.ModPackRevisionFk;
         ScheduledForOriginal = other.ScheduledForOriginal;
         IsVisible            = other.IsVisible;
+    }
+    public Event DeepCopy()
+    {
+        return new Event
+        {
+            IsVisible            = IsVisible,
+            Description          = Description,
+            Image                = Image,
+            AcceptedCount        = AcceptedCount,
+            HostedBy             = HostedBy,
+            MaybeCount           = MaybeCount,
+            MinimumAccepted      = MinimumAccepted,
+            RejectedCount        = RejectedCount,
+            ScheduledFor         = ScheduledFor,
+            TerrainFk            = TerrainFk,
+            HostedByFk           = HostedByFk,
+            ImageMimeType        = ImageMimeType,
+            ModPackRevision      = ModPackRevision?.PartialCopy(),
+            Owner                = Owner?.PartialCopy(),
+            Terrain              = Terrain?.DeepCopy(),
+            Title                = Title,
+            OwnerFk              = OwnerFk,
+            UserMetas            = UserMetas?.NotNull().Select((q)=>q.PartialCopy()).ToList(),
+            PrimaryKey           = PrimaryKey,
+            ScheduledForOriginal = ScheduledForOriginal,
+            TimeStampCreated     = TimeStampCreated,
+            ModPackRevisionFk    = ModPackRevisionFk,
+        };
+    }
+
+    public Event ShallowCopy()
+    {
+        return new Event
+        {
+            IsVisible            = IsVisible,
+            Description          = Description,
+            Image                = Image,
+            AcceptedCount        = AcceptedCount,
+            HostedBy             = HostedBy,
+            MaybeCount           = MaybeCount,
+            MinimumAccepted      = MinimumAccepted,
+            RejectedCount        = RejectedCount,
+            ScheduledFor         = ScheduledFor,
+            TerrainFk            = TerrainFk,
+            HostedByFk           = HostedByFk,
+            ImageMimeType        = ImageMimeType,
+            ModPackRevision      = null,
+            Owner                = null,
+            Terrain              = null,
+            Title                = Title,
+            OwnerFk              = OwnerFk,
+            UserMetas            = new List<UserEventMeta>(),
+            PrimaryKey           = PrimaryKey,
+            ScheduledForOriginal = ScheduledForOriginal,
+            TimeStampCreated     = TimeStampCreated,
+            ModPackRevisionFk    = ModPackRevisionFk,
+        };
     }
 }

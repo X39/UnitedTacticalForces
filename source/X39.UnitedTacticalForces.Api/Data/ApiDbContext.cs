@@ -32,7 +32,8 @@ public class ApiDbContext : DbContext
 
     #region Core
 
-    public DbSet<ModPack> ModPacks { get; set; } = null!;
+    public DbSet<ModPackDefinition> ModPackDefinitions { get; set; } = null!;
+    public DbSet<ModPackRevision> ModPackRevisions { get; set; } = null!;
     public DbSet<Terrain> Terrains { get; set; } = null!;
 
     #endregion

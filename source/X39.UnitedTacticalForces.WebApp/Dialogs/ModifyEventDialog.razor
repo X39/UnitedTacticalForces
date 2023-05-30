@@ -37,12 +37,12 @@
                          AdornmentColor="Color.Primary"
                          ToStringFunc="@(terrain => terrain.Title ?? terrain.PrimaryKey?.ToString() ?? string.Empty)"/>
         <MudAutocomplete Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_ModPack)]"
-                         @bind-Value="@Event.ModPack"
+                         @bind-Value="@Event.ModPackRevision"
                          SearchFunc="@SearchModPackAsync"
                          ResetValueOnEmptyText="true"
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          AdornmentColor="Color.Primary"
-                         ToStringFunc="@(modPack => modPack.Title ?? modPack.PrimaryKey?.ToString() ?? string.Empty)"/>
+                         ToStringFunc="@(modPack => modPack.Definition!.Title ?? modPack.PrimaryKey?.ToString() ?? string.Empty)"/>
         <MudTextField Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_MinimumAccepted)]"
                       @bind-Value="@Event.MinimumAccepted"
                       Pattern="[0-9]+"/>
@@ -82,7 +82,7 @@
     [Parameter]
     public bool IsNew { get; set; }
 
-    private bool IsSubmitDisabled => IsNew && (Event.Title.IsNullOrWhiteSpace() || Event.ScheduledFor is null || Event.HostedBy is null || Event.Terrain is null || Event.ModPack is null);
+    private bool IsSubmitDisabled => IsNew && (Event.Title.IsNullOrWhiteSpace() || Event.ScheduledFor is null || Event.HostedBy is null || Event.Terrain is null || Event.ModPackRevision is null);
 
     private string _fileName = string.Empty;
 
@@ -128,7 +128,7 @@
             new DialogParameters
             {
                 {nameof(IsNew), isNew},
-                {nameof(Event), eventItem.Clone()},
+                {nameof(Event), eventItem.DeepCopy()},
             },
             new DialogOptions
             {
@@ -141,7 +141,7 @@
             .ConfigureAwait(false);
         if (dialogResult.Data is not Event modifiedEvent)
             return null;
-        modifiedEvent.ModPackFk = modifiedEvent.ModPack?.PrimaryKey ?? modifiedEvent.ModPackFk;
+        modifiedEvent.ModPackRevisionFk = modifiedEvent.ModPackRevision?.PrimaryKey ?? modifiedEvent.ModPackRevisionFk;
         modifiedEvent.OwnerFk = modifiedEvent.Owner?.PrimaryKey ?? modifiedEvent.OwnerFk;
         modifiedEvent.TerrainFk = modifiedEvent.Terrain?.PrimaryKey ?? modifiedEvent.TerrainFk;
         modifiedEvent.HostedByFk = modifiedEvent.HostedBy?.PrimaryKey ?? modifiedEvent.HostedByFk;
@@ -161,10 +161,16 @@
             .ConfigureAwait(false);
     }
 
-    private async Task<IEnumerable<ModPack>> SearchModPackAsync(string? arg)
+    private async Task<IEnumerable<ModPackRevision>> SearchModPackAsync(string? arg)
     {
-        return await ModPackRepository.GetModPacksAsync(0, 100, false, arg ?? string.Empty)
+        var modPackDefinitions = await ModPackRepository.GetModPacksAsync(0, 100, false, arg ?? string.Empty)
             .ConfigureAwait(false);
+        return modPackDefinitions.Select((q) =>
+        {
+            var revision = q.ModPackRevisions!.First();
+            revision.Definition = q;
+            return revision;
+        });
     }
 
     private void SetEventScheduledForDateAsync(DateTime? obj)

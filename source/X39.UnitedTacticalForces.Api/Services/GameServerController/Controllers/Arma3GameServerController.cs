@@ -12,6 +12,7 @@ using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.Properties;
 using X39.Util;
+using X39.Util.Collections;
 using StreamWriter = System.IO.StreamWriter;
 
 namespace X39.UnitedTacticalForces.Api.Services.GameServerController.Controllers;
@@ -147,6 +148,10 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         // yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Raw, "disableChannels[]",                 RegExArrayOfStrings, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_ServerBehavior), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_DisableChannelsArray_Title), cultureInfo) ?? string.Empty,                 Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_DisableChannelsArray_Description), cultureInfo) ?? string.Empty                                                                                           );
         // Other Options
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Number, "steamProtocolMaxDataSize", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_OtherOptions), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "advancedOptions/logObjectNotFound", RegExBoolean, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_OtherOptions), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Description), cultureInfo) ?? string.Empty, DefaultValue: "1");
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "advancedOptions/skipDescriptionParsing", RegExBoolean, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_OtherOptions), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Description), cultureInfo) ?? string.Empty, DefaultValue: "0");
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "advancedOptions/ignoreMissionLoadErrors", RegExBoolean, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_OtherOptions), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Description), cultureInfo) ?? string.Empty, DefaultValue: "0");
+        yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Boolean, "advancedOptions/queueSizeLogG", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_OtherOptions), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Description), cultureInfo) ?? string.Empty, DefaultValue: "1000000");
         // https://community.bistudio.com/wiki/Arma_3:_Basic_Server_Config_File
         yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxMsgSend", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxMsgSend_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxMsgSend_Description), cultureInfo) ?? string.Empty, DefaultValue: "128");
         yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxSizeGuaranteed", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Description), cultureInfo) ?? string.Empty, DefaultValue: "512");
@@ -178,7 +183,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                 Description = Language.ResourceManager.GetString(
                     nameof(Language.ServerController_Arma3_GameFolders_MPMissions_Description),
                     cultureInfo) ?? string.Empty,
-                AllowedExtensions = new []{".pbo"},
+                AllowedExtensions = new[] {".pbo"},
             };
         }
 
@@ -186,32 +191,35 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     }
 
     /// <inheritdoc />
-    public override Task<IEnumerable<GameFileInfo>> GetGameFolderFilesAsync(GameFolder folder, CultureInfo cultureInfo, CancellationToken cancellationToken = default)
+    public override Task<IEnumerable<GameFileInfo>> GetGameFolderFilesAsync(
+        GameFolder folder,
+        CultureInfo cultureInfo,
+        CancellationToken cancellationToken = default)
     {
         switch (folder.Identifier)
         {
             case MpMissionsFolder:
             {
                 Directory.CreateDirectory(MpMissionsPath);
-                return Task.FromResult<IEnumerable<GameFileInfo>>(Directory.GetFiles(MpMissionsPath, "*.pbo", SearchOption.TopDirectoryOnly)
-                    .Select(
-                        pboPath => new GameFileInfo(
-                            Path.GetFileName(pboPath),
-                            new FileInfo(pboPath).Length,
-                            "application/octet-stream"))
-                    .ToArray());
+                return Task.FromResult<IEnumerable<GameFileInfo>>(
+                    Directory.GetFiles(MpMissionsPath, "*.pbo", SearchOption.TopDirectoryOnly)
+                        .Select(
+                            pboPath => new GameFileInfo(
+                                Path.GetFileName(pboPath),
+                                new FileInfo(pboPath).Length,
+                                "application/octet-stream"))
+                        .ToArray());
             }
             default:
                 throw new ArgumentOutOfRangeException(nameof(folder));
         }
-        
     }
 
     /// <inheritdoc />
     public override bool CanModifyGameFiles => CanStart;
 
     /// <inheritdoc />
-    public override async Task<Stream> GetGameFolderFileAsync(
+    public override Task<Stream> GetGameFolderFileAsync(
         GameFolder folder,
         GameFileInfo file,
         CancellationToken cancellationToken = default)
@@ -230,7 +238,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             {
                 if (!File.Exists(filePath))
                     throw new IOException("File not found");
-                return File.OpenRead(filePath);
+                return Task.FromResult<Stream>(File.OpenRead(filePath));
             }
             default:
                 throw new ArgumentOutOfRangeException(nameof(folder));
@@ -390,7 +398,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
 
         await using var dbContext = await DbContextFactory.CreateDbContextAsync()
             .ConfigureAwait(false);
-        var gameServerPk = GameServer.PrimaryKey;
+        var gameServerPk = GameServerPrimaryKey;
         var configurationEntries = await dbContext.ConfigurationEntries
             .Where((q) => q.GameServerFk == gameServerPk)
             .Where((q) => q.IsActive)
@@ -425,7 +433,9 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                     (configurationEntry.Realm, configurationEntry.Path));
                 var value = definition?.Kind is EConfigurationEntryKind.String or EConfigurationEntryKind.Password
                     ? ToArmaString(configurationEntry.Value)
-                    : configurationEntry.Value;
+                    : definition?.Kind is EConfigurationEntryKind.Boolean
+                        ? configurationEntry.Value.ToLowerInvariant()
+                        : configurationEntry.Value;
                 await streamWriter.WriteLineAsync($"{Tab(pathSegments.Length)}{actualPath} = {value};");
             }
 
@@ -479,8 +489,8 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
 
         CreateDirectory(ProfilesPath);
         psi.ArgumentList.Add($"-profiles={ProfilesPath}");
-        var headlessClientIp = await GetAsync("host://headless-client-ip", "").ConfigureAwait(false);
-        var headlessClientPassword = await GetAsync("host://headless-client-password", "").ConfigureAwait(false);
+        var headlessClientIp = await GetAsync("host://headless-client-ip").ConfigureAwait(false);
+        var headlessClientPassword = await GetAsync("host://headless-client-password").ConfigureAwait(false);
         if (headlessClientIp.IsNotNullOrWhiteSpace())
         {
             psi.ArgumentList.Add("-client");
@@ -502,7 +512,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                var modsPath = Path.Combine(GameInstallPath, $"{GameServer.PrimaryKey}-mods");
+                var modsPath = Path.Combine(GameInstallPath, $"{GameServerPrimaryKey}-mods");
                 Directory.CreateDirectory(modsPath);
                 var symLinks = await CreateOrReplaceSymlinksForAsync(
                         modList,
@@ -578,13 +588,20 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     private async Task<IReadOnlyCollection<long>> GetWorkshopIdsAsync(ApiDbContext dbContext)
     {
         const string workshopBase = "https://steamcommunity.com/sharedfiles/filedetails/?id=";
-        var modPackPk = GameServer.ActiveModPackFk;
-        if (modPackPk is null)
+        var modPackRevisionId = await dbContext.GameServers
+            .Where((q) => q.PrimaryKey == GameServerPrimaryKey)
+            .Select((q) => q.ActiveModPackFk)
+            .SingleOrDefaultAsync()
+            .ConfigureAwait(false);
+        if (modPackRevisionId is null)
             return ArraySegment<long>.Empty;
-        var mod = await dbContext.ModPacks.SingleOrDefaultAsync((q) => q.PrimaryKey == modPackPk).ConfigureAwait(false);
-        if (mod is null)
-            throw new NullReferenceException($"Failed to receive mod with the id {modPackPk} from database");
-        var matches = HtmlARegex.Matches(mod.Html);
+        var modPackRevision = await dbContext.ModPackRevisions
+            .SingleOrDefaultAsync((q) => q.PrimaryKey == modPackRevisionId)
+            .ConfigureAwait(false);
+        if (modPackRevision is null)
+            throw new NullReferenceException($"Failed to receive mod with the id {modPackRevisionId} from database");
+        
+        var matches = HtmlARegex.Matches(modPackRevision.Html);
         var workshopIds = new List<long>();
         foreach (Match match in matches)
         {
@@ -623,7 +640,19 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         User? executingUser)
     {
         var workshopItemIds = await GetWorkshopIdsAsync(dbContext).ConfigureAwait(false);
-        foreach (var workshopItemId in workshopItemIds)
+        await dbContext.GameServerLogs.AddAsync(
+                new GameServerLog
+                {
+                    GameServerFk = GameServerPrimaryKey,
+                    Source       = "GameServerUpdate",
+                    Message      = $"Updating {workshopItemIds.Count} workshop items",
+                    LogLevel     = LogLevel.Information,
+                    TimeStamp    = DateTimeOffset.Now,
+                })
+            .ConfigureAwait(false);
+        await dbContext.SaveChangesAsync()
+            .ConfigureAwait(false);
+        foreach (var (workshopItemId, index) in workshopItemIds.Indexed())
         {
             var workshopPath = await DoUpdateWorkshopMod(workshopItemId, executingUser)
                 .ConfigureAwait(false);
@@ -634,6 +663,19 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                 CopyAndReplaceFiles(workshopPath, lowerCaseWorkshopPath);
                 LowercaseFiles(lowerCaseWorkshopPath);
             }
+
+            await dbContext.GameServerLogs.AddAsync(
+                    new GameServerLog
+                    {
+                        GameServerFk = GameServerPrimaryKey,
+                        Source       = "GameServerUpdate",
+                        Message      = $"Updated {workshopItemId} ({index + 1}/{workshopItemIds.Count})",
+                        LogLevel     = LogLevel.Debug,
+                        TimeStamp    = DateTimeOffset.Now,
+                    })
+                .ConfigureAwait(false);
+            await dbContext.SaveChangesAsync()
+                .ConfigureAwait(false);
         }
     }
 

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,4 +33,15 @@ public class GameServerLog
     /// The source of this log message.
     /// </summary>
     public string Source { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// The related <see cref="Hosting.GameServer"/>.
+    /// </summary>
+    [ForeignKey(nameof(GameServerFk))]
+    public GameServer? GameServer { get; set; }
+    
+    /// <summary>
+    /// Foreign key of <see cref="GameServer"/>.
+    /// </summary>
+    public long GameServerFk { get; set; }
 }

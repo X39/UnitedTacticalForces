@@ -247,4 +247,14 @@ internal class GameServerRepositoryImpl : RepositoryBase, IGameServerRepository
                 cancellationToken)
             .ConfigureAwait(false);
     }
+
+    public async Task ClearAsync(GameServer gameServer, CancellationToken cancellationToken = default)
+    {
+        if (gameServer.PrimaryKey is null)
+            throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
+        await Client.GameServersLogsClearAsync(
+                gameServer.PrimaryKey.Value,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

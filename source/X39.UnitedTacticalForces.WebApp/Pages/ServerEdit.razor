@@ -51,7 +51,7 @@ else
                               HelperText="@(Localizer[nameof(Language.Pages_GameServerEdit_GameServerTitle_HelperText)])"
                               HelperTextOnFocus="true"
                               Required="true"/>
-                <MudAutocomplete T="ModPack?"
+                <MudAutocomplete T="ModPackDefinition?"
                                  @bind-Value="@(_gameServer.SelectedModPack)"
                                  Label="@(Localizer[nameof(Language.Pages_GameServerEdit_GameServerSelectedModPack)])"
                                  HelperText="@(Localizer[nameof(Language.Pages_GameServerEdit_GameServerSelectedModPack_HelperText)])"
@@ -121,7 +121,7 @@ else
                                         <ChildContent>
                                             <MudCheckBox T="bool?"
                                                          Checked="@(configurationEntry.ValueAsBool)"
-                                                         CheckedChanged="@(configurationEntry.ChangeValue)"
+                                                         CheckedChanged="@((bool? flag) => configurationEntry.ChangeValue(flag))"
                                                          Validation="@(configurationEntry.ValidateWeak)"
                                                          Required="@(configurationEntry.Definition.Required ?? false)">
                                                 <MudText>@($"[{configurationEntry.Definition.DisplayGroup}] {configurationEntry.Definition.DisplayName}")</MudText>
@@ -216,7 +216,7 @@ else
         if (gameServer is null)
             throw new NullReferenceException("API resolved with GameServerInfo.GameServer == null");
         if (gameServer.SelectedModPackFk.HasValue)
-            gameServer.SelectedModPack ??= await ModPackRepository.GetModPackAsync(gameServer.SelectedModPackFk.Value);
+            gameServer.SelectedModPack ??= await ModPackRepository.GetModPackDefinitionAsync(gameServer.SelectedModPackFk.Value);
         var configurationDefinitions = await GameServerRepository.GetConfigurationDefinitionsAsync(gameServer).ConfigureAwait(false);
         var configurations = await GameServerRepository.GetConfigurationAsync(gameServer).ConfigureAwait(false);
         var confMap = configurations.ToDictionary((q) => string.Concat(q.Realm, "://", q.Path));
@@ -376,9 +376,9 @@ else
         NavigationManager.NavigateTo("servers");
     }
 
-    private async Task<IEnumerable<ModPack>> SearchModPacksAsync(string input, CancellationToken cancellationToken)
+    private async Task<IEnumerable<ModPackDefinition>> SearchModPacksAsync(string input, CancellationToken cancellationToken)
     {
-        var results = new List<ModPack>();
+        var results = new List<ModPackDefinition>();
         int skip;
         do
         {

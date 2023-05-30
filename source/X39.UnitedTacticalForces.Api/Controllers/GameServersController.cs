@@ -97,7 +97,9 @@ public class GameServersController : ControllerBase
     public async Task<ActionResult<IEnumerable<GameServerInfo>>> GetGameServersAsync(
         CancellationToken cancellationToken)
     {
-        var allServers = await _apiDbContext.GameServers.ToArrayAsync(cancellationToken);
+        var allServers = await _apiDbContext.GameServers
+            .OrderBy((q) => q.Title)
+            .ToArrayAsync(cancellationToken);
         var gameServerInfos = new List<GameServerInfo>();
         foreach (var gameServer in allServers)
         {
@@ -438,7 +440,7 @@ public class GameServersController : ControllerBase
         if (!await _apiDbContext.GameServers.AnyAsync((q) => q.PrimaryKey == gameServerId, cancellationToken))
             return NotFound();
         var configurationEntries = await _apiDbContext.ConfigurationEntries
-            .Where((q) => q.IsActive)
+            .Where((q) => q.GameServerFk == gameServerId)
             .Where((q) => q.IsActive)
             .ToArrayAsync(cancellationToken);
         return Ok(configurationEntries);
@@ -677,7 +679,8 @@ public class GameServersController : ControllerBase
     {
         if (!await _apiDbContext.GameServers.AnyAsync((q) => q.PrimaryKey == gameServerId, cancellationToken))
             return NotFound();
-        var query = _apiDbContext.GameServerLogs.AsQueryable();
+        var query = _apiDbContext.GameServerLogs
+            .Where((q) => q.GameServerFk == gameServerId);
         if (referenceTimeStamp is not null)
             query = query.Where((q) => q.TimeStamp >= referenceTimeStamp);
         var count = await query.LongCountAsync(cancellationToken);
@@ -716,7 +719,8 @@ public class GameServersController : ControllerBase
     {
         if (!await _apiDbContext.GameServers.AnyAsync((q) => q.PrimaryKey == gameServerId, cancellationToken))
             return NotFound();
-        var query = _apiDbContext.GameServerLogs.AsQueryable();
+        var query = _apiDbContext.GameServerLogs
+            .Where((q) => q.GameServerFk == gameServerId);
         if (referenceTimeStamp is not null)
             query = query.Where((q) => q.TimeStamp >= referenceTimeStamp);
         query = descendingByTimeStamp
@@ -727,6 +731,76 @@ public class GameServersController : ControllerBase
             .Take(take)
             .ToArrayAsync(cancellationToken);
         return Ok(configurationEntries);
+    }
+
+    /// <summary>
+    /// Downloads the logs of the given <see cref="GameServer"/>.
+    /// </summary>
+    /// <remarks>
+    /// Logs are ordered by <see cref="GameServerLog.TimeStamp"/>.
+    /// </remarks>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to download the logs of.</param>
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [ProducesResponseType(typeof(FileStreamResult), (int) HttpStatusCode.OK)]
+    [HttpGet("{gameServerId:long}/logs/download", Name = nameof(DownloadLogsAsync))]
+    public async Task DownloadLogsAsync(
+        [FromRoute] long gameServerId,
+        CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId))
+            throw new UnauthorizedAccessException();
+        var gameServer = await _apiDbContext.GameServers
+            .SingleAsync((q) => q.PrimaryKey == gameServerId, cancellationToken)
+            .ConfigureAwait(false);
+        var logs = _apiDbContext.GameServerLogs
+            .Where((q) => q.GameServerFk == gameServerId)
+            .OrderBy((q) => q.TimeStamp)
+            .AsAsyncEnumerable();
+        Response.Headers.Add(
+            "Content-Disposition",
+            new System.Net.Mime.ContentDisposition
+            {
+                FileName = $"{gameServer.Title}.log.txt",
+                Inline   = false,
+            }.ToString());
+        await using var stream = new StreamWriter(Response.Body);
+        await foreach (var log in logs
+                           .WithCancellation(cancellationToken)
+                           .ConfigureAwait(false))
+        {
+            await stream.WriteLineAsync($"{log.TimeStamp:O} {log.Source} {log.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Clears all logs of the <see cref="GameServer"/> given.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to clear the logs of.</param>
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    [HttpPost("{gameServerId:long}/logs/clear", Name = nameof(ClearLogsAsync))]
+    public async Task<ActionResult> ClearLogsAsync(
+        [FromRoute] long gameServerId,
+        CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId))
+            throw new UnauthorizedAccessException();
+        if (!await _apiDbContext.GameServers
+                .AnyAsync((q) => q.PrimaryKey == gameServerId, cancellationToken)
+                .ConfigureAwait(false))
+            return NotFound();
+        await _apiDbContext.GameServerLogs
+            .Where((q) => q.GameServerFk == gameServerId)
+            .ExecuteDeleteAsync(cancellationToken);
+        return NoContent();
     }
 
     /// <summary>
@@ -746,7 +820,7 @@ public class GameServersController : ControllerBase
     [Authorize(Roles = Roles.Admin + "," + Roles.ServerUpdate)]
     public async Task<ActionResult<IEnumerable<ConfigurationEntry>>> SetConfigurationAsync(
         [FromRoute] long gameServerId,
-        [FromBody] ConfigurationEntry[] configurationEntries,
+        [FromBody] List<ConfigurationEntry> configurationEntries,
         CancellationToken cancellationToken)
     {
         var user = await User.GetUserAsync(_apiDbContext, cancellationToken);

@@ -208,6 +208,80 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to If set to , the mission is loaded regardless of the number of load errors. If not set, the server will abort loading the mission and return to the mission selection..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Descripti" +
+                        "on", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ignore errors when loading missions.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to If set, &quot;Server: Object not found&quot; messages are logged.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Log object not found.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to If #monitor is running and the size of a player&apos;s guaranteed message queue (listed as G: in #monitor) exceeds the threshold, all message types and sizes of that player are written to a log file in the RPT directory (see Crash Files); the writing itself is logged server-side..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Log large queue sizes.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Set to skip parsing description.ext/mission.sqm. Shows the pbo filename instead of the configured mission name. OverviewText and similar will not work, but loading the mission list is much faster when there are many missions.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Descriptio" +
+                        "n", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Skip parsing description.ext.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Prevent or allow file changes at runtime for the clients (including HC)..
         /// </summary>
         internal static string ServerController_Arma3_ServerCfg_AllowedFilePatching_Description {

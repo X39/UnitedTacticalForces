@@ -276,4 +276,28 @@ Wenn diese Einstellung aktiviert ist, kann sich der Start des Servers um 600 Sek
     <data name="ServerController_Arma3_Host_HeadlessClientPassword_Description" xml:space="preserve">
         <value>Das Passwort des Servers, mit dem sich der Headless Client verbinden soll.</value>
     </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Description" xml:space="preserve">
+        <value>Ist dieser Wert auf gesetzt, wird die Mission unabhängig von der Anzahl der Ladefehler geladen. Wenn der Wert nicht gesetzt ist, bricht der Server das Laden der Mission ab und kehrt zur Missionsauswahl zurück.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Title" xml:space="preserve">
+        <value>Fehler beim Laden von Missionen ignorieren</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Description" xml:space="preserve">
+        <value>Wenn gesetzt, werden "Server: Objekt nicht gefunden"-Meldungen protokolliert</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Title" xml:space="preserve">
+        <value>Objekt nicht gefunden loggen</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Description" xml:space="preserve">
+        <value>Wenn #monitor läuft und die Größe der garantierten Nachrichten-Warteschlange eines Spielers (aufgelistet als G: in #monitor) den Schwellenwert überschreitet, werden alle Nachrichtentypen und -größen dieses Spielers in eine Log-Datei im RPT-Verzeichnis geschrieben (siehe Crash-Dateien); das Schreiben selbst wird serverseitig protokolliert.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Title" xml:space="preserve">
+        <value>Große Warteschlangen protokollieren</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Description" xml:space="preserve">
+        <value>Setzen, um das Parsen von description.ext/mission.sqm zu überspringen. Zeigt den pbo-Dateinamen anstelle des konfigurierten Missionsnamens. OverviewText und ähnliches wird nicht funktionieren, aber das Laden der Missionsliste ist viel schneller, wenn es viele Missionen gibt</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Title" xml:space="preserve">
+        <value>Lesen von description.ext überspringen</value>
+    </data>
 </root>
