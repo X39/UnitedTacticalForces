@@ -14,6 +14,7 @@ using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.HostedServices;
+using X39.UnitedTacticalForces.Api.Services;
 using X39.Util;
 using X39.Util.DependencyInjection;
 
@@ -52,6 +53,11 @@ builder.Services.AddDbContextFactory<ApiDbContext>(
     options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("ApiDbContext")));
 builder.Services.AddAttributedServicesFromAssemblyOf<Program>(builder.Configuration);
+builder.Services.AddSingleton<DiscordBot>();
+builder.Services.AddHostedService<DiscordBot>((serviceProvider) => serviceProvider.GetRequiredService<DiscordBot>());
+builder.Services.AddSingleton(new BaseUrl(
+    builder.Configuration[Constants.Configuration.General.ApiBaseUrl] ?? string.Empty,
+    builder.Configuration[Constants.Configuration.General.ClientBaseUrl] ?? string.Empty));
 
 builder.Services.AddAuthorization();
 var authenticationBuilder = builder.Services

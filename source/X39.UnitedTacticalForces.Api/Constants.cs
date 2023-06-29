@@ -70,11 +70,14 @@ internal static class Constants
             {
                 public const string ApplicationId = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(ApplicationId);
                 public const string PublicKey     = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(PublicKey);
+                public const string BotToken      = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(BotToken);
             }
         }
 
         public static class General
         {
+            public const string ClientBaseUrl      = nameof(General) + ":" + nameof(ClientBaseUrl);
+            public const string ApiBaseUrl         = nameof(General) + ":" + nameof(ApiBaseUrl);
             public const string BasePath           = nameof(General) + ":" + nameof(BasePath);
             public const string AutoVerifyNewUsers = nameof(General) + ":" + nameof(AutoVerifyNewUsers);
         }

@@ -1,4 +1,5 @@
 using System.Net;
+using Discord;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,8 @@ using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
+using X39.UnitedTacticalForces.Api.HostedServices;
+using X39.UnitedTacticalForces.Api.Services;
 using X39.UnitedTacticalForces.Common;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
@@ -20,16 +23,26 @@ public class EventsController : ControllerBase
 {
     private readonly ILogger<EventsController> _logger;
     private readonly ApiDbContext              _apiDbContext;
+    private readonly DiscordBot?               _discordBot;
+    private readonly BaseUrl                   _baseUrl;
 
     /// <summary>
     /// Creates a new instance of <see cref="EventsController"/>.
     /// </summary>
     /// <param name="logger">The <see cref="ILogger"/> to use.</param>
     /// <param name="apiDbContext">The <see cref="ApiDbContext"/> to use.</param>
-    public EventsController(ILogger<EventsController> logger, ApiDbContext apiDbContext)
+    /// <param name="discordBot">The <see cref="DiscordBot"/> to use.</param>
+    /// <param name="baseUrl">The <see cref="BaseUrl"/> to use.</param>
+    public EventsController(
+        ILogger<EventsController> logger,
+        ApiDbContext apiDbContext,
+        DiscordBot? discordBot,
+        BaseUrl baseUrl)
     {
         _logger       = logger;
         _apiDbContext = apiDbContext;
+        _discordBot   = discordBot;
+        _baseUrl      = baseUrl;
     }
 
     /// <summary>
@@ -303,6 +316,8 @@ public class EventsController : ControllerBase
         newEvent.Terrain              = null;
         var entity = await _apiDbContext.Events.AddAsync(newEvent, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
+        await CreateOrUpdateDiscordEventAsync(newEvent, true)
+            .ConfigureAwait(false);
         return Ok(entity.Entity);
     }
 
@@ -321,18 +336,27 @@ public class EventsController : ControllerBase
         var existingEvent = await _apiDbContext.Events.SingleAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         if (!User.IsInRoleOrAdmin(Roles.EventModify) && existingEvent.HostedByFk != userId)
             return Forbid();
+        bool imageChanged = false;
         // ToDo: Log audit
-        existingEvent.Title             = updatedEvent.Title;
-        existingEvent.Description       = updatedEvent.Description;
-        existingEvent.ScheduledFor      = updatedEvent.ScheduledFor;
-        existingEvent.Image             = updatedEvent.Image;
-        existingEvent.ImageMimeType     = updatedEvent.ImageMimeType;
+        existingEvent.Title        = updatedEvent.Title;
+        existingEvent.Description  = updatedEvent.Description;
+        existingEvent.ScheduledFor = updatedEvent.ScheduledFor;
+
         existingEvent.HostedByFk        = updatedEvent.HostedBy?.PrimaryKey ?? updatedEvent.HostedByFk;
         existingEvent.ModPackRevisionFk = updatedEvent.ModPackRevision?.PrimaryKey ?? updatedEvent.ModPackRevisionFk;
         existingEvent.TerrainFk         = updatedEvent.Terrain?.PrimaryKey ?? updatedEvent.TerrainFk;
         existingEvent.MinimumAccepted   = updatedEvent.MinimumAccepted;
         existingEvent.IsVisible         = updatedEvent.IsVisible;
+        if (updatedEvent.Image != existingEvent.Image)
+        {
+            existingEvent.ImageMimeType = updatedEvent.ImageMimeType;
+            existingEvent.Image         = updatedEvent.Image;
+            imageChanged                = true;
+        }
+
         await _apiDbContext.SaveChangesAsync(cancellationToken);
+        await CreateOrUpdateDiscordEventAsync(existingEvent, imageChanged)
+            .ConfigureAwait(false);
         return NoContent();
     }
 
@@ -426,5 +450,54 @@ public class EventsController : ControllerBase
             EEventAcceptance.Rejected,
             cancellationToken);
         return NoContent();
+    }
+
+    private async Task CreateOrUpdateDiscordEventAsync(Event appEvent, bool imageChanged)
+    {
+        await (_discordBot?.WithDiscordAsync(
+            async (client) =>
+            {
+                var eventUrl = _baseUrl.ResolveClientUrl($"/events/{appEvent.PrimaryKey}");
+                foreach (var guild in client.Guilds)
+                {
+                    var guildEvents = await guild.GetEventsAsync()
+                        .ConfigureAwait(false);
+                    var guildEvent = guildEvents.FirstOrDefault((q) => q.Location == eventUrl);
+                    if (guildEvent is not null)
+                    {
+                        await guildEvent.ModifyAsync(
+                            (properties) =>
+                            {
+                                if (guildEvent.Name != appEvent.Title)
+                                    properties.Name = appEvent.Title;
+                                if (guildEvent.Description != appEvent.Description)
+                                    properties.Description = appEvent.Description;
+                                if (guildEvent.StartTime != appEvent.ScheduledFor)
+                                {
+                                    properties.StartTime = appEvent.ScheduledFor;
+                                    properties.EndTime   = appEvent.ScheduledFor.AddHours(4);
+                                }
+
+                                if (imageChanged)
+                                    properties.CoverImage = new Image(new MemoryStream(appEvent.Image));
+                            });
+                    }
+                    else
+                    {
+                        var response = await guild.CreateEventAsync(
+                                name: appEvent.Title,
+                                startTime: appEvent.ScheduledFor,
+                                endTime: appEvent.ScheduledFor.AddHours(4),
+                                type: GuildScheduledEventType.External,
+                                description: appEvent.Description,
+                                location: eventUrl)
+                            .ConfigureAwait(false);
+                        await response.ModifyAsync(
+                                (properties) =>
+                                    properties.CoverImage = new Image(new MemoryStream(appEvent.Image)))
+                            .ConfigureAwait(false);
+                    }
+                }
+            }) ?? Task.CompletedTask);
     }
 }
