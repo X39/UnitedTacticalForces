@@ -462,4 +462,46 @@
     <data name="Pages_Wiki_ConfirmDeletePage_Title" xml:space="preserve">
         <value>Delete confirmation</value>
     </data>
+    <data name="Pages_GameServers_ConfirmClearLogs_Description" xml:space="preserve">
+        <value>Please confirm the deletion of all logs belonging to that server</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmClearLogs_Title" xml:space="preserve">
+        <value>Confirm deletion of logs</value>
+    </data>
+    <data name="Shared_NavMenu_Logout_Imposter" xml:space="preserve">
+        <value>Return to normal</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_StartServer" xml:space="preserve">
+        <value>Start server</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_UpgradeServer" xml:space="preserve">
+        <value>Upgrade server and apply configuration</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_StopServer" xml:space="preserve">
+        <value>Stop server</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_ViewLogs" xml:space="preserve">
+        <value>View logs</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_DownloadLogs" xml:space="preserve">
+        <value>Download logs</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_ClearLogs" xml:space="preserve">
+        <value>Clear logs</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_EditServer" xml:space="preserve">
+        <value>Modify Server configuration</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_DeleteServer" xml:space="preserve">
+        <value>Delete server</value>
+    </data>
+    <data name="Pages_Users_Table_SteamId64" xml:space="preserve">
+        <value>Steam id 64</value>
+    </data>
+    <data name="Shared_NavMenu_TeamSpeak3" xml:space="preserve">
+        <value>Teamspeak 3</value>
+    </data>
+    <data name="Shared_NavMenu_Discord" xml:space="preserve">
+        <value>Discord</value>
+    </data>
 </root>

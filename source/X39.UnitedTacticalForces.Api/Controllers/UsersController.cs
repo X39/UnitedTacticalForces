@@ -262,9 +262,13 @@ public class UsersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var user = await User.GetUserWithRolesAsync(_apiDbContext, cancellationToken);
-        return user is null
-            ? Unauthorized()
-            : Ok(user);
+        if (user is null)
+            return Unauthorized();
+        foreach (var userRole in user.Roles ?? Enumerable.Empty<Role>())
+        {
+            userRole.Users?.Clear();
+        }
+        return Ok(user);
     }
 
     /// <summary>
@@ -302,7 +306,7 @@ public class UsersController : ControllerBase
         if (take > 500)
             throw new ArgumentOutOfRangeException(nameof(take), take, "Take has a hard-maximum of 500.");
 
-        IQueryable<User> users = _apiDbContext.Users;
+        IQueryable<User> users = _apiDbContext.Users.AsNoTracking();
         User? currentUser = null;
         if (includeRoles ?? false)
         {
@@ -353,6 +357,11 @@ public class UsersController : ControllerBase
             .Take(take);
 
         var result = await users.ToArrayAsync(cancellationToken);
+
+        foreach (var role in result.SelectMany((q)=>q.Roles ?? Enumerable.Empty<Role>()))
+        {
+            role.Users?.Clear();
+        }
 
         return Ok(result);
     }

@@ -21,6 +21,7 @@ namespace X39.UnitedTacticalForces.Api.Controllers;
 public class ModPackController : ControllerBase
 {
     public record ModPackUpdate(string? Title, string? Html);
+
     private readonly ILogger<ModPackController> _logger;
     private readonly ApiDbContext               _apiDbContext;
 
@@ -39,13 +40,83 @@ public class ModPackController : ControllerBase
     /// Downloads the <see cref="ModPackRevision"/> and updates the last downloaded timestamp in the users meta data.
     /// </summary>
     /// <param name="modPackDefinitionId">The <see cref="ModPackDefinition.PrimaryKey"/> of the <see cref="ModPackDefinition"/> to download.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>A file response containing the corresponding <see cref="ModPackRevision"/> HTML and title.</returns>
+    [AllowAnonymous]
+    [HttpGet("{modPackDefinitionId:long}/download/latest", Name = nameof(DownloadLatestModPackAsync))]
+    [ProducesDefaultResponseType(typeof(FileContentResult))]
+    public async Task<FileContentResult> DownloadLatestModPackAsync(
+        [FromRoute] long modPackDefinitionId,
+        CancellationToken cancellationToken)
+    {
+        var modPackData = await _apiDbContext.ModPackRevisions
+            .Where((q) => q.IsActive)
+            .Where((q) => q.DefinitionFk == modPackDefinitionId)
+            .Select(
+                (q) => new
+                {
+                    q.Html,
+                    q.Definition!.Title,
+                    q.PrimaryKey
+                })
+            .SingleAsync(cancellationToken);
+        var modPackRevisionId = modPackData.PrimaryKey;
+        if (User.TryGetUserId(out var userId))
+        {
+            var user = await _apiDbContext.Users
+                .Include(
+                    (e) => e.ModPackMetas!.Where(
+                        (q) => q.ModPackRevisionFk == modPackRevisionId &&
+                               q.ModPackDefinitionFk == modPackDefinitionId))
+                .Where((q) => q.PrimaryKey == userId)
+                .SingleAsync(cancellationToken);
+            var userModPackMeta = user.ModPackMetas?.FirstOrDefault(
+                (q) => q.ModPackRevisionFk == modPackRevisionId && q.ModPackDefinitionFk == modPackDefinitionId);
+            if (userModPackMeta is null)
+            {
+                var userModPackMetaEntity = await _apiDbContext.UserModPackMetas.AddAsync(
+                    new UserModPackMeta
+                    {
+                        UserFk              = userId,
+                        ModPackDefinitionFk = modPackDefinitionId,
+                        ModPackRevisionFk   = modPackRevisionId,
+                    },
+                    cancellationToken);
+                userModPackMeta = userModPackMetaEntity.Entity;
+            }
+
+            userModPackMeta.TimeStampDownloaded = DateTimeOffset.Now;
+        }
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        var htmlBytes = Encoding.UTF8.GetBytes(modPackData.Html);
+        var fileName = new string(modPackData.Title.Where((q) => q.IsLetterOrDigit()).ToArray());
+        Response.Headers.Add(
+            "Content-Disposition",
+            new System.Net.Mime.ContentDisposition
+            {
+                FileName = $"{fileName}.html",
+                Inline   = false,
+            }.ToString());
+        return new FileContentResult(htmlBytes, "text/html")
+        {
+            FileDownloadName = "",
+        };
+    }
+
+    /// <summary>
+    /// Downloads the <see cref="ModPackRevision"/> and updates the last downloaded timestamp in the users meta data.
+    /// </summary>
+    /// <param name="modPackDefinitionId">The <see cref="ModPackDefinition.PrimaryKey"/> of the <see cref="ModPackDefinition"/> to download.</param>
     /// <param name="modPackRevisionId">The <see cref="ModPackRevision.PrimaryKey"/> of the <see cref="ModPackRevision"/> to download.</param>
     /// <param name="cancellationToken">
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     /// <returns>A file response containing the corresponding <see cref="ModPackRevision"/> HTML and title.</returns>
-    [Authorize]
+    [AllowAnonymous]
     [HttpGet("{modPackDefinitionId:long}/download/{modPackRevisionId:long}", Name = nameof(DownloadModPackAsync))]
     [ProducesDefaultResponseType(typeof(FileContentResult))]
     public async Task<FileContentResult> DownloadModPackAsync(
@@ -53,8 +124,6 @@ public class ModPackController : ControllerBase
         [FromRoute] long modPackRevisionId,
         CancellationToken cancellationToken)
     {
-        if (!User.TryGetUserId(out var userId))
-            throw new UnauthorizedAccessException();
         var modPackData = await _apiDbContext.ModPackRevisions
             .Where((q) => q.PrimaryKey == modPackRevisionId)
             .Where((q) => q.DefinitionFk == modPackDefinitionId)
@@ -65,28 +134,33 @@ public class ModPackController : ControllerBase
                     q.Definition!.Title
                 })
             .SingleAsync(cancellationToken);
-        var user = await _apiDbContext.Users
-            .Include(
-                (e) => e.ModPackMetas!.Where(
-                    (q) => q.ModPackRevisionFk == modPackRevisionId && q.ModPackDefinitionFk == modPackDefinitionId))
-            .Where((q) => q.PrimaryKey == userId)
-            .SingleAsync(cancellationToken);
-        var userModPackMeta = user.ModPackMetas?.FirstOrDefault(
-            (q) => q.ModPackRevisionFk == modPackRevisionId && q.ModPackDefinitionFk == modPackDefinitionId);
-        if (userModPackMeta is null)
+        if (User.TryGetUserId(out var userId))
         {
-            var userModPackMetaEntity = await _apiDbContext.UserModPackMetas.AddAsync(
-                new UserModPackMeta
-                {
-                    UserFk              = userId,
-                    ModPackDefinitionFk = modPackDefinitionId,
-                    ModPackRevisionFk   = modPackRevisionId,
-                },
-                cancellationToken);
-            userModPackMeta = userModPackMetaEntity.Entity;
+            var user = await _apiDbContext.Users
+                .Include(
+                    (e) => e.ModPackMetas!.Where(
+                        (q) => q.ModPackRevisionFk == modPackRevisionId &&
+                               q.ModPackDefinitionFk == modPackDefinitionId))
+                .Where((q) => q.PrimaryKey == userId)
+                .SingleAsync(cancellationToken);
+            var userModPackMeta = user.ModPackMetas?.FirstOrDefault(
+                (q) => q.ModPackRevisionFk == modPackRevisionId && q.ModPackDefinitionFk == modPackDefinitionId);
+            if (userModPackMeta is null)
+            {
+                var userModPackMetaEntity = await _apiDbContext.UserModPackMetas.AddAsync(
+                    new UserModPackMeta
+                    {
+                        UserFk              = userId,
+                        ModPackDefinitionFk = modPackDefinitionId,
+                        ModPackRevisionFk   = modPackRevisionId,
+                    },
+                    cancellationToken);
+                userModPackMeta = userModPackMetaEntity.Entity;
+            }
+
+            userModPackMeta.TimeStampDownloaded = DateTimeOffset.Now;
         }
 
-        userModPackMeta.TimeStampDownloaded = DateTimeOffset.Now;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         var htmlBytes = Encoding.UTF8.GetBytes(modPackData.Html);
         var fileName = new string(modPackData.Title.Where((q) => q.IsLetterOrDigit()).ToArray());

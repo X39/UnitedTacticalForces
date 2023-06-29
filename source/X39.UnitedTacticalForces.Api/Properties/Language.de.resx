@@ -300,4 +300,28 @@ Wenn diese Einstellung aktiviert ist, kann sich der Start des Servers um 600 Sek
     <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Title" xml:space="preserve">
         <value>Lesen von description.ext überspringen</value>
     </data>
+    <data name="ServerController_Arma3_ServerCfg_BattlEye_Title" xml:space="preserve">
+        <value>BattlEye</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Persistent_Title" xml:space="preserve">
+        <value>Persistente Mission</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_BattlEye_Description" xml:space="preserve">
+        <value>Aktiviert oder deaktiviert die BattlEye-Anti-Cheat-Engine. Erfordert die Installation von BattlEye auf dem Server und Clients, die dem Server beitreten</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Persistent_Description" xml:space="preserve">
+        <value>Mission läuft weiter, wenn alle Clients die Verbindung trennen. Wenn Sie die Option Persistenz aktivieren, laufen Missionen mit Basis- oder Sofort-Respawn weiter, nachdem alle Spieler die Verbindung getrennt haben. Die anderen Respawn-Typen machen eine Mission nicht persistent. Die Art des Respawns, die eine bestimmte Mission verwendet, wird in ihrer Description.ext festgelegt.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_DisableVoN_Title" xml:space="preserve">
+        <value>Voice Chat deaktivieren</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_DisableVoN_Description" xml:space="preserve">
+        <value>Aktiviert oder deaktiviert Voice Chat (VON)</value>
+    </data>
+    <data name="ServerController_Arma3_Host_Branch_Description" xml:space="preserve">
+        <value>Der gewählte Spielebranch</value>
+    </data>
+    <data name="ServerController_Arma3_Host_Branch_Title" xml:space="preserve">
+        <value>Branch</value>
+    </data>
 </root>

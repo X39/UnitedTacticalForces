@@ -17,13 +17,14 @@ internal static class Constants
 
     public static class Routes
     {
-        public const string Events        = "events";
-        public const string GameServers   = "game-servers";
-        public const string EventSlotting = "slotting";
-        public const string Users         = "users";
-        public const string ModPacks      = "mod-packs";
-        public const string Terrains      = "terrains";
-        public const string Wiki          = "wiki";
+        public const  string Events        = "events";
+        public const  string GameServers   = "game-servers";
+        public const  string EventSlotting = "slotting";
+        public const  string Users         = "users";
+        public const  string ModPacks      = "mod-packs";
+        public const  string Terrains      = "terrains";
+        public const  string Wiki          = "wiki";
+        public const string UpdateStream  = "update-stream";
     }
 
     public static class AuthorizationSchemas
@@ -40,11 +41,12 @@ internal static class Constants
         [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
         public static class Steam
         {
-            public const string ApiKey          = nameof(Steam) + ":" + nameof(ApiKey);
-            public const string SteamCmdPath    = nameof(Steam) + ":" + nameof(SteamCmdPath);
-            public const string InstallBasePath = nameof(Steam) + ":" + nameof(InstallBasePath);
-            public const string Username        = nameof(Steam) + ":" + nameof(Username);
-            public const string Password        = nameof(Steam) + ":" + nameof(Password);
+            public const string ApiKey            = nameof(Steam) + ":" + nameof(ApiKey);
+            public const string SteamCmdPath      = nameof(Steam) + ":" + nameof(SteamCmdPath);
+            public const string InstallBasePath   = nameof(Steam) + ":" + nameof(InstallBasePath);
+            public const string Username          = nameof(Steam) + ":" + nameof(Username);
+            public const string Password          = nameof(Steam) + ":" + nameof(Password);
+            public const string WorkshopChunkSize = nameof(Steam) + ":" + nameof(WorkshopChunkSize);
         }
 
         public static class General

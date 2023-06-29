@@ -13,6 +13,7 @@ public class MeService
         _userRepository = userRepository;
     }
 
+    private User? _possessUser;
     private User? _user;
 
     /// <summary>
@@ -25,14 +26,21 @@ public class MeService
     ///     Thrown if the current user is not authenticated.
     ///     Authentication status can be checked using <see cref="IsAuthenticated"/>.
     /// </exception>
-    public User User => _user ?? throw new InvalidOperationException(
+    public User User => _possessUser ?? _user ?? throw new InvalidOperationException(
         $"User is not authenticated. Check authentication status prior to using property using {nameof(IsAuthenticated)}.");
 
+    public bool IsImposter => _possessUser is not null;
+    
     public bool IsAuthenticated => _user is not null && !(_user.IsBanned ?? false);
 
     public bool IsVerified => _user?.IsVerified ?? false;
 
     public bool Eval(Func<User, bool> func) => IsAuthenticated && func(User);
+    
+    public void PossessUser(User? user)
+    {
+        _possessUser = user;
+    }
 
     /// <summary>
     /// Initializes the service.

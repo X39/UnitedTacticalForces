@@ -79,6 +79,7 @@
 
     public static async Task ShowAsync(
         IDialogService dialogService,
+        Breakpoint breakpoint,
         GameServer gameServer)
     {
         if (gameServer.PrimaryKey is null)
@@ -93,6 +94,7 @@
             {
                 CloseOnEscapeKey = true,
                 FullWidth = true,
+                FullScreen = breakpoint is Breakpoint.Xs or Breakpoint.Sm,
                 MaxWidth = MaxWidth.False,
             })
             .ConfigureAwait(false);

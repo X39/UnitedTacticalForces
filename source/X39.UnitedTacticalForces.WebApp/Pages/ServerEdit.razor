@@ -57,6 +57,7 @@ else
                                  HelperText="@(Localizer[nameof(Language.Pages_GameServerEdit_GameServerSelectedModPack_HelperText)])"
                                  HelperTextOnFocus="true"
                                  Clearable="true"
+                                 Strict="true"
                                  OnClearButtonClick="@(() => _gameServer.SelectedModPack = null)"
                                  ToStringFunc="@((q) => q?.Title ?? string.Empty)"
                                  SearchFuncWithCancel="SearchModPacksAsync"/>

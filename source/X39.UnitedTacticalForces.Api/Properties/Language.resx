@@ -332,4 +332,28 @@ Usually this is the same as the installation path and the same as the one entere
     <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Description" xml:space="preserve">
         <value>If #monitor is running and the size of a player's guaranteed message queue (listed as G: in #monitor) exceeds the threshold, all message types and sizes of that player are written to a log file in the RPT directory (see Crash Files); the writing itself is logged server-side.</value>
     </data>
+    <data name="ServerController_Arma3_ServerCfg_BattlEye_Title" xml:space="preserve">
+        <value>BattlEye</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Persistent_Title" xml:space="preserve">
+        <value>Persistent Mission</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_BattlEye_Description" xml:space="preserve">
+        <value>Enables or disables the BattlEye anti-cheat engine. Requires BattlEye to be installed on the server and clients joining the server.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_Persistent_Description" xml:space="preserve">
+        <value>Mission continues when all clients disconnect. If you enable the Persistence option, missions with base or instant respawn continue to run after all players disconnect. The other respawn types do not make a mission persistent. The type of respawn that a particular mission uses is specified in its Description.ext.</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_DisableVoN_Title" xml:space="preserve">
+        <value>Disable voice chat</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_DisableVoN_Description" xml:space="preserve">
+        <value>Activates or deactivates voice chat (VON)</value>
+    </data>
+    <data name="ServerController_Arma3_Host_Branch_Title" xml:space="preserve">
+        <value>Branch</value>
+    </data>
+    <data name="ServerController_Arma3_Host_Branch_Description" xml:space="preserve">
+        <value>The selected game branch</value>
+    </data>
 </root>

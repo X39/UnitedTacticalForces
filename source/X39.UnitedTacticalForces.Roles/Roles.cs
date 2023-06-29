@@ -117,4 +117,14 @@ public static class Roles
     /// Allows a user to modify and/or list files on the server.
     /// </summary>
     public const string ServerFiles = "server-modify-files";
+
+    /// <summary>
+    /// Allows a user to access the server log files.
+    /// </summary>
+    public const string ServerLogs = "server-logs";
+
+    /// <summary>
+    /// Allows a user to clear the server log files.
+    /// </summary>
+    public const string ServerLogsClear = "server-logs-clear";
 }

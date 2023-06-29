@@ -455,4 +455,46 @@
     <data name="Pages_Wiki_ConfirmDeletePage_Title" xml:space="preserve">
         <value>Löschbestätigung</value>
     </data>
+    <data name="Pages_GameServers_ConfirmClearLogs_Description" xml:space="preserve">
+        <value>Bitte bestätigen Sie die Löschung aller zu diesem Server gehörenden Protokolle</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmClearLogs_Title" xml:space="preserve">
+        <value>Bestätigen Sie die Löschung von Protokollen</value>
+    </data>
+    <data name="Shared_NavMenu_Logout_Imposter" xml:space="preserve">
+        <value>Zu normalem Nutzer zurückkehren</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_ClearLogs" xml:space="preserve">
+        <value>Protokoll leeren</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_DeleteServer" xml:space="preserve">
+        <value>Server Löschen</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_DownloadLogs" xml:space="preserve">
+        <value>Protokoll herunterladen</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_EditServer" xml:space="preserve">
+        <value>Serverkonfiguration bearbeiten</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_StartServer" xml:space="preserve">
+        <value>Server Starten</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_StopServer" xml:space="preserve">
+        <value>Server Stoppen</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_UpgradeServer" xml:space="preserve">
+        <value>Server Aktuallisieren und Konfiguration anwenden</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_ViewLogs" xml:space="preserve">
+        <value>Protokoll Anzeigen</value>
+    </data>
+    <data name="Pages_Users_Table_SteamId64" xml:space="preserve">
+        <value>Steam-ID 64</value>
+    </data>
+    <data name="Shared_NavMenu_Discord" xml:space="preserve">
+        <value>Discord</value>
+    </data>
+    <data name="Shared_NavMenu_TeamSpeak3" xml:space="preserve">
+        <value>Teamspeak 3</value>
+    </data>
 </root>

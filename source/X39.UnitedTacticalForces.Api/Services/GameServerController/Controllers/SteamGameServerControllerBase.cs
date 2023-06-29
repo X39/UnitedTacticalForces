@@ -292,11 +292,8 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
     {
         get
         {
-            var installBasePath = GetInstallBasePath();
             var installPath = Path.Combine(
-                installBasePath,
-                ServerAppId.ToString(),
-                GameServerPrimaryKey.ToString("00000000"),
+                GameServerPath,
                 "server-instance");
             return installPath;
         }
@@ -400,6 +397,8 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         return (steamCmdPath, steamUsername, steamPassword, gameInstallBasePath);
     }
 
+    protected virtual Task SteamCmdGameUpdateInstructions(ProcessStartInfo psi) => Task.CompletedTask;
+
     private async Task DoUpdateGameAsync(
         string steamCmdPath,
         string installPath,
@@ -438,9 +437,17 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
 
         psi.ArgumentList.Add("+app_update");
         psi.ArgumentList.Add(appId.ToString());
+        await SteamCmdGameUpdateInstructions(psi);
+
         psi.ArgumentList.Add("+quit");
         if (Process is not null && !Process.HasExited)
             throw new InvalidOperationException("Process must be finished for the operation");
+        Logger.LogDebug(
+            "Starting steamcmd to update {GameServer} ({GameServerPk}), requested by user {UserId}, using {Arguments}",
+            GameServerLastKnownTitle,
+            GameServerPrimaryKey,
+            executingUser?.PrimaryKey,
+            psi.ArgumentList.AsEnumerable());
         using var tmp = new Process
         {
             StartInfo = psi,
@@ -482,73 +489,85 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
     }
 
     /// <summary>
-    /// Returns the corresponding path of a <paramref name="workshopId"/>
+    /// Updates the given workshop items identified via <paramref name="workshopIds"/>. 
     /// </summary>
-    /// <param name="workshopId">The workshop id to get a path for.</param>
-    /// <returns>The path to the workshop id that may or may not exist.</returns>
-    protected string GetWorkshopPath(long workshopId)
-    {
-        var installBasePath = GetInstallBasePath();
-        return Path.Combine(installBasePath, workshopId.ToString());
-    }
-
-    /// <summary>
-    /// Updates the given workshop item identified via <paramref name="workshopId"/>. 
-    /// </summary>
-    /// <param name="workshopId">The workshop id.</param>
+    /// <param name="workshopIds">The workshop ids.</param>
+    /// <param name="installPath">The path to download the mods to (individual pathing is not possible, using steamcmd sadly)</param>
     /// <param name="executingUser">The user that requested the update.</param>
     /// <exception cref="FailedToStartProcessException">Thrown when the SteamCmd process failed to start.</exception>
-    /// <returns>The full path to the workshop item.</returns>
-    protected async Task<string> DoUpdateWorkshopMod(
-        long workshopId,
+    /// <returns>The full path to the workshop items.</returns>
+    protected async Task<IReadOnlyCollection<(long workshopId, string installPath)>> DoUpdateWorkshopMods(
+        IEnumerable<long> workshopIds,
+        string installPath,
         User? executingUser)
     {
-        var (steamCmdPath,
-            steamUsername,
-            steamPassword,
-            _) = GetSteamCmdInformationTuple();
-        var installPath = GetWorkshopPath(workshopId);
-        Logger.LogInformation(
-            "Starting update of workshop item {WorkshopId} via SteamCmd, requested by user {UserId}",
-            workshopId,
-            executingUser?.PrimaryKey);
-        var psi = new ProcessStartInfo
+        if (!int.TryParse(_configuration[Constants.Configuration.Steam.WorkshopChunkSize], out var chunkSize))
+            chunkSize = 10;
+        var installPaths = new List<(long, string)>();
+        foreach (var chunkedWorkshopIds in workshopIds.Chunk(chunkSize))
         {
-            FileName               = steamCmdPath,
-            UseShellExecute        = false,
-            RedirectStandardError  = true,
-            RedirectStandardOutput = true,
-            StandardErrorEncoding  = Encoding.ASCII,
-            StandardOutputEncoding = Encoding.ASCII,
-            WorkingDirectory       = Path.GetDirectoryName(steamCmdPath),
-        };
-        psi.ArgumentList.Add("+force_install_dir");
-        psi.ArgumentList.Add(installPath);
-        psi.ArgumentList.Add("+login");
-        if (RequireLogin)
-        {
-            psi.ArgumentList.Add(steamUsername);
-            psi.ArgumentList.Add(steamPassword);
+            var (steamCmdPath,
+                steamUsername,
+                steamPassword,
+                _) = GetSteamCmdInformationTuple();
+            Logger.LogInformation(
+                "Starting update of workshop items {WorkshopId} via SteamCmd, requested by user {UserId}",
+                chunkedWorkshopIds,
+                executingUser?.PrimaryKey);
+            var psi = new ProcessStartInfo
+            {
+                FileName               = steamCmdPath,
+                UseShellExecute        = false,
+                RedirectStandardError  = true,
+                RedirectStandardOutput = true,
+                StandardErrorEncoding  = Encoding.ASCII,
+                StandardOutputEncoding = Encoding.ASCII,
+                WorkingDirectory       = Path.GetDirectoryName(steamCmdPath),
+            };
+            psi.ArgumentList.Add("+force_install_dir");
+            psi.ArgumentList.Add(installPath);
+            psi.ArgumentList.Add("+login");
+            if (RequireLogin)
+            {
+                psi.ArgumentList.Add(steamUsername);
+                psi.ArgumentList.Add(steamPassword);
+            }
+            else
+            {
+                psi.ArgumentList.Add("anonymous");
+            }
+
+            foreach (var workshopId in chunkedWorkshopIds)
+            {
+                psi.ArgumentList.Add("+workshop_download_item");
+                psi.ArgumentList.Add(GameAppId.ToString());
+                psi.ArgumentList.Add(workshopId.ToString());
+                installPaths.Add(
+                    (workshopId, Path.Combine(
+                        installPath,
+                        "steamapps",
+                        "workshop",
+                        "content",
+                        GameAppId.ToString(),
+                        workshopId.ToString())));
+            }
+
+            psi.ArgumentList.Add("+quit");
+
+            if (Process is not null && !Process.HasExited)
+                throw new InvalidOperationException("Process must be finished for the operation");
+
+            await ExecuteAsync(psi);
+
+            Logger.LogInformation(
+                "Finished update of workshop items {WorkshopId} via SteamCmd, requested by user {UserId}",
+                chunkedWorkshopIds,
+                executingUser?.PrimaryKey);
+            await Task.Delay(TimeSpan.FromMinutes(1))
+                .ConfigureAwait(false);
         }
-        else
-        {
-            psi.ArgumentList.Add("anonymous");
-        }
 
-        psi.ArgumentList.Add("+workshop_download_item");
-        psi.ArgumentList.Add(GameAppId.ToString());
-        psi.ArgumentList.Add(workshopId.ToString());
-        psi.ArgumentList.Add("+quit");
-        if (Process is not null && !Process.HasExited)
-            throw new InvalidOperationException("Process must be finished for the operation");
-
-        await ExecuteAsync(psi);
-
-        Logger.LogInformation(
-            "Finished update of workshop item {WorkshopId} via SteamCmd, requested by user {UserId}",
-            workshopId,
-            executingUser?.PrimaryKey);
-        return installPath;
+        return installPaths.AsReadOnly();
     }
 
     private async Task ExecuteAsync(ProcessStartInfo psi, int attempts = 3)

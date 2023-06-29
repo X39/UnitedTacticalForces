@@ -1,7 +1,9 @@
 ﻿@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.Util
 @inject IStringLocalizer<Language> Localizer
 @inject MeService Me
 @inject BaseUrl BaseUrl
+@inject IConfiguration Configuration
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_UpcommingEvents)]</MudNavLink>
     @if (Me.IsVerified)
@@ -40,22 +42,46 @@
 </MudNavMenu>
 <MudSpacer/>
 <MudNavMenu>
+    @if (Configuration[Constants.Configuration.Urls.TeamSpeak3].IsNotNullOrWhiteSpace())
+    {
+        <MudNavLink Icon="@Constants.Icons.Other.TeamSpeak3" Href="@Configuration[Constants.Configuration.Urls.TeamSpeak3]">
+            <MudText>@Localizer[nameof(Language.Shared_NavMenu_TeamSpeak3)]</MudText>
+        </MudNavLink>
+    }
+    @if (Configuration[Constants.Configuration.Urls.Discord].IsNotNullOrWhiteSpace())
+    {
+        <MudNavLink Icon="@Icons.Custom.Brands.Discord" Href="@Configuration[Constants.Configuration.Urls.Discord]">
+            <MudText>@Localizer[nameof(Language.Shared_NavMenu_Discord)]</MudText>
+        </MudNavLink>
+    }
     @if (Me.IsAuthenticated)
     {
         <MudNavLink Href="settings" Icon="@Icons.Material.Filled.Settings">
             <MudText>@Localizer[nameof(Language.Shared_NavMenu_Settings)]</MudText>
         </MudNavLink>
-        <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/logout?returnUrl={BaseUrl.SelfUrl}")" Icon="@Icons.Material.Filled.Logout">
-            <MudText>@Localizer[nameof(Language.Shared_NavMenu_Logout)]</MudText>
-        </MudNavLink>
+        @if (Me.IsImposter)
+        {
+            <MudNavLink Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error"
+                        OnClick="@(() => Me.PossessUser(null))">
+                <MudText>@Localizer[nameof(Language.Shared_NavMenu_Logout_Imposter)]</MudText>
+            </MudNavLink>
+        }
+        else
+        {
+            <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/logout?returnUrl={BaseUrl.SelfUrl}")"
+                        Icon="@Icons.Material.Filled.Logout">
+                <MudText>@Localizer[nameof(Language.Shared_NavMenu_Logout)]</MudText>
+            </MudNavLink>
+        }
     }
     else
     {
-        <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/login/steam?returnUrl={BaseUrl.SelfUrl}")" Icon="@Icons.Material.Filled.Login">
+        <MudNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/login/steam?returnUrl={BaseUrl.SelfUrl}")"
+                    Icon="@Icons.Material.Filled.Login">
             <MudImage Src="https://steamcdn-a.akamaihd.net/steamcommunity/public/images/steamworks_docs/german/sits_small.png"/>
         </MudNavLink>
     }
     <MudNavLink Href="GDPR" Icon="@Icons.Material.Filled.PrivacyTip">
-            <MudText>@Localizer[nameof(Language.Shared_NavMenu_GDPR)]</MudText>
+        <MudText>@Localizer[nameof(Language.Shared_NavMenu_GDPR)]</MudText>
     </MudNavLink>
 </MudNavMenu>

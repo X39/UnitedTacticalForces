@@ -96,6 +96,24 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The selected game branch.
+        /// </summary>
+        internal static string ServerController_Arma3_Host_Branch_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_Host_Branch_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Branch.
+        /// </summary>
+        internal static string ServerController_Arma3_Host_Branch_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_Host_Branch_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The ip address to connect the headless client to..
         /// </summary>
         internal static string ServerController_Arma3_Host_HeadlessClientIp_Description {
@@ -490,6 +508,24 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Enables or disables the BattlEye anti-cheat engine. Requires BattlEye to be installed on the server and clients joining the server..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_BattlEye_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_BattlEye_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to BattlEye.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_BattlEye_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_BattlEye_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to .
         /// </summary>
         internal static string ServerController_Arma3_ServerCfg_BriefingTimeOut_Description {
@@ -594,6 +630,24 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         internal static string ServerController_Arma3_ServerCfg_DisableChannelsArray_Title {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DisableChannelsArray_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Activates or deactivates voice chat (VON).
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DisableVoN_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DisableVoN_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Disable voice chat.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_DisableVoN_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_DisableVoN_Title", resourceCulture);
             }
         }
         
@@ -1122,6 +1176,24 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         internal static string ServerController_Arma3_ServerCfg_PasswordAdmin_Title {
             get {
                 return ResourceManager.GetString("ServerController_Arma3_ServerCfg_PasswordAdmin_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mission continues when all clients disconnect. If you enable the Persistence option, missions with base or instant respawn continue to run after all players disconnect. The other respawn types do not make a mission persistent. The type of respawn that a particular mission uses is specified in its Description.ext..
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Persistent_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Persistent_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Persistent Mission.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_Persistent_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_Persistent_Title", resourceCulture);
             }
         }
         

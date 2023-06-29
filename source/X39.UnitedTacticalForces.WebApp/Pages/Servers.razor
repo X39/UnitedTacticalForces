@@ -86,47 +86,106 @@
             <MudButtonGroup>
                 @if (Me.IsInRoleOrAdmin(Roles.ServerStartStop))
                 {
+                    <MudTooltip>
+                        <TooltipContent>
+                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_StartServer)]</MudText>
+                        </TooltipContent>
+                        <ChildContent>
                     <MudIconButton Icon="@Icons.Material.Filled.PlayArrow"
                                    Color="Color.Success"
                                    Disabled="@(!context.CanStart ?? false)"
                                    OnClick="@(() => StartGameServerAsync(context))"/>
+                        </ChildContent>
+                    </MudTooltip>
+                    <MudTooltip>
+                        <TooltipContent>
+                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_StopServer)]</MudText>
+                        </TooltipContent>
+                        <ChildContent>
                     <MudIconButton Icon="@Icons.Material.Filled.Stop"
                                    Color="Color.Error"
                                    Disabled="@(!context.CanStop ?? false)"
                                    OnClick="@(() => StopGameServerAsync(context))"/>
+                        </ChildContent>
+                    </MudTooltip>
                 }
                 @if (Me.IsInRoleOrAdmin(Roles.ServerUpgrade))
                 {
+                    <MudTooltip>
+                        <TooltipContent>
+                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_UpgradeServer)]</MudText>
+                        </TooltipContent>
+                        <ChildContent>
                     <MudIconButton Icon="@Icons.Material.Filled.Upgrade"
                                    Color="Color.Primary"
                                    Disabled="@(!context.CanUpgrade ?? false)"
                                    OnClick="@(() => UpgradeGameServerAsync(context))"/>
+                        </ChildContent>
+                    </MudTooltip>
                 }
-                @if (Me.IsInRoleOrAdmin(Roles.Admin)) @* ToDo: Create new role & add logic to show logs here *@
+                @if (Me.IsInRoleOrAdmin(Roles.ServerLogs))
                 {
+                    <MudTooltip>
+                        <TooltipContent>
+                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_ViewLogs)]</MudText>
+                        </TooltipContent>
+                        <ChildContent>
                     <MudIconButton Icon="@Icons.Material.Filled.TextSnippet"
                                    Color="Color.Primary"
                                    OnClick="@(() => ShowLogsAsync(context))"/>
+                        </ChildContent>
+                    </MudTooltip>
+                    <MudTooltip>
+                        <TooltipContent>
+                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_DownloadLogs)]</MudText>
+                        </TooltipContent>
+                        <ChildContent>
                     <MudIconButton Icon="@Icons.Material.Filled.Download"
                                    Color="Color.Primary"
-                                    Href="@BaseUrl.ResolveApiUrl($"/game-servers/{context.GameServer!.PrimaryKey!.Value}/logs/download")"/>
+                                   Href="@BaseUrl.ResolveApiUrl($"/game-servers/{context.GameServer!.PrimaryKey!.Value}/logs/download")"/>
+                        </ChildContent>
+                    </MudTooltip>
+                }
+                @if (Me.IsInRoleOrAdmin(Roles.ServerLogsClear))
+                {
+                    <MudTooltip>
+                        <TooltipContent>
+                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_ClearLogs)]</MudText>
+                        </TooltipContent>
+                        <ChildContent>
                     <MudIconButton Icon="@Icons.Material.Filled.Clear"
                                    Color="Color.Primary"
                                    OnClick="@(() => ClearLogsAsync(context))"/>
+                        </ChildContent>
+                    </MudTooltip>
                 }
                 @if (Me.IsInRoleOrAdmin(Roles.ServerUpdate))
                 {
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Color="Color.Secondary"
-                                   Disabled="@(!context.CanUpdateConfiguration ?? false)"
-                                   Href="@($"/servers/{context.GameServer!.PrimaryKey!.Value}")"/>
+                    <MudTooltip>
+                        <TooltipContent>
+                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_EditServer)]</MudText>
+                        </TooltipContent>
+                        <ChildContent>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Secondary"
+                                           Disabled="@(!context.CanUpdateConfiguration ?? false)"
+                                           Href="@($"/servers/{context.GameServer!.PrimaryKey!.Value}")"/>
+                        </ChildContent>
+                    </MudTooltip>
                 }
                 @if (Me.IsInRoleOrAdmin(Roles.ServerCreateOrDelete))
                 {
+                    <MudTooltip>
+                        <TooltipContent>
+                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_DeleteServer)]</MudText>
+                        </TooltipContent>
+                        <ChildContent>
                     <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
                                    Color="Color.Error"
                                    Disabled="@(context.IsRunning ?? false)"
                                    OnClick="@(() => DeleteGameServerAsync(context))"/>
+                        </ChildContent>
+                    </MudTooltip>
                 }
             </MudButtonGroup>
         </MudTd>
@@ -393,7 +452,7 @@
     {
         if (context.GameServer is null)
             throw new ArgumentException("GameServerInfo.GameServer is null.", nameof(context));
-        await ShowGameServerLogs.ShowAsync(DialogService, context.GameServer)
+        await ShowGameServerLogs.ShowAsync(DialogService, Breakpoint, context.GameServer)
             .ConfigureAwait(false);
     }
 
@@ -401,6 +460,13 @@
     {
         if (context.GameServer is null)
             throw new ArgumentException("GameServerInfo.GameServer is null.", nameof(context));
+        var result = await ConfirmDeletionDialog.ShowAsync(
+            DialogService,
+            Localizer[nameof(Language.Pages_GameServers_ConfirmClearLogs_Description)],
+            Localizer[nameof(Language.Pages_GameServers_ConfirmClearLogs_Title)])
+            .ConfigureAwait(false);
+        if (!result)
+            return;
         await GameServerRepository.ClearAsync(context.GameServer)
             .ConfigureAwait(false);
     }

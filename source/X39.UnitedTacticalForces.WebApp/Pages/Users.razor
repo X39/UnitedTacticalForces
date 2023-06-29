@@ -17,6 +17,7 @@
     <ColGroup>
         <col style="width: 0"/>
         <col style="width: 0"/>
+        <col style="width: 0"/>
         <col/>
         <col style="width: 0"/>
     </ColGroup>
@@ -35,6 +36,7 @@
     <HeaderContent>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_IsVerified)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Title)]</MudTh>
+        <MudTh>@Localizer[nameof(Language.Pages_Users_Table_SteamId64)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Roles)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Interactions)]</MudTh>
     </HeaderContent>
@@ -44,6 +46,9 @@
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Title)]">
             <UtfUser User="@context"/>
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_SteamId64)]">
+            <MudText>@context.SteamId64</MudText>
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Roles)]">
             <Users_UserRoles User="context"/>

@@ -26,6 +26,7 @@
                          @bind-Value="@Event.HostedBy"
                          SearchFunc="@SearchUserAsync"
                          ResetValueOnEmptyText="true"
+                         Strict="true"
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          AdornmentColor="Color.Primary"
                          ToStringFunc="@(user => user.Nickname ?? user.SteamId64?.ToString() ?? user.PrimaryKey?.ToString() ?? string.Empty)"/>
@@ -33,6 +34,7 @@
                          @bind-Value="@Event.Terrain"
                          SearchFunc="@SearchTerrainAsync"
                          ResetValueOnEmptyText="true"
+                         Strict="true"
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          AdornmentColor="Color.Primary"
                          ToStringFunc="@(terrain => terrain.Title ?? terrain.PrimaryKey?.ToString() ?? string.Empty)"/>
@@ -40,6 +42,7 @@
                          @bind-Value="@Event.ModPackRevision"
                          SearchFunc="@SearchModPackAsync"
                          ResetValueOnEmptyText="true"
+                         Strict="true"
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          AdornmentColor="Color.Primary"
                          ToStringFunc="@(modPack => modPack.Definition!.Title ?? modPack.PrimaryKey?.ToString() ?? string.Empty)"/>

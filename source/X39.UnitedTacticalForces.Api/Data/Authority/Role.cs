@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
 namespace X39.UnitedTacticalForces.Api.Data.Authority;
@@ -48,6 +49,8 @@ public class Role
         yield return new Role {PrimaryKey = ++id, Category = "Server",         Title = "Server mod-pack",        Identifier = Roles.ServerChangeModPack};
         yield return new Role {PrimaryKey = ++id, Category = "Server",         Title = "Server files",           Identifier = Roles.ServerFiles};
         yield return new Role {PrimaryKey = ++id, Category = "Wiki",           Title = "Wiki Editor",            Identifier = Roles.WikiEditor};
+        yield return new Role {PrimaryKey = ++id, Category = "Server",         Title = "Server access logs",     Identifier = Roles.ServerLogs};
+        yield return new Role {PrimaryKey = ++id, Category = "Server",         Title = "Server clear logs",      Identifier = Roles.ServerLogsClear};
         // @formatter:max_line_length restore
     }
 }

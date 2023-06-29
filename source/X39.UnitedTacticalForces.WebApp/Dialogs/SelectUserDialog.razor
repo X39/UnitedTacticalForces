@@ -5,6 +5,7 @@
     <DialogContent>
         <MudAutocomplete SearchFunc="FindUserAsync"
                          @bind-Value="Selected"
+                         Strict="true"
                          ToStringFunc="@((u) => u.Nickname ?? u.SteamId64?.ToString() ?? u.PrimaryKey?.ToString() ?? string.Empty)"/>
     </DialogContent>
     <DialogActions>

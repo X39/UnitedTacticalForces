@@ -70,6 +70,7 @@ builder.Services.AddControllers()
         (jsonOptions) =>
         {
             jsonOptions.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+            jsonOptions.JsonSerializerOptions.MaxDepth = 64;
         });
 builder.Services.AddHttpClient();
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

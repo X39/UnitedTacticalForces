@@ -10,6 +10,7 @@ using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.GarbageWorkarounds;
 using X39.UnitedTacticalForces.Api.Services.GameServerController;
+using X39.UnitedTacticalForces.Common;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
@@ -180,6 +181,7 @@ public class GameServersController : ControllerBase
     /// </summary>
     [ProducesResponseType(typeof(IEnumerable<string>), (int) HttpStatusCode.OK)]
     [HttpGet("all/controllers", Name = nameof(GetGameServerControllers))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerCreateOrDelete)]
     public IEnumerable<string> GetGameServerControllers()
     {
         return _gameServerControllerFactory.GetGameControllers();
@@ -433,6 +435,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<ConfigurationEntry>), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/configuration", Name = nameof(GetConfigurationAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerUpdate)]
     public async Task<ActionResult<IEnumerable<ConfigurationEntry>>> GetConfigurationAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
@@ -672,6 +675,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(long), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/logs/count", Name = nameof(GetLogsCountAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerLogs)]
     public async Task<ActionResult<long>> GetLogsCountAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken,
@@ -709,6 +713,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<GameServerLog>), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/logs", Name = nameof(GetLogsAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerLogs)]
     public async Task<ActionResult<IEnumerable<GameServerLog>>> GetLogsAsync(
         [FromQuery] int skip,
         [FromQuery] int take,
@@ -747,6 +752,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(FileStreamResult), (int) HttpStatusCode.OK)]
     [HttpGet("{gameServerId:long}/logs/download", Name = nameof(DownloadLogsAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerLogs)]
     public async Task DownloadLogsAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
@@ -787,6 +793,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [HttpPost("{gameServerId:long}/logs/clear", Name = nameof(ClearLogsAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerLogsClear)]
     public async Task<ActionResult> ClearLogsAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
@@ -835,7 +842,10 @@ public class GameServersController : ControllerBase
         if (!controller.CanUpdateConfiguration || controller is {IsRunning: true, CanStop: false})
             return Forbid(); // Forbid because not possible pre-applying, preventing work.
         if (controller.IsRunning)
-            await controller.StopAsync(user);
+            if (User.IsInRoleOrAdmin(Roles.ServerStartStop))
+                await controller.StopAsync(user);
+            else
+                return Forbid();
         var definitions = controller.GetConfigurationEntryDefinitions(CultureInfo.CurrentCulture)
             .ToDictionary((q) => q.Identifier);
         var now = DateTimeOffset.Now;
@@ -887,10 +897,10 @@ public class GameServersController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     /// <param name="gameServerId">The id of the <see cref="GameServer"/> to start.</param>
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerUpdate)]
     [ProducesResponseType(typeof(IEnumerable<ConfigurationEntryDefinition>), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/configuration/definitions", Name = nameof(GetConfigurationDefinitionsAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerUpdate)]
     public async Task<ActionResult<IEnumerable<ConfigurationEntryDefinition>>> GetConfigurationDefinitionsAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
@@ -916,11 +926,11 @@ public class GameServersController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     /// <param name="gameServerId">The id of the <see cref="GameServer"/> to start.</param>
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerCreateOrDelete)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
     [HttpPost("{gameServerId:long}/delete", Name = nameof(DeleteGameServerAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerCreateOrDelete)]
     public async Task<ActionResult> DeleteGameServerAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
@@ -950,12 +960,12 @@ public class GameServersController : ControllerBase
     /// </param>
     /// <param name="controllerIdentifier">The type of game to create.</param>
     /// <param name="gameServer">The initial data to create the <see cref="GameServer"/> with.</param>
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerCreateOrDelete)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(GameServerInfo), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
     [HttpPost("create/{controllerIdentifier}", Name = nameof(CreateGameServerAsync))]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ServerCreateOrDelete)]
     public async Task<ActionResult<GameServerInfo>> CreateGameServerAsync(
         [FromRoute] string controllerIdentifier,
         [FromBody] GameServer gameServer,

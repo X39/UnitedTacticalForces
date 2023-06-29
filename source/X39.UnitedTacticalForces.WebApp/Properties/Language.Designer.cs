@@ -753,6 +753,24 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Please confirm the deletion of all logs belonging to that server.
+        /// </summary>
+        internal static string Pages_GameServers_ConfirmClearLogs_Description {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_ConfirmClearLogs_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Confirm deletion of logs.
+        /// </summary>
+        internal static string Pages_GameServers_ConfirmClearLogs_Title {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_ConfirmClearLogs_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Are you sure you want to delete that file?.
         /// </summary>
         internal static string Pages_GameServers_ConfirmDeleteOfFile_Description {
@@ -857,6 +875,78 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_GameServers_Table_Interactions {
             get {
                 return ResourceManager.GetString("Pages_GameServers_Table_Interactions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Clear logs.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions_ClearLogs {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions_ClearLogs", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete server.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions_DeleteServer {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions_DeleteServer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Download logs.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions_DownloadLogs {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions_DownloadLogs", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Modify Server configuration.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions_EditServer {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions_EditServer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Start server.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions_StartServer {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions_StartServer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Stop server.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions_StopServer {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions_StopServer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Upgrade server and apply configuration.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions_UpgradeServer {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions_UpgradeServer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to View logs.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions_ViewLogs {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions_ViewLogs", resourceCulture);
             }
         }
         
@@ -1240,6 +1330,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Steam id 64.
+        /// </summary>
+        internal static string Pages_Users_Table_SteamId64 {
+            get {
+                return ResourceManager.GetString("Pages_Users_Table_SteamId64", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Title.
         /// </summary>
         internal static string Pages_Users_Table_Title {
@@ -1303,6 +1402,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Discord.
+        /// </summary>
+        internal static string Shared_NavMenu_Discord {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_Discord", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Events.
         /// </summary>
         internal static string Shared_NavMenu_Events {
@@ -1339,6 +1447,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Return to normal.
+        /// </summary>
+        internal static string Shared_NavMenu_Logout_Imposter {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_Logout_Imposter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Mod packs.
         /// </summary>
         internal static string Shared_NavMenu_ModPacks {
@@ -1353,6 +1470,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Shared_NavMenu_Settings {
             get {
                 return ResourceManager.GetString("Shared_NavMenu_Settings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Teamspeak 3.
+        /// </summary>
+        internal static string Shared_NavMenu_TeamSpeak3 {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_TeamSpeak3", resourceCulture);
             }
         }
         
