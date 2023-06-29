@@ -52,6 +52,32 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
+    /// Change location to this URL to start the discord login process.
+    /// Only valid for browser clients as a redirect to the discord login page is mandatory.
+    /// If a user logs in using discord and was not yet registered, he will be auto-registered.
+    /// </summary>
+    /// <param name="returnUrl">The url to get back to after the login process has completed.</param>
+    [AllowAnonymous]
+    [HttpGet("login/discord", Name = nameof(LoginDiscordAsync))]
+    [HttpPost("login/discord", Name = nameof(LoginDiscordAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.TemporaryRedirect)]
+    [ResponseCache(NoStore = true, Duration = 0)]
+    public async Task<IActionResult> LoginDiscordAsync(
+        [FromQuery] string returnUrl)
+    {
+        Contract.Assert(await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Discord));
+        return Challenge(
+            new AuthenticationProperties
+            {
+                RedirectUri  = returnUrl,
+                IsPersistent = true,
+                IssuedUtc    = DateTime.UtcNow,
+                ExpiresUtc   = DateTime.UtcNow.AddDays(Constants.Lifetime.DiscordAuthDays),
+            },
+            Constants.AuthorizationSchemas.Discord);
+    }
+
+    /// <summary>
     /// Allows to logout a user.
     /// </summary>
     /// <param name="returnUrl">The url to get back to after the logout process has completed.</param>
@@ -80,7 +106,8 @@ public class UsersController : ControllerBase
         var user = await _apiDbContext.Users.SingleOrDefaultAsync((q) => q.PrimaryKey == userId);
         if (user is null)
             return NotFound();
-        user.SteamId64      = 0;
+        user.Steam          = new();
+        user.Discord        = new();
         user.Nickname       = "[anonymous]";
         user.Avatar         = Array.Empty<byte>();
         user.AvatarMimeType = string.Empty;
@@ -114,8 +141,6 @@ public class UsersController : ControllerBase
         existingUser.Nickname       = updatedUser.Nickname;
         if (User.IsInRoleOrAdmin(Roles.UserViewMail) || isSelf)
             existingUser.EMail = updatedUser.EMail;
-        if (User.IsInRoleOrAdmin(Roles.UserViewSteamId64) || isSelf)
-            existingUser.SteamId64 = updatedUser.SteamId64;
         if (User.IsInRoleOrAdmin(Roles.UserBan))
             existingUser.IsBanned = updatedUser.IsBanned;
         if (User.IsInRoleOrAdmin(Roles.UserVerify))
@@ -178,7 +203,9 @@ public class UsersController : ControllerBase
             if (!User.IsInRoleOrAdmin(Roles.UserViewMail))
                 existingUser.EMail = string.Empty;
             if (!User.IsInRoleOrAdmin(Roles.UserViewSteamId64))
-                existingUser.SteamId64 = 0;
+                existingUser.Steam = new();
+            if (!User.IsInRoleOrAdmin(Roles.UserViewDiscordId))
+                existingUser.Discord = new();
             if (!User.IsInRoleOrAdmin(Roles.UserBan))
                 existingUser.IsBanned = false;
         }
@@ -268,6 +295,7 @@ public class UsersController : ControllerBase
         {
             userRole.Users?.Clear();
         }
+
         return Ok(user);
     }
 
@@ -351,6 +379,7 @@ public class UsersController : ControllerBase
             search = $"{search}%";
             users  = users.Where((q) => EF.Functions.ILike(q.Nickname, search, "\\"));
         }
+
         users = users
             .OrderBy((q) => q.Nickname)
             .Skip(skip)
@@ -358,7 +387,7 @@ public class UsersController : ControllerBase
 
         var result = await users.ToArrayAsync(cancellationToken);
 
-        foreach (var role in result.SelectMany((q)=>q.Roles ?? Enumerable.Empty<Role>()))
+        foreach (var role in result.SelectMany((q) => q.Roles ?? Enumerable.Empty<Role>()))
         {
             role.Users?.Clear();
         }

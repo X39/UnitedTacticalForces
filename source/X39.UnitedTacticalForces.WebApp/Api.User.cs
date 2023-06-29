@@ -18,7 +18,8 @@ public partial class User
             IsBanned       = IsBanned,
             IsDeleted      = IsDeleted,
             IsVerified     = IsVerified,
-            SteamId64      = SteamId64,
+            Steam          = Steam?.DeepCopy() ?? new(),
+            Discord        = Discord?.DeepCopy() ?? new(),
             AvatarMimeType = AvatarMimeType,
             ModPackMetas   = ModPackMetas?.NotNull().Select((q) => q.ShallowCopy()).ToList(),
         };
@@ -38,7 +39,8 @@ public partial class User
             IsBanned       = IsBanned,
             IsDeleted      = IsDeleted,
             IsVerified     = IsVerified,
-            SteamId64      = SteamId64,
+            Steam          = Steam?.DeepCopy() ?? new(),
+            Discord        = Discord?.DeepCopy() ?? new(),
             AvatarMimeType = AvatarMimeType,
             ModPackMetas   = new List<UserModPackMeta>(),
         };

@@ -8,6 +8,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
+@inject BaseUrl BaseUrl
 <MudExpansionPanels>
     <MudExpansionPanel Text="@Localizer[nameof(Language.Pages_Settings_AccountSettings)]">
         <MudStack>
@@ -20,7 +21,7 @@
                     </MudButton>
                 </ButtonTemplate>
             </MudFileUpload>
-            <MudTextField Value="@Me.User.SteamId64" ReadOnly="true"
+            <MudTextField Value="@Me.User.Steam.Id64" ReadOnly="true"
                           Label="@Localizer[nameof(Language.Pages_Settings_AccountSettings_SteamId64)]"/>
             <MudTextField T="string"
                           Value="@Me.User.Nickname"
@@ -33,6 +34,21 @@
             <MudButton OnClick="DeleteAccountAsync" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteForever">
                 <MudText>@Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount)]</MudText>
             </MudButton>
+        </MudStack>
+    </MudExpansionPanel>
+    <MudExpansionPanel Text="@Localizer[nameof(Language.Pages_Settings_LinkedAccounts)]">
+        <MudStack>
+            <div class="d-flex gap-4">
+                <MudButton Style="background: #7289da; color: white;"
+                           StartIcon="@Icons.Custom.Brands.Discord"
+                           IconSize="Size.Large"
+                           Href="@BaseUrl.ResolveApiUrl($"/Users/login/discord?returnUrl={BaseUrl.SelfUrl}")">
+                    @Localizer[nameof(Language.Pages_Settings_AccountSettings_Discord)]
+                </MudButton>
+                <MudTextField Value="@Me.User.Discord.Id"
+                              ReadOnly="true"
+                              Label="@Localizer[nameof(Language.Pages_Settings_AccountSettings_DiscordId)]"/>
+            </div>
         </MudStack>
     </MudExpansionPanel>
     <MudExpansionPanel Text="@Localizer[nameof(Language.Pages_Settings_PageSettings)]">
@@ -54,7 +70,7 @@
             Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_YesIamSureIWantToDeleteMyAccount)],
             null,
             Localizer[nameof(Language.Common_Cancel)],
-            new DialogOptions { FullScreen = true });
+            new DialogOptions {FullScreen = true});
         if (result is not true)
             return;
         await UserRepository.DeleteMeAsync()

@@ -9,6 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AspNet.Security.OAuth.Discord" Version="7.0.2" />
         <PackageReference Include="AspNet.Security.OpenId.Steam" Version="7.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.5" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.5" />

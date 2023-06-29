@@ -497,4 +497,19 @@
     <data name="Shared_NavMenu_TeamSpeak3" xml:space="preserve">
         <value>Teamspeak 3</value>
     </data>
+    <data name="Pages_Settings_LinkedAccounts" xml:space="preserve">
+        <value>Verbundene Konten</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DiscordId" xml:space="preserve">
+        <value>Discord ID</value>
+    </data>
+    <data name="Pages_Users_Table_DiscordId" xml:space="preserve">
+        <value>Discord ID</value>
+    </data>
+    <data name="Pages_Users_Table_DiscordUsername" xml:space="preserve">
+        <value>Discord Username</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_Discord" xml:space="preserve">
+        <value>Discord</value>
+    </data>
 </root>

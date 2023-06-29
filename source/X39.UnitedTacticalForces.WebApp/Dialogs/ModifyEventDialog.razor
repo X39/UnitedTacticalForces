@@ -29,7 +29,7 @@
                          Strict="true"
                          AdornmentIcon="@Icons.Material.Filled.Search"
                          AdornmentColor="Color.Primary"
-                         ToStringFunc="@(user => user.Nickname ?? user.SteamId64?.ToString() ?? user.PrimaryKey?.ToString() ?? string.Empty)"/>
+                         ToStringFunc="@(user => user.Nickname ?? user.Steam.Id64?.ToString() ?? user.PrimaryKey?.ToString() ?? string.Empty)"/>
         <MudAutocomplete Label="@Localizer[nameof(Language.Dialogs_ModifyEventDialog_Inputs_Terrain)]"
                          @bind-Value="@Event.Terrain"
                          SearchFunc="@SearchTerrainAsync"

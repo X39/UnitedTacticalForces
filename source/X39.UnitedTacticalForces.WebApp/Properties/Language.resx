@@ -504,4 +504,19 @@
     <data name="Shared_NavMenu_Discord" xml:space="preserve">
         <value>Discord</value>
     </data>
+    <data name="Pages_Settings_LinkedAccounts" xml:space="preserve">
+        <value>Linked accounts</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_DiscordId" xml:space="preserve">
+        <value>Discord ID</value>
+    </data>
+    <data name="Pages_Users_Table_DiscordUsername" xml:space="preserve">
+        <value>Discord Username</value>
+    </data>
+    <data name="Pages_Users_Table_DiscordId" xml:space="preserve">
+        <value>Discord ID</value>
+    </data>
+    <data name="Pages_Settings_AccountSettings_Discord" xml:space="preserve">
+        <value>Discord</value>
+    </data>
 </root>

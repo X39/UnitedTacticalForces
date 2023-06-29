@@ -1177,6 +1177,24 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Discord.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_Discord {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_Discord", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Discord ID.
+        /// </summary>
+        internal static string Pages_Settings_AccountSettings_DiscordId {
+            get {
+                return ResourceManager.GetString("Pages_Settings_AccountSettings_DiscordId", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to E-Mail.
         /// </summary>
         internal static string Pages_Settings_AccountSettings_EMail {
@@ -1209,6 +1227,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_Settings_AccountSettings_SteamId64 {
             get {
                 return ResourceManager.GetString("Pages_Settings_AccountSettings_SteamId64", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Linked accounts.
+        /// </summary>
+        internal static string Pages_Settings_LinkedAccounts {
+            get {
+                return ResourceManager.GetString("Pages_Settings_LinkedAccounts", resourceCulture);
             }
         }
         
@@ -1299,6 +1326,24 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_Users_SelectRoleToAdd {
             get {
                 return ResourceManager.GetString("Pages_Users_SelectRoleToAdd", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Discord ID.
+        /// </summary>
+        internal static string Pages_Users_Table_DiscordId {
+            get {
+                return ResourceManager.GetString("Pages_Users_Table_DiscordId", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Discord Username.
+        /// </summary>
+        internal static string Pages_Users_Table_DiscordUsername {
+            get {
+                return ResourceManager.GetString("Pages_Users_Table_DiscordUsername", resourceCulture);
             }
         }
         

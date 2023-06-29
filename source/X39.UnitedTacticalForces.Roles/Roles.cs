@@ -16,6 +16,7 @@ public static class Roles
     public const string UserViewSteamId64 = "user-view-steamid64";
     public const string UserViewMail      = "user-view-mail";
     public const string UserModify        = "user-modify";
+    public const string UserViewDiscordId = "user-view-discord";
 
     /// <summary>
     /// Allows a user to create, update and delete wiki pages.

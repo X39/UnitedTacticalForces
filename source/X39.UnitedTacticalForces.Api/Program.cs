@@ -1,5 +1,9 @@
+using System.Globalization;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
+using AspNet.Security.OAuth.Discord;
 using AspNet.Security.OpenId.Steam;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Unchase.Swashbuckle.AspNetCore.Extensions.Extensions;
@@ -7,7 +11,10 @@ using Unchase.Swashbuckle.AspNetCore.Extensions.Options;
 using X39.UnitedTacticalForces.Api;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
+using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
+using X39.UnitedTacticalForces.Api.HostedServices;
+using X39.Util;
 using X39.Util.DependencyInjection;
 
 // See https://www.npgsql.org/efcore/release-notes/6.0.html#breaking-changes
@@ -47,7 +54,8 @@ builder.Services.AddDbContextFactory<ApiDbContext>(
 builder.Services.AddAttributedServicesFromAssemblyOf<Program>(builder.Configuration);
 
 builder.Services.AddAuthorization();
-builder.Services.AddAuthentication(options => { options.DefaultScheme = Constants.AuthorizationSchemas.Cookie; })
+var authenticationBuilder = builder.Services
+    .AddAuthentication(options => { options.DefaultScheme = Constants.AuthorizationSchemas.Cookie; })
     .AddCookie(
         options =>
         {
@@ -57,12 +65,51 @@ builder.Services.AddAuthentication(options => { options.DefaultScheme = Constant
             options.ExpireTimeSpan             = TimeSpan.FromDays(7);
             options.Events.OnSignedIn          = ValidationHelper.OnSignedIn;
             options.Events.OnValidatePrincipal = ValidationHelper.OnValidatePrincipal;
-            options.LoginPath                  = "/Users/login/steam";
-            options.LogoutPath                 = "/Users/logout";
+            options.LoginPath                  = "/users/login/steam";
+            options.LogoutPath                 = "/users/logout";
             options.SlidingExpiration          = true;
             options.ExpireTimeSpan             = TimeSpan.FromDays(7);
-        })
-    .AddSteam(
+        });
+if (builder.Configuration[Constants.Configuration.Discord.Enabled]?.ToBoolean() ?? false)
+    authenticationBuilder.AddDiscord(
+        DiscordAuthenticationDefaults.AuthenticationScheme,
+        options =>
+        {
+            builder.Configuration.Bind("Discord:CorrelationCookie", options.CorrelationCookie);
+            options.ClientId = builder.Configuration[Constants.Configuration.Discord.OAuth.ClientId] ?? string.Empty;
+            options.ClientSecret = builder.Configuration[Constants.Configuration.Discord.OAuth.ClientSecret] ??
+                                   string.Empty;
+            options.Events.OnRedirectToAuthorizationEndpoint = context =>
+            {
+                if (context.HttpContext.User.TryGetUserId(out var userId))
+                {
+                    var tokens = context.Properties.GetTokens().ToList();
+                    tokens.Add(
+                        new AuthenticationToken
+                        {
+                            Name  = "UTF-UserId",
+                            Value = userId.ToString(),
+                        });
+                    context.Properties.StoreTokens(tokens);
+                    context.UpdateRedirectUrlStateQueryParameter();
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            };
+            options.Events.OnCreatingTicket = context =>
+            {
+                var userId = context.Properties.GetTokens().FirstOrDefault((q) => q.Name == "UTF-UserId")?.Value;
+                if (userId is not null && context.Identity is not null)
+                {
+                    context.Identity.AddClaim(new Claim(Constants.ClaimTypes.UserId, userId));
+                }
+
+                return Task.CompletedTask;
+            };
+        });
+if (builder.Configuration[Constants.Configuration.Steam.Enabled]?.ToBoolean() ?? false)
+    authenticationBuilder.AddSteam(
         SteamAuthenticationDefaults.AuthenticationScheme,
         options => { builder.Configuration.Bind("Steam:CorrelationCookie", options.CorrelationCookie); });
 builder.Services.AddControllers()
@@ -70,7 +117,7 @@ builder.Services.AddControllers()
         (jsonOptions) =>
         {
             jsonOptions.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
-            jsonOptions.JsonSerializerOptions.MaxDepth = 64;
+            jsonOptions.JsonSerializerOptions.MaxDepth         = 64;
         });
 builder.Services.AddHttpClient();
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

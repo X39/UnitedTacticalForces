@@ -48,7 +48,13 @@
             <UtfUser User="@context"/>
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_SteamId64)]">
-            <MudText>@context.SteamId64</MudText>
+            <MudText>@context.Steam?.Id64</MudText>
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_DiscordUsername)]">
+            <MudText>@context.Discord?.Username</MudText>
+        </MudTd>
+        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_DiscordId)]">
+            <MudText>@context.Discord?.Id</MudText>
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Roles)]">
             <Users_UserRoles User="context"/>

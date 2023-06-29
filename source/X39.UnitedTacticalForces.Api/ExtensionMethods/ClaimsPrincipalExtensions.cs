@@ -19,6 +19,16 @@ public static class ClaimsPrincipalExtensions
         return steamIdentity is not null;
     }
 
+    public static bool TryDiscordIdentity(
+        this ClaimsPrincipal self,
+        [NotNullWhen(true)] out ClaimsIdentity? steamIdentity)
+    {
+        steamIdentity = self.Identities.FirstOrDefault(
+            (q) =>
+                q.AuthenticationType == Constants.AuthorizationSchemas.Discord);
+        return steamIdentity is not null;
+    }
+
     public static bool TryApiIdentity(
         this ClaimsPrincipal self,
         [NotNullWhen(true)] out ClaimsIdentity? apiIdentity)
