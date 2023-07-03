@@ -63,6 +63,7 @@ public class ValidationHelper
                 Nickname       = profile.Nickname,
                 Roles          = new List<Role>(),
                 Steam          = new SteamUser {Id64 = steamId64},
+                Discord        = new DiscordUser(),
                 IsVerified = Convert.ToBoolean(
                     configuration[Constants.Configuration.General.AutoVerifyNewUsers] ?? "False"),
             };
