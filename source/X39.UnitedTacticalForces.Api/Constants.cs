@@ -45,7 +45,8 @@ internal static class Constants
     {
         public static class Commands
         {
-            public const string Teamspeak = "teamspeak";
+            public const string Teamspeak   = "teamspeak";
+            public const string GameServers = "gameservers";
         }
     }
 
@@ -93,10 +94,11 @@ internal static class Constants
 
         public static class General
         {
-            public const string ClientBaseUrl      = nameof(General) + ":" + nameof(ClientBaseUrl);
-            public const string ApiBaseUrl         = nameof(General) + ":" + nameof(ApiBaseUrl);
-            public const string BasePath           = nameof(General) + ":" + nameof(BasePath);
-            public const string AutoVerifyNewUsers = nameof(General) + ":" + nameof(AutoVerifyNewUsers);
+            public const string ClientBaseUrl         = nameof(General) + ":" + nameof(ClientBaseUrl);
+            public const string ApiBaseUrl            = nameof(General) + ":" + nameof(ApiBaseUrl);
+            public const string BasePath              = nameof(General) + ":" + nameof(BasePath);
+            public const string AutoVerifyNewUsers    = nameof(General) + ":" + nameof(AutoVerifyNewUsers);
+            public const string GameServerHostAddress = nameof(General) + ":" + nameof(GameServerHostAddress);
         }
     }
 

@@ -1,7 +1,13 @@
 ﻿using System.Globalization;
+using System.Net.NetworkInformation;
 using Discord;
 using Discord.WebSocket;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
+using X39.UnitedTacticalForces.Api.Data;
+using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.Properties;
+using X39.UnitedTacticalForces.Api.Services.GameServerController;
 using X39.UnitedTacticalForces.Common;
 using X39.Util;
 
@@ -9,15 +15,23 @@ namespace X39.UnitedTacticalForces.Api.HostedServices;
 
 public class DiscordBot : BackgroundService, IAsyncDisposable
 {
-    private readonly ILogger<DiscordBot> _logger;
-    private readonly IConfiguration      _configuration;
-    private readonly DiscordSocketClient _discordSocketClient;
+    private readonly ILogger<DiscordBot>             _logger;
+    private readonly IConfiguration                  _configuration;
+    private readonly IGameServerControllerFactory    _gameServerControllerFactory;
+    private readonly IDbContextFactory<ApiDbContext> _dbContextFactory;
+    private readonly DiscordSocketClient             _discordSocketClient;
 
-    public DiscordBot(ILogger<DiscordBot> logger, IConfiguration configuration)
+    public DiscordBot(
+        ILogger<DiscordBot> logger,
+        IConfiguration configuration,
+        IGameServerControllerFactory gameServerControllerFactory,
+        IDbContextFactory<ApiDbContext> dbContextFactory)
     {
-        _logger              = logger;
-        _configuration       = configuration;
-        _discordSocketClient = new DiscordSocketClient();
+        _logger                      = logger;
+        _configuration               = configuration;
+        _gameServerControllerFactory = gameServerControllerFactory;
+        _dbContextFactory            = dbContextFactory;
+        _discordSocketClient         = new DiscordSocketClient();
     }
 
     /// <inheritdoc />
@@ -125,6 +139,19 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
                             ["de"]    = "Zeigt die Teamspeak Informationen.",
                         })
                     .Build()),
+            [Constants.Discord.Commands.GameServers] = async () => await arg.CreateApplicationCommandAsync(
+                new SlashCommandBuilder()
+                    .WithName(Constants.Discord.Commands.GameServers)
+                    .WithDescription("Display the game server information.")
+                    .WithNsfw(false)
+                    .WithDescriptionLocalizations(
+                        new Dictionary<string, string>
+                        {
+                            ["en-US"] = "Show game server information.",
+                            ["en-GB"] = "Display the game server information.",
+                            ["de"]    = "Zeigt die Spieleserver Informationen.",
+                        })
+                    .Build()),
         };
         _logger.LogInformation("Checking if all commands are registered");
         var set = commands.Select((q) => q.Name).ToHashSet();
@@ -154,6 +181,10 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
         {
             case Constants.Discord.Commands.Teamspeak:
                 await DiscordCommandTeamSpeak(arg)
+                    .ConfigureAwait(false);
+                break;
+            case Constants.Discord.Commands.GameServers:
+                await DiscordCommandGameServers(arg)
                     .ConfigureAwait(false);
                 break;
             default:
@@ -214,6 +245,65 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
                 embedBuilder
                     .Build()
                     .MakeArray())
+            .ConfigureAwait(false);
+    }
+
+    private async Task DiscordCommandGameServers(SocketSlashCommand socketSlashCommand)
+    {
+        var cultureInfo = new CultureInfo(socketSlashCommand.UserLocale);
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        var embedBuilder = new EmbedBuilder();
+        await foreach (var gameServer in dbContext.GameServers
+                           .Include((e) => e.ConfigurationEntries!.Where((q) => q.Path == "host//port"))
+                           .AsAsyncEnumerable()
+                           .ConfigureAwait(false))
+        {
+            var gameServerController = await _gameServerControllerFactory.GetGameControllerAsync(gameServer)
+                .ConfigureAwait(false);
+            embedBuilder.AddField(
+                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_GameServers_Title), cultureInfo),
+                gameServer.Title);
+            embedBuilder.AddField(
+                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_GameServers_Status), cultureInfo),
+                gameServer.Status switch
+                {
+                    ELifetimeStatus.Stopped  => ":red_square:",
+                    ELifetimeStatus.Starting => ":yellow_square:",
+                    ELifetimeStatus.Stopping => ":yellow_square:",
+                    ELifetimeStatus.Running  => ":green_square:",
+                    _                        => throw new ArgumentOutOfRangeException(),
+                },
+                true);
+            if (await gameServerController.GetCommonConfigurationAsync(ECommonConfiguration.Title, cultureInfo) is
+                    { } title
+                && title != gameServer.Title)
+                embedBuilder.AddField(
+                    Language.ResourceManager.GetString(
+                        nameof(Language.DiscordCommand_GameServers_Hostname),
+                        cultureInfo),
+                    title,
+                    true);
+            embedBuilder.AddField(
+                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_GameServers_IpAddress), cultureInfo),
+                _configuration[Constants.Configuration.General.GameServerHostAddress] ?? "unset",
+                true);
+            if (await gameServerController.GetCommonConfigurationAsync(ECommonConfiguration.Port, cultureInfo) is
+                { } port)
+                embedBuilder.AddField(
+                    Language.ResourceManager.GetString(nameof(Language.DiscordCommand_GameServers_Port), cultureInfo),
+                    port,
+                    true);
+            if (await gameServerController.GetCommonConfigurationAsync(ECommonConfiguration.Password, cultureInfo) is
+                { } password)
+                embedBuilder.AddField(
+                    Language.ResourceManager.GetString(
+                        nameof(Language.DiscordCommand_GameServers_Password),
+                        cultureInfo),
+                    password,
+                    true);
+        }
+
+        await socketSlashCommand.RespondAsync(embeds: embedBuilder.Build().MakeArray())
             .ConfigureAwait(false);
     }
 

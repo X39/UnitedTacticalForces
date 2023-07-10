@@ -59,6 +59,11 @@ public abstract class GameServerControllerBase : IGameServerController
     public abstract Task UploadFileAsync(GameFolder folder, GameFileInfo file, Stream stream);
     public abstract Task DeleteFileAsync(GameFolder folder, GameFileInfo file);
 
+    public abstract Task<string?> GetCommonConfigurationAsync(
+        ECommonConfiguration commonConfig,
+        CultureInfo cultureInfo,
+        CancellationToken cancellationToken = default);
+
 
     protected async ValueTask<string> GetAsync(
         string identifier,

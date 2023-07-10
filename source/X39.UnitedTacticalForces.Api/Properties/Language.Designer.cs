@@ -60,6 +60,60 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Servername.
+        /// </summary>
+        internal static string DiscordCommand_GameServers_Hostname {
+            get {
+                return ResourceManager.GetString("DiscordCommand_GameServers_Hostname", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to IP-Address.
+        /// </summary>
+        internal static string DiscordCommand_GameServers_IpAddress {
+            get {
+                return ResourceManager.GetString("DiscordCommand_GameServers_IpAddress", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Password.
+        /// </summary>
+        internal static string DiscordCommand_GameServers_Password {
+            get {
+                return ResourceManager.GetString("DiscordCommand_GameServers_Password", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Port.
+        /// </summary>
+        internal static string DiscordCommand_GameServers_Port {
+            get {
+                return ResourceManager.GetString("DiscordCommand_GameServers_Port", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Status.
+        /// </summary>
+        internal static string DiscordCommand_GameServers_Status {
+            get {
+                return ResourceManager.GetString("DiscordCommand_GameServers_Status", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string DiscordCommand_GameServers_Title {
+            get {
+                return ResourceManager.GetString("DiscordCommand_GameServers_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to IP Address.
         /// </summary>
         internal static string DiscordCommand_TeamSpeak_IpAddress {

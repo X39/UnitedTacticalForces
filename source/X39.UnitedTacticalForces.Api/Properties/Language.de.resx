@@ -339,4 +339,22 @@ Wenn diese Einstellung aktiviert ist, kann sich der Start des Servers um 600 Sek
     <data name="DiscordCommand_TeamSpeak_NotConfigured" xml:space="preserve">
         <value>Es wurde kein TeamSpeak eingerichtet.</value>
     </data>
+    <data name="DiscordCommand_GameServers_IpAddress" xml:space="preserve">
+        <value>IP-Adresse</value>
+    </data>
+    <data name="DiscordCommand_GameServers_Password" xml:space="preserve">
+        <value>Passwort</value>
+    </data>
+    <data name="DiscordCommand_GameServers_Port" xml:space="preserve">
+        <value>Port</value>
+    </data>
+    <data name="DiscordCommand_GameServers_Status" xml:space="preserve">
+        <value>Status</value>
+    </data>
+    <data name="DiscordCommand_GameServers_Title" xml:space="preserve">
+        <value>Titel</value>
+    </data>
+    <data name="DiscordCommand_GameServers_Hostname" xml:space="preserve">
+        <value>Servername</value>
+    </data>
 </root>

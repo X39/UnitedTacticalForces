@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
 
@@ -185,4 +186,20 @@ public interface IGameServerController
     /// <param name="file">Information about the file.</param>
     /// <returns>An awaitable <see cref="Task"/> which completes once the file was uploaded.</returns>
     Task DeleteFileAsync(GameFolder folder, GameFileInfo file);
+
+    /// <summary>
+    /// Allows to receive common <see cref="ConfigurationEntry"/>'s, usually receivable only via
+    /// <see cref="GetCommonConfigurationAsync"/>. These are used in various places of the system.
+    /// </summary>
+    /// <remarks>
+    /// Please check the individual <see cref="ECommonConfiguration"/> for what is expected to be displayed.
+    /// </remarks>
+    /// <param name="commonConfig">The <see cref="ECommonConfiguration"/> to get the configuration for.</param>
+    /// <param name="cultureInfo">The locale to use for display <see cref="string"/>'s.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns>The configuration value or <see langword="null"/> if the configuration is not available.</returns>
+    Task<string?> GetCommonConfigurationAsync(
+        ECommonConfiguration commonConfig,
+        CultureInfo cultureInfo,
+        CancellationToken cancellationToken = default);
 }

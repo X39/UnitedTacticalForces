@@ -100,7 +100,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Raw, "mod", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Mod_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Mod_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Raw, "headless-client-ip", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_HeadlessClientIp_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_HeadlessClientIp_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Raw, "headless-client-password", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_HeadlessClientPassword_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_HeadlessClientPassword_Description), cultureInfo) ?? string.Empty);
-        yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Selection, "branch", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Branch_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Branch_Description), cultureInfo) ?? string.Empty, DefaultValue: string.Empty, AllowedValues: new ValuePair[]{new("", "default"), new("contact", "contact"), new("creatordlc", "creatordlc"), new("profiling", "profiling")});
+        yield return new ConfigurationEntryDefinition(false, RealmHost, EConfigurationEntryKind.Selection, "branch", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Branch_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_Host_Branch_Description), cultureInfo) ?? string.Empty, DefaultValue: string.Empty, AllowedValues: new ValuePair[] {new("", "default"), new("contact", "contact"), new("creatordlc", "creatordlc"), new("profiling", "profiling")});
         // https://community.bistudio.com/wiki/Arma_3:_Server_Config_File top to bottom
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Password, "passwordAdmin", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_PasswordAdmin_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_PasswordAdmin_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmServerCfg, EConfigurationEntryKind.Password, "password", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Password_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_Password_Description), cultureInfo) ?? string.Empty);
@@ -304,6 +304,45 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
+    public override async Task<string?> GetCommonConfigurationAsync(
+        ECommonConfiguration commonConfig,
+        CultureInfo cultureInfo,
+        CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = await DbContextFactory.CreateDbContextAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var gameServerId = GameServerPrimaryKey;
+        var baseQuery = dbContext.ConfigurationEntries
+            .Where((q) => q.IsActive)
+            .Where((q) => q.GameServerFk == gameServerId);
+        switch (commonConfig)
+        {
+            case ECommonConfiguration.Title:
+                baseQuery = baseQuery
+                    .Where((q) => q.Realm == RealmServerCfg)
+                    .Where((q) => q.Path == "hostname");
+                break;
+            case ECommonConfiguration.Port:
+                baseQuery = baseQuery
+                    .Where((q) => q.Realm == RealmHost)
+                    .Where((q) => q.Path == "port");
+                break;
+            case ECommonConfiguration.Password:
+                baseQuery = baseQuery
+                    .Where((q) => q.Realm == RealmServerCfg)
+                    .Where((q) => q.Path == "password");
+                break;
+            default:
+                return null;
+        }
+
+        return await baseQuery
+            .Select((q) => q.Value)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     private StreamWriter CreateServerConfigurationWriter()
     {
         CreateDirectory(GameServerPath);
@@ -425,7 +464,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             };
 
             foreach (var configurationEntry in group
-                         .Where((q)=> q.Value.IsNotNullOrEmpty())
+                         .Where((q) => q.Value.IsNotNullOrEmpty())
                          .OrderBy((q) => q.Path))
             {
                 var splattedPath = configurationEntry.Path.Split('/');
@@ -438,13 +477,15 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                     (configurationEntry.Realm, configurationEntry.Path));
                 var value = definition?.Kind switch
                 {
-                    EConfigurationEntryKind.String or EConfigurationEntryKind.Password => ToArmaString(configurationEntry.Value),
-                    EConfigurationEntryKind.Boolean                                    => configurationEntry.Value.FirstOrDefault().ToLowerInvariant() switch
-                    {
-                        't' => "1",
-                        'f' => "0",
-                        _   => throw new InvalidDataException($"Invalid boolean value {configurationEntry.Value}"),
-                    },
+                    EConfigurationEntryKind.String or EConfigurationEntryKind.Password => ToArmaString(
+                        configurationEntry.Value),
+                    EConfigurationEntryKind.Boolean => configurationEntry.Value.FirstOrDefault().ToLowerInvariant()
+                        switch
+                        {
+                            't' => "1",
+                            'f' => "0",
+                            _   => throw new InvalidDataException($"Invalid boolean value {configurationEntry.Value}"),
+                        },
                     _ => configurationEntry.Value
                 };
                 await streamWriter.WriteLineAsync($"{Tab(pathSegments.Length)}{actualPath} = {value};");
@@ -625,7 +666,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             .ConfigureAwait(false);
         if (modPackRevision is null)
             throw new NullReferenceException($"Failed to receive mod with the id {modPackRevisionId} from database");
-        
+
         var matches = HtmlARegex.Matches(modPackRevision.Html);
         var workshopIds = new List<long>();
         foreach (Match match in matches)
@@ -688,6 +729,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                 CopyAndReplaceFiles(workshopPath, lowerCaseWorkshopPath);
                 LowercaseFiles(lowerCaseWorkshopPath);
             }
+
             await dbContext.SaveChangesAsync()
                 .ConfigureAwait(false);
         }
