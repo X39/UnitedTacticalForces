@@ -41,6 +41,13 @@ internal static class Constants
         public const string Api    = "api";
         public const string Banned = "banned";
     }
+    public static class Discord
+    {
+        public static class Commands
+        {
+            public const string Teamspeak = "teamspeak";
+        }
+    }
 
     public static class Configuration
     {

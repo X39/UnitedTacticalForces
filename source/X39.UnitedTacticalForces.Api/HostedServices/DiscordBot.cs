@@ -52,6 +52,7 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
                 // ReSharper disable once AccessToDisposedClosure
                 await Fault.IgnoreAsync(async () => await _discordSocketClient.LogoutAsync().ConfigureAwait(false))
                     .ConfigureAwait(false);
+                _logger.LogInformation("Logging in to Discord");
                 await _discordSocketClient.LoginAsync(
                         TokenType.Bot,
                         _configuration[Constants.Configuration.Discord.Bot.BotToken])
@@ -67,18 +68,9 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
 
             try
             {
+                _logger.LogInformation("Registering DiscordBot events");
                 _discordSocketClient.SlashCommandExecuted += DiscordSocketClientOnSlashCommandExecuted;
-                await _discordSocketClient.CreateGlobalApplicationCommandAsync(
-                    new UserCommandProperties
-                    {
-                        Name   = "ts",
-                        IsNsfw = false,
-                        DescriptionLocalizations = new Dictionary<string, string>
-                        {
-                            ["en"] = "Shows the teamspeak url",
-                            ["de"] = "Zeigt die Teamspeak URL",
-                        },
-                    });
+                _discordSocketClient.GuildAvailable       += DiscordSocketClientOnGuildAvailable;
             }
             catch (Exception ex)
             {
@@ -90,6 +82,7 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
 
             try
             {
+                _logger.LogInformation("Starting DiscordBot");
                 await _discordSocketClient.StartAsync()
                     .ConfigureAwait(false);
                 await Task.Delay(-1, stoppingToken)
@@ -112,12 +105,60 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
         }
     }
 
+    private async Task DiscordSocketClientOnGuildAvailable(SocketGuild arg)
+    {
+        _logger.LogInformation("Guid {GuildId} ({GuildName}) became available", arg.Id, arg.Name);
+        var commands = await arg.GetApplicationCommandsAsync()
+            .ConfigureAwait(false);
+        var dictionary = new Dictionary<string, Func<Task>>
+        {
+            [Constants.Discord.Commands.Teamspeak] = async () => await arg.CreateApplicationCommandAsync(
+                new SlashCommandBuilder()
+                    .WithName(Constants.Discord.Commands.Teamspeak)
+                    .WithDescription("Display the teamspeak information.")
+                    .WithNsfw(false)
+                    .WithDescriptionLocalizations(
+                        new Dictionary<string, string>
+                        {
+                            ["en-US"] = "Show teamspeak information.",
+                            ["en-GB"] = "Display the teamspeak information.",
+                            ["de"]    = "Zeigt die Teamspeak Informationen.",
+                        })
+                    .Build()),
+        };
+        _logger.LogInformation("Checking if all commands are registered");
+        var set = commands.Select((q) => q.Name).ToHashSet();
+        var registerAll = false;
+        if (set.Any(commandName => !dictionary.ContainsKey(commandName)))
+        {
+            _logger.LogInformation("One or more commands are not existing anymore, deleting all commands");
+            await arg.DeleteApplicationCommandsAsync(
+                    new RequestOptions {AuditLogReason = "One or more commands are not existing anymore"})
+                .ConfigureAwait(false);
+            registerAll = true;
+        }
+
+        foreach (var (key, func) in dictionary)
+        {
+            if (!registerAll && set.Contains(key))
+                continue;
+            _logger.LogInformation("Registering command {CommandName}", key);
+            await func().ConfigureAwait(false);
+        }
+    }
+
     private async Task DiscordSocketClientOnSlashCommandExecuted(SocketSlashCommand arg)
     {
+        _logger.LogInformation("Executing command {CommandName} ({@Command})", arg.CommandName, arg);
         switch (arg.CommandName.ToLower())
         {
-            case "ts":
+            case Constants.Discord.Commands.Teamspeak:
                 await DiscordCommandTeamSpeak(arg)
+                    .ConfigureAwait(false);
+                break;
+            default:
+                _logger.LogWarning("Command {CommandName} is not implemented", arg.CommandName);
+                await arg.RespondAsync("Unknown command")
                     .ConfigureAwait(false);
                 break;
         }
@@ -168,23 +209,11 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
                 true);
         else
             password = null;
-        var componentBuilder = new ComponentBuilder()
-            .WithButton(
-                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_TeamSpeak_JoinButton), cultureInfo),
-                url: new TS3AddressBuilder
-                {
-                    Host            = ip ?? string.Empty,
-                    Port            = port,
-                    Password        = password,
-                    Channel         = _configuration[Constants.Configuration.TeamSpeak.Channel],
-                    ChannelPassword = _configuration[Constants.Configuration.TeamSpeak.ChannelPassword],
-                });
         await socketSlashCommand.RespondAsync(
                 null,
                 embedBuilder
                     .Build()
-                    .MakeArray(),
-                components: componentBuilder.Build())
+                    .MakeArray())
             .ConfigureAwait(false);
     }
 
