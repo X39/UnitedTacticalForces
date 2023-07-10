@@ -1,5 +1,8 @@
-﻿using Discord;
+﻿using System.Globalization;
+using Discord;
 using Discord.WebSocket;
+using X39.UnitedTacticalForces.Api.Properties;
+using X39.UnitedTacticalForces.Common;
 using X39.Util;
 
 namespace X39.UnitedTacticalForces.Api.HostedServices;
@@ -64,6 +67,29 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
 
             try
             {
+                _discordSocketClient.SlashCommandExecuted += DiscordSocketClientOnSlashCommandExecuted;
+                await _discordSocketClient.CreateGlobalApplicationCommandAsync(
+                    new UserCommandProperties
+                    {
+                        Name   = "ts",
+                        IsNsfw = false,
+                        DescriptionLocalizations = new Dictionary<string, string>
+                        {
+                            ["en"] = "Shows the teamspeak url",
+                            ["de"] = "Zeigt die Teamspeak URL",
+                        },
+                    });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while logging in to Discord, retrying in 60 seconds");
+                await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken)
+                    .ConfigureAwait(false);
+                continue;
+            }
+
+            try
+            {
                 await _discordSocketClient.StartAsync()
                     .ConfigureAwait(false);
                 await Task.Delay(-1, stoppingToken)
@@ -84,6 +110,82 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
                         .ConfigureAwait(false));
             }
         }
+    }
+
+    private async Task DiscordSocketClientOnSlashCommandExecuted(SocketSlashCommand arg)
+    {
+        switch (arg.CommandName.ToLower())
+        {
+            case "ts":
+                await DiscordCommandTeamSpeak(arg)
+                    .ConfigureAwait(false);
+                break;
+        }
+    }
+
+    private Color GetEmbedColor()
+    {
+        var colorString = _configuration[Constants.Configuration.Discord.Bot.EmbedColor]?.TrimStart('#') ?? "FFFFFF";
+        if (uint.TryParse(colorString, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var colorInt))
+            return new Color(colorInt);
+        return new Color();
+    }
+
+    private async Task DiscordCommandTeamSpeak(SocketSlashCommand socketSlashCommand)
+    {
+        var cultureInfo = new CultureInfo(socketSlashCommand.UserLocale);
+        var embedBuilder = new EmbedBuilder();
+        embedBuilder.WithColor(GetEmbedColor());
+        if (_configuration[Constants.Configuration.TeamSpeak.Host] is { } ip
+            && ip.IsNotNullOrWhiteSpace())
+            embedBuilder.AddField(
+                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_TeamSpeak_IpAddress), cultureInfo),
+                ip,
+                true);
+        else
+        {
+            await socketSlashCommand.RespondAsync(
+                    Language.ResourceManager.GetString(
+                        nameof(Language.DiscordCommand_TeamSpeak_NotConfigured),
+                        cultureInfo))
+                .ConfigureAwait(false);
+            return;
+        }
+
+        if (_configuration[Constants.Configuration.TeamSpeak.Port] is { } portString
+            && ushort.TryParse(portString, out var port))
+            embedBuilder.AddField(
+                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_TeamSpeak_Port), cultureInfo),
+                port,
+                true);
+        else
+            port = 9987;
+        if (_configuration[Constants.Configuration.TeamSpeak.Password] is { } password
+            && password.IsNotNullOrWhiteSpace())
+            embedBuilder.AddField(
+                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_TeamSpeak_Password), cultureInfo),
+                password,
+                true);
+        else
+            password = null;
+        var componentBuilder = new ComponentBuilder()
+            .WithButton(
+                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_TeamSpeak_JoinButton), cultureInfo),
+                url: new TS3AddressBuilder
+                {
+                    Host            = ip ?? string.Empty,
+                    Port            = port,
+                    Password        = password,
+                    Channel         = _configuration[Constants.Configuration.TeamSpeak.Channel],
+                    ChannelPassword = _configuration[Constants.Configuration.TeamSpeak.ChannelPassword],
+                });
+        await socketSlashCommand.RespondAsync(
+                null,
+                embedBuilder
+                    .Build()
+                    .MakeArray(),
+                components: componentBuilder.Build())
+            .ConfigureAwait(false);
     }
 
     /// <summary>

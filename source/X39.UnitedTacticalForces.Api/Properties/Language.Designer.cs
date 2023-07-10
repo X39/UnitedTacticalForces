@@ -60,6 +60,51 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to IP Address.
+        /// </summary>
+        internal static string DiscordCommand_TeamSpeak_IpAddress {
+            get {
+                return ResourceManager.GetString("DiscordCommand_TeamSpeak_IpAddress", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Join.
+        /// </summary>
+        internal static string DiscordCommand_TeamSpeak_JoinButton {
+            get {
+                return ResourceManager.GetString("DiscordCommand_TeamSpeak_JoinButton", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No TeamSpeak has been set up..
+        /// </summary>
+        internal static string DiscordCommand_TeamSpeak_NotConfigured {
+            get {
+                return ResourceManager.GetString("DiscordCommand_TeamSpeak_NotConfigured", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Password.
+        /// </summary>
+        internal static string DiscordCommand_TeamSpeak_Password {
+            get {
+                return ResourceManager.GetString("DiscordCommand_TeamSpeak_Password", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Port.
+        /// </summary>
+        internal static string DiscordCommand_TeamSpeak_Port {
+            get {
+                return ResourceManager.GetString("DiscordCommand_TeamSpeak_Port", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to General.
         /// </summary>
         internal static string ServerController_Arma3_BasicCfg_GeneralGroup {

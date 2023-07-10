@@ -356,4 +356,19 @@ Usually this is the same as the installation path and the same as the one entere
     <data name="ServerController_Arma3_Host_Branch_Description" xml:space="preserve">
         <value>The selected game branch</value>
     </data>
+    <data name="DiscordCommand_TeamSpeak_IpAddress" xml:space="preserve">
+        <value>IP Address</value>
+    </data>
+    <data name="DiscordCommand_TeamSpeak_Port" xml:space="preserve">
+        <value>Port</value>
+    </data>
+    <data name="DiscordCommand_TeamSpeak_Password" xml:space="preserve">
+        <value>Password</value>
+    </data>
+    <data name="DiscordCommand_TeamSpeak_JoinButton" xml:space="preserve">
+        <value>Join</value>
+    </data>
+    <data name="DiscordCommand_TeamSpeak_NotConfigured" xml:space="preserve">
+        <value>No TeamSpeak has been set up.</value>
+    </data>
 </root>

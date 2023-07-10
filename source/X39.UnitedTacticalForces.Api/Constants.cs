@@ -71,7 +71,17 @@ internal static class Constants
                 public const string ApplicationId = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(ApplicationId);
                 public const string PublicKey     = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(PublicKey);
                 public const string BotToken      = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(BotToken);
+                public const string EmbedColor      = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(EmbedColor);
             }
+        }
+
+        public static class TeamSpeak
+        {
+            public const string Host            = nameof(TeamSpeak) + ":" + nameof(Host);
+            public const string Port            = nameof(TeamSpeak) + ":" + nameof(Port);
+            public const string Password        = nameof(TeamSpeak) + ":" + nameof(Password);
+            public const string Channel         = nameof(TeamSpeak) + ":" + nameof(Channel);
+            public const string ChannelPassword = nameof(TeamSpeak) + ":" + nameof(ChannelPassword);
         }
 
         public static class General
