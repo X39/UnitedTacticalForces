@@ -471,7 +471,9 @@ public class EventsController : ControllerBase
                                 if (guildEvent.Name != appEvent.Title)
                                     properties.Name = appEvent.Title;
                                 if (guildEvent.Description != appEvent.Description)
-                                    properties.Description = appEvent.Description;
+                                    properties.Description = appEvent.Description.Length > 1000
+                                        ? appEvent.Description[..1000]
+                                        : appEvent.Description;
                                 if (guildEvent.StartTime != appEvent.ScheduledFor)
                                 {
                                     properties.StartTime = appEvent.ScheduledFor;
@@ -489,7 +491,9 @@ public class EventsController : ControllerBase
                                 startTime: appEvent.ScheduledFor,
                                 endTime: appEvent.ScheduledFor.AddHours(4),
                                 type: GuildScheduledEventType.External,
-                                description: appEvent.Description,
+                                description: appEvent.Description.Length > 1000
+                                    ? appEvent.Description[..1000]
+                                    : appEvent.Description,
                                 location: eventUrl)
                             .ConfigureAwait(false);
                         await response.ModifyAsync(
