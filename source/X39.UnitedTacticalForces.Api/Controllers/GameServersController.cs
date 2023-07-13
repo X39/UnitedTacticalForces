@@ -857,6 +857,7 @@ public class GameServersController : ControllerBase
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
         await foreach (var configurationEntry in _apiDbContext.ConfigurationEntries
                            .Where((q) => q.GameServerFk == gameServerId)
+                           .Where((q) => q.IsActive)
                            .AsAsyncEnumerable()
                            .WithCancellation(cancellationToken))
         {
