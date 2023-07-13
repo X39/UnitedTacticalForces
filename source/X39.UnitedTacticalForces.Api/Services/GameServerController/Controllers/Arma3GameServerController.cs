@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
+using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.Properties;
 using X39.Util;
 using X39.Util.Collections;
@@ -83,6 +84,8 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     private const string RegExAllowedVotedAdminCmds =
         """\A\{(?:\s*{\s*(?<CommandName>"(?:[^"]|"")+?")(?<PreMissionStart>\s*,\s*(?:true|false)(?<PostMissionStart>\s*,\s*(?:true|false))?)?\s*}\s*(?:,\s*{\s*(?<CommandName>"(?:[^"]|"")+?")(?<PreMissionStart>\s*,\s*(?:true|false)(?<PostMissionStart>\s*,\s*(?:true|false))?)?\s*}\s*)*)?\}+\z""";
 
+    // ReSharper disable once IdentifierTypo
+    private const string RealmBattlEyeCfg = "beserver.cfg";
     private const string RealmHost        = "host";
     private const string RealmServerCfg   = "server.cfg";
     private const string RealmBasicCfg    = "basic.cfg";
@@ -167,6 +170,10 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "MaxCustomFileSize", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxCustomFileSize_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_MaxCustomFileSize_Description), cultureInfo) ?? string.Empty);
         yield return new ConfigurationEntryDefinition(false, RealmBasicCfg, EConfigurationEntryKind.Number, "sockets/maxPacketSize", RegExNumber, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BasicCfg_GeneralGroup), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Description), cultureInfo) ?? string.Empty, DefaultValue: "1400");
         // https://community.bistudio.com/wiki/Arma_3:_Server_Profile
+        // BattlEye config
+        yield return new ConfigurationEntryDefinition(false, RealmBattlEyeCfg, EConfigurationEntryKind.Password, "RConPassword", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BattlEyeCfg_Rcon), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmBattlEyeCfg, EConfigurationEntryKind.Password, "RConPort", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BattlEyeCfg_Rcon), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Description), cultureInfo) ?? string.Empty);
+        yield return new ConfigurationEntryDefinition(false, RealmBattlEyeCfg, EConfigurationEntryKind.Password, "RConIP", null, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BattlEyeCfg_Rcon), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Title), cultureInfo) ?? string.Empty, Language.ResourceManager.GetString(nameof(Language.ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Description), cultureInfo) ?? string.Empty);
         // ReSharper restore StringLiteralTypo
         // @formatter:max_line_length restore
     }
@@ -204,7 +211,10 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         {
             case MpMissionsFolder:
             {
-                Directory.CreateDirectory(MpMissionsPath);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    Directory.CreateDirectory(MpMissionsPath, DefaultUnixFileMode);
+                else
+                    Directory.CreateDirectory(MpMissionsPath);
                 return Task.FromResult<IEnumerable<GameFileInfo>>(
                     Directory.GetFiles(MpMissionsPath, "*.pbo", SearchOption.TopDirectoryOnly)
                         .Select(
@@ -265,7 +275,10 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                     || file.Name.Contains('\\', StringComparison.OrdinalIgnoreCase))
                     // ReSharper disable once LocalizableElement
                     throw new ArgumentException("Invalid file", nameof(file));
-                Directory.CreateDirectory(MpMissionsPath);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    Directory.CreateDirectory(MpMissionsPath, DefaultUnixFileMode);
+                else
+                    Directory.CreateDirectory(MpMissionsPath);
                 await using var fileStream = File.OpenWrite(Path.Combine(MpMissionsPath, file.Name));
                 await stream.CopyToAsync(fileStream)
                     .ConfigureAwait(false);
@@ -292,7 +305,10 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                     || file.Name.Contains('\\', StringComparison.OrdinalIgnoreCase))
                     // ReSharper disable once LocalizableElement
                     throw new ArgumentException("Invalid file", nameof(file));
-                Directory.CreateDirectory(MpMissionsPath);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    Directory.CreateDirectory(MpMissionsPath, DefaultUnixFileMode);
+                else
+                    Directory.CreateDirectory(MpMissionsPath);
                 if (File.Exists(Path.Combine(MpMissionsPath, file.Name)))
                     File.Delete(Path.Combine(MpMissionsPath, file.Name));
                 break;
@@ -343,6 +359,30 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             .ConfigureAwait(false);
     }
 
+    private StreamWriter CreateBattlEyeConfigurationWriter()
+    {
+        CreateDirectory(BattlEyePath);
+
+        Stream Create(string path)
+        {
+            var fileStreamOptions = new FileStreamOptions
+            {
+                Mode    = FileMode.Create,
+                Access  = FileAccess.Write,
+                Share   = FileShare.Read,
+                Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
+            };
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                fileStreamOptions.UnixCreateMode = DefaultUnixFileMode;
+
+            return new FileStream(path, fileStreamOptions);
+        }
+
+        return new StreamWriter(
+            new MultiStream(new[] {Create(BattlEyeConfigurationPath), Create(BattlEyeConfigurationX64Path)}),
+            Encoding.UTF8);
+    }
+
     private StreamWriter CreateServerConfigurationWriter()
     {
         CreateDirectory(GameServerPath);
@@ -354,12 +394,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
         };
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            fileStreamOptions.UnixCreateMode =
-                UnixFileMode.UserRead
-                | UnixFileMode.GroupRead
-                | UnixFileMode.OtherRead;
-        }
+            fileStreamOptions.UnixCreateMode = DefaultUnixFileMode;
 
         return new StreamWriter(
             ServerConfigurationPath,
@@ -378,12 +413,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             Options = FileOptions.Asynchronous | FileOptions.WriteThrough,
         };
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            fileStreamOptions.UnixCreateMode =
-                UnixFileMode.UserRead
-                | UnixFileMode.GroupRead
-                | UnixFileMode.OtherRead;
-        }
+            fileStreamOptions.UnixCreateMode = DefaultUnixFileMode;
 
         return new StreamWriter(
             BasicConfigurationPath,
@@ -406,9 +436,12 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         return builder.ToString();
     }
 
-    private string BattleEyePath => Path.Combine(GameServerPath, "battle-eye");
+    private string BattlEyePath => Path.Combine(GameServerPath, "battl-eye");
 
+    private string BattlEyeConfigurationPath => Path.Combine(BattlEyePath, "beserver.cfg");
+    private string BattlEyeConfigurationX64Path => Path.Combine(BattlEyePath, "beserver_x64.cfg");
     private string ServerConfigurationPath => Path.Combine(GameServerPath, "server.cfg");
+
 
     private string BasicConfigurationPath => Path.Combine(GameServerPath, "basic.cfg");
 
@@ -457,38 +490,56 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         {
             await using var streamWriter = group.Key switch
             {
-                RealmHost      => throw new Exception($"Query fault. Query should not return {group.Key} but did."),
-                RealmBasicCfg  => CreateBasicConfigurationWriter(),
-                RealmServerCfg => CreateServerConfigurationWriter(),
-                _              => throw new InvalidDataException($"Unknown realm {group.Key}"),
+                RealmHost        => throw new Exception($"Query fault. Query should not return {group.Key} but did."),
+                RealmBasicCfg    => CreateBasicConfigurationWriter(),
+                RealmServerCfg   => CreateServerConfigurationWriter(),
+                RealmBattlEyeCfg => CreateBattlEyeConfigurationWriter(),
+                _                => throw new InvalidDataException($"Unknown realm {group.Key}"),
             };
 
-            foreach (var configurationEntry in group
-                         .Where((q) => q.Value.IsNotNullOrEmpty())
-                         .OrderBy((q) => q.Path))
+            switch (group.Key)
             {
-                var splattedPath = configurationEntry.Path.Split('/');
-                var pathSegments = splattedPath.SkipLast(1).ToArray();
-                var actualPath = splattedPath.Last();
-                await WritePathSegmentsIfNeeded(streamWriter, pathSegments)
-                    .ConfigureAwait(false);
+                default:
+                    foreach (var configurationEntry in group
+                                 .Where((q) => q.Value.IsNotNullOrEmpty())
+                                 .OrderBy((q) => q.Path))
+                    {
+                        var splattedPath = configurationEntry.Path.Split('/');
+                        var pathSegments = splattedPath.SkipLast(1).ToArray();
+                        var actualPath = splattedPath.Last();
+                        await WritePathSegmentsIfNeeded(streamWriter, pathSegments)
+                            .ConfigureAwait(false);
 
-                var definition = entryDefinitions.GetValueOrDefault(
-                    (configurationEntry.Realm, configurationEntry.Path));
-                var value = definition?.Kind switch
-                {
-                    EConfigurationEntryKind.String or EConfigurationEntryKind.Password => ToArmaString(
-                        configurationEntry.Value),
-                    EConfigurationEntryKind.Boolean => configurationEntry.Value.FirstOrDefault().ToLowerInvariant()
-                        switch
+                        var definition = entryDefinitions.GetValueOrDefault(
+                            (configurationEntry.Realm, configurationEntry.Path));
+                        var value = definition?.Kind switch
                         {
-                            't' => "1",
-                            'f' => "0",
-                            _   => throw new InvalidDataException($"Invalid boolean value {configurationEntry.Value}"),
-                        },
-                    _ => configurationEntry.Value
-                };
-                await streamWriter.WriteLineAsync($"{Tab(pathSegments.Length)}{actualPath} = {value};");
+                            EConfigurationEntryKind.String or EConfigurationEntryKind.Password => ToArmaString(
+                                configurationEntry.Value),
+                            EConfigurationEntryKind.Boolean => configurationEntry.Value.FirstOrDefault()
+                                    .ToLowerInvariant()
+                                switch
+                                {
+                                    't' => "1",
+                                    'f' => "0",
+                                    _ => throw new InvalidDataException(
+                                        $"Invalid boolean value {configurationEntry.Value}"),
+                                },
+                            _ => configurationEntry.Value,
+                        };
+                        await streamWriter.WriteLineAsync($"{Tab(pathSegments.Length)}{actualPath} = {value};");
+                    }
+
+                    break;
+                case RealmBattlEyeCfg:
+                    foreach (var configurationEntry in group
+                                 .Where((q) => q.Value.IsNotNullOrEmpty())
+                                 .OrderBy((q) => q.Path))
+                    {
+                        await streamWriter.WriteLineAsync($"{configurationEntry.Path} {configurationEntry.Value}");
+                    }
+
+                    break;
             }
 
             await WritePathSegmentsIfNeeded(streamWriter, Array.Empty<string>())
@@ -536,8 +587,8 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         if (File.Exists(ServerConfigurationPath))
             psi.ArgumentList.Add($"-config={ServerConfigurationPath}");
 
-        CreateDirectory(BattleEyePath);
-        psi.ArgumentList.Add($"-bepath={BattleEyePath}");
+        CreateDirectory(BattlEyePath);
+        psi.ArgumentList.Add($"-bepath={BattlEyePath}");
 
         CreateDirectory(ProfilesPath);
         psi.ArgumentList.Add($"-profiles={ProfilesPath}");
@@ -568,7 +619,11 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 var modsPath = Path.Combine(GameInstallPath, $"{GameServerPrimaryKey}-mods");
-                Directory.CreateDirectory(modsPath);
+
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    Directory.CreateDirectory(modsPath, DefaultUnixFileMode);
+                else
+                    Directory.CreateDirectory(modsPath);
                 var symLinks = await CreateOrReplaceSymlinksForAsync(
                         modList,
                         modsPath)

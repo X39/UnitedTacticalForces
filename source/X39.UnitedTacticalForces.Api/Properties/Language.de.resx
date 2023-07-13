@@ -357,4 +357,25 @@ Wenn diese Einstellung aktiviert ist, kann sich der Start des Servers um 600 Sek
     <data name="DiscordCommand_GameServers_Hostname" xml:space="preserve">
         <value>Servername</value>
     </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Title" xml:space="preserve">
+        <value>Port</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Description" xml:space="preserve">
+        <value>Der Port, der rcon-Verbindungen annimmt.</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Description" xml:space="preserve">
+        <value>Das Passwort für den Zugang zu rcon.</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Title" xml:space="preserve">
+        <value>Passwort</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon" xml:space="preserve">
+        <value>RCON</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Description" xml:space="preserve">
+        <value>Die fernzugriffs IP Adresse.</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Title" xml:space="preserve">
+        <value>IP</value>
+    </data>
 </root>

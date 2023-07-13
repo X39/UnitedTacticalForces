@@ -389,4 +389,25 @@ Usually this is the same as the installation path and the same as the one entere
     <data name="DiscordCommand_GameServers_Hostname" xml:space="preserve">
         <value>Servername</value>
     </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Title" xml:space="preserve">
+        <value>Password</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Title" xml:space="preserve">
+        <value>Port</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Description" xml:space="preserve">
+        <value>The port which accepts rcon connections.</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Description" xml:space="preserve">
+        <value>The password for access to rcon.</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon" xml:space="preserve">
+        <value>RCON</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Title" xml:space="preserve">
+        <value>IP</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Description" xml:space="preserve">
+        <value>The remote access ip address.</value>
+    </data>
 </root>

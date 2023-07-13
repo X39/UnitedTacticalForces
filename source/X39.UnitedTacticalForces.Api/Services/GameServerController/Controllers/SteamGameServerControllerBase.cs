@@ -13,6 +13,11 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerController.Controllers
 
 public abstract class SteamGameServerControllerBase : GameServerControllerBase
 {
+    protected const UnixFileMode DefaultUnixFileMode = UnixFileMode.UserRead
+                                                       | UnixFileMode.UserWrite
+                                                       | UnixFileMode.UserExecute
+                                                       | UnixFileMode.GroupRead
+                                                       | UnixFileMode.OtherRead;
     private readonly IConfiguration _configuration;
 
     /// <summary>

@@ -168,6 +168,69 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to RCON.
+        /// </summary>
+        internal static string ServerController_Arma3_BattlEyeCfg_Rcon {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BattlEyeCfg_Rcon", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The remote access ip address..
+        /// </summary>
+        internal static string ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to IP.
+        /// </summary>
+        internal static string ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The password for access to rcon..
+        /// </summary>
+        internal static string ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Password.
+        /// </summary>
+        internal static string ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The port which accepts rcon connections..
+        /// </summary>
+        internal static string ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Port.
+        /// </summary>
+        internal static string ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The folder in which the missions are to be stored..
         /// </summary>
         internal static string ServerController_Arma3_GameFolders_MPMissions_Description {
