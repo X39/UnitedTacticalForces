@@ -60,7 +60,7 @@ public class ModPackController : ControllerBase
                 {
                     q.Html,
                     q.Definition!.Title,
-                    q.PrimaryKey
+                    q.PrimaryKey,
                 })
             .SingleAsync(cancellationToken);
         var modPackRevisionId = modPackData.PrimaryKey;
@@ -131,7 +131,7 @@ public class ModPackController : ControllerBase
                 (q) => new
                 {
                     q.Html,
-                    q.Definition!.Title
+                    q.Definition!.Title,
                 })
             .SingleAsync(cancellationToken);
         if (User.TryGetUserId(out var userId))

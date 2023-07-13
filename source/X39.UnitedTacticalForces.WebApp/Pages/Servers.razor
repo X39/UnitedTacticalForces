@@ -444,7 +444,7 @@
                 ELifetimeStatus.Stopping => Localizer[nameof(Language.Pages_GameServers_Status_StoppingTooltip)],
                 ELifetimeStatus.Running => Localizer[nameof(Language.Pages_GameServers_Status_RunningTooltip)],
                 null => string.Empty,
-                _ => throw new ArgumentOutOfRangeException()
+                _ => throw new ArgumentOutOfRangeException(),
                 };
     }
 
