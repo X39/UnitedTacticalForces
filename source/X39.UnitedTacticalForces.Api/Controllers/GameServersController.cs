@@ -863,10 +863,10 @@ public class GameServersController : ControllerBase
             var providedEntry = configurationEntries.SingleOrDefault(
                 (q) => q.Realm == configurationEntry.Realm && q.Path == configurationEntry.Path);
             if (providedEntry is not null
-                && (providedEntry.Value != configurationEntry.Value
+                && (providedEntry.Value == configurationEntry.Value
                     || providedEntry.Value is Constants.PasswordReplacement))
             {
-                configurationEntries.Remove(configurationEntry);
+                configurationEntries.Remove(providedEntry);
                 continue;
             }
 
