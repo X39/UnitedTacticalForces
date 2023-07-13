@@ -7,6 +7,7 @@ namespace X39.UnitedTacticalForces.Api;
 
 internal static class Constants
 {
+    public const string PasswordReplacement = "****************";
     public static class Steam
     {
         public static class AppId

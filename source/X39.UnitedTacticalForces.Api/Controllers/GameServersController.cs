@@ -446,6 +446,11 @@ public class GameServersController : ControllerBase
             .Where((q) => q.GameServerFk == gameServerId)
             .Where((q) => q.IsActive)
             .ToArrayAsync(cancellationToken);
+        foreach (var configurationEntry in configurationEntries.Where((q) => q.IsSensitive))
+        {
+            configurationEntry.Value = Constants.PasswordReplacement;
+        }
+
         return Ok(configurationEntries);
     }
 
@@ -855,6 +860,16 @@ public class GameServersController : ControllerBase
                            .AsAsyncEnumerable()
                            .WithCancellation(cancellationToken))
         {
+            var providedEntry = configurationEntries.SingleOrDefault(
+                (q) => q.Realm == configurationEntry.Realm && q.Path == configurationEntry.Path);
+            if (providedEntry is not null
+                && (providedEntry.Value != configurationEntry.Value
+                    || providedEntry.Value is Constants.PasswordReplacement))
+            {
+                configurationEntries.Remove(configurationEntry);
+                continue;
+            }
+
             configurationEntry.IsActive = false;
         }
 
