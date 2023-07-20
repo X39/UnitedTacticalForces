@@ -6,15 +6,16 @@ public partial class ModPackRevision
     {
         return new ModPackRevision
         {
-            IsActive         = IsActive,
-            PrimaryKey       = PrimaryKey,
-            TimeStampCreated = TimeStampCreated,
-            Definition       = Definition?.ShallowCopy(),
-            Html             = Html,
-            DefinitionFk     = DefinitionFk,
-            UpdatedBy        = UpdatedBy?.ShallowCopy(),
-            UserMetas        = UserMetas?.Select((q) => q.PartialCopy()).ToList(),
-            UpdatedByFk      = UpdatedByFk,
+            IsActive           = IsActive,
+            PrimaryKey         = PrimaryKey,
+            TimeStampCreated   = TimeStampCreated,
+            Definition         = Definition?.ShallowCopy(),
+            Html               = Html,
+            DefinitionFk       = DefinitionFk,
+            UpdatedBy          = UpdatedBy?.ShallowCopy(),
+            UserMetas          = UserMetas?.Select((q) => q.PartialCopy()).ToList(),
+            ModPackDefinitions = new List<ModPackDefinition>(),
+            UpdatedByFk        = UpdatedByFk,
         };
     }
 
@@ -22,15 +23,16 @@ public partial class ModPackRevision
     {
         return new ModPackRevision
         {
-            IsActive         = IsActive,
-            PrimaryKey       = PrimaryKey,
-            TimeStampCreated = TimeStampCreated,
-            Definition       = null,
-            Html             = Html,
-            DefinitionFk     = DefinitionFk,
-            UpdatedBy        = null,
-            UserMetas        = new List<UserModPackMeta>(),
-            UpdatedByFk      = UpdatedByFk,
+            IsActive           = IsActive,
+            PrimaryKey         = PrimaryKey,
+            TimeStampCreated   = TimeStampCreated,
+            Definition         = null,
+            Html               = Html,
+            DefinitionFk       = DefinitionFk,
+            UpdatedBy          = null,
+            UserMetas          = new List<UserModPackMeta>(),
+            ModPackDefinitions = new List<ModPackDefinition>(),
+            UpdatedByFk        = UpdatedByFk,
         };
     }
 

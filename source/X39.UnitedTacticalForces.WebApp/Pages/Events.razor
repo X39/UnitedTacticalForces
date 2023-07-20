@@ -93,7 +93,8 @@
             {
                 <div class="d-inline-flex align-center" style="white-space: nowrap">
                     <MudText>@(context.ModPackRevision?.Definition?.Title)</MudText>
-                    <UtfModPackDownloadButton ModPack="@(context.ModPackRevision)"></UtfModPackDownloadButton>
+                    <UtfModPackDownloadButton ModPack="@(context.ModPackRevision.Definition)"
+                                               Revision="@(context.ModPackRevision)"/>
                 </div>
             }
         </MudTd>

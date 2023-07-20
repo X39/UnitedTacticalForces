@@ -709,35 +709,74 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     private async Task<IReadOnlyCollection<long>> GetWorkshopIdsAsync(ApiDbContext dbContext)
     {
         const string workshopBase = "https://steamcommunity.com/sharedfiles/filedetails/?id=";
-        var modPackRevisionId = await dbContext.GameServers
+        var modPackData = await dbContext.GameServers
             .Where((q) => q.PrimaryKey == GameServerPrimaryKey)
-            .Select((q) => q.ActiveModPackFk)
+            .Select(
+                (q) => new
+                {
+                    q.ActiveModPackFk,
+                    q.SelectedModPackFk,
+                })
             .SingleOrDefaultAsync()
             .ConfigureAwait(false);
-        if (modPackRevisionId is null)
-            return ArraySegment<long>.Empty;
-        var modPackRevision = await dbContext.ModPackRevisions
-            .SingleOrDefaultAsync((q) => q.PrimaryKey == modPackRevisionId)
-            .ConfigureAwait(false);
-        if (modPackRevision is null)
-            throw new NullReferenceException($"Failed to receive mod with the id {modPackRevisionId} from database");
-
-        var matches = HtmlARegex.Matches(modPackRevision.Html);
-        var workshopIds = new List<long>();
-        foreach (Match match in matches)
+        if (modPackData?.ActiveModPackFk is { } modPackRevisionId)
         {
-            var href = match.Groups["HREF"].Value;
-            if (!Uri.IsWellFormedUriString(href, UriKind.Absolute))
-                continue;
-            if (!href.StartsWith(workshopBase))
-                continue;
-            var workshopItemIdString = href[workshopBase.Length..];
-            if (!long.TryParse(workshopItemIdString, out var workshopItemId))
-                continue;
-            workshopIds.Add(workshopItemId);
+            var modPackRevision = await dbContext.ModPackRevisions
+                .SingleOrDefaultAsync((q) => q.PrimaryKey == modPackRevisionId)
+                .ConfigureAwait(false);
+            if (modPackRevision is null)
+                throw new NullReferenceException(
+                    $"Failed to receive mod pack revision with the id {modPackRevisionId} from database");
+
+            var result = Arma3ModPackParser.FromHtml(modPackRevision.Html);
+            var workshopIds = new List<long>();
+            foreach (var (_, href) in result.Mods)
+            {
+                if (!Uri.IsWellFormedUriString(href, UriKind.Absolute))
+                    continue;
+                if (!href.StartsWith(workshopBase))
+                    continue;
+                var workshopItemIdString = href[workshopBase.Length..];
+                if (!long.TryParse(workshopItemIdString, out var workshopItemId))
+                    continue;
+                workshopIds.Add(workshopItemId);
+            }
+
+            return workshopIds;
         }
 
-        return workshopIds;
+        if (modPackData?.SelectedModPackFk is { } selectedModPackFk)
+        {
+            var modPackRevisions = await dbContext.ModPackRevisions
+                .Where(
+                    (modPackRevision) => modPackRevision.ModPackDefinitions!.Any(
+                        (modPackDefinition) => modPackDefinition.PrimaryKey == selectedModPackFk))
+                .ToArrayAsync();
+            if (modPackRevisions is null)
+                throw new NullReferenceException(
+                    $"Failed to receive mod pack definition with the id {selectedModPackFk} from database");
+
+            var workshopIds = new List<long>();
+            foreach (var modPackRevision in modPackRevisions)
+            {
+                var result = Arma3ModPackParser.FromHtml(modPackRevision.Html);
+                foreach (var (_, href) in result.Mods)
+                {
+                    if (!Uri.IsWellFormedUriString(href, UriKind.Absolute))
+                        continue;
+                    if (!href.StartsWith(workshopBase))
+                        continue;
+                    var workshopItemIdString = href[workshopBase.Length..];
+                    if (!long.TryParse(workshopItemIdString, out var workshopItemId))
+                        continue;
+                    workshopIds.Add(workshopItemId);
+                }
+            }
+
+            return workshopIds;
+        }
+
+        return Array.Empty<long>();
     }
 
     private async Task<IReadOnlyCollection<string>> GetWorkshopPathsAsync(

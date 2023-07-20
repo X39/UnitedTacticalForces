@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using X39.Util.Collections;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services.ModPackRepository;
@@ -34,8 +35,22 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
         ModPackDefinition modPack,
         CancellationToken cancellationToken = default)
     {
-        modPack = await Client.ModPacksCreateAsync(modPack, cancellationToken)
-            .ConfigureAwait(false);
+        if (modPack.IsComposition ?? false)
+        {
+            var modPackRevisionIds = (modPack.ModPackRevisions ?? ArraySegment<ModPackRevision>.Empty)
+                .Select((q) => q.PrimaryKey)
+                .NotNull()
+                .ToArray();
+            modPack = modPack.ShallowCopy();
+            modPack = await Client.ModPacksCreateCompositionAsync(modPackRevisionIds, modPack, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            modPack = await Client.ModPacksCreateStandaloneAsync(modPack, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         return modPack;
     }
 
@@ -47,12 +62,37 @@ internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
     {
         if (modPack.PrimaryKey is null)
             throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));
-        await Client.ModPacksUpdateAsync(
+        if (modPack.IsComposition ?? false)
+            throw new ArgumentException("ModPack.IsComposition is true.", nameof(modPack));
+        await Client.ModPacksUpdateStandaloneAsync(
                 modPack.PrimaryKey.Value,
-                new ModPackUpdate
+                new ModPackStandaloneUpdate()
                 {
                     Html  = html,
                     Title = title,
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task ModifyModPackAsync(
+        ModPackDefinition modPack,
+        string? title = null,
+        bool? useLatest = null,
+        long[]? modPackRevisionIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (modPack.PrimaryKey is null)
+            throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));
+        if (!(modPack.IsComposition ?? false))
+            throw new ArgumentException("ModPack.IsComposition is false.", nameof(modPack));
+        await Client.ModPacksUpdateCompositionAsync(
+                modPack.PrimaryKey.Value,
+                new ModPackCompositionUpdate()
+                {
+                    Title = title,
+                    UseLatest = useLatest,
+                    ModPackRevisionIds = modPackRevisionIds,
                 },
                 cancellationToken)
             .ConfigureAwait(false);

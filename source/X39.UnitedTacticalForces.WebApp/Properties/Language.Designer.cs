@@ -1041,11 +1041,20 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Create new mod composition.
+        /// </summary>
+        internal static string Pages_ModPacks_CreateNewCompositeModPack {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_CreateNewCompositeModPack", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Create new mod pack.
         /// </summary>
-        internal static string Pages_ModPacks_CreateNewModPack {
+        internal static string Pages_ModPacks_CreateNewStandaloneModPack {
             get {
-                return ResourceManager.GetString("Pages_ModPacks_CreateNewModPack", resourceCulture);
+                return ResourceManager.GetString("Pages_ModPacks_CreateNewStandaloneModPack", resourceCulture);
             }
         }
         

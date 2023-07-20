@@ -37,7 +37,9 @@
             }
         </MudStack>
         <MudButtonGroup>
-            <UtfModPackDownloadButton ModPack="Event.ModPackRevision" Color="Color.Surface"/>
+            <UtfModPackDownloadButton ModPack="Event.ModPackRevision?.Definition"
+                                      Revision="Event.ModPackRevision"
+                                      Color="Color.Surface"/>
         </MudButtonGroup>
     </MudStack>
     <div style="max-height: 50vh; overflow-y: scroll;">

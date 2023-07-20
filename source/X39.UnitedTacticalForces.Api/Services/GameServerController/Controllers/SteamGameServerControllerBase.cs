@@ -365,8 +365,8 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                                     LogLevel = LogLevel.Information,
                                 })
                             .ConfigureAwait(false);
-                        gameServer.ActiveModPack   = modPackDefinition?.ModPackRevisions!.First();
-                        gameServer.ActiveModPackFk = modPackDefinition?.ModPackRevisions!.First().PrimaryKey;
+                        gameServer.ActiveModPack   = modPackDefinition?.IsComposition is not true ? null : modPackDefinition.ModPackRevisions!.First();
+                        gameServer.ActiveModPackFk = modPackDefinition?.IsComposition is not true ? null : modPackDefinition.ModPackRevisions!.First().PrimaryKey;
                         await dbContext.SaveChangesAsync().ConfigureAwait(false);
                     }
 

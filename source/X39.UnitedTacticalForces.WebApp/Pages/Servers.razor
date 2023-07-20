@@ -68,7 +68,8 @@
             @if (context.GameServer?.ActiveModPack is not null)
             {
                 <div class="d-inline-flex align-center">
-                    <UtfModPackDownloadButton ModPack="@(context.GameServer.ActiveModPack)"/>
+                    <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack)"
+                                               Revision="@(context.GameServer.ActiveModPack)"/>
                     <MudText>@(context.GameServer.ActiveModPack.Definition?.Title)</MudText>
                 </div>
             }
@@ -77,7 +78,7 @@
             @if (context.GameServer?.SelectedModPack is not null)
             {
                 <div class="d-inline-flex align-center">
-                    <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack.GetActiveRevision())"/>
+                    <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack)"/>
                     <MudText>@(context.GameServer.SelectedModPack.Title)</MudText>
                 </div>
             }

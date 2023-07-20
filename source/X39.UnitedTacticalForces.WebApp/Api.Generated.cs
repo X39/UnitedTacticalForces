@@ -3794,10 +3794,108 @@ namespace X39.UnitedTacticalForces.WebApp
         /// <param name="body">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition to create.</param>
         /// <returns>Success</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ModPackDefinition> ModPacksCreateAsync(ModPackDefinition? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<ModPackDefinition> ModPacksCreateStandaloneAsync(ModPackDefinition? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/create");
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/create/standalone");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
+                    var content_ = new System.Net.Http.StringContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain"));
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ModPackDefinition>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Bad Request", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Creates a new X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition and links the given X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision to it.
+        /// </summary>
+        /// <remarks>
+        /// The initial X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision's must be provided via the modPackRevisionIds
+        /// <br/>query parameter and must exist already in the database.
+        /// <br/>A composition may not own any X39.UnitedTacticalForces.Api.Data.Core.ModPackRevisions.
+        /// </remarks>
+        /// <param name="modPackRevisionIds">The X39.UnitedTacticalForces.Api.Data.Core.ModPackRevisions to link to the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.</param>
+        /// <param name="body">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition to create.</param>
+        /// <returns>Success</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<ModPackDefinition> ModPacksCreateCompositionAsync(System.Collections.Generic.IEnumerable<long>? modPackRevisionIds = null, ModPackDefinition? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/create/composition?");
+            if (modPackRevisionIds != null)
+            {
+                foreach (var item_ in modPackRevisionIds) { urlBuilder_.Append(System.Uri.EscapeDataString("modPackRevisionIds") + "=").Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append("&"); }
+            }
+            urlBuilder_.Length--;
 
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -3884,13 +3982,101 @@ namespace X39.UnitedTacticalForces.WebApp
         /// <br/>and the new html of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition mod pack data (or null).</param>
         /// <returns>No Content</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task ModPacksUpdateAsync(long modPackDefinitionId, ModPackUpdate? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task ModPacksUpdateStandaloneAsync(long modPackDefinitionId, ModPackStandaloneUpdate? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (modPackDefinitionId == null)
                 throw new System.ArgumentNullException("modPackDefinitionId");
 
             var urlBuilder_ = new System.Text.StringBuilder();
-            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/{modPackDefinitionId}/update");
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/{modPackDefinitionId}/update/standalone");
+            urlBuilder_.Replace("{modPackDefinitionId}", System.Uri.EscapeDataString(ConvertToString(modPackDefinitionId, System.Globalization.CultureInfo.InvariantCulture)));
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = System.Text.Json.JsonSerializer.Serialize(body, _settings.Value);
+                    var content_ = new System.Net.Http.StringContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = System.Linq.Enumerable.ToDictionary(response_.Headers, h_ => h_.Key, h_ => h_.Value);
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 204)
+                        {
+                            return;
+                        }
+                        else
+                        if (status_ == 401)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Unauthorized", status_, responseText_, headers_, null);
+                        }
+                        else
+                        if (status_ == 404)
+                        {
+                            string responseText_ = ( response_.Content == null ) ? string.Empty : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("Not Found", status_, responseText_, headers_, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Allows to update the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition title or set range of existing X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision
+        /// <br/>as active X39.UnitedTacticalForces.Api.Data.Core.ModPackRevision.
+        /// </summary>
+        /// <param name="modPackDefinitionId">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.</param>
+        /// <param name="body">JSON object containing the new title of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition (or null)
+        /// <br/>and the new html of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition mod pack data (or null).</param>
+        /// <returns>No Content</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task ModPacksUpdateCompositionAsync(long modPackDefinitionId, ModPackCompositionUpdate? body = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (modPackDefinitionId == null)
+                throw new System.ArgumentNullException("modPackDefinitionId");
+
+            var urlBuilder_ = new System.Text.StringBuilder();
+            urlBuilder_.Append(BaseUrl != null ? BaseUrl.TrimEnd('/') : "").Append("/mod-packs/{modPackDefinitionId}/update/composition");
             urlBuilder_.Replace("{modPackDefinitionId}", System.Uri.EscapeDataString(ConvertToString(modPackDefinitionId, System.Globalization.CultureInfo.InvariantCulture)));
 
             var client_ = _httpClient;
@@ -7450,6 +7636,10 @@ namespace X39.UnitedTacticalForces.WebApp
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public long? TerrainFk { get; set; } = default!;
 
+        /// <summary>
+        /// A modpack revision is a revision of a modpack definition.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("modPackRevision")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
@@ -8120,99 +8310,219 @@ namespace X39.UnitedTacticalForces.WebApp
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ModPackDefinition
+    public partial class ModPackCompositionUpdate
     {
-
-        [System.Text.Json.Serialization.JsonPropertyName("primaryKey")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public long? PrimaryKey { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("timeStampCreated")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public System.DateTimeOffset? TimeStampCreated { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public string? Title { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("owner")]
+        [System.Text.Json.Serialization.JsonPropertyName("modPackRevisionIds")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public User? Owner { get; set; } = default!;
+        public System.Collections.Generic.ICollection<long>? ModPackRevisionIds { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("ownerFk")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public System.Guid? OwnerFk { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
+        [System.Text.Json.Serialization.JsonPropertyName("useLatest")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public bool? IsActive { get; set; } = default!;
-
-        [System.Text.Json.Serialization.JsonPropertyName("modPackRevisions")]
-
-        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public System.Collections.Generic.ICollection<ModPackRevision>? ModPackRevisions { get; set; } = default!;
+        public bool? UseLatest { get; set; } = default!;
 
     }
 
+    /// <summary>
+    /// A modpack definition is the base of a modpack.
+    /// <br/>It contains the title, the owner and the revisions of the modpack.
+    /// <br/>A modpack definition can have multiple revisions.
+    /// <br/>A modpack may be a composition of multiple modpack revisions.
+    /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ModPackRevision
+    public partial class ModPackDefinition
     {
+        /// <summary>
+        /// The primary key of this entity.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("primaryKey")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public long? PrimaryKey { get; set; } = default!;
 
+        /// <summary>
+        /// The timestamp when this modpack was created.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("timeStampCreated")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.DateTimeOffset? TimeStampCreated { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("html")]
+        /// <summary>
+        /// The name of this modpack.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public string? Html { get; set; } = default!;
+        public string? Title { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("updatedBy")]
+        /// <summary>
+        /// The owner of this modpack.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("owner")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public User? UpdatedBy { get; set; } = default!;
+        public User? Owner { get; set; } = default!;
 
-        [System.Text.Json.Serialization.JsonPropertyName("updatedByFk")]
+        /// <summary>
+        /// The foreign key of the owner of this modpack.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("ownerFk")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
-        public System.Guid? UpdatedByFk { get; set; } = default!;
+        public System.Guid? OwnerFk { get; set; } = default!;
+
+        /// <summary>
+        /// Whether this modpack is active or not.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("isActive")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public bool? IsActive { get; set; } = default!;
 
+        /// <summary>
+        /// Whether this modpack is a composition of multiple modpack revisions
+        /// <br/>or not.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("isComposition")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? IsComposition { get; set; } = default!;
+
+        /// <summary>
+        /// The revisions which are part of this modpack.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("modPackRevisions")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Collections.Generic.ICollection<ModPackRevision>? ModPackRevisions { get; set; } = default!;
+
+        /// <summary>
+        /// The revisions which are owned by this modpack.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("modPackRevisionsOwned")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Collections.Generic.ICollection<ModPackRevision>? ModPackRevisionsOwned { get; set; } = default!;
+
+    }
+
+    /// <summary>
+    /// A modpack revision is a revision of a modpack definition.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ModPackRevision
+    {
+        /// <summary>
+        /// The primary key of this entity.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("primaryKey")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public long? PrimaryKey { get; set; } = default!;
+
+        /// <summary>
+        /// The timestamp when this revision was created.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeStampCreated")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.DateTimeOffset? TimeStampCreated { get; set; } = default!;
+
+        /// <summary>
+        /// The HTML content of this revision.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("html")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public string? Html { get; set; } = default!;
+
+        /// <summary>
+        /// The user who updated this revision.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("updatedBy")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public User? UpdatedBy { get; set; } = default!;
+
+        /// <summary>
+        /// The foreign key of the user who updated this revision.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("updatedByFk")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Guid? UpdatedByFk { get; set; } = default!;
+
+        /// <summary>
+        /// Whether this revision is active or not.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("isActive")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public bool? IsActive { get; set; } = default!;
+
+        /// <summary>
+        /// Meta data for users.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("userMetas")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.Collections.Generic.ICollection<UserModPackMeta>? UserMetas { get; set; } = default!;
+
+        /// <summary>
+        /// The owning definition of this revision.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("definition")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public ModPackDefinition? Definition { get; set; } = default!;
 
+        /// <summary>
+        /// Foreign key of the owning definition of this revision.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("definitionFk")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public long? DefinitionFk { get; set; } = default!;
 
+        /// <summary>
+        /// The definitions where this revision is part of.
+        /// </summary>
+
+        [System.Text.Json.Serialization.JsonPropertyName("modPackDefinitions")]
+
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
+        public System.Collections.Generic.ICollection<ModPackDefinition>? ModPackDefinitions { get; set; } = default!;
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ModPackUpdate
+    public partial class ModPackStandaloneUpdate
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("title")]
@@ -8431,6 +8741,13 @@ namespace X39.UnitedTacticalForces.WebApp
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.Guid? UserFk { get; set; } = default!;
 
+        /// <summary>
+        /// A modpack definition is the base of a modpack.
+        /// <br/>It contains the title, the owner and the revisions of the modpack.
+        /// <br/>A modpack definition can have multiple revisions.
+        /// <br/>A modpack may be a composition of multiple modpack revisions.
+        /// </summary>
+
         [System.Text.Json.Serialization.JsonPropertyName("modPackDefinition")]
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
@@ -8445,6 +8762,10 @@ namespace X39.UnitedTacticalForces.WebApp
 
         [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]   
         public System.DateTimeOffset? TimeStampDownloaded { get; set; } = default!;
+
+        /// <summary>
+        /// A modpack revision is a revision of a modpack definition.
+        /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("modPackRevision")]
 

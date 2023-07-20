@@ -23,6 +23,13 @@ public interface IModPackRepository
         string? html = null,
         CancellationToken cancellationToken = default);
 
+    Task ModifyModPackAsync(
+        ModPackDefinition modPack,
+        string? title = null,
+        bool? useLatest = null,
+        long[]? modPackRevisionIds = null,
+        CancellationToken cancellationToken = default);
+
     Task DeleteModPackAsync(
         ModPackDefinition modPack,
         CancellationToken cancellationToken = default);

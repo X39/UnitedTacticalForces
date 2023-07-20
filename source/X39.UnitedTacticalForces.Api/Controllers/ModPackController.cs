@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,22 @@ namespace X39.UnitedTacticalForces.Api.Controllers;
 [Route(Constants.Routes.ModPacks)]
 public class ModPackController : ControllerBase
 {
-    public record ModPackUpdate(string? Title, string? Html);
+    #region Sub
+
+    public class ModPackStandaloneUpdate
+    {
+        public string? Title { get; init; }
+        public string? Html { get; init; }
+    }
+
+    public class ModPackCompositionUpdate
+    {
+        public string? Title { get; init; }
+        public ICollection<long>? ModPackRevisionIds { get; init; }
+        public bool? UseLatest { get; init; }
+    }
+
+    #endregion
 
     private readonly ILogger<ModPackController> _logger;
     private readonly ApiDbContext               _apiDbContext;
@@ -35,6 +51,8 @@ public class ModPackController : ControllerBase
         _logger       = logger;
         _apiDbContext = apiDbContext;
     }
+
+    #region Endpoints
 
     /// <summary>
     /// Downloads the <see cref="ModPackRevision"/> and updates the last downloaded timestamp in the users meta data.
@@ -52,58 +70,7 @@ public class ModPackController : ControllerBase
         [FromRoute] long modPackDefinitionId,
         CancellationToken cancellationToken)
     {
-        var modPackData = await _apiDbContext.ModPackRevisions
-            .Where((q) => q.IsActive)
-            .Where((q) => q.DefinitionFk == modPackDefinitionId)
-            .Select(
-                (q) => new
-                {
-                    q.Html,
-                    q.Definition!.Title,
-                    q.PrimaryKey,
-                })
-            .SingleAsync(cancellationToken);
-        var modPackRevisionId = modPackData.PrimaryKey;
-        if (User.TryGetUserId(out var userId))
-        {
-            var user = await _apiDbContext.Users
-                .Include(
-                    (e) => e.ModPackMetas!.Where(
-                        (q) => q.ModPackRevisionFk == modPackRevisionId &&
-                               q.ModPackDefinitionFk == modPackDefinitionId))
-                .Where((q) => q.PrimaryKey == userId)
-                .SingleAsync(cancellationToken);
-            var userModPackMeta = user.ModPackMetas?.FirstOrDefault(
-                (q) => q.ModPackRevisionFk == modPackRevisionId && q.ModPackDefinitionFk == modPackDefinitionId);
-            if (userModPackMeta is null)
-            {
-                var userModPackMetaEntity = await _apiDbContext.UserModPackMetas.AddAsync(
-                    new UserModPackMeta
-                    {
-                        UserFk              = userId,
-                        ModPackDefinitionFk = modPackDefinitionId,
-                        ModPackRevisionFk   = modPackRevisionId,
-                    },
-                    cancellationToken);
-                userModPackMeta = userModPackMetaEntity.Entity;
-            }
-
-            userModPackMeta.TimeStampDownloaded = DateTimeOffset.Now;
-        }
-        await _apiDbContext.SaveChangesAsync(cancellationToken);
-        var htmlBytes = Encoding.UTF8.GetBytes(modPackData.Html);
-        var fileName = new string(modPackData.Title.Where((q) => q.IsLetterOrDigit()).ToArray());
-        Response.Headers.Add(
-            "Content-Disposition",
-            new System.Net.Mime.ContentDisposition
-            {
-                FileName = $"{fileName}.html",
-                Inline   = false,
-            }.ToString());
-        return new FileContentResult(htmlBytes, "text/html")
-        {
-            FileDownloadName = "",
-        };
+        return await ProduceFileContentResultFromModPackAsync(modPackDefinitionId, null, cancellationToken);
     }
 
     /// <summary>
@@ -124,58 +91,12 @@ public class ModPackController : ControllerBase
         [FromRoute] long modPackRevisionId,
         CancellationToken cancellationToken)
     {
-        var modPackData = await _apiDbContext.ModPackRevisions
-            .Where((q) => q.PrimaryKey == modPackRevisionId)
-            .Where((q) => q.DefinitionFk == modPackDefinitionId)
-            .Select(
-                (q) => new
-                {
-                    q.Html,
-                    q.Definition!.Title,
-                })
-            .SingleAsync(cancellationToken);
-        if (User.TryGetUserId(out var userId))
-        {
-            var user = await _apiDbContext.Users
-                .Include(
-                    (e) => e.ModPackMetas!.Where(
-                        (q) => q.ModPackRevisionFk == modPackRevisionId &&
-                               q.ModPackDefinitionFk == modPackDefinitionId))
-                .Where((q) => q.PrimaryKey == userId)
-                .SingleAsync(cancellationToken);
-            var userModPackMeta = user.ModPackMetas?.FirstOrDefault(
-                (q) => q.ModPackRevisionFk == modPackRevisionId && q.ModPackDefinitionFk == modPackDefinitionId);
-            if (userModPackMeta is null)
-            {
-                var userModPackMetaEntity = await _apiDbContext.UserModPackMetas.AddAsync(
-                    new UserModPackMeta
-                    {
-                        UserFk              = userId,
-                        ModPackDefinitionFk = modPackDefinitionId,
-                        ModPackRevisionFk   = modPackRevisionId,
-                    },
-                    cancellationToken);
-                userModPackMeta = userModPackMetaEntity.Entity;
-            }
-
-            userModPackMeta.TimeStampDownloaded = DateTimeOffset.Now;
-        }
-
-        await _apiDbContext.SaveChangesAsync(cancellationToken);
-        var htmlBytes = Encoding.UTF8.GetBytes(modPackData.Html);
-        var fileName = new string(modPackData.Title.Where((q) => q.IsLetterOrDigit()).ToArray());
-        Response.Headers.Add(
-            "Content-Disposition",
-            new System.Net.Mime.ContentDisposition
-            {
-                FileName = $"{fileName}.html",
-                Inline   = false,
-            }.ToString());
-        return new FileContentResult(htmlBytes, "text/html")
-        {
-            FileDownloadName = "",
-        };
+        return await ProduceFileContentResultFromModPackAsync(
+            modPackDefinitionId,
+            modPackRevisionId,
+            cancellationToken);
     }
+
 
     /// <summary>
     /// Creates a new <see cref="ModPackDefinition"/> and a corresponding <see cref="ModPackRevision"/>.
@@ -190,26 +111,82 @@ public class ModPackController : ControllerBase
     /// </param>
     /// <returns>The created <see cref="ModPackDefinition"/>.</returns>
     [Authorize(Roles = Roles.Admin + "," + Roles.ModPackCreate)]
-    [HttpPost("create", Name = nameof(CreateModPackAsync))]
+    [HttpPost("create/standalone", Name = nameof(CreateModPackStandaloneAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [ProducesResponseType(typeof(ModPackDefinition), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
-    public async Task<ActionResult> CreateModPackAsync(
+    public async Task<ActionResult> CreateModPackStandaloneAsync(
         [FromBody] ModPackDefinition modPack,
         CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
+        if (modPack.ModPackRevisionsOwned is null)
+            return BadRequest();
+        if (modPack.ModPackRevisionsOwned.Count is not 1)
+            return BadRequest();
+        if (modPack.ModPackRevisions is not null && modPack.ModPackRevisions.Count is not 0)
+            return BadRequest();
+        modPack.IsActive                                        =   true;
+        modPack.OwnerFk                                         =   userId;
+        modPack.TimeStampCreated                                =   DateTimeOffset.Now;
+        modPack.ModPackRevisionsOwned.Single().IsActive         =   true;
+        modPack.ModPackRevisionsOwned.Single().TimeStampCreated =   modPack.TimeStampCreated;
+        modPack.ModPackRevisionsOwned.Single().UpdatedByFk      =   userId;
+        modPack.ModPackRevisions                                ??= new List<ModPackRevision>();
+        modPack.ModPackRevisions.Add(modPack.ModPackRevisionsOwned.Single());
+        var entity = await _apiDbContext.ModPackDefinitions.AddAsync(modPack, cancellationToken);
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        return Ok(entity.Entity);
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="ModPackDefinition"/> and links the given <see cref="ModPackRevision"/> to it.
+    /// </summary>
+    /// <remarks>
+    /// The initial <see cref="ModPackRevision"/>'s must be provided via the <paramref name="modPackRevisionIds"/>
+    /// query parameter and must exist already in the database.
+    /// A composition may not own any <see cref="ModPackRevision"/>s.
+    /// </remarks>
+    /// <param name="modPack">The <see cref="ModPackDefinition"/> to create.</param>
+    /// <param name="modPackRevisionIds">The <see cref="ModPackRevision"/>s to link to the <see cref="ModPackDefinition"/>.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>The created <see cref="ModPackDefinition"/>.</returns>
+    [Authorize(Roles = Roles.Admin + "," + Roles.ModPackCreate)]
+    [HttpPost("create/composition", Name = nameof(CreateModPackCompositionAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(ModPackDefinition), (int) HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
+    public async Task<ActionResult> CreateModPackCompositionAsync(
+        [FromBody] ModPackDefinition modPack,
+        [FromQuery] long[] modPackRevisionIds,
+        CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        if (modPack.ModPackRevisionsOwned is not null && modPack.ModPackRevisionsOwned.Count is not 0)
+            return BadRequest();
         if (modPack.ModPackRevisions is null)
             return BadRequest();
-        if (modPack.ModPackRevisions.Count is not 1)
+        if (modPack.ModPackRevisions.Count is not 0)
             return BadRequest();
-        modPack.IsActive                                   = true;
-        modPack.OwnerFk                                    = userId;
-        modPack.TimeStampCreated                           = DateTimeOffset.Now;
-        modPack.ModPackRevisions.Single().IsActive         = true;
-        modPack.ModPackRevisions.Single().TimeStampCreated = modPack.TimeStampCreated;
-        modPack.ModPackRevisions.Single().UpdatedByFk      = userId;
+        modPack.IsActive         = true;
+        modPack.OwnerFk          = userId;
+        modPack.TimeStampCreated = DateTimeOffset.Now;
+        modPack.IsComposition    = true;
+        foreach (var modPackRevisionId in modPackRevisionIds)
+        {
+            var modPackRevision = await _apiDbContext.ModPackRevisions.SingleOrDefaultAsync(
+                (c) => c.PrimaryKey == modPackRevisionId,
+                cancellationToken);
+            if (modPackRevision is null)
+                return BadRequest();
+            modPack.ModPackRevisions.Add(modPackRevision);
+        }
+
         var entity = await _apiDbContext.ModPackDefinitions.AddAsync(modPack, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return Ok(entity.Entity);
@@ -220,7 +197,7 @@ public class ModPackController : ControllerBase
     /// as active <see cref="ModPackRevision"/>.
     /// </summary>
     /// <param name="modPackDefinitionId">The <see cref="ModPackDefinition.PrimaryKey"/> of the <see cref="ModPackDefinition"/>.</param>
-    /// <param name="modPackUpdate">
+    /// <param name="modPackStandaloneUpdate">
     ///     JSON object containing the new title of the <see cref="ModPackDefinition"/> (or null)
     ///     and the new html of the <see cref="ModPackDefinition"/> mod pack data (or null).
     /// </param>
@@ -229,49 +206,125 @@ public class ModPackController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     [Authorize]
-    [HttpPost("{modPackDefinitionId:long}/update", Name = nameof(UpdateModPackAsync))]
+    [HttpPost("{modPackDefinitionId:long}/update/standalone", Name = nameof(UpdateModPackStandaloneAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
-    public async Task<ActionResult> UpdateModPackAsync(
+    public async Task<ActionResult> UpdateModPackStandaloneAsync(
         [FromRoute] long modPackDefinitionId,
-        [FromBody] ModPackUpdate modPackUpdate,
+        [FromBody] ModPackStandaloneUpdate modPackStandaloneUpdate,
         CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
         var modPackDefinition = await _apiDbContext.ModPackDefinitions
+            .Include((e)=>e.ModPackRevisions)
             .SingleOrDefaultAsync((q) => q.PrimaryKey == modPackDefinitionId, cancellationToken);
         if (modPackDefinition is null)
             return NotFound();
         if (!User.IsInRoleOrAdmin(Roles.ModPackModify) && modPackDefinition.OwnerFk != userId)
             return Unauthorized();
-        if (modPackUpdate.Title is not null)
+        if (modPackStandaloneUpdate.Title is not null)
         {
             _logger.LogInformation(
                 "Changing title of mod pack {ModPackId} from {OldTitle} to {NewTitle}",
                 modPackDefinitionId,
                 modPackDefinition.Title,
-                modPackUpdate.Title);
-            modPackDefinition.Title = modPackUpdate.Title;
+                modPackStandaloneUpdate.Title);
+            modPackDefinition.Title = modPackStandaloneUpdate.Title;
         }
 
-        if (modPackUpdate.Html is not null)
+        if (modPackStandaloneUpdate.Html is not null)
         {
             var currentActiveRevision = await _apiDbContext.ModPackRevisions.SingleAsync(
                 (q) => q.DefinitionFk == modPackDefinitionId && q.IsActive,
                 cancellationToken);
-            currentActiveRevision.IsActive = false;
-            await _apiDbContext.ModPackRevisions.AddAsync(
+            currentActiveRevision.IsActive     =   false;
+            modPackDefinition.ModPackRevisions ??= new List<ModPackRevision>();
+            modPackDefinition.ModPackRevisions.Clear();
+            modPackDefinition.ModPackRevisions.Add(
                 new ModPackRevision
                 {
                     DefinitionFk     = modPackDefinitionId,
                     IsActive         = true,
-                    Html             = modPackUpdate.Html,
+                    Html             = modPackStandaloneUpdate.Html,
                     UpdatedByFk      = userId,
                     TimeStampCreated = DateTimeOffset.Now,
-                },
-                cancellationToken);
+                });
+        }
+
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Allows to update the <see cref="ModPackDefinition"/> title or set range of existing <see cref="ModPackRevision"/>
+    /// as active <see cref="ModPackRevision"/>.
+    /// </summary>
+    /// <param name="modPackDefinitionId">The <see cref="ModPackDefinition.PrimaryKey"/> of the <see cref="ModPackDefinition"/>.</param>
+    /// <param name="modPackCompositionUpdate">
+    ///     JSON object containing the new title of the <see cref="ModPackDefinition"/> (or null)
+    ///     and the new html of the <see cref="ModPackDefinition"/> mod pack data (or null).
+    /// </param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    [Authorize]
+    [HttpPost("{modPackDefinitionId:long}/update/composition", Name = nameof(UpdateModPackCompositionAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    public async Task<ActionResult> UpdateModPackCompositionAsync(
+        [FromRoute] long modPackDefinitionId,
+        [FromBody] ModPackCompositionUpdate modPackCompositionUpdate,
+        CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        var modPackDefinition = await _apiDbContext.ModPackDefinitions
+            .Include((e) => e.ModPackRevisions)
+            .SingleOrDefaultAsync((q) => q.PrimaryKey == modPackDefinitionId, cancellationToken);
+        if (modPackDefinition is null)
+            return NotFound();
+        if (!User.IsInRoleOrAdmin(Roles.ModPackModify) && modPackDefinition.OwnerFk != userId)
+            return Unauthorized();
+        if (modPackCompositionUpdate.Title is not null)
+        {
+            _logger.LogInformation(
+                "Changing title of mod pack {ModPackId} from {OldTitle} to {NewTitle}",
+                modPackDefinitionId,
+                modPackDefinition.Title,
+                modPackCompositionUpdate.Title);
+            modPackDefinition.Title = modPackCompositionUpdate.Title;
+        }
+
+        if (modPackCompositionUpdate.ModPackRevisionIds is not null)
+        {
+            modPackDefinition.ModPackRevisions ??= new List<ModPackRevision>();
+            modPackDefinition.ModPackRevisions.Clear();
+            foreach (var modPackRevisionId in modPackCompositionUpdate.ModPackRevisionIds)
+            {
+                var modPackRevision = await _apiDbContext.ModPackRevisions.SingleAsync(
+                    (q) => q.PrimaryKey == modPackRevisionId,
+                    cancellationToken);
+                modPackDefinition.ModPackRevisions.Add(modPackRevision);
+            }
+        }
+
+        if (modPackCompositionUpdate.UseLatest is true)
+        {
+            modPackDefinition.ModPackRevisions ??= new List<ModPackRevision>();
+            foreach (var modPackRevision in modPackDefinition.ModPackRevisions.ToArray())
+            {
+                var owningModPackDefinitionId = modPackRevision.DefinitionFk;
+                var latestRevision = await _apiDbContext.ModPackRevisions
+                    .Where((q) => q.DefinitionFk == owningModPackDefinitionId)
+                    .Where((q) => q.IsActive)
+                    .SingleAsync(cancellationToken);
+                modPackDefinition.ModPackRevisions.Remove(modPackRevision);
+                modPackDefinition.ModPackRevisions.Add(latestRevision);
+            }
         }
 
         await _apiDbContext.SaveChangesAsync(cancellationToken);
@@ -515,4 +568,121 @@ public class ModPackController : ControllerBase
 
         return count;
     }
+
+    #endregion
+
+    #region Helper Methods
+
+    private async Task<FileContentResult> ProduceFileContentResultFromModPackAsync(
+        long modPackDefinitionId,
+        long? modPackRevisionId,
+        CancellationToken cancellationToken)
+    {
+        var modPackDefinition = await _apiDbContext.ModPackDefinitions
+            .SingleAsync((q) => q.PrimaryKey == modPackDefinitionId, cancellationToken);
+
+
+        if (modPackDefinition.IsComposition)
+        {
+            var modPackRevisions = await _apiDbContext.ModPackRevisions
+                .AsNoTracking()
+                .Where((q) => q.ModPackDefinitions!.Any((c) => c.PrimaryKey == modPackDefinitionId))
+                .ToArrayAsync(cancellationToken);
+            var titles = new List<string>();
+            var modList = new HashSet<Helpers.Arma3ModPackParser.TitleLinkPair>();
+            var dependencyList = new HashSet<Helpers.Arma3ModPackParser.TitleLinkPair>();
+
+            foreach (var modPackRevision in modPackRevisions)
+            {
+                var (title, mods, dependencies) = Helpers.Arma3ModPackParser.FromHtml(modPackRevision.Html);
+                titles.Add(title);
+                foreach (var mod in mods)
+                    modList.Add(mod);
+                foreach (var dependency in dependencies)
+                    dependencyList.Add(dependency);
+            }
+
+            var joinedTitle = string.Join(" + ", titles);
+            var html = Helpers.Arma3ModPackParser.ToHtml(joinedTitle, modList, dependencyList);
+            var htmlBytes = Encoding.UTF8.GetBytes(html);
+            var fileName = new string(joinedTitle.Where((q) => q.IsLetterOrDigit() || q is '+' or '-').ToArray());
+            return FileContentResult(fileName, htmlBytes);
+        }
+        else
+        {
+            modPackRevisionId ??= await _apiDbContext.ModPackRevisions
+                .Where((q) => q.IsActive)
+                .Where((q) => q.DefinitionFk == modPackDefinitionId)
+                .Select(
+                    (q) => q.PrimaryKey)
+                .SingleAsync(cancellationToken);
+
+            var modPackData = await _apiDbContext.ModPackRevisions
+                .Where((q) => q.PrimaryKey == modPackRevisionId)
+                .Where((q) => q.DefinitionFk == modPackDefinitionId)
+                .Select(
+                    (q) => new
+                    {
+                        q.Html,
+                        q.Definition!.Title,
+                    })
+                .SingleAsync(cancellationToken);
+            await UpdateUserModMeta(modPackDefinitionId, modPackRevisionId.Value, cancellationToken);
+
+            await _apiDbContext.SaveChangesAsync(cancellationToken);
+            var htmlBytes = Encoding.UTF8.GetBytes(modPackData.Html);
+            var fileName = new string(modPackData.Title.Where((q) => q.IsLetterOrDigit() || q is '+' or '-').ToArray());
+            return FileContentResult(fileName, htmlBytes);
+        }
+    }
+
+    private FileContentResult FileContentResult(string fileName, byte[] bytes)
+    {
+        Response.Headers.Add(
+            "Content-Disposition",
+            new System.Net.Mime.ContentDisposition
+            {
+                FileName = $"{fileName}.html",
+                Inline   = false,
+            }.ToString());
+        return new FileContentResult(bytes, "text/html")
+        {
+            FileDownloadName = "",
+        };
+    }
+
+    private async Task UpdateUserModMeta(
+        long modPackDefinitionId,
+        long modPackRevisionId,
+        CancellationToken cancellationToken)
+    {
+        if (User.TryGetUserId(out var userId))
+        {
+            var user = await _apiDbContext.Users
+                .Include(
+                    (e) => e.ModPackMetas!.Where(
+                        (q) => q.ModPackRevisionFk == modPackRevisionId &&
+                               q.ModPackDefinitionFk == modPackDefinitionId))
+                .Where((q) => q.PrimaryKey == userId)
+                .SingleAsync(cancellationToken);
+            var userModPackMeta = user.ModPackMetas?.FirstOrDefault(
+                (q) => q.ModPackRevisionFk == modPackRevisionId && q.ModPackDefinitionFk == modPackDefinitionId);
+            if (userModPackMeta is null)
+            {
+                var userModPackMetaEntity = await _apiDbContext.UserModPackMetas.AddAsync(
+                    new UserModPackMeta
+                    {
+                        UserFk              = userId,
+                        ModPackDefinitionFk = modPackDefinitionId,
+                        ModPackRevisionFk   = modPackRevisionId,
+                    },
+                    cancellationToken);
+                userModPackMeta = userModPackMetaEntity.Entity;
+            }
+
+            userModPackMeta.TimeStampDownloaded = DateTimeOffset.Now;
+        }
+    }
+
+    #endregion
 }

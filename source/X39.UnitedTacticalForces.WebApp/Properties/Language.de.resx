@@ -44,7 +44,7 @@
     <data name="Shared_NavMenu_Logout" xml:space="preserve">
         <value>Abmelden</value>
     </data>
-    <data name="Pages_ModPacks_CreateNewModPack" xml:space="preserve">
+    <data name="Pages_ModPacks_CreateNewStandaloneModPack" xml:space="preserve">
         <value>Neues Mod-Paket erstellen</value>
     </data>
     <data name="Pages_ModPacks_Table_Interactions" xml:space="preserve">
@@ -511,5 +511,8 @@
     </data>
     <data name="Pages_Settings_AccountSettings_Discord" xml:space="preserve">
         <value>Discord</value>
+    </data>
+    <data name="Pages_ModPacks_CreateNewCompositeModPack" xml:space="preserve">
+        <value>Neue Mod-Komposition erstellen</value>
     </data>
 </root>

@@ -2,27 +2,43 @@
 @using X39.Util.Collections
 @inject BaseUrl BaseUrl
 
-@if ((ModPack?.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MinValue) < ModPack?.TimeStampCreated)
+@if (ModPack?.IsComposition ?? false)
+{
+    <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color"
+                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack?.PrimaryKey}/download/latest")"
+                   target="_blank"/>
+}
+else if ((Revision?.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MinValue) < Revision?.TimeStampCreated)
 {
     <MudBadge Color="Color" Dot="true" Overlap="true">
         <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color"
-                       Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack.DefinitionFk}/download/{ModPack?.PrimaryKey}")"
+                       Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack?.PrimaryKey}/download/{Revision?.PrimaryKey}")"
                        target="_blank"
-                       OnClick="@(() => ModPack!.UserMetas!.FirstOrAdd((_) => true, () => new UserModPackMeta()).TimeStampDownloaded = DateTimeOffset.MaxValue)"/>
+                       OnClick="@(() => Revision!.UserMetas!.FirstOrAdd((_) => true, () => new UserModPackMeta()).TimeStampDownloaded = DateTimeOffset.MaxValue)"/>
     </MudBadge>
 }
 else
 {
     <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color"
-                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack?.DefinitionFk}/download/{ModPack?.PrimaryKey}")"
+                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{Revision?.PrimaryKey}/download/{Revision?.PrimaryKey}")"
                    target="_blank"/>
 }
+
 
 @code {
 
     [Parameter, Required, EditorRequired]
-    public ModPackRevision? ModPack { get; set; } = null!;
-    
+    public ModPackDefinition? ModPack { get; set; }
+
+    [Parameter]
+    public ModPackRevision? Revision
+    {
+        get => _activeRevision ?? ModPack?.GetActiveRevision();
+        set => _activeRevision = value;
+    }
+
+    private ModPackRevision? _activeRevision;
+
     [Parameter]
     public Color Color { get; set; }
 

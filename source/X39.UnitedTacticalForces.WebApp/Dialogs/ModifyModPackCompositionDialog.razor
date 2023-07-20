@@ -1,28 +1,20 @@
 ﻿@using System.ComponentModel.DataAnnotations
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
 @using X39.Util
 @using X39.Util.Collections
 @inject IStringLocalizer<Language> Localizer
 @inject ISnackbar Snackbar
+@inject IModPackRepository ModPackRepository
 <MudDialog>
     <DialogContent>
         <MudTextField Label="@Localizer[nameof(Language.Dialogs_ModifyModPackDialog_Inputs_Title)]" @bind-Value="@ModPack.Title"/>
-        <MudFileUpload T="IBrowserFile" MaximumFileCount="1" OnFilesChanged="FilesChangedAsync" Accept=".html">
-            <ButtonTemplate>
-                <MudText Align="Align.Center">@_fileName</MudText>
-                <MudButton HtmlTag="label"
-                           Variant="@(_fileName.IsNullOrEmpty() ? Variant.Text : Variant.Outlined)"
-                           for="@context">
-                    @if (IsNew)
-                    {
-                        @Localizer[nameof(Language.Dialogs_ModifyModPackDialog_SetModPackHtml)]
-                    }
-                    else
-                    {
-                        @Localizer[nameof(Language.Dialogs_ModifyModPackDialog_ReplaceModPackHtml)]
-                    }
-                </MudButton>
-            </ButtonTemplate>
-        </MudFileUpload>
+        <MudSelect T="ModPackDefinition" MultiSelection="true" @bind-SelectedValues="_selectedModPackDefinitions"
+                   ToStringFunc="@((q)=>q.Title ?? "")">
+            @foreach (var modPackDefinition in _modPacks)
+            {
+                <MudSelectItem T="ModPackDefinition" Value="@modPackDefinition">@modPackDefinition.Title</MudSelectItem>
+            }
+        </MudSelect>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">@Localizer[nameof(Language.Common_Cancel)]</MudButton>
@@ -44,22 +36,55 @@
     private bool IsSubmitDisabled => IsNew
                                      && (
                                          ModPack.Title.IsNullOrWhiteSpace()
-                                         || ModPack.ModPackRevisions is null
-                                         || ModPack.ModPackRevisions.None()
-                                         || ModPack.ModPackRevisions.First().Html.IsNullOrWhiteSpace());
+                                         || _selectedModPackDefinitions.None());
 
+
+    private IEnumerable<ModPackDefinition> _selectedModPackDefinitions = new List<ModPackDefinition>();
     private string _fileName = string.Empty;
+    private List<ModPackDefinition> _modPacks = new();
 
-    void Submit() => MudDialog.Close(DialogResult.Ok(ModPack));
+    private Task Submit()
+    {
+        ModPack.ModPackRevisions ??= new List<ModPackRevision>();
+        ModPack.ModPackRevisions.Clear();
+        foreach (var selectedModPack in _selectedModPackDefinitions)
+        {
+            var modPackRevisions = selectedModPack.ModPackRevisions ?? ArraySegment<ModPackRevision>.Empty;
+            ModPack.ModPackRevisions.Add(modPackRevisions.FirstOrDefault((q) => q.IsActive ?? false) ?? modPackRevisions.First());
+        }
+        MudDialog.Close(DialogResult.Ok(ModPack));
+        return Task.CompletedTask;
+    }
+
     void Cancel() => MudDialog.Cancel();
 
 
-    protected override Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
         MudDialog.Title = IsNew
             ? Localizer[nameof(Language.Dialogs_ModifyModPackDialog_TitleNew)]
             : Localizer[nameof(Language.Dialogs_ModifyModPackDialog_Title)];
-        return Task.CompletedTask;
+        var modPacks = new List<ModPackDefinition>();
+        while (true)
+        {
+            var result = await ModPackRepository.GetModPacksAsync(
+                modPacks.Count, 100, false)
+                .ConfigureAwait(false);
+            if (result.Count == 0)
+                break;
+            modPacks.AddRange(result);
+        }
+        modPacks.RemoveAll((q) => q.IsComposition ?? false);
+        _modPacks = modPacks;
+        var selectedModPackDefinitions = new List<ModPackDefinition>();
+        foreach (var modPackRevision in ModPack.ModPackRevisions ?? Array.Empty<ModPackRevision>())
+        {
+            var modPackDefinition = _modPacks.SingleOrDefault((q) => q.PrimaryKey == modPackRevision.DefinitionFk);
+            if (modPackDefinition is null)
+                continue;
+            selectedModPackDefinitions.Add(modPackDefinition);
+        }
+        _selectedModPackDefinitions = selectedModPackDefinitions;
     }
 
     private async Task FilesChangedAsync(InputFileChangeEventArgs obj)
@@ -85,9 +110,11 @@
         ModPackDefinition? modPack = default,
         bool? isNew = default)
     {
+        if (!(modPack?.IsComposition ?? true))
+            throw new Exception("Cannot modify a standalone mod pack using this dialog.");
         isNew ??= modPack is null;
-        modPack ??= new ModPackDefinition();
-        var dialogReference = await dialogService.ShowAsync<ModifyModPackDialog>(
+        modPack ??= new ModPackDefinition{IsComposition = true};
+        var dialogReference = await dialogService.ShowAsync<ModifyModPackCompositionDialog>(
             string.Empty,
             new DialogParameters
             {
@@ -107,6 +134,13 @@
             return null;
         modPack.Apply(modifiedModPack);
         return modifiedModPack;
+    }
+
+    private string MultiSelectionTextFunc(List<string> arg)
+    {
+        arg.Clear();
+        arg.AddRange(_selectedModPackDefinitions.Select((q)=>q.Title ?? string.Empty));
+        return string.Join(", ", arg);
     }
 
 }

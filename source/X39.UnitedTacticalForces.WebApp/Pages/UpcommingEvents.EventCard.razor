@@ -36,7 +36,7 @@
         </CardHeaderContent>
         <CardHeaderActions>
             <MudButtonGroup>
-                <UtfModPackDownloadButton ModPack="EventItem.ModPackRevision" Color="Color.Primary"/>
+                <UtfModPackDownloadButton ModPack="EventItem.ModPackRevision.Definition"  Revision="EventItem.ModPackRevision" Color="Color.Primary"/>
                 <UpcommingEvents_HeaderActions_ModifyButton Event="EventItem" ParentStateHasChanged="PropagateStateHasChanged"/>
                 <UpcommingEvents_HeaderActions_CloneButton Event="EventItem"/>
                 <MudIconButton Icon="@Icons.Material.Filled.Link" Color="Color.Primary" OnClick="CopyEventUrlToClipboardAsync"/>
