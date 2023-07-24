@@ -18,6 +18,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                                                        | UnixFileMode.UserExecute
                                                        | UnixFileMode.GroupRead
                                                        | UnixFileMode.OtherRead;
+
     private readonly IConfiguration _configuration;
 
     /// <summary>
@@ -355,8 +356,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                                 {
                                     GameServerFk = gameServer.PrimaryKey,
                                     TimeStamp    = DateTimeOffset.Now,
-                                    Message = string.Format(
-                                        "Changing ModPack of {0} ({1}) to {2} ({3})",
+                                    Message = "Changing ModPack of {0} ({1}) to {2} ({3})".Format(
                                         gameServer.Title,
                                         gameServer.PrimaryKey,
                                         modPackDefinition?.Title ?? "null",
@@ -365,8 +365,12 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                                     LogLevel = LogLevel.Information,
                                 })
                             .ConfigureAwait(false);
-                        gameServer.ActiveModPack   = modPackDefinition?.IsComposition is not true ? null : modPackDefinition.ModPackRevisions!.First();
-                        gameServer.ActiveModPackFk = modPackDefinition?.IsComposition is not true ? null : modPackDefinition.ModPackRevisions!.First().PrimaryKey;
+                        gameServer.ActiveModPack = modPackDefinition?.IsComposition is true
+                            ? null
+                            : modPackDefinition?.ModPackRevisions!.First();
+                        gameServer.ActiveModPackFk = modPackDefinition?.IsComposition is true
+                            ? null
+                            : modPackDefinition?.ModPackRevisions!.First().PrimaryKey;
                         await dbContext.SaveChangesAsync().ConfigureAwait(false);
                     }
 
