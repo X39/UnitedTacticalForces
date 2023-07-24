@@ -200,6 +200,7 @@
             .ConfigureAwait(false);
         if (modPack is null)
             return;
+        modPack.ModPackRevisions?.Clear();
         await ModPackRepository.CreateModPackAsync(modPack)
             .ConfigureAwait(false);
         await _mudTable.ReloadServerData()
