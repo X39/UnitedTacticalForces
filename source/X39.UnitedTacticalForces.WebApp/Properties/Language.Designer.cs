@@ -78,6 +78,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Confirm.
+        /// </summary>
+        internal static string Common_Confirm {
+            get {
+                return ResourceManager.GetString("Common_Confirm", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Copied to clipboard.
         /// </summary>
         internal static string Common_CopiedToClipboard {
@@ -803,6 +812,24 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_GameServers_ConfirmDeleteOfGameServer_Title {
             get {
                 return ResourceManager.GetString("Pages_GameServers_ConfirmDeleteOfGameServer_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please confirm your intention to upgrade the server..
+        /// </summary>
+        internal static string Pages_GameServers_ConfirmUpgradeOfGameServer_Description {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_ConfirmUpgradeOfGameServer_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Confirm upgrade.
+        /// </summary>
+        internal static string Pages_GameServers_ConfirmUpgradeOfGameServer_Title {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_ConfirmUpgradeOfGameServer_Title", resourceCulture);
             }
         }
         

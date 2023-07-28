@@ -522,4 +522,13 @@
     <data name="Pages_ModPacks_CreateNewCompositeModPack" xml:space="preserve">
         <value>Create new mod composition</value>
     </data>
+    <data name="Common_Confirm" xml:space="preserve">
+        <value>Confirm</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmUpgradeOfGameServer_Description" xml:space="preserve">
+        <value>Please confirm your intention to upgrade the server.</value>
+    </data>
+    <data name="Pages_GameServers_ConfirmUpgradeOfGameServer_Title" xml:space="preserve">
+        <value>Confirm upgrade</value>
+    </data>
 </root>

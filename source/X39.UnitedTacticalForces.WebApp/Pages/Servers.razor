@@ -358,20 +358,20 @@
 
     private async Task CloneGameServerAsync(GameServer gameServer)
     {
-    // gameServer = new GameServer
-    // {
-    //     Title = gameServer.Title,
-    //     Html = gameServer.Html,
-    // };
-    // var updatedGameServer = await Dialogs.ModifyGameServerDialog.ShowAsync(DialogService, gameServer, isNew: true)
-    //     .ConfigureAwait(false);
-    // if (updatedGameServer is null)
-    //     return;
-    // Contract.Assert(updatedGameServer == gameServer);
-    // await GameServerRepository.CreateGameServerAsync(gameServer)
-    //     .ConfigureAwait(false);
-    // await _mudTable.ReloadServerData()
-    //     .ConfigureAwait(false);
+        // gameServer = new GameServer
+        // {
+        //     Title = gameServer.Title,
+        //     Html = gameServer.Html,
+        // };
+        // var updatedGameServer = await Dialogs.ModifyGameServerDialog.ShowAsync(DialogService, gameServer, isNew: true)
+        //     .ConfigureAwait(false);
+        // if (updatedGameServer is null)
+        //     return;
+        // Contract.Assert(updatedGameServer == gameServer);
+        // await GameServerRepository.CreateGameServerAsync(gameServer)
+        //     .ConfigureAwait(false);
+        // await _mudTable.ReloadServerData()
+        //     .ConfigureAwait(false);
         throw new NotImplementedException();
     }
 
@@ -379,7 +379,7 @@
     {
         if (gameServerInfo.GameServer is null)
             throw new NullReferenceException("gameServerInfo.GameServer is null");
-        await Dialogs.ConfirmDeletionDialog.ShowAsync(
+        await ConfirmDeletionDialog.ShowAsync(
             DialogService,
             Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfGameServer_Description)],
             Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfGameServer_Title)]);
@@ -411,6 +411,10 @@
     {
         if (gameServerInfo.GameServer is null)
             throw new NullReferenceException("gameServerInfo.GameServer is null");
+        await ConfirmDialog.ShowAsync(
+            DialogService,
+            Localizer[nameof(Language.Pages_GameServers_ConfirmUpgradeOfGameServer_Description)],
+            Localizer[nameof(Language.Pages_GameServers_ConfirmUpgradeOfGameServer_Title)]);
         var result = await GameServerRepository.UpgradeGameServerAsync(gameServerInfo.GameServer)
             .ConfigureAwait(false);
         UpdateGameServerInfoFromResult(gameServerInfo, result);
@@ -482,7 +486,7 @@
 
     private async Task DeleteFileAsync(GameServer gameServer, GameFolder gameFolder, GameFileInfo file)
     {
-        var result = await Dialogs.ConfirmDeletionDialog.ShowAsync(
+        var result = await ConfirmDeletionDialog.ShowAsync(
             DialogService,
             Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfFile_Description)],
             Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfFile_Title)]);
