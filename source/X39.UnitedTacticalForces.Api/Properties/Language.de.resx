@@ -390,4 +390,10 @@ Wenn diese Einstellung aktiviert ist, kann sich der Start des Servers um 600 Sek
     <data name="DiscordCommand_GameServers_ModPack" xml:space="preserve">
         <value>Modpack</value>
     </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Description" xml:space="preserve">
+        <value>Aktiviert/Deaktiviert RCon-Funktionen (Kick/Ban/Verbindungsbeschränkungen)</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Title" xml:space="preserve">
+        <value>Beschränken</value>
+    </data>
 </root>

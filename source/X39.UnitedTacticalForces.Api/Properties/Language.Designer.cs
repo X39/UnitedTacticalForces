@@ -240,6 +240,24 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Enables/disables RCon functions (kick/ban/connection restrictions)..
+        /// </summary>
+        internal static string ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Restrict.
+        /// </summary>
+        internal static string ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The folder in which the missions are to be stored..
         /// </summary>
         internal static string ServerController_Arma3_GameFolders_MPMissions_Description {

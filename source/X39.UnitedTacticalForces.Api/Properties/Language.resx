@@ -422,4 +422,10 @@ Usually this is the same as the installation path and the same as the one entere
     <data name="DiscordCommand_GameServers_ModPack" xml:space="preserve">
         <value>Mod pack</value>
     </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Description" xml:space="preserve">
+        <value>Enables/disables RCon functions (kick/ban/connection restrictions).</value>
+    </data>
+    <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Title" xml:space="preserve">
+        <value>Restrict</value>
+    </data>
 </root>
