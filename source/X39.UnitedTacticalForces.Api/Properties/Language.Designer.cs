@@ -869,6 +869,27 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Forces the selected difficulty on the server. forcedDifficulty = &quot;&lt;difficultyClass&gt;&quot;;
+        ///- If Recruit, Regular, or Veteran is passed as a parameter, the respective difficulty options are taken from the data configuration, CfgDifficultyPresets class.
+        ///- If Custom is passed as a parameter, the individual flags from the CustomDifficulty class are taken from the server profile (only Custom is stored in the profile).
+        ///- If a mission cycle is defined in server.cfg, the difficulty set in the mission cycle overrides  [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_ForcedDifficulty_Description {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_ForcedDifficulty_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Force difficulty.
+        /// </summary>
+        internal static string ServerController_Arma3_ServerCfg_ForcedDifficulty_Title {
+            get {
+                return ResourceManager.GetString("ServerController_Arma3_ServerCfg_ForcedDifficulty_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to General.
         /// </summary>
         internal static string ServerController_Arma3_ServerCfg_GeneralGroup {
