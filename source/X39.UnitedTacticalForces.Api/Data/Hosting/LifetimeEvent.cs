@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using X39.UnitedTacticalForces.Api.Data.Authority;
+using X39.UnitedTacticalForces.Contract.GameServer;
 
 namespace X39.UnitedTacticalForces.Api.Data.Hosting;
 

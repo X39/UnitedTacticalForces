@@ -10,7 +10,9 @@ using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.HostedServices;
 using X39.UnitedTacticalForces.Api.Services;
+using X39.UnitedTacticalForces.Api.Services.UpdateStreamService;
 using X39.UnitedTacticalForces.Common;
+using X39.UnitedTacticalForces.Contract.Event;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
@@ -24,6 +26,7 @@ public class EventsController : ControllerBase
     private readonly ILogger<EventsController> _logger;
     private readonly ApiDbContext              _apiDbContext;
     private readonly DiscordBot?               _discordBot;
+    private readonly IUpdateStreamService      _updateStreamService;
     private readonly BaseUrl                   _baseUrl;
 
     /// <summary>
@@ -37,12 +40,14 @@ public class EventsController : ControllerBase
         ILogger<EventsController> logger,
         ApiDbContext apiDbContext,
         DiscordBot? discordBot,
+        IUpdateStreamService updateStreamService,
         BaseUrl baseUrl)
     {
-        _logger       = logger;
-        _apiDbContext = apiDbContext;
-        _discordBot   = discordBot;
-        _baseUrl      = baseUrl;
+        _logger              = logger;
+        _apiDbContext        = apiDbContext;
+        _discordBot          = discordBot;
+        _updateStreamService = updateStreamService;
+        _baseUrl             = baseUrl;
     }
 
     /// <summary>
@@ -318,6 +323,13 @@ public class EventsController : ControllerBase
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         await CreateOrUpdateDiscordEventAsync(newEvent, true)
             .ConfigureAwait(false);
+        await _updateStreamService.SendUpdateAsync(
+                $"{Constants.Routes.Events}/{newEvent.PrimaryKey}",
+                new Contract.UpdateStream.Eventing.EventCreatedMessage
+                {
+                    EventId = newEvent.PrimaryKey,
+                })
+            .ConfigureAwait(false);
         return Ok(entity.Entity);
     }
 
@@ -357,6 +369,27 @@ public class EventsController : ControllerBase
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         await CreateOrUpdateDiscordEventAsync(existingEvent, imageChanged)
             .ConfigureAwait(false);
+        await _updateStreamService.SendUpdateAsync(
+                $"{Constants.Routes.Events}/{eventId}",
+                new Contract.UpdateStream.Eventing.EventChangedMessage
+                {
+                    Title             = existingEvent.Title,
+                    Description       = existingEvent.Description,
+                    ScheduledFor      = existingEvent.ScheduledFor,
+                    HostedById        = existingEvent.HostedByFk,
+                    ModPackRevisionId = existingEvent.ModPackRevisionFk,
+                    TerrainFk         = existingEvent.TerrainFk,
+                    MinimumAccepted   = existingEvent.MinimumAccepted,
+                    IsVisible         = existingEvent.IsVisible,
+                    Image = updatedEvent.Image != existingEvent.Image
+                        ? null
+                        : existingEvent.Image,
+                    ImageMimeType = updatedEvent.Image != existingEvent.Image
+                        ? null
+                        : existingEvent.ImageMimeType,
+                    EventId = existingEvent.PrimaryKey,
+                })
+            .ConfigureAwait(false);
         return NoContent();
     }
 
@@ -379,6 +412,7 @@ public class EventsController : ControllerBase
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
         await EventUtils.SetAcceptanceOfEventAsync(
+            _updateStreamService,
             _logger,
             _apiDbContext,
             eventId,
@@ -411,6 +445,7 @@ public class EventsController : ControllerBase
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
         await EventUtils.SetAcceptanceOfEventAsync(
+            _updateStreamService,
             _logger,
             _apiDbContext,
             eventId,
@@ -443,6 +478,7 @@ public class EventsController : ControllerBase
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
         await EventUtils.SetAcceptanceOfEventAsync(
+            _updateStreamService,
             _logger,
             _apiDbContext,
             eventId,

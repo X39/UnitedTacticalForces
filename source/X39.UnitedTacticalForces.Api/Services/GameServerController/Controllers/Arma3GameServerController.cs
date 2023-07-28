@@ -12,6 +12,8 @@ using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.Properties;
+using X39.UnitedTacticalForces.Api.Services.UpdateStreamService;
+using X39.UnitedTacticalForces.Contract.GameServer;
 using X39.Util;
 using X39.Util.Collections;
 using StreamWriter = System.IO.StreamWriter;
@@ -32,7 +34,13 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         GameServer gameServer,
         IDbContextFactory<ApiDbContext> dbContextFactory,
         ILogger<Arma3GameServerController> logger,
-        IConfiguration configuration) : base(configuration, gameServer, dbContextFactory, logger)
+        IConfiguration configuration,
+        IUpdateStreamService updateStreamService) : base(
+        configuration,
+        gameServer,
+        dbContextFactory,
+        updateStreamService,
+        logger)
     {
     }
 
@@ -57,13 +65,15 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
     public static Task<IGameServerController> CreateAsync(
         IServiceProvider serviceProvider,
         IConfiguration configuration,
-        GameServer gameServer)
+        GameServer gameServer,
+        IUpdateStreamService updateStreamService)
     {
         var controller = new Arma3GameServerController(
             gameServer,
             serviceProvider.GetRequiredService<IDbContextFactory<ApiDbContext>>(),
             serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<Arma3GameServerController>(),
-            configuration);
+            configuration,
+            updateStreamService);
         return Task.FromResult<IGameServerController>(controller);
     }
 
@@ -795,6 +805,14 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             .ToImmutableArray();
     }
 
+
+    protected override void ProcessOnErrorDataReceived(object sender, DataReceivedEventArgs e)
+    {
+        if (e.Data is not { } message)
+            return;
+        BeginWritingServerLog(LogLevel.Information, message);
+    }
+
     private async Task UpdateWorkshopItemsOfActiveModPackAsync(
         ApiDbContext dbContext,
         User? executingUser)
@@ -812,20 +830,30 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             .ConfigureAwait(false);
         await dbContext.SaveChangesAsync()
             .ConfigureAwait(false);
-        var workshopPaths = await DoUpdateWorkshopMods(workshopItemIds, GameServerPath, executingUser)
+        var workshopPaths = await DoUpdateWorkshopMods(
+                workshopItemIds,
+                GameServerPath,
+                executingUser,
+                RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? workshopItemIds.Count : 0)
             .ConfigureAwait(false);
-        foreach (var (_, workshopPath) in workshopPaths)
+        // ReSharper disable once InvertIf
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            // ReSharper disable once InvertIf
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            foreach (var ((_, workshopPath), index) in workshopPaths.Indexed())
             {
                 var lowerCaseWorkshopPath = $"{workshopPath}-lowercased";
                 CopyAndReplaceFiles(workshopPath, lowerCaseWorkshopPath);
                 LowercaseFiles(lowerCaseWorkshopPath);
+                await UpdateStreamService.SendUpdateAsync(
+                        $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
+                        new Contract.UpdateStream.GameServer.LifetimeStatusHasChanged
+                        {
+                            LifetimeStatus = ELifetimeStatus.Updating,
+                            GameServerId   = GameServerPrimaryKey,
+                            Progress = index / (double)workshopItemIds.Count * 2,
+                        })
+                    .ConfigureAwait(false);
             }
-
-            await dbContext.SaveChangesAsync()
-                .ConfigureAwait(false);
         }
     }
 

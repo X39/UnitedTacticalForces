@@ -15,6 +15,7 @@ using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.HostedServices;
 using X39.UnitedTacticalForces.Api.Services;
+using X39.UnitedTacticalForces.Contract.GameServer;
 using X39.Util;
 using X39.Util.DependencyInjection;
 

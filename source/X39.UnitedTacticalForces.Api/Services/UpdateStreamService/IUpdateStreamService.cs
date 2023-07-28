@@ -1,16 +1,11 @@
 ﻿using System.Net.WebSockets;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
-using X39.UnitedTacticalForces.Api.Data;
-using X39.UnitedTacticalForces.Api.Data.Authority;
-using X39.Util.Collections;
-using X39.Util.Collections.Concurrent;
+using X39.Util;
 using X39.Util.DependencyInjection.Attributes;
 using X39.Util.Threading;
 
-namespace X39.UnitedTacticalForces.Api.Services;
+namespace X39.UnitedTacticalForces.Api.Services.UpdateStreamService;
 
 public interface IUpdateStreamService
 {
@@ -35,8 +30,14 @@ public interface IUpdateStreamService
 [Singleton<UpdateStreamService, IUpdateStreamService>]
 public class UpdateStreamService : IUpdateStreamService, IAsyncDisposable
 {
-    private readonly Dictionary<string, List<WebSocket>> _webSockets = new();
-    private readonly ReaderWriterLockSlim                _lock       = new();
+    private class Wrapper<T>
+    {
+        public string Type { get; init; } = typeof(T).FullName();
+        public T Value { get; init; }
+    }
+
+    private readonly List<(string path, WebSocket webSocket)> _webSockets = new();
+    private readonly ReaderWriterLockSlim                     _lock       = new();
 
     private readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web)
     {
@@ -48,23 +49,31 @@ public class UpdateStreamService : IUpdateStreamService, IAsyncDisposable
     /// <inheritdoc />
     public ValueTask RegisterAsync(string path, WebSocket webSocket)
     {
-        _lock.WriteLocked(() => _webSockets.GetOrAdd(path, () => new List<WebSocket>()).Add(webSocket));
+        _lock.WriteLocked(() => _webSockets.Add((path, webSocket)));
         return ValueTask.CompletedTask;
     }
 
     /// <inheritdoc />
     public async ValueTask SendUpdateAsync<T>(string path, T package)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(package, _serializerOptions);
-        var webSockets = _lock.ReadLocked(
-            () => !_webSockets.TryGetValue(path, out var webSockets)
-                ? Array.Empty<WebSocket>()
-                : webSockets.ToArray());
-        foreach (var webSocket in webSockets)
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(new Wrapper<T> {Value = package}, _serializerOptions);
+        var webSockets = _lock.ReadLocked(() => _webSockets.Where((q) => q.path.StartsWith(path)).ToArray());
+        var webSocketsToRemove = new List<WebSocket>();
+        foreach (var (_, webSocket) in webSockets)
         {
-            await webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None)
-                .ConfigureAwait(false);
+            try
+            {
+                await webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                webSocketsToRemove.Add(webSocket);
+            }
         }
+
+        if (webSocketsToRemove.Any())
+            _lock.WriteLocked(() => _webSockets.RemoveAll((q) => webSocketsToRemove.Contains(q.webSocket)));
     }
 
     /// <inheritdoc />
@@ -73,7 +82,7 @@ public class UpdateStreamService : IUpdateStreamService, IAsyncDisposable
         var webSockets = _lock.WriteLocked(
             () =>
             {
-                var webSockets = _webSockets.SelectMany((q) => q.Value).Distinct().ToArray();
+                var webSockets = _webSockets.Select((q) => q.webSocket).ToArray();
                 _webSockets.Clear();
                 return webSockets;
             });

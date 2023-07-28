@@ -11,6 +11,7 @@ using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.GarbageWorkarounds;
 using X39.UnitedTacticalForces.Api.Services.GameServerController;
 using X39.UnitedTacticalForces.Common;
+using X39.UnitedTacticalForces.Contract.GameServer;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 

@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 using System.Reflection;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
+using X39.UnitedTacticalForces.Api.Services.UpdateStreamService;
 using X39.Util.DependencyInjection.Attributes;
 using X39.Util.Threading;
 
@@ -21,16 +22,18 @@ public class GameServerControllerFactory : IGameServerControllerFactory, IAsyncD
     private static Task<IGameServerController> GenericCreateAsync<T>(
         IServiceProvider serviceProvider,
         IConfiguration configuration,
-        GameServer gameServer) where T : IGameServerControllerCreatable
+        GameServer gameServer,
+        IUpdateStreamService updateStreamService) where T : IGameServerControllerCreatable
     {
-        return T.CreateAsync(serviceProvider, configuration, gameServer);
+        return T.CreateAsync(serviceProvider, configuration, gameServer, updateStreamService);
     }
 
     private static string GenericIdentifierGet<T>() where T : IGameServerControllerCreatable => T.Identifier;
 
     public GameServerControllerFactory(
         IServiceProvider serviceProvider,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IUpdateStreamService updateStreamService)
     {
         Task<IGameServerController> CreateControllerMethod(
             Type type,
@@ -46,6 +49,7 @@ public class GameServerControllerFactory : IGameServerControllerFactory, IAsyncD
                         serviceProvider,
                         configuration,
                         gameServer,
+                        updateStreamService,
                     })!;
         }
 

@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
+using X39.UnitedTacticalForces.Contract.Event;
 
 namespace X39.UnitedTacticalForces.Api.Data.Authority;
 

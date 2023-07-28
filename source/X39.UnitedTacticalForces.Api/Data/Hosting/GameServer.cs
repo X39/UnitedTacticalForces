@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 using JetBrains.Annotations;
 using X39.UnitedTacticalForces.Api.Data.Core;
+using X39.UnitedTacticalForces.Contract.GameServer;
 
 namespace X39.UnitedTacticalForces.Api.Data.Hosting;
 

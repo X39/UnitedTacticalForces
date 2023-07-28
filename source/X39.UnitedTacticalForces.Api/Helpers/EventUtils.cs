@@ -2,18 +2,23 @@
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
+using X39.UnitedTacticalForces.Api.Services;
+using X39.UnitedTacticalForces.Api.Services.UpdateStreamService;
+using X39.UnitedTacticalForces.Contract.Event;
 
 namespace X39.UnitedTacticalForces.Api.Helpers;
 
 public static class EventUtils
 {
     public static async Task SetAcceptanceOfEventAsync(
+        IUpdateStreamService updateStreamService,
         ILogger logger,
         ApiDbContext apiDbContext,
         Guid eventId,
         Guid userId,
         EEventAcceptance acceptance,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        short? slotNumber = null)
     {
         async Task ActAsync()
         {
@@ -145,5 +150,15 @@ public static class EventUtils
         {
             await ActAsync().ConfigureAwait(false);
         }
+        await updateStreamService.SendUpdateAsync(
+                $"{Constants.Routes.Events}/{eventId}/slots",
+                new Contract.UpdateStream.Eventing.AcceptanceChanged()
+                {
+                    EventId = eventId,
+                    UserId = userId,
+                    EventAcceptance = acceptance,
+                    SlotNumber = slotNumber,
+                })
+            .ConfigureAwait(false);
     }
 }

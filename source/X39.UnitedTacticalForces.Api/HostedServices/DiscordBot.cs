@@ -9,6 +9,7 @@ using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.Properties;
 using X39.UnitedTacticalForces.Api.Services.GameServerController;
 using X39.UnitedTacticalForces.Common;
+using X39.UnitedTacticalForces.Contract.GameServer;
 using X39.Util;
 
 namespace X39.UnitedTacticalForces.Api.HostedServices;

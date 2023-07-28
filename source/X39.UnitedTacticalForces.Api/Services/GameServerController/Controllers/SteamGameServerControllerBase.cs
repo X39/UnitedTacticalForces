@@ -6,13 +6,18 @@ using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
+using X39.UnitedTacticalForces.Api.Services.UpdateStreamService;
+using X39.UnitedTacticalForces.Contract.GameServer;
 using X39.Util;
+using X39.Util.Collections;
 using X39.Util.Threading;
 
 namespace X39.UnitedTacticalForces.Api.Services.GameServerController.Controllers;
 
 public abstract class SteamGameServerControllerBase : GameServerControllerBase
 {
+    public IUpdateStreamService UpdateStreamService { get; }
+
     protected const UnixFileMode DefaultUnixFileMode = UnixFileMode.UserRead
                                                        | UnixFileMode.UserWrite
                                                        | UnixFileMode.UserExecute
@@ -56,8 +61,10 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         IConfiguration configuration,
         GameServer gameServer,
         IDbContextFactory<ApiDbContext> dbContextFactory,
+        IUpdateStreamService updateStreamService,
         ILogger logger) : base(gameServer, dbContextFactory, logger)
     {
+        UpdateStreamService      = updateStreamService;
         _configuration           = configuration;
         _cancellationTokenSource = new();
         _semaphore               = new SemaphoreSlim(1, 1);
@@ -165,6 +172,14 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                             .ConfigureAwait(false);
                         await dbContext.SaveChangesAsync()
                             .ConfigureAwait(false);
+                        await UpdateStreamService.SendUpdateAsync(
+                                $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
+                                new Contract.UpdateStream.GameServer.LifetimeStatusHasChanged
+                                {
+                                    LifetimeStatus = ELifetimeStatus.Running,
+                                    GameServerId   = gameServer.PrimaryKey,
+                                })
+                            .ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -227,6 +242,14 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         .ConfigureAwait(false);
                     await dbContext.SaveChangesAsync()
                         .ConfigureAwait(false);
+                    await UpdateStreamService.SendUpdateAsync(
+                            $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
+                            new Contract.UpdateStream.GameServer.LifetimeStatusHasChanged
+                            {
+                                LifetimeStatus = ELifetimeStatus.Stopping,
+                                GameServerId   = gameServer.PrimaryKey,
+                            })
+                        .ConfigureAwait(false);
                     if (Process is null)
                         throw new NullReferenceException("_process was unexpectedly null");
                     try
@@ -286,6 +309,14 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                             })
                         .ConfigureAwait(false);
                     await dbContext.SaveChangesAsync()
+                        .ConfigureAwait(false);
+                    await UpdateStreamService.SendUpdateAsync(
+                            $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
+                            new Contract.UpdateStream.GameServer.LifetimeStatusHasChanged
+                            {
+                                LifetimeStatus = ELifetimeStatus.Stopped,
+                                GameServerId   = gameServer.PrimaryKey,
+                            })
                         .ConfigureAwait(false);
                 })
             .ConfigureAwait(false);
@@ -371,7 +402,25 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                         gameServer.ActiveModPackFk = modPackDefinition?.IsComposition is true
                             ? null
                             : modPackDefinition?.ModPackRevisions!.First().PrimaryKey;
+                        gameServer.Status = ELifetimeStatus.Updating;
                         await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                        await UpdateStreamService.SendUpdateAsync(
+                                $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
+                                new Contract.UpdateStream.GameServer.ModPackChanged()
+                                {
+                                    GameServerId      = gameServer.PrimaryKey,
+                                    ActiveModPackId   = gameServer.ActiveModPackFk,
+                                    SelectedModPackId = gameServer.SelectedModPackFk,
+                                })
+                            .ConfigureAwait(false);
+                        await UpdateStreamService.SendUpdateAsync(
+                                $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
+                                new Contract.UpdateStream.GameServer.LifetimeStatusHasChanged
+                                {
+                                    LifetimeStatus = ELifetimeStatus.Updating,
+                                    GameServerId   = gameServer.PrimaryKey,
+                                })
+                            .ConfigureAwait(false);
                     }
 
                     await DoUpdateGameAsync(
@@ -388,8 +437,17 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                     {
                         var gameServer = await GetGameServerAsync(dbContext)
                             .ConfigureAwait(false);
+                        gameServer.Status            = ELifetimeStatus.Stopped;
                         gameServer.TimeStampUpgraded = DateTimeOffset.Now;
                         await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                        await UpdateStreamService.SendUpdateAsync(
+                                $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
+                                new Contract.UpdateStream.GameServer.LifetimeStatusHasChanged
+                                {
+                                    LifetimeStatus = ELifetimeStatus.Stopped,
+                                    GameServerId   = gameServer.PrimaryKey,
+                                })
+                            .ConfigureAwait(false);
                     }
                 })
             .ConfigureAwait(false);
@@ -495,25 +553,44 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 GameServerFk = gameServer.PrimaryKey,
             });
         await dbContext.SaveChangesAsync().ConfigureAwait(false);
+        await UpdateStreamService.SendUpdateAsync(
+                $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/log",
+                new Contract.UpdateStream.GameServer.LogMessage
+                {
+                    Message      = message,
+                    TimeStamp    = timeStamp,
+                    LogLevel     = logLevel,
+                    Source       = "SteamCmd",
+                    GameServerId = gameServer.PrimaryKey,
+                })
+            .ConfigureAwait(false);
     }
 
     /// <summary>
     /// Updates the given workshop items identified via <paramref name="workshopIds"/>. 
     /// </summary>
+    /// <remarks>
+    /// Will produce <see cref="Contract.UpdateStream.GameServer.LifetimeStatusHasChanged"/> packages in accordance
+    /// to <paramref name="additionalUpdateSteps"/>.
+    /// Progress is calculated as follows:
+    /// <code>currentWorkshopId / (workshopIds +additionalUpdateSteps)</code> 
+    /// </remarks>
     /// <param name="workshopIds">The workshop ids.</param>
     /// <param name="installPath">The path to download the mods to (individual pathing is not possible, using steamcmd sadly)</param>
     /// <param name="executingUser">The user that requested the update.</param>
+    /// <param name="additionalUpdateSteps">Additional update steps to be done. Used to change how the update is moving.</param>
     /// <exception cref="FailedToStartProcessException">Thrown when the SteamCmd process failed to start.</exception>
     /// <returns>The full path to the workshop items.</returns>
     protected async Task<IReadOnlyCollection<(long workshopId, string installPath)>> DoUpdateWorkshopMods(
-        IEnumerable<long> workshopIds,
+        IReadOnlyCollection<long> workshopIds,
         string installPath,
-        User? executingUser)
+        User? executingUser,
+        int additionalUpdateSteps = 0)
     {
         if (!int.TryParse(_configuration[Constants.Configuration.Steam.WorkshopChunkSize], out var chunkSize))
             chunkSize = 10;
         var installPaths = new List<(long, string)>();
-        foreach (var chunkedWorkshopIds in workshopIds.Chunk(chunkSize))
+        foreach (var chunkedAndIndexedWorkshopIds in workshopIds.Indexed().Chunk(chunkSize))
         {
             var (steamCmdPath,
                 steamUsername,
@@ -521,7 +598,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 _) = GetSteamCmdInformationTuple();
             Logger.LogInformation(
                 "Starting update of workshop items {WorkshopId} via SteamCmd, requested by user {UserId}",
-                chunkedWorkshopIds,
+                chunkedAndIndexedWorkshopIds.Select(q => q.value),
                 executingUser?.PrimaryKey);
             var psi = new ProcessStartInfo
             {
@@ -546,7 +623,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 psi.ArgumentList.Add("anonymous");
             }
 
-            foreach (var workshopId in chunkedWorkshopIds)
+            foreach (var workshopId in chunkedAndIndexedWorkshopIds.Select(q => q.value))
             {
                 psi.ArgumentList.Add("+workshop_download_item");
                 psi.ArgumentList.Add(GameAppId.ToString());
@@ -566,11 +643,22 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             if (Process is not null && !Process.HasExited)
                 throw new InvalidOperationException("Process must be finished for the operation");
 
-            await ExecuteAsync(psi);
+            await ExecuteAsync(psi)
+                .ConfigureAwait(false);
+            await UpdateStreamService.SendUpdateAsync(
+                    $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
+                    new Contract.UpdateStream.GameServer.LifetimeStatusHasChanged
+                    {
+                        LifetimeStatus = ELifetimeStatus.Updating,
+                        GameServerId   = GameServerPrimaryKey,
+                        Progress = chunkedAndIndexedWorkshopIds.Last().index
+                                   / (double) (workshopIds.Count + additionalUpdateSteps),
+                    })
+                .ConfigureAwait(false);
 
             Logger.LogInformation(
                 "Finished update of workshop items {WorkshopId} via SteamCmd, requested by user {UserId}",
-                chunkedWorkshopIds,
+                chunkedAndIndexedWorkshopIds.Select(q => q.value),
                 executingUser?.PrimaryKey);
             await Task.Delay(TimeSpan.FromMinutes(1))
                 .ConfigureAwait(false);
@@ -714,14 +802,20 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         ApiDbContext dbContext,
         User? executingUser);
 
-    private void ProcessOnOutputDataReceived(object sender, DataReceivedEventArgs e)
+    /// <summary>
+    /// Method being called when the game server produced output on the console.
+    /// </summary>
+    protected virtual void ProcessOnOutputDataReceived(object sender, DataReceivedEventArgs e)
     {
         if (e.Data is not { } message)
             return;
         BeginWritingServerLog(LogLevel.Information, message);
     }
 
-    private void ProcessOnErrorDataReceived(object sender, DataReceivedEventArgs e)
+    /// <summary>
+    /// Method being called when the game server produced error output on the console.
+    /// </summary>
+    protected virtual void ProcessOnErrorDataReceived(object sender, DataReceivedEventArgs e)
     {
         if (e.Data is not { } message)
             return;
@@ -729,7 +823,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
     }
 
 
-    private void BeginWritingServerLog(LogLevel logLevel, string message)
+    protected void BeginWritingServerLog(LogLevel logLevel, string message)
     {
         var now = DateTimeOffset.Now;
         Task.Run(
@@ -761,6 +855,17 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                                 _cancellationTokenSource.Token)
                             .ConfigureAwait(false);
                         await dbContext.SaveChangesAsync()
+                            .ConfigureAwait(false);
+                        await UpdateStreamService.SendUpdateAsync(
+                                $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/log",
+                                new Contract.UpdateStream.GameServer.LogMessage
+                                {
+                                    TimeStamp    = now,
+                                    LogLevel     = logLevel,
+                                    Message      = message,
+                                    Source       = $"[{GameServerPrimaryKey}] {GameServerLastKnownTitle}",
+                                    GameServerId = GameServerPrimaryKey,
+                                })
                             .ConfigureAwait(false);
                         return;
                     }

@@ -1,5 +1,6 @@
 ﻿using JetBrains.Annotations;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
+using X39.UnitedTacticalForces.Api.Services.UpdateStreamService;
 
 namespace X39.UnitedTacticalForces.Api.Services.GameServerController;
 
@@ -23,5 +24,6 @@ public interface IGameServerControllerCreatable : IGameServerController
     static abstract Task<IGameServerController> CreateAsync(
         IServiceProvider serviceProvider,
         IConfiguration configuration,
-        GameServer gameServer);
+        GameServer gameServer,
+        IUpdateStreamService updateStreamService);
 }

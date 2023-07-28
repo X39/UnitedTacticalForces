@@ -6,7 +6,10 @@ using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
+using X39.UnitedTacticalForces.Api.Services;
+using X39.UnitedTacticalForces.Api.Services.UpdateStreamService;
 using X39.UnitedTacticalForces.Common;
+using X39.UnitedTacticalForces.Contract.Event;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
@@ -19,16 +22,22 @@ public class EventSlottingController : ControllerBase
 {
     private readonly ILogger<EventSlottingController> _logger;
     private readonly ApiDbContext                     _apiDbContext;
+    private readonly IUpdateStreamService             _updateStreamService;
 
     /// <summary>
     /// Creates a new instance of <see cref="EventSlottingController"/>.
     /// </summary>
     /// <param name="logger">The <see cref="ILogger"/> to use.</param>
     /// <param name="apiDbContext">The <see cref="ApiDbContext"/> to use.</param>
-    public EventSlottingController(ILogger<EventSlottingController> logger, ApiDbContext apiDbContext)
+    /// <param name="updateStreamService">The <see cref="IUpdateStreamService"/> to use.</param>
+    public EventSlottingController(
+        ILogger<EventSlottingController> logger,
+        ApiDbContext apiDbContext,
+        IUpdateStreamService updateStreamService)
     {
-        _logger       = logger;
-        _apiDbContext = apiDbContext;
+        _logger              = logger;
+        _apiDbContext        = apiDbContext;
+        _updateStreamService = updateStreamService;
     }
 
     /// <summary>
@@ -158,7 +167,7 @@ public class EventSlottingController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     public async Task<ActionResult> AssignEventSlotToSelf(
         [FromRoute] Guid eventId,
-        [FromRoute] long slotNumber,
+        [FromRoute] short slotNumber,
         CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var userId))
@@ -186,12 +195,14 @@ public class EventSlottingController : ControllerBase
 
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
         await EventUtils.SetAcceptanceOfEventAsync(
+            _updateStreamService,
             _logger,
             _apiDbContext,
             eventId,
             userId,
             EEventAcceptance.Accepted,
-            cancellationToken);
+            cancellationToken,
+            slotNumber);
 
         if (existingEventSlot is not null)
             existingEventSlot.AssignedToFk = null;
@@ -221,7 +232,7 @@ public class EventSlottingController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     public async Task<ActionResult<bool>> AssignEventSlotToUserAsync(
         [FromRoute] Guid eventId,
-        [FromRoute] int slotNumber,
+        [FromRoute] short slotNumber,
         [FromRoute] Guid userId,
         CancellationToken cancellationToken)
     {
@@ -247,12 +258,14 @@ public class EventSlottingController : ControllerBase
 
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
         await EventUtils.SetAcceptanceOfEventAsync(
+            _updateStreamService,
             _logger,
             _apiDbContext,
             eventId,
             userId,
             EEventAcceptance.Accepted,
-            cancellationToken);
+            cancellationToken,
+            slotNumber);
         if (existingEventSlot is not null)
             existingEventSlot.AssignedToFk = null;
         newEventSlot.AssignedToFk = userId;

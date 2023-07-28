@@ -39,7 +39,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> LoginSteamAsync(
         [FromQuery] string returnUrl)
     {
-        Contract.Assert(await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Steam));
+        System.Diagnostics.Contracts.Contract.Assert(await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Steam));
         return Challenge(
             new AuthenticationProperties
             {
@@ -65,7 +65,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> LoginDiscordAsync(
         [FromQuery] string returnUrl)
     {
-        Contract.Assert(await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Discord));
+        System.Diagnostics.Contracts.Contract.Assert(await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Discord));
         return Challenge(
             new AuthenticationProperties
             {
