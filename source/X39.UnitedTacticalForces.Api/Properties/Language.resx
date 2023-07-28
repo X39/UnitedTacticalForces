@@ -410,4 +410,16 @@ Usually this is the same as the installation path and the same as the one entere
     <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Description" xml:space="preserve">
         <value>The remote access ip address.</value>
     </data>
+    <data name="ServerController_Arma3_ServerCfg_ForcedDifficulty_Title" xml:space="preserve">
+        <value>Force difficulty</value>
+    </data>
+    <data name="ServerController_Arma3_ServerCfg_ForcedDifficulty_Description" xml:space="preserve">
+        <value>Forces the selected difficulty on the server. forcedDifficulty = "&lt;difficultyClass&gt;";
+- If Recruit, Regular, or Veteran is passed as a parameter, the respective difficulty options are taken from the data configuration, CfgDifficultyPresets class.
+- If Custom is passed as a parameter, the individual flags from the CustomDifficulty class are taken from the server profile (only Custom is stored in the profile).
+- If a mission cycle is defined in server.cfg, the difficulty set in the mission cycle overrides the difficulty set by the forcedDifficulty parameter.</value>
+    </data>
+    <data name="DiscordCommand_GameServers_ModPack" xml:space="preserve">
+        <value>Mod pack</value>
+    </data>
 </root>

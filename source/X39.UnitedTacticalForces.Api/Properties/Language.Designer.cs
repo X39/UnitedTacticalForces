@@ -78,6 +78,15 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Mod pack.
+        /// </summary>
+        internal static string DiscordCommand_GameServers_ModPack {
+            get {
+                return ResourceManager.GetString("DiscordCommand_GameServers_ModPack", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Password.
         /// </summary>
         internal static string DiscordCommand_GameServers_Password {

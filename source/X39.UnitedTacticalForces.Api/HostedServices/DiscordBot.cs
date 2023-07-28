@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Internal;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.Properties;
+using X39.UnitedTacticalForces.Api.Services;
 using X39.UnitedTacticalForces.Api.Services.GameServerController;
 using X39.UnitedTacticalForces.Common;
 using X39.UnitedTacticalForces.Contract.GameServer;
@@ -20,18 +21,21 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
     private readonly IConfiguration                  _configuration;
     private readonly IGameServerControllerFactory    _gameServerControllerFactory;
     private readonly IDbContextFactory<ApiDbContext> _dbContextFactory;
+    private readonly BaseUrl                         _baseUrl;
     private readonly DiscordSocketClient             _discordSocketClient;
 
     public DiscordBot(
         ILogger<DiscordBot> logger,
         IConfiguration configuration,
         IGameServerControllerFactory gameServerControllerFactory,
-        IDbContextFactory<ApiDbContext> dbContextFactory)
+        IDbContextFactory<ApiDbContext> dbContextFactory,
+        BaseUrl baseUrl)
     {
         _logger                      = logger;
         _configuration               = configuration;
         _gameServerControllerFactory = gameServerControllerFactory;
         _dbContextFactory            = dbContextFactory;
+        _baseUrl                     = baseUrl;
         _discordSocketClient         = new DiscordSocketClient();
     }
 
@@ -253,28 +257,26 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
     {
         var cultureInfo = new CultureInfo(socketSlashCommand.UserLocale);
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
-        var embedBuilder = new EmbedBuilder();
+        var embeds = new List<EmbedBuilder>();
         await foreach (var gameServer in dbContext.GameServers
                            .Include((e) => e.ConfigurationEntries!.Where((q) => q.Path == "host//port"))
+                           .Include((e) => e.SelectedModPack)
+                           .OrderBy((q)=>q.Title)
                            .AsAsyncEnumerable()
                            .ConfigureAwait(false))
         {
             var gameServerController = await _gameServerControllerFactory.GetGameControllerAsync(gameServer)
                 .ConfigureAwait(false);
-            embedBuilder.AddField(
-                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_GameServers_Title), cultureInfo),
-                gameServer.Title);
-            embedBuilder.AddField(
-                Language.ResourceManager.GetString(nameof(Language.DiscordCommand_GameServers_Status), cultureInfo),
+
+            var embedBuilder = new EmbedBuilder().WithColor(
                 gameServer.Status switch
                 {
-                    ELifetimeStatus.Stopped  => ":red_square:",
-                    ELifetimeStatus.Starting => ":yellow_square:",
-                    ELifetimeStatus.Stopping => ":yellow_square:",
-                    ELifetimeStatus.Running  => ":green_square:",
+                    ELifetimeStatus.Stopped  => new Color(255, 0, 0),
+                    ELifetimeStatus.Starting => new Color(255, 255, 0),
+                    ELifetimeStatus.Stopping => new Color(255, 255, 0),
+                    ELifetimeStatus.Running  => new Color(0, 255, 0),
                     _                        => throw new ArgumentOutOfRangeException(),
-                },
-                true);
+                });
             if (await gameServerController.GetCommonConfigurationAsync(ECommonConfiguration.Title, cultureInfo) is
                     { } title
                 && title != gameServer.Title)
@@ -283,7 +285,12 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
                         nameof(Language.DiscordCommand_GameServers_Hostname),
                         cultureInfo),
                     title,
-                    true);
+                    false);
+            else
+                embedBuilder.AddField(
+                    Language.ResourceManager.GetString(nameof(Language.DiscordCommand_GameServers_Title), cultureInfo),
+                    gameServer.Title,
+                    false);
             embedBuilder.AddField(
                 Language.ResourceManager.GetString(nameof(Language.DiscordCommand_GameServers_IpAddress), cultureInfo),
                 _configuration[Constants.Configuration.General.GameServerHostAddress] ?? "unset",
@@ -302,9 +309,24 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
                         cultureInfo),
                     password,
                     true);
+            var modPackDefinition = gameServer.SelectedModPack;
+            if (modPackDefinition is not null)
+            {
+                var modPackDefinitionId = modPackDefinition.PrimaryKey;
+                var downloadUrl = _baseUrl.ResolveApiUrl(
+                    $"/mod-packs/{modPackDefinitionId}/download/{(gameServer.SelectedModPackFk?.ToString() ?? "latest")}");
+                var embedUrl = $"[{modPackDefinition.Title}]({downloadUrl})";
+                embedBuilder.AddField(
+                    Language.ResourceManager.GetString(
+                        nameof(Language.DiscordCommand_GameServers_ModPack),
+                        cultureInfo),
+                    embedUrl,
+                    false);
+            }
+            embeds.Add(embedBuilder);
         }
 
-        await socketSlashCommand.RespondAsync(embeds: embedBuilder.Build().MakeArray())
+        await socketSlashCommand.RespondAsync(embeds: embeds.Select((q) => q.Build()).ToArray())
             .ConfigureAwait(false);
     }
 
