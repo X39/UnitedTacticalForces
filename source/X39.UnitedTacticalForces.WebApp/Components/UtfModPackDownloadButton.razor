@@ -20,7 +20,7 @@ else if ((Revision?.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTime
 else
 {
     <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color"
-                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{Revision?.PrimaryKey}/download/{Revision?.PrimaryKey}")"
+                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack?.PrimaryKey}/download/{Revision?.PrimaryKey}")"
                    target="_blank"/>
 }
 
