@@ -21,8 +21,7 @@
         <MudPaper Style="grid-area: Controls; padding: 0 0 0 1em;" Class="flex-shrink-1 d-flex flex-row">
             <MudSelect T="WikiPageRevision"
                        MultiSelection="false"
-                       SelectedValues="@(_revision?.MakeArray() ?? Array.Empty<WikiPageRevision>())"
-                       SelectedValuesChanged="@((revisions) => _revision = revisions.FirstOrDefault())">
+                       @bind-SelectedValues="@(_selectedRevisions)">
                 @foreach (var revision in _page?.Revisions ?? ArraySegment<WikiPageRevision>.Empty)
                 {
                     <MudSelectItem T="WikiPageRevision" Value="@revision">
@@ -46,10 +45,7 @@
         </MudHidden>
     }
     <MudPaper Style="grid-area: Content;" Class="flex-grow-1 overflow-x-scroll pa-2">
-        @if (_revision is not null)
-        {
-            <MudMarkdown Value="@(_revision.Markdown ?? string.Empty)"/>
-        }
+        <MudMarkdown @key="_selectedRevisions" Value="@(_selectedRevisions.FirstOrDefault()?.Markdown ?? string.Empty)"/>
     </MudPaper>
 </div>
 
@@ -66,20 +62,23 @@
     [Parameter]
     public string? PageName { get; set; }
 
+    private IEnumerable<WikiPageRevision> _selectedRevisions = Enumerable.Empty<WikiPageRevision>();
     private WikiPage? _page;
-    private WikiPageRevision? _revision;
     private readonly List<WikiPageHeader> _wikiPageHeaders = new();
     private BreakpointServiceSubscribeResult? _breakpointSubscription;
 
     private Guid? _previousPageId;
+
     protected override async Task OnParametersSetAsync()
     {
         if (PageId is {} pageId && pageId != _previousPageId)
         {
             _page = await WikiRepository.GetWikiPageAsync(pageId, MeService.IsInRoleOrAdmin(Roles.WikiEditor))
                 .ConfigureAwait(false);
-            _revision = _page.Revisions?.MaxBy((q) => q.TimeStampCreated);
+            _selectedRevisions = _page.Revisions?.MaxBy((q) => q.TimeStampCreated)?.MakeEnumerable()
+                                 ?? Enumerable.Empty<WikiPageRevision>();
             _previousPageId = pageId;
+            StateHasChanged();
         }
         await base.OnParametersSetAsync();
     }
@@ -167,11 +166,12 @@
             throw new ArgumentNullException(nameof(_page));
         if (_page.PrimaryKey is null)
             throw new NullReferenceException();
-        await CreateWikiRevisionDialog.ShowAsync(DialogService, WikiRepository, _page, _revision)
+        await CreateWikiRevisionDialog.ShowAsync(DialogService, WikiRepository, _page, _selectedRevisions.First())
             .ConfigureAwait(false);
         _page = await WikiRepository.GetWikiPageAsync(_page.PrimaryKey.Value, MeService.IsInRoleOrAdmin(Roles.WikiEditor))
             .ConfigureAwait(false);
-        _revision = _page.Revisions?.MaxBy((q) => q.TimeStampCreated);
+        _selectedRevisions = _page.Revisions?.MaxBy((q) => q.TimeStampCreated)?.MakeEnumerable()
+                             ?? Enumerable.Empty<WikiPageRevision>();
     }
 
     private async Task DeleteWikiPageAsync()
@@ -188,7 +188,7 @@
             .ConfigureAwait(false);
         _wikiPageHeaders.RemoveAll((q) => q.PrimaryKey == _page.PrimaryKey.Value);
         _page = null;
-        _revision = null;
+        _selectedRevisions = Enumerable.Empty<WikiPageRevision>();
     }
 
     public async ValueTask DisposeAsync()
