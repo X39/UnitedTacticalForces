@@ -4,48 +4,58 @@
 @using X39.UnitedTacticalForces.WebApp.Services.WikiRepository
 @using X39.Util
 @using X39.UnitedTacticalForces.WebApp.Dialogs
+@using MudBlazor.Utilities
+@using MudBlazor.Services
 @inject MeService MeService
 @inject IWikiRepository WikiRepository
 @inject IDialogService DialogService
 @inject IStringLocalizer<Language> Localizer
-
-<div class="d-flex flex-row flex-nowrap gap-2 pa-2" style="height: @Breakpoint.ToFullPageHeight()">
-    <MudPaper MinWidth="200px">
+@inject IBreakpointService BreakpointService
+@implements IAsyncDisposable
+<div class="gap-2 pa-4" style="@_containerStyle">
+    <MudPaper Style="grid-area: Navigation;" MinWidth="200px">
         <Wiki_Category Category="@GetRootCategory()"/>
     </MudPaper>
-    <div class="d-flex flex-column flex-nowrap flex-grow-1 gap-2">
-        @if (MeService.IsInRoleOrAdmin(Roles.WikiEditor))
-        {
-            <MudPaper Class="flex-shrink-1 d-flex flex-row">
-                <MudSelect T="WikiPageRevision"
-                           MultiSelection="false"
-                           SelectedValues="@(_revision?.MakeArray() ?? Array.Empty<WikiPageRevision>())"
-                           SelectedValuesChanged="@((revisions) => _revision = revisions.FirstOrDefault())">
-                    @foreach (var revision in _page?.Revisions ?? ArraySegment<WikiPageRevision>.Empty)
-                    {
-                        <MudSelectItem T="WikiPageRevision" Value="@revision">@(revision.TimeStampCreated?.ToString("s"))</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudSpacer/>
-                <MudButtonGroup>
-                    <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Color="Color.Error" Disabled="@(_page is null)" OnClick="DeleteWikiPageAsync"/>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Disabled="@(_page is null)" OnClick="ModifyWikiPageAsync"/>
-                </MudButtonGroup>
-            </MudPaper>
+    @if (MeService.IsInRoleOrAdmin(Roles.WikiEditor))
+    {
+        <MudPaper Style="grid-area: Controls; padding: 0 0 0 1em;" Class="flex-shrink-1 d-flex flex-row">
+            <MudSelect T="WikiPageRevision"
+                       MultiSelection="false"
+                       SelectedValues="@(_revision?.MakeArray() ?? Array.Empty<WikiPageRevision>())"
+                       SelectedValuesChanged="@((revisions) => _revision = revisions.FirstOrDefault())">
+                @foreach (var revision in _page?.Revisions ?? ArraySegment<WikiPageRevision>.Empty)
+                {
+                    <MudSelectItem T="WikiPageRevision" Value="@revision">
+                        <span>@revision.Comment (@(revision.TimeStampCreated?.ToString("s")))</span>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+            <MudSpacer/>
+            <MudButtonGroup>
+                <MudIconButton Icon="@Icons.Material.Filled.DeleteForever" Color="Color.Error" Disabled="@(_page is null)" OnClick="DeleteWikiPageAsync"/>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Disabled="@(_page is null)" OnClick="ModifyWikiPageAsync"/>
+                <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
+                    <MudIconButton Icon="@Icons.Material.Filled.Add" Color="Color.Primary" OnClick="AddWikiPageAsync"/>
+                </MudHidden>
+            </MudButtonGroup>
+        </MudPaper>
+        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="false">
             <div style="position: fixed; right: 2rem; bottom: 2rem;">
                 <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddWikiPageAsync"/>
             </div>
+        </MudHidden>
+    }
+    <MudPaper Style="grid-area: Content;" Class="flex-grow-1 overflow-x-scroll pa-2">
+        @if (_revision is not null)
+        {
+            <MudMarkdown Value="@(_revision.Markdown ?? string.Empty)"/>
         }
-        <MudPaper Class="flex-grow-1 overflow-x-scroll pa-2">
-            @if (_revision is not null)
-            {
-                <MudMarkdown Value="@(_revision.Markdown ?? string.Empty)"/>
-            }
-        </MudPaper>
-    </div>
+    </MudPaper>
 </div>
 
 @code {
+
+    private string _containerStyle = string.Empty;
 
     [CascadingParameter]
     public Breakpoint Breakpoint { get; private set; } = Breakpoint.Always;
@@ -59,14 +69,17 @@
     private WikiPage? _page;
     private WikiPageRevision? _revision;
     private readonly List<WikiPageHeader> _wikiPageHeaders = new();
+    private BreakpointServiceSubscribeResult? _breakpointSubscription;
 
+    private Guid? _previousPageId;
     protected override async Task OnParametersSetAsync()
     {
-        if (PageId is not null)
+        if (PageId is {} pageId && pageId != _previousPageId)
         {
-            _page = await WikiRepository.GetWikiPageAsync(PageId.Value, MeService.IsInRoleOrAdmin(Roles.WikiEditor))
+            _page = await WikiRepository.GetWikiPageAsync(pageId, MeService.IsInRoleOrAdmin(Roles.WikiEditor))
                 .ConfigureAwait(false);
             _revision = _page.Revisions?.MaxBy((q) => q.TimeStampCreated);
+            _previousPageId = pageId;
         }
         await base.OnParametersSetAsync();
     }
@@ -76,7 +89,44 @@
         var wikiPageHeaders = await WikiRepository.GetWikiPageHeadersAsync()
             .ConfigureAwait(false);
         _wikiPageHeaders.AddRange(wikiPageHeaders);
+        _containerStyle = GetContainerStyle(Breakpoint).Build();
+        _breakpointSubscription = await BreakpointService.SubscribeAsync(BreakpointChanged);
+
         await base.OnInitializedAsync();
+    }
+
+    private StyleBuilder GetContainerStyle(Breakpoint breakpoint)
+    {
+        switch (breakpoint)
+        {
+            case Breakpoint.Xs:
+            case Breakpoint.Sm:
+            case Breakpoint.None:
+            case Breakpoint.Always:
+                return new StyleBuilder()
+                    .AddStyle("height", Breakpoint.ToFullPageHeight())
+                    .AddStyle("display", @"grid")
+                    .AddStyle("grid-template-columns", @"1f")
+                    .AddStyle("grid-template-rows", @"min-content 1fr min-content")
+                    .AddStyle("grid-template-areas", @"""Navigation"" ""Content"" ""Controls""");
+            case Breakpoint.Md:
+            case Breakpoint.Lg:
+            case Breakpoint.Xl:
+            case Breakpoint.Xxl:
+                return new StyleBuilder()
+                    .AddStyle("height", Breakpoint.ToFullPageHeight())
+                    .AddStyle("display", @"grid")
+                    .AddStyle("grid-template-columns", @"20% 80%")
+                    .AddStyle("grid-template-rows", @"min-content 1fr")
+                    .AddStyle("grid-template-areas", @"""Navigation Controls"" ""Navigation Content""");
+            default:
+                throw new ArgumentOutOfRangeException(nameof(breakpoint), breakpoint, null);
+        }
+    }
+
+    private void BreakpointChanged(Breakpoint obj)
+    {
+        _containerStyle = GetContainerStyle(obj).Build();
     }
 
     private WikiCategory GetRootCategory()
@@ -139,6 +189,12 @@
         _wikiPageHeaders.RemoveAll((q) => q.PrimaryKey == _page.PrimaryKey.Value);
         _page = null;
         _revision = null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_breakpointSubscription is not null)
+            await BreakpointService.UnsubscribeAsync(_breakpointSubscription.SubscriptionId);
     }
 
 }
