@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\X39.UnitedTacticalForces.Roles\X39.UnitedTacticalForces.Roles.csproj" />
+      <ProjectReference Include="..\X39.UnitedTacticalForces.Claims\X39.UnitedTacticalForces.Claims.csproj" />
     </ItemGroup>
 
 </Project>

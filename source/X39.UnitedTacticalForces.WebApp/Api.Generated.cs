@@ -4154,7 +4154,7 @@ namespace X39.UnitedTacticalForces.WebApp
         /// </summary>
         /// <remarks>
         /// Operation is final and only allowed by either the owner or a user with the
-        /// <br/>X39.UnitedTacticalForces.Roles.Admin role.
+        /// <br/>X39.UnitedTacticalForces.Claims.Admin role.
         /// </remarks>
         /// <param name="modPackId">The X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.PrimaryKey of the X39.UnitedTacticalForces.Api.Data.Core.ModPackDefinition.</param>
         /// <param name="newUserId">The X39.UnitedTacticalForces.Api.Data.Authority.User.PrimaryKey of the new X39.UnitedTacticalForces.Api.Data.Authority.User.</param>

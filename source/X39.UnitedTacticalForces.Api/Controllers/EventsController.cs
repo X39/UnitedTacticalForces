@@ -133,7 +133,7 @@ public class EventsController : ControllerBase
             .AsQueryable();
         if (hostedByMeOnly)
             query = query.Where((q) => q.HostedByFk == userId);
-        else if (!User.IsInRoleOrAdmin(Roles.EventModify, Roles.EventDelete))
+        else if (!User.IsInRoleOrAdmin(Claims.EventModify, Claims.EventDelete))
             query = query.Where((q) => q.IsVisible || q.HostedByFk == userId);
 
         query = descendingByScheduledFor
@@ -169,7 +169,7 @@ public class EventsController : ControllerBase
             .AsQueryable();
         if (hostedByMeOnly)
             query = query.Where((q) => q.HostedByFk == userId);
-        else if (!User.IsInRoleOrAdmin(Roles.EventModify, Roles.EventDelete))
+        else if (!User.IsInRoleOrAdmin(Claims.EventModify, Claims.EventDelete))
             query = query.Where((q) => q.IsVisible || q.HostedByFk == userId);
 
 
@@ -221,7 +221,7 @@ public class EventsController : ControllerBase
         var single = await query.SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         if (single is null)
             return null;
-        if (!single.IsVisible && single.HostedByFk != userId && !User.IsInRoleOrAdmin(Roles.EventModify))
+        if (!single.IsVisible && single.HostedByFk != userId && !User.IsInRoleOrAdmin(Claims.EventModify))
             return null;
         return single;
     }
@@ -264,7 +264,7 @@ public class EventsController : ControllerBase
             return NotFound();
         if (!eventItem.IsVisible
             && eventItem.HostedByFk != userId
-            && User.IsInRoleOrAdmin(Roles.EventModify, Roles.EventDelete))
+            && User.IsInRoleOrAdmin(Claims.EventModify, Claims.EventDelete))
             return Forbid();
         User[] usersQuery;
         if (acceptance is not null)
@@ -297,7 +297,7 @@ public class EventsController : ControllerBase
     /// </param>
     /// <returns>The created event</returns>
     /// <exception cref="UnauthorizedAccessException"></exception>
-    [Authorize(Roles = Roles.Admin + "," + Roles.EventCreate)]
+    [Authorize(Roles = Claims.Admin + "," + Claims.EventCreate)]
     [HttpPost("create", Name = nameof(CreateEventAsync))]
     [ProducesResponseType(typeof(Event), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
@@ -346,7 +346,7 @@ public class EventsController : ControllerBase
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
         var existingEvent = await _apiDbContext.Events.SingleAsync((q) => q.PrimaryKey == eventId, cancellationToken);
-        if (!User.IsInRoleOrAdmin(Roles.EventModify) && existingEvent.HostedByFk != userId)
+        if (!User.IsInRoleOrAdmin(Claims.EventModify) && existingEvent.HostedByFk != userId)
             return Forbid();
         bool imageChanged = false;
         // ToDo: Log audit

@@ -5,7 +5,7 @@
 @inject IEventRepository EventRepository
 @inject IDialogService DialogService
 @inject MeService Me
-@if (Me.IsInRoleOrAdmin(Roles.EventCreate))
+@if (Me.IsInRoleOrAdmin(Claims.EventCreate))
 {
     <MudIconButton Icon="@Icons.Material.Filled.CopyAll" Color="Color.Success" OnClick="CloneEventAsync"/>
 }

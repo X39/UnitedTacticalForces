@@ -5,7 +5,7 @@
 @inject IUserRepository UserRepository
 @inject MeService MeService
 @inject IStringLocalizer<Language> Localizer
-@if (MeService.IsAuthenticated && User.PrimaryKey != MeService.User.PrimaryKey && MeService.IsInRoleOrAdmin(Roles.UserVerify))
+@if (MeService.IsAuthenticated && User.PrimaryKey != MeService.User.PrimaryKey && MeService.IsInRoleOrAdmin(Claims.UserVerify))
 {
     <MudTooltip>
         <TooltipContent>

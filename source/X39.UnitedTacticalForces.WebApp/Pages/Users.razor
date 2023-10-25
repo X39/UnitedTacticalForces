@@ -106,7 +106,7 @@
             take: arg.PageSize,
             search: SearchString,
             includeRoles: true,
-            includeUnverified: Me.IsInRoleOrAdmin(Roles.UserVerify))
+            includeUnverified: Me.IsInRoleOrAdmin(Claims.UserVerify))
             .ConfigureAwait(false);
         return new TableData<User>
         {

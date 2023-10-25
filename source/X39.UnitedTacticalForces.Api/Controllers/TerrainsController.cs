@@ -9,6 +9,7 @@ namespace X39.UnitedTacticalForces.Api.Controllers;
 
 [ApiController]
 [Route(Constants.Routes.Terrains)]
+[Authorize]
 public class TerrainController : ControllerBase
 {
     private readonly ILogger<TerrainController> _logger;
@@ -29,7 +30,7 @@ public class TerrainController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     /// <returns>The created <see cref="Terrain"/>.</returns>
-    [Authorize(Roles = Roles.Admin + "," + Roles.TerrainCreate)]
+    [Authorize(Claims.Creation.Terrain)]
     [HttpPost("create", Name = nameof(CreateTerrainAsync))]
     public async Task<ActionResult<Terrain>> CreateTerrainAsync(
         [FromBody] Terrain terrain,
@@ -59,14 +60,13 @@ public class TerrainController : ControllerBase
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
     /// </param>
-    [Authorize]
+    [Authorize(Claims.ResourceBased.Terrain.Modify)]
     [HttpPost("{terrainId:long}/update", Name = nameof(UpdateTerrainAsync))]
     public async Task UpdateTerrainAsync(
         [FromRoute] long terrainId,
         [FromBody] Terrain updatedTerrain,
         CancellationToken cancellationToken)
     {
-        // ToDo: Check roles
         // ToDo: Add audit log
         var existingTerrain = await _apiDbContext.Terrains
             .SingleAsync((q) => q.PrimaryKey == terrainId, cancellationToken);
@@ -88,14 +88,11 @@ public class TerrainController : ControllerBase
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
     /// </param>
-    [Authorize]
     [HttpGet("{terrainId:long}", Name = nameof(GetTerrainAsync))]
     public async Task<Terrain> GetTerrainAsync(
         [FromRoute] long terrainId,
         CancellationToken cancellationToken)
     {
-        // ToDo: Check roles
-        // ToDo: Add audit log
         var existingTerrain = await _apiDbContext.Terrains
             .SingleAsync((q) => q.PrimaryKey == terrainId, cancellationToken);
         return existingTerrain;
@@ -113,13 +110,12 @@ public class TerrainController : ControllerBase
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
     /// </param>
-    [Authorize]
+    [Authorize(Claims.ResourceBased.Terrain.Delete)]
     [HttpPost("{terrainId:long}/delete", Name = nameof(DeleteTerrainAsync))]
     public async Task DeleteTerrainAsync(
         [FromRoute] long terrainId,
         CancellationToken cancellationToken)
     {
-        // ToDo: Check roles
         // ToDo: Add audit log
         var existingTerrain = await _apiDbContext.Terrains
             .SingleAsync((q) => q.PrimaryKey == terrainId, cancellationToken);
@@ -143,7 +139,6 @@ public class TerrainController : ControllerBase
     ///     The available <see cref="Terrain"/>'s.
     /// </returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="take"/> is greater then 500.</exception>
-    [Authorize]
     [HttpPost("all", Name = nameof(GetTerrainsAsync))]
     public async Task<ActionResult<IEnumerable<Terrain>>> GetTerrainsAsync(
         [FromQuery] int skip,
@@ -189,7 +184,6 @@ public class TerrainController : ControllerBase
     /// <returns>
     ///     The count of available <see cref="Terrain"/>'s.
     /// </returns>
-    [Authorize]
     [HttpPost("all/count", Name = nameof(GetTerrainsCountAsync))]
     public async Task<ActionResult<long>> GetTerrainsCountAsync(
         CancellationToken cancellationToken)

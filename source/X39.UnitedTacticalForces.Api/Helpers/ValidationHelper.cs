@@ -7,13 +7,12 @@ using X39.UnitedTacticalForces.Api.Data.Authority.Extern;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Services;
 using X39.Util;
+using Claim = X39.UnitedTacticalForces.Api.Data.Authority.Claim;
 
 namespace X39.UnitedTacticalForces.Api.Helpers;
 
 public class ValidationHelper
 {
-    private const int SteamIdStartIndex = 37;
-
     public static async Task OnSignedIn(CookieSignedInContext? context)
     {
         if (context is null)
@@ -38,7 +37,9 @@ public class ValidationHelper
         if (steamId64 is 0)
             throw new Exception();
         var user = await apiDbContext.Users
-            .Include((e) => e.Roles)
+            .Include((e) => e.Claims)!
+            .Include((e) => e.Roles)!
+            .ThenInclude((e)=> e.Claims)
             .SingleOrDefaultAsync((user) => user.Steam.Id64 == steamId64 && !user.IsDeleted)
             .ConfigureAwait(false);
         if (user is null)
@@ -90,7 +91,9 @@ public class ValidationHelper
             if (!Guid.TryParse(userIdString, out var userId))
                 throw new Exception();
             user = await apiDbContext.Users
-                .Include((e) => e.Roles)
+                .Include((e) => e.Claims)!
+                .Include((e) => e.Roles)!
+                .ThenInclude((e)=> e.Claims)
                 .SingleOrDefaultAsync((u) => u.PrimaryKey == userId && !u.IsDeleted)
                 .ConfigureAwait(false);
             if (user is not null)
@@ -127,7 +130,9 @@ public class ValidationHelper
             if (!steamIdentity.TryGetSteamId64(out var steamId64))
                 throw new Exception();
             user = await apiDbContext.Users
-                .Include((e) => e.Roles)
+                .Include((e) => e.Claims)!
+                .Include((e) => e.Roles)!
+                .ThenInclude((e)=> e.Claims)
                 .SingleOrDefaultAsync((user) => user.Steam.Id64 == steamId64 && !user.IsDeleted)
                 .ConfigureAwait(false);
         }

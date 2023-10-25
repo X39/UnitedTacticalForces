@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,14 +11,13 @@ using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.GarbageWorkarounds;
 using X39.UnitedTacticalForces.Api.Services.GameServerController;
-using X39.UnitedTacticalForces.Common;
 using X39.UnitedTacticalForces.Contract.GameServer;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
 [ApiController]
 [Route(Constants.Routes.GameServers)]
-[Authorize(Roles = Roles.Admin + "," + Roles.ServerAccess)]
+[Authorize]
 public class GameServersController : ControllerBase
 {
     /// <summary>
@@ -71,6 +71,33 @@ public class GameServersController : ControllerBase
         _gameServerControllerFactory = gameServerControllerFactory;
     }
 
+    private async IAsyncEnumerable<GameServer> GetUserAccessibleDatabaseGameServersAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var allServers = _apiDbContext.GameServers
+            .OrderBy((q) => q.Title)
+            .ToAsyncEnumerable();
+        if (User.HasClaim(Claims.Administrative.All, string.Empty) || User.HasClaim(Claims.Administrative.Server, string.Empty))
+        {
+            await foreach (var server in allServers.WithCancellation(cancellationToken))
+            {
+                yield return server;
+            }
+        }
+        else
+        {
+            await foreach (var server in allServers.WithCancellation(cancellationToken))
+            {
+                var hasAnyServerClaim = User.HasClaim(
+                    (claim) => claim.Value == server.PrimaryKey.ToString()
+                               && (claim.Type == Claims.ResourceBased.Server.All
+                                   || claim.Type.StartsWith(Claims.ResourceBased.Server.All + ":")));
+                if (hasAnyServerClaim)
+                    yield return server;
+            }
+        }
+    }
+
     /// <summary>
     /// Returns the amount of available <see cref="GameServer"/>'s.
     /// </summary>
@@ -83,7 +110,11 @@ public class GameServersController : ControllerBase
     public async Task<ActionResult<int>> GetGameServerCountAsync(
         CancellationToken cancellationToken)
     {
-        var count = await _apiDbContext.GameServers.CountAsync(cancellationToken);
+        var count = 0;
+        await foreach (var _ in GetUserAccessibleDatabaseGameServersAsync(cancellationToken))
+        {
+            count++;
+        }
         return Ok(count);
     }
 
@@ -99,11 +130,8 @@ public class GameServersController : ControllerBase
     public async Task<ActionResult<IEnumerable<GameServerInfo>>> GetGameServersAsync(
         CancellationToken cancellationToken)
     {
-        var allServers = await _apiDbContext.GameServers
-            .OrderBy((q) => q.Title)
-            .ToArrayAsync(cancellationToken);
         var gameServerInfos = new List<GameServerInfo>();
-        foreach (var gameServer in allServers)
+        await foreach (var gameServer in GetUserAccessibleDatabaseGameServersAsync(cancellationToken))
         {
             var controller = await _gameServerControllerFactory.GetGameControllerAsync(gameServer);
             gameServerInfos.Add(
@@ -130,6 +158,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(GameServerInfo), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}", Name = nameof(GetGameServerAsync))]
+    [Authorize($"{Claims.ResourceBased.Server.All}:*")]
     public async Task<ActionResult<GameServerInfo>> GetGameServerAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
@@ -145,25 +174,21 @@ public class GameServersController : ControllerBase
     }
 
     /// <summary>
-    ///     Updates properties of a single game server.
-    ///     The following properties can be changed:
-    ///     <list type="bullet">
-    ///         <item><see cref="GameServer.Title"/></item>
-    ///         <item><see cref="GameServer.SelectedModPack"/></item>
-    ///     </list>
+    /// Allows to rename a <see cref="GameServer"/>.
     /// </summary>
-    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to start.</param>
-    /// <param name="updatedGameServer">The payload with the updated game server.</param>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to rename.</param>
+    /// <param name="newName">The new name of the <see cref="GameServer"/>.</param>
     /// <param name="cancellationToken">
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
-    [HttpPut("{gameServerId:long}/update", Name = nameof(UpdateGameServerAsync))]
-    public async Task<ActionResult<GameServerInfo>> UpdateGameServerAsync(
+    [HttpPut("{gameServerId:long}/rename", Name = nameof(RenameAsync))]
+    [Authorize(Claims.ResourceBased.Server.Rename)]
+    public async Task<ActionResult> RenameAsync(
         [FromRoute] long gameServerId,
-        [FromBody] GameServer updatedGameServer,
+        [FromBody] string newName,
         CancellationToken cancellationToken)
     {
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -171,8 +196,35 @@ public class GameServersController : ControllerBase
             cancellationToken);
         if (gameServer is null)
             return NotFound();
-        gameServer.Title             = updatedGameServer.Title;
-        gameServer.SelectedModPackFk = updatedGameServer.SelectedModPackFk;
+        gameServer.Title             = newName;
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+    
+    /// <summary>
+    /// Allows to change the mod pack of a <see cref="GameServer"/>.
+    /// </summary>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to change the mod pack of.</param>
+    /// <param name="modPackId">The id of the mod pack to change to.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [HttpPut("{gameServerId:long}/change-mod-pack", Name = nameof(RenameAsync))]
+    [Authorize(Claims.ResourceBased.Server.ModPack)]
+    public async Task<ActionResult<GameServerInfo>> ChangeModPackAsync(
+        [FromRoute] long gameServerId,
+        [FromBody] int modPackId,
+        CancellationToken cancellationToken)
+    {
+        var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
+            (q) => q.PrimaryKey == gameServerId,
+            cancellationToken);
+        if (gameServer is null)
+            return NotFound();
+        gameServer.SelectedModPackFk = modPackId;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -182,7 +234,7 @@ public class GameServersController : ControllerBase
     /// </summary>
     [ProducesResponseType(typeof(IEnumerable<string>), (int) HttpStatusCode.OK)]
     [HttpGet("all/controllers", Name = nameof(GetGameServerControllers))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerCreateOrDelete)]
+    [Authorize(Claims.Creation.Server)]
     public IEnumerable<string> GetGameServerControllers()
     {
         return _gameServerControllerFactory.GetGameControllers();
@@ -201,12 +253,12 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [HttpPost("{gameServerId:long}/start", Name = nameof(StartGameServerAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerStartStop)]
+    [Authorize(Claims.ResourceBased.Server.StartStop)]
     public async Task<ActionResult> StartGameServerAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
     {
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -260,12 +312,12 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [HttpPost("{gameServerId:long}/stop", Name = nameof(StopGameServerAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerStartStop)]
+    [Authorize(Claims.ResourceBased.Server.StartStop)]
     public async Task<ActionResult> StopGameServerAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
     {
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -402,12 +454,12 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [HttpPost("{gameServerId:long}/upgrade", Name = nameof(UpgradeGameServerAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerUpgrade)]
+    [Authorize(Claims.ResourceBased.Server.Upgrade)]
     public async Task<ActionResult<GameServerInfo>> UpgradeGameServerAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
     {
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -436,7 +488,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<ConfigurationEntry>), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/configuration", Name = nameof(GetConfigurationAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerUpdate)]
+    [Authorize(Claims.ResourceBased.Server.Configuration)]
     public async Task<ActionResult<IEnumerable<ConfigurationEntry>>> GetConfigurationAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
@@ -466,12 +518,12 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<GameFolder>), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/folders", Name = nameof(GetGameFoldersAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    [Authorize(Claims.ResourceBased.Server.Files)]
     public async Task<ActionResult<IEnumerable<GameFolder>>> GetGameFoldersAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
     {
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -496,13 +548,13 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<GameFileInfo>), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/{folder}/files", Name = nameof(GetGameFolderFilesAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    [Authorize(Claims.ResourceBased.Server.Files)]
     public async Task<ActionResult<IEnumerable<GameFileInfo>>> GetGameFolderFilesAsync(
         [FromRoute] long gameServerId,
         [FromRoute] string folder,
         CancellationToken cancellationToken)
     {
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -533,7 +585,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
     [HttpPost("{gameServerId:long}/{folder}/upload", Name = nameof(UploadGameFolderFileAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    [Authorize(Claims.ResourceBased.Server.Files)]
     public async Task<ActionResult> UploadGameFolderFileAsync(
         [FromRoute] long gameServerId,
         [FromRoute] string folder,
@@ -543,7 +595,7 @@ public class GameServersController : ControllerBase
         var file = bullshitWrapper.File;
         if (file.FileName.Contains('/') || file.FileName.Contains('\\') || file.FileName is ".." or ".")
             return BadRequest();
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -579,7 +631,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpPost("{gameServerId:long}/{folder}/{file}/delete", Name = nameof(DeleteGameFolderFileAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    [Authorize(Claims.ResourceBased.Server.Files)]
     public async Task<ActionResult> DeleteGameFolderFileAsync(
         [FromRoute] long gameServerId,
         [FromRoute] string folder,
@@ -588,7 +640,7 @@ public class GameServersController : ControllerBase
     {
         if (file.Contains('/') || file.Contains('\\') || file is ".." or ".")
             return BadRequest();
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -623,14 +675,14 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpPost("{gameServerId:long}/{folder}/{file}/get", Name = nameof(GetGameFolderFileAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerFiles)]
+    [Authorize(Claims.ResourceBased.Server.Files)]
     public async Task<ActionResult<Stream>> GetGameFolderFileAsync(
         [FromRoute] long gameServerId,
         [FromRoute] string folder,
         [FromRoute] string file,
         CancellationToken cancellationToken)
     {
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -681,7 +733,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(long), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/logs/count", Name = nameof(GetLogsCountAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerLogs)]
+    [Authorize(Claims.ResourceBased.Server.AccessLogs)]
     public async Task<ActionResult<long>> GetLogsCountAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken,
@@ -719,7 +771,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<GameServerLog>), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/logs", Name = nameof(GetLogsAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerLogs)]
+    [Authorize(Claims.ResourceBased.Server.AccessLogs)]
     public async Task<ActionResult<IEnumerable<GameServerLog>>> GetLogsAsync(
         [FromQuery] int skip,
         [FromQuery] int take,
@@ -758,13 +810,11 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(FileStreamResult), (int) HttpStatusCode.OK)]
     [HttpGet("{gameServerId:long}/logs/download", Name = nameof(DownloadLogsAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerLogs)]
+    [Authorize(Claims.ResourceBased.Server.AccessLogs)]
     public async Task DownloadLogsAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
     {
-        if (!User.TryGetUserId(out var userId))
-            throw new UnauthorizedAccessException();
         var gameServer = await _apiDbContext.GameServers
             .SingleAsync((q) => q.PrimaryKey == gameServerId, cancellationToken)
             .ConfigureAwait(false);
@@ -799,13 +849,11 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [HttpPost("{gameServerId:long}/logs/clear", Name = nameof(ClearLogsAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerLogsClear)]
+    [Authorize(Claims.ResourceBased.Server.DeleteLogs)]
     public async Task<ActionResult> ClearLogsAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
     {
-        if (!User.TryGetUserId(out var userId))
-            throw new UnauthorizedAccessException();
         if (!await _apiDbContext.GameServers
                 .AnyAsync((q) => q.PrimaryKey == gameServerId, cancellationToken)
                 .ConfigureAwait(false))
@@ -830,13 +878,13 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
     [HttpPost("{gameServerId:long}/configuration", Name = nameof(SetConfigurationAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerUpdate)]
+    [Authorize(Claims.ResourceBased.Server.Configuration)]
     public async Task<ActionResult<IEnumerable<ConfigurationEntry>>> SetConfigurationAsync(
         [FromRoute] long gameServerId,
         [FromBody] List<ConfigurationEntry> configurationEntries,
         CancellationToken cancellationToken)
     {
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
         var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
@@ -848,10 +896,7 @@ public class GameServersController : ControllerBase
         if (!controller.CanUpdateConfiguration || controller is {IsRunning: true, CanStop: false})
             return Forbid(); // Forbid because not possible pre-applying, preventing work.
         if (controller.IsRunning)
-            if (User.IsInRoleOrAdmin(Roles.ServerStartStop))
-                await controller.StopAsync(user);
-            else
-                return Forbid();
+            await controller.StopAsync(user);
         var definitions = controller.GetConfigurationEntryDefinitions(CultureInfo.CurrentCulture)
             .ToDictionary((q) => q.Identifier);
         var now = DateTimeOffset.Now;
@@ -917,7 +962,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<ConfigurationEntryDefinition>), (int) HttpStatusCode.OK)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [HttpGet("{gameServerId:long}/configuration/definitions", Name = nameof(GetConfigurationDefinitionsAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerUpdate)]
+    [Authorize(Claims.ResourceBased.Server.Configuration)]
     public async Task<ActionResult<IEnumerable<ConfigurationEntryDefinition>>> GetConfigurationDefinitionsAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
@@ -947,7 +992,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
     [HttpPost("{gameServerId:long}/delete", Name = nameof(DeleteGameServerAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerCreateOrDelete)]
+    [Authorize(Claims.Administrative.Server)]
     public async Task<ActionResult> DeleteGameServerAsync(
         [FromRoute] long gameServerId,
         CancellationToken cancellationToken)
@@ -982,13 +1027,13 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Forbidden)]
     [HttpPost("create/{controllerIdentifier}", Name = nameof(CreateGameServerAsync))]
-    [Authorize(Roles = Roles.Admin + "," + Roles.ServerCreateOrDelete)]
+    [Authorize(Claims.Administrative.Server)]
     public async Task<ActionResult<GameServerInfo>> CreateGameServerAsync(
         [FromRoute] string controllerIdentifier,
         [FromBody] GameServer gameServer,
         CancellationToken cancellationToken)
     {
-        var user = await User.GetUserAsync(_apiDbContext, cancellationToken);
+        var user = await User.GetDatabaseUserAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Forbid();
         var controllerIdentifiers = _gameServerControllerFactory.GetGameControllers();

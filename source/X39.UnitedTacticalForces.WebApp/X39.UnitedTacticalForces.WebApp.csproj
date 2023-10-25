@@ -129,7 +129,7 @@
     <ItemGroup>
       <ProjectReference Include="..\X39.BI.Config.Parsing\X39.BI.Config.Parsing.csproj" />
       <ProjectReference Include="..\X39.UnitedTacticalForces.Common\X39.UnitedTacticalForces.Common.csproj" />
-      <ProjectReference Include="..\X39.UnitedTacticalForces.Roles\X39.UnitedTacticalForces.Roles.csproj" />
+      <ProjectReference Include="..\X39.UnitedTacticalForces.Claims\X39.UnitedTacticalForces.Claims.csproj" />
     </ItemGroup>
 
     <ItemGroup>

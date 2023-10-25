@@ -13,7 +13,7 @@
 @inject MeService Me
 @inject IDialogService DialogService
 <div class="d-flex flex-column justify-space-between" style="height: 100%;">
-    @if (Me.Eval((user) => user.PrimaryKey == Event.PrimaryKey) || Me.IsInRolesOrAdmin(Roles.EventSlotCreate, Roles.EventSlotDelete, Roles.EventSlotUpdate))
+    @if (Me.Eval((user) => user.PrimaryKey == Event.PrimaryKey) || Me.IsInRolesOrAdmin(Claims.EventSlotCreate, Claims.EventSlotDelete, Claims.EventSlotUpdate))
     {
         <MudFileUpload T="IBrowserFile"
                        FilesChanged="MergeSlotsFromMissionFileAsync"
@@ -51,7 +51,7 @@
                                        OnClick="@(() => AssignToSelfAsync(slot))">
                                 @Localizer[nameof(Language.Pages_EventView_AssignToSelf)]
                             </MudButton>
-                            @if (!Disabled && (Me.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotIgnore, Roles.EventSlotUpdate) || Me.Eval((user) => user.PrimaryKey == Event.HostedByFk)))
+                            @if (!Disabled && (Me.IsInRoleOrAdmin(Claims.EventSlotAssign, Claims.EventSlotIgnore, Claims.EventSlotUpdate) || Me.Eval((user) => user.PrimaryKey == Event.HostedByFk)))
                             {
                                 <MudButton StartIcon="@Icons.Material.Filled.AssignmentInd"
                                            Color="Color.Primary"
@@ -283,7 +283,7 @@
     // Slot is already assigned.
             return true;
         if (!(slot.IsSelfAssignable ?? true)
-            && !Me.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotIgnore, Roles.EventSlotUpdate)
+            && !Me.IsInRoleOrAdmin(Claims.EventSlotAssign, Claims.EventSlotIgnore, Claims.EventSlotUpdate)
             && Event is not null
             && !Me.Eval((user) => user.PrimaryKey == Event.HostedByFk))
     // Slot cannot be self-assigned

@@ -114,7 +114,7 @@
     </PagerContent>
     <FooterContent>
         <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "6"}})">
-            <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.EventCreate)" Context="_">
+            <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.EventCreate)" Context="_">
                 <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewEventAsync">
                     @Localizer[nameof(Language.Pages_Events_CreateNewEvent)]
                 </MudButton>

@@ -12,6 +12,7 @@ public static class Arma3ModPackParser
         Dependencies) FromHtml(
             string html)
     {
+        // ToDo: Fix Arma Launcher/Mods/"Mehr"/"Modliste in Datei exportieren" not being parsed due to title etc. missing (also make this no longer throw an exception if it's not a valid preset)
         // Get all html tables using HtmlAgilityPack
         var doc = new HtmlDocument();
         doc.LoadHtml(html);

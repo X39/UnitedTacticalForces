@@ -21,7 +21,7 @@ namespace X39.UnitedTacticalForces.Api.Controllers;
 [Route(Constants.Routes.ModPacks)]
 public class ModPackController : ControllerBase
 {
-    #region Sub
+    #region Sub-Classes
 
     public class ModPackStandaloneUpdate
     {
@@ -110,7 +110,8 @@ public class ModPackController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     /// <returns>The created <see cref="ModPackDefinition"/>.</returns>
-    [Authorize(Roles = Roles.Admin + "," + Roles.ModPackCreate)]
+    [Authorize]
+    [Authorize(Claims.Creation.ModPack)]
     [HttpPost("create/standalone", Name = nameof(CreateModPackStandaloneAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [ProducesResponseType(typeof(ModPackDefinition), (int) HttpStatusCode.OK)]
@@ -155,7 +156,8 @@ public class ModPackController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     /// <returns>The created <see cref="ModPackDefinition"/>.</returns>
-    [Authorize(Roles = Roles.Admin + "," + Roles.ModPackCreate)]
+    [Authorize]
+    [Authorize(Claims.Creation.ModPack)]
     [HttpPost("create/composition", Name = nameof(CreateModPackCompositionAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [ProducesResponseType(typeof(ModPackDefinition), (int) HttpStatusCode.OK)]
@@ -206,6 +208,7 @@ public class ModPackController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     [Authorize]
+    [Authorize(Claims.ResourceBased.ModPack.Modify)]
     [HttpPost("{modPackDefinitionId:long}/update/standalone", Name = nameof(UpdateModPackStandaloneAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
@@ -218,12 +221,10 @@ public class ModPackController : ControllerBase
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
         var modPackDefinition = await _apiDbContext.ModPackDefinitions
-            .Include((e)=>e.ModPackRevisions)
+            .Include((e) => e.ModPackRevisions)
             .SingleOrDefaultAsync((q) => q.PrimaryKey == modPackDefinitionId, cancellationToken);
         if (modPackDefinition is null)
             return NotFound();
-        if (!User.IsInRoleOrAdmin(Roles.ModPackModify) && modPackDefinition.OwnerFk != userId)
-            return Unauthorized();
         if (modPackStandaloneUpdate.Title is not null)
         {
             _logger.LogInformation(
@@ -271,6 +272,7 @@ public class ModPackController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     [Authorize]
+    [Authorize(Claims.ResourceBased.ModPack.Modify)]
     [HttpPost("{modPackDefinitionId:long}/update/composition", Name = nameof(UpdateModPackCompositionAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
@@ -287,8 +289,6 @@ public class ModPackController : ControllerBase
             .SingleOrDefaultAsync((q) => q.PrimaryKey == modPackDefinitionId, cancellationToken);
         if (modPackDefinition is null)
             return NotFound();
-        if (!User.IsInRoleOrAdmin(Roles.ModPackModify) && modPackDefinition.OwnerFk != userId)
-            return Unauthorized();
         if (modPackCompositionUpdate.Title is not null)
         {
             _logger.LogInformation(
@@ -337,7 +337,7 @@ public class ModPackController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Operation is final and only allowed by either the owner or a user with the
-    /// <see cref="Roles.Admin"/> role.
+    /// <see cref="Claims.Admin"/> role.
     /// </remarks>
     /// <param name="modPackId">The <see cref="ModPackDefinition.PrimaryKey"/> of the <see cref="ModPackDefinition"/>.</param>
     /// <param name="newUserId">The <see cref="User.PrimaryKey"/> of the new <see cref="User"/>.</param>
@@ -346,6 +346,7 @@ public class ModPackController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     [Authorize]
+    [Authorize(Claims.ResourceBased.ModPack.Modify)]
     [HttpPost("{modPackId:long}/change-owner", Name = nameof(ChangeOwnerAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
@@ -355,8 +356,6 @@ public class ModPackController : ControllerBase
         [FromQuery] Guid newUserId,
         CancellationToken cancellationToken)
     {
-        if (User.IsInRoleOrAdmin(Roles.ModPackModify))
-            return Unauthorized();
         var userExists = await _apiDbContext.Users.AnyAsync((q) => q.PrimaryKey == newUserId, cancellationToken);
         if (!userExists)
             return NotFound();
@@ -435,6 +434,7 @@ public class ModPackController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     [Authorize]
+    [Authorize(Claims.ResourceBased.ModPack.Delete)]
     [HttpPost("{modPackId:long}/delete", Name = nameof(DeleteModPackAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
@@ -443,8 +443,6 @@ public class ModPackController : ControllerBase
         [FromRoute] long modPackId,
         CancellationToken cancellationToken)
     {
-        if (!User.IsInRoleOrAdmin(Roles.ModPackDelete))
-            return Unauthorized();
         var existingModPack = await _apiDbContext.ModPackDefinitions
             .SingleOrDefaultAsync((q) => q.PrimaryKey == modPackId, cancellationToken);
         if (existingModPack is null)

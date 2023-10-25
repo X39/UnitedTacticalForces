@@ -65,7 +65,7 @@ public class EventSlottingController : ControllerBase
             .Include((e) => e.AssignedTo)
             .Where((q) => q.EventFk == eventId)
             .AsQueryable();
-        if (!User.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotUpdate, Roles.EventSlotIgnore))
+        if (!User.IsInRoleOrAdmin(Claims.EventSlotAssign, Claims.EventSlotUpdate, Claims.EventSlotIgnore))
         {
             query = query.Where((q) => q.IsVisible);
         }
@@ -183,7 +183,7 @@ public class EventSlottingController : ControllerBase
         if (newEventSlot is null)
             return NotFound();
         if (!newEventSlot.IsSelfAssignable
-            && !User.IsInRoleOrAdmin(Roles.EventSlotAssign, Roles.EventSlotIgnore)
+            && !User.IsInRoleOrAdmin(Claims.EventSlotAssign, Claims.EventSlotIgnore)
             && existingEvent.HostedByFk != userId)
             return Forbid();
         if (newEventSlot.AssignedToFk is not null)
@@ -240,7 +240,7 @@ public class EventSlottingController : ControllerBase
             .SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         if (existingEvent is null)
             return NotFound();
-        if (!User.IsInRoleOrAdmin(Roles.EventSlotAssign)
+        if (!User.IsInRoleOrAdmin(Claims.EventSlotAssign)
             && existingEvent.HostedByFk != userId)
             return Forbid();
 
@@ -302,7 +302,7 @@ public class EventSlottingController : ControllerBase
             .SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         if (existingEvent is null)
             return NotFound();
-        if (!User.IsInRoleOrAdmin(Roles.EventSlotAssign)
+        if (!User.IsInRoleOrAdmin(Claims.EventSlotAssign)
             && existingEvent.HostedByFk != userId)
             return Forbid();
         var existingEventSlot = await _apiDbContext.EventSlots
@@ -342,7 +342,7 @@ public class EventSlottingController : ControllerBase
             .SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         if (existingEvent is null)
             return NotFound();
-        if (!User.IsInRoleOrAdmin(Roles.EventSlotCreate)
+        if (!User.IsInRoleOrAdmin(Claims.EventSlotCreate)
             && existingEvent.HostedByFk != userId)
             return Forbid();
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -386,7 +386,7 @@ public class EventSlottingController : ControllerBase
             .SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         if (existingEvent is null)
             return NotFound();
-        if (!User.IsInRoleOrAdmin(Roles.EventSlotUpdate)
+        if (!User.IsInRoleOrAdmin(Claims.EventSlotUpdate)
             && existingEvent.HostedByFk != userId)
             return Forbid();
         var existingEventSlot = await _apiDbContext.EventSlots
@@ -428,7 +428,7 @@ public class EventSlottingController : ControllerBase
             .SingleOrDefaultAsync((q) => q.PrimaryKey == eventId, cancellationToken);
         if (existingEvent is null)
             return NotFound();
-        if (!User.IsInRoleOrAdmin(Roles.EventDelete)
+        if (!User.IsInRoleOrAdmin(Claims.EventDelete)
             && existingEvent.HostedByFk != userId)
             return Forbid();
         var existingEventSlot = await _apiDbContext.EventSlots

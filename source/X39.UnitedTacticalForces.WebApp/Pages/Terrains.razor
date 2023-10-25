@@ -36,10 +36,10 @@
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Terrains_Table_Title)]">@context.Title</MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Terrains_Table_Interactions)]">
             <MudButtonGroup>
-                <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.TerrainModify)" Context="_">
+                <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.TerrainModify)" Context="_">
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="@(() => ModifyTerrainAsync(context))"/>
                 </AuthorizeView>
-                <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.TerrainDelete)" Context="_">
+                <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.TerrainDelete)" Context="_">
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteTerrainAsync(context))"/>
                 </AuthorizeView>
             </MudButtonGroup>
@@ -50,7 +50,7 @@
     </PagerContent>
     <FooterContent>
         <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "2"}})">
-            <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.TerrainCreate)" Context="_">
+            <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.TerrainCreate)" Context="_">
                 <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewTerrainAsync">
                     @Localizer[nameof(Language.Pages_Terrains_CreateNewTerrain)]
                 </MudButton>

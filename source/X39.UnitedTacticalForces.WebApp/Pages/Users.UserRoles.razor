@@ -5,7 +5,7 @@
 @inject IUserRepository UserRepository
 @inject IDialogService DialogService
 @inject IStringLocalizer<Language> Localizer
-<AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.UserManageRoles)" Context="authState">
+<AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.UserManageRoles)" Context="authState">
     <Authorized>
         <div class="d-flex">
             <MudChipSet SelectedChipChanged="@(() => { })"

@@ -9,6 +9,7 @@ using Microsoft.OpenApi.Models;
 using Unchase.Swashbuckle.AspNetCore.Extensions.Extensions;
 using Unchase.Swashbuckle.AspNetCore.Extensions.Options;
 using X39.UnitedTacticalForces.Api;
+using X39.UnitedTacticalForces.Api.Authorization.Abstraction;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Hosting;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
@@ -61,6 +62,7 @@ builder.Services.AddSingleton(new BaseUrl(
     builder.Configuration[Constants.Configuration.General.ClientBaseUrl] ?? string.Empty));
 
 builder.Services.AddAuthorization();
+builder.Services.AddAppAuthorization();
 var authenticationBuilder = builder.Services
     .AddAuthentication(options => { options.DefaultScheme = Constants.AuthorizationSchemas.Cookie; })
     .AddCookie(

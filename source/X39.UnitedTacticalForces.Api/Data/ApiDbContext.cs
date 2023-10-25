@@ -23,6 +23,7 @@ public class ApiDbContext : DbContext
 
     #region Authority
 
+    public DbSet<Claim> Claims { get; set; } = null!;
     public DbSet<Role> Roles { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<UserEventMeta> UserEventMetas { get; set; } = null!;
@@ -61,11 +62,4 @@ public class ApiDbContext : DbContext
     public DbSet<GameServerLog> GameServerLogs { get; set; } = null!;
 
     #endregion
-
-    /// <inheritdoc />
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Role>().HasData(Role.StaticData());
-        base.OnModelCreating(modelBuilder);
-    }
 }

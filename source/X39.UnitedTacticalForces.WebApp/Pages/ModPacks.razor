@@ -78,7 +78,7 @@
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_ModPacks_Table_Interactions)]">
             <MudButtonGroup>
                 <UtfModPackDownloadButton ModPack="context"/>
-                <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.ModPackModify)" Context="_">
+                <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.ModPackModify)" Context="_">
                     <Authorized>
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="@(() => ModifyModPackAsync(context))"/>
                     </Authorized>
@@ -89,10 +89,10 @@
                         }
                     </NotAuthorized>
                 </AuthorizeView>
-                <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.ModPackCreate)" Context="_">
+                <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.ModPackCreate)" Context="_">
                     <MudIconButton Icon="@Icons.Material.Filled.CopyAll" Color="Color.Success" OnClick="@(() => CloneModPackAsync(context))"/>
                 </AuthorizeView>
-                <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.ModPackDelete)" Context="_">
+                <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.ModPackDelete)" Context="_">
                     <Authorized>
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteModPackAsync(context))"/>
                     </Authorized>
@@ -111,7 +111,7 @@
     </PagerContent>
     <FooterContent>
         <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "5"}})">
-            <AuthorizeView Roles="@string.Join(",", Roles.Admin, Roles.ModPackCreate)" Context="_">
+            <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.ModPackCreate)" Context="_">
                 <MudButtonGroup>
                     <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewCompositeModPackAsync">
                         @Localizer[nameof(Language.Pages_ModPacks_CreateNewCompositeModPack)]

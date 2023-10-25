@@ -16,7 +16,7 @@
     <MudPaper Style="grid-area: Navigation;" MinWidth="200px">
         <Wiki_Category Category="@GetRootCategory()"/>
     </MudPaper>
-    @if (MeService.IsInRoleOrAdmin(Roles.WikiEditor))
+    @if (MeService.IsInRoleOrAdmin(Claims.WikiEditor))
     {
         <MudPaper Style="grid-area: Controls; padding: 0 0 0 1em;" Class="flex-shrink-1 d-flex flex-row">
             <MudSelect T="WikiPageRevision"
@@ -73,7 +73,7 @@
     {
         if (PageId is {} pageId && pageId != _previousPageId)
         {
-            _page = await WikiRepository.GetWikiPageAsync(pageId, MeService.IsInRoleOrAdmin(Roles.WikiEditor))
+            _page = await WikiRepository.GetWikiPageAsync(pageId, MeService.IsInRoleOrAdmin(Claims.WikiEditor))
                 .ConfigureAwait(false);
             _selectedRevisions = _page.Revisions?.MaxBy((q) => q.TimeStampCreated)?.MakeEnumerable()
                                  ?? Enumerable.Empty<WikiPageRevision>();
@@ -168,7 +168,7 @@
             throw new NullReferenceException();
         await CreateWikiRevisionDialog.ShowAsync(DialogService, WikiRepository, _page, _selectedRevisions.First())
             .ConfigureAwait(false);
-        _page = await WikiRepository.GetWikiPageAsync(_page.PrimaryKey.Value, MeService.IsInRoleOrAdmin(Roles.WikiEditor))
+        _page = await WikiRepository.GetWikiPageAsync(_page.PrimaryKey.Value, MeService.IsInRoleOrAdmin(Claims.WikiEditor))
             .ConfigureAwait(false);
         _selectedRevisions = _page.Revisions?.MaxBy((q) => q.TimeStampCreated)?.MakeEnumerable()
                              ?? Enumerable.Empty<WikiPageRevision>();

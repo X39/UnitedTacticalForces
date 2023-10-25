@@ -134,16 +134,16 @@ public class UsersController : ControllerBase
             return Unauthorized();
         var existingUser = await _apiDbContext.Users.SingleAsync((q) => q.PrimaryKey == userId, cancellationToken);
         var isSelf = existingUser.PrimaryKey != currentUserId;
-        if (!User.IsInRoleOrAdmin(Roles.UserModify) && isSelf)
+        if (!User.IsInRoleOrAdmin(Claims.UserModify) && isSelf)
             return Unauthorized();
         existingUser.Avatar         = updatedUser.Avatar;
         existingUser.AvatarMimeType = updatedUser.AvatarMimeType;
         existingUser.Nickname       = updatedUser.Nickname;
-        if (User.IsInRoleOrAdmin(Roles.UserViewMail) || isSelf)
+        if (User.IsInRoleOrAdmin(Claims.UserViewMail) || isSelf)
             existingUser.EMail = updatedUser.EMail;
-        if (User.IsInRoleOrAdmin(Roles.UserBan))
+        if (User.IsInRoleOrAdmin(Claims.UserBan))
             existingUser.IsBanned = updatedUser.IsBanned;
-        if (User.IsInRoleOrAdmin(Roles.UserVerify))
+        if (User.IsInRoleOrAdmin(Claims.UserVerify))
             existingUser.IsVerified = updatedUser.IsVerified;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
@@ -157,11 +157,11 @@ public class UsersController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     /// <returns>
-    /// All <see cref="Role"/> which are accessible by the current user deducted by the role held. 
+    /// All <see cref="Claim"/> which are accessible by the current user deducted by the role held. 
     /// </returns>
-    [Authorize(Roles = Roles.Admin + "," + Roles.UserManageRoles)]
+    [Authorize(Roles = Claims.Admin + "," + Claims.UserManageRoles)]
     [HttpPost("roles/available", Name = nameof(GetAllRolesAsync))]
-    public async Task<IEnumerable<Role>> GetAllRolesAsync(
+    public async Task<IEnumerable<Claim>> GetAllRolesAsync(
         CancellationToken cancellationToken)
     {
         var user = await User.GetUserWithRolesAsync(_apiDbContext, cancellationToken);
@@ -169,7 +169,7 @@ public class UsersController : ControllerBase
             throw new UnauthorizedAccessException();
         return User.IsAdmin()
             ? await _apiDbContext.Roles.ToArrayAsync(cancellationToken)
-            : user.Roles ?? Enumerable.Empty<Role>();
+            : user.Claims ?? Enumerable.Empty<Claim>();
     }
 
     /// <summary>
@@ -198,15 +198,15 @@ public class UsersController : ControllerBase
 
         var existingUser = await _apiDbContext.Users
             .SingleOrDefaultAsync((user) => user.PrimaryKey == userId, cancellationToken);
-        if (existingUser is not null && !User.IsInRole(Roles.Admin) && existingUser.PrimaryKey != currentUserId)
+        if (existingUser is not null && !User.IsInRole(Claims.Admin) && existingUser.PrimaryKey != currentUserId)
         {
-            if (!User.IsInRoleOrAdmin(Roles.UserViewMail))
+            if (!User.IsInRoleOrAdmin(Claims.UserViewMail))
                 existingUser.EMail = string.Empty;
-            if (!User.IsInRoleOrAdmin(Roles.UserViewSteamId64))
+            if (!User.IsInRoleOrAdmin(Claims.UserViewSteamId64))
                 existingUser.Steam = new();
-            if (!User.IsInRoleOrAdmin(Roles.UserViewDiscordId))
+            if (!User.IsInRoleOrAdmin(Claims.UserViewDiscordId))
                 existingUser.Discord = new();
-            if (!User.IsInRoleOrAdmin(Roles.UserBan))
+            if (!User.IsInRoleOrAdmin(Claims.UserBan))
                 existingUser.IsBanned = false;
         }
 
@@ -232,7 +232,7 @@ public class UsersController : ControllerBase
     ///     If  <see langword="false"/>, the <paramref name="roleId"/> will be removed from the <see cref="User"/>.
     /// </param>
     [Authorize(
-        Roles = Roles.Admin + "," + Roles.UserManageRoles)]
+        Roles = Claims.Admin + "," + Claims.UserManageRoles)]
     [HttpPost("{userId:guid}/set-role/{roleId:long}/{mode:bool}", Name = nameof(SetUserRoleActiveAsync))]
     [ProducesResponseType((int) HttpStatusCode.NoContent)]
     public async Task<ActionResult> SetUserRoleActiveAsync(
@@ -246,27 +246,27 @@ public class UsersController : ControllerBase
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
         var existingRole = await _apiDbContext.Roles
             .SingleAsync((q) => q.PrimaryKey == roleId, cancellationToken);
-        var isInRole = User.IsInRole(Roles.Admin) || await _apiDbContext.Users
+        var isInRole = User.IsInRole(Claims.Admin) || await _apiDbContext.Users
             .Where((q) => q.PrimaryKey == currentUserId)
-            .SelectMany((q) => q.Roles!)
+            .SelectMany((q) => q.Claims!)
             .AnyAsync((q) => q.PrimaryKey == roleId, cancellationToken);
         if (!isInRole)
             return Unauthorized();
         var existingUser = await _apiDbContext.Users
-            .Include((e) => e.Roles!.Where((q) => q.PrimaryKey == roleId))
+            .Include((e) => e.Claims!.Where((q) => q.PrimaryKey == roleId))
             .SingleAsync((q) => q.PrimaryKey == userId, cancellationToken);
 
         if (mode)
         {
-            var role = existingUser.Roles?.FirstOrDefault((q) => q.PrimaryKey == roleId);
+            var role = existingUser.Claims?.FirstOrDefault((q) => q.PrimaryKey == roleId);
             if (role is null)
-                (existingUser.Roles ??= new List<Role>()).Add(existingRole);
+                (existingUser.Claims ??= new List<Claim>()).Add(existingRole);
         }
         else
         {
-            var role = existingUser.Roles?.FirstOrDefault((q) => q.PrimaryKey == roleId);
+            var role = existingUser.Claims?.FirstOrDefault((q) => q.PrimaryKey == roleId);
             if (role is not null)
-                existingUser.Roles!.Remove(role);
+                existingUser.Claims!.Remove(role);
         }
 
         await _apiDbContext.SaveChangesAsync(cancellationToken);
@@ -291,7 +291,7 @@ public class UsersController : ControllerBase
         var user = await User.GetUserWithRolesAsync(_apiDbContext, cancellationToken);
         if (user is null)
             return Unauthorized();
-        foreach (var userRole in user.Roles ?? Enumerable.Empty<Role>())
+        foreach (var userRole in user.Claims ?? Enumerable.Empty<Claim>())
         {
             userRole.Users?.Clear();
         }
@@ -344,12 +344,12 @@ public class UsersController : ControllerBase
 
             if (User.IsAdmin())
             {
-                users = users.Include((e) => e.Roles);
+                users = users.Include((e) => e.Claims);
             }
             else
             {
-                var roleIds = currentUser.Roles?.Select((q) => q.PrimaryKey).ToArray() ?? Array.Empty<long>();
-                users = users.Include((e) => e.Roles!.Where((q) => roleIds.Contains(q.PrimaryKey)));
+                var roleIds = currentUser.Claims?.Select((q) => q.PrimaryKey).ToArray() ?? Array.Empty<long>();
+                users = users.Include((e) => e.Claims!.Where((q) => roleIds.Contains(q.PrimaryKey)));
             }
         }
 
@@ -359,7 +359,7 @@ public class UsersController : ControllerBase
         }
         else
         {
-            if (!User.IsInRoleOrAdmin(Roles.UserVerify))
+            if (!User.IsInRoleOrAdmin(Claims.UserVerify))
                 return Unauthorized();
         }
 
@@ -387,7 +387,7 @@ public class UsersController : ControllerBase
 
         var result = await users.ToArrayAsync(cancellationToken);
 
-        foreach (var role in result.SelectMany((q) => q.Roles ?? Enumerable.Empty<Role>()))
+        foreach (var role in result.SelectMany((q) => q.Claims ?? Enumerable.Empty<Claim>()))
         {
             role.Users?.Clear();
         }
@@ -432,12 +432,12 @@ public class UsersController : ControllerBase
 
             if (User.IsAdmin())
             {
-                users = users.Include((e) => e.Roles);
+                users = users.Include((e) => e.Claims);
             }
             else
             {
-                var roleIds = currentUser.Roles?.Select((q) => q.PrimaryKey).ToArray() ?? Array.Empty<long>();
-                users = users.Include((e) => e.Roles!.Where((q) => roleIds.Contains(q.PrimaryKey)));
+                var roleIds = currentUser.Claims?.Select((q) => q.PrimaryKey).ToArray() ?? Array.Empty<long>();
+                users = users.Include((e) => e.Claims!.Where((q) => roleIds.Contains(q.PrimaryKey)));
             }
         }
 
@@ -447,7 +447,7 @@ public class UsersController : ControllerBase
         }
         else
         {
-            if (User.IsInRoleOrAdmin(Roles.UserVerify))
+            if (User.IsInRoleOrAdmin(Claims.UserVerify))
                 return Unauthorized();
         }
 

@@ -11,25 +11,25 @@
         <MudNavLink Href="events" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Event">
             @Localizer[nameof(Language.Shared_NavMenu_Events)]
         </MudNavLink>
-        @if (Me.IsInRoleOrAdmin(Roles.ModPackCreate, Roles.ModPackDelete, Roles.ModPackModify))
+        @if (Me.IsInRoleOrAdmin(Claims.ModPackCreate, Claims.ModPackDelete, Claims.ModPackModify))
         {
             <MudNavLink Href="modpacks" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Extension">
                 @Localizer[nameof(Language.Shared_NavMenu_ModPacks)]
             </MudNavLink>
         }
-        @if (Me.IsInRoleOrAdmin(Roles.TerrainCreate, Roles.TerrainDelete, Roles.TerrainModify))
+        @if (Me.IsInRoleOrAdmin(Claims.TerrainCreate, Claims.TerrainDelete, Claims.TerrainModify))
         {
             <MudNavLink Href="terrains" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Map">
                 @Localizer[nameof(Language.Shared_NavMenu_Terrains)]
             </MudNavLink>
         }
-        @if (Me.IsInRoleOrAdmin(Roles.UserList))
+        @if (Me.IsInRoleOrAdmin(Claims.UserList))
         {
             <MudNavLink Href="users" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.People">
                 @Localizer[nameof(Language.Shared_NavMenu_Users)]
             </MudNavLink>
         }
-        @if (Me.IsInRoleOrAdmin(Roles.ServerAccess))
+        @if (Me.IsInRoleOrAdmin(Claims.ServerAccess))
         {
             <MudNavLink Href="servers" Match="NavLinkMatch.Prefix" Icon="@Constants.Icons.X39.Server">
                 @Localizer[nameof(Language.Shared_NavMenu_GameServers)]

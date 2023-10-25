@@ -71,7 +71,7 @@ public class MeService
             return false;
         if (_user!.Roles is null)
             throw new Exception("MeService.User.Roles is null");
-        return _user.Roles.Any((q) => q.Identifier == role || q.Identifier == Roles.Admin || roles.Contains(q.Identifier));
+        return _user.Roles.Any((q) => q.Identifier == role || q.Identifier == Claims.Admin || roles.Contains(q.Identifier));
     }
 
     public bool IsInRolesOrAdmin(string role, params string[] roles)
@@ -81,7 +81,7 @@ public class MeService
         if (_user!.Roles is null)
             throw new Exception("MeService.User.Roles is null");
         var appended = roles.Prepend(role);
-        return _user.Roles.Any((q) => q.Identifier == Roles.Admin)
+        return _user.Roles.Any((q) => q.Identifier == Claims.Admin)
                || appended.All((s) => _user.Roles.Any((q) => q.Identifier == s));
     }
 }

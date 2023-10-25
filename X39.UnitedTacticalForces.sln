@@ -17,7 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{ECF906FE
 		ReadMe.md = ReadMe.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.UnitedTacticalForces.Roles", "source\X39.UnitedTacticalForces.Roles\X39.UnitedTacticalForces.Roles.csproj", "{85E03A91-4161-40A3-BFF5-DD574F1DCADA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.UnitedTacticalForces.Claims", "source\X39.UnitedTacticalForces.Claims\X39.UnitedTacticalForces.Claims.csproj", "{85E03A91-4161-40A3-BFF5-DD574F1DCADA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.UnitedTacticalForces.Common", "source\X39.UnitedTacticalForces.Common\X39.UnitedTacticalForces.Common.csproj", "{38A7999D-1851-480D-98E3-39FE80AD7B9E}"
 EndProject
@@ -30,6 +30,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.BI.Config.Parsing.Tests", "test\X39.BI.Config.Parsing.Tests\X39.BI.Config.Parsing.Tests.csproj", "{90D65B4C-F9DA-46E0-A427-03B4116C232E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "X39.UnitedTacticalForces.Contract", "source\X39.UnitedTacticalForces.Contract\X39.UnitedTacticalForces.Contract.csproj", "{E0AA794D-9F27-4492-86F3-60BB68571586}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApplication1", "test\WebApplication1\WebApplication1.csproj", "{DA0EDA24-F04C-4888-AAEE-5CD3B1847B7A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -73,6 +75,10 @@ Global
 		{E0AA794D-9F27-4492-86F3-60BB68571586}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E0AA794D-9F27-4492-86F3-60BB68571586}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E0AA794D-9F27-4492-86F3-60BB68571586}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA0EDA24-F04C-4888-AAEE-5CD3B1847B7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA0EDA24-F04C-4888-AAEE-5CD3B1847B7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA0EDA24-F04C-4888-AAEE-5CD3B1847B7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA0EDA24-F04C-4888-AAEE-5CD3B1847B7A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{90F47FE6-25E6-455A-8F0B-3E71BE86507E} = {7424594F-D8EF-45EA-87C1-181F575CF421}
@@ -84,5 +90,6 @@ Global
 		{63B22B70-568B-4D0A-AF62-30D9A20C4115} = {F5454DD1-AF43-472C-A209-800947311ADE}
 		{90D65B4C-F9DA-46E0-A427-03B4116C232E} = {ED3CD654-3C4B-4277-A08F-A896A58EF665}
 		{E0AA794D-9F27-4492-86F3-60BB68571586} = {F5454DD1-AF43-472C-A209-800947311ADE}
+		{DA0EDA24-F04C-4888-AAEE-5CD3B1847B7A} = {ED3CD654-3C4B-4277-A08F-A896A58EF665}
 	EndGlobalSection
 EndGlobal
