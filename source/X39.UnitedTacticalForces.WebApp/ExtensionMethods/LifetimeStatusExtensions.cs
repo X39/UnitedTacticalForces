@@ -10,6 +10,7 @@ public static class LifetimeStatusExtensions
         ELifetimeStatus.Starting => Icons.Material.Filled.ChangeCircle,
         ELifetimeStatus.Stopping => Icons.Material.Filled.ChangeCircle,
         ELifetimeStatus.Running  => Icons.Material.Filled.PlayCircle,
+        ELifetimeStatus.Updating => Icons.Material.Filled.ChangeCircle,
         null                     => Icons.Material.Filled.Circle,
         _                        => throw new ArgumentOutOfRangeException(nameof(self), self, null),
     };
