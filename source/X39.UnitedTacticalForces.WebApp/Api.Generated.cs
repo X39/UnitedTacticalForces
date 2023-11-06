@@ -661,7 +661,7 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Changes the calling users acceptance status for the given event to X39.UnitedTacticalForces.Api.Data.Authority.EEventAcceptance.Accepted.
+        /// Changes the calling users acceptance status for the given event to X39.UnitedTacticalForces.Contract.Event.EEventAcceptance.Accepted.
         /// </summary>
         /// <param name="eventId">The id for the X39.UnitedTacticalForces.Api.Data.Eventing.Event to change the acceptance of.</param>
         /// <returns>No Content</returns>
@@ -737,7 +737,7 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Changes the calling users acceptance status for the given event to X39.UnitedTacticalForces.Api.Data.Authority.EEventAcceptance.Maybe.
+        /// Changes the calling users acceptance status for the given event to X39.UnitedTacticalForces.Contract.Event.EEventAcceptance.Maybe.
         /// </summary>
         /// <remarks>
         /// Any slot selection for the X39.UnitedTacticalForces.Api.Data.Eventing.Event will be removed in this process.
@@ -816,7 +816,7 @@ namespace X39.UnitedTacticalForces.WebApp
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Changes the calling users acceptance status for the given event to X39.UnitedTacticalForces.Api.Data.Authority.EEventAcceptance.Rejected.
+        /// Changes the calling users acceptance status for the given event to X39.UnitedTacticalForces.Contract.Event.EEventAcceptance.Rejected.
         /// </summary>
         /// <remarks>
         /// Any slot selection for the X39.UnitedTacticalForces.Api.Data.Eventing.Event will be removed in this process.
@@ -1168,7 +1168,7 @@ namespace X39.UnitedTacticalForces.WebApp
         /// <param name="slotNumber">The id of the X39.UnitedTacticalForces.Api.Data.Eventing.EventSlot.</param>
         /// <returns>No Content</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task EventsSlottingAssignPostAsync(System.Guid eventId, long slotNumber, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task EventsSlottingAssignPostAsync(System.Guid eventId, int slotNumber, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             if (eventId == null)
                 throw new System.ArgumentNullException("eventId");
@@ -7585,13 +7585,15 @@ namespace X39.UnitedTacticalForces.WebApp
     /// <summary>
     /// 
     /// <br/>
-    /// <br/>0 = Stopped (Status indicating that something is currently not running in any way.)
+    /// <br/>0 = Stopped
     /// <br/>
-    /// <br/>1 = Starting (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running. (Implies that a lifetime change was requested.))
+    /// <br/>1 = Starting
     /// <br/>
-    /// <br/>2 = Stopping (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped. (Implies that a lifetime change was requested.))
+    /// <br/>2 = Stopping
     /// <br/>
-    /// <br/>3 = Running (Status indicating that something is currently running.)
+    /// <br/>3 = Running
+    /// <br/>
+    /// <br/>4 = Updating
     /// </summary>
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "13.18.2.0 (NJsonSchema v10.8.0.0 (Newtonsoft.Json v13.0.0.0))")]
     public enum ELifetimeStatus
@@ -7604,6 +7606,8 @@ namespace X39.UnitedTacticalForces.WebApp
         Stopping = 2,
 
         Running = 3,
+
+        Updating = 4,
 
     }
 
@@ -7978,13 +7982,15 @@ namespace X39.UnitedTacticalForces.WebApp
         /// <summary>
         /// The lifetime state of this entity.
         /// <br/>
-        /// <br/>0 = Stopped (Status indicating that something is currently not running in any way.)
+        /// <br/>0 = Stopped
         /// <br/>
-        /// <br/>1 = Starting (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running. (Implies that a lifetime change was requested.))
+        /// <br/>1 = Starting
         /// <br/>
-        /// <br/>2 = Stopping (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped. (Implies that a lifetime change was requested.))
+        /// <br/>2 = Stopping
         /// <br/>
-        /// <br/>3 = Running (Status indicating that something is currently running.)
+        /// <br/>3 = Running
+        /// <br/>
+        /// <br/>4 = Updating
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("status")]
@@ -8256,13 +8262,15 @@ namespace X39.UnitedTacticalForces.WebApp
         /// <summary>
         /// The status changed into.
         /// <br/>
-        /// <br/>0 = Stopped (Status indicating that something is currently not running in any way.)
+        /// <br/>0 = Stopped
         /// <br/>
-        /// <br/>1 = Starting (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running. (Implies that a lifetime change was requested.))
+        /// <br/>1 = Starting
         /// <br/>
-        /// <br/>2 = Stopping (Status indicating a transition from X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Running to X39.UnitedTacticalForces.Api.Data.Hosting.ELifetimeStatus.Stopped. (Implies that a lifetime change was requested.))
+        /// <br/>2 = Stopping
         /// <br/>
-        /// <br/>3 = Running (Status indicating that something is currently running.)
+        /// <br/>3 = Running
+        /// <br/>
+        /// <br/>4 = Updating
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("status")]

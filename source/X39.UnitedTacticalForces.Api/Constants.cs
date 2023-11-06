@@ -8,12 +8,16 @@ namespace X39.UnitedTacticalForces.Api;
 internal static class Constants
 {
     public const string PasswordReplacement = "****************";
+
     public static class Steam
     {
         public static class AppId
         {
-            public const long Arma3Server = 233780;
-            public const long Arma3       = 107410;
+            public const long Arma3Server          = 233780;
+            public const long Arma3                = 107410;
+            public const long DayZStandalone       = 221100;
+            public const long DayZStandaloneServer = 223350;
+            public const long DayZStandaloneExperimentalServer = 1042420;
         }
     }
 
@@ -42,6 +46,7 @@ internal static class Constants
         public const string Api    = "api";
         public const string Banned = "banned";
     }
+
     public static class Discord
     {
         public static class Commands
@@ -80,7 +85,7 @@ internal static class Constants
                 public const string ApplicationId = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(ApplicationId);
                 public const string PublicKey     = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(PublicKey);
                 public const string BotToken      = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(BotToken);
-                public const string EmbedColor      = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(EmbedColor);
+                public const string EmbedColor    = nameof(Discord) + ":" + nameof(Bot) + ":" + nameof(EmbedColor);
             }
         }
 
