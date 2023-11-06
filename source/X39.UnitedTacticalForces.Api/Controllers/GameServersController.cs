@@ -83,7 +83,9 @@ public class GameServersController : ControllerBase
     public async Task<ActionResult<int>> GetGameServerCountAsync(
         CancellationToken cancellationToken)
     {
-        var count = await _apiDbContext.GameServers.CountAsync(cancellationToken);
+        var count = await _apiDbContext.GameServers
+            .Where((q) => q.IsActive)
+            .CountAsync(cancellationToken);
         return Ok(count);
     }
 
@@ -100,6 +102,7 @@ public class GameServersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var allServers = await _apiDbContext.GameServers
+            .Where((q) => q.IsActive)
             .OrderBy((q) => q.Title)
             .ToArrayAsync(cancellationToken);
         var gameServerInfos = new List<GameServerInfo>();

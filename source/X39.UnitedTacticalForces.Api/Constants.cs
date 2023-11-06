@@ -17,6 +17,7 @@ internal static class Constants
             public const long Arma3                = 107410;
             public const long DayZStandalone       = 221100;
             public const long DayZStandaloneServer = 223350;
+            public const long DayZStandaloneExperimentalServer = 1042420;
         }
     }
 
