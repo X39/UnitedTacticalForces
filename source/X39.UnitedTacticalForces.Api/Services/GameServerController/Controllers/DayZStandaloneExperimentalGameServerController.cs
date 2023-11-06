@@ -121,7 +121,7 @@ public class DayZStandaloneExperimentalGameServerController : SteamGameServerCon
             GameInstallPath,
             RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? "DayZServer_x64.exe"
-                : "dayzserver_x64");
+                : "DayZServer");
         var psi = new ProcessStartInfo
         {
             FileName               = fileName,
