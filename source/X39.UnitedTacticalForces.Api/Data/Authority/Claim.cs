@@ -60,4 +60,10 @@ public class Claim : IPrimaryKey<long>
     /// </summary>
     [InverseProperty(nameof(Role.Claims))]
     public ICollection<Role>? Roles { get; set; }
+
+    /// <summary>
+    /// The users that have this claim.
+    /// </summary>
+    [InverseProperty(nameof(User.Roles))]
+    public ICollection<User>? Users { get; set; }
 }

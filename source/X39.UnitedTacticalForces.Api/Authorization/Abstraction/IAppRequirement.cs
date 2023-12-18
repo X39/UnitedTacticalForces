@@ -16,6 +16,9 @@ public interface IAppRequirement : IAuthorizationRequirement
     /// Method to check if the requirement is satisfied.
     /// </summary>
     /// <param name="httpContext">The http context to check.</param>
+    /// <param name="serviceProvider"></param>
     /// <returns><see langword="true"/> if the requirement is satisfied, otherwise <see langword="false"/>.</returns>
-    public ValueTask<bool> IsSatisfiedAsync(HttpContext httpContext);
+    public ValueTask<bool> IsSatisfiedAsync(
+        HttpContext httpContext,
+        IServiceProvider serviceProvider);
 }

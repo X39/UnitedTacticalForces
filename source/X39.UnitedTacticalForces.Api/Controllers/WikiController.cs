@@ -145,6 +145,8 @@ public class WikiController : ControllerBase
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use. Injected by the ASP.Net Framework.</param>
     /// <returns>The <see cref="WikiPage"/>.</returns>
     [HttpGet("{pageKey:guid}", Name = nameof(WikiController) + "." + nameof(GetWikiPageAsync))]
+    [ProducesResponseType(typeof(WikiPage), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(void), (int)HttpStatusCode.NotFound)]
     [AllowAnonymous]
     public async Task<ActionResult<WikiPage>> GetWikiPageAsync(
         [FromRoute] Guid pageKey,
@@ -166,7 +168,7 @@ public class WikiController : ControllerBase
             .SingleOrDefaultAsync((wikiPage) => wikiPage.PrimaryKey == pageKey, cancellationToken);
         if (result is null)
             return NotFound();
-        return result;
+        return Ok(result);
     }
 
     /// <summary>
@@ -210,7 +212,7 @@ public class WikiController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
     [ProducesResponseType(typeof(WikiPage), (int) HttpStatusCode.OK)]
-    [Authorize(Roles = Claims.Admin + "," + Claims.WikiEditor)]
+    [Authorize(Claims.Creation.Wiki)]
     public async Task<ActionResult<WikiPage>> CreateWikiPageAsync(
         [FromForm] string title,
         [FromForm] string markdown,
@@ -275,7 +277,7 @@ public class WikiController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.Unauthorized)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(WikiPageRevision), (int) HttpStatusCode.OK)]
-    [Authorize(Roles = Claims.Admin + "," + Claims.WikiEditor)]
+    [Authorize(Claims.Wiki.Modify)]
     public async Task<ActionResult<WikiPageRevision>> CreateWikiPageRevisionAsync(
         [FromRoute] Guid pageKey,
         [FromForm] string markdown,
@@ -320,7 +322,7 @@ public class WikiController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(WikiPage), (int) HttpStatusCode.OK)]
-    [Authorize(Roles = Claims.Admin + "," + Claims.WikiEditor)]
+    [Authorize(Claims.Wiki.Rename)]
     public async Task<ActionResult<WikiPage>> RenameWikiPageAsync(
         [FromRoute] Guid pageKey,
         [FromForm] string title,
@@ -367,7 +369,7 @@ public class WikiController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(WikiPage), (int) HttpStatusCode.OK)]
-    [Authorize(Roles = Claims.Admin + "," + Claims.WikiEditor)]
+    [Authorize(Claims.Wiki.Delete)]
     public async Task<ActionResult<WikiPage>> DeleteWikiPageAsync(
         [FromRoute] Guid pageKey,
         CancellationToken cancellationToken = default)
@@ -411,7 +413,7 @@ public class WikiController : ControllerBase
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.BadRequest)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
     [ProducesResponseType(typeof(WikiPage), (int) HttpStatusCode.OK)]
-    [Authorize(Roles = Claims.Admin + "," + Claims.WikiEditor)]
+    [Authorize(Claims.Administrative.Wiki)]
     public async Task<ActionResult<WikiPage>> RestoreWikiPageAsync(
         [FromRoute] Guid pageKey,
         CancellationToken cancellationToken = default)

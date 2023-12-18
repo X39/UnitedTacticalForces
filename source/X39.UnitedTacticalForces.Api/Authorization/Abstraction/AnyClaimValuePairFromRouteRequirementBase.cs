@@ -22,7 +22,7 @@ public abstract class AnyClaimValuePairFromRouteRequirementBase : IAppRequiremen
     public abstract string PolicyName { get; }
 
     /// <inheritdoc />
-    public ValueTask<bool> IsSatisfiedAsync(HttpContext httpContext)
+    public virtual ValueTask<bool> IsSatisfiedAsync(HttpContext httpContext, IServiceProvider serviceProvider)
     {
         foreach (var (claim, routeParameter) in _claims)
         {

@@ -519,7 +519,7 @@ public class ModPackController : ControllerBase
             search   = search.Replace(",", "\\,");
             search   = search.Replace("^", "\\^");
             search   = search.Replace("\\", "\\\\");
-            search   = $"{search}%";
+            search   = $"%{search}%";
             modPacks = modPacks.Where((q) => EF.Functions.ILike(q.Title, search, "\\"));
         }
 

@@ -1,4 +1,3 @@
-using System.Diagnostics.Contracts;
 using System.Net;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -7,11 +6,44 @@ using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
-using X39.UnitedTacticalForces.Common;
 using X39.Util;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
+/// <summary>
+/// The UsersController class is a part of the API that manages user-related operations.
+/// It provides endpoints for user authentication, user information retrieval,
+/// and user data modification.
+/// Here's a brief overview of its responsibilities:
+/// <list type="bullet">
+///     <item>
+///         It allows users to log in via Steam or Discord.
+///         The login process is initiated by redirecting the user to the respective login page of the service.
+///     </item>
+///     <item>
+///         It provides a logout functionality that signs out the user from the application.
+///     </item>
+///     <item>
+///         It allows the current logged-in user to delete their own account.
+///         This operation anonymizes the user's data and marks the account as deleted.
+///     </item>
+///     <item>
+///         It provides endpoints to update user information.
+///         This can be done either for the current logged-in user or for any user,
+///         given the user performing the operation has the necessary permissions.
+///     </item>
+///     <item>
+///         It provides endpoints to retrieve user information.
+///         This can be done for a specific user by their ID, for the current logged-in user,
+///         or for all users with optional filters and pagination.
+///     </item>
+///     <item>
+///         It also provides an endpoint to get the total count of users, with optional filters.
+///     </item>
+/// </list> 
+/// Please note that some operations require the user to have specific permissions.
+/// These permissions are checked using claims associated with the user's account.
+/// </summary>
 [ApiController]
 [Route(Constants.Routes.Users)]
 public class UsersController : ControllerBase
@@ -19,6 +51,11 @@ public class UsersController : ControllerBase
     private readonly ILogger<UsersController> _logger;
     private readonly ApiDbContext             _apiDbContext;
 
+    /// <summary>
+    /// Creates a new <see cref="UsersController"/> instance.
+    /// </summary>
+    /// <param name="logger">The <see cref="ILogger{TCategoryName}"/> to use for logging.</param>
+    /// <param name="apiDbContext">The <see cref="ApiDbContext"/> to use for database access.</param>
     public UsersController(ILogger<UsersController> logger, ApiDbContext apiDbContext)
     {
         _logger       = logger;
@@ -36,10 +73,11 @@ public class UsersController : ControllerBase
     [HttpPost("login/steam", Name = nameof(LoginSteamAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.TemporaryRedirect)]
     [ResponseCache(NoStore = true, Duration = 0)]
-    public async Task<IActionResult> LoginSteamAsync(
-        [FromQuery] string returnUrl)
+    public async Task<IActionResult> LoginSteamAsync([FromQuery] string returnUrl)
     {
-        System.Diagnostics.Contracts.Contract.Assert(await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Steam));
+        System.Diagnostics.Contracts.Contract.Assert(
+            await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Steam)
+        );
         return Challenge(
             new AuthenticationProperties
             {
@@ -48,7 +86,8 @@ public class UsersController : ControllerBase
                 IssuedUtc    = DateTime.UtcNow,
                 ExpiresUtc   = DateTime.UtcNow.AddDays(Constants.Lifetime.SteamAuthDays),
             },
-            Constants.AuthorizationSchemas.Steam);
+            Constants.AuthorizationSchemas.Steam
+        );
     }
 
     /// <summary>
@@ -62,10 +101,11 @@ public class UsersController : ControllerBase
     [HttpPost("login/discord", Name = nameof(LoginDiscordAsync))]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.TemporaryRedirect)]
     [ResponseCache(NoStore = true, Duration = 0)]
-    public async Task<IActionResult> LoginDiscordAsync(
-        [FromQuery] string returnUrl)
+    public async Task<IActionResult> LoginDiscordAsync([FromQuery] string returnUrl)
     {
-        System.Diagnostics.Contracts.Contract.Assert(await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Discord));
+        System.Diagnostics.Contracts.Contract.Assert(
+            await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Discord)
+        );
         return Challenge(
             new AuthenticationProperties
             {
@@ -74,7 +114,8 @@ public class UsersController : ControllerBase
                 IssuedUtc    = DateTime.UtcNow,
                 ExpiresUtc   = DateTime.UtcNow.AddDays(Constants.Lifetime.DiscordAuthDays),
             },
-            Constants.AuthorizationSchemas.Discord);
+            Constants.AuthorizationSchemas.Discord
+        );
     }
 
     /// <summary>
@@ -90,15 +131,16 @@ public class UsersController : ControllerBase
             {
                 RedirectUri = returnUrl,
             },
-            Constants.AuthorizationSchemas.Cookie);
+            Constants.AuthorizationSchemas.Cookie
+        );
     }
 
     /// <summary>
     /// Deletes the current user.
     /// </summary>
     /// <param name="returnUrl">The url to get back to after the logout process has completed.</param>
-    [HttpPost("me/delete", Name = nameof(MeDeleteAsync))]
     [Authorize]
+    [HttpPost("me/delete", Name = nameof(MeDeleteAsync))]
     public async Task<IActionResult> MeDeleteAsync([FromQuery] string returnUrl)
     {
         if (!User.TryGetUserId(out var userId))
@@ -119,57 +161,73 @@ public class UsersController : ControllerBase
             {
                 RedirectUri = returnUrl,
             },
-            Constants.AuthorizationSchemas.Cookie);
+            Constants.AuthorizationSchemas.Cookie
+        );
     }
 
+    /// <summary>
+    /// Updates a <see cref="User"/>.
+    /// </summary>
+    /// <param name="userId">The <see cref="Guid"/> of the <see cref="User"/>.</param>
+    /// <param name="updatedUser">The updated <see cref="User"/>.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns></returns>
     [Authorize]
     [HttpPost("{userId:guid}/update", Name = nameof(UpdateUserAsync))]
     [ProducesResponseType((int) HttpStatusCode.NoContent)]
     public async Task<IActionResult> UpdateUserAsync(
-        [FromRoute] Guid userId,
-        [FromBody] User updatedUser,
+        [FromRoute] Guid  userId,
+        [FromBody]  User  updatedUser,
         CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var currentUserId))
             return Unauthorized();
-        var existingUser = await _apiDbContext.Users.SingleAsync((q) => q.PrimaryKey == userId, cancellationToken);
-        var isSelf = existingUser.PrimaryKey != currentUserId;
-        if (!User.IsInRoleOrAdmin(Claims.UserModify) && isSelf)
-            return Unauthorized();
-        existingUser.Avatar         = updatedUser.Avatar;
-        existingUser.AvatarMimeType = updatedUser.AvatarMimeType;
-        existingUser.Nickname       = updatedUser.Nickname;
-        if (User.IsInRoleOrAdmin(Claims.UserViewMail) || isSelf)
-            existingUser.EMail = updatedUser.EMail;
-        if (User.IsInRoleOrAdmin(Claims.UserBan))
-            existingUser.IsBanned = updatedUser.IsBanned;
-        if (User.IsInRoleOrAdmin(Claims.UserVerify))
-            existingUser.IsVerified = updatedUser.IsVerified;
-        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        await DoUpdateUserAsync(userId, updatedUser, cancellationToken, currentUserId);
         return NoContent();
     }
 
     /// <summary>
-    /// Returns all roles which are available to the current user for addition.
+    /// Updates the <see cref="User"/> that is currently logged in.
     /// </summary>
-    /// <param name="cancellationToken">
-    ///     A <see cref="CancellationToken"/> to cancel the operation.
-    ///     Passed automatically by ASP.Net framework.
-    /// </param>
-    /// <returns>
-    /// All <see cref="Claim"/> which are accessible by the current user deducted by the role held. 
-    /// </returns>
-    [Authorize(Roles = Claims.Admin + "," + Claims.UserManageRoles)]
-    [HttpPost("roles/available", Name = nameof(GetAllRolesAsync))]
-    public async Task<IEnumerable<Claim>> GetAllRolesAsync(
+    /// <param name="updatedUser">The updated <see cref="User"/>.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns></returns>
+    [Authorize]
+    [HttpPost("me/update", Name = nameof(UpdateMeAsync))]
+    [ProducesResponseType((int) HttpStatusCode.NoContent)]
+    public async Task<IActionResult> UpdateMeAsync(
+        [FromBody] User   updatedUser,
         CancellationToken cancellationToken)
     {
-        var user = await User.GetUserWithRolesAsync(_apiDbContext, cancellationToken);
-        if (user is null)
-            throw new UnauthorizedAccessException();
-        return User.IsAdmin()
-            ? await _apiDbContext.Roles.ToArrayAsync(cancellationToken)
-            : user.Claims ?? Enumerable.Empty<Claim>();
+        if (!User.TryGetUserId(out var currentUserId))
+            return Unauthorized();
+        await DoUpdateUserAsync(currentUserId, updatedUser, cancellationToken, currentUserId);
+        return NoContent();
+    }
+
+    private async Task DoUpdateUserAsync(
+        Guid              userId,
+        User              updatedUser,
+        CancellationToken cancellationToken,
+        Guid              currentUserId)
+    {
+        var existingUser = await _apiDbContext.Users.SingleAsync((q) => q.PrimaryKey == userId, cancellationToken);
+        var isSelf       = existingUser.PrimaryKey != currentUserId;
+        existingUser.Avatar         = updatedUser.Avatar;
+        existingUser.AvatarMimeType = updatedUser.AvatarMimeType;
+        if (User.HasClaim(Claims.User.Nickname,          string.Empty)
+            || User.HasClaim(Claims.Administrative.User, string.Empty)
+            || isSelf)
+            existingUser.Nickname = updatedUser.Nickname;
+        if (User.HasClaim(Claims.User.EMail,             string.Empty)
+            || User.HasClaim(Claims.Administrative.User, string.Empty)
+            || isSelf)
+            existingUser.EMail = updatedUser.EMail;
+        if (User.HasClaim(Claims.User.Ban, string.Empty) || User.HasClaim(Claims.Administrative.User, string.Empty))
+            existingUser.IsBanned = updatedUser.IsBanned;
+        if (User.HasClaim(Claims.User.Verify, string.Empty) || User.HasClaim(Claims.Administrative.User, string.Empty))
+            existingUser.IsVerified = updatedUser.IsVerified;
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>
@@ -190,88 +248,42 @@ public class UsersController : ControllerBase
     [Authorize]
     [HttpGet("{userId:guid}", Name = nameof(GetUserAsync))]
     public async Task<ActionResult<User?>> GetUserAsync(
-        [FromRoute] Guid userId,
+        [FromRoute] Guid  userId,
         CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var currentUserId))
             return Unauthorized();
 
         var existingUser = await _apiDbContext.Users
-            .SingleOrDefaultAsync((user) => user.PrimaryKey == userId, cancellationToken);
-        if (existingUser is not null && !User.IsInRole(Claims.Admin) && existingUser.PrimaryKey != currentUserId)
-        {
-            if (!User.IsInRoleOrAdmin(Claims.UserViewMail))
-                existingUser.EMail = string.Empty;
-            if (!User.IsInRoleOrAdmin(Claims.UserViewSteamId64))
-                existingUser.Steam = new();
-            if (!User.IsInRoleOrAdmin(Claims.UserViewDiscordId))
-                existingUser.Discord = new();
-            if (!User.IsInRoleOrAdmin(Claims.UserBan))
-                existingUser.IsBanned = false;
-        }
+                                              .SingleOrDefaultAsync(
+                                                  (user) => user.PrimaryKey == userId,
+                                                  cancellationToken
+                                              );
+        var isSelf = existingUser?.PrimaryKey == currentUserId;
+        if (existingUser is null)
+            return Ok(existingUser);
+        if (!User.HasClaim(Claims.User.EMail,             string.Empty)
+            && !User.HasClaim(Claims.Administrative.User, string.Empty)
+            && !isSelf)
+            existingUser.EMail = string.Empty;
+        if (!User.HasClaim(Claims.User.ViewSteamId64,     string.Empty)
+            && !User.HasClaim(Claims.Administrative.User, string.Empty)
+            && !isSelf)
+            existingUser.Steam = new();
+        if (!User.HasClaim(Claims.User.ViewDiscordId,     string.Empty)
+            && !User.HasClaim(Claims.Administrative.User, string.Empty)
+            && !isSelf)
+            existingUser.Discord = new();
+        if (!User.HasClaim(Claims.User.Ban,               string.Empty)
+            && !User.HasClaim(Claims.Administrative.User, string.Empty)
+            && !isSelf)
+            existingUser.IsBanned = false;
+        if (!User.HasClaim(Claims.User.Verify,            string.Empty)
+            && !User.HasClaim(Claims.Administrative.User, string.Empty)
+            && !isSelf)
+            existingUser.IsVerified = false;
 
         return Ok(existingUser);
-    }
-
-    /// <summary>
-    /// Updates the roles of a given <see cref="User"/>.
-    /// </summary>
-    /// <remarks>
-    /// Method checks whether a role is already part of a user and will not add it twice or error in those cases.
-    /// </remarks>
-    /// <param name="userId">The <see cref="Guid"/> of the <see cref="User"/> to change the roles of.</param>
-    /// <param name="cancellationToken">
-    ///     A <see cref="CancellationToken"/> to cancel the operation.
-    ///     Passed automatically by ASP.Net framework.
-    /// </param>
-    /// <param name="roleId">
-    ///     The role id to change on the <see cref="User"/> with the given <paramref name="userId"/>.
-    /// </param>
-    /// <param name="mode">
-    ///     If <see langword="true"/>, the <paramref name="roleId"/> will be given to the <see cref="User"/>.
-    ///     If  <see langword="false"/>, the <paramref name="roleId"/> will be removed from the <see cref="User"/>.
-    /// </param>
-    [Authorize(
-        Roles = Claims.Admin + "," + Claims.UserManageRoles)]
-    [HttpPost("{userId:guid}/set-role/{roleId:long}/{mode:bool}", Name = nameof(SetUserRoleActiveAsync))]
-    [ProducesResponseType((int) HttpStatusCode.NoContent)]
-    public async Task<ActionResult> SetUserRoleActiveAsync(
-        [FromRoute] Guid userId,
-        [FromRoute] long roleId,
-        [FromRoute] bool mode,
-        CancellationToken cancellationToken)
-    {
-        if (!User.TryGetUserId(out var currentUserId))
-            return Unauthorized();
-        await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
-        var existingRole = await _apiDbContext.Roles
-            .SingleAsync((q) => q.PrimaryKey == roleId, cancellationToken);
-        var isInRole = User.IsInRole(Claims.Admin) || await _apiDbContext.Users
-            .Where((q) => q.PrimaryKey == currentUserId)
-            .SelectMany((q) => q.Claims!)
-            .AnyAsync((q) => q.PrimaryKey == roleId, cancellationToken);
-        if (!isInRole)
-            return Unauthorized();
-        var existingUser = await _apiDbContext.Users
-            .Include((e) => e.Claims!.Where((q) => q.PrimaryKey == roleId))
-            .SingleAsync((q) => q.PrimaryKey == userId, cancellationToken);
-
-        if (mode)
-        {
-            var role = existingUser.Claims?.FirstOrDefault((q) => q.PrimaryKey == roleId);
-            if (role is null)
-                (existingUser.Claims ??= new List<Claim>()).Add(existingRole);
-        }
-        else
-        {
-            var role = existingUser.Claims?.FirstOrDefault((q) => q.PrimaryKey == roleId);
-            if (role is not null)
-                existingUser.Claims!.Remove(role);
-        }
-
-        await _apiDbContext.SaveChangesAsync(cancellationToken);
-        await dbTransaction.CommitAsync(cancellationToken);
-        return NoContent();
     }
 
     /// <summary>
@@ -285,18 +297,46 @@ public class UsersController : ControllerBase
     ///     The <see cref="User"/> of the current user.
     /// </returns>
     [HttpGet("me", Name = nameof(GetMeAsync))]
-    public async Task<ActionResult<User>> GetMeAsync(
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<User>> GetMeAsync(CancellationToken cancellationToken)
     {
-        var user = await User.GetUserWithRolesAsync(_apiDbContext, cancellationToken);
-        if (user is null)
+        if (!User.TryGetUserId(out var userId))
             return Unauthorized();
-        foreach (var userRole in user.Claims ?? Enumerable.Empty<Claim>())
+        var existingUser = await _apiDbContext
+                                 .Users
+                                 .AsNoTracking()
+                                 .SingleOrDefaultAsync((user) => user.PrimaryKey == userId, cancellationToken);
+        if (existingUser is null)
+            return NotFound();
+        var roles  = new List<Role>();
+        var claims = new List<Claim>();
+        await foreach (var role in _apiDbContext
+                                   .Roles
+                                   .AsNoTracking()
+                                   .Include((e) => e.Claims)
+                                   .Where((role) => role.Users!.Any((user) => user.PrimaryKey == userId))
+                                   .AsAsyncEnumerable()
+                                   .WithCancellation(cancellationToken))
         {
-            userRole.Users?.Clear();
+            roles.Add(role);
+            if (role.Claims is null)
+                continue;
+            claims.AddRange(role.Claims);
+            role.Claims = null;
         }
 
-        return Ok(user);
+        await foreach (var claim in _apiDbContext
+                                    .Claims
+                                    .AsNoTracking()
+                                    .Where((claim) => claim.Users!.Any((user) => user.PrimaryKey == userId))
+                                    .AsAsyncEnumerable()
+                                    .WithCancellation(cancellationToken))
+        {
+            claims.Add(claim);
+        }
+
+        existingUser.Claims = claims;
+        existingUser.Roles  = roles;
+        return Ok(existingUser);
     }
 
     /// <summary>
@@ -311,8 +351,9 @@ public class UsersController : ControllerBase
     /// <param name="search">
     ///     Searches the <see cref="User.Nickname"/> with a function akin to <see cref="string.StartsWith(string)"/>
     /// </param>
-    /// <param name="includeRoles">
-    ///     If <see langword="true"/>, the users returned will contain their roles.
+    /// <param name="includeRolesAndClaims">
+    ///     If <see langword="true"/>, the <see cref="User"/>'s returned will contain their <see cref="Role"/>'s
+    ///     and <see cref="Claim"/>'s.
     /// </param>
     /// <param name="includeUnverified">
     ///     If <see langword="true"/>, the users returned will also contain unverified users.
@@ -324,32 +365,42 @@ public class UsersController : ControllerBase
     [Authorize]
     [HttpPost("all", Name = nameof(GetUsersAsync))]
     public async Task<ActionResult<IEnumerable<User>>> GetUsersAsync(
-        [FromQuery] int skip,
-        [FromQuery] int take,
-        CancellationToken cancellationToken,
-        [FromQuery] string? search = null,
-        [FromQuery] bool? includeRoles = false,
-        [FromQuery] bool? includeUnverified = false)
+        [FromQuery] int     skip,
+        [FromQuery] int     take,
+        CancellationToken   cancellationToken,
+        [FromQuery] string? search            = null,
+        [FromQuery] bool?   includeRolesAndClaims     = false,
+        [FromQuery] bool?   includeUnverified = false)
     {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
         if (take > 500)
             throw new ArgumentOutOfRangeException(nameof(take), take, "Take has a hard-maximum of 500.");
 
-        IQueryable<User> users = _apiDbContext.Users.AsNoTracking();
-        User? currentUser = null;
-        if (includeRoles ?? false)
+        IQueryable<User> users       = _apiDbContext.Users.AsNoTracking();
+        User?            currentUser = null;
+        if (includeRolesAndClaims ?? false)
         {
-            currentUser ??= await User.GetUserWithRolesAsync(_apiDbContext, cancellationToken);
-            if (currentUser is null)
-                return Unauthorized();
-
-            if (User.IsAdmin())
+            if (User.HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.Role))
             {
-                users = users.Include((e) => e.Claims);
+                users = users.Include((e) => e.Claims)
+                             .Include((e) => e.Roles!)
+                             .ThenInclude((e) => e.Claims);
             }
             else
             {
-                var roleIds = currentUser.Claims?.Select((q) => q.PrimaryKey).ToArray() ?? Array.Empty<long>();
-                users = users.Include((e) => e.Claims!.Where((q) => roleIds.Contains(q.PrimaryKey)));
+                var roleClaimIds = await _apiDbContext.Roles
+                    .Where((role) => role.Users!.Any((user) => user.PrimaryKey == userId))
+                    .SelectMany((role) => role.Claims!)
+                    .Select((claim) => claim.PrimaryKey)
+                    .ToArrayAsync(cancellationToken);
+                var claimIds = await _apiDbContext.Claims
+                    .Where((claim) => claim.Users!.Any((user) => user.PrimaryKey == userId))
+                    .Select((claim) => claim.PrimaryKey)
+                    .ToArrayAsync(cancellationToken);
+                users = users.Include((e) => e.Claims!.Where((claim) => claimIds.Contains(claim.PrimaryKey)))
+                             .Include((e) => e.Roles!.Where((role) => roleClaimIds.Contains(role.PrimaryKey)))
+                             .ThenInclude((e) => e.Claims);
             }
         }
 
@@ -359,31 +410,31 @@ public class UsersController : ControllerBase
         }
         else
         {
-            if (!User.IsInRoleOrAdmin(Claims.UserVerify))
+            if (!User.HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.User, Claims.User.Verify))
                 return Unauthorized();
         }
 
         if (search.IsNotNullOrWhiteSpace())
         {
             search = search.Trim();
-            search = search.Replace("%", "\\%");
-            search = search.Replace(",", "\\,");
-            search = search.Replace("_", "\\_");
-            search = search.Replace(",", "\\,");
-            search = search.Replace("[", "\\[");
-            search = search.Replace(",", "\\,");
-            search = search.Replace("]", "\\]");
-            search = search.Replace(",", "\\,");
-            search = search.Replace("^", "\\^");
-            search = search.Replace("\\", "\\\\");
-            search = $"{search}%";
+            search = search.Replace("%",  @"\%");
+            search = search.Replace(",",  @"\,");
+            search = search.Replace("_",  @"\_");
+            search = search.Replace(",",  @"\,");
+            search = search.Replace("[",  @"\[");
+            search = search.Replace(",",  @"\,");
+            search = search.Replace("]",  @"\]");
+            search = search.Replace(",",  @"\,");
+            search = search.Replace("^",  @"\^");
+            search = search.Replace(@"\", @"\\");
+            search = $"%{search}%";
             users  = users.Where((q) => EF.Functions.ILike(q.Nickname, search, "\\"));
         }
 
         users = users
-            .OrderBy((q) => q.Nickname)
-            .Skip(skip)
-            .Take(take);
+                .OrderBy((q) => q.Nickname)
+                .Skip(skip)
+                .Take(take);
 
         var result = await users.ToArrayAsync(cancellationToken);
 
@@ -405,9 +456,6 @@ public class UsersController : ControllerBase
     /// <param name="search">
     ///     Searches the <see cref="User.Nickname"/> with a function akin to <see cref="string.StartsWith(string)"/>
     /// </param>
-    /// <param name="includeRoles">
-    ///     If <see langword="true"/>, the users returned will contain their roles.
-    /// </param>
     /// <param name="includeUnverified">
     ///     If <see langword="true"/>, the users returned will also contain unverified users.
     /// </param>
@@ -417,29 +465,11 @@ public class UsersController : ControllerBase
     [Authorize]
     [HttpPost("all/count", Name = nameof(GetUsersCountAsync))]
     public async Task<ActionResult<long>> GetUsersCountAsync(
-        CancellationToken cancellationToken,
-        [FromQuery] string? search = null,
-        [FromQuery] bool? includeRoles = false,
-        [FromQuery] bool? includeUnverified = false)
+        CancellationToken   cancellationToken,
+        [FromQuery] string? search            = null,
+        [FromQuery] bool?   includeUnverified = false)
     {
-        IQueryable<User> users = _apiDbContext.Users;
-        User? currentUser = null;
-        if (includeRoles ?? false)
-        {
-            currentUser ??= await User.GetUserWithRolesAsync(_apiDbContext, cancellationToken);
-            if (currentUser is null)
-                return Unauthorized();
-
-            if (User.IsAdmin())
-            {
-                users = users.Include((e) => e.Claims);
-            }
-            else
-            {
-                var roleIds = currentUser.Claims?.Select((q) => q.PrimaryKey).ToArray() ?? Array.Empty<long>();
-                users = users.Include((e) => e.Claims!.Where((q) => roleIds.Contains(q.PrimaryKey)));
-            }
-        }
+        IQueryable<User> users       = _apiDbContext.Users;
 
         if (!(includeUnverified ?? false))
         {
@@ -447,24 +477,24 @@ public class UsersController : ControllerBase
         }
         else
         {
-            if (User.IsInRoleOrAdmin(Claims.UserVerify))
+            if (!User.HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.User, Claims.User.Verify))
                 return Unauthorized();
         }
 
         if (search.IsNotNullOrWhiteSpace())
         {
             search = search.Trim();
-            search = search.Replace("%", "\\%");
-            search = search.Replace(",", "\\,");
-            search = search.Replace("_", "\\_");
-            search = search.Replace(",", "\\,");
-            search = search.Replace("[", "\\[");
-            search = search.Replace(",", "\\,");
-            search = search.Replace("]", "\\]");
-            search = search.Replace(",", "\\,");
-            search = search.Replace("^", "\\^");
-            search = search.Replace("\\", "\\\\");
-            search = $"{search}%";
+            search = search.Replace("%",  @"\%");
+            search = search.Replace(",",  @"\,");
+            search = search.Replace("_",  @"\_");
+            search = search.Replace(",",  @"\,");
+            search = search.Replace("[",  @"\[");
+            search = search.Replace(",",  @"\,");
+            search = search.Replace("]",  @"\]");
+            search = search.Replace(",",  @"\,");
+            search = search.Replace("^",  @"\^");
+            search = search.Replace(@"\", @"\\");
+            search = $"%{search}%";
             users  = users.Where((q) => EF.Functions.ILike(q.Nickname, search, "\\"));
         }
 

@@ -31,6 +31,7 @@ internal static class Constants
         public const string Terrains      = "terrains";
         public const string Wiki          = "wiki";
         public const string UpdateStream  = "update-stream";
+        public const string Roles         = "roles";
     }
 
     public static class AuthorizationSchemas

@@ -20,18 +20,18 @@ public abstract class ModPackIdRequirement : AnyClaimValuePairFromRouteRequireme
     /// <summary>
     /// Creates a new instance of <see cref="ModPackIdRequirement"/>.
     /// </summary>
-    /// <param name="claim">The claim required to have the value of the route parameter.</param>
-    protected ModPackIdRequirement(string claim)
+    /// <param name="policyName">The claim required to have the value of the route parameter.</param>
+    protected ModPackIdRequirement(string policyName)
         : base(
             new[]
             {
                 (Claims.Administrative.All, null),
                 (Claims.Administrative.ModPack, null),
                 (Claims.ResourceBased.ModPack.All, RouteParameterName),
-                (claim, RouteParameterName),
+                (claim: policyName, RouteParameterName),
             })
     {
-        PolicyName = claim;
+        PolicyName = policyName;
     }
 
     /// <summary>

@@ -75,6 +75,7 @@ public class GameServersController : ControllerBase
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var allServers = _apiDbContext.GameServers
+            .Where((q) => q.IsActive)
             .OrderBy((q) => q.Title)
             .ToAsyncEnumerable();
         if (User.HasClaim(Claims.Administrative.All, string.Empty) || User.HasClaim(Claims.Administrative.Server, string.Empty))

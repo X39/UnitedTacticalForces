@@ -91,4 +91,23 @@ public static class ClaimsPrincipalExtensions
             .SingleAsync((q) => q.PrimaryKey == userId, cancellationToken);
         return user;
     }
+    
+    /// <summary>
+    /// Checks if the <see cref="ClaimsPrincipal"/> has any of the provided <paramref name="claimIdentifiers"/>.
+    /// </summary>
+    /// <param name="self">
+    ///     The <see cref="ClaimsPrincipal"/> to check.
+    /// </param>
+    /// <param name="claimIdentifiers">
+    ///     The claim identifiers to check for.
+    /// </param>
+    /// <returns>
+    ///     <see langword="true"/> if the <see cref="ClaimsPrincipal"/> has any of the provided <paramref name="claimIdentifiers"/>,
+    /// </returns>
+    public static bool HasAnyEmptyClaim(
+        this ClaimsPrincipal self,
+        params string[] claimIdentifiers)
+    {
+        return claimIdentifiers.Any(claimIdentifier => self.HasClaim(claimIdentifier, string.Empty));
+    }
 }

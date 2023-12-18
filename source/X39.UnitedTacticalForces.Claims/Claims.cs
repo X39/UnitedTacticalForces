@@ -2,6 +2,10 @@
 
 public static class Claims
 {
+    public static class Virtual
+    {
+        public const string OwnEvents = "vrt:ev";
+    }
     public static class Administrative
     {
         public const string All     = "adm";
@@ -9,6 +13,7 @@ public static class Claims
         public const string Terrain = "adm:trn";
         public const string ModPack = "adm:mp";
         public const string User    = "adm:usr";
+        public const string Role    = "adm:rls";
         public const string Server  = "adm:sv";
         public const string Wiki    = "adm:wiki";
     }
@@ -25,17 +30,28 @@ public static class Claims
         public const string ModPack = "crt:mp";
         public const string Wiki    = "crt:wiki";
         public const string Server  = "crt:sv";
+        public const string Role  = "crt:rls";
     }
 
     public static class User
     {
         public const string List          = "usr:list";
         public const string ViewSteamId64 = "usr:steamid64";
-        public const string ViewMail      = "usr:mail";
+        public const string Nickname      = "usr:nick";
+        public const string EMail         = "usr:mail";
         public const string Modify        = "usr:modify";
         public const string ViewDiscordId = "usr:discord";
         public const string Verify        = "usr:verify";
         public const string Ban           = "usr:ban";
+        public const string Roles         = "usr:rls";
+    }
+
+    public static class Wiki
+    {
+        public const string All    = "wiki";
+        public const string Modify = "wiki:modify";
+        public const string Delete = "wiki:delete";
+        public const string Rename = "wiki:rename";
     }
 
     public static class ResourceBased
@@ -53,13 +69,6 @@ public static class Claims
             public const string DeleteLogs    = "sv:logs:del";
         }
 
-        public static class Wiki
-        {
-            public const string All    = "wiki";
-            public const string Modify = "wiki:modify";
-            public const string Delete = "wiki:delete";
-        }
-
         public static class ModPack
         {
             public const string All    = "mp";
@@ -72,13 +81,6 @@ public static class Claims
             public const string All    = "trn";
             public const string Modify = "trn:modify";
             public const string Delete = "trn:delete";
-        }
-
-        public static class Event
-        {
-            public const string All    = "ev";
-            public const string Modify = "ev:modify";
-            public const string Delete = "ev:delete";
         }
     }
 }

@@ -7,6 +7,16 @@ namespace X39.UnitedTacticalForces.Api.Authorization.Abstraction;
 /// </summary>
 public sealed class AppAuthorizationHandler : IAuthorizationHandler
 {
+    private readonly IServiceProvider _serviceProvider;
+
+    /// <summary>
+    /// Creates a new instance of <see cref="AppAuthorizationHandler"/>.
+    /// </summary>
+    /// <param name="serviceProvider">The service provider.</param>
+    public AppAuthorizationHandler(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
     /// <inheritdoc />
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
@@ -14,7 +24,7 @@ public sealed class AppAuthorizationHandler : IAuthorizationHandler
             throw new NullReferenceException("The AuthorizationHandlerContext.Resource is not a http context.");
         foreach (var appRequirement in context.Requirements.OfType<IAppRequirement>())
         {
-            if (await appRequirement.IsSatisfiedAsync(httpContext))
+            if (await appRequirement.IsSatisfiedAsync(httpContext, _serviceProvider))
                 context.Succeed(appRequirement);
         }
     }

@@ -2,6 +2,7 @@
 [*]
 
 # ReSharper properties
+resharper_braces_for_ifelse = not_required_for_both
 resharper_int_align_assignments = true
 resharper_int_align_switch_expressions = true
 resharper_int_align_fields = true
@@ -12,5 +13,13 @@ resharper_csharp_wrap_parameters_style = chop_if_long
 resharper_instance_members_qualify_declared_in = base_class
 resharper_force_attribute_style = join
 resharper_place_accessorholder_attribute_on_same_line = false
+resharper_place_simple_embedded_block_on_same_line = false
+resharper_place_simple_embedded_statement_on_same_line = false
 resharper_trailing_comma_in_multiline_lists = true
 resharper_wrap_chained_method_calls = chop_if_long
+
+# Microsoft .NET properties
+dotnet_style_qualification_for_event = false:suggestion
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
