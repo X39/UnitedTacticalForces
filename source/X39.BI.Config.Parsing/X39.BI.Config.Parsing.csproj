@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>default</LangVersion>
@@ -11,7 +11,7 @@
         </AssemblyAttribute>
     </ItemGroup>
     <ItemGroup>
-      <PackageReference Include="Pidgin" Version="3.2.1" />
-      <PackageReference Include="X39.Util" Version="1.0.0.38" />
+      <PackageReference Include="Pidgin" Version="3.2.2" />
+      <PackageReference Include="X39.Util" Version="1.0.0.39" />
     </ItemGroup>
 </Project>

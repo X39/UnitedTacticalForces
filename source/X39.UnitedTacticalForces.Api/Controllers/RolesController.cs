@@ -251,7 +251,7 @@ public class RolesController : ControllerBase
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to cancel the operation.</param>
     /// <returns>No content on success, not found if the <see cref="Role"/> does not exist.</returns>
     [Authorize(Claims.Creation.Role)]
-    [HttpPost("delete/role/{roleId:long}", Name = nameof(CreateRoleAsync))]
+    [HttpPost("delete/role/{roleId:long}", Name = nameof(DeleteRoleAsync))]
     [ProducesResponseType((int) HttpStatusCode.NotFound)]
     [ProducesResponseType((int) HttpStatusCode.NoContent)]
     public async Task<ActionResult> DeleteRoleAsync(

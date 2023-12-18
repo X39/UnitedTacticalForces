@@ -64,6 +64,6 @@ public class Claim : IPrimaryKey<long>
     /// <summary>
     /// The users that have this claim.
     /// </summary>
-    [InverseProperty(nameof(User.Roles))]
+    [InverseProperty(nameof(User.Claims))]
     public ICollection<User>? Users { get; set; }
 }

@@ -213,7 +213,7 @@ public class GameServersController : ControllerBase
     /// </param>
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
-    [HttpPut("{gameServerId:long}/change-mod-pack", Name = nameof(RenameAsync))]
+    [HttpPut("{gameServerId:long}/change-mod-pack", Name = nameof(ChangeModPackAsync))]
     [Authorize(Claims.ResourceBased.Server.ModPack)]
     public async Task<ActionResult<GameServerInfo>> ChangeModPackAsync(
         [FromRoute] long gameServerId,
