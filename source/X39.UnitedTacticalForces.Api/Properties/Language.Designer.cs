@@ -168,6 +168,15 @@ namespace X39.UnitedTacticalForces.Api.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Nickname.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Details_Nickname {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Details_Nickname", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to General.
         /// </summary>
         internal static string ServerController_Arma3_BasicCfg_GeneralGroup {

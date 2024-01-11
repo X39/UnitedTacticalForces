@@ -1,0 +1,231 @@
+﻿@using X39.UnitedTacticalForces.WebApp.Services.ResourceClaimRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.Util
+@inject IStringLocalizer<Language> Localizer
+@inject IUserRepository            UserRepository
+@inject IResourceClaimRepository   ResourceClaimRepository
+<!-- ToDo: Add a way to add new users/roles to the list -->
+<MudDialog>
+    <DialogContent>
+        <MudTable T="object" Items="@_userOrRole" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" LoadingProgressColor="Color.Info">
+            <HeaderContent>
+                <MudTh>@Localizer[nameof(Language.Dialogs_ResourceBasedPrivilegeDialog_Headers_User)]</MudTh>
+                @foreach (var claim in ResourceClaims)
+                {
+                    <MudTh>@claim</MudTh>
+                }
+                <MudTh/>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@Localizer[nameof(Language.Dialogs_ResourceBasedPrivilegeDialog_Headers_User)]">
+                    @switch (context)
+                    {
+                        case Role role:
+                            <MudText>@role.Title</MudText>
+                            break;
+                        case User user:
+                            <UtfUser User="@user"/>
+                            break;
+                    }
+                </MudTd>
+                @foreach (var claim in ResourceClaims)
+                {
+                    <MudTd DataLabel="@claim">
+                        @switch (context)
+                        {
+                            case Role role:
+                                <MudSwitch T="bool" Value="@HasClaim(role, claim)" ValueChanged="@((flag) => SetClaim(role, claim, flag))"/>
+                                break;
+                            case User user:
+                                <MudSwitch T="bool" Value="@HasClaim(user, claim)" ValueChanged="@((flag) => SetClaim(user, claim, flag))"/>
+                                break;
+                        }
+                    </MudTd>
+                }
+                <MudTd>
+                    <MudTooltip>
+                        <ChildContent>
+                            <MudIconButton Icon="@Icons.Material.Filled.Remove" Color="Color.Error"/>
+                        </ChildContent>
+                        <TooltipContent>
+                            @Localizer[nameof(Language.Dialogs_ResourceBasedPrivilegeDialog_Tooltips_Remove)]
+                        </TooltipContent>
+                    </MudTooltip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Submit">@Localizer[nameof(Language.Common_Ok)]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    public MudDialogInstance MudDialog { get; set; } = null!;
+
+    private readonly List<object> _userOrRole = new();
+    private          bool         _loading    = true;
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(default(object?)));
+
+    [Parameter]
+    public IReadOnlyCollection<string> ResourceClaims { get; set; } = ArraySegment<string>.Empty;
+
+    [Parameter]
+    public string ResourceIdentifier { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ResourcePrefix { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Delay(1);
+        var tuple = await ResourceClaimRepository.GetResourceClaimAsync(ResourcePrefix, ResourceIdentifier);
+        foreach (var role in tuple.Roles ?? ArraySegment<Role>.Empty)
+        {
+            _userOrRole.Add(role);
+        }
+
+        foreach (var user in tuple.Users ?? ArraySegment<User>.Empty)
+        {
+            _userOrRole.Add(user);
+        }
+
+        _loading = false;
+    }
+
+    public static async Task ShowAsync(
+        IDialogService              dialogService,
+        IReadOnlyCollection<string> claims,
+        string                      resourcePrefix,
+        string                      resourceIdentifier)
+    {
+        await dialogService.ShowAsync<ModifyTerrainDialog>(
+                                string.Empty,
+                                new DialogParameters
+                                {
+                                    {
+                                        nameof(ResourceClaims), claims
+                                    },
+                                    {
+                                        nameof(ResourceIdentifier), resourceIdentifier
+                                    },
+                                    {
+                                        nameof(ResourcePrefix), resourcePrefix
+                                    },
+                                },
+                                new DialogOptions
+                                {
+                                    CloseOnEscapeKey = true,
+                                    FullWidth        = true,
+                                    MaxWidth         = MaxWidth.Large,
+                                }
+                            )
+                           .ConfigureAwait(false);
+    }
+
+    private bool HasClaim(User context, string claim)
+    {
+        return context.Claims?.Any((q) => q.Identifier == claim && q.Value == ResourceIdentifier) ?? false;
+    }
+
+    private bool HasClaim(Role context, string claim)
+    {
+        return context.Claims?.Any((q) => q.Identifier == claim && q.Value == ResourceIdentifier) ?? false;
+    }
+
+    private async Task SetClaim(User context, string claim, bool flag)
+    {
+        using var loading = new Disposable(() => _loading = true, () => _loading = false);
+        if (context.PrimaryKey is null)
+            return;
+        if (context.Claims is null)
+            context.Claims = new List<Claim>();
+
+        if (flag)
+        {
+            if (context.Claims.Any((q) => q.Identifier == claim && q.Value == ResourceIdentifier))
+                return;
+            context.Claims.Add(
+                new Claim
+                {
+                    Identifier = claim,
+                    Value      = ResourceIdentifier,
+                }
+            );
+            await ResourceClaimRepository.SetUserResourceClaimAsync(
+                                              ResourcePrefix,
+                                              ResourceIdentifier,
+                                              context.PrimaryKey.Value,
+                                              claim,
+                                              true
+                                          )
+                                         .ConfigureAwait(false);
+        }
+        else
+        {
+            var claimsClaim = context.Claims.FirstOrDefault((q) => q.Identifier == claim && q.Value == ResourceIdentifier);
+            if (claimsClaim is not null)
+            {
+                context.Claims.Remove(claimsClaim);
+                await ResourceClaimRepository.SetUserResourceClaimAsync(
+                                                  ResourcePrefix,
+                                                  ResourceIdentifier,
+                                                  context.PrimaryKey.Value,
+                                                  claim,
+                                                  false
+                                              )
+                                             .ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task SetClaim(Role context, string claim, bool flag)
+    {
+        using var loading = new Disposable(() => _loading = true, () => _loading = false);
+        if (context.PrimaryKey is null)
+            return;
+        if (context.Claims is null)
+            context.Claims = new List<Claim>();
+
+        if (flag)
+        {
+            if (context.Claims.Any((q) => q.Identifier == claim && q.Value == ResourceIdentifier))
+                return;
+            context.Claims.Add(
+                new Claim
+                {
+                    Identifier = claim,
+                    Value      = ResourceIdentifier,
+                }
+            );
+            await ResourceClaimRepository.SetRoleResourceClaimAsync(
+                                              ResourcePrefix,
+                                              ResourceIdentifier,
+                                              context.PrimaryKey.Value,
+                                              claim,
+                                              true
+                                          )
+                                         .ConfigureAwait(false);
+        }
+        else
+        {
+            var claimsClaim = context.Claims.FirstOrDefault((q) => q.Identifier == claim && q.Value == ResourceIdentifier);
+            if (claimsClaim is not null)
+            {
+                context.Claims.Remove(claimsClaim);
+                await ResourceClaimRepository.SetRoleResourceClaimAsync(
+                                                  ResourcePrefix,
+                                                  ResourceIdentifier,
+                                                  context.PrimaryKey.Value,
+                                                  claim,
+                                                  false
+                                              )
+                                             .ConfigureAwait(false);
+            }
+        }
+    }
+
+}

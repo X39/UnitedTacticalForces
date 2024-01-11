@@ -35,6 +35,7 @@ public static class Claims
 
     public static class User
     {
+        public const string All          = "usr";
         public const string List          = "usr:list";
         public const string ViewSteamId64 = "usr:steamid64";
         public const string Nickname      = "usr:nick";

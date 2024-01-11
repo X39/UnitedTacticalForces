@@ -2,16 +2,18 @@
 @using X39.UnitedTacticalForces.WebApp.Services.UserRepository
 @using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
 @using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
+@using X39.UnitedTacticalForces.WebApp.Services
 @page "/events"
-@inject IEventRepository EventRepository
-@inject IUserRepository UserRepository
-@inject IModPackRepository ModPackRepository
-@inject ITerrainRepository TerrainRepository
+@inject IEventRepository           EventRepository
+@inject IUserRepository            UserRepository
+@inject IModPackRepository         ModPackRepository
+@inject ITerrainRepository         TerrainRepository
 @inject IStringLocalizer<Language> Localizer
-@inject IDialogService DialogService
-@inject BaseUrl BaseUrl
-@inject ISnackbar Snackbar
-@inject IJSRuntime JsRuntime
+@inject IDialogService             DialogService
+@inject BaseUrl                    BaseUrl
+@inject ISnackbar                  Snackbar
+@inject IJSRuntime                 JsRuntime
+@inject MeService                  Me
 @attribute [Authorize]
 <PageTitle>@Localizer[nameof(Language.Pages_Events_Title)]</PageTitle>
 <MudTable @ref="_mudTable"
@@ -94,7 +96,7 @@
                 <div class="d-inline-flex align-center" style="white-space: nowrap">
                     <MudText>@(context.ModPackRevision?.Definition?.Title)</MudText>
                     <UtfModPackDownloadButton ModPack="@(context.ModPackRevision.Definition)"
-                                               Revision="@(context.ModPackRevision)"/>
+                                              Revision="@(context.ModPackRevision)"/>
                 </div>
             }
         </MudTd>
@@ -114,11 +116,12 @@
     </PagerContent>
     <FooterContent>
         <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "6"}})">
-            <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.EventCreate)" Context="_">
+            @if (Me.HasClaimOrEventAdmin(Claims.Creation.Events))
+            {
                 <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewEventAsync">
                     @Localizer[nameof(Language.Pages_Events_CreateNewEvent)]
                 </MudButton>
-            </AuthorizeView>
+            }
         </MudTd>
     </FooterContent>
 </MudTable>
@@ -137,7 +140,7 @@
         {
             _onlyHostedByMe = value;
             _ = _mudTable.ReloadServerData()
-                .ConfigureAwait(false);
+                         .ConfigureAwait(false);
         }
     }
 
@@ -146,20 +149,19 @@
         await Task.Delay(10);
     }
 
-    private long _eventCounts = -1;
-    private MudTable<Event> _mudTable = null!;
-    private readonly Dictionary<Guid, User> _users = new();
-    private readonly Dictionary<long, ModPackRevision> _modPacks = new();
-    private readonly Dictionary<long, Terrain> _terrains = new();
+    private          long                              _eventCounts = -1;
+    private          MudTable<Event>                   _mudTable    = null!;
+    private readonly Dictionary<Guid, User>            _users       = new();
+    private readonly Dictionary<long, ModPackRevision> _modPacks    = new();
+    private readonly Dictionary<long, Terrain>         _terrains    = new();
 
     private async Task<TableData<Event>> ServerDataAsync(TableState arg)
     {
         if (_eventCounts == -1)
             _eventCounts = await EventRepository.GetEventCountAsync(OnlyHostedByMe)
-                .ConfigureAwait(false);
-        var items = await EventRepository.GetEventsAsync(
-            arg.Page * arg.PageSize, arg.PageSize, OnlyHostedByMe)
-            .ConfigureAwait(false);
+                                                .ConfigureAwait(false);
+        var items = await EventRepository.GetEventsAsync(arg.Page * arg.PageSize, arg.PageSize, OnlyHostedByMe)
+                                         .ConfigureAwait(false);
         foreach (var eventItem in items)
         {
             if (eventItem.OwnerFk is not null)
@@ -168,70 +170,78 @@
                 if (!_users.TryGetValue(ownerFk, out var user))
                 {
                     var tmp = await UserRepository.GetUserAsync(ownerFk, CancellationToken.None)
-                        .ConfigureAwait(false);
+                                                  .ConfigureAwait(false);
                     if (tmp is null)
                         continue;
                     _users[ownerFk] = user = tmp;
                 }
+
                 eventItem.Owner = user;
             }
+
             if (eventItem.HostedByFk is not null)
             {
                 var hostedByFk = eventItem.HostedByFk.Value;
                 if (!_users.TryGetValue(hostedByFk, out var user))
                 {
                     var tmp = await UserRepository.GetUserAsync(hostedByFk, CancellationToken.None)
-                        .ConfigureAwait(false);
+                                                  .ConfigureAwait(false);
                     if (tmp is null)
                         continue;
                     _users[hostedByFk] = user = tmp;
                 }
+
                 eventItem.HostedBy = user;
             }
+
             if (eventItem.ModPackRevisionFk is not null)
             {
                 var modPackRevisionFk = eventItem.ModPackRevisionFk.Value;
                 if (!_modPacks.TryGetValue(modPackRevisionFk, out var modPack))
                 {
                     var tmp = await ModPackRepository.GetModPackRevisionAsync(modPackRevisionFk, CancellationToken.None)
-                        .ConfigureAwait(false);
+                                                     .ConfigureAwait(false);
                     if (tmp is null)
                         continue;
                     _modPacks[modPackRevisionFk] = modPack = tmp;
                 }
+
                 eventItem.ModPackRevision = modPack;
             }
+
             if (eventItem.TerrainFk is not null)
             {
                 var terrainFk = eventItem.TerrainFk.Value;
                 if (!_terrains.TryGetValue(terrainFk, out var terrain))
                 {
                     var tmp = await TerrainRepository.GetTerrainAsync(terrainFk, CancellationToken.None)
-                        .ConfigureAwait(false);
+                                                     .ConfigureAwait(false);
                     if (tmp is null)
                         continue;
                     _terrains[terrainFk] = terrain = tmp;
                 }
+
                 eventItem.Terrain = terrain;
             }
         }
+
         return new TableData<Event>
         {
             TotalItems = (int) _eventCounts,
-            Items = items,
+            Items      = items,
         };
     }
 
     private async Task CreateNewEventAsync()
     {
         var eventItem = await Dialogs.ModifyEventDialog.ShowAsync(DialogService)
-            .ConfigureAwait(false);
+                                     .ConfigureAwait(false);
         if (eventItem is null)
             return;
         await EventRepository.CreateEventAsync(eventItem)
-            .ConfigureAwait(false);
+                             .ConfigureAwait(false);
         await _mudTable.ReloadServerData()
-            .ConfigureAwait(false);
+                       .ConfigureAwait(false);
     }
 
     private async Task PropagateStateHasChanged()
@@ -244,7 +254,7 @@
     {
         var url = BaseUrl.ResolveSelfUrl($"/events/{eventItem.PrimaryKey}");
         await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url)
-            .ConfigureAwait(false);
+                       .ConfigureAwait(false);
         Snackbar.Add(Localizer[nameof(Language.Common_CopiedToClipboard)]);
     }
 

@@ -1,0 +1,24 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject MeService                  Me
+@inject IStringLocalizer<Language> Localizer
+@if (Me.HasClaimOrUserAdmin(Claims.User.Modify))
+{
+    <MudTooltip>
+        <TooltipContent>
+            <MudText>@Localizer[nameof(Language.Pages_Users_ShowUserDetails_ToolTip)]</MudText>
+        </TooltipContent>
+        <ChildContent>
+            <MudIconButton
+                Icon="@Icons.Material.Filled.Notes"
+                Color="Color.Primary"
+                Href="@($"/users/{User.PrimaryKey!.Value}")"/>
+        </ChildContent>
+    </MudTooltip>
+}
+
+@code {
+
+    [Parameter, EditorRequired, Required]
+    public User User { get; set; } = null!;
+}

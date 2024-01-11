@@ -3,12 +3,12 @@
 @using System.Diagnostics.Contracts
 @using X39.UnitedTacticalForces.WebApp.Services
 @page "/terrains"
-@inject ITerrainRepository TerrainRepository
-@inject IUserRepository UserRepository
+@inject ITerrainRepository         TerrainRepository
+@inject IUserRepository            UserRepository
 @inject IStringLocalizer<Language> Localizer
-@inject IDialogService DialogService
-@inject BaseUrl BaseUrl
-@inject MeService MeService
+@inject IDialogService             DialogService
+@inject BaseUrl                    BaseUrl
+@inject MeService                  Me
 @attribute [Authorize]
 <PageTitle>@Localizer[nameof(Language.Pages_Terrains_Title)]</PageTitle>
 <MudTable @ref="_mudTable"
@@ -36,12 +36,27 @@
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Terrains_Table_Title)]">@context.Title</MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Terrains_Table_Interactions)]">
             <MudButtonGroup>
-                <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.TerrainModify)" Context="_">
+                @if (Me.HasResourceClaimOrWikiAdmin(Claims.ResourceBased.Terrain.Modify, context.PrimaryKey?.ToString() ?? string.Empty))
+                {
                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="@(() => ModifyTerrainAsync(context))"/>
-                </AuthorizeView>
-                <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.TerrainDelete)" Context="_">
+                }
+                @if (Me.HasResourceClaimOrWikiAdmin(Claims.ResourceBased.Terrain.Delete, context.PrimaryKey?.ToString() ?? string.Empty))
+                {
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteTerrainAsync(context))"/>
-                </AuthorizeView>
+                }
+                @if (Me.HasClaimOrAdmin(Claims.Administrative.Terrain))
+                {
+                    <MudTooltip>
+                        <TooltipContent>
+                            <MudText>@Localizer[nameof(Language.Pages_Terrains_Table_Interactions_ShowUserPermissions)]</MudText>
+                        </TooltipContent>
+                        <ChildContent>
+                            <MudIconButton Icon="@Icons.Material.Filled.Groups"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => ShowUserPermissionsAsync(context))"/>
+                        </ChildContent>
+                    </MudTooltip>
+                }
             </MudButtonGroup>
         </MudTd>
     </RowTemplate>
@@ -50,17 +65,17 @@
     </PagerContent>
     <FooterContent>
         <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "2"}})">
-            <AuthorizeView Roles="@string.Join(",", Claims.Admin, Claims.TerrainCreate)" Context="_">
+            @if (Me.HasClaimOrWikiAdmin(Claims.Creation.Wiki))
+            {
                 <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewTerrainAsync">
                     @Localizer[nameof(Language.Pages_Terrains_CreateNewTerrain)]
                 </MudButton>
-            </AuthorizeView>
+            }
         </MudTd>
     </FooterContent>
 </MudTable>
 
 @code {
-
 
     [CascadingParameter]
     public Breakpoint Breakpoint { get; private set; } = Breakpoint.Always;
@@ -70,47 +85,46 @@
         await Task.Delay(10);
     }
 
-    private long _terrainCounts = -1;
-    private MudTable<Terrain> _mudTable = null!;
+    private long              _terrainCounts = -1;
+    private MudTable<Terrain> _mudTable      = null!;
 
     private async Task<TableData<Terrain>> ServerDataAsync(TableState arg)
     {
         if (_terrainCounts == -1)
             _terrainCounts = await TerrainRepository.GetTerrainCountAsync()
-                .ConfigureAwait(false);
-        var items = await TerrainRepository.GetTerrainsAsync(
-            arg.Page * arg.PageSize, arg.PageSize)
-            .ConfigureAwait(false);
+                                                    .ConfigureAwait(false);
+        var items = await TerrainRepository.GetTerrainsAsync(arg.Page * arg.PageSize, arg.PageSize)
+                                           .ConfigureAwait(false);
         return new TableData<Terrain>
         {
             TotalItems = (int) _terrainCounts,
-            Items = items,
+            Items      = items,
         };
     }
 
     private async Task CreateNewTerrainAsync()
     {
         var terrain = await Dialogs.ModifyTerrainDialog.ShowAsync(DialogService)
-            .ConfigureAwait(false);
+                                   .ConfigureAwait(false);
         if (terrain is null)
             return;
         await TerrainRepository.CreateTerrainAsync(terrain)
-            .ConfigureAwait(false);
+                               .ConfigureAwait(false);
         await _mudTable.ReloadServerData()
-            .ConfigureAwait(false);
+                       .ConfigureAwait(false);
     }
 
     private async Task ModifyTerrainAsync(Terrain terrain)
     {
         var updatedTerrain = await Dialogs.ModifyTerrainDialog.ShowAsync(DialogService, terrain)
-            .ConfigureAwait(false);
+                                          .ConfigureAwait(false);
         if (updatedTerrain is null)
             return;
         Contract.Assert(updatedTerrain == terrain);
         await TerrainRepository.ModifyTerrainAsync(terrain)
-            .ConfigureAwait(false);
+                               .ConfigureAwait(false);
         await _mudTable.ReloadServerData()
-            .ConfigureAwait(false);
+                       .ConfigureAwait(false);
     }
 
     private async Task DeleteTerrainAsync(Terrain terrain)
@@ -118,10 +132,28 @@
         await Dialogs.ConfirmDeletionDialog.ShowAsync(
             DialogService,
             Localizer[nameof(Language.Pages_Terrains_ConfirmDeleteOfTerrain_Description)],
-            Localizer[nameof(Language.Pages_Terrains_ConfirmDeleteOfTerrain_Title)]);
+            Localizer[nameof(Language.Pages_Terrains_ConfirmDeleteOfTerrain_Title)]
+        );
         await TerrainRepository.DeleteTerrainAsync(terrain)
-            .ConfigureAwait(false);
+                               .ConfigureAwait(false);
         await _mudTable.ReloadServerData()
-            .ConfigureAwait(false);
+                       .ConfigureAwait(false);
+    }
+
+    private async Task ShowUserPermissionsAsync(Terrain context)
+    {
+        if (context.PrimaryKey.ToString() is not { } terrainPkString)
+            throw new ArgumentException("Terrain has no primary key");
+        await Dialogs.ResourceBasedPrivilegeDialog.ShowAsync(
+            DialogService,
+            new[]
+            {
+                Claims.ResourceBased.Terrain.All,
+                Claims.ResourceBased.Terrain.Modify,
+                Claims.ResourceBased.Terrain.Delete,
+            },
+            Claims.ResourceBased.Terrain.All,
+            terrainPkString
+        );
     }
 }

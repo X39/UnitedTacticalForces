@@ -1,0 +1,243 @@
+﻿@page "/users/{UserId:guid}"
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.ResourceClaimRepository
+@using X39.UnitedTacticalForces.WebApp.Services.RoleRepository
+@using System.Net.Http.Headers
+@inject IStringLocalizer<Language> Localizer
+@inject IUserRepository            UserRepository
+@inject IResourceClaimRepository   ResourceClaimRepository
+@inject MeService                  Me
+
+<LoadAsync LoadFunc="LoadFuncAsync">
+    <ChildContent>
+        <BusyAsync @ref="_busy">
+            <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+                <MudTabPanel Text="@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Details_Header)]">
+                    <ChildContent>
+                        <MudButtonGroup>
+                            <Users_Interactions_ToggleBan User="_user"/>
+                            <Users_Interactions_ToggleVerified User="_user"/>
+                        </MudButtonGroup>
+                        <MudTextField T="string"
+                                      Label="@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Details_Nickname)]"
+                                      Value="@_user.Nickname"
+                                      ReadOnly="@Me.HasClaimOrUserAdmin(Claims.User.Nickname)"
+                                      ValueChanged="RenameUserAsync"/>
+                        <MudTextField T="string"
+                                      Label="@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Details_EMail)]"
+                                      Value="@_user.EMail"
+                                      ReadOnly="@Me.HasClaimOrUserAdmin(Claims.User.EMail)"
+                                      ValueChanged="RenameUserAsync"/>
+                        <MudTextField T="string"
+                                      Label="@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Details_Discord_Username)]"
+                                      Value="@(_user.Discord?.Username ?? string.Empty)"
+                                      ReadOnly="@true"/>
+                        <MudTextField T="string"
+                                      Label="@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Details_Discord_Id)]"
+                                      Value="@(_user.Discord?.Id?.ToString() ?? string.Empty)"
+                                      ReadOnly="@true"/>
+                        <MudTextField T="string"
+                                      Label="@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Details_Steam_Id64)]"
+                                      Value="@(_user.Steam?.Id64?.ToString() ?? string.Empty)"
+                                      ReadOnly="@true"/>
+                    </ChildContent>
+                </MudTabPanel>
+                <MudTabPanel Text="@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Roles_Header)]">
+                    <MudTable @ref="_mudRolesTable"
+                              Dense="true"
+                              ServerData="RolesTableServerDataAsync"
+                              Virtualize="true"
+                              FixedFooter="true"
+                              FixedHeader="true">
+                        <ColGroup>
+                            <col style="width: 0"/>
+                            <col/>
+                            <col style="width: 0"/>
+                        </ColGroup>
+                        <ToolBarContent>
+                            <MudTextField @bind-Value="_rolesTableSearchString"
+                                          Placeholder="@Localizer[nameof(Language.Common_Search)]"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          IconSize="Size.Medium"
+                                          Class="mt-0"/>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Roles_Table_Title)]</MudTh>
+                            <MudTh>@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Roles_Table_Description)]</MudTh>
+                            <MudTh>@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Roles_Table_Assigned)]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>
+                                <MudText>@context.Title</MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudText>@context.Description</MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudTooltip>
+                                    <TooltipContent>
+                                        <MudText>@(Localizer[nameof(Language.Pages_UsersDetail_Tabs_Roles_Table_Assigned_Tooltip_0RoleName_1Description)].ToString().Format(context.Title ?? string.Empty, context.Description ?? string.Empty))</MudText>
+                                    </TooltipContent>
+                                    <ChildContent>
+                                        <MudCheckBox T="bool"
+                                                     Value="@IsRoleAssigned(context)"
+                                                     ValueChanged="@((flag) => SetRoleAssignedAsync(context, flag))"
+                                                     ReadOnly="@CanAssignRole(context)"/>
+                                    </ChildContent>
+                                </MudTooltip>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudTabPanel>
+                <MudTabPanel Text="@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Claims_Header)]">
+                    <ChildContent>
+                        <MudTable @ref="_mudClaimsTable"
+                                  Dense="true"
+                                  ServerData="ClaimsTableServerDataAsync"
+                                  RowsPerPage="50"
+                                  Virtualize="true"
+                                  FixedFooter="true"
+                                  FixedHeader="true">
+                            <ColGroup>
+                                <col style="width: 0"/>
+                                <col/>
+                                <col style="width: 0"/>
+                            </ColGroup>
+                            <HeaderContent>
+                                <MudTh>@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Claims_Table_Title)]</MudTh>
+                                <MudTh>@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Claims_Table_Description)]</MudTh>
+                                <MudTh>@Localizer[nameof(Language.Pages_UsersDetail_Tabs_Claims_Table_Interactions)]</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <MudText>@context.Title</MudText>
+                                </MudTd>
+                                <MudTd>
+                                    <MudText>@context.Description</MudText>
+                                </MudTd>
+                                <MudTd>
+                                    <MudTooltip>
+                                        <TooltipContent>
+                                            <MudText>@(Localizer[nameof(Language.Pages_UsersDetail_Tabs_Claims_Table_Interactions_DeleteClaim_Tooltip_0ClaimName_1Description)].ToString().Format(context.Title ?? string.Empty, context.Description ?? string.Empty))</MudText>
+                                        </TooltipContent>
+                                        <ChildContent>
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Color="Color.Error"
+                                                           OnClick="@(() => RemoveClaimAsync(context))"/>
+                                        </ChildContent>
+                                    </MudTooltip>
+
+                                </MudTd>
+                            </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="@(new[]{ 10, 50, 100, 250, 500 })"/>
+                            </PagerContent>
+                        </MudTable>
+                    </ChildContent>
+                </MudTabPanel>
+            </MudTabs>
+        </BusyAsync>
+    </ChildContent>
+</LoadAsync>
+
+@code {
+
+    private BusyAsync _busy = null!;
+
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    private MudTable<Role>  _mudRolesTable          = null!;
+    private MudTable<Claim> _mudClaimsTable         = null!;
+    private string          _rolesTableSearchString = string.Empty;
+
+    /// <summary>
+    /// Gets initialized via <see cref="LoadFuncAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// <b>WARNING</b>
+    /// Unless this is initialized successfully via <see cref="LoadFuncAsync"/>,
+    /// this is <see langword="null"/> even tho the type annotation says different!
+    /// <see cref="LoadFuncAsync"/> is guaranteed to have executed prior rendering when using <see cref="LoadAsync"/>
+    /// component.
+    /// </remarks>
+    private User _user = null!;
+
+    private List<Role> _rolesAvailable = new();
+    private List<Role> _rolesAssigned  = new();
+
+    private async Task LoadFuncAsync(CancellationToken cancellationToken)
+    {
+        var user = await UserRepository.GetUserAsync(UserId, cancellationToken).ConfigureAwait(false);
+        _user = user ?? throw new InvalidOperationException($"User with id {UserId} not found.");
+
+        var rolesAvailable = await UserRepository.GetRolesAvailableToMeAsync(cancellationToken).ConfigureAwait(false);
+        _rolesAvailable.AddRange(rolesAvailable);
+
+        var rolesAssigned = await UserRepository.GetRolesOfUserAsync(UserId, cancellationToken).ConfigureAwait(false);
+        _rolesAssigned.AddRange(rolesAssigned);
+    }
+
+    private async Task RenameUserAsync(string arg)
+    {
+        using var busy       = _busy.BusyToken();
+        var       clonedUser = _user.ShallowCopy();
+        clonedUser.Nickname = arg;
+        await UserRepository.UpdateUserAsync(clonedUser);
+        _user.Nickname = arg;
+    }
+
+    private Task<TableData<Role>> RolesTableServerDataAsync(TableState arg)
+    {
+        var roles = _rolesAssigned.Where((role) => 
+                                             (role.Title?.Contains(_rolesTableSearchString.Trim(), StringComparison.CurrentCultureIgnoreCase) ?? false) 
+                                          || (role.Description?.Contains(_rolesTableSearchString.Trim(), StringComparison.CurrentCultureIgnoreCase) ?? false));
+        return Task.FromResult(new TableData<Role>{ Items = roles, TotalItems = _rolesAssigned.Count, });
+    }
+
+    private async Task<TableData<Claim>> ClaimsTableServerDataAsync(TableState arg)
+    {
+        using var busy        = _busy.BusyToken();
+        var       result      = await UserRepository.GetClaimsOfUserAsync(UserId, arg.Page * arg.PageSize, arg.PageSize);
+        var       resultCount = await UserRepository.CountClaimsOfUserAsync(UserId);
+        return new TableData<Claim>{ Items = result, TotalItems = (int) resultCount };
+    }
+
+    private bool IsRoleAssigned(Role context)
+    {
+        if (context.PrimaryKey is not{ } roleId)
+            throw new InvalidOperationException($"Role {context} has no primary key.");
+        return _rolesAssigned.Any(role => role.PrimaryKey == roleId);
+    }
+
+    private bool CanAssignRole(Role context)
+    {
+        if (context.PrimaryKey is not{ } roleId)
+            throw new InvalidOperationException($"Role {context} has no primary key.");
+        return _rolesAvailable.Any(role => role.PrimaryKey == roleId);
+    }
+
+    private async Task SetRoleAssignedAsync(Role context, bool flag)
+    {
+        using var busy = _busy.BusyToken();
+        if (context.PrimaryKey is not{ } roleId)
+            throw new InvalidOperationException($"Role {context} has no primary key.");
+        await UserRepository.SetUserRoleAsync(UserId, roleId, flag);
+
+        if (flag)
+            _rolesAssigned.Add(context);
+        else
+            _rolesAssigned.RemoveAll(role => role.PrimaryKey == roleId);
+    }
+
+    private async Task RemoveClaimAsync(Claim context)
+    {
+        using var busy = _busy.BusyToken();
+        if (context.PrimaryKey is not{ } claimId)
+            throw new InvalidOperationException($"Claim {context} has no primary key.");
+        await ResourceClaimRepository.DeleteClaimAsync(claimId);
+    }
+
+}

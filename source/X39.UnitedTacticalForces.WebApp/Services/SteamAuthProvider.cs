@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using X39.Util.Collections;
 using X39.Util.DependencyInjection.Attributes;
+using SClaim = System.Security.Claims.Claim;
 
 namespace X39.UnitedTacticalForces.WebApp.Services;
 
@@ -15,18 +16,19 @@ public class SteamAuthProvider : AuthenticationStateProvider
         _userService = userService;
     }
 
-    private static IEnumerable<Claim> GetClaims(User user)
+    private static IEnumerable<SClaim> GetClaims(User user)
     {
-        var userClaims = user.Roles
-            ?.Select((q) => q.Identifier)
-            .NotNull()
-            .Select((q) => new Claim(ClaimTypes.Role, q));
+        var userClaims = user.Claims
+                             ?.NotNull()
+                             .Select((q) => new SClaim(q.Identifier ?? string.Empty, q.Value ?? string.Empty));
+
         return new[]
-        {
-            new Claim(ClaimTypes.Name, user.Nickname ?? string.Empty),
-            new Claim(ClaimTypes.NameIdentifier, (user.PrimaryKey ?? Guid.Empty).ToString()),
-            user.IsVerified is true ? new Claim(ClaimTypes.Role, Claims.Verified) : default,
-        }.Concat(userClaims ?? Enumerable.Empty<Claim>()).NotNull();
+            {
+                new SClaim(ClaimTypes.Name,           user.Nickname ?? string.Empty),
+                new SClaim(ClaimTypes.NameIdentifier, (user.PrimaryKey ?? Guid.Empty).ToString()),
+                user.IsVerified is true ? new SClaim(ClaimTypes.Role, Constants.Verified) : default,
+            }.Concat(userClaims ?? Enumerable.Empty<SClaim>())
+             .NotNull();
     }
 
     public override Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -42,7 +44,7 @@ public class SteamAuthProvider : AuthenticationStateProvider
             identity = new ClaimsIdentity();
         }
 
-        var claimsPrincipal = new ClaimsPrincipal(identity);
+        var claimsPrincipal     = new ClaimsPrincipal(identity);
         var authenticationState = new AuthenticationState(claimsPrincipal);
         return Task.FromResult(authenticationState);
     }

@@ -213,7 +213,7 @@ public class GameServersController : ControllerBase
     /// </param>
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
     [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
-    [HttpPut("{gameServerId:long}/change-mod-pack", Name = nameof(ChangeModPackAsync))]
+    [HttpPut("{gameServerId:long}/mod-pack/set", Name = nameof(ChangeModPackAsync))]
     [Authorize(Claims.ResourceBased.Server.ModPack)]
     public async Task<ActionResult<GameServerInfo>> ChangeModPackAsync(
         [FromRoute] long gameServerId,
@@ -226,6 +226,32 @@ public class GameServersController : ControllerBase
         if (gameServer is null)
             return NotFound();
         gameServer.SelectedModPackFk = modPackId;
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+    
+    /// <summary>
+    /// Allows to remove the mod pack of a <see cref="GameServer"/>.
+    /// </summary>
+    /// <param name="gameServerId">The id of the <see cref="GameServer"/> to change the mod pack of.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NoContent)]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.NotFound)]
+    [HttpPut("{gameServerId:long}/mod-pack/clear", Name = nameof(ClearModPackAsync))]
+    [Authorize(Claims.ResourceBased.Server.ModPack)]
+    public async Task<ActionResult<GameServerInfo>> ClearModPackAsync(
+        [FromRoute] long gameServerId,
+        CancellationToken cancellationToken)
+    {
+        var gameServer = await _apiDbContext.GameServers.SingleOrDefaultAsync(
+            (q) => q.PrimaryKey == gameServerId,
+            cancellationToken);
+        if (gameServer is null)
+            return NotFound();
+        gameServer.SelectedModPackFk = null;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }

@@ -381,6 +381,15 @@
     <data name="Dialogs_ConfirmSlotSelection_SelectingSlotWillChangeAcceptanceToAccepted" xml:space="preserve">
         <value>When you select a slot, your acceptance will be changed to "accepted".</value>
     </data>
+    <data name="Dialogs_ResourceBasedPrivilegeDialog_Headers_User" xml:space="preserve">
+        <value>User</value>
+    </data>
+    <data name="Dialogs_ResourceBasedPrivilegeDialog_Tooltips_Remove" xml:space="preserve">
+        <value>Remove</value>
+    </data>
+    <data name="Pages_GameServers_Table_Interactions_ShowUserPermissions" xml:space="preserve">
+        <value>Shows the list of users with authorisations on this server</value>
+    </data>
     <data name="Dialogs_ConfirmSlotSelection_ConfirmAcceptanceStatusChange" xml:space="preserve">
         <value>Confirm the change of the acceptance status</value>
     </data>
@@ -530,5 +539,74 @@
     </data>
     <data name="Pages_GameServers_ConfirmUpgradeOfGameServer_Title" xml:space="preserve">
         <value>Confirm upgrade</value>
+    </data>
+    <data name="Pages_ModPacks_Table_Interactions_ShowUserPermissions" xml:space="preserve">
+        <value>Shows the list of users with authorisations for this mod pack</value>
+    </data>
+    <data name="Pages_Terrains_Table_Interactions_ShowUserPermissions" xml:space="preserve">
+        <value>Shows the list of users with authorisations for this terrain</value>
+    </data>
+    <data name="Exception_GameServer_PrimaryKey_is_null" xml:space="preserve">
+        <value>GameServer.PrimaryKey is null.</value>
+    </data>
+    <data name="Exception_ModPackDefinition_PrimaryKey_is_null" xml:space="preserve">
+        <value>ModPackDefinition.PrimaryKey is null.</value>
+    </data>
+    <data name="Exception_GameFolder_Identifier_is_null" xml:space="preserve">
+        <value>GameFolder.Identifier is null.</value>
+    </data>
+    <data name="Exception_GameFileInfo_Name_is_null" xml:space="preserve">
+        <value>GameFileInfo.Name is null.</value>
+    </data>
+    <data name="Pages_Users_ShowUserDetails_ToolTip" xml:space="preserve">
+        <value>Changes the page to the user details where modifying the user is possible.</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Header" xml:space="preserve">
+        <value>Details</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Header" xml:space="preserve">
+        <value>Roles</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Header" xml:space="preserve">
+        <value>Claims</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Nickname" xml:space="preserve">
+        <value>Nickname</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_EMail" xml:space="preserve">
+        <value>E-Mail</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Discord_Username" xml:space="preserve">
+        <value>Discord Username</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Discord_Id" xml:space="preserve">
+        <value>Discord ID</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Steam_Id64" xml:space="preserve">
+        <value>SteamId64</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Table_Title" xml:space="preserve">
+        <value>Title</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Table_Description" xml:space="preserve">
+        <value>Description</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Table_Assigned" xml:space="preserve">
+        <value>Assigned</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Table_Title" xml:space="preserve">
+        <value>Title</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Table_Description" xml:space="preserve">
+        <value>Description</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Table_Interactions" xml:space="preserve">
+        <value>Interactions</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Table_Assigned_Tooltip_0RoleName_1Description" xml:space="preserve">
+        <value>Changes whether the role '{0}' is assigned to the user or not. The change is performed immediate!</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Table_Interactions_DeleteClaim_Tooltip_0ClaimName_1Description" xml:space="preserve">
+        <value>Deletes the user's claim '{0}'. The change is made immediately and cannot be undone via this user interface!</value>
     </data>
 </root>

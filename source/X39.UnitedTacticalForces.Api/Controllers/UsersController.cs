@@ -79,8 +79,7 @@ public class UsersController : ControllerBase
             await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Steam)
         );
         return Challenge(
-            new AuthenticationProperties
-            {
+            new AuthenticationProperties{
                 RedirectUri  = returnUrl,
                 IsPersistent = true,
                 IssuedUtc    = DateTime.UtcNow,
@@ -107,8 +106,7 @@ public class UsersController : ControllerBase
             await HttpContext.IsProviderSupportedAsync(Constants.AuthorizationSchemas.Discord)
         );
         return Challenge(
-            new AuthenticationProperties
-            {
+            new AuthenticationProperties{
                 RedirectUri  = returnUrl,
                 IsPersistent = true,
                 IssuedUtc    = DateTime.UtcNow,
@@ -126,13 +124,7 @@ public class UsersController : ControllerBase
     [HttpPost("logout", Name = nameof(LogoutAsync))]
     public IActionResult LogoutAsync([FromQuery] string returnUrl)
     {
-        return SignOut(
-            new AuthenticationProperties
-            {
-                RedirectUri = returnUrl,
-            },
-            Constants.AuthorizationSchemas.Cookie
-        );
+        return SignOut(new AuthenticationProperties{ RedirectUri = returnUrl, }, Constants.AuthorizationSchemas.Cookie);
     }
 
     /// <summary>
@@ -156,13 +148,7 @@ public class UsersController : ControllerBase
         user.EMail          = null;
         user.IsDeleted      = true;
         await _apiDbContext.SaveChangesAsync();
-        return SignOut(
-            new AuthenticationProperties
-            {
-                RedirectUri = returnUrl,
-            },
-            Constants.AuthorizationSchemas.Cookie
-        );
+        return SignOut(new AuthenticationProperties{ RedirectUri = returnUrl, }, Constants.AuthorizationSchemas.Cookie);
     }
 
     /// <summary>
@@ -178,7 +164,8 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> UpdateUserAsync(
         [FromRoute] Guid  userId,
         [FromBody]  User  updatedUser,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (!User.TryGetUserId(out var currentUserId))
             return Unauthorized();
@@ -195,9 +182,7 @@ public class UsersController : ControllerBase
     [Authorize]
     [HttpPost("me/update", Name = nameof(UpdateMeAsync))]
     [ProducesResponseType((int) HttpStatusCode.NoContent)]
-    public async Task<IActionResult> UpdateMeAsync(
-        [FromBody] User   updatedUser,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateMeAsync([FromBody] User updatedUser, CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var currentUserId))
             return Unauthorized();
@@ -209,7 +194,8 @@ public class UsersController : ControllerBase
         Guid              userId,
         User              updatedUser,
         CancellationToken cancellationToken,
-        Guid              currentUserId)
+        Guid              currentUserId
+    )
     {
         var existingUser = await _apiDbContext.Users.SingleAsync((q) => q.PrimaryKey == userId, cancellationToken);
         var isSelf       = existingUser.PrimaryKey != currentUserId;
@@ -247,18 +233,15 @@ public class UsersController : ControllerBase
     /// </returns>
     [Authorize]
     [HttpGet("{userId:guid}", Name = nameof(GetUserAsync))]
-    public async Task<ActionResult<User?>> GetUserAsync(
-        [FromRoute] Guid  userId,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<User?>> GetUserAsync([FromRoute] Guid userId, CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var currentUserId))
             return Unauthorized();
 
-        var existingUser = await _apiDbContext.Users
-                                              .SingleOrDefaultAsync(
-                                                  (user) => user.PrimaryKey == userId,
-                                                  cancellationToken
-                                              );
+        var existingUser = await _apiDbContext.Users.SingleOrDefaultAsync(
+            (user) => user.PrimaryKey == userId,
+            cancellationToken
+        );
         var isSelf = existingUser?.PrimaryKey == currentUserId;
         if (existingUser is null)
             return Ok(existingUser);
@@ -301,21 +284,20 @@ public class UsersController : ControllerBase
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
-        var existingUser = await _apiDbContext
-                                 .Users
-                                 .AsNoTracking()
-                                 .SingleOrDefaultAsync((user) => user.PrimaryKey == userId, cancellationToken);
+        var existingUser = await _apiDbContext.Users.AsNoTracking()
+                                              .SingleOrDefaultAsync(
+                                                  (user) => user.PrimaryKey == userId,
+                                                  cancellationToken
+                                              );
         if (existingUser is null)
             return NotFound();
         var roles  = new List<Role>();
         var claims = new List<Claim>();
-        await foreach (var role in _apiDbContext
-                                   .Roles
-                                   .AsNoTracking()
-                                   .Include((e) => e.Claims)
-                                   .Where((role) => role.Users!.Any((user) => user.PrimaryKey == userId))
-                                   .AsAsyncEnumerable()
-                                   .WithCancellation(cancellationToken))
+        await foreach (var role in _apiDbContext.Roles.AsNoTracking()
+                                                .Include((e) => e.Claims)
+                                                .Where((role) => role.Users!.Any((user) => user.PrimaryKey == userId))
+                                                .AsAsyncEnumerable()
+                                                .WithCancellation(cancellationToken))
         {
             roles.Add(role);
             if (role.Claims is null)
@@ -324,12 +306,12 @@ public class UsersController : ControllerBase
             role.Claims = null;
         }
 
-        await foreach (var claim in _apiDbContext
-                                    .Claims
-                                    .AsNoTracking()
-                                    .Where((claim) => claim.Users!.Any((user) => user.PrimaryKey == userId))
-                                    .AsAsyncEnumerable()
-                                    .WithCancellation(cancellationToken))
+        await foreach (var claim in _apiDbContext.Claims.AsNoTracking()
+                                                 .Where(
+                                                     (claim) => claim.Users!.Any((user) => user.PrimaryKey == userId)
+                                                 )
+                                                 .AsAsyncEnumerable()
+                                                 .WithCancellation(cancellationToken))
         {
             claims.Add(claim);
         }
@@ -337,6 +319,96 @@ public class UsersController : ControllerBase
         existingUser.Claims = claims;
         existingUser.Roles  = roles;
         return Ok(existingUser);
+    }
+
+    /// <summary>
+    /// Gets all claims of the user identified by <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="userId">The id of the user.</param>
+    /// <param name="skip">The amount of <see cref="Claim"/>'s to skip. Paging argument.</param>
+    /// <param name="take">The amount of <see cref="Claim"/>'s to take after skip. Paging argument.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the claims.</returns>
+    [HttpGet("claims-of/{userId}", Name = nameof(GetClaimsOfUser))]
+    [ProducesResponseType(typeof(IEnumerable<Claim>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Claims.Administrative.Role)]
+    public async Task<ActionResult> GetClaimsOfUser(
+        CancellationToken cancellationToken,
+        [FromRoute] Guid  userId,
+        [FromQuery] int?  skip = null,
+        [FromQuery] int?  take = null
+    )
+    {
+        var userExists = await _apiDbContext.Users.AsNoTracking()
+                                            .AnyAsync((user) => user.PrimaryKey == userId, cancellationToken);
+        if (!userExists)
+            return NotFound();
+        var claims = _apiDbContext.Claims.AsNoTracking()
+                                  .Where((claim) => claim.Users!.Any((user) => user.PrimaryKey == userId))
+                                  .OrderBy((claim) => claim.Title)
+                                  .Skip(skip ?? 0)
+                                  .Take(take ?? 10);
+
+        var result = await claims.ToArrayAsync(cancellationToken);
+        return Ok(result);
+    }
+    
+    /// <summary>
+    /// Gets the count of all claims of the user identified by <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="userId">The id of the user.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the count.</returns>
+    [HttpGet("claims-of/{userId}/count", Name = nameof(GetClaimsOfUserCount))]
+    [ProducesResponseType(typeof(long), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Claims.Administrative.Role)]
+    public async Task<ActionResult> GetClaimsOfUserCount(CancellationToken cancellationToken, [FromRoute] Guid userId)
+    {
+        var userExists = await _apiDbContext.Users.AsNoTracking()
+                                            .AnyAsync((user) => user.PrimaryKey == userId, cancellationToken);
+        if (!userExists)
+            return NotFound();
+        var result = await _apiDbContext.Claims.AsNoTracking()
+                                         .Where((claim) => claim.Users!.Any((user) => user.PrimaryKey == userId))
+                                         .CountAsync(cancellationToken);
+        return Ok(result);
+    }
+    
+    /// <summary>
+    /// Gets all roles related to the user identified by <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="userId">The id of the user.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the roles.</returns>
+    [HttpGet("roles-of/{userId}", Name = nameof(GetRolesOfUser))]
+    [ProducesResponseType(typeof(IEnumerable<Role>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Claims.Administrative.Role)]
+    public async Task<ActionResult> GetRolesOfUser(CancellationToken cancellationToken, [FromRoute] Guid userId)
+    {
+        var user = await _apiDbContext.Users.Include((e) => e.Roles)
+                                      .AsNoTracking()
+                                      .FirstOrDefaultAsync((user) => user.PrimaryKey == userId, cancellationToken);
+        if (user is null)
+            return NotFound();
+        return Ok(user.Roles);
     }
 
     /// <summary>
@@ -368,9 +440,10 @@ public class UsersController : ControllerBase
         [FromQuery] int     skip,
         [FromQuery] int     take,
         CancellationToken   cancellationToken,
-        [FromQuery] string? search            = null,
-        [FromQuery] bool?   includeRolesAndClaims     = false,
-        [FromQuery] bool?   includeUnverified = false)
+        [FromQuery] string? search                = null,
+        [FromQuery] bool?   includeRolesAndClaims = false,
+        [FromQuery] bool?   includeUnverified     = false
+    )
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
@@ -383,21 +456,23 @@ public class UsersController : ControllerBase
         {
             if (User.HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.Role))
             {
-                users = users.Include((e) => e.Claims)
-                             .Include((e) => e.Roles!)
-                             .ThenInclude((e) => e.Claims);
+                users = users.Include((e) => e.Claims).Include((e) => e.Roles!).ThenInclude((e) => e.Claims);
             }
             else
             {
                 var roleClaimIds = await _apiDbContext.Roles
-                    .Where((role) => role.Users!.Any((user) => user.PrimaryKey == userId))
-                    .SelectMany((role) => role.Claims!)
-                    .Select((claim) => claim.PrimaryKey)
-                    .ToArrayAsync(cancellationToken);
+                                                      .Where(
+                                                          (role) => role.Users!.Any((user) => user.PrimaryKey == userId)
+                                                      )
+                                                      .SelectMany((role) => role.Claims!)
+                                                      .Select((claim) => claim.PrimaryKey)
+                                                      .ToArrayAsync(cancellationToken);
                 var claimIds = await _apiDbContext.Claims
-                    .Where((claim) => claim.Users!.Any((user) => user.PrimaryKey == userId))
-                    .Select((claim) => claim.PrimaryKey)
-                    .ToArrayAsync(cancellationToken);
+                                                  .Where(
+                                                      (claim) => claim.Users!.Any((user) => user.PrimaryKey == userId)
+                                                  )
+                                                  .Select((claim) => claim.PrimaryKey)
+                                                  .ToArrayAsync(cancellationToken);
                 users = users.Include((e) => e.Claims!.Where((claim) => claimIds.Contains(claim.PrimaryKey)))
                              .Include((e) => e.Roles!.Where((role) => roleClaimIds.Contains(role.PrimaryKey)))
                              .ThenInclude((e) => e.Claims);
@@ -431,10 +506,7 @@ public class UsersController : ControllerBase
             users  = users.Where((q) => EF.Functions.ILike(q.Nickname, search, "\\"));
         }
 
-        users = users
-                .OrderBy((q) => q.Nickname)
-                .Skip(skip)
-                .Take(take);
+        users = users.OrderBy((q) => q.Nickname).Skip(skip).Take(take);
 
         var result = await users.ToArrayAsync(cancellationToken);
 
@@ -467,9 +539,10 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<long>> GetUsersCountAsync(
         CancellationToken   cancellationToken,
         [FromQuery] string? search            = null,
-        [FromQuery] bool?   includeUnverified = false)
+        [FromQuery] bool?   includeUnverified = false
+    )
     {
-        IQueryable<User> users       = _apiDbContext.Users;
+        IQueryable<User> users = _apiDbContext.Users;
 
         if (!(includeUnverified ?? false))
         {

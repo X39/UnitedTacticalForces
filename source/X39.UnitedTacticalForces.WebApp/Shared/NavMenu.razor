@@ -1,9 +1,9 @@
 ﻿@using X39.UnitedTacticalForces.WebApp.Services
 @using X39.Util
 @inject IStringLocalizer<Language> Localizer
-@inject MeService Me
-@inject BaseUrl BaseUrl
-@inject IConfiguration Configuration
+@inject MeService                  Me
+@inject BaseUrl                    BaseUrl
+@inject IConfiguration             Configuration
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_UpcommingEvents)]</MudNavLink>
     @if (Me.IsVerified)
@@ -11,25 +11,28 @@
         <MudNavLink Href="events" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Event">
             @Localizer[nameof(Language.Shared_NavMenu_Events)]
         </MudNavLink>
-        @if (Me.IsInRoleOrAdmin(Claims.ModPackCreate, Claims.ModPackDelete, Claims.ModPackModify))
+        @if (Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All))
         {
             <MudNavLink Href="modpacks" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Extension">
                 @Localizer[nameof(Language.Shared_NavMenu_ModPacks)]
             </MudNavLink>
         }
-        @if (Me.IsInRoleOrAdmin(Claims.TerrainCreate, Claims.TerrainDelete, Claims.TerrainModify))
+
+        @if (Me.HasBaseClaimOrModPackAdmin(Claims.Creation.Terrain, Claims.ResourceBased.Terrain.All))
         {
             <MudNavLink Href="terrains" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Map">
                 @Localizer[nameof(Language.Shared_NavMenu_Terrains)]
             </MudNavLink>
         }
-        @if (Me.IsInRoleOrAdmin(Claims.UserList))
+
+        @if (Me.HasBaseClaimOrUserAdmin(Claims.User.All))
         {
             <MudNavLink Href="users" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.People">
                 @Localizer[nameof(Language.Shared_NavMenu_Users)]
             </MudNavLink>
         }
-        @if (Me.IsInRoleOrAdmin(Claims.ServerAccess))
+
+        @if (Me.HasBaseClaimOrServerAdmin(Claims.ResourceBased.Server.All))
         {
             <MudNavLink Href="servers" Match="NavLinkMatch.Prefix" Icon="@Constants.Icons.X39.Server">
                 @Localizer[nameof(Language.Shared_NavMenu_GameServers)]

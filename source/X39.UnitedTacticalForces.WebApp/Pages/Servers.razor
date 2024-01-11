@@ -5,12 +5,12 @@
 @using X39.UnitedTacticalForces.WebApp.Dialogs
 @using X39.Util
 @using X39.Util.Collections
-@inject IGameServerRepository GameServerRepository
+@inject IGameServerRepository      GameServerRepository
 @inject IStringLocalizer<Language> Localizer
-@inject BaseUrl BaseUrl
-@inject IDialogService DialogService
-@inject IModPackRepository ModPackRepository
-@inject MeService Me
+@inject BaseUrl                    BaseUrl
+@inject IDialogService             DialogService
+@inject IModPackRepository         ModPackRepository
+@inject MeService                  Me
 @attribute [Authorize]
 <PageTitle>@Localizer[nameof(Language.Pages_GameServers_Title)]</PageTitle>
 <MudTable @ref="_mudTable"
@@ -21,238 +21,252 @@
           Height="@Breakpoint.ToFullPageTableHeight()"
           FixedFooter="true"
           FixedHeader="true">
-    <ColGroup>
-        <col style="width: 0"/>
-        <col/>
-        <col/>
-        <col/>
-        <col/>
-        <col/>
-        <col style="width: 0"/>
-    </ColGroup>
-    <ToolBarContent>
-        <MudText Typo="Typo.h6">
-            @Localizer[nameof(Language.Pages_GameServers_AllGameServers)]
-        </MudText>
-    </ToolBarContent>
-    <HeaderContent>
-        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_Status)]</MudTh>
-        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_Title)]</MudTh>
-        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampCreated)]</MudTh>
-        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampUpgraded)]</MudTh>
-        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_ActiveModPack)]</MudTh>
-        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_SelectedModPack)]</MudTh>
-        <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions)]</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_Status)]">
-            <MudTooltip>
-                <TooltipContent>
-                    <MudText>@GetStatusToolTip(context)</MudText>
-                </TooltipContent>
-                <ChildContent>
-                    <MudIcon Icon="@(GetStatusIcon(context))" Color="Color.Primary"/>
-                </ChildContent>
-            </MudTooltip>
-        </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_Title)]">
-            @(context.GameServer?.Title)
-        </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampCreated)]">
-            @(context.GameServer?.TimeStampCreated?.ToLocalTime().ToString("g"))
-        </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampUpgraded)]">
-            @(context.GameServer?.TimeStampUpgraded?.ToLocalTime().ToString("g"))
-        </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_ActiveModPack)]">
-            @if (context.GameServer?.ActiveModPack is not null)
-            {
-                <div class="d-inline-flex align-center">
-                    <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack)"
-                                               Revision="@(context.GameServer.ActiveModPack)"/>
-                    <MudText>@(context.GameServer.ActiveModPack.Definition?.Title)</MudText>
-                </div>
-            }
-        </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_SelectedModPack)]">
-            @if (context.GameServer?.SelectedModPack is not null)
-            {
-                <div class="d-inline-flex align-center">
-                    <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack)"/>
-                    <MudText>@(context.GameServer.SelectedModPack.Title)</MudText>
-                </div>
-            }
-        </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_Interactions)]">
-            <MudButtonGroup>
-                @if (Me.IsInRoleOrAdmin(Claims.ServerStartStop))
-                {
-                    <MudTooltip>
-                        <TooltipContent>
-                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_StartServer)]</MudText>
-                        </TooltipContent>
-                        <ChildContent>
-                    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow"
-                                   Color="Color.Success"
-                                   Disabled="@(!context.CanStart ?? false)"
-                                   OnClick="@(() => StartGameServerAsync(context))"/>
-                        </ChildContent>
-                    </MudTooltip>
-                    <MudTooltip>
-                        <TooltipContent>
-                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_StopServer)]</MudText>
-                        </TooltipContent>
-                        <ChildContent>
-                    <MudIconButton Icon="@Icons.Material.Filled.Stop"
-                                   Color="Color.Error"
-                                   Disabled="@(!context.CanStop ?? false)"
-                                   OnClick="@(() => StopGameServerAsync(context))"/>
-                        </ChildContent>
-                    </MudTooltip>
-                }
-                @if (Me.IsInRoleOrAdmin(Claims.ServerUpgrade))
-                {
-                    <MudTooltip>
-                        <TooltipContent>
-                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_UpgradeServer)]</MudText>
-                        </TooltipContent>
-                        <ChildContent>
-                    <MudIconButton Icon="@Icons.Material.Filled.Upgrade"
-                                   Color="Color.Primary"
-                                   Disabled="@(!context.CanUpgrade ?? false)"
-                                   OnClick="@(() => UpgradeGameServerAsync(context))"/>
-                        </ChildContent>
-                    </MudTooltip>
-                }
-                @if (Me.IsInRoleOrAdmin(Claims.ServerLogs))
-                {
-                    <MudTooltip>
-                        <TooltipContent>
-                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_ViewLogs)]</MudText>
-                        </TooltipContent>
-                        <ChildContent>
-                    <MudIconButton Icon="@Icons.Material.Filled.TextSnippet"
-                                   Color="Color.Primary"
-                                   OnClick="@(() => ShowLogsAsync(context))"/>
-                        </ChildContent>
-                    </MudTooltip>
-                    <MudTooltip>
-                        <TooltipContent>
-                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_DownloadLogs)]</MudText>
-                        </TooltipContent>
-                        <ChildContent>
-                    <MudIconButton Icon="@Icons.Material.Filled.Download"
-                                   Color="Color.Primary"
-                                   Href="@BaseUrl.ResolveApiUrl($"/game-servers/{context.GameServer!.PrimaryKey!.Value}/logs/download")"/>
-                        </ChildContent>
-                    </MudTooltip>
-                }
-                @if (Me.IsInRoleOrAdmin(Claims.ServerLogsClear))
-                {
-                    <MudTooltip>
-                        <TooltipContent>
-                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_ClearLogs)]</MudText>
-                        </TooltipContent>
-                        <ChildContent>
-                    <MudIconButton Icon="@Icons.Material.Filled.Clear"
-                                   Color="Color.Primary"
-                                   OnClick="@(() => ClearLogsAsync(context))"/>
-                        </ChildContent>
-                    </MudTooltip>
-                }
-                @if (Me.IsInRoleOrAdmin(Claims.ServerUpdate))
-                {
-                    <MudTooltip>
-                        <TooltipContent>
-                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_EditServer)]</MudText>
-                        </TooltipContent>
-                        <ChildContent>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                           Color="Color.Secondary"
-                                           Disabled="@(!context.CanUpdateConfiguration ?? false)"
-                                           Href="@($"/servers/{context.GameServer!.PrimaryKey!.Value}")"/>
-                        </ChildContent>
-                    </MudTooltip>
-                }
-                @if (Me.IsInRoleOrAdmin(Claims.ServerCreateOrDelete))
-                {
-                    <MudTooltip>
-                        <TooltipContent>
-                            <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_DeleteServer)]</MudText>
-                        </TooltipContent>
-                        <ChildContent>
-                    <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
-                                   Color="Color.Error"
-                                   Disabled="@(context.IsRunning ?? false)"
-                                   OnClick="@(() => DeleteGameServerAsync(context))"/>
-                        </ChildContent>
-                    </MudTooltip>
-                }
-            </MudButtonGroup>
-        </MudTd>
-    </RowTemplate>
-    <PagerContent>
-        <MudTablePager PageSizeOptions="@(new[] {50, 100, 250, 500})"/>
-    </PagerContent>
-    <FooterContent>
-        <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "7"}})">
-            @if (Me.IsInRoleOrAdmin(Claims.ServerCreateOrDelete))
-            {
-                <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewGameServerAsync">
-                    @Localizer[nameof(Language.Pages_GameServers_CreateNewGameServer)]
-                </MudButton>
-            }
-        </MudTd>
-    </FooterContent>
-    <ChildRowContent>
-        @if (Me.IsInRoleOrAdmin(Claims.ServerFiles))
+<ColGroup>
+    <col style="width: 0"/>
+    <col/>
+    <col/>
+    <col/>
+    <col/>
+    <col/>
+    <col style="width: 0"/>
+</ColGroup>
+<ToolBarContent>
+    <MudText Typo="Typo.h6">
+        @Localizer[nameof(Language.Pages_GameServers_AllGameServers)]
+    </MudText>
+</ToolBarContent>
+<HeaderContent>
+    <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_Status)]</MudTh>
+    <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_Title)]</MudTh>
+    <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampCreated)]</MudTh>
+    <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampUpgraded)]</MudTh>
+    <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_ActiveModPack)]</MudTh>
+    <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_SelectedModPack)]</MudTh>
+    <MudTh>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions)]</MudTh>
+</HeaderContent>
+<RowTemplate>
+    <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_Status)]">
+        <MudTooltip>
+            <TooltipContent>
+                <MudText>@GetStatusToolTip(context)</MudText>
+            </TooltipContent>
+            <ChildContent>
+                <MudIcon Icon="@(GetStatusIcon(context))" Color="Color.Primary"/>
+            </ChildContent>
+        </MudTooltip>
+    </MudTd>
+    <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_Title)]">
+        @(context.GameServer?.Title)
+    </MudTd>
+    <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampCreated)]">
+        @(context.GameServer?.TimeStampCreated?.ToLocalTime().ToString("g"))
+    </MudTd>
+    <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_TimeStampUpgraded)]">
+        @(context.GameServer?.TimeStampUpgraded?.ToLocalTime().ToString("g"))
+    </MudTd>
+    <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_ActiveModPack)]">
+        @if (context.GameServer?.ActiveModPack is not null)
         {
-            <td colspan="7">
-                <MudExpansionPanels MultiExpansion="true">
-                    @foreach (var folder in GetGameFolders(context))
-                    {
-                        <MudExpansionPanel IsInitiallyExpanded="true" Dense="true">
-                            <TitleContent>
-                                <div class="d-flex align-center justify-space-between">
-                                    <MudText>@folder.Name</MudText>
-                                    <MudFileUpload T="IBrowserFile"
-                                                   MaximumFileCount="1"
-                                                   Accept="@string.Join(";", folder.AllowedExtensions ?? Enumerable.Empty<string>())"
-                                                   FilesChanged="@((IBrowserFile browserFile) => UploadGameFolderFileAsync(context.GameServer!, folder, browserFile))"
-                                                   Disabled="@(context.IsRunning ?? false)">
-                                        <ButtonTemplate Context="buttonContext">
-                                            <MudButton HtmlTag="label"
-                                                       StartIcon="@Icons.Material.Filled.Add"
-                                                       Color="Color.Success"
-                                                       for="@buttonContext">
-                                                <MudText>@Localizer[nameof(Language.Pages_GameServers_UploadFile)]</MudText>
-                                            </MudButton>
-                                        </ButtonTemplate>
-                                    </MudFileUpload>
-                                </div>
-                            </TitleContent>
-                            <ChildContent>
-                                <MudList Clickable="false" Dense="true">
-                                    @foreach (var file in GetGameFolderFiles(folder))
-                                    {
-                                        <MudListItem>
-                                            <div class="d-flex align-center justify-space-between">
-                                                <MudText>@file.Name</MudText>
-                                                <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
-                                                               Color="Color.Error"
-                                                               OnClick="@(() => DeleteFileAsync(context.GameServer, folder, file))"
-                                                               Disabled="@(context.IsRunning ?? false)"/>
-                                            </div>
-                                        </MudListItem>
-                                    }
-                                </MudList>
-                            </ChildContent>
-                        </MudExpansionPanel>
-                    }
-                </MudExpansionPanels>
-            </td>
+            <div class="d-inline-flex align-center">
+                <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack)"
+                                          Revision="@(context.GameServer.ActiveModPack)"/>
+                <MudText>@(context.GameServer.ActiveModPack.Definition?.Title)</MudText>
+            </div>
         }
-    </ChildRowContent>
+    </MudTd>
+    <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_SelectedModPack)]">
+        @if (context.GameServer?.SelectedModPack is not null)
+        {
+            <div class="d-inline-flex align-center">
+                <UtfModPackDownloadButton ModPack="@(context.GameServer.SelectedModPack)"/>
+                <MudText>@(context.GameServer.SelectedModPack.Title)</MudText>
+            </div>
+        }
+    </MudTd>
+    <MudTd DataLabel="@Localizer[nameof(Language.Pages_GameServers_Table_Interactions)]">
+        <MudButtonGroup>
+            @if (Me.HasResourceClaimOrServerAdmin(Claims.ResourceBased.Server.StartStop, context.GameServer?.PrimaryKey.ToString() ?? string.Empty))
+            {
+                <MudTooltip>
+                    <TooltipContent>
+                        <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_StartServer)]</MudText>
+                    </TooltipContent>
+                    <ChildContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow"
+                                       Color="Color.Success"
+                                       Disabled="@(!context.CanStart ?? false)"
+                                       OnClick="@(() => StartGameServerAsync(context))"/>
+                    </ChildContent>
+                </MudTooltip>
+                <MudTooltip>
+                    <TooltipContent>
+                        <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_StopServer)]</MudText>
+                    </TooltipContent>
+                    <ChildContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.Stop"
+                                       Color="Color.Error"
+                                       Disabled="@(!context.CanStop ?? false)"
+                                       OnClick="@(() => StopGameServerAsync(context))"/>
+                    </ChildContent>
+                </MudTooltip>
+            }
+            @if (Me.HasResourceClaimOrServerAdmin(Claims.ResourceBased.Server.Upgrade, context.GameServer?.PrimaryKey.ToString() ?? string.Empty))
+            {
+                <MudTooltip>
+                    <TooltipContent>
+                        <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_UpgradeServer)]</MudText>
+                    </TooltipContent>
+                    <ChildContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.Upgrade"
+                                       Color="Color.Primary"
+                                       Disabled="@(!context.CanUpgrade ?? false)"
+                                       OnClick="@(() => UpgradeGameServerAsync(context))"/>
+                    </ChildContent>
+                </MudTooltip>
+            }
+            @if (Me.HasResourceClaimOrServerAdmin(Claims.ResourceBased.Server.AccessLogs, context.GameServer?.PrimaryKey.ToString() ?? string.Empty))
+            {
+                <MudTooltip>
+                    <TooltipContent>
+                        <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_ViewLogs)]</MudText>
+                    </TooltipContent>
+                    <ChildContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.TextSnippet"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => ShowLogsAsync(context))"/>
+                    </ChildContent>
+                </MudTooltip>
+                <MudTooltip>
+                    <TooltipContent>
+                        <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_DownloadLogs)]</MudText>
+                    </TooltipContent>
+                    <ChildContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                       Color="Color.Primary"
+                                       Href="@BaseUrl.ResolveApiUrl($"/game-servers/{context.GameServer!.PrimaryKey!.Value}/logs/download")"/>
+                    </ChildContent>
+                </MudTooltip>
+            }
+            @if (Me.HasResourceClaimOrServerAdmin(Claims.ResourceBased.Server.DeleteLogs, context.GameServer?.PrimaryKey.ToString() ?? string.Empty))
+            {
+                <MudTooltip>
+                    <TooltipContent>
+                        <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_ClearLogs)]</MudText>
+                    </TooltipContent>
+                    <ChildContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => ClearLogsAsync(context))"/>
+                    </ChildContent>
+                </MudTooltip>
+            }
+            @if (
+                Me.HasResourceClaimOrServerAdmin(Claims.ResourceBased.Server.Rename,        context.GameServer?.PrimaryKey.ToString() ?? string.Empty)
+             || Me.HasResourceClaimOrServerAdmin(Claims.ResourceBased.Server.ModPack,       context.GameServer?.PrimaryKey.ToString() ?? string.Empty)
+             || Me.HasResourceClaimOrServerAdmin(Claims.ResourceBased.Server.Configuration, context.GameServer?.PrimaryKey.ToString() ?? string.Empty))
+            {
+                <MudTooltip>
+                    <TooltipContent>
+                        <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_EditServer)]</MudText>
+                    </TooltipContent>
+                    <ChildContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Secondary"
+                                       Disabled="@(!context.CanUpdateConfiguration ?? false)"
+                                       Href="@($"/servers/{context.GameServer!.PrimaryKey!.Value}")"/>
+                    </ChildContent>
+                </MudTooltip>
+            }
+            @if (Me.HasClaimOrAdmin(Claims.Administrative.Server))
+            {
+                <MudTooltip>
+                    <TooltipContent>
+                        <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_DeleteServer)]</MudText>
+                    </TooltipContent>
+                    <ChildContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
+                                       Color="Color.Error"
+                                       Disabled="@(context.IsRunning ?? false)"
+                                       OnClick="@(() => DeleteGameServerAsync(context))"/>
+                    </ChildContent>
+                </MudTooltip>
+                <MudTooltip>
+                    <TooltipContent>
+                        <MudText>@Localizer[nameof(Language.Pages_GameServers_Table_Interactions_ShowUserPermissions)]</MudText>
+                    </TooltipContent>
+                    <ChildContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.Groups"
+                                       Color="Color.Primary"
+                                       Disabled="@(context.IsRunning ?? false)"
+                                       OnClick="@(() => ShowUserPermissionsAsync(context))"/>
+                    </ChildContent>
+                </MudTooltip>
+            }
+        </MudButtonGroup>
+    </MudTd>
+</RowTemplate>
+<PagerContent>
+    <MudTablePager PageSizeOptions="@(new[] {50, 100, 250, 500})"/>
+</PagerContent>
+<FooterContent>
+    <MudTd Style="text-align: right" UserAttributes="@(new Dictionary<string, object> {{"colspan", "7"}})">
+        @if (Me.HasClaimOrServerAdmin(Claims.Creation.Server))
+        {
+            <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Success" OnClick="CreateNewGameServerAsync">
+                @Localizer[nameof(Language.Pages_GameServers_CreateNewGameServer)]
+            </MudButton>
+        }
+    </MudTd>
+</FooterContent>
+<ChildRowContent>
+    @if (Me.HasResourceClaimOrServerAdmin(Claims.ResourceBased.Server.Files, context.GameServer?.PrimaryKey.ToString() ?? string.Empty))
+    {
+        <td colspan="7">
+            <MudExpansionPanels MultiExpansion="true">
+                @foreach (var folder in GetGameFolders(context))
+                {
+                    <MudExpansionPanel IsInitiallyExpanded="true" Dense="true">
+                        <TitleContent>
+                            <div class="d-flex align-center justify-space-between">
+                                <MudText>@folder.Name</MudText>
+                                <MudFileUpload T="IBrowserFile"
+                                               MaximumFileCount="1"
+                                               Accept="@string.Join(";", folder.AllowedExtensions ?? Enumerable.Empty<string>())"
+                                               FilesChanged="@((IBrowserFile browserFile) => UploadGameFolderFileAsync(context.GameServer!, folder, browserFile))"
+                                               Disabled="@(context.IsRunning ?? false)">
+                                    <ButtonTemplate Context="buttonContext">
+                                        <MudButton HtmlTag="label"
+                                                   StartIcon="@Icons.Material.Filled.Add"
+                                                   Color="Color.Success"
+                                                   for="@buttonContext">
+                                            <MudText>@Localizer[nameof(Language.Pages_GameServers_UploadFile)]</MudText>
+                                        </MudButton>
+                                    </ButtonTemplate>
+                                </MudFileUpload>
+                            </div>
+                        </TitleContent>
+                        <ChildContent>
+                            <MudList Clickable="false" Dense="true">
+                                @foreach (var file in GetGameFolderFiles(folder))
+                                {
+                                    <MudListItem>
+                                        <div class="d-flex align-center justify-space-between">
+                                            <MudText>@file.Name</MudText>
+                                            <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
+                                                           Color="Color.Error"
+                                                           OnClick="@(() => DeleteFileAsync(context.GameServer, folder, file))"
+                                                           Disabled="@(context.IsRunning ?? false)"/>
+                                        </div>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
+        </td>
+    }
+</ChildRowContent>
 </MudTable>
 
 @code {
@@ -265,20 +279,20 @@
         await Task.Delay(10);
     }
 
-    private long _gameServerCounts = -1;
-    private MudTable<GameServerInfo> _mudTable = null!;
-    private readonly Dictionary<long, ModPackRevision> _modPackRevisions = new();
-    private readonly Dictionary<long, ModPackDefinition> _modPackDefinitions = new();
-    private readonly Dictionary<GameServer, List<GameFolder>> _gameFolders = new();
-    private readonly Dictionary<GameFolder, List<GameFileInfo>> _gameFolderFiles = new();
+    private          long                                       _gameServerCounts   = -1;
+    private          MudTable<GameServerInfo>                   _mudTable           = null!;
+    private readonly Dictionary<long, ModPackRevision>          _modPackRevisions   = new();
+    private readonly Dictionary<long, ModPackDefinition>        _modPackDefinitions = new();
+    private readonly Dictionary<GameServer, List<GameFolder>>   _gameFolders        = new();
+    private readonly Dictionary<GameFolder, List<GameFileInfo>> _gameFolderFiles    = new();
 
     private async Task<TableData<GameServerInfo>> ServerDataAsync(TableState arg)
     {
         if (_gameServerCounts == -1)
             _gameServerCounts = await GameServerRepository.GetGameServerCountAsync()
-                .ConfigureAwait(false);
+                                                          .ConfigureAwait(false);
         var items = await GameServerRepository.GetGameServersAsync()
-            .ConfigureAwait(false);
+                                              .ConfigureAwait(false);
         foreach (var gameServerInfo in items)
         {
             if (gameServerInfo.GameServer is null)
@@ -289,70 +303,76 @@
                 if (!_modPackRevisions.TryGetValue(modPackPk, out var modPack))
                 {
                     var tmp = await ModPackRepository.GetModPackRevisionAsync(modPackPk, CancellationToken.None)
-                        .ConfigureAwait(false);
+                                                     .ConfigureAwait(false);
                     if (tmp is null)
                         continue;
                     _modPackRevisions[modPackPk] = modPack = tmp;
                 }
+
                 gameServerInfo.GameServer.ActiveModPack = modPack;
             }
+
             if (gameServerInfo.GameServer.SelectedModPackFk is not null)
             {
                 var modPackPk = gameServerInfo.GameServer.SelectedModPackFk.Value;
                 if (!_modPackDefinitions.TryGetValue(modPackPk, out var modPack))
                 {
                     var tmp = await ModPackRepository.GetModPackDefinitionAsync(modPackPk, CancellationToken.None)
-                        .ConfigureAwait(false);
+                                                     .ConfigureAwait(false);
                     if (tmp is null)
                         continue;
                     _modPackDefinitions[modPackPk] = modPack = tmp;
                 }
+
                 gameServerInfo.GameServer.SelectedModPack = modPack;
             }
+
             var folders = await GameServerRepository
-                .GetGameServerFoldersAsync(gameServerInfo.GameServer)
-                .ConfigureAwait(false);
+                               .GetGameServerFoldersAsync(gameServerInfo.GameServer)
+                               .ConfigureAwait(false);
             _gameFolders.Add(gameServerInfo.GameServer, folders.ToList());
             foreach (var folder in folders)
             {
                 var files = await GameServerRepository
-                    .GetGameServerFolderFilesAsync(gameServerInfo.GameServer, folder)
-                    .ConfigureAwait(false);
+                                 .GetGameServerFolderFilesAsync(gameServerInfo.GameServer, folder)
+                                 .ConfigureAwait(false);
                 _gameFolderFiles.Add(folder, files.ToList());
             }
         }
+
         return new TableData<GameServerInfo>
         {
             TotalItems = (int) _gameServerCounts,
-            Items = items,
+            Items      = items,
         };
     }
 
     private async Task CreateNewGameServerAsync()
     {
         var result = await SelectorDialog<string>.ShowAsync(
-            DialogService,
-            async () => await GameServerRepository.GetGameServerControllersAsync().ConfigureAwait(false),
-            (s) => s)
-            .ConfigureAwait(false);
+                                                      DialogService,
+                                                      async () => await GameServerRepository.GetGameServerControllersAsync().ConfigureAwait(false),
+                                                      (s) => s
+                                                  )
+                                                 .ConfigureAwait(false);
         if (result is null)
             return;
         _ = await GameServerRepository.CreateGameServerAsync(result, new GameServer()).ConfigureAwait(false);
         await _mudTable.ReloadServerData()
-            .ConfigureAwait(false);
+                       .ConfigureAwait(false);
     }
 
     private async Task ModifyGameServerAsync(GameServer gameServer)
     {
-    // var updatedGameServer = await Dialogs.ModifyGameServerDialog.ShowAsync(DialogService, gameServer)
-    //     .ConfigureAwait(false);
-    // if (updatedGameServer is null)
-    //     return;
-    // Contract.Assert(updatedGameServer == gameServer);
-    // await GameServerRepository.ModifyGameServerAsync(gameServer)
-    //     .ConfigureAwait(false);
-    // await _mudTable.ReloadServerData()
-    //     .ConfigureAwait(false);
+        // var updatedGameServer = await Dialogs.ModifyGameServerDialog.ShowAsync(DialogService, gameServer)
+        //     .ConfigureAwait(false);
+        // if (updatedGameServer is null)
+        //     return;
+        // Contract.Assert(updatedGameServer == gameServer);
+        // await GameServerRepository.ModifyGameServerAsync(gameServer)
+        //     .ConfigureAwait(false);
+        // await _mudTable.ReloadServerData()
+        //     .ConfigureAwait(false);
         throw new NotImplementedException();
     }
 
@@ -382,11 +402,12 @@
         await ConfirmDeletionDialog.ShowAsync(
             DialogService,
             Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfGameServer_Description)],
-            Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfGameServer_Title)]);
+            Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfGameServer_Title)]
+        );
         await GameServerRepository.DeleteGameServerAsync(gameServerInfo.GameServer)
-            .ConfigureAwait(false);
+                                  .ConfigureAwait(false);
         await _mudTable.ReloadServerData()
-            .ConfigureAwait(false);
+                       .ConfigureAwait(false);
     }
 
     private async Task StartGameServerAsync(GameServerInfo gameServerInfo)
@@ -394,7 +415,7 @@
         if (gameServerInfo.GameServer is null)
             throw new NullReferenceException("gameServerInfo.GameServer is null");
         var result = await GameServerRepository.StartGameServerAsync(gameServerInfo.GameServer)
-            .ConfigureAwait(false);
+                                               .ConfigureAwait(false);
         UpdateGameServerInfoFromResult(gameServerInfo, result);
     }
 
@@ -403,7 +424,7 @@
         if (gameServerInfo.GameServer is null)
             throw new NullReferenceException("gameServerInfo.GameServer is null");
         var result = await GameServerRepository.StopGameServerAsync(gameServerInfo.GameServer)
-            .ConfigureAwait(false);
+                                               .ConfigureAwait(false);
         UpdateGameServerInfoFromResult(gameServerInfo, result);
     }
 
@@ -414,9 +435,10 @@
         await ConfirmDialog.ShowAsync(
             DialogService,
             Localizer[nameof(Language.Pages_GameServers_ConfirmUpgradeOfGameServer_Description)],
-            Localizer[nameof(Language.Pages_GameServers_ConfirmUpgradeOfGameServer_Title)]);
+            Localizer[nameof(Language.Pages_GameServers_ConfirmUpgradeOfGameServer_Title)]
+        );
         var result = await GameServerRepository.UpgradeGameServerAsync(gameServerInfo.GameServer)
-            .ConfigureAwait(false);
+                                               .ConfigureAwait(false);
         UpdateGameServerInfoFromResult(gameServerInfo, result);
     }
 
@@ -424,11 +446,11 @@
     {
         if (gameServerInfo.GameServer is null)
             throw new NullReferenceException("gameServerInfo.GameServer is null");
-        gameServerInfo.GameServer.Status = result.GameServer?.Status ?? gameServerInfo.GameServer.Status;
-        gameServerInfo.IsRunning = result.IsRunning ?? gameServerInfo.IsRunning;
-        gameServerInfo.CanStart = result.CanStart ?? gameServerInfo.CanStart;
-        gameServerInfo.CanUpgrade = result.CanUpgrade ?? gameServerInfo.CanUpgrade;
-        gameServerInfo.CanStop = result.CanStop ?? gameServerInfo.CanStop;
+        gameServerInfo.GameServer.Status      = result.GameServer?.Status ?? gameServerInfo.GameServer.Status;
+        gameServerInfo.IsRunning              = result.IsRunning ?? gameServerInfo.IsRunning;
+        gameServerInfo.CanStart               = result.CanStart ?? gameServerInfo.CanStart;
+        gameServerInfo.CanUpgrade             = result.CanUpgrade ?? gameServerInfo.CanUpgrade;
+        gameServerInfo.CanStop                = result.CanStop ?? gameServerInfo.CanStop;
         gameServerInfo.CanUpdateConfiguration = result.CanUpdateConfiguration ?? gameServerInfo.CanUpdateConfiguration;
     }
 
@@ -443,14 +465,15 @@
     {
         return context is {IsRunning: true, GameServer.Status: ELifetimeStatus.Stopped}
             ? Localizer[nameof(Language.Pages_GameServers_Status_UpgradingTooltip)]
-            : context.GameServer?.Status switch {
-                ELifetimeStatus.Stopped => Localizer[nameof(Language.Pages_GameServers_Status_StoppedTooltip)],
+            : context.GameServer?.Status switch
+            {
+                ELifetimeStatus.Stopped  => Localizer[nameof(Language.Pages_GameServers_Status_StoppedTooltip)],
                 ELifetimeStatus.Starting => Localizer[nameof(Language.Pages_GameServers_Status_StartingTooltip)],
                 ELifetimeStatus.Stopping => Localizer[nameof(Language.Pages_GameServers_Status_StoppingTooltip)],
-                ELifetimeStatus.Running => Localizer[nameof(Language.Pages_GameServers_Status_RunningTooltip)],
-                null => string.Empty,
-                _ => throw new ArgumentOutOfRangeException(),
-                };
+                ELifetimeStatus.Running  => Localizer[nameof(Language.Pages_GameServers_Status_RunningTooltip)],
+                null                     => string.Empty,
+                _                        => throw new ArgumentOutOfRangeException(),
+            };
     }
 
     private async Task ShowLogsAsync(GameServerInfo context)
@@ -458,7 +481,7 @@
         if (context.GameServer is null)
             throw new ArgumentException("GameServerInfo.GameServer is null.", nameof(context));
         await ShowGameServerLogs.ShowAsync(DialogService, Breakpoint, context.GameServer)
-            .ConfigureAwait(false);
+                                .ConfigureAwait(false);
     }
 
     private async Task ClearLogsAsync(GameServerInfo context)
@@ -466,62 +489,89 @@
         if (context.GameServer is null)
             throw new ArgumentException("GameServerInfo.GameServer is null.", nameof(context));
         var result = await ConfirmDeletionDialog.ShowAsync(
-            DialogService,
-            Localizer[nameof(Language.Pages_GameServers_ConfirmClearLogs_Description)],
-            Localizer[nameof(Language.Pages_GameServers_ConfirmClearLogs_Title)])
-            .ConfigureAwait(false);
+                                                     DialogService,
+                                                     Localizer[nameof(Language.Pages_GameServers_ConfirmClearLogs_Description)],
+                                                     Localizer[nameof(Language.Pages_GameServers_ConfirmClearLogs_Title)]
+                                                 )
+                                                .ConfigureAwait(false);
         if (!result)
             return;
         await GameServerRepository.ClearAsync(context.GameServer)
-            .ConfigureAwait(false);
+                                  .ConfigureAwait(false);
     }
 
-    private IEnumerable<GameFolder> GetGameFolders(GameServerInfo gameServerInfo)
-        => gameServerInfo.GameServer is null
+    private IEnumerable<GameFolder> GetGameFolders(GameServerInfo gameServerInfo) =>
+        gameServerInfo.GameServer is null
             ? Enumerable.Empty<GameFolder>()
             : _gameFolders.GetValueOrDefault(gameServerInfo.GameServer) ?? Enumerable.Empty<GameFolder>();
 
-    private IEnumerable<GameFileInfo> GetGameFolderFiles(GameFolder gameFolder)
-        => _gameFolderFiles.GetValueOrDefault(gameFolder) ?? Enumerable.Empty<GameFileInfo>();
+    private IEnumerable<GameFileInfo> GetGameFolderFiles(GameFolder gameFolder) => _gameFolderFiles.GetValueOrDefault(gameFolder) ?? Enumerable.Empty<GameFileInfo>();
 
     private async Task DeleteFileAsync(GameServer gameServer, GameFolder gameFolder, GameFileInfo file)
     {
         var result = await ConfirmDeletionDialog.ShowAsync(
             DialogService,
             Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfFile_Description)],
-            Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfFile_Title)]);
+            Localizer[nameof(Language.Pages_GameServers_ConfirmDeleteOfFile_Title)]
+        );
         if (!result)
             return;
         var list = _gameFolderFiles.GetOrAdd(gameFolder, () => new List<GameFileInfo>());
         await GameServerRepository
-            .DeleteGameServerFolderFileAsync(gameServer, gameFolder, file)
-            .ConfigureAwait(false);
+             .DeleteGameServerFolderFileAsync(gameServer, gameFolder, file)
+             .ConfigureAwait(false);
         list.Remove(file);
     }
 
     private async Task UploadGameFolderFileAsync(GameServer gameServer, GameFolder gameFolder, IBrowserFile browserFile)
     {
-        await using var stream = browserFile.OpenReadStream(100 /*mb*/* 1024 /*kb*/* 1024 /*b*/);
+        await using var stream = browserFile.OpenReadStream(100 /*mb*/ * 1024 /*kb*/ * 1024 /*b*/);
         await GameServerRepository.UploadGameServerFolderFileAsync(
-            gameServer,
-            gameFolder,
-            new FileParameter(
-                stream,
-                browserFile.Name,
-                browserFile.ContentType.IsNullOrEmpty()
-                    ? "application/octet-stream"
-                    : browserFile.ContentType))
-            .ConfigureAwait(false);
+                                       gameServer,
+                                       gameFolder,
+                                       new FileParameter(
+                                           stream,
+                                           browserFile.Name,
+                                           browserFile.ContentType.IsNullOrEmpty()
+                                               ? "application/octet-stream"
+                                               : browserFile.ContentType
+                                       )
+                                   )
+                                  .ConfigureAwait(false);
         var list = _gameFolderFiles.GetOrAdd(gameFolder, () => new List<GameFileInfo>());
         if (list.Any((q) => q.Name == browserFile.Name))
             return;
-        list.Add(new GameFileInfo
-        {
-            Name = browserFile.Name,
-            Size = browserFile.Size,
-            MimeType = browserFile.ContentType,
-        });
+        list.Add(
+            new GameFileInfo
+            {
+                Name     = browserFile.Name,
+                Size     = browserFile.Size,
+                MimeType = browserFile.ContentType,
+            }
+        );
     }
 
+    private async Task ShowUserPermissionsAsync(GameServerInfo context)
+    {
+        if (context.GameServer?.PrimaryKey.ToString() is not { } serverPkString)
+            throw new ArgumentException("GameServerInfo.GameServer.PrimaryKey is null.", nameof(context));
+        await Dialogs.ResourceBasedPrivilegeDialog.ShowAsync(
+            DialogService,
+            new[]
+            {
+                Claims.ResourceBased.Server.All,
+                Claims.ResourceBased.Server.StartStop,
+                Claims.ResourceBased.Server.Rename,
+                Claims.ResourceBased.Server.ModPack,
+                Claims.ResourceBased.Server.Configuration,
+                Claims.ResourceBased.Server.Upgrade,
+                Claims.ResourceBased.Server.Files,
+                Claims.ResourceBased.Server.AccessLogs,
+                Claims.ResourceBased.Server.DeleteLogs,
+            },
+            Claims.ResourceBased.Server.All,
+            serverPkString
+        );
+    }
 
 }

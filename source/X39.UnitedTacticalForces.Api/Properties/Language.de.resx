@@ -396,4 +396,7 @@ Wenn diese Einstellung aktiviert ist, kann sich der Start des Servers um 600 Sek
     <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Title" xml:space="preserve">
         <value>Beschränken</value>
     </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Nickname" xml:space="preserve">
+        <value>Spitzname</value>
+    </data>
 </root>

@@ -7,13 +7,13 @@
 @using X39.Util
 @using System.Collections
 @using System.Collections.Immutable
-@inject ISlotRepository SlotRepository
-@inject ISnackbar Snackbar
+@inject ISlotRepository            SlotRepository
+@inject ISnackbar                  Snackbar
 @inject IStringLocalizer<Language> Localizer
-@inject MeService Me
-@inject IDialogService DialogService
+@inject MeService                  Me
+@inject IDialogService             DialogService
 <div class="d-flex flex-column justify-space-between" style="height: 100%;">
-    @if (Me.Eval((user) => user.PrimaryKey == Event.PrimaryKey) || Me.IsInRolesOrAdmin(Claims.EventSlotCreate, Claims.EventSlotDelete, Claims.EventSlotUpdate))
+    @if (Me.Eval((user) => user.PrimaryKey == Event.PrimaryKey) || Me.HasClaimOrEventAdmin())
     {
         <MudFileUpload T="IBrowserFile"
                        FilesChanged="MergeSlotsFromMissionFileAsync"
@@ -51,7 +51,7 @@
                                        OnClick="@(() => AssignToSelfAsync(slot))">
                                 @Localizer[nameof(Language.Pages_EventView_AssignToSelf)]
                             </MudButton>
-                            @if (!Disabled && (Me.IsInRoleOrAdmin(Claims.EventSlotAssign, Claims.EventSlotIgnore, Claims.EventSlotUpdate) || Me.Eval((user) => user.PrimaryKey == Event.HostedByFk)))
+                            @if (!Disabled && (Me.HasClaimOrEventAdmin() || Me.Eval((user) => user.PrimaryKey == Event.HostedByFk)))
                             {
                                 <MudButton StartIcon="@Icons.Material.Filled.AssignmentInd"
                                            Color="Color.Primary"
@@ -83,10 +83,11 @@
 
     [CascadingParameter]
     public Breakpoint Breakpoint { get; set; } = Breakpoint.Always;
-    
+
     private bool _isParsing;
+
     [Parameter, EditorRequired, Required]
-    public IReadOnlyCollection<EventView.SlotGroup> SlotGroups { get; set; }= ArraySegment<EventView.SlotGroup>.Empty;
+    public IReadOnlyCollection<EventView.SlotGroup> SlotGroups { get; set; } = ArraySegment<EventView.SlotGroup>.Empty;
 
     [Parameter, EditorRequired, Required]
     public EventCallback ParentStateHasChanged { get; set; }
@@ -103,7 +104,7 @@
     private async Task PropagateStateHasChanged()
     {
         await ParentStateHasChanged.InvokeAsync()
-            .ConfigureAwait(false);
+                                   .ConfigureAwait(false);
         await InvokeAsync(StateHasChanged)
             .ConfigureAwait(false);
     }
@@ -113,18 +114,20 @@
         try
         {
             [Conditional("DEBUG")]
-            static void DebugLine(string s) => Console.WriteLine(s);
+            static void DebugLine(string s)
+                => Console.WriteLine(s);
 
             using var isParsingDisposable = new Disposable(
                 () => _isParsing = true,
-                () => _isParsing = false);
+                () => _isParsing = false
+            );
 
             IReadOnlyCollection<EventSlot> parsedSlots;
-            await using (var stream = arg.OpenReadStream(100 /*mb*/* 1024 /*kb*/* 1024 /*b*/))
+            await using (var stream = arg.OpenReadStream(100 /*mb*/ * 1024 /*kb*/ * 1024 /*b*/))
             using (var memoryStream = new MemoryStream())
             {
                 await stream.CopyToAsync(memoryStream)
-                    .ConfigureAwait(false);
+                            .ConfigureAwait(false);
                 memoryStream.Seek(0, SeekOrigin.Begin);
                 var configToSlots = new ConfigToSlots(Localizer, Snackbar);
                 try
@@ -138,57 +141,61 @@
                     return;
                 }
             }
+
             if (parsedSlots.Select((eventSlot) => $"{eventSlot.Group}@{eventSlot.Title}").Distinct().Count() == parsedSlots.Count)
             {
                 Snackbar.Add(Localizer[nameof(Language.Pages_EventView_SlotsSharingSameNameIsNotRecommended)], Severity.Warning);
             }
 
-            var parsedEventSlotWasHit = parsedSlots.ToDictionary((q) => q, (_) => false);
-            var existingEventSlots = SlotGroups.SelectMany((q) => q).ToArray();
+            var parsedEventSlotWasHit   = parsedSlots.ToDictionary((q) => q, (_) => false);
+            var existingEventSlots      = SlotGroups.SelectMany((q) => q).ToArray();
             var existingEventSlotWasHit = existingEventSlots.ToDictionary((q) => q, (_) => false);
-            var slotMatch = new Dictionary<EventSlot, EventSlot>();
+            var slotMatch               = new Dictionary<EventSlot, EventSlot>();
 
             foreach (var existingEventSlot in existingEventSlots)
             {
                 var parsedEventSlot = parsedEventSlotWasHit
-                    .Where((q) => !q.Value && existingEventSlot.EqualIdentificationData(q.Key))
-                    .Select((q) => q.Key)
-                    .FirstOrDefault();
+                                      .Where((q) => !q.Value && existingEventSlot.EqualIdentificationData(q.Key))
+                                      .Select((q) => q.Key)
+                                      .FirstOrDefault();
                 if (parsedEventSlot is null)
                     continue;
                 DebugLine($"Slot {existingEventSlot.EventFk}--{existingEventSlot.SlotNumber} {existingEventSlot.Group}@{existingEventSlot.Title} was found with {parsedEventSlot.Group}@{parsedEventSlot.Title}");
                 existingEventSlotWasHit[existingEventSlot] = true;
-                parsedEventSlotWasHit[parsedEventSlot] = true;
-                slotMatch[existingEventSlot] = parsedEventSlot;
+                parsedEventSlotWasHit[parsedEventSlot]     = true;
+                slotMatch[existingEventSlot]               = parsedEventSlot;
             }
+
             var slotsToRemove = existingEventSlotWasHit
-                .Where((q) => !q.Value)
-                .Select((q) => q.Key)
-                .ToArray();
+                                .Where((q) => !q.Value)
+                                .Select((q) => q.Key)
+                                .ToArray();
             var slotsToAdd = parsedEventSlotWasHit
-                .Where((q) => !q.Value)
-                .Select((q) => q.Key)
-                .ToArray();
+                             .Where((q) => !q.Value)
+                             .Select((q) => q.Key)
+                             .ToArray();
             var slotsToUpdate = slotMatch
-                .Where((q) => !q.Key.EqualData(q.Value))
-                .Select((q) => (existing: q.Key, parsed:q.Value))
-                .ToArray();
+                                .Where((q) => !q.Key.EqualData(q.Value))
+                                .Select((q) => (existing: q.Key, parsed: q.Value))
+                                .ToArray();
             try
             {
                 foreach (var eventSlot in slotsToRemove)
                 {
                     await SlotRepository.DeleteSlotAsync(eventSlot)
-                        .ConfigureAwait(false);
+                                        .ConfigureAwait(false);
                 }
+
                 foreach (var (existingEventSlot, parsedEventSlot) in slotsToUpdate)
                 {
                     await SlotRepository.UpdateSlotAsync(existingEventSlot, parsedEventSlot)
-                        .ConfigureAwait(false);
+                                        .ConfigureAwait(false);
                 }
+
                 foreach (var eventSlot in slotsToAdd)
                 {
                     await SlotRepository.CreateSlotAsync(Event, eventSlot)
-                        .ConfigureAwait(false);
+                                        .ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -198,7 +205,7 @@
             finally
             {
                 await Reload.InvokeAsync()
-                    .ConfigureAwait(false);
+                            .ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -212,14 +219,15 @@
         if (Event.UserMetas?.Any((q) => q.Acceptance != EEventAcceptance.Accepted) ?? false)
         {
             var result = await Dialogs.ConfirmSlotSelection.ShowAsync(DialogService)
-                .ConfigureAwait(false);
+                                      .ConfigureAwait(false);
             if (!result)
                 return;
         }
+
         try
         {
             await SlotRepository.SelfAssignSlotAsync(slot)
-                .ConfigureAwait(false);
+                                .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -228,7 +236,7 @@
         finally
         {
             await Reload.InvokeAsync()
-                .ConfigureAwait(false);
+                        .ConfigureAwait(false);
         }
     }
 
@@ -237,14 +245,14 @@
         try
         {
             var user = await Dialogs.SelectUserDialog.ShowAsync(DialogService, slot.AssignedTo)
-                .ConfigureAwait(false);
+                                    .ConfigureAwait(false);
             if (user is null)
                 return;
             if (user.PrimaryKey != slot.AssignedToFk)
             {
                 await SlotRepository.AssignSlotAsync(slot, user)
-                    .ConfigureAwait(false);
-                slot.AssignedTo = user;
+                                    .ConfigureAwait(false);
+                slot.AssignedTo   = user;
                 slot.AssignedToFk = user.PrimaryKey;
             }
         }
@@ -255,7 +263,7 @@
         finally
         {
             await Reload.InvokeAsync()
-                .ConfigureAwait(false);
+                        .ConfigureAwait(false);
         }
     }
 
@@ -274,19 +282,19 @@
     private bool GetDisableSelfInteraction(EventSlot slot)
     {
         if (!Me.IsAuthenticated)
-    // User is not logged in.
+            // User is not logged in.
             return true;
         if (Disabled)
-    // All interactions are disabled for this UI.
+            // All interactions are disabled for this UI.
             return true;
         if (slot.AssignedToFk is not null)
-    // Slot is already assigned.
+            // Slot is already assigned.
             return true;
         if (!(slot.IsSelfAssignable ?? true)
-            && !Me.IsInRoleOrAdmin(Claims.EventSlotAssign, Claims.EventSlotIgnore, Claims.EventSlotUpdate)
+            && !Me.HasClaimOrEventAdmin()
             && Event is not null
             && !Me.Eval((user) => user.PrimaryKey == Event.HostedByFk))
-    // Slot cannot be self-assigned
+            // Slot cannot be self-assigned
             return true;
         return false;
     }

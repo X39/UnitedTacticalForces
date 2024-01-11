@@ -2,7 +2,6 @@
 
 namespace X39.UnitedTacticalForces.Api.Data.Authority.Extern;
 
-[ComplexType]
 [Microsoft.EntityFrameworkCore.Owned]
 public class DiscordUser
 {

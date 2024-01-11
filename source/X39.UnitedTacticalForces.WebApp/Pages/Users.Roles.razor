@@ -1,0 +1,51 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using System.Diagnostics.Contracts
+@using X39.UnitedTacticalForces.Common
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@inject IUserRepository UserRepository
+@inject IDialogService DialogService
+@inject IStringLocalizer<Language> Localizer
+<div class="d-flex">
+    <MudChipSet SelectedChipChanged="@(() => { })"
+                SelectedChip="@null"
+                OnClose="@((mudChip) => RemoveRoleAsync((Role) mudChip.Value))"
+                AllClosable="true">
+        @foreach (var role in User.Roles ?? Enumerable.Empty<Role>())
+        {
+            <MudChip Color="Color.Primary" Value="@role">@role.Title</MudChip>
+        }
+    </MudChipSet>
+    <MudIconButton Icon="@Icons.Material.Filled.Add" OnClick="AddRoleAsync"/>
+</div>
+
+@code {
+
+    [Parameter, EditorRequired, Required]
+    public User User { get; set; } = null!;
+
+    private async Task RemoveRoleAsync(Role role)
+    {
+        Contract.Assert(User.PrimaryKey is not null);
+        Contract.Assert(role.PrimaryKey is not null);
+        await UserRepository.SetUserRoleAsync(User.PrimaryKey.Value, role.PrimaryKey.Value, false);
+        User.Roles ??= new List<Role>();
+        User.Roles.Remove(role);
+    }
+
+    private async Task AddRoleAsync()
+    {
+        Contract.Assert(User.PrimaryKey is not null);
+        var role = await Dialogs.SelectorDialog<Role>.ShowAsync(
+            DialogService,
+            async () => await UserRepository.GetRolesAvailableToMeAsync(),
+            (role) => role.Title ?? string.Empty,
+            null,
+            Localizer[nameof(Language.Pages_Users_SelectRoleToAdd)]);
+        if (role is null)
+            return;
+        Contract.Assert(role.PrimaryKey is not null);
+        await UserRepository.SetUserRoleAsync(User.PrimaryKey.Value, role.PrimaryKey.Value, true);
+        User.Roles ??= new List<Role>();
+        User.Roles.Add(role);
+    }
+}

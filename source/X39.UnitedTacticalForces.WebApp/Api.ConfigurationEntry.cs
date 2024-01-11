@@ -14,9 +14,9 @@ public partial class ConfigurationEntry
             Realm        = Realm,
             Value        = Value,
             ChangedBy    = null,
-            ChangedByFk = ChangedByFk,
-            IsSensitive = IsSensitive,
-            TimeStamp = TimeStamp,
+            ChangedByFk  = ChangedByFk,
+            IsSensitive  = IsSensitive,
+            TimeStamp    = TimeStamp,
         };
     }
 }

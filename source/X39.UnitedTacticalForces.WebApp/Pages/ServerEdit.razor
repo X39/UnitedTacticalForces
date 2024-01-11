@@ -6,9 +6,9 @@
 @using X39.Util
 @using X39.Util.Collections
 @inject IStringLocalizer<Language> Localizer
-@inject IGameServerRepository GameServerRepository
-@inject IModPackRepository ModPackRepository
-@inject NavigationManager NavigationManager
+@inject IGameServerRepository      GameServerRepository
+@inject IModPackRepository         ModPackRepository
+@inject NavigationManager          NavigationManager
 <PageTitle>@(_gameServer?.Title ?? Localizer[nameof(Language.Pages_GameServerEdit_TitleWhileLoading)])</PageTitle>
 @if (_gameServer is null)
 {
@@ -169,8 +169,7 @@ else
                                         }
                                     </MudSelect>
                                     break;
-                                default:
-                                    throw new ArgumentOutOfRangeException();
+                                default: throw new ArgumentOutOfRangeException();
                             }
                         }
                     </MudStack>
@@ -201,11 +200,11 @@ else
     [Parameter]
     public long GameServerId { get; set; }
 
-    private GameServer? _gameServer;
-    private GameServer? _gameServerOriginal;
+    private GameServer?                            _gameServer;
+    private GameServer?                            _gameServerOriginal;
     private ImmutableArray<ConfigurationDataGroup> _configurationGroups = ImmutableArray<ConfigurationDataGroup>.Empty;
 
-    private bool HasChanges => HasConfigurationChanges || HasGameServerChanges;
+    private bool HasChanges              => HasConfigurationChanges || HasGameServerChanges;
     private bool HasConfigurationChanges => _configurationGroups.SelectMany((q) => q.Entries).Any((q) => q.HasChanges);
 
     private bool HasGameServerChanges => !GameServer.GameServerComparer.Equals(_gameServer, _gameServerOriginal);
@@ -213,40 +212,40 @@ else
     protected override async Task OnInitializedAsync()
     {
         var gameServerInfo = await GameServerRepository.GetGameServerAsync(GameServerId).ConfigureAwait(false);
-        var gameServer = gameServerInfo.GameServer;
+        var gameServer     = gameServerInfo.GameServer;
         if (gameServer is null)
             throw new NullReferenceException("API resolved with GameServerInfo.GameServer == null");
         if (gameServer.SelectedModPackFk.HasValue)
             gameServer.SelectedModPack ??= await ModPackRepository.GetModPackDefinitionAsync(gameServer.SelectedModPackFk.Value);
         var configurationDefinitions = await GameServerRepository.GetConfigurationDefinitionsAsync(gameServer).ConfigureAwait(false);
-        var configurations = await GameServerRepository.GetConfigurationAsync(gameServer).ConfigureAwait(false);
-        var confMap = configurations.ToDictionary((q) => string.Concat(q.Realm, "://", q.Path));
+        var configurations           = await GameServerRepository.GetConfigurationAsync(gameServer).ConfigureAwait(false);
+        var confMap                  = configurations.ToDictionary((q) => string.Concat(q.Realm, "://", q.Path));
         _configurationGroups = configurationDefinitions
-            .Select((q) => new ConfigurationData(GameServerId, q, confMap.GetValueOrDefault(q.Identifier ?? string.Empty)))
-            .GroupBy((q) => q.Definition.Realm)
-            .Select((q) => new ConfigurationDataGroup(q.Key ?? string.Empty, q.AsEnumerable()))
-            .ToImmutableArray();
+           .Select((q) => new ConfigurationData(GameServerId, q, confMap.GetValueOrDefault(q.Identifier ?? string.Empty)))
+           .GroupBy((q) => q.Definition.Realm)
+           .Select((q) => new ConfigurationDataGroup(q.Key ?? string.Empty, q.AsEnumerable()))
+           .ToImmutableArray();
         _gameServerOriginal = gameServer;
-        _gameServer = gameServer.DeepCopy();
+        _gameServer         = gameServer.DeepCopy();
     }
 
     public class ConfigurationData
     {
-        public ConfigurationEntryDefinition Definition { get; }
-        public ConfigurationEntry? Entry { get; private set; }
-        private readonly long _gameServerId;
-        private readonly ConfigurationEntry? _originalEntry;
-        public bool HasChanges => !ReferenceEquals(Entry, _originalEntry);
-        public string ValueAsText => Entry?.Value ?? string.Empty;
-        public bool? ValueAsBool => bool.TryParse(ValueAsText, out var value) ? value : null;
-        public double? ValueAsDouble => double.TryParse(ValueAsText, out var value) ? value : null;
-        public ValuePair? ValueAsValuePair => Definition.AllowedValues?.FirstOrDefault((q) => q.Value == ValueAsText);
+        public           ConfigurationEntryDefinition Definition { get; }
+        public           ConfigurationEntry?          Entry      { get; private set; }
+        private readonly long                         _gameServerId;
+        private readonly ConfigurationEntry?          _originalEntry;
+        public           bool                         HasChanges       => !ReferenceEquals(Entry, _originalEntry);
+        public           string                       ValueAsText      => Entry?.Value ?? string.Empty;
+        public           bool?                        ValueAsBool      => bool.TryParse(ValueAsText, out var value) ? value : null;
+        public           double?                      ValueAsDouble    => double.TryParse(ValueAsText, out var value) ? value : null;
+        public           ValuePair?                   ValueAsValuePair => Definition.AllowedValues?.FirstOrDefault((q) => q.Value == ValueAsText);
 
         public ConfigurationData(long gameServerId, ConfigurationEntryDefinition definition, ConfigurationEntry? entry)
         {
-            Definition = definition;
-            Entry = entry;
-            _gameServerId = gameServerId;
+            Definition     = definition;
+            Entry          = entry;
+            _gameServerId  = gameServerId;
             _originalEntry = entry;
         }
 
@@ -262,18 +261,17 @@ else
 
         public void ChangeValue(ValuePair newValue)
         {
-            Entry = new()
-            {
-                Path = Definition.Path,
-                Realm = Definition.Realm,
-                Value = newValue.Value,
-                GameServer = null,
-                ChangedBy = null,
-                ChangedByFk = null,
-                IsActive = true,
-                IsSensitive = Definition.Kind is EConfigurationEntryKind.Password,
-                PrimaryKey = default,
-                TimeStamp = DateTimeOffset.Now,
+            Entry = new(){
+                Path         = Definition.Path,
+                Realm        = Definition.Realm,
+                Value        = newValue.Value,
+                GameServer   = null,
+                ChangedBy    = null,
+                ChangedByFk  = null,
+                IsActive     = true,
+                IsSensitive  = Definition.Kind is EConfigurationEntryKind.Password,
+                PrimaryKey   = default,
+                TimeStamp    = DateTimeOffset.Now,
                 GameServerFk = _gameServerId,
             };
         }
@@ -282,54 +280,51 @@ else
         {
             if (Definition.Required is false && newValue.IsNullOrEmpty())
                 return;
-            Entry = new()
-            {
-                Path = Definition.Path,
-                Realm = Definition.Realm,
-                Value = newValue,
-                GameServer = null,
-                ChangedBy = null,
-                ChangedByFk = null,
-                IsActive = true,
-                IsSensitive = Definition.Kind is EConfigurationEntryKind.Password,
-                PrimaryKey = default,
-                TimeStamp = DateTimeOffset.Now,
+            Entry = new(){
+                Path         = Definition.Path,
+                Realm        = Definition.Realm,
+                Value        = newValue,
+                GameServer   = null,
+                ChangedBy    = null,
+                ChangedByFk  = null,
+                IsActive     = true,
+                IsSensitive  = Definition.Kind is EConfigurationEntryKind.Password,
+                PrimaryKey   = default,
+                TimeStamp    = DateTimeOffset.Now,
                 GameServerFk = _gameServerId,
             };
         }
 
         public void ChangeValue(bool? newValue)
         {
-            Entry = new()
-            {
-                Path = Definition.Path,
-                Realm = Definition.Realm,
-                Value = newValue?.ToString() ?? string.Empty,
-                GameServer = null,
-                ChangedBy = null,
-                ChangedByFk = null,
-                IsActive = true,
-                IsSensitive = Definition.Kind is EConfigurationEntryKind.Password,
-                PrimaryKey = default,
-                TimeStamp = DateTimeOffset.Now,
+            Entry = new(){
+                Path         = Definition.Path,
+                Realm        = Definition.Realm,
+                Value        = newValue?.ToString() ?? string.Empty,
+                GameServer   = null,
+                ChangedBy    = null,
+                ChangedByFk  = null,
+                IsActive     = true,
+                IsSensitive  = Definition.Kind is EConfigurationEntryKind.Password,
+                PrimaryKey   = default,
+                TimeStamp    = DateTimeOffset.Now,
                 GameServerFk = _gameServerId,
             };
         }
 
         public void ChangeValue(double? newValue)
         {
-            Entry = new()
-            {
-                Path = Definition.Path,
-                Realm = Definition.Realm,
-                Value = newValue?.ToString("G17") ?? string.Empty,
-                GameServer = null,
-                ChangedBy = null,
-                ChangedByFk = null,
-                IsActive = true,
-                IsSensitive = Definition.Kind is EConfigurationEntryKind.Password,
-                PrimaryKey = default,
-                TimeStamp = DateTimeOffset.Now,
+            Entry = new(){
+                Path         = Definition.Path,
+                Realm        = Definition.Realm,
+                Value        = newValue?.ToString("G17") ?? string.Empty,
+                GameServer   = null,
+                ChangedBy    = null,
+                ChangedByFk  = null,
+                IsActive     = true,
+                IsSensitive  = Definition.Kind is EConfigurationEntryKind.Password,
+                PrimaryKey   = default,
+                TimeStamp    = DateTimeOffset.Now,
                 GameServerFk = _gameServerId,
             };
         }
@@ -342,17 +337,17 @@ else
 
     public class ConfigurationDataGroup
     {
-        public string Realm { get; }
+        public string                            Realm   { get; }
         public ImmutableArray<ConfigurationData> Entries { get; }
 
         public ConfigurationDataGroup(string realm, IEnumerable<ConfigurationData> entries)
         {
             Realm = realm;
             Entries = entries
-                .OrderByDescending((q) => q.Definition.Required)
-                .ThenBy((q) => q.Definition.DisplayGroup)
-                .ThenBy((q) => q.Definition.DisplayName)
-                .ToImmutableArray();
+               .OrderByDescending((q) => q.Definition.Required)
+               .ThenBy((q) => q.Definition.DisplayGroup)
+               .ThenBy((q) => q.Definition.DisplayName)
+               .ToImmutableArray();
         }
     }
 
@@ -360,20 +355,43 @@ else
     {
         if (_gameServer is null)
             throw new NullReferenceException("_gameServer is null");
-        _gameServer.ActiveModPackFk = _gameServer.ActiveModPack?.PrimaryKey ?? _gameServer.ActiveModPackFk;
+        if (_gameServerOriginal is null)
+            throw new NullReferenceException("_gameServerOriginal is null");
+        _gameServer.ActiveModPackFk   = _gameServer.ActiveModPack?.PrimaryKey ?? _gameServer.ActiveModPackFk;
         _gameServer.SelectedModPackFk = _gameServer.SelectedModPack?.PrimaryKey ?? _gameServer.SelectedModPackFk;
         if (HasGameServerChanges)
         {
-            await GameServerRepository.UpdateAsync(_gameServer).ConfigureAwait(false);
+            if (_gameServer.SelectedModPackFk != _gameServerOriginal.SelectedModPackFk)
+            {
+                if (_gameServer.SelectedModPackFk is{ } modPackFk)
+                    await GameServerRepository
+                         .ChangeModPackAsync(_gameServer, new ModPackDefinition{PrimaryKey = modPackFk})
+                         .ConfigureAwait(false);
+                else
+                    await GameServerRepository
+                         .ChangeModPackAsync(
+                              _gameServer,
+                              new ModPackDefinition{PrimaryKey = _gameServer.SelectedModPackFk}
+                          )
+                         .ConfigureAwait(false);
+            }
+
+            if (_gameServer.Title != _gameServerOriginal.Title)
+                if (_gameServer.Title.IsNotNullOrWhiteSpace())
+                    await GameServerRepository.ChangeTitleAsync(_gameServer, _gameServer.Title).ConfigureAwait(false);
+                else
+                    _gameServer.Title = _gameServerOriginal.Title;
         }
+
         if (HasConfigurationChanges)
         {
             var configuration = _configurationGroups
-                .SelectMany((q) => q.Entries)
-                .Select((q) => q.Entry)
-                .NotNull();
+               .SelectMany((q) => q.Entries)
+               .Select((q) => q.Entry)
+               .NotNull();
             await GameServerRepository.SetConfigurationAsync(_gameServer, configuration).ConfigureAwait(false);
         }
+
         NavigationManager.NavigateTo("servers");
     }
 
@@ -385,9 +403,10 @@ else
         {
             skip = results.Count;
             var response = await ModPackRepository.GetModPacksAsync(skip, 100, false, input, cancellationToken)
-                .ConfigureAwait(false);
+               .ConfigureAwait(false);
             results.AddRange(response);
         } while (results.Count == skip);
+
         return results;
     }
 

@@ -2,6 +2,7 @@
 
 public static partial class Constants
 {
+    public const string Verified = "vrf";
     public static class Configuration
     {
         public const string ApiBaseUrl = "Api:BaseUrl";

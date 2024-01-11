@@ -9,22 +9,24 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AspNet.Security.OAuth.Discord" Version="7.0.2" />
-        <PackageReference Include="AspNet.Security.OpenId.Steam" Version="7.0.0" />
-        <PackageReference Include="Discord.Net" Version="3.11.0" />
-        <PackageReference Include="HtmlAgilityPack" Version="1.11.50" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.5" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.5" />
+        <PackageReference Include="AspNet.Security.OAuth.Discord" Version="8.0.0" />
+        <PackageReference Include="AspNet.Security.OpenId.Steam" Version="8.0.0" />
+        <PackageReference Include="Discord.Net" Version="3.13.0" />
+        <PackageReference Include="HtmlAgilityPack" Version="1.11.55" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational.Design" Version="1.1.6" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.5">
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.4" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.Design" Version="1.1.0" />
+        <PackageReference Include="Steam.Models" Version="3.0.10" />
+        <PackageReference Include="SteamWebAPI2" Version="4.4.1" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
         <PackageReference Include="Unchase.Swashbuckle.AspNetCore.Extensions" Version="2.7.1" />
-        <PackageReference Include="X39.Util" Version="1.0.0.38" />
+        <PackageReference Include="X39.Util" Version="1.0.0.40" />
         <PackageReference Include="X39.Util.DependencyInjection" Version="2.0.0.4" />
     </ItemGroup>
 
@@ -56,8 +58,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\.submodules\SteamWebAPI2\src\Steam.Models\Steam.Models.csproj" />
-      <ProjectReference Include="..\..\.submodules\SteamWebAPI2\src\SteamWebAPI2\SteamWebAPI2.csproj" />
       <ProjectReference Include="..\X39.UnitedTacticalForces.Common\X39.UnitedTacticalForces.Common.csproj" />
       <ProjectReference Include="..\X39.UnitedTacticalForces.Contract\X39.UnitedTacticalForces.Contract.csproj" />
       <ProjectReference Include="..\X39.UnitedTacticalForces.Claims\X39.UnitedTacticalForces.Claims.csproj" />

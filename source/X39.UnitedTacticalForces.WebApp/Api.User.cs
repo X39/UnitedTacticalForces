@@ -12,6 +12,7 @@ public partial class User
             Avatar         = Avatar,
             Nickname       = Nickname,
             Roles          = Roles?.NotNull().Select((q) => q.ShallowCopy()).ToList(),
+            Claims         = Claims?.NotNull().Select((q) => q.ShallowCopy()).ToList(),
             EMail          = EMail,
             EventMetas     = EventMetas?.NotNull().Select((q) => q.ShallowCopy()).ToList(),
             EventSlots     = EventSlots?.NotNull().Select((q) => q.ShallowCopy()).ToList(),

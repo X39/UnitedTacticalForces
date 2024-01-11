@@ -273,4 +273,31 @@ public class RolesController : ControllerBase
             role.Description);
         return NoContent();
     }
+
+    /// <summary>
+    /// Gets all claims of the role identified by <paramref name="roleId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="roleId">The id of the role.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the claims.</returns>
+    [HttpGet("claims-of/{roleId}", Name = nameof(GetClaimsOfRole))]
+    [ProducesResponseType(typeof(IEnumerable<Claim>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Claims.Administrative.Role)]
+    public async Task<IActionResult> GetClaimsOfRole(
+        [FromRoute] long roleId,
+        CancellationToken cancellationToken)
+    {
+        var role = await _apiDbContext.Roles
+            .Include((e) => e.Claims!)
+            .SingleOrDefaultAsync((q) => q.PrimaryKey == roleId, cancellationToken);
+        if (role is null)
+            return NotFound();
+        return Ok(role.Claims);
+    }
 }

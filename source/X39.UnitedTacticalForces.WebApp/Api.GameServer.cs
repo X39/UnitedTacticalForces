@@ -46,6 +46,7 @@ public partial class GameServer
             VersionString        = VersionString,
             TimeStampCreated     = TimeStampCreated,
             TimeStampUpgraded    = TimeStampUpgraded,
+            // GameServerLogs = GameServerLogs?.Select((q) => q.ShallowCopy()).ToImmutableArray(),
         };
     }
     public GameServer ShallowCopy()

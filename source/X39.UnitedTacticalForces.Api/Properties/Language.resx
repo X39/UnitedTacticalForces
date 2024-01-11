@@ -428,4 +428,7 @@ Usually this is the same as the installation path and the same as the one entere
     <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Title" xml:space="preserve">
         <value>Restrict</value>
     </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Nickname" xml:space="preserve">
+        <value>Nickname</value>
+    </data>
 </root>

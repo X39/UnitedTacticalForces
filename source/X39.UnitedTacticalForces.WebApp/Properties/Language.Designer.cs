@@ -429,6 +429,24 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to User.
+        /// </summary>
+        internal static string Dialogs_ResourceBasedPrivilegeDialog_Headers_User {
+            get {
+                return ResourceManager.GetString("Dialogs_ResourceBasedPrivilegeDialog_Headers_User", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        internal static string Dialogs_ResourceBasedPrivilegeDialog_Tooltips_Remove {
+            get {
+                return ResourceManager.GetString("Dialogs_ResourceBasedPrivilegeDialog_Tooltips_Remove", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Severity.
         /// </summary>
         internal static string Dialogs_ShowGameServerLogs_LogLevel {
@@ -461,6 +479,42 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Dialogs_ShowGameServerLogs_TimeStamp {
             get {
                 return ResourceManager.GetString("Dialogs_ShowGameServerLogs_TimeStamp", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to GameFileInfo.Name is null..
+        /// </summary>
+        internal static string Exception_GameFileInfo_Name_is_null {
+            get {
+                return ResourceManager.GetString("Exception_GameFileInfo_Name_is_null", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to GameFolder.Identifier is null..
+        /// </summary>
+        internal static string Exception_GameFolder_Identifier_is_null {
+            get {
+                return ResourceManager.GetString("Exception_GameFolder_Identifier_is_null", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to GameServer.PrimaryKey is null..
+        /// </summary>
+        internal static string Exception_GameServer_PrimaryKey_is_null {
+            get {
+                return ResourceManager.GetString("Exception_GameServer_PrimaryKey_is_null", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ModPackDefinition.PrimaryKey is null..
+        /// </summary>
+        internal static string Exception_ModPackDefinition_PrimaryKey_is_null {
+            get {
+                return ResourceManager.GetString("Exception_ModPackDefinition_PrimaryKey_is_null", resourceCulture);
             }
         }
         
@@ -942,6 +996,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Shows the list of users with authorisations on this server.
+        /// </summary>
+        internal static string Pages_GameServers_Table_Interactions_ShowUserPermissions {
+            get {
+                return ResourceManager.GetString("Pages_GameServers_Table_Interactions_ShowUserPermissions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Start server.
         /// </summary>
         internal static string Pages_GameServers_Table_Interactions_StartServer {
@@ -1109,6 +1172,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_ModPacks_Table_Interactions {
             get {
                 return ResourceManager.GetString("Pages_ModPacks_Table_Interactions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Shows the list of users with authorisations for this mod pack.
+        /// </summary>
+        internal static string Pages_ModPacks_Table_Interactions_ShowUserPermissions {
+            get {
+                return ResourceManager.GetString("Pages_ModPacks_Table_Interactions_ShowUserPermissions", resourceCulture);
             }
         }
         
@@ -1330,6 +1402,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Shows the list of users with authorisations for this terrain.
+        /// </summary>
+        internal static string Pages_Terrains_Table_Interactions_ShowUserPermissions {
+            get {
+                return ResourceManager.GetString("Pages_Terrains_Table_Interactions_ShowUserPermissions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Title.
         /// </summary>
         internal static string Pages_Terrains_Table_Title {
@@ -1362,6 +1443,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_Users_SelectRoleToAdd {
             get {
                 return ResourceManager.GetString("Pages_Users_SelectRoleToAdd", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Changes the page to the user details where modifying the user is possible..
+        /// </summary>
+        internal static string Pages_Users_ShowUserDetails_ToolTip {
+            get {
+                return ResourceManager.GetString("Pages_Users_ShowUserDetails_ToolTip", resourceCulture);
             }
         }
         
@@ -1452,6 +1542,151 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Pages_Users_ToggleVerified_ToolTip {
             get {
                 return ResourceManager.GetString("Pages_Users_ToggleVerified_ToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Claims.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Claims_Header {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Claims_Header", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Description.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Claims_Table_Description {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Claims_Table_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Interactions.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Claims_Table_Interactions {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Claims_Table_Interactions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Deletes the user&apos;s claim &apos;{0}&apos;. The change is made immediately and cannot be undone via this user interface!.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Claims_Table_Interactions_DeleteClaim_Tooltip_0ClaimName_1Description {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Claims_Table_Interactions_DeleteClaim_Tooltip_0ClaimName_1" +
+                        "Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Claims_Table_Title {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Claims_Table_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Discord ID.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Details_Discord_Id {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Details_Discord_Id", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Discord Username.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Details_Discord_Username {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Details_Discord_Username", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to E-Mail.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Details_EMail {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Details_EMail", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Details.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Details_Header {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Details_Header", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nickname.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Details_Nickname {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Details_Nickname", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to SteamId64.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Details_Steam_Id64 {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Details_Steam_Id64", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Roles.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Roles_Header {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Roles_Header", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Assigned.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Roles_Table_Assigned {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Roles_Table_Assigned", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Changes whether the role &apos;{0}&apos; is assigned to the user or not. The change is performed immediate!.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Roles_Table_Assigned_Tooltip_0RoleName_1Description {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Roles_Table_Assigned_Tooltip_0RoleName_1Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Description.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Roles_Table_Description {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Roles_Table_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        internal static string Pages_UsersDetail_Tabs_Roles_Table_Title {
+            get {
+                return ResourceManager.GetString("Pages_UsersDetail_Tabs_Roles_Table_Title", resourceCulture);
             }
         }
         

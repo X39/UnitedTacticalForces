@@ -524,4 +524,82 @@
     <data name="Pages_GameServers_ConfirmUpgradeOfGameServer_Description" xml:space="preserve">
         <value>Bitte bestätigen Sie ihre Absicht den Server zu aktuallisieren.</value>
     </data>
+    <data name="Pages_GameServers_Table_Interactions_ShowUserPermissions" xml:space="preserve">
+        <value>Zeigt die Liste der Benutzer mit Berechtigungen auf diesem Server</value>
+    </data>
+    <data name="Pages_ModPacks_Table_Interactions_ShowUserPermissions" xml:space="preserve">
+        <value>Zeigt die Liste der Benutzer mit Berechtigungen für dieses Mod Pack</value>
+    </data>
+    <data name="Pages_Terrains_Table_Interactions_ShowUserPermissions" xml:space="preserve">
+        <value>Zeigt die Liste der Benutzer mit Berechtigungen für dieses Terrain</value>
+    </data>
+    <data name="Exception_GameServer_PrimaryKey_is_null" xml:space="preserve">
+        <value>GameServer.PrimaryKey ist null.</value>
+    </data>
+    <data name="Exception_ModPackDefinition_PrimaryKey_is_null" xml:space="preserve">
+        <value>ModPackDefinition.PrimaryKey ist null.</value>
+    </data>
+    <data name="Exception_GameFolder_Identifier_is_null" xml:space="preserve">
+        <value>GameFolder.Identifier ist null.</value>
+    </data>
+    <data name="Pages_Users_ShowUserDetails_ToolTip" xml:space="preserve">
+        <value>Wechselt die Seite auf die Nutzerdetails, wo auch bearbeiten möglich ist.</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Header" xml:space="preserve">
+        <value>Rechte</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Header" xml:space="preserve">
+        <value>Angaben</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Header" xml:space="preserve">
+        <value>Rollen</value>
+    </data>
+    <data name="Dialogs_ResourceBasedPrivilegeDialog_Headers_User" xml:space="preserve">
+        <value>Benutzer</value>
+    </data>
+    <data name="Dialogs_ResourceBasedPrivilegeDialog_Tooltips_Remove" xml:space="preserve">
+        <value>Entfernen</value>
+    </data>
+    <data name="Exception_GameFileInfo_Name_is_null" xml:space="preserve">
+        <value>GameFileInfo.Name ist null.</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Nickname" xml:space="preserve">
+        <value>Spitzname</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Steam_Id64" xml:space="preserve">
+        <value>SteamId64</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_EMail" xml:space="preserve">
+        <value>E-Mail</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Discord_Username" xml:space="preserve">
+        <value>Discord Username</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Details_Discord_Id" xml:space="preserve">
+        <value>Discord ID</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Table_Title" xml:space="preserve">
+        <value>Titel</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Table_Assigned" xml:space="preserve">
+        <value>Zugewiesen</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Table_Description" xml:space="preserve">
+        <value>Beschreibung</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Table_Description" xml:space="preserve">
+        <value>Beschreibung</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Table_Interactions" xml:space="preserve">
+        <value>Interaktionen</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Table_Title" xml:space="preserve">
+        <value>Titel</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Roles_Table_Assigned_Tooltip_0RoleName_1Description" xml:space="preserve">
+        <value>Ändert, ob dem Benutzer die Rolle '{0}' zugewiesen ist oder nicht. Die Änderung wird sofort durchgeführt!</value>
+    </data>
+    <data name="Pages_UsersDetail_Tabs_Claims_Table_Interactions_DeleteClaim_Tooltip_0ClaimName_1Description" xml:space="preserve">
+        <value>Löscht den Claim '{0}' des Benutzers. Die Änderung wird sofort durchgeführt und kann über diese Benutzeroberfläche nicht rückgängig gemacht werden!</value>
+    </data>
 </root>

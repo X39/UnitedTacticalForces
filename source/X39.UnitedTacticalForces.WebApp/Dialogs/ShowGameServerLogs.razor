@@ -83,7 +83,7 @@
         GameServer gameServer)
     {
         if (gameServer.PrimaryKey is null)
-            throw new ArgumentException("GameServer.PrimaryKey is null.", nameof(gameServer));
+            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
         await dialogService.ShowAsync<ShowGameServerLogs>(
             string.Empty,
             new DialogParameters

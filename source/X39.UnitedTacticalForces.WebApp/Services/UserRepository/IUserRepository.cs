@@ -15,8 +15,24 @@ public interface IUserRepository
     Task<User?> GetUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<long> GetUserCountAsync(CancellationToken cancellationToken = default);
     Task SetUserRoleAsync(Guid userId, long roleId, bool roleActive, CancellationToken cancellationToken = default);
-    Task<IReadOnlyCollection<Role>> GetAllRolesAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<Role>> GetRolesAvailableToMeAsync(CancellationToken cancellationToken = default);
     Task ToggleBanUserAsync(Guid userId, bool isBanned, CancellationToken cancellationToken = default);
     Task ToggleVerifiedUserAsync(Guid userId, bool isVerified, CancellationToken cancellationToken = default);
     Task DeleteMeAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<Role>> GetRolesOfUserAsync(
+        Guid              userId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<Claim>> GetClaimsOfUserAsync(
+        Guid              userId,
+        int               skip,
+        int               take,
+        CancellationToken cancellationToken = default
+    );
+
+    Task<long> CountClaimsOfUserAsync(
+        Guid              userId,
+        CancellationToken cancellationToken = default
+    );
 }

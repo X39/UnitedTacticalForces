@@ -1,0 +1,38 @@
+﻿@using System.ComponentModel.DataAnnotations
+
+@if (_loadTask is{ IsCompleted: true, IsFaulted: true })
+{
+    @LoadingFailedContent(_loadTask.Exception)
+}
+else if (_loadTask is{ IsCompleted: true, IsFaulted: false })
+{
+    @ChildContent
+}
+else
+{
+    @BusyLoadingContent
+}
+
+@code {
+
+    [Parameter, EditorRequired, Required]
+    public RenderFragment ChildContent { get; set; } = @<div></div>;
+
+    [Parameter]
+    public RenderFragment BusyLoadingContent { get; set; } = @<MudProgressCircular Color="Color.Primary"/>;
+
+    [Parameter]
+    public RenderFragment<Exception> LoadingFailedContent { get; set; } = context => @<div class="d-flex flex-column align-items-center">
+                                                                                         <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Color="Color.Error"/>
+                                                                                         <MudText Typo="Typo.h6" Color="Color.Error">@context.Message</MudText>
+                                                                                         <MudText Color="Color.Error">@context.StackTrace</MudText>
+                                                                                     </div>;
+
+    [Parameter, EditorRequired, Required]
+    public Func<CancellationToken, Task> LoadFunc { get; set; } = (_) => Task.CompletedTask;
+
+    private Task _loadTask = Task.CompletedTask;
+
+    protected override void OnInitialized() => _loadTask = LoadFunc(default).ContinueWith((_) => InvokeAsync(StateHasChanged));
+
+}

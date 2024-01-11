@@ -36,7 +36,6 @@
     <HeaderContent>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_IsVerified)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Title)]</MudTh>
-        <MudTh>@Localizer[nameof(Language.Pages_Users_Table_SteamId64)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Roles)]</MudTh>
         <MudTh>@Localizer[nameof(Language.Pages_Users_Table_Interactions)]</MudTh>
     </HeaderContent>
@@ -47,21 +46,28 @@
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Title)]">
             <UtfUser User="@context"/>
         </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_SteamId64)]">
-            <MudText>@context.Steam?.Id64</MudText>
-        </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_DiscordUsername)]">
-            <MudText>@context.Discord?.Username</MudText>
-        </MudTd>
-        <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_DiscordId)]">
-            <MudText>@context.Discord?.Id</MudText>
-        </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Roles)]">
-            <Users_UserRoles User="context"/>
+            <MudChipSet SelectedChipChanged="@(() => { })"
+                            SelectedChip="@null"
+                            AllClosable="false">
+                    @foreach (var role in context.Roles ?? Enumerable.Empty<Role>())
+                    {
+                        <MudTooltip>
+                            <TooltipContent>
+                                <MudText>@role.Description</MudText>
+                            </TooltipContent>
+                            <ChildContent>
+                                <MudChip Color="Color.Primary">@role.Title</MudChip>
+                            </ChildContent>
+                        </MudTooltip>
+                    }
+                </MudChipSet>
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Users_Table_Interactions)]">
             <MudButtonGroup>
-                <Users_Interactions_ToggleBan User="context"/>
+                    <Users_Interactions_ToggleBan User="context"/>
+                    <Users_Interactions_ToggleVerified User="context"/>
+                    <Users_Interactions_ShowUserDetails User="context"/>
             </MudButtonGroup>
         </MudTd>
     </RowTemplate>
@@ -92,7 +98,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Task.Delay(10);
+        await Task.Delay(1);
     }
 
     private async Task<TableData<User>> ServerDataAsync(TableState arg)
@@ -106,7 +112,7 @@
             take: arg.PageSize,
             search: SearchString,
             includeRoles: true,
-            includeUnverified: Me.IsInRoleOrAdmin(Claims.UserVerify))
+            includeUnverified: Me.HasClaimOrUserAdmin(Claims.User.Verify))
             .ConfigureAwait(false);
         return new TableData<User>
         {

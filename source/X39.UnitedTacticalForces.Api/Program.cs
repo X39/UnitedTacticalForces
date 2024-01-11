@@ -155,12 +155,13 @@ app.UseCors(
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Development environment detected.");
+    app.UseDeveloperExceptionPage();
+    // http://localhost:5000/swagger/index.html
     app.UseSwagger();
-    app.UseSwaggerUI(
-        (options) =>
-        {
-            options.RoutePrefix = string.Empty;
-        });
+    app.UseSwaggerUI();
+    logger.LogInformation("Swagger url: {SwaggerUrl} (port may be different)", "http://localhost:5000/swagger/index.html");
 }
 
 app.UseHttpsRedirection();

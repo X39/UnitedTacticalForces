@@ -8,11 +8,11 @@ public partial class Role
     {
         return new Role
         {
-            PrimaryKey = PrimaryKey,
-            Title      = Title,
-            Category   = Category,
-            Identifier = Identifier,
-            Users      = Users?.NotNull().Select((q) => q.PartialCopy()).ToList(),
+            PrimaryKey  = PrimaryKey,
+            Title       = Title,
+            Users       = Users?.NotNull().Select((q) => q.PartialCopy()).ToList(),
+            Claims      = Claims?.NotNull().Select((q) => q.ShallowCopy()).ToList(),
+            Description = Description,
         };
     }
 
@@ -22,9 +22,9 @@ public partial class Role
         {
             PrimaryKey = PrimaryKey,
             Title      = Title,
-            Category   = Category,
-            Identifier = Identifier,
             Users      = null,
+            Claims     = new List<Claim>(),
+            Description = Description,
         };
     }
 }

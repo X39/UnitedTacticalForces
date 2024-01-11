@@ -2,10 +2,10 @@
 @using System.Diagnostics.Contracts
 @using X39.UnitedTacticalForces.WebApp.Services
 @using X39.UnitedTacticalForces.WebApp.Services.UserRepository
-@inject IUserRepository UserRepository
-@inject MeService MeService
+@inject IUserRepository            UserRepository
+@inject MeService                  Me
 @inject IStringLocalizer<Language> Localizer
-@if (MeService.IsAuthenticated && User.PrimaryKey != MeService.User.PrimaryKey && MeService.IsInRolesOrAdmin(Claims.UserBan))
+@if (Me.HasClaimOrUserAdmin(Claims.User.Ban))
 {
     <MudTooltip>
         <TooltipContent>

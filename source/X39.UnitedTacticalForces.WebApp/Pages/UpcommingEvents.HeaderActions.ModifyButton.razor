@@ -6,7 +6,7 @@
 @inject IDialogService DialogService
 @inject IEventRepository EventRepository
 @inject MeService Me
-@if (Me.IsInRoleOrAdmin(Claims.EventModify) || MeService.IsAuthenticated && Event.OwnerFk == MeService.User.PrimaryKey)
+@if (Me.HasClaimOrEventAdmin() || MeService.IsAuthenticated && Event.OwnerFk == MeService.User.PrimaryKey)
 {
     <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="ModifyEventAsync"/>
 }

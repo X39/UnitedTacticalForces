@@ -71,7 +71,7 @@ else if (_events.Any())
             </MudStack>
         </MudHidden>
     </MudContainer>
-    @if (Me.IsInRoleOrAdmin(Claims.EventCreate))
+    @if (Me.HasClaimOrEventAdmin(Claims.Creation.Events))
     {
         <div style="position: fixed; right: 2rem; bottom: 2rem;">
             <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@CreateNewEventAsync"/>
@@ -85,7 +85,7 @@ else
             <MudText>@Localizer[nameof(Language.Pages_Events_NoUpcomingEvents)]</MudText>
         </MudPaper>
     </div>
-    @if (Me.IsInRoleOrAdmin(Claims.EventCreate))
+    @if (Me.HasClaimOrEventAdmin(Claims.Creation.Events))
     {
         <div style="position: fixed; right: 2rem; bottom: 2rem;">
             <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@CreateNewEventAsync"/>
