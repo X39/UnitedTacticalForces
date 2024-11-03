@@ -13,184 +13,30 @@ public class SteamServiceImpl : ISteamService
     private readonly HttpClient                _httpClient;
     private readonly IConfiguration            _configuration;
     private readonly ILogger<SteamServiceImpl> _logger;
-    private readonly SteamClient               _steamClient;
-    private readonly CallbackManager           _callbacks;
     private          bool                      _connected;
-    private readonly SteamUser                 _steamUser;
-    private readonly SteamApps                 _steamApps;
-    private readonly SteamCloud                _steamCloud;
 
     private readonly Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> _appInfoCache     = new();
     private readonly Dictionary<uint, SteamApps.PICSProductInfoCallback.PICSProductInfo> _packageInfoCache = new();
 
-    private readonly SemaphoreSlim                                               _loginSemaphore       = new(1, 1);
     private readonly SemaphoreSlim                                               _appInfoSemaphore     = new(1, 1);
     private readonly SemaphoreSlim                                               _packageInfoSemaphore = new(1, 1);
-    private          Promise?                                                    _logInPromise;
-    private          IReadOnlyCollection<SteamApps.LicenseListCallback.License>? _licenses;
+    private readonly SteamApiSession                                             _apiSession;
 
     public SteamServiceImpl(
         HttpClient                httpClient,
         IHttpClientFactory        httpClientFactory,
         IConfiguration            configuration,
-        ILogger<SteamServiceImpl> logger
+        ILogger<SteamServiceImpl> logger,
+        ILoggerFactory loggerFactory
     )
     {
         _httpClient    = httpClient;
         _configuration = configuration;
         _logger        = logger;
-        var apiKey = configuration[Constants.Configuration.Steam.ApiKey];
-        _steamClient = new SteamClient(
-            SteamConfiguration.Create(
-                (builder) =>
-                {
-                    builder.WithHttpClientFactory(httpClientFactory.CreateClient);
-                    if (apiKey.IsNotNullOrWhiteSpace())
-                        builder.WithWebAPIKey(apiKey);
-                }
-            )
-        );
-        _callbacks = new CallbackManager(_steamClient);
-        _callbacks.Subscribe<SteamClient.ConnectedCallback>(OnConnected);
-        _callbacks.Subscribe<SteamClient.DisconnectedCallback>(OnDisconnected);
-        _callbacks.Subscribe<SteamUser.LoggedOnCallback>(OnLoggedOn);
-        _callbacks.Subscribe<SteamUser.LoggedOffCallback>(OnLoggedOff);
-        _callbacks.Subscribe<SteamApps.LicenseListCallback>(OnLicenseList);
-
-        _steamUser = _steamClient.GetHandler<SteamUser>()
-                     ?? throw new InvalidOperationException("Failed to get SteamUser handler");
-        _steamApps = _steamClient.GetHandler<SteamApps>()
-                     ?? throw new InvalidOperationException("Failed to get SteamApps handler");
-        _steamCloud = _steamClient.GetHandler<SteamCloud>()
-                      ?? throw new InvalidOperationException("Failed to get SteamCloud handler");
+        var apiKey = configuration[Constants.Configuration.Steam.ApiKey] ?? string.Empty;
+        _apiSession = new SteamApiSession(loggerFactory.CreateLogger<SteamApiSession>(), httpClientFactory, apiKey);
     }
 
-    private void OnLicenseList(SteamApps.LicenseListCallback obj)
-    {
-        _logger.LogTrace("Received license list");
-        _licenses = obj.LicenseList;
-    }
-
-    private void OnLoggedOff(SteamUser.LoggedOffCallback obj)
-    {
-        _logger.LogWarning("Logged off from Steam: {@Result} (JobID: {@SteamJobId})", obj.Result, obj.JobID);
-        if (_logInPromise is { } promise)
-        {
-            try
-            {
-                throw new Exception("Logging in to Steam failed (Logged off)");
-            }
-            catch (Exception e)
-            {
-                promise.Complete(e);
-            }
-        }
-    }
-
-    private void OnLoggedOn(SteamUser.LoggedOnCallback obj)
-    {
-        if (obj.Result == EResult.OK)
-        {
-            _logger.LogInformation(
-                "Logged in to Steam as {@Username} (JobID: {@SteamJobId})",
-                obj.ClientSteamID,
-                obj.JobID
-            );
-            if (_logInPromise is { } promise1)
-            {
-                promise1.Complete();
-            }
-
-            return;
-        }
-
-        _logger.LogError(
-            "Failed to log in to Steam: {@Result} (Extended: {@ExtendedResult}, JobID: {@SteamJobId})",
-            obj.Result,
-            obj.ExtendedResult,
-            obj.JobID
-        );
-        if (_logInPromise is { } promise2)
-        {
-            try
-            {
-                throw new Exception("Logging in to Steam failed: {Result} (Extended: {ExtendedResult})");
-            }
-            catch (Exception e)
-            {
-                promise2.Complete(e);
-            }
-        }
-    }
-
-    private void OnDisconnected(SteamClient.DisconnectedCallback obj)
-    {
-        // obj.UserInitiated, obj.JobID.Value
-        if (obj.UserInitiated)
-            _logger.LogInformation(
-                "The connection to Steam has been closed by the user (JobID: {@SteamJobId})",
-                obj.JobID
-            );
-        else
-            _logger.LogWarning(
-                "The connection to Steam has been closed unexpectedly (JobID: {@SteamJobId})",
-                obj.JobID
-            );
-        _connected = false;
-        if (_logInPromise is { } promise)
-        {
-            try
-            {
-                throw new Exception("Logging in to Steam failed");
-            }
-            catch (Exception e)
-            {
-                promise.Complete(e);
-            }
-        }
-    }
-
-    private void OnConnected(SteamClient.ConnectedCallback obj)
-    {
-        _logger.LogInformation("Connected to Steam (JobID: {@SteamJobId})", obj.JobID);
-        _connected = true;
-    }
-
-    private async ValueTask LoginAsync(string username, string password, CancellationToken cancellationToken = default)
-    {
-        if (_connected)
-        {
-            _logger.LogDebug("Skipping login to Steam as already connected");
-            return;
-        }
-
-        await _loginSemaphore.LockedAsync(
-            async () =>
-            {
-                // Repeat check after acquiring lock
-                if (_connected)
-                {
-                    _logger.LogDebug("Skipping login to Steam as already connected");
-                    return;
-                }
-
-
-                _logger.LogInformation("Logging in to Steam as {@Username}", username);
-
-                _logInPromise = new Promise();
-                _steamUser.LogOn(
-                    new SteamUser.LogOnDetails
-                    {
-                        Username = username, Password = password, ShouldRememberPassword = true,
-                    }
-                );
-
-                await _logInPromise;
-                _logInPromise = null;
-            },
-            cancellationToken
-        );
-    }
 
     private async ValueTask LoginAsync(CancellationToken cancellationToken = default)
     {
@@ -203,17 +49,7 @@ public class SteamServiceImpl : ISteamService
             return;
         }
 
-        await LoginAsync(username, password, cancellationToken);
-    }
-
-    private async ValueTask<SteamCloud.UGCDetailsCallback> GetUserGeneratedContentDetailsAsync(
-        ulong             ugcId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        _logger.LogDebug("Requesting details for UGC {@UgcId}", ugcId);
-        var result = await _steamCloud.RequestUGCDetails(123);
-        return result;
+        await _apiSession.LoginAsync(username, password, cancellationToken);
     }
 
     public async Task DownloadUserGeneratedContentAsync(
@@ -228,7 +64,7 @@ public class SteamServiceImpl : ISteamService
         if (!Path.Exists(downloadPath))
             throw new DirectoryNotFoundException($"The download path '{downloadPath}' does not exist");
         await LoginAsync(cancellationToken);
-        var details = await GetUserGeneratedContentDetailsAsync(ugcId, cancellationToken);
+        var details = await _apiSession.GetUserGeneratedContentDetailsAsync(ugcId);
         if (details.URL.IsNullOrWhiteSpace())
         {
             cdnPool = new CDNClientPool(steam3, appId);
@@ -385,32 +221,19 @@ public class SteamServiceImpl : ISteamService
                 if (_packageInfoCache.TryGetValue(packageId, out var cachedInfo2))
                     return cachedInfo2;
                 var allPackageIds =
-                    _licenses?.Select((q) => (q.PackageID, AccessToken: (ulong?) q.AccessToken))
+                    _apiSession.Licenses
+                               .Select((q) => (true, q.PackageID, AccessToken: (ulong?) q.AccessToken))
                              .Where((q) => !_packageInfoCache.ContainsKey(q.PackageID))
-                             .Append((PackageID: packageId, AccessToken: default(ulong?)))
-                             .ToArray()
-                    ?? (PackageID: packageId, AccessToken: default(ulong?)).MakeArray();
+                             .Append((false, PackageID: packageId, AccessToken: default(ulong?)))
+                             .ToArray();
 
                 _logger.LogDebug(
                     "Requesting product info for packages {PackageIds}",
                     allPackageIds.Select((q) => q.PackageID)
                 );
-                var requests = allPackageIds.Select(
-                    (q) => new SteamApps.PICSRequest(q.PackageID, q.AccessToken ?? default)
-                );
-                var result = await _steamApps.PICSGetProductInfo(Enumerable.Empty<SteamApps.PICSRequest>(), requests);
-                while (!result.Complete)
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
-                }
+                var result = await _apiSession.GetProductInformationAsync(allPackageIds, cancellationToken);
 
-                if (result.Results == null)
-                {
-                    _logger.LogError("Failed to get product info for packages {PackageIds}", allPackageIds);
-                    throw new InvalidOperationException("Failed to get product info");
-                }
-
-                foreach (var picsProductInfoCallback in result.Results)
+                foreach (var picsProductInfoCallback in result)
                 {
                     foreach (var picsProductInfo in picsProductInfoCallback.Packages.Values)
                     {
