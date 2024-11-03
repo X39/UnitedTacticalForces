@@ -86,11 +86,11 @@
                 @if (Me.HasResourceClaimOrModPackAdmin(Claims.ResourceBased.ModPack.Delete, context.PrimaryKey?.ToString() ?? string.Empty)
                      || Me.IsAuthenticated && context.OwnerFk == Me.User.PrimaryKey)
                 {
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="@(() => DeleteModPackAsync(context))"/>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => DeleteModPackAsync(context))"/>
                 }
                 @if (Me.HasClaimOrAdmin(Claims.Administrative.ModPack))
                 {
-                    <MudTooltip>
+                    <MudTooltip Placement="Placement.Left">
                         <TooltipContent>
                             <MudText>@Localizer[nameof(Language.Pages_ModPacks_Table_Interactions_ShowUserPermissions)]</MudText>
                         </TooltipContent>

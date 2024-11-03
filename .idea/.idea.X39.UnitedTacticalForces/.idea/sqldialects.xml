@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/source/X39.UnitedTacticalForces.Api/Data/Migrations/20230319210113_AddingIsVisibleToEventSlot.cs" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/source/Api/Data/Migrations/20230319210113_AddingIsVisibleToEventSlot.cs" dialect="GenericSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>
