@@ -674,8 +674,10 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             );
             var workingDir = Path.Combine(
                 installPath,
+                "mods",
                 workshopId.ToString()
             );
+            Directory.CreateDirectory(workingDir);
             var psi = new ProcessStartInfo
             {
                 FileName               = depotDownloaderPath,
