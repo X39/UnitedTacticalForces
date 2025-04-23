@@ -87,7 +87,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api
             ApiClientBuilder.RegisterDefaultDeserializer<FormParseNodeFactory>();
             if (string.IsNullOrEmpty(RequestAdapter.BaseUrl))
             {
-                RequestAdapter.BaseUrl = "https://localhost:7072";
+                RequestAdapter.BaseUrl = "http://localhost:5148";
             }
             PathParameters.TryAdd("baseurl", RequestAdapter.BaseUrl);
         }

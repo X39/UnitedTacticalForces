@@ -1,65 +1,82 @@
 ﻿using System.Collections.Immutable;
+using X39.UnitedTacticalForces.WebApp.Api.Models;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services.TerrainRepository;
 
 [Scoped<TerrainRepositoryImpl, ITerrainRepository>]
-internal class TerrainRepositoryImpl : RepositoryBase, ITerrainRepository
+internal sealed class TerrainRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl)
+    : RepositoryBase(httpClient, baseUrl), ITerrainRepository
 {
-    public TerrainRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) : base(httpClient, baseUrl)
+    public async Task<long> GetTerrainCountAsync(CancellationToken cancellationToken = default)
     {
-    }
-
-    public async Task<long> GetTerrainCountAsync(
-        CancellationToken cancellationToken = default)
-    {
-        return await Client.TerrainsAllCountAsync(cancellationToken)
+        var result = await Client.Terrains
+            .All
+            .Count
+            .PostAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+        return result ?? default;
     }
 
-    public async Task<IReadOnlyCollection<Terrain>> GetTerrainsAsync(
+    public async Task<IReadOnlyCollection<PlainTerrainDto>> GetTerrainsAsync(
         int skip,
         int take,
         string? search = default,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var terrains = await Client.TerrainsAllAsync(skip, take, search, cancellationToken)
+        var terrains = await Client.Terrains
+            .All
+            .PostAsync(
+                conf =>
+                {
+                    conf.QueryParameters.Skip   = skip;
+                    conf.QueryParameters.Take   = take;
+                    conf.QueryParameters.Search = search;
+                },
+                cancellationToken
+            )
             .ConfigureAwait(false);
-        return terrains.ToImmutableArray();
+        return terrains?.ToImmutableArray() ?? [];
     }
 
-    public async Task<Terrain> CreateTerrainAsync(
-        Terrain terrain,
-        CancellationToken cancellationToken = default)
+    public async Task<PlainTerrainDto> CreateTerrainAsync(
+        TerrainCreationPayload payload,
+        CancellationToken cancellationToken = default
+    )
     {
-        terrain = await Client.TerrainsCreateAsync(terrain, cancellationToken)
+        var result = await Client.Terrains
+            .Create
+            .PostAsync(payload, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
-        return terrain;
+        return result ?? throw new NullReferenceException("Unable to create new terrain");
     }
 
     public async Task ModifyTerrainAsync(
-        Terrain terrain,
-        CancellationToken cancellationToken = default)
+        long terrainId,
+        TerrainUpdate payload,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (terrain.PrimaryKey is null)
-            throw new ArgumentException("Terrain.PrimaryKey is null.", nameof(terrain));
-        await Client.TerrainsUpdateAsync(terrain.PrimaryKey.Value, terrain, cancellationToken)
+        await Client.Terrains[terrainId]
+            .Update
+            .PostAsync(payload, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task DeleteTerrainAsync(
-        Terrain terrain,
-        CancellationToken cancellationToken = default)
+    public async Task DeleteTerrainAsync(long terrainId, CancellationToken cancellationToken = default)
     {
-        if (terrain.PrimaryKey is null)
-            throw new ArgumentException("Terrain.PrimaryKey is null.", nameof(terrain));
-        await Client.TerrainsDeleteAsync(terrain.PrimaryKey.Value, cancellationToken)
+        await Client.Terrains[terrainId]
+            .DeletePath
+            .PostAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task<Terrain?> GetTerrainAsync(long terrainFk, CancellationToken cancellationToken = default)
+    public async Task<PlainTerrainDto?> GetTerrainAsync(long terrainFk, CancellationToken cancellationToken = default)
     {
-        return await Client.TerrainsAsync(terrainFk, cancellationToken)
+        var result = await Client.Terrains[terrainFk]
+            .GetAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+        return result;
     }
 }

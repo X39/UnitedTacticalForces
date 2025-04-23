@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Core;
 using X39.UnitedTacticalForces.Api.DTO;
+using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.DTO.Updates;
 using X39.Util;
 
@@ -52,7 +53,7 @@ public class TerrainController : ControllerBase
     [HttpPost("create", Name = nameof(CreateTerrainAsync))]
     [ProducesResponseType<PlainTerrainDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> CreateTerrainAsync(
-        [FromBody] PlainTerrainDto payload,
+        [FromBody] TerrainCreationPayload payload,
         CancellationToken cancellationToken
     )
     {
@@ -195,25 +196,28 @@ public class TerrainController : ControllerBase
             .Take(take);
         if (search.IsNotNullOrWhiteSpace())
         {
-            search   = search.Trim();
-            search   = search.Replace("%", "\\%");
-            search   = search.Replace(",", "\\,");
-            search   = search.Replace("_", "\\_");
-            search   = search.Replace(",", "\\,");
-            search   = search.Replace("[", "\\[");
-            search   = search.Replace(",", "\\,");
-            search   = search.Replace("]", "\\]");
-            search   = search.Replace(",", "\\,");
-            search   = search.Replace("^", "\\^");
-            search   = search.Replace("\\", "\\\\");
-            search   = $"{search}%";
+            search = search.Trim();
+            search = search.Replace("%", "\\%");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("_", "\\_");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("[", "\\[");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("]", "\\]");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("^", "\\^");
+            search = search.Replace("\\", "\\\\");
+            search = $"{search}%";
             // ReSharper disable once EntityFramework.ClientSideDbFunctionCall
             terrains = terrains.Where(q => EF.Functions.ILike(q.Title, search, "\\"));
         }
 
         var result = await terrains.ToArrayAsync(cancellationToken);
 
-        return Ok(result.Select(e => e.ToPlainDto()).ToArray());
+        return Ok(
+            result.Select(e => e.ToPlainDto())
+                .ToArray()
+        );
     }
 
     /// <summary>

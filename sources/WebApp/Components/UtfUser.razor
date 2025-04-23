@@ -1,4 +1,5 @@
 ﻿@using System.ComponentModel.DataAnnotations
+@using X39.UnitedTacticalForces.WebApp.Api.Models
 
 <div class="d-flex gap-2 align-center align-self-center @Class" style="@Style">
     @if (User is not null)
@@ -8,6 +9,14 @@
             <MudAvatar Class="align-self-center" Image="@User.ToImageSource()"/>
         }
         <MudText Class="align-self-center">@User.Nickname</MudText>
+    }
+    @if (PlainUser is not null)
+    {
+        @if (PlainUser.Avatar is not null && PlainUser.Avatar.Length is not 0)
+        {
+            <MudAvatar Class="align-self-center" Image="@PlainUser.ToImageSource()"/>
+        }
+        <MudText Class="align-self-center">@PlainUser.Nickname</MudText>
     }
 </div>
 
@@ -19,7 +28,8 @@
     [Parameter]
     public string Style { get; set; } = string.Empty;
 
-    [Required, EditorRequired, Parameter]
-    public User? User { get; set; } = null!;
-
+    [Parameter]
+    public UserDto? User { get; set; } = null!;
+    [Parameter]
+    public PlainUserDto? PlainUser { get; set; } = null!;
 }

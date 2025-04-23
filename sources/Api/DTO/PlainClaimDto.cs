@@ -16,27 +16,27 @@ public record PlainClaimDto
     /// This property is used to distinguish individual entities across different contexts
     /// or within a specific collection, enabling accurate referencing and management.
     /// </summary>
-    public long PrimaryKey { get; set; }
+    public long PrimaryKey { get; init; }
     
     /// <summary>
     /// The category this claim belongs to.
     /// </summary>
-    public string Category { get; set; } = string.Empty;
+    public string Category { get; init; } = string.Empty;
     
     /// <summary>
     /// The Human-Readable title of this claim.
     /// </summary>
-    public string Title { get; set; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
     
     /// <summary>
     /// The identifier of this claim as used in the jwt.
     /// </summary>
-    public string Identifier { get; set; } = string.Empty;
+    public string Identifier { get; init; } = string.Empty;
     
     /// <summary>
     /// The description of this claim.
     /// </summary>
-    public string Description { get; set; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
     
     /// <summary>
     /// Whether this claim is a prefix claim (and thus should not be used directly but rather implicitly).
@@ -45,15 +45,15 @@ public record PlainClaimDto
     /// A prefix claim is a claim that allows to configure resource based claims.
     /// This allows to create claims in the format "claim:id" to eg. allow admin access only to server 1.
     /// </remarks>
-    public bool IsPrefix { get; set; }
+    public bool IsPrefix { get; init; }
     
     /// <summary>
     /// The value of this claim.
     /// </summary>
-    public string? Value { get; set; }
+    public string? Value { get; init; }
     
     /// <summary>
     /// The type of the value of this claim.
     /// </summary>
-    public string? ValueType { get; set; }
+    public string? ValueType { get; init; }
 }

@@ -7,12 +7,10 @@ using System.IO;
 using System.Threading.Tasks;
 using System;
 using X39.UnitedTacticalForces.WebApp.Api.Users.All;
-using X39.UnitedTacticalForces.WebApp.Api.Users.ClaimsOf;
 using X39.UnitedTacticalForces.WebApp.Api.Users.Item;
 using X39.UnitedTacticalForces.WebApp.Api.Users.Login;
 using X39.UnitedTacticalForces.WebApp.Api.Users.Logout;
 using X39.UnitedTacticalForces.WebApp.Api.Users.Me;
-using X39.UnitedTacticalForces.WebApp.Api.Users.RolesOf;
 namespace X39.UnitedTacticalForces.WebApp.Api.Users
 {
     /// <summary>
@@ -25,11 +23,6 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Users
         public global::X39.UnitedTacticalForces.WebApp.Api.Users.All.AllRequestBuilder All
         {
             get => new global::X39.UnitedTacticalForces.WebApp.Api.Users.All.AllRequestBuilder(PathParameters, RequestAdapter);
-        }
-        /// <summary>The claimsOf property</summary>
-        public global::X39.UnitedTacticalForces.WebApp.Api.Users.ClaimsOf.ClaimsOfRequestBuilder ClaimsOf
-        {
-            get => new global::X39.UnitedTacticalForces.WebApp.Api.Users.ClaimsOf.ClaimsOfRequestBuilder(PathParameters, RequestAdapter);
         }
         /// <summary>The login property</summary>
         public global::X39.UnitedTacticalForces.WebApp.Api.Users.Login.LoginRequestBuilder Login
@@ -45,11 +38,6 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Users
         public global::X39.UnitedTacticalForces.WebApp.Api.Users.Me.MeRequestBuilder Me
         {
             get => new global::X39.UnitedTacticalForces.WebApp.Api.Users.Me.MeRequestBuilder(PathParameters, RequestAdapter);
-        }
-        /// <summary>The rolesOf property</summary>
-        public global::X39.UnitedTacticalForces.WebApp.Api.Users.RolesOf.RolesOfRequestBuilder RolesOf
-        {
-            get => new global::X39.UnitedTacticalForces.WebApp.Api.Users.RolesOf.RolesOfRequestBuilder(PathParameters, RequestAdapter);
         }
         /// <summary>Gets an item from the X39.UnitedTacticalForces.WebApp.Api.users.item collection</summary>
         /// <param name="position">Unique identifier of the item</param>

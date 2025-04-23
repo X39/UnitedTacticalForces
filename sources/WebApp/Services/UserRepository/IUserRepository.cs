@@ -1,38 +1,43 @@
-﻿namespace X39.UnitedTacticalForces.WebApp.Services.UserRepository;
+﻿using X39.UnitedTacticalForces.WebApp.Api.Models;
+
+namespace X39.UnitedTacticalForces.WebApp.Services.UserRepository;
 
 public interface IUserRepository
 {
-    Task<IReadOnlyCollection<User>> GetUsersAsync(
+    Task<IReadOnlyCollection<PlainRoleDto>> GetRolesOfUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default
+    );
+
+    Task<IReadOnlyCollection<PlainClaimDto>> GetClaimsOfUserAsync(
+        Guid userId,
         int skip,
         int take,
-        string? search = null,
-        bool includeRoles = false,
-        bool includeUnverified = false,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
-    Task UpdateUserAsync(User user, CancellationToken cancellationToken = default);
-    Task<User> GetMeAsync(CancellationToken cancellationToken = default);
-    Task<User?> GetUserAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<long> CountClaimsOfUserAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<UserDto?> GetUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<long> GetUserCountAsync(CancellationToken cancellationToken = default);
+
     Task SetUserRoleAsync(Guid userId, long roleId, bool roleActive, CancellationToken cancellationToken = default);
-    Task<IReadOnlyCollection<Role>> GetRolesAvailableToMeAsync(CancellationToken cancellationToken = default);
-    Task ToggleBanUserAsync(Guid userId, bool isBanned, CancellationToken cancellationToken = default);
-    Task ToggleVerifiedUserAsync(Guid userId, bool isVerified, CancellationToken cancellationToken = default);
-    Task DeleteMeAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<Role>> GetRolesOfUserAsync(
-        Guid              userId,
-        CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<PlainRoleDto>> GetRolesAvailableToMeAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<Claim>> GetClaimsOfUserAsync(
-        Guid              userId,
-        int               skip,
-        int               take,
+    Task SetUserIsBannedAsync(Guid userId, bool isBanned, CancellationToken cancellationToken);
+    Task SetUserIsVerifiedAsync(Guid userId, bool isVerified, CancellationToken cancellationToken);
+    Task DeleteMeAsync(CancellationToken cancellationToken);
+    Task UpdateUserAsync(Guid userId, UserUpdate payload, CancellationToken cancellationToken = default);
+    Task<FullUserDto> GetMeAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<FullUserDto>> GetUsersAsync(
+        int skip,
+        int take,
+        string? search = default,
+        bool includeRolesAndClaims = false,
+        bool includeUnverified = false,
         CancellationToken cancellationToken = default
     );
 
-    Task<long> CountClaimsOfUserAsync(
-        Guid              userId,
-        CancellationToken cancellationToken = default
-    );
+    Task<long> CountRolesOfUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }

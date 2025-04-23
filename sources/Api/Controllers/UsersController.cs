@@ -351,7 +351,7 @@ public class UsersController : ControllerBase
     /// <param name="skip">The amount of <see cref="Claim"/>'s to skip. Paging argument.</param>
     /// <param name="take">The amount of <see cref="Claim"/>'s to take after skip. Paging argument.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the claims.</returns>
-    [HttpGet("claims-of/{userId}", Name = nameof(GetClaimsOfUser))]
+    [HttpGet("{userId:guid}/claims", Name = nameof(GetClaimsOfUser))]
     [ProducesResponseType<PlainClaimDto[]>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -389,7 +389,7 @@ public class UsersController : ControllerBase
     /// </param>
     /// <param name="userId">The id of the user.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the count.</returns>
-    [HttpGet("claims-of/{userId}/count", Name = nameof(GetClaimsOfUserCount))]
+    [HttpGet("{userId:guid}/claims/count", Name = nameof(GetClaimsOfUserCount))]
     [ProducesResponseType<long>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -418,8 +418,8 @@ public class UsersController : ControllerBase
     /// </param>
     /// <param name="userId">The id of the user.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the roles.</returns>
-    [HttpGet("roles-of/{userId}", Name = nameof(GetRolesOfUser))]
-    [ProducesResponseType<PlainRoleDto>(StatusCodes.Status200OK)]
+    [HttpGet("{userId:guid}/roles", Name = nameof(GetRolesOfUser))]
+    [ProducesResponseType<PlainRoleDto[]>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -434,6 +434,33 @@ public class UsersController : ControllerBase
             return NotFound();
         return Ok(user.Roles!.Select(e => e.ToPlainDto()).ToArray());
     }
+    
+    /// <summary>
+    /// Gets the count of roles related to the user identified by <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="userId">The id of the user.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the count of roles.</returns>
+    [HttpGet("{userId:guid}/roles/count", Name = nameof(GetRolesOfUserCount))]
+    [ProducesResponseType<long>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Claims.Administrative.Role)]
+    public async Task<IActionResult> GetRolesOfUserCount(CancellationToken cancellationToken, [FromRoute] Guid userId)
+    {
+        var user = await _apiDbContext.Users
+            .Include(e => e.Roles)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.PrimaryKey == userId, cancellationToken);
+        if (user is null)
+            return NotFound();
+        return Ok(user.Roles?.Count ?? 0);
+    }
+    
 
     /// <summary>
     /// Returns all <see cref="User"/>'s available.

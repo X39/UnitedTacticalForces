@@ -49,32 +49,11 @@
     <Content Update="Pages\Users.Interactions.ToggleBan.razor">
       <DependentUpon>Users.razor</DependentUpon>
     </Content>
-    <Content Update="Pages\UpcommingEvents.Interactions.AcceptanceButton.razor">
-      <DependentUpon>UpcommingEvents.razor</DependentUpon>
-    </Content>
-    <Content Update="Pages\UpcommingEvents.HeaderActions.ModifyButton.razor">
-      <DependentUpon>UpcommingEvents.razor</DependentUpon>
-    </Content>
-    <Content Update="Pages\UpcommingEvents.EventCard.razor">
-      <DependentUpon>UpcommingEvents.razor</DependentUpon>
-    </Content>
     <Content Update="Pages\Users.Interactions.ToggleVerified.razor">
       <DependentUpon>Users.razor</DependentUpon>
     </Content>
     <Content Update="Pages\ServerEdit.razor">
       <DependentUpon>Servers.razor</DependentUpon>
-    </Content>
-    <Content Update="Pages\UpcommingEvents.razor">
-      <DependentUpon>Events.razor</DependentUpon>
-    </Content>
-    <Content Update="Pages\EventView.razor">
-      <DependentUpon>Events.razor</DependentUpon>
-    </Content>
-    <Content Update="Pages\EventView.EventInfo.razor">
-      <DependentUpon>EventView.razor</DependentUpon>
-    </Content>
-    <Content Update="Pages\EventView.SlotInfo.razor">
-      <DependentUpon>EventView.razor</DependentUpon>
     </Content>
     <Content Update="Pages\Wiki.Category.razor">
       <DependentUpon>Wiki.razor</DependentUpon>
@@ -94,5 +73,17 @@
   </ItemGroup>
   <ItemGroup>
     <_ContentIncludedByDefault Remove="wwwroot\js\exports\local-storage.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Include="Pages\Events\EventId.EventInfo.razor" />
+    <AdditionalFiles Include="Pages\Events\EventId.razor" />
+    <AdditionalFiles Include="Pages\Events\EventId.SlotInfo.razor" />
+    <AdditionalFiles Include="Pages\Events\Upcoming\Index.EventCard.razor" />
+    <AdditionalFiles Include="Pages\Events\Upcoming\Index.HeaderActions.ModifyButton.razor" />
+    <AdditionalFiles Include="Pages\Events\Upcoming\Index.Interactions.AcceptanceButton.razor" />
+    <AdditionalFiles Include="Pages\Events\UpcommingEvents.EventCard.razor" />
+    <AdditionalFiles Include="Pages\Events\UpcommingEvents.HeaderActions.ModifyButton.razor" />
+    <AdditionalFiles Include="Pages\Events\UpcommingEvents.Interactions.AcceptanceButton.razor" />
+    <AdditionalFiles Include="Pages\Events\UpcommingEvents.razor" />
   </ItemGroup>
 </Project>

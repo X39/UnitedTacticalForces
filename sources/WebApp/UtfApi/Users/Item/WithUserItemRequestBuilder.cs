@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using X39.UnitedTacticalForces.WebApp.Api.Models;
+using X39.UnitedTacticalForces.WebApp.Api.Users.Item.Claims;
+using X39.UnitedTacticalForces.WebApp.Api.Users.Item.Roles;
 using X39.UnitedTacticalForces.WebApp.Api.Users.Item.Update;
 namespace X39.UnitedTacticalForces.WebApp.Api.Users.Item
 {
@@ -18,6 +20,16 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Users.Item
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
     public partial class WithUserItemRequestBuilder : BaseRequestBuilder
     {
+        /// <summary>The claims property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.Api.Users.Item.Claims.ClaimsRequestBuilder Claims
+        {
+            get => new global::X39.UnitedTacticalForces.WebApp.Api.Users.Item.Claims.ClaimsRequestBuilder(PathParameters, RequestAdapter);
+        }
+        /// <summary>The roles property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.Api.Users.Item.Roles.RolesRequestBuilder Roles
+        {
+            get => new global::X39.UnitedTacticalForces.WebApp.Api.Users.Item.Roles.RolesRequestBuilder(PathParameters, RequestAdapter);
+        }
         /// <summary>The update property</summary>
         public global::X39.UnitedTacticalForces.WebApp.Api.Users.Item.Update.UpdateRequestBuilder Update
         {

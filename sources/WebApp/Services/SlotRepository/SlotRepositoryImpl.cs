@@ -44,78 +44,67 @@ public sealed class SlotRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) :
 
     public async Task CreateSlotAsync(
         Guid eventId,
-        PlainEventSlotDto eventSlot,
+        EventSlotCreationPayload eventSlot,
         CancellationToken cancellationToken = default
     )
     {
-        await Client.Events[eventId].Slotting.Create.PostAsync(eventSlot, cancellationToken: cancellationToken)
+        await Client.Events[eventId]
+            .Slotting
+            .Create
+            .PostAsync(eventSlot, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task SelfAssignSlotAsync(EventSlot eventSlot, CancellationToken cancellationToken = default)
+    public async Task SelfAssignSlotAsync(Guid eventId, int slotNumber, CancellationToken cancellationToken = default)
     {
-        if (eventSlot.EventFk is null)
-            throw new ArgumentException("EventSlot.EventFk is null.", nameof(eventSlot));
-        if (eventSlot.SlotNumber is null)
-            throw new ArgumentException("EventSlot.SlotNumber is null.", nameof(eventSlot));
-        await Client.EventsSlottingAssignPostAsync(
-                eventSlot.EventFk.Value,
-                eventSlot.SlotNumber.Value,
-                cancellationToken
-            )
+        await Client.Events[eventId]
+            .Slotting[slotNumber]
+            .Assign
+            .PostAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task AssignSlotAsync(EventSlot eventSlot, User user, CancellationToken cancellationToken = default)
+    public async Task AssignSlotAsync(
+        Guid eventId,
+        int slotNumber,
+        Guid userId,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (eventSlot.EventFk is null)
-            throw new ArgumentException("EventSlot.EventFk is null.", nameof(eventSlot));
-        if (eventSlot.SlotNumber is null)
-            throw new ArgumentException("EventSlot.SlotNumber is null.", nameof(eventSlot));
-        if (user.PrimaryKey is null)
-            throw new ArgumentException("User.PrimaryKey is null.", nameof(user));
-        await Client.EventsSlottingAssignPostAsync(
-                eventSlot.EventFk.Value,
-                eventSlot.SlotNumber.Value,
-                user.PrimaryKey.Value,
-                cancellationToken
-            )
+        await Client.Events[eventId]
+            .Slotting[slotNumber]
+            .Assign
+            .User[userId]
+            .PostAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task UnassignSlotAsync(EventSlot eventSlot, User user, CancellationToken cancellationToken = default)
+    public async Task UnassignSlotAsync(
+        Guid eventId,
+        int slotNumber,
+        Guid userId,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (eventSlot.EventFk is null)
-            throw new ArgumentException("EventSlot.EventFk is null.", nameof(eventSlot));
-        if (eventSlot.SlotNumber is null)
-            throw new ArgumentException("EventSlot.SlotNumber is null.", nameof(eventSlot));
-        if (user.PrimaryKey is null)
-            throw new ArgumentException("User.PrimaryKey is null.", nameof(user));
-        await Client.EventsSlottingUnassignPostAsync(
-                eventSlot.EventFk.Value,
-                eventSlot.SlotNumber.Value,
-                user.PrimaryKey.Value,
-                cancellationToken
-            )
+        await Client.Events[eventId]
+            .Slotting[slotNumber]
+            .Unassign
+            .User[userId]
+            .PostAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
     public async Task UpdateSlotAsync(
-        EventSlot existingEventSlot,
-        EventSlot updatedEventSlot,
+        Guid eventId,
+        int slotNumber,
+        EventSlotUpdate eventSlotUpdate,
         CancellationToken cancellationToken = default
     )
     {
-        if (existingEventSlot.EventFk is null)
-            throw new ArgumentException("EventSlot.EventFk is null.", nameof(existingEventSlot));
-        if (existingEventSlot.SlotNumber is null)
-            throw new ArgumentException("EventSlot.SlotNumber is null.", nameof(existingEventSlot));
-        await Client.EventsSlottingUpdateAsync(
-                existingEventSlot.EventFk.Value,
-                existingEventSlot.SlotNumber.Value,
-                updatedEventSlot,
-                cancellationToken
-            )
+        await Client.Events[eventId]
+            .Slotting[slotNumber]
+            .Update
+            .PostAsync(eventSlotUpdate, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 }

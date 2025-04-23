@@ -414,6 +414,7 @@ public class ModPackController : ControllerBase
         CancellationToken cancellationToken
     )
     {
+        // ToDo: Change return type to a more complete revision model, containing user meta and definition
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
         var existingModPack = await _apiDbContext.ModPackRevisions

@@ -33,10 +33,10 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
         /// <summary>The claims property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
-        public UntypedNode? Claims { get; set; }
+        public List<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainClaimDto>? Claims { get; set; }
 #nullable restore
 #else
-        public UntypedNode Claims { get; set; }
+        public List<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainClaimDto> Claims { get; set; }
 #endif
         /// <summary>The discordId property</summary>
         public int? DiscordId { get; set; }
@@ -109,7 +109,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
             {
                 { "avatar", n => { Avatar = n.GetByteArrayValue(); } },
                 { "avatarMimeType", n => { AvatarMimeType = n.GetStringValue(); } },
-                { "claims", n => { Claims = n.GetObjectValue<UntypedNode>(UntypedNode.CreateFromDiscriminatorValue); } },
+                { "claims", n => { Claims = n.GetCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainClaimDto>(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainClaimDto.CreateFromDiscriminatorValue)?.AsList(); } },
                 { "discordId", n => { DiscordId = n.GetIntValue(); } },
                 { "discordUsername", n => { DiscordUsername = n.GetStringValue(); } },
                 { "eMail", n => { EMail = n.GetStringValue(); } },
@@ -131,7 +131,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
             _ = writer ?? throw new ArgumentNullException(nameof(writer));
             writer.WriteByteArrayValue("avatar", Avatar);
             writer.WriteStringValue("avatarMimeType", AvatarMimeType);
-            writer.WriteObjectValue<UntypedNode>("claims", Claims);
+            writer.WriteCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainClaimDto>("claims", Claims);
             writer.WriteIntValue("discordId", DiscordId);
             writer.WriteStringValue("discordUsername", DiscordUsername);
             writer.WriteStringValue("eMail", EMail);

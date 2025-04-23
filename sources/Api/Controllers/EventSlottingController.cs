@@ -251,7 +251,7 @@ public class EventSlottingController : ControllerBase
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
     /// </param>
-    [HttpPost("{slotNumber:int}/assign/{userId:guid}", Name = nameof(AssignEventSlotToUserAsync))]
+    [HttpPost("{slotNumber:int}/assign/user/{userId:guid}", Name = nameof(AssignEventSlotToUserAsync))]
     [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(void), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
@@ -314,7 +314,7 @@ public class EventSlottingController : ControllerBase
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
     /// </param>
-    [HttpPost("{slotNumber:int}/unassign/{userId:guid}", Name = nameof(UnassignEventSlotToUserAsync))]
+    [HttpPost("{slotNumber:int}/unassign/user/{userId:guid}", Name = nameof(UnassignEventSlotToUserAsync))]
     [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(void), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]

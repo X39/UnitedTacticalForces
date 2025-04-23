@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System;
-using X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.Item;
+using X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.User;
 namespace X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign
 {
     /// <summary>
@@ -15,30 +15,10 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
     public partial class UnassignRequestBuilder : BaseRequestBuilder
     {
-        /// <summary>Gets an item from the X39.UnitedTacticalForces.WebApp.Api.events.item.slotting.item.unassign.item collection</summary>
-        /// <param name="position">Unique identifier of the item</param>
-        /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.Item.WithUserItemRequestBuilder"/></returns>
-        public global::X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.Item.WithUserItemRequestBuilder this[Guid position]
+        /// <summary>The user property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.User.UserRequestBuilder User
         {
-            get
-            {
-                var urlTplParams = new Dictionary<string, object>(PathParameters);
-                urlTplParams.Add("userId", position);
-                return new global::X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.Item.WithUserItemRequestBuilder(urlTplParams, RequestAdapter);
-            }
-        }
-        /// <summary>Gets an item from the X39.UnitedTacticalForces.WebApp.Api.events.item.slotting.item.unassign.item collection</summary>
-        /// <param name="position">Unique identifier of the item</param>
-        /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.Item.WithUserItemRequestBuilder"/></returns>
-        [Obsolete("This indexer is deprecated and will be removed in the next major version. Use the one with the typed parameter instead.")]
-        public global::X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.Item.WithUserItemRequestBuilder this[string position]
-        {
-            get
-            {
-                var urlTplParams = new Dictionary<string, object>(PathParameters);
-                if (!string.IsNullOrWhiteSpace(position)) urlTplParams.Add("userId", position);
-                return new global::X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.Item.WithUserItemRequestBuilder(urlTplParams, RequestAdapter);
-            }
+            get => new global::X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.User.UserRequestBuilder(PathParameters, RequestAdapter);
         }
         /// <summary>
         /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.Api.Events.Item.Slotting.Item.Unassign.UnassignRequestBuilder"/> and sets the default values.

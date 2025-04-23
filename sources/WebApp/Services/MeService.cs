@@ -1,20 +1,14 @@
-﻿using X39.UnitedTacticalForces.WebApp.Services.UserRepository;
+﻿using X39.UnitedTacticalForces.WebApp.Api.Models;
+using X39.UnitedTacticalForces.WebApp.Services.UserRepository;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services;
 
 [Scoped<MeService>]
-public class MeService
+public class MeService(IUserRepository userRepository)
 {
-    private readonly IUserRepository _userRepository;
-
-    public MeService(IUserRepository userRepository)
-    {
-        _userRepository = userRepository;
-    }
-
-    private User? _possessUser;
-    private User? _user;
+    private FullUserDto? _possessUser;
+    private FullUserDto? _user;
 
     /// <summary>
     /// Returns the current <see cref="WebApp.User"/> object of the user.
@@ -26,7 +20,7 @@ public class MeService
     ///     Thrown if the current user is not authenticated.
     ///     Authentication status can be checked using <see cref="IsAuthenticated"/>.
     /// </exception>
-    public User User
+    public FullUserDto User
         => _possessUser
            ?? _user
            ?? throw new InvalidOperationException(
@@ -39,10 +33,9 @@ public class MeService
 
     public bool IsVerified => _user?.IsVerified ?? false;
 
-    public bool Eval(Func<User, bool> func)
-        => IsAuthenticated && func(User);
+    public bool Eval(Func<FullUserDto, bool> func) => IsAuthenticated && func(User);
 
-    public void PossessUser(User? user)
+    public void PossessUser(FullUserDto? user)
     {
         _possessUser = user;
     }
@@ -59,8 +52,8 @@ public class MeService
             return;
         try
         {
-            _user = await _userRepository.GetMeAsync()
-                                         .ConfigureAwait(false);
+            _user = await userRepository.GetMeAsync()
+                .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -132,32 +125,25 @@ public class MeService
 
     public bool HasResourceClaim(string claim, string value)
     {
-        return User.Claims?.Any((q)=>q.Identifier == claim && q.Value == value) ?? false;
+        return User.Claims?.Any((q) => q.Identifier == claim && q.Value == value) ?? false;
     }
 
     public bool HasClaimOrAdmin(string claim, params string[] claims)
         => HasClaim(Claims.Administrative.All, claim, claims);
 
-    public bool HasClaimOrEventAdmin()
-        => HasClaim(Claims.Administrative.All, Claims.Administrative.Event);
+    public bool HasClaimOrEventAdmin() => HasClaim(Claims.Administrative.All, Claims.Administrative.Event);
 
-    public bool HasClaimOrTerrainAdmin()
-        => HasClaim(Claims.Administrative.All, Claims.Administrative.Terrain);
+    public bool HasClaimOrTerrainAdmin() => HasClaim(Claims.Administrative.All, Claims.Administrative.Terrain);
 
-    public bool HasClaimOrModPackAdmin()
-        => HasClaim(Claims.Administrative.All, Claims.Administrative.ModPack);
+    public bool HasClaimOrModPackAdmin() => HasClaim(Claims.Administrative.All, Claims.Administrative.ModPack);
 
-    public bool HasClaimOrUserAdmin()
-        => HasClaim(Claims.Administrative.All, Claims.Administrative.User);
+    public bool HasClaimOrUserAdmin() => HasClaim(Claims.Administrative.All, Claims.Administrative.User);
 
-    public bool HasClaimOrRoleAdmin()
-        => HasClaim(Claims.Administrative.All, Claims.Administrative.Role);
+    public bool HasClaimOrRoleAdmin() => HasClaim(Claims.Administrative.All, Claims.Administrative.Role);
 
-    public bool HasClaimOrServerAdmin()
-        => HasClaim(Claims.Administrative.All, Claims.Administrative.Server);
+    public bool HasClaimOrServerAdmin() => HasClaim(Claims.Administrative.All, Claims.Administrative.Server);
 
-    public bool HasClaimOrWikiAdmin()
-        => HasClaim(Claims.Administrative.All, Claims.Administrative.Wiki);
+    public bool HasClaimOrWikiAdmin() => HasClaim(Claims.Administrative.All, Claims.Administrative.Wiki);
 
     public bool HasClaimOrEventAdmin(string claim, params string[] claims)
         => HasClaim(Claims.Administrative.All, Claims.Administrative.Event, claim, claims);
@@ -200,7 +186,7 @@ public class MeService
 
     public bool HasBaseClaimOrWikiAdmin(string claim, params string[] claims)
         => HasClaim(Claims.Administrative.All, Claims.Administrative.Wiki) || HasBaseClaim(claim, claims);
- 
+
     public bool HasResourceClaimOrEventAdmin(string claim, string value)
         => HasClaim(Claims.Administrative.All, Claims.Administrative.Event) || HasResourceClaim(claim, value);
 
