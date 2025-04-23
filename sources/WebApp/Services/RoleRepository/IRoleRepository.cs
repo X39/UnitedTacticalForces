@@ -2,9 +2,4 @@
 
 public interface IRoleRepository
 {
-    Task<IReadOnlyCollection<Role>> GetRolesAsync(
-        int skip,
-        int take,
-        string? search = null,
-        CancellationToken cancellationToken = default);
 }

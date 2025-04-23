@@ -1,4 +1,4 @@
-﻿namespace X39.UnitedTacticalForces.Api.DTO;
+﻿namespace X39.UnitedTacticalForces.Api.DTO.Payloads;
 
 /// <summary>
 /// Represents the payload required for creating a mod pack.

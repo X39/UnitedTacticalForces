@@ -1,44 +1,55 @@
-﻿namespace X39.UnitedTacticalForces.WebApp.Services.ModPackRepository;
+﻿using X39.UnitedTacticalForces.WebApp.Api.Models;
+
+namespace X39.UnitedTacticalForces.WebApp.Services.ModPackRepository;
 
 public interface IModPackRepository
 {
-    Task<long> GetModPackCountAsync(
-        bool myModPacksOnly,
-        CancellationToken cancellationToken = default);
+    Task<long> GetModPackCountAsync(bool myModPacksOnly, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<ModPackDefinition>> GetModPacksAsync(
+    Task<IReadOnlyCollection<FullModPackDefinitionDto>> GetModPacksAsync(
         int skip,
         int take,
         bool myModPacksOnly,
         string? search = default,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
-    Task<ModPackDefinition> CreateModPackAsync(
-        ModPackDefinition modPack,
-        CancellationToken cancellationToken = default);
+    Task<PlainModPackDefinitionDto> CreateModPackAsync(
+        string title,
+        IReadOnlyCollection<long> modPackRevisionIds,
+        CancellationToken cancellationToken = default
+    );
+
+    Task<PlainModPackDefinitionDto> CreateModPackAsync(
+        PlainModPackDefinitionDto definition,
+        PlainModPackRevisionDto revision,
+        CancellationToken cancellationToken = default
+    );
 
     Task ModifyModPackAsync(
-        ModPackDefinition modPack,
+        long modPackDefinitionId,
         string? title = null,
         string? html = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     Task ModifyModPackAsync(
-        ModPackDefinition modPack,
+        long modPackDefinitionId,
         string? title = null,
         bool? useLatest = null,
         long[]? modPackRevisionIds = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
-    Task DeleteModPackAsync(
-        ModPackDefinition modPack,
-        CancellationToken cancellationToken = default);
+    Task DeleteModPackAsync(long modPackDefinitionId, CancellationToken cancellationToken = default);
 
-    Task<ModPackDefinition?> GetModPackDefinitionAsync(
-        long modPackDefinitionPk,
-        CancellationToken cancellationToken = default);
+    Task<PlainModPackDefinitionDto?> GetModPackDefinitionAsync(
+        long modPackDefinitionId,
+        CancellationToken cancellationToken = default
+    );
 
-    Task<ModPackRevision?> GetModPackRevisionAsync(
+    Task<PlainModPackRevisionDto?> GetModPackRevisionAsync(
         long modPackRevisionPk,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }

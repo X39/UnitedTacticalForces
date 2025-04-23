@@ -22,7 +22,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition
         /// </summary>
         /// <param name="pathParameters">Path parameters for the request</param>
         /// <param name="requestAdapter">The request adapter to use to execute the requests.</param>
-        public CompositionRequestBuilder(Dictionary<string, object> pathParameters, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/mod-packs/create/composition{?modPackRevisionIds*}", pathParameters)
+        public CompositionRequestBuilder(Dictionary<string, object> pathParameters, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/mod-packs/create/composition", pathParameters)
         {
         }
         /// <summary>
@@ -30,7 +30,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition
         /// </summary>
         /// <param name="rawUrl">The raw URL to use for the request builder.</param>
         /// <param name="requestAdapter">The request adapter to use to execute the requests.</param>
-        public CompositionRequestBuilder(string rawUrl, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/mod-packs/create/composition{?modPackRevisionIds*}", rawUrl)
+        public CompositionRequestBuilder(string rawUrl, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/mod-packs/create/composition", rawUrl)
         {
         }
         /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainModPackDefinitionDto"/></returns>
@@ -39,11 +39,11 @@ namespace X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
-        public async Task<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainModPackDefinitionDto?> PostAsync(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainModPackDefinitionDto body, Action<RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition.CompositionRequestBuilder.CompositionRequestBuilderPostQueryParameters>>? requestConfiguration = default, CancellationToken cancellationToken = default)
+        public async Task<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainModPackDefinitionDto?> PostAsync(global::X39.UnitedTacticalForces.WebApp.Api.Models.ModPackCompositionCreationPayload body, Action<RequestConfiguration<DefaultQueryParameters>>? requestConfiguration = default, CancellationToken cancellationToken = default)
         {
 #nullable restore
 #else
-        public async Task<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainModPackDefinitionDto> PostAsync(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainModPackDefinitionDto body, Action<RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition.CompositionRequestBuilder.CompositionRequestBuilderPostQueryParameters>> requestConfiguration = default, CancellationToken cancellationToken = default)
+        public async Task<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainModPackDefinitionDto> PostAsync(global::X39.UnitedTacticalForces.WebApp.Api.Models.ModPackCompositionCreationPayload body, Action<RequestConfiguration<DefaultQueryParameters>> requestConfiguration = default, CancellationToken cancellationToken = default)
         {
 #endif
             _ = body ?? throw new ArgumentNullException(nameof(body));
@@ -55,11 +55,11 @@ namespace X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
-        public RequestInformation ToPostRequestInformation(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainModPackDefinitionDto body, Action<RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition.CompositionRequestBuilder.CompositionRequestBuilderPostQueryParameters>>? requestConfiguration = default)
+        public RequestInformation ToPostRequestInformation(global::X39.UnitedTacticalForces.WebApp.Api.Models.ModPackCompositionCreationPayload body, Action<RequestConfiguration<DefaultQueryParameters>>? requestConfiguration = default)
         {
 #nullable restore
 #else
-        public RequestInformation ToPostRequestInformation(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainModPackDefinitionDto body, Action<RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition.CompositionRequestBuilder.CompositionRequestBuilderPostQueryParameters>> requestConfiguration = default)
+        public RequestInformation ToPostRequestInformation(global::X39.UnitedTacticalForces.WebApp.Api.Models.ModPackCompositionCreationPayload body, Action<RequestConfiguration<DefaultQueryParameters>> requestConfiguration = default)
         {
 #endif
             _ = body ?? throw new ArgumentNullException(nameof(body));
@@ -78,27 +78,12 @@ namespace X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition
         {
             return new global::X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition.CompositionRequestBuilder(rawUrl, RequestAdapter);
         }
-        [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
-        #pragma warning disable CS1591
-        public partial class CompositionRequestBuilderPostQueryParameters 
-        #pragma warning restore CS1591
-        {
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
-#nullable enable
-            [QueryParameter("modPackRevisionIds")]
-            public long?[]? ModPackRevisionIds { get; set; }
-#nullable restore
-#else
-            [QueryParameter("modPackRevisionIds")]
-            public long?[] ModPackRevisionIds { get; set; }
-#endif
-        }
         /// <summary>
         /// Configuration for the request such as headers, query parameters, and middleware options.
         /// </summary>
         [Obsolete("This class is deprecated. Please use the generic RequestConfiguration class generated by the generator.")]
         [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
-        public partial class CompositionRequestBuilderPostRequestConfiguration : RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.Api.ModPacks.Create.Composition.CompositionRequestBuilder.CompositionRequestBuilderPostQueryParameters>
+        public partial class CompositionRequestBuilderPostRequestConfiguration : RequestConfiguration<DefaultQueryParameters>
         {
         }
     }

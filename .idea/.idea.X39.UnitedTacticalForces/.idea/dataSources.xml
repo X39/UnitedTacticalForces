@@ -13,11 +13,11 @@
       </jdbc-additional-properties>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="database" uuid="f78b9beb-9d48-47ec-b274-022ba62f579e">
+    <data-source source="LOCAL" name="database" uuid="70e729b2-052e-41c3-b796-c4f3e441c2e1">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>
-      <jdbc-url>jdbc:postgresql://localhost:63384/database?password=7%2BVDzy*fkdZdftZrMR%2BHM8&amp;user=postgres</jdbc-url>
+      <jdbc-url>jdbc:postgresql://localhost:55982/database?password=7%2BVDzy*fkdZdftZrMR%2BHM8&amp;user=postgres</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

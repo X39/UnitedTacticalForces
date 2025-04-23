@@ -1,124 +1,163 @@
 ﻿using System.Collections.Immutable;
-using X39.Util.Collections;
+using X39.UnitedTacticalForces.WebApp.Api.Models;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services.ModPackRepository;
 
 [Scoped<ModPackRepositoryImpl, IModPackRepository>]
-internal class ModPackRepositoryImpl : RepositoryBase, IModPackRepository
+internal class ModPackRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) : RepositoryBase(httpClient, baseUrl),
+    IModPackRepository
 {
-    public ModPackRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) : base(httpClient, baseUrl)
+    public async Task<long> GetModPackCountAsync(bool myModPacksOnly, CancellationToken cancellationToken = default)
     {
-    }
-
-    public async Task<long> GetModPackCountAsync(
-        bool myModPacksOnly,
-        CancellationToken cancellationToken = default)
-    {
-        return await Client.ModPacksAllCountAsync(myModPacksOnly, cancellationToken)
+        var result = await Client.ModPacks
+            .All
+            .Count
+            .GetAsync(conf => conf.QueryParameters.MyModPacksOnly = myModPacksOnly, cancellationToken)
             .ConfigureAwait(false);
+        return result ?? default;
     }
 
-    public async Task<IReadOnlyCollection<ModPackDefinition>> GetModPacksAsync(
+    public async Task<IReadOnlyCollection<FullModPackDefinitionDto>> GetModPacksAsync(
         int skip,
         int take,
         bool myModPacksOnly,
         string? search = default,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        var modPacks = await Client.ModPacksAllAsync(skip, take, search, myModPacksOnly, cancellationToken)
+        var modPacks = await Client.ModPacks
+            .All
+            .GetAsync(
+                conf =>
+                {
+                    conf.QueryParameters.Skip           = skip;
+                    conf.QueryParameters.Take           = take;
+                    conf.QueryParameters.MyModPacksOnly = myModPacksOnly;
+                    conf.QueryParameters.Search         = search;
+                },
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
-        return modPacks.ToImmutableArray();
+        return modPacks?.ToImmutableArray() ?? [];
     }
 
-    public async Task<ModPackDefinition> CreateModPackAsync(
-        ModPackDefinition modPack,
-        CancellationToken cancellationToken = default)
+    public async Task<PlainModPackDefinitionDto> CreateModPackAsync(
+        string title,
+        IReadOnlyCollection<long> modPackRevisionIds,
+        CancellationToken cancellationToken = default
+    )
     {
-        if (modPack.IsComposition ?? false)
-        {
-            var modPackRevisionIds = (modPack.ModPackRevisions ?? ArraySegment<ModPackRevision>.Empty)
-                .Select((q) => q.PrimaryKey)
-                .NotNull()
-                .ToArray();
-            modPack = modPack.ShallowCopy();
-            modPack = await Client.ModPacksCreateCompositionAsync(modPackRevisionIds, modPack, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        else
-        {
-            modPack = await Client.ModPacksCreateStandaloneAsync(modPack, cancellationToken)
-                .ConfigureAwait(false);
-        }
+        var result = await Client.ModPacks
+            .Create
+            .Composition
+            .PostAsync(
+                new ModPackCompositionCreationPayload
+                {
+                    RevisionIds = modPackRevisionIds.Cast<long?>()
+                        .ToList(),
+                    Title = title,
+                },
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
+        return result ?? throw new NullReferenceException("Failed to create mod pack.");
+    }
 
-        return modPack;
+    public async Task<PlainModPackDefinitionDto> CreateModPackAsync(
+        PlainModPackDefinitionDto definition,
+        PlainModPackRevisionDto revision,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var result = await Client.ModPacks
+            .Create
+            .Standalone
+            .PostAsync(
+                new ModPackCreationPayload
+                {
+                    Definition = definition,
+                    Revision   = revision,
+                },
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
+        return result ?? throw new NullReferenceException("Failed to create mod pack.");
     }
 
     public async Task ModifyModPackAsync(
-        ModPackDefinition modPack,
+        long modPackDefinitionId,
         string? title = null,
         string? html = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        if (modPack.PrimaryKey is null)
-            throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));
-        if (modPack.IsComposition ?? false)
-            throw new ArgumentException("ModPack.IsComposition is true.", nameof(modPack));
-        await Client.ModPacksUpdateStandaloneAsync(
-                modPack.PrimaryKey.Value,
-                new ModPackStandaloneUpdate()
+        await Client.ModPacks[modPackDefinitionId]
+            .Update
+            .Standalone
+            .PostAsync(
+                new ModPackStandaloneUpdate
                 {
                     Html  = html,
                     Title = title,
                 },
-                cancellationToken)
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
     }
 
     public async Task ModifyModPackAsync(
-        ModPackDefinition modPack,
+        long modPackDefinitionId,
         string? title = null,
         bool? useLatest = null,
         long[]? modPackRevisionIds = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        if (modPack.PrimaryKey is null)
-            throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));
-        if (!(modPack.IsComposition ?? false))
-            throw new ArgumentException("ModPack.IsComposition is false.", nameof(modPack));
-        await Client.ModPacksUpdateCompositionAsync(
-                modPack.PrimaryKey.Value,
-                new ModPackCompositionUpdate()
+        await Client.ModPacks[modPackDefinitionId]
+            .Update
+            .Composition
+            .PostAsync(
+                new ModPackCompositionUpdate
                 {
                     Title = title,
+                    ModPackRevisionIds = modPackRevisionIds?.Cast<long?>()
+                        .ToList(),
                     UseLatest = useLatest,
-                    ModPackRevisionIds = modPackRevisionIds,
                 },
-                cancellationToken)
+                cancellationToken: cancellationToken
+            )
             .ConfigureAwait(false);
     }
 
-    public async Task DeleteModPackAsync(ModPackDefinition modPack, CancellationToken cancellationToken = default)
+    public async Task DeleteModPackAsync(long modPackDefinitionId, CancellationToken cancellationToken = default)
     {
-        if (modPack.PrimaryKey is null)
-            throw new ArgumentException("ModPack.PrimaryKey is null.", nameof(modPack));
-        await Client.ModPacksDeleteAsync(modPack.PrimaryKey.Value, cancellationToken)
+        await Client.ModPacks[modPackDefinitionId]
+            .DeletePath
+            .PostAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task<ModPackDefinition?> GetModPackDefinitionAsync(
-        long modPackDefinitionPk,
-        CancellationToken cancellationToken = default)
+    public async Task<PlainModPackDefinitionDto?> GetModPackDefinitionAsync(
+        long modPackDefinitionId,
+        CancellationToken cancellationToken = default
+    )
     {
-        return await Client.ModPacksAsync(modPackDefinitionPk, cancellationToken)
+        var result = await Client.ModPacks[modPackDefinitionId]
+            .GetAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+        return result;
     }
 
-    public async Task<ModPackRevision?> GetModPackRevisionAsync(
+    public async Task<PlainModPackRevisionDto?> GetModPackRevisionAsync(
         long modPackRevisionPk,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        return await Client.ModPacksRevisionAsync(modPackRevisionPk, cancellationToken)
+        var result = await Client.ModPacks
+            .Revision[modPackRevisionPk]
+            .GetAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+        return result;
     }
 }

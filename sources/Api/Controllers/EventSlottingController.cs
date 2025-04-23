@@ -4,6 +4,7 @@ using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
 using X39.UnitedTacticalForces.Api.DTO;
+using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.DTO.Updates;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
@@ -360,7 +361,7 @@ public class EventSlottingController : ControllerBase
     [ProducesResponseType<PlainEventSlotDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> CreateEventSlotAsync(
         [FromRoute] Guid eventId,
-        [FromBody] PlainEventSlotDto payload,
+        [FromBody] EventSlotCreationPayload payload,
         CancellationToken cancellationToken)
     {
         if (!User.TryGetUserId(out var userId))

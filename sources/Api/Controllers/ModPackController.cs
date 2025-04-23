@@ -6,6 +6,7 @@ using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Core;
 using X39.UnitedTacticalForces.Api.DTO;
+using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.DTO.Updates;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.Util;
@@ -140,12 +141,9 @@ public class ModPackController : ControllerBase
     /// Creates a new <see cref="ModPackDefinition"/> and links the given <see cref="ModPackRevision"/> to it.
     /// </summary>
     /// <remarks>
-    /// The initial <see cref="ModPackRevision"/>'s must be provided via the <paramref name="modPackRevisionIds"/>
-    /// query parameter and must exist already in the database.
     /// A composition may not own any <see cref="ModPackRevision"/>s.
     /// </remarks>
-    /// <param name="payload">The <see cref="ModPackDefinition"/> to create.</param>
-    /// <param name="modPackRevisionIds">The <see cref="ModPackRevision"/>s to link to the <see cref="ModPackDefinition"/>.</param>
+    /// <param name="payload">The data to create.</param>
     /// <param name="cancellationToken">
     ///     A <see cref="CancellationToken"/> to cancel the operation.
     ///     Passed automatically by ASP.Net framework.
@@ -158,8 +156,7 @@ public class ModPackController : ControllerBase
     [ProducesResponseType(typeof(void), StatusCodes.Status400BadRequest)]
     [ProducesResponseType<PlainModPackDefinitionDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> CreateModPackCompositionAsync(
-        [FromBody] PlainModPackDefinitionDto payload,
-        [FromQuery] long[] modPackRevisionIds,
+        [FromBody] ModPackCompositionCreationPayload payload,
         CancellationToken cancellationToken
     )
     {
@@ -176,7 +173,7 @@ public class ModPackController : ControllerBase
             ModPackRevisions      = [],
             ModPackRevisionsOwned = null,
         };
-        foreach (var modPackRevisionId in modPackRevisionIds)
+        foreach (var modPackRevisionId in payload.RevisionIds)
         {
             var modPackRevision = await _apiDbContext.ModPackRevisions.SingleOrDefaultAsync(
                 c => c.PrimaryKey == modPackRevisionId,
