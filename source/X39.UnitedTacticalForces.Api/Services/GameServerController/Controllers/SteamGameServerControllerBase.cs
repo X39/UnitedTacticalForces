@@ -590,6 +590,9 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         Process       = tmp;
         using var disposable = new Disposable(() => Process = null);
         await StartAndWaitForCmdExitAndLogAsync(tmp, "SteamCMD");
+        // Wait a full minute to not exceed steams rate limit with SteamCmd calls.
+        await Task.Delay(TimeSpan.FromMinutes(1))
+            .ConfigureAwait(false);
         if (tmp.ExitCode is not 0)
             throw new Exception("SteamCmd operation failed.");
         Logger.LogInformation(
@@ -714,7 +717,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 "depots",
                 GameAppId.ToString()
             );
-            var ugcIdPath = Directory.GetDirectories(workShopContentPath).OrderByDescending(ulong.Parse).First();
+            var ugcIdPath = Directory.GetDirectories(workShopContentPath).OrderByDescending(e => ulong.Parse(Path.GetFileName(e))).First();
             workShopContentPath = Path.Combine(workShopContentPath, ugcIdPath);
             installPaths.Add((workshopId, workShopContentPath));
             await SteamCmdLogAsync(LogLevel.Information, "DepotDownloader", $"Downloaded {GameAppId}/{workshopId} to {workShopContentPath}", DateTimeOffset.Now)
@@ -806,9 +809,6 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         }
 
         await tmp.WaitForExitAsync()
-            .ConfigureAwait(false);
-        // Wait a full minute to not exceed steams rate limit with SteamCmd calls.
-        await Task.Delay(TimeSpan.FromMinutes(1))
             .ConfigureAwait(false);
     }
 

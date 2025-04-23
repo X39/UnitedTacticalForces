@@ -42,6 +42,8 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!(_configuration[Constants.Configuration.Discord.Enabled]?.ToBoolean() ?? true))
+            return;
         _discordSocketClient.Log += (logMessage) =>
         {
 #pragma warning disable CA2254
