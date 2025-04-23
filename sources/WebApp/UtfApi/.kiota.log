@@ -1,0 +1,4 @@
+Warning: KiotaBuilder OpenAPI warning: #/components/schemas/FullUserDto/properties/steamId64 - The format uint64 is not supported by Kiota for the type Integer and the string type will be used.
+Warning: KiotaBuilder OpenAPI warning: #/components/schemas/FullUserDto/properties/discordId - The format uint64 is not supported by Kiota for the type Integer and the string type will be used.
+Warning: KiotaBuilder OpenAPI warning: #/components/schemas/UserDto/properties/steamId64 - The format uint64 is not supported by Kiota for the type Integer and the string type will be used.
+Warning: KiotaBuilder OpenAPI warning: #/components/schemas/UserDto/properties/discordId - The format uint64 is not supported by Kiota for the type Integer and the string type will be used.

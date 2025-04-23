@@ -435,7 +435,7 @@ public class GameServersController : ControllerBase
     /// <param name="gameServerId">The id of the <see cref="GameServer"/> to receive the files from.</param>
     [ProducesResponseType<GameFileInfo[]>(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
-    [HttpGet("{gameServerId:long}/{folder}/files", Name = nameof(GetGameFolderFilesAsync))]
+    [HttpGet("{gameServerId:long}/folders/{folder}/files", Name = nameof(GetGameFolderFilesAsync))]
     [Authorize(Claims.ResourceBased.Server.Files)]
     public async Task<IActionResult> GetGameFolderFilesAsync(
         [FromRoute] long gameServerId,
@@ -474,12 +474,12 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(void), StatusCodes.Status400BadRequest)]
-    [HttpPost("{gameServerId:long}/{folder}/upload", Name = nameof(UploadGameFolderFileAsync))]
+    [HttpPost("{gameServerId:long}/folders/{folder}/upload", Name = nameof(UploadGameFolderFileAsync))]
     [Authorize(Claims.ResourceBased.Server.Files)]
     public async Task<IActionResult> UploadGameFolderFileAsync(
         [FromRoute] long gameServerId,
-        [FromRoute] string folder,
-        [FromForm] IFormFile file,
+        [FromRoute] string folder, 
+        IFormFile file,
         CancellationToken cancellationToken
     )
     {
@@ -522,7 +522,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(void), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
-    [HttpPost("{gameServerId:long}/{folder}/{file}/delete", Name = nameof(DeleteGameFolderFileAsync))]
+    [HttpPost("{gameServerId:long}/folders/{folder}/{file}/delete", Name = nameof(DeleteGameFolderFileAsync))]
     [Authorize(Claims.ResourceBased.Server.Files)]
     public async Task<IActionResult> DeleteGameFolderFileAsync(
         [FromRoute] long gameServerId,
@@ -566,7 +566,7 @@ public class GameServersController : ControllerBase
     [ProducesResponseType(typeof(void), StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(void), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
-    [HttpPost("{gameServerId:long}/{folder}/{file}/get", Name = nameof(GetGameFolderFileAsync))]
+    [HttpPost("{gameServerId:long}/folders/{folder}/{file}/get", Name = nameof(GetGameFolderFileAsync))]
     [Authorize(Claims.ResourceBased.Server.Files)]
     public async Task<ActionResult<Stream>> GetGameFolderFileAsync(
         [FromRoute] long gameServerId,

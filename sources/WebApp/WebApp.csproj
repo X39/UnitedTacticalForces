@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="9.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.4" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Localization" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Kiota.Bundle" Version="1.17.2" />
     <PackageReference Include="MudBlazor" Version="8.5.1" />
     <PackageReference Include="MudBlazor.Markdown" Version="8.5.1" />
     <PackageReference Include="X39.Util" Version="1.0.0.52" />
@@ -31,59 +32,14 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Language.resx</DependentUpon>
     </Compile>
-    <Compile Update="Api.Generated.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
     <Compile Update="Constants.Icons.Feather.cs">
       <DependentUpon>Constants.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.GameServer.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.ConfigurationEntry.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.Event.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.LifetimeEvent.cs">
-      <DependentUpon>Api.cs</DependentUpon>
     </Compile>
     <Compile Update="Constants.Icons.X39.cs">
       <DependentUpon>Constants.cs</DependentUpon>
     </Compile>
-    <Compile Update="Api.EventSlot.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.ModPackDefinition.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.Role.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.User.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.UserEventMeta.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
     <Compile Update="Pages\Wiki.WikiCategory.cs">
       <DependentUpon>Wiki.razor</DependentUpon>
-    </Compile>
-    <Compile Update="Api.ModPackRevision.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.Terrain.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.UserModPackMeta.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.DiscordUser.cs">
-      <DependentUpon>Api.cs</DependentUpon>
-    </Compile>
-    <Compile Update="Api.SteamUser.cs">
-      <DependentUpon>Api.cs</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -131,6 +87,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Contract\Contract.csproj" />
     <ProjectReference Include="..\X39.BI.Config.Parsing\X39.BI.Config.Parsing.csproj" />
     <ProjectReference Include="..\Common\Common.csproj" />
     <ProjectReference Include="..\Claims\Claims.csproj" />

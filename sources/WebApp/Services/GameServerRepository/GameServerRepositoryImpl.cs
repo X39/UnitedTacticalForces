@@ -1,294 +1,287 @@
 ﻿using System.Collections.Immutable;
+using Microsoft.Kiota.Abstractions;
+using X39.UnitedTacticalForces.WebApp.Api.Models;
 using X39.UnitedTacticalForces.WebApp.Properties;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services.GameServerRepository;
 
 [Scoped<GameServerRepositoryImpl, IGameServerRepository>]
-internal class GameServerRepositoryImpl : RepositoryBase, IGameServerRepository
+internal class GameServerRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) : RepositoryBase(httpClient, baseUrl),
+    IGameServerRepository
 {
-    public GameServerRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl)
-        : base(httpClient, baseUrl) { }
-
     public async Task<long> GetGameServerCountAsync(CancellationToken cancellationToken = default)
     {
-        return await Client.GameServersAllCountAsync(cancellationToken).ConfigureAwait(false);
+        var result = await Client.GameServers
+            .All
+            .Count
+            .GetAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return result ?? default;
     }
 
     public async Task<IReadOnlyCollection<ConfigurationEntryDefinition>> GetConfigurationDefinitionsAsync(
-        GameServer        gameServer,
+        long gameServerId,
         CancellationToken cancellationToken
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        var result = await Client
-                           .GameServersConfigurationDefinitionsAsync(gameServer.PrimaryKey.Value, cancellationToken)
-                           .ConfigureAwait(false);
-        return result.ToImmutableArray();
+        var result = await Client.GameServers[gameServerId]
+            .Configuration
+            .Definitions
+            .GetAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return result?.ToImmutableArray() ?? [];
     }
 
-    public async Task<IReadOnlyCollection<ConfigurationEntry>> GetConfigurationAsync(
-        GameServer        gameServer,
+    public async Task<IReadOnlyCollection<PlainConfigurationEntryDto>> GetConfigurationAsync(
+        long gameServerId,
         CancellationToken cancellationToken
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        var result = await Client.GameServersConfigurationGetAsync(gameServer.PrimaryKey.Value, cancellationToken)
-                                 .ConfigureAwait(false);
-        return result.ToImmutableArray();
+        var result = await Client.GameServers[gameServerId]
+            .Configuration
+            .GetAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return result?.ToImmutableArray() ?? [];
     }
 
     public async Task SetConfigurationAsync(
-        GameServer                      gameServer,
-        IEnumerable<ConfigurationEntry> configurationEntries,
-        CancellationToken               cancellationToken
+        long gameServerId,
+        IEnumerable<ConfigurationEntryUpdate> configurationEntries,
+        CancellationToken cancellationToken
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        await Client.GameServersConfigurationPostAsync(
-                        gameServer.PrimaryKey.Value,
-                        configurationEntries,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false);
+        await Client.GameServers[gameServerId]
+            .Configuration
+            .PostAsync(configurationEntries.ToList(), cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    public async Task<IReadOnlyCollection<GameServerInfo>> GetGameServersAsync(
+    public async Task<IReadOnlyCollection<GameServerInfoDto>> GetGameServersAsync(
         CancellationToken cancellationToken = default
     )
     {
-        var gameServers = await Client.GameServersAllAsync(cancellationToken).ConfigureAwait(false);
-        return gameServers.ToImmutableArray();
+        var gameServers = await Client.GameServers
+            .All
+            .GetAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return gameServers?.ToImmutableArray() ?? [];
     }
 
-    public async Task<IReadOnlyCollection<GameServerLog>> GetLogsAsync(
-        GameServer        gameServer,
-        int               skip,
-        int               take,
-        DateTimeOffset?   referenceTimeStamp    = null,
-        bool              descendingByTimestamp = false,
-        CancellationToken cancellationToken     = default
+    public async Task<IReadOnlyCollection<PlainGameServerLogDto>> GetLogsAsync(
+        long gameServerId,
+        int skip,
+        int take,
+        DateTimeOffset? referenceTimeStamp = null,
+        bool descendingByTimestamp = false,
+        CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        var gameServers = await Client.GameServersLogsAsync(
-                                          gameServer.PrimaryKey.Value,
-                                          skip,
-                                          take,
-                                          referenceTimeStamp,
-                                          descendingByTimestamp,
-                                          cancellationToken
-                                      )
-                                      .ConfigureAwait(false);
-        return gameServers.ToImmutableArray();
+        var gameServers = await Client.GameServers[gameServerId]
+            .Logs
+            .GetAsync(
+                conf =>
+                {
+                    conf.QueryParameters.Skip                  = skip;
+                    conf.QueryParameters.Take                  = take;
+                    conf.QueryParameters.DescendingByTimeStamp = descendingByTimestamp;
+                    conf.QueryParameters.ReferenceTimeStamp    = referenceTimeStamp;
+                },
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
+        return gameServers?.ToImmutableArray() ?? [];
     }
 
     public async Task<long> GetLogsCountAsync(
-        GameServer        gameServer,
-        DateTimeOffset?   referenceTimeStamp = null,
-        CancellationToken cancellationToken  = default
-    )
-    {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        var logsCount = await Client
-                              .GameServersLogsCountAsync(
-                                  gameServer.PrimaryKey.Value,
-                                  referenceTimeStamp,
-                                  cancellationToken
-                              )
-                              .ConfigureAwait(false);
-        return logsCount;
-    }
-
-    public async Task<GameServerInfo> GetGameServerAsync(
-        long              gameServerId,
+        long gameServerId,
+        DateTimeOffset? referenceTimeStamp = null,
         CancellationToken cancellationToken = default
     )
     {
-        var gameServer = await Client.GameServersAsync(gameServerId, cancellationToken).ConfigureAwait(false);
-        return gameServer;
+        var logsCount = await Client.GameServers[gameServerId]
+            .Logs
+            .Count
+            .GetAsync(conf => conf.QueryParameters.ReferenceTimeStamp = referenceTimeStamp, cancellationToken)
+            .ConfigureAwait(false);
+        return logsCount ?? default;
     }
 
-    public async Task ChangeTitleAsync(
-        GameServer        gameServer,
-        string            title,
+    public async Task<GameServerInfoDto> GetGameServerAsync(
+        long gameServerId,
         CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        await Client.GameServersRenameAsync(gameServer.PrimaryKey.Value, title, cancellationToken)
-                    .ConfigureAwait(false);
+        var gameServer = await Client.GameServers[gameServerId]
+            .GetAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return gameServer ?? throw new NullReferenceException("Failed to get game server.");
+    }
+
+    public async Task ChangeTitleAsync(long gameServerId, string title, CancellationToken cancellationToken = default)
+    {
+        await Client.GameServers[gameServerId]
+            .Rename
+            .PutAsync(title, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task ChangeModPackAsync(
-        GameServer        gameServer,
-        ModPackDefinition modPackDefinition,
+        long gameServerId,
+        long modPackDefinitionId,
         CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        if (modPackDefinition.PrimaryKey is null)
-            throw new ArgumentException(
-                Language.Exception_ModPackDefinition_PrimaryKey_is_null,
-                nameof(modPackDefinition)
-            );
-        await Client.GameServersModPackSetAsync(
-                        gameServer.PrimaryKey.Value,
-                        (int) modPackDefinition.PrimaryKey.Value,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false);
+        await Client.GameServers[gameServerId]
+            .ModPack
+            .Set
+            .PutAsync((int) modPackDefinitionId, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    public async Task ClearModPackAsync(GameServer gameServer, CancellationToken cancellationToken = default)
+    public async Task ClearModPackAsync(long gameServerId, CancellationToken cancellationToken = default)
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        await Client.GameServersModPackClearAsync(gameServer.PrimaryKey.Value, cancellationToken).ConfigureAwait(false);
+        await Client.GameServers[gameServerId]
+            .ModPack
+            .Clear
+            .PutAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyCollection<string>> GetGameServerControllersAsync(
         CancellationToken cancellationToken = default
     )
     {
-        var gameServerControllers =
-            await Client.GameServersAllControllersAsync(cancellationToken).ConfigureAwait(false);
-        return gameServerControllers.ToImmutableArray();
+        var gameServerControllers = await Client.GameServers
+            .All
+            .Controllers
+            .GetAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return gameServerControllers?.ToImmutableArray() ?? [];
     }
 
-    public async Task<GameServerInfo> CreateGameServerAsync(
-        string            controllerIdentifier,
-        GameServer        gameServer,
+    public async Task<GameServerInfoDto> CreateGameServerAsync(
+        string controllerIdentifier,
+        string title,
         CancellationToken cancellationToken = default
     )
     {
-        gameServer.ActiveModPack        = null;
-        gameServer.SelectedModPack      = null;
-        gameServer.LifetimeEvents       = null;
-        gameServer.ConfigurationEntries = null;
-        var info = await Client.GameServersCreateAsync(controllerIdentifier, gameServer, cancellationToken)
-                               .ConfigureAwait(false);
-        return info;
+        var info = await Client.GameServers
+            .Create[controllerIdentifier]
+            .PostAsync(title, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return info ?? throw new NullReferenceException("Failed to create game server.");
     }
 
-    public async Task DeleteGameServerAsync(GameServer gameServer, CancellationToken cancellationToken = default)
+    public async Task DeleteGameServerAsync(long gameServerId, CancellationToken cancellationToken = default)
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        await Client.GameServersDeletePostAsync(gameServer.PrimaryKey.Value, cancellationToken).ConfigureAwait(false);
+        await Client.GameServers[gameServerId]
+            .DeletePath
+            .PostAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    public async Task<GameServerInfo> StartGameServerAsync(
-        GameServer        gameServer,
+    public async Task<GameServerInfoDto> StartGameServerAsync(
+        long gameServerId,
         CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        return await Client.GameServersStartAsync(gameServer.PrimaryKey.Value, cancellationToken).ConfigureAwait(false);
+        var result = await Client.GameServers[gameServerId]
+            .Start
+            .PostAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return result ?? throw new NullReferenceException("Failed to start game server.");
     }
 
-    public async Task<GameServerInfo> StopGameServerAsync(
-        GameServer        gameServer,
+    public async Task<GameServerInfoDto> StopGameServerAsync(
+        long gameServerId,
         CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        return await Client.GameServersStopAsync(gameServer.PrimaryKey.Value, cancellationToken).ConfigureAwait(false);
+        var result = await Client.GameServers[gameServerId]
+            .Stop
+            .PostAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return result ?? throw new NullReferenceException("Failed to stop game server.");
     }
 
-    public async Task<GameServerInfo> UpgradeGameServerAsync(
-        GameServer        gameServer,
+    public async Task<GameServerInfoDto> UpgradeGameServerAsync(
+        long gameServerId,
         CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        return await Client.GameServersUpgradeAsync(gameServer.PrimaryKey.Value, cancellationToken)
-                           .ConfigureAwait(false);
+        var result = await Client.GameServers[gameServerId]
+            .Upgrade
+            .PostAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return result ?? throw new NullReferenceException("Failed to upgrade game server.");
     }
 
     public async Task<IReadOnlyCollection<GameFolder>> GetGameServerFoldersAsync(
-        GameServer        gameServer,
+        long gameServerId,
         CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        var folders = await Client.GameServersFoldersAsync(gameServer.PrimaryKey.Value, cancellationToken)
-                                  .ConfigureAwait(false);
-        return folders.ToImmutableArray();
+        var folders = await Client.GameServers[gameServerId]
+            .Folders
+            .GetAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return folders?.ToImmutableArray() ?? [];
     }
 
     public async Task<IReadOnlyCollection<GameFileInfo>> GetGameServerFolderFilesAsync(
-        GameServer        gameServer,
-        GameFolder        gameFolder,
+        long gameServerId,
+        string gameFolderIdentifier,
         CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        if (gameFolder.Identifier is null)
-            throw new ArgumentException(Language.Exception_GameFolder_Identifier_is_null, nameof(gameFolder));
-        var folders = await Client
-                            .GameServersFilesAsync(
-                                gameServer.PrimaryKey.Value,
-                                gameFolder.Identifier,
-                                cancellationToken
-                            )
-                            .ConfigureAwait(false);
-        return folders.ToImmutableArray();
+        var folders = await Client.GameServers[gameServerId]
+            .Folders[gameFolderIdentifier]
+            .Files
+            .GetAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return folders?.ToImmutableArray() ?? [];
     }
 
     public async Task UploadGameServerFolderFileAsync(
-        GameServer        gameServer,
-        GameFolder        gameFolder,
-        FileParameter     file,
+        long gameServerId,
+        string gameFolderIdentifier,
+        Stream fileStream,
+        string fileName,
+        string fileMimeType,
         CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        if (gameFolder.Identifier is null)
-            throw new ArgumentException(Language.Exception_GameFolder_Identifier_is_null, nameof(gameFolder));
-        await Client.GameServersUploadAsync(gameServer.PrimaryKey.Value, gameFolder.Identifier, file, cancellationToken)
-                    .ConfigureAwait(false);
+        // https://github.com/microsoft/kiota/issues/3826
+        var body = new MultipartBody();
+        body.AddOrReplacePart(fileName, fileMimeType, fileStream);
+        await Client.GameServers[gameServerId]
+            .Folders[gameFolderIdentifier]
+            .Upload
+            .PostAsync(body, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task DeleteGameServerFolderFileAsync(
-        GameServer        gameServer,
-        GameFolder        gameFolder,
-        GameFileInfo      gameFileInfo,
+        long gameServerId,
+        string gameFolderIdentifier,
+        string gameFileFolder,
         CancellationToken cancellationToken = default
     )
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        if (gameFolder.Identifier is null)
-            throw new ArgumentException(Language.Exception_GameFolder_Identifier_is_null, nameof(gameFolder));
-        if (gameFileInfo.Name is null)
-            throw new ArgumentException(Language.Exception_GameFileInfo_Name_is_null, nameof(gameFolder));
-        await Client.GameServersDeletePostAsync(
-                        gameServer.PrimaryKey.Value,
-                        gameFolder.Identifier,
-                        gameFileInfo.Name,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false);
+        await Client.GameServers[gameServerId]
+            .Folders[gameFolderIdentifier][gameFileFolder]
+            .DeletePath
+            .PostAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    public async Task ClearAsync(GameServer gameServer, CancellationToken cancellationToken = default)
+    public async Task ClearAsync(long gameServerId, CancellationToken cancellationToken = default)
     {
-        if (gameServer.PrimaryKey is null)
-            throw new ArgumentException(Language.Exception_GameServer_PrimaryKey_is_null, nameof(gameServer));
-        await Client.GameServersLogsClearAsync(gameServer.PrimaryKey.Value, cancellationToken).ConfigureAwait(false);
+        await Client.GameServers[gameServerId]
+            .Logs
+            .Clear
+            .PostAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 }

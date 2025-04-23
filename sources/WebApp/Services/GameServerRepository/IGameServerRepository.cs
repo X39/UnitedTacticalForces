@@ -1,99 +1,94 @@
-﻿namespace X39.UnitedTacticalForces.WebApp.Services.GameServerRepository;
+﻿using X39.UnitedTacticalForces.WebApp.Api.Models;
+
+namespace X39.UnitedTacticalForces.WebApp.Services.GameServerRepository;
 
 public interface IGameServerRepository
 {
     Task<long> GetGameServerCountAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyCollection<GameServerInfo>> GetGameServersAsync(CancellationToken cancellationToken = default);
-    Task<IReadOnlyCollection<string>> GetGameServerControllersAsync(CancellationToken cancellationToken = default);
-
-    Task<GameServerInfo> CreateGameServerAsync(
-        string            controllerIdentifier,
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
-
-    Task<GameServerInfo> StartGameServerAsync(
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
-
-    Task<GameServerInfo> StopGameServerAsync(
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
-
-    Task<GameServerInfo> UpgradeGameServerAsync(
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
-
-    Task DeleteGameServerAsync(
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
-
     Task<IReadOnlyCollection<ConfigurationEntryDefinition>> GetConfigurationDefinitionsAsync(
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
+        long gameServerId,
+        CancellationToken cancellationToken
+    );
 
-    Task<IReadOnlyCollection<ConfigurationEntry>> GetConfigurationAsync(
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<PlainConfigurationEntryDto>> GetConfigurationAsync(
+        long gameServerId,
+        CancellationToken cancellationToken
+    );
 
     Task SetConfigurationAsync(
-        GameServer                      gameServer,
-        IEnumerable<ConfigurationEntry> configurationEntries,
-        CancellationToken               cancellationToken = default);
+        long gameServerId,
+        IEnumerable<ConfigurationEntryUpdate> configurationEntries,
+        CancellationToken cancellationToken
+    );
 
-    Task<GameServerInfo> GetGameServerAsync(
-        long              gameServerId,
-        CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<GameServerInfoDto>> GetGameServersAsync(CancellationToken cancellationToken = default);
 
-    Task ChangeModPackAsync(
-        GameServer        gameServer,
-        ModPackDefinition modPackDefinition,
-        CancellationToken cancellationToken = default);
-
-    Task ChangeTitleAsync(
-        GameServer        gameServer,
-        string title,
-        CancellationToken cancellationToken = default);
-
-    Task ClearModPackAsync(
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyCollection<GameServerLog>> GetLogsAsync(
-        GameServer        gameServer,
-        int               skip,
-        int               take,
-        DateTimeOffset?   referenceTimeStamp    = null,
-        bool              descendingByTimestamp = false,
-        CancellationToken cancellationToken     = default);
+    Task<IReadOnlyCollection<PlainGameServerLogDto>> GetLogsAsync(
+        long gameServerId,
+        int skip,
+        int take,
+        DateTimeOffset? referenceTimeStamp = null,
+        bool descendingByTimestamp = false,
+        CancellationToken cancellationToken = default
+    );
 
     Task<long> GetLogsCountAsync(
-        GameServer        gameServer,
-        DateTimeOffset?   referenceTimeStamp = null,
-        CancellationToken cancellationToken  = default);
+        long gameServerId,
+        DateTimeOffset? referenceTimeStamp = null,
+        CancellationToken cancellationToken = default
+    );
+
+    Task<GameServerInfoDto> GetGameServerAsync(long gameServerId, CancellationToken cancellationToken = default);
+
+    Task ChangeTitleAsync(long gameServerId, string title, CancellationToken cancellationToken = default);
+
+    Task ChangeModPackAsync(long gameServerId, long modPackDefinitionId, CancellationToken cancellationToken = default);
+
+    Task ClearModPackAsync(long gameServerId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<string>> GetGameServerControllersAsync(CancellationToken cancellationToken = default);
+
+    Task<GameServerInfoDto> CreateGameServerAsync(
+        string controllerIdentifier,
+        string title,
+        CancellationToken cancellationToken = default
+    );
+
+    Task DeleteGameServerAsync(long gameServerId, CancellationToken cancellationToken = default);
+
+    Task<GameServerInfoDto> StartGameServerAsync(long gameServerId, CancellationToken cancellationToken = default);
+
+    Task<GameServerInfoDto> StopGameServerAsync(long gameServerId, CancellationToken cancellationToken = default);
+
+    Task<GameServerInfoDto> UpgradeGameServerAsync(long gameServerId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<GameFolder>> GetGameServerFoldersAsync(
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
+        long gameServerId,
+        CancellationToken cancellationToken = default
+    );
 
     Task<IReadOnlyCollection<GameFileInfo>> GetGameServerFolderFilesAsync(
-        GameServer        gameServer,
-        GameFolder        gameFolder,
-        CancellationToken cancellationToken = default);
+        long gameServerId,
+        string gameFolderIdentifier,
+        CancellationToken cancellationToken = default
+    );
 
     Task UploadGameServerFolderFileAsync(
-        GameServer        gameServer,
-        GameFolder        gameFolder,
-        FileParameter     file,
-        CancellationToken cancellationToken = default);
+        long gameServerId,
+        string gameFolderIdentifier,
+        Stream fileStream,
+        string fileName,
+        string fileMimeType,
+        CancellationToken cancellationToken = default
+    );
 
     Task DeleteGameServerFolderFileAsync(
-        GameServer        gameServer,
-        GameFolder        gameFolder,
-        GameFileInfo      gameFileInfo,
-        CancellationToken cancellationToken = default);
+        long gameServerId,
+        string gameFolderIdentifier,
+        string gameFileFolder,
+        CancellationToken cancellationToken = default
+    );
 
-    Task ClearAsync(
-        GameServer        gameServer,
-        CancellationToken cancellationToken = default);
+    Task ClearAsync(long gameServerId, CancellationToken cancellationToken = default);
 }

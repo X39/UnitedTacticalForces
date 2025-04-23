@@ -6,6 +6,7 @@ using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
 using X39.UnitedTacticalForces.Api.DTO;
+using X39.UnitedTacticalForces.Api.DTO.Updates;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.HostedServices;
@@ -590,7 +591,7 @@ public class EventsController : ControllerBase
     [HttpPost("{eventId:guid}/update", Name = nameof(UpdateEventAsync))]
     public async Task<IActionResult> UpdateEventAsync(
         [FromRoute] Guid eventId,
-        [FromBody] PlainEventDto payload,
+        [FromBody] EventUpdate payload,
         CancellationToken cancellationToken
     )
     {
@@ -603,16 +604,23 @@ public class EventsController : ControllerBase
             return Forbid();
         var imageChanged = false;
         // ToDo: Log audit
-        existingEvent.Title        = payload.Title;
-        existingEvent.Description  = payload.Description;
-        existingEvent.ScheduledFor = payload.ScheduledFor;
-
-        existingEvent.HostedByFk        = payload.HostedByFk;
-        existingEvent.ModPackRevisionFk = payload.ModPackRevisionFk;
-        existingEvent.TerrainFk         = payload.TerrainFk;
-        existingEvent.MinimumAccepted   = payload.MinimumAccepted;
-        existingEvent.IsVisible         = payload.IsVisible;
-        if (payload.Image != existingEvent.Image)
+        if (payload.Title is not null)
+            existingEvent.Title        = payload.Title;
+        if (payload.Description is not null)
+            existingEvent.Description  = payload.Description;
+        if (payload.ScheduledFor is not null)
+            existingEvent.ScheduledFor = payload.ScheduledFor.Value;
+        if (payload.HostedByFk is not null)
+            existingEvent.HostedByFk        = payload.HostedByFk.Value;
+        if (payload.ModPackRevisionFk is not null)
+            existingEvent.ModPackRevisionFk = payload.ModPackRevisionFk.Value;
+        if (payload.TerrainFk is not null)
+            existingEvent.TerrainFk         = payload.TerrainFk.Value;
+        if (payload.MinimumAccepted is not null)
+            existingEvent.MinimumAccepted   = payload.MinimumAccepted.Value;
+        if (payload.IsVisible is not null)
+            existingEvent.IsVisible         = payload.IsVisible.Value;
+        if (payload.Image is not null && payload.ImageMimeType is not null)
         {
             existingEvent.ImageMimeType = payload.ImageMimeType;
             existingEvent.Image         = payload.Image;
