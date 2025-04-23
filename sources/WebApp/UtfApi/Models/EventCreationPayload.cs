@@ -9,7 +9,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
 {
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
     #pragma warning disable CS1591
-    public partial class UpcomingEventDto : IAdditionalDataHolder, IParsable
+    public partial class EventCreationPayload : IAdditionalDataHolder, IParsable
     #pragma warning restore CS1591
     {
         /// <summary>The acceptedCount property</summary>
@@ -24,14 +24,8 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
 #else
         public string Description { get; set; }
 #endif
-        /// <summary>The hostedBy property</summary>
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
-#nullable enable
-        public global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainUserDto? HostedBy { get; set; }
-#nullable restore
-#else
-        public global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainUserDto HostedBy { get; set; }
-#endif
+        /// <summary>The hostedByFk property</summary>
+        public Guid? HostedByFk { get; set; }
         /// <summary>The image property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -48,42 +42,20 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
 #else
         public string ImageMimeType { get; set; }
 #endif
+        /// <summary>The isVisible property</summary>
+        public bool? IsVisible { get; set; }
         /// <summary>The maybeCount property</summary>
         public int? MaybeCount { get; set; }
-        /// <summary>The metaAcceptance property</summary>
-        public int? MetaAcceptance { get; set; }
         /// <summary>The minimumAccepted property</summary>
         public int? MinimumAccepted { get; set; }
-        /// <summary>The modPackDefinitionIsComposition property</summary>
-        public bool? ModPackDefinitionIsComposition { get; set; }
-        /// <summary>The modPackDefinitionTitle property</summary>
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
-#nullable enable
-        public string? ModPackDefinitionTitle { get; set; }
-#nullable restore
-#else
-        public string ModPackDefinitionTitle { get; set; }
-#endif
-        /// <summary>The modPackRevisionTimeStampDownloaded property</summary>
-        public DateTimeOffset? ModPackRevisionTimeStampDownloaded { get; set; }
-        /// <summary>The primaryKey property</summary>
-        public Guid? PrimaryKey { get; set; }
+        /// <summary>The modPackRevisionFk property</summary>
+        public long? ModPackRevisionFk { get; set; }
         /// <summary>The rejectedCount property</summary>
         public int? RejectedCount { get; set; }
         /// <summary>The scheduledFor property</summary>
         public DateTimeOffset? ScheduledFor { get; set; }
-        /// <summary>The scheduledForOriginal property</summary>
-        public DateTimeOffset? ScheduledForOriginal { get; set; }
-        /// <summary>The terrainTitle property</summary>
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
-#nullable enable
-        public string? TerrainTitle { get; set; }
-#nullable restore
-#else
-        public string TerrainTitle { get; set; }
-#endif
-        /// <summary>The timeStampCreated property</summary>
-        public DateTimeOffset? TimeStampCreated { get; set; }
+        /// <summary>The terrainFk property</summary>
+        public long? TerrainFk { get; set; }
         /// <summary>The title property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -93,21 +65,21 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
         public string Title { get; set; }
 #endif
         /// <summary>
-        /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.Api.Models.UpcomingEventDto"/> and sets the default values.
+        /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.Api.Models.EventCreationPayload"/> and sets the default values.
         /// </summary>
-        public UpcomingEventDto()
+        public EventCreationPayload()
         {
             AdditionalData = new Dictionary<string, object>();
         }
         /// <summary>
         /// Creates a new instance of the appropriate class based on discriminator value
         /// </summary>
-        /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.Api.Models.UpcomingEventDto"/></returns>
+        /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.Api.Models.EventCreationPayload"/></returns>
         /// <param name="parseNode">The parse node to use to read the discriminator value and create the object</param>
-        public static global::X39.UnitedTacticalForces.WebApp.Api.Models.UpcomingEventDto CreateFromDiscriminatorValue(IParseNode parseNode)
+        public static global::X39.UnitedTacticalForces.WebApp.Api.Models.EventCreationPayload CreateFromDiscriminatorValue(IParseNode parseNode)
         {
             _ = parseNode ?? throw new ArgumentNullException(nameof(parseNode));
-            return new global::X39.UnitedTacticalForces.WebApp.Api.Models.UpcomingEventDto();
+            return new global::X39.UnitedTacticalForces.WebApp.Api.Models.EventCreationPayload();
         }
         /// <summary>
         /// The deserialization information for the current model
@@ -119,21 +91,16 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
             {
                 { "acceptedCount", n => { AcceptedCount = n.GetIntValue(); } },
                 { "description", n => { Description = n.GetStringValue(); } },
-                { "hostedBy", n => { HostedBy = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainUserDto>(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainUserDto.CreateFromDiscriminatorValue); } },
+                { "hostedByFk", n => { HostedByFk = n.GetGuidValue(); } },
                 { "image", n => { Image = n.GetByteArrayValue(); } },
                 { "imageMimeType", n => { ImageMimeType = n.GetStringValue(); } },
+                { "isVisible", n => { IsVisible = n.GetBoolValue(); } },
                 { "maybeCount", n => { MaybeCount = n.GetIntValue(); } },
-                { "metaAcceptance", n => { MetaAcceptance = n.GetIntValue(); } },
                 { "minimumAccepted", n => { MinimumAccepted = n.GetIntValue(); } },
-                { "modPackDefinitionIsComposition", n => { ModPackDefinitionIsComposition = n.GetBoolValue(); } },
-                { "modPackDefinitionTitle", n => { ModPackDefinitionTitle = n.GetStringValue(); } },
-                { "modPackRevisionTimeStampDownloaded", n => { ModPackRevisionTimeStampDownloaded = n.GetDateTimeOffsetValue(); } },
-                { "primaryKey", n => { PrimaryKey = n.GetGuidValue(); } },
+                { "modPackRevisionFk", n => { ModPackRevisionFk = n.GetLongValue(); } },
                 { "rejectedCount", n => { RejectedCount = n.GetIntValue(); } },
                 { "scheduledFor", n => { ScheduledFor = n.GetDateTimeOffsetValue(); } },
-                { "scheduledForOriginal", n => { ScheduledForOriginal = n.GetDateTimeOffsetValue(); } },
-                { "terrainTitle", n => { TerrainTitle = n.GetStringValue(); } },
-                { "timeStampCreated", n => { TimeStampCreated = n.GetDateTimeOffsetValue(); } },
+                { "terrainFk", n => { TerrainFk = n.GetLongValue(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
         }
@@ -146,21 +113,16 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
             _ = writer ?? throw new ArgumentNullException(nameof(writer));
             writer.WriteIntValue("acceptedCount", AcceptedCount);
             writer.WriteStringValue("description", Description);
-            writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainUserDto>("hostedBy", HostedBy);
+            writer.WriteGuidValue("hostedByFk", HostedByFk);
             writer.WriteByteArrayValue("image", Image);
             writer.WriteStringValue("imageMimeType", ImageMimeType);
+            writer.WriteBoolValue("isVisible", IsVisible);
             writer.WriteIntValue("maybeCount", MaybeCount);
-            writer.WriteIntValue("metaAcceptance", MetaAcceptance);
             writer.WriteIntValue("minimumAccepted", MinimumAccepted);
-            writer.WriteBoolValue("modPackDefinitionIsComposition", ModPackDefinitionIsComposition);
-            writer.WriteStringValue("modPackDefinitionTitle", ModPackDefinitionTitle);
-            writer.WriteDateTimeOffsetValue("modPackRevisionTimeStampDownloaded", ModPackRevisionTimeStampDownloaded);
-            writer.WriteGuidValue("primaryKey", PrimaryKey);
+            writer.WriteLongValue("modPackRevisionFk", ModPackRevisionFk);
             writer.WriteIntValue("rejectedCount", RejectedCount);
             writer.WriteDateTimeOffsetValue("scheduledFor", ScheduledFor);
-            writer.WriteDateTimeOffsetValue("scheduledForOriginal", ScheduledForOriginal);
-            writer.WriteStringValue("terrainTitle", TerrainTitle);
-            writer.WriteDateTimeOffsetValue("timeStampCreated", TimeStampCreated);
+            writer.WriteLongValue("terrainFk", TerrainFk);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);
         }

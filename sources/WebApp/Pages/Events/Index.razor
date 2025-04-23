@@ -116,11 +116,11 @@
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Events_Table_Interactions)]">
             <MudButtonGroup>
                 <Index_HeaderActions_ModifyButton Event="context"
-                                                            ParentStateHasChanged="PropagateStateHasChanged"/>
-                <Index_HeaderActions_CloneButton Event="context"/>
+                                                  ParentStateHasChanged="PropagateStateHasChanged"/>
                 <MudIconButton Icon="@Icons.Material.Filled.Link" Color="Color.Primary"
                                OnClick="@(() => CopyEventUrlToClipboardAsync(context))"/>
-                <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock" Href="@($"/events/{context.PlainEvent.PrimaryKey}")"
+                <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock"
+                           Href="@($"/events/{context.PlainEvent.PrimaryKey}")"
                            Color="Color.Primary">
                     @Localizer[nameof(Language.Pages_Events_EventCard_Slots)]
                 </MudButton>
@@ -261,7 +261,25 @@
             .ConfigureAwait(false);
         if (eventItem is null)
             return;
-        await EventRepository.CreateEventAsync(eventItem)
+        await EventRepository.CreateEventAsync(
+                new EventCreationPayload
+                {
+                    AcceptedCount     = eventItem.PlainEvent.AcceptedCount,
+                    AdditionalData    = eventItem.PlainEvent.AdditionalData,
+                    Description       = eventItem.PlainEvent.Description,
+                    HostedByFk        = eventItem.PlainEvent.HostedByFk,
+                    Image             = eventItem.PlainEvent.Image,
+                    ImageMimeType     = eventItem.PlainEvent.ImageMimeType,
+                    IsVisible         = eventItem.PlainEvent.IsVisible,
+                    MaybeCount        = eventItem.PlainEvent.MaybeCount,
+                    MinimumAccepted   = eventItem.PlainEvent.MinimumAccepted,
+                    ModPackRevisionFk = eventItem.PlainEvent.ModPackRevisionFk,
+                    RejectedCount     = eventItem.PlainEvent.RejectedCount,
+                    ScheduledFor      = eventItem.PlainEvent.ScheduledFor,
+                    TerrainFk         = eventItem.PlainEvent.TerrainFk,
+                    Title             = eventItem.PlainEvent.Title,
+                }
+            )
             .ConfigureAwait(false);
         await _mudTable.ReloadServerData()
             .ConfigureAwait(false);

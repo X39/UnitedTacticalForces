@@ -16,6 +16,7 @@ public static class UserExtensions
         builder.Append(Convert.ToBase64String(user.Avatar));
         return builder.ToString();
     }
+
     public static string ToImageSource(this PlainUserDto user)
     {
         if (user.Avatar is null || user.Avatar.Length is 0)
@@ -27,4 +28,31 @@ public static class UserExtensions
         builder.Append(Convert.ToBase64String(user.Avatar));
         return builder.ToString();
     }
+
+    public static PlainUserDto ToPlainUserDto(this FullUserDto self)
+        => new()
+        {
+            AdditionalData = self.AdditionalData,
+            Avatar         = self.Avatar,
+            AvatarMimeType = self.AvatarMimeType,
+            Nickname       = self.Nickname,
+            PrimaryKey     = self.PrimaryKey,
+        };
+
+    public static UserDto ToUserDto(this FullUserDto self)
+        => new()
+        {
+            AdditionalData  = self.AdditionalData,
+            Avatar          = self.Avatar,
+            AvatarMimeType  = self.AvatarMimeType,
+            DiscordId       = self.DiscordId,
+            DiscordUsername = self.DiscordUsername,
+            EMail           = self.EMail,
+            IsBanned        = self.IsBanned,
+            IsDeleted       = self.IsDeleted,
+            IsVerified      = self.IsVerified,
+            Nickname        = self.Nickname,
+            PrimaryKey      = self.PrimaryKey,
+            SteamId64       = self.SteamId64,
+        };
 }

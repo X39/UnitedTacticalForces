@@ -1,12 +1,13 @@
 ﻿@using X39.UnitedTacticalForces.WebApp.Services
 @using System.ComponentModel.DataAnnotations
-@using System.Diagnostics.Contracts
+@using X39.UnitedTacticalForces.WebApp.Api.Models
+@using X39.UnitedTacticalForces.WebApp.Data
 @using X39.UnitedTacticalForces.WebApp.Services.EventRepository
 @inject MeService MeService
 @inject IDialogService DialogService
 @inject IEventRepository EventRepository
 @inject MeService Me
-@if (Me.HasClaimOrEventAdmin() || MeService.IsAuthenticated && Event.OwnerFk == MeService.User.PrimaryKey)
+@if (Me.HasClaimOrEventAdmin() || MeService.IsAuthenticated && Event.PlainEvent.OwnerFk == MeService.User.PrimaryKey)
 {
     <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Tertiary" OnClick="ModifyEventAsync"/>
 }
@@ -22,12 +23,28 @@
 
     private async Task ModifyEventAsync()
     {
-        var updatedEvent = await Dialogs.ModifyEventDialog.ShowAsync(DialogService, Event)
+        var updatedEvent = await Dialogs.ModifyEventDialog
+            .ShowAsync(DialogService, Event)
             .ConfigureAwait(false);
         if (updatedEvent is null)
             return;
-        Contract.Assert(updatedEvent == Event);
-        await EventRepository.ModifyEventAsync(Event)
+        Event.Apply(updatedEvent);
+        await EventRepository.ModifyEventAsync(
+                Event.PlainEvent.PrimaryKey!.Value,
+                new EventUpdate
+                {
+                    Description       = updatedEvent.PlainEvent.Description != Event.PlainEvent.Description ? updatedEvent.PlainEvent.Description : null,
+                    HostedByFk        = updatedEvent.PlainEvent.HostedByFk != Event.PlainEvent.HostedByFk ? updatedEvent.PlainEvent.HostedByFk : null,
+                    Image             = updatedEvent.PlainEvent.Image != Event.PlainEvent.Image ? updatedEvent.PlainEvent.Image : null,
+                    ImageMimeType     = updatedEvent.PlainEvent.ImageMimeType != Event.PlainEvent.ImageMimeType ? updatedEvent.PlainEvent.ImageMimeType : null,
+                    IsVisible         = updatedEvent.PlainEvent.IsVisible != Event.PlainEvent.IsVisible ? updatedEvent.PlainEvent.IsVisible : null,
+                    MinimumAccepted   = updatedEvent.PlainEvent.MinimumAccepted != Event.PlainEvent.MinimumAccepted ? updatedEvent.PlainEvent.MinimumAccepted : null,
+                    ModPackRevisionFk = updatedEvent.PlainEvent.ModPackRevisionFk != Event.PlainEvent.ModPackRevisionFk ? updatedEvent.PlainEvent.ModPackRevisionFk : null,
+                    ScheduledFor      = updatedEvent.PlainEvent.ScheduledFor != Event.PlainEvent.ScheduledFor ? updatedEvent.PlainEvent.ScheduledFor : null,
+                    TerrainFk         = updatedEvent.PlainEvent.TerrainFk != Event.PlainEvent.TerrainFk ? updatedEvent.PlainEvent.TerrainFk : null,
+                    Title             = updatedEvent.PlainEvent.Title != Event.PlainEvent.Title ? updatedEvent.PlainEvent.Title : null,
+                }
+            )
             .ConfigureAwait(false);
         await ParentStateHasChanged.InvokeAsync()
             .ConfigureAwait(false);

@@ -124,7 +124,7 @@ internal class EventRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) : Rep
     }
 
     public async Task<PlainEventDto> CreateEventAsync(
-        PlainEventDto eventItem,
+        EventCreationPayload eventItem,
         CancellationToken cancellationToken = default
     )
     {

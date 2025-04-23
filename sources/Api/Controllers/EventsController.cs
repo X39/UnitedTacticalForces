@@ -6,6 +6,7 @@ using X39.UnitedTacticalForces.Api.Data;
 using X39.UnitedTacticalForces.Api.Data.Authority;
 using X39.UnitedTacticalForces.Api.Data.Eventing;
 using X39.UnitedTacticalForces.Api.DTO;
+using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.DTO.Updates;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
@@ -98,6 +99,7 @@ public class EventsController : ControllerBase
                             Avatar         = e.HostedBy!.Avatar,
                             AvatarMimeType = e.HostedBy!.AvatarMimeType,
                         },
+                        MetaAcceptance = e.UserMetas!.SingleOrDefault(meta => meta.UserFk == userId)!.Acceptance,
                     }
                 )
                 .OrderBy(q => q.ScheduledFor);
@@ -132,6 +134,7 @@ public class EventsController : ControllerBase
                             Avatar         = e.HostedBy!.Avatar,
                             AvatarMimeType = e.HostedBy!.AvatarMimeType,
                         },
+                        MetaAcceptance = e.UserMetas!.SingleOrDefault(meta => meta.UserFk == userId)!.Acceptance,
                     }
                 )
                 .OrderBy(q => q.ScheduledFor);
@@ -206,6 +209,7 @@ public class EventsController : ControllerBase
                     MinimumAccepted      = e.MinimumAccepted,
                     OwnerFk              = e.OwnerFk,
                     HostedByFk           = e.HostedByFk,
+                    MetaAcceptance       = e.UserMetas!.SingleOrDefault(meta => meta.UserFk == userId)!.Acceptance,
                 }
             )
             .ToArrayAsync(cancellationToken);
@@ -501,7 +505,7 @@ public class EventsController : ControllerBase
     [ProducesResponseType<PlainEventDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateEventAsync(
-        [FromBody] PlainEventDto payload,
+        [FromBody] EventCreationPayload payload,
         CancellationToken cancellationToken
     )
     {
@@ -566,6 +570,7 @@ public class EventsController : ControllerBase
                 MinimumAccepted      = entity.Entity.MinimumAccepted,
                 OwnerFk              = entity.Entity.OwnerFk,
                 HostedByFk           = entity.Entity.HostedByFk,
+                MetaAcceptance       = null,
             }
         );
     }
@@ -605,21 +610,21 @@ public class EventsController : ControllerBase
         var imageChanged = false;
         // ToDo: Log audit
         if (payload.Title is not null)
-            existingEvent.Title        = payload.Title;
+            existingEvent.Title = payload.Title;
         if (payload.Description is not null)
-            existingEvent.Description  = payload.Description;
+            existingEvent.Description = payload.Description;
         if (payload.ScheduledFor is not null)
             existingEvent.ScheduledFor = payload.ScheduledFor.Value;
         if (payload.HostedByFk is not null)
-            existingEvent.HostedByFk        = payload.HostedByFk.Value;
+            existingEvent.HostedByFk = payload.HostedByFk.Value;
         if (payload.ModPackRevisionFk is not null)
             existingEvent.ModPackRevisionFk = payload.ModPackRevisionFk.Value;
         if (payload.TerrainFk is not null)
-            existingEvent.TerrainFk         = payload.TerrainFk.Value;
+            existingEvent.TerrainFk = payload.TerrainFk.Value;
         if (payload.MinimumAccepted is not null)
-            existingEvent.MinimumAccepted   = payload.MinimumAccepted.Value;
+            existingEvent.MinimumAccepted = payload.MinimumAccepted.Value;
         if (payload.IsVisible is not null)
-            existingEvent.IsVisible         = payload.IsVisible.Value;
+            existingEvent.IsVisible = payload.IsVisible.Value;
         if (payload.Image is not null && payload.ImageMimeType is not null)
         {
             existingEvent.ImageMimeType = payload.ImageMimeType;

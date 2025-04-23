@@ -39,11 +39,11 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Events.Create
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
-        public async Task<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainEventDto?> PostAsync(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainEventDto body, Action<RequestConfiguration<DefaultQueryParameters>>? requestConfiguration = default, CancellationToken cancellationToken = default)
+        public async Task<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainEventDto?> PostAsync(global::X39.UnitedTacticalForces.WebApp.Api.Models.EventCreationPayload body, Action<RequestConfiguration<DefaultQueryParameters>>? requestConfiguration = default, CancellationToken cancellationToken = default)
         {
 #nullable restore
 #else
-        public async Task<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainEventDto> PostAsync(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainEventDto body, Action<RequestConfiguration<DefaultQueryParameters>> requestConfiguration = default, CancellationToken cancellationToken = default)
+        public async Task<global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainEventDto> PostAsync(global::X39.UnitedTacticalForces.WebApp.Api.Models.EventCreationPayload body, Action<RequestConfiguration<DefaultQueryParameters>> requestConfiguration = default, CancellationToken cancellationToken = default)
         {
 #endif
             _ = body ?? throw new ArgumentNullException(nameof(body));
@@ -55,11 +55,11 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Events.Create
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
-        public RequestInformation ToPostRequestInformation(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainEventDto body, Action<RequestConfiguration<DefaultQueryParameters>>? requestConfiguration = default)
+        public RequestInformation ToPostRequestInformation(global::X39.UnitedTacticalForces.WebApp.Api.Models.EventCreationPayload body, Action<RequestConfiguration<DefaultQueryParameters>>? requestConfiguration = default)
         {
 #nullable restore
 #else
-        public RequestInformation ToPostRequestInformation(global::X39.UnitedTacticalForces.WebApp.Api.Models.PlainEventDto body, Action<RequestConfiguration<DefaultQueryParameters>> requestConfiguration = default)
+        public RequestInformation ToPostRequestInformation(global::X39.UnitedTacticalForces.WebApp.Api.Models.EventCreationPayload body, Action<RequestConfiguration<DefaultQueryParameters>> requestConfiguration = default)
         {
 #endif
             _ = body ?? throw new ArgumentNullException(nameof(body));

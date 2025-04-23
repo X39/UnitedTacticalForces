@@ -22,7 +22,7 @@ public interface IEventRepository
         CancellationToken cancellationToken = default
     );
 
-    Task<PlainEventDto> CreateEventAsync(PlainEventDto eventItem, CancellationToken cancellationToken = default);
+    Task<PlainEventDto> CreateEventAsync(EventCreationPayload eventItem, CancellationToken cancellationToken = bad);
     Task ModifyEventAsync(Guid eventId, EventUpdate eventItem, CancellationToken cancellationToken = default);
 
     Task<FullEventDto?> GetEventAsync(Guid eventId, CancellationToken cancellationToken = default);

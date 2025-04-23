@@ -1,4 +1,6 @@
-﻿namespace X39.UnitedTacticalForces.Api.DTO;
+﻿using X39.UnitedTacticalForces.Contract.Event;
+
+namespace X39.UnitedTacticalForces.Api.DTO;
 
 /// <summary>
 /// Represents details about an upcoming event in the system.
@@ -108,4 +110,9 @@ public record UpcomingEventDto
     /// </summary>
     public PlainUserDto HostedBy { get; init; } = new();
 
+    /// <summary>
+    /// Represents the calculated or system-determined level of acceptance for an event,
+    /// based on user responses such as accepted, maybe, or rejected.
+    /// </summary>
+    public EEventAcceptance? MetaAcceptance { get; init; }
 }

@@ -46,6 +46,8 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
         public bool? IsVisible { get; set; }
         /// <summary>The maybeCount property</summary>
         public int? MaybeCount { get; set; }
+        /// <summary>The metaAcceptance property</summary>
+        public int? MetaAcceptance { get; set; }
         /// <summary>The minimumAccepted property</summary>
         public int? MinimumAccepted { get; set; }
         /// <summary>The modPackRevisionFk property</summary>
@@ -104,6 +106,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
                 { "imageMimeType", n => { ImageMimeType = n.GetStringValue(); } },
                 { "isVisible", n => { IsVisible = n.GetBoolValue(); } },
                 { "maybeCount", n => { MaybeCount = n.GetIntValue(); } },
+                { "metaAcceptance", n => { MetaAcceptance = n.GetIntValue(); } },
                 { "minimumAccepted", n => { MinimumAccepted = n.GetIntValue(); } },
                 { "modPackRevisionFk", n => { ModPackRevisionFk = n.GetLongValue(); } },
                 { "ownerFk", n => { OwnerFk = n.GetGuidValue(); } },
@@ -130,6 +133,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
             writer.WriteStringValue("imageMimeType", ImageMimeType);
             writer.WriteBoolValue("isVisible", IsVisible);
             writer.WriteIntValue("maybeCount", MaybeCount);
+            writer.WriteIntValue("metaAcceptance", MetaAcceptance);
             writer.WriteIntValue("minimumAccepted", MinimumAccepted);
             writer.WriteLongValue("modPackRevisionFk", ModPackRevisionFk);
             writer.WriteGuidValue("ownerFk", OwnerFk);

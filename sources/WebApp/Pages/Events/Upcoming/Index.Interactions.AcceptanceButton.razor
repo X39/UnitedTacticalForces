@@ -1,6 +1,9 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @using System.Diagnostics.Contracts
 @using MudBlazor.Utilities
+@using X39.UnitedTacticalForces.Contract.Event
+@using X39.UnitedTacticalForces.WebApp.Api.Models
+@using X39.UnitedTacticalForces.WebApp.Data
 @using X39.UnitedTacticalForces.WebApp.Services.EventRepository
 @using X39.UnitedTacticalForces.WebApp.Services.SlotRepository
 @using X39.UnitedTacticalForces.WebApp.Services.UserRepository
@@ -8,7 +11,8 @@
 @inject IEventRepository EventRepository
 @inject ISlotRepository SlotRepository
 @inject IDialogService DialogService
-<MudTooltip IsVisibleChanged="LoadToolTipContentAsync" ShowOnClick="false" ShowOnFocus="@(AcceptanceCount > 0)" ShowOnHover="@(AcceptanceCount > 0)">
+<MudTooltip IsVisibleChanged="LoadToolTipContentAsync" ShowOnClick="false" ShowOnFocus="@(AcceptanceCount > 0)"
+            ShowOnHover="@(AcceptanceCount > 0)">
     <TooltipContent>
         <MudStack Style="max-height: 50rem">
             @if (_users is null)
@@ -22,7 +26,7 @@
             {
                 foreach (var user in _users)
                 {
-                    <UtfUser User="@user"/>
+                    <UtfUser PlainUser="@user"/>
                 }
             }
         </MudStack>
@@ -38,7 +42,7 @@
                                      ToggledIcon="@Icon"
                                      Color="@UnToggledColor"
                                      ToggledColor="@ToggledColor"
-                                     Toggled="@(Event.UserMetas?.FirstOrDefault()?.Acceptance == Acceptance)"
+                                     Toggled="@(Event.PlainEvent.MetaAcceptance == (int) Acceptance)"
                                      ToggledChanged="AcceptanceChangedAsync"
                                      Disabled="Disabled"/>
             </MudBadge>
@@ -49,7 +53,7 @@
                                  ToggledIcon="@Icon"
                                  Color="@UnToggledColor"
                                  ToggledColor="@ToggledColor"
-                                 Toggled="@(Event.UserMetas?.FirstOrDefault()?.Acceptance == Acceptance)"
+                                 Toggled="@(Event.PlainEvent.MetaAcceptance == (int) Acceptance)"
                                  ToggledChanged="AcceptanceChangedAsync"
                                  Disabled="Disabled"/>
         }
@@ -57,8 +61,8 @@
 </MudTooltip>
 
 @code {
-    private IReadOnlyCollection<User>? _users;
-    private bool _pollingUsers;
+    private IReadOnlyCollection<PlainUserDto>? _users;
+    private bool                               _pollingUsers;
 
 
     [Parameter]
@@ -73,20 +77,22 @@
     [Parameter, Required, EditorRequired]
     public EventCallback ParentStateHasChangedCallback { get; set; }
 
-    private Color UnToggledColor => Acceptance switch
-    {
-        EEventAcceptance.Rejected => Color.Default,
-        EEventAcceptance.Maybe => Color.Default,
-        EEventAcceptance.Accepted => Color.Default,
-        _ => throw new ArgumentOutOfRangeException(),
+    private Color UnToggledColor
+        => Acceptance switch
+        {
+            EEventAcceptance.Rejected => Color.Default,
+            EEventAcceptance.Maybe    => Color.Default,
+            EEventAcceptance.Accepted => Color.Default,
+            _                         => throw new ArgumentOutOfRangeException(),
         };
 
-    private Color ToggledColor => Acceptance switch
-    {
-        EEventAcceptance.Rejected => Color.Error,
-        EEventAcceptance.Maybe => Color.Tertiary,
-        EEventAcceptance.Accepted => Color.Primary,
-        _ => throw new ArgumentOutOfRangeException(),
+    private Color ToggledColor
+        => Acceptance switch
+        {
+            EEventAcceptance.Rejected => Color.Error,
+            EEventAcceptance.Maybe    => Color.Tertiary,
+            EEventAcceptance.Accepted => Color.Primary,
+            _                         => throw new ArgumentOutOfRangeException(),
         };
 
     [Parameter, EditorRequired, Required]
@@ -103,77 +109,79 @@
     */
 
 
-    private string Icon => Acceptance switch
-    {
-        EEventAcceptance.Rejected => Icons.Material.Filled.Clear,
-        EEventAcceptance.Maybe => Icons.Material.Filled.QuestionMark,
-        EEventAcceptance.Accepted => Icons.Material.Filled.Check,
-        _ => throw new ArgumentOutOfRangeException(),
+    private string Icon
+        => Acceptance switch
+        {
+            EEventAcceptance.Rejected => Icons.Material.Filled.Clear,
+            EEventAcceptance.Maybe    => Icons.Material.Filled.QuestionMark,
+            EEventAcceptance.Accepted => Icons.Material.Filled.Check,
+            _                         => throw new ArgumentOutOfRangeException(),
         };
 
     private async Task AcceptanceChangedAsync()
     {
         if (Acceptance is not EEventAcceptance.Accepted)
         {
-            var slot = await SlotRepository.MySlotAsync(Event).ConfigureAwait(false);
+            var slot = await SlotRepository.MySlotAsync(Event.PlainEvent.PrimaryKey!.Value)
+                .ConfigureAwait(false);
             if (slot is not null)
             {
-                var result = await Dialogs.ConfirmSlotLoss.ShowAsync(DialogService)
+                var result = await Dialogs.ConfirmSlotLoss
+                    .ShowAsync(DialogService)
                     .ConfigureAwait(false);
                 if (!result)
                     return;
             }
         }
 
-        Contract.Assert(Event.PrimaryKey is not null);
-        Event.UserMetas ??= new List<UserEventMeta>();
-        var userMeta = Event.UserMetas.FirstOrDefault();
-        if (userMeta?.Acceptance == Acceptance)
+        Contract.Assert(Event.PlainEvent.PrimaryKey is not null);
+        var userMeta = (EEventAcceptance?) Event.PlainEvent.MetaAcceptance;
+        if (userMeta == Acceptance)
             return;
-        await EventRepository.SetMeAcceptanceAsync(Event.PrimaryKey.Value, Acceptance)
+        await EventRepository.SetMeAcceptanceAsync(Event.PlainEvent.PrimaryKey.Value, Acceptance)
             .ConfigureAwait(false);
 
         if (userMeta is not null)
         {
-            switch (userMeta.Acceptance)
+            switch (userMeta)
             {
                 case EEventAcceptance.Rejected:
-                    Event.RejectedCount--;
+                    Event.PlainEvent.RejectedCount--;
                     break;
                 case EEventAcceptance.Maybe:
-                    Event.MaybeCount--;
+                    Event.PlainEvent.MaybeCount--;
                     break;
                 case EEventAcceptance.Accepted:
-                    Event.AcceptedCount--;
+                    Event.PlainEvent.AcceptedCount--;
                     break;
                 case null:
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            userMeta.Acceptance = Acceptance;
+
+            userMeta = Acceptance;
         }
         else
         {
-            Event.UserMetas.Add(new UserEventMeta
-            {
-                Acceptance = Acceptance,
-            });
+            Event.PlainEvent.MetaAcceptance = (int) Acceptance;
         }
+
         switch (Acceptance)
         {
             case EEventAcceptance.Rejected:
-                Event.RejectedCount++;
+                Event.PlainEvent.RejectedCount++;
                 break;
             case EEventAcceptance.Maybe:
-                Event.MaybeCount++;
+                Event.PlainEvent.MaybeCount++;
                 break;
             case EEventAcceptance.Accepted:
-                Event.AcceptedCount++;
+                Event.PlainEvent.AcceptedCount++;
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
         }
+
         await ParentStateHasChangedCallback.InvokeAsync();
     }
 
@@ -182,7 +190,7 @@
         if (arg && _users is null && !_pollingUsers)
         {
             using var disposable = new Disposable(() => _pollingUsers = true, () => _pollingUsers = false);
-            _users = await EventRepository.GetEventParticipantsAsync(Event, Acceptance)
+            _users = await EventRepository.GetEventParticipantsAsync(Event.PlainEvent.PrimaryKey!.Value, Acceptance)
                 .ConfigureAwait(false);
         }
     }

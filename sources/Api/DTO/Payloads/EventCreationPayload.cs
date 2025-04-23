@@ -1,17 +1,14 @@
-﻿using X39.UnitedTacticalForces.Contract.Event;
-
-namespace X39.UnitedTacticalForces.Api.DTO;
+﻿namespace X39.UnitedTacticalForces.Api.DTO.Payloads;
 
 /// <summary>
-/// Represents detailed information about an event in the system.
+/// Represents the payload used to create a new event within the application.
 /// </summary>
-public record PlainEventDto
+/// <remarks>
+/// This record encapsulates all details required for event creation, such as
+/// metadata, scheduling information, participation requirements, and media.
+/// </remarks>
+public record EventCreationPayload
 {
-    /// <summary>
-    /// Represents the unique identifier for an event.
-    /// </summary>
-    public Guid PrimaryKey { get; init; }
-
     /// <summary>
     /// Represents the title of the event.
     /// </summary>
@@ -44,20 +41,11 @@ public record PlainEventDto
     /// </summary>
     public string ImageMimeType { get; init; } = string.Empty;
 
-    /// <summary>
-    /// Represents the original scheduled date and time for the event before any modifications.
-    /// </summary>
-    public DateTimeOffset ScheduledForOriginal { get; init; }
 
     /// <summary>
     /// Indicates the date and time when the event is scheduled to occur.
     /// </summary>
     public DateTimeOffset ScheduledFor { get; init; }
-
-    /// <summary>
-    /// Indicates the date and time when the event was created.
-    /// </summary>
-    public DateTimeOffset TimeStampCreated { get; init; }
 
     /// <summary>
     /// Indicates whether the event is visible to users.
@@ -85,18 +73,7 @@ public record PlainEventDto
     public int MinimumAccepted { get; init; }
 
     /// <summary>
-    /// Represents the foreign key linking the event to its owner.
-    /// </summary>
-    public Guid OwnerFk { get; init; }
-
-    /// <summary>
     /// Represents the foreign key identifying the user hosting the event.
     /// </summary>
     public Guid HostedByFk { get; init; }
-
-    /// <summary>
-    /// Represents the calculated or system-determined level of acceptance for an event,
-    /// based on user responses such as accepted, maybe, or rejected.
-    /// </summary>
-    public EEventAcceptance? MetaAcceptance { get; init; }
 }
