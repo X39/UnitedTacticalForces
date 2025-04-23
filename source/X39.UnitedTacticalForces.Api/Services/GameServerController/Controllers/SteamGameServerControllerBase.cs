@@ -668,9 +668,13 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         {
             var (depotDownloaderPath, steamUsername, steamPassword, _) = GetDepotDownloaderInformationTuple();
             Logger.LogInformation(
-                "Starting update of workshop item {WorkshopId} via DebotDownloader, requested by user {UserId}",
+                "Starting update of workshop item {WorkshopId} via DepotDownloader, requested by user {UserId}",
                 workshopId,
                 executingUser?.PrimaryKey
+            );
+            var workingDir = Path.Combine(
+                installPath,
+                workshopId.ToString()
             );
             var psi = new ProcessStartInfo
             {
@@ -680,7 +684,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 RedirectStandardOutput = true,
                 StandardErrorEncoding  = Encoding.ASCII,
                 StandardOutputEncoding = Encoding.ASCII,
-                WorkingDirectory       = Path.GetDirectoryName(depotDownloaderPath),
+                WorkingDirectory       = workingDir,
             };
             if (RequireLogin)
             {
@@ -696,22 +700,22 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             psi.ArgumentList.Add("-pubfile");
             psi.ArgumentList.Add(workshopId.ToString());
             psi.ArgumentList.Add("-dir");
-            installPaths.Add(
-                (workshopId,
-                    Path.Combine(
-                        installPath,
-                        "steamapps",
-                        "workshop",
-                        "content",
-                        GameAppId.ToString(),
-                        workshopId.ToString()
-                    ))
-            );
 
             if (Process is not null && !Process.HasExited)
                 throw new InvalidOperationException("Process must be finished for the operation");
 
             await ExecuteAsync(psi, "DepotDownloader")
+                .ConfigureAwait(false);
+
+            var workShopContentPath = Path.Combine(
+                workingDir,
+                "depots",
+                GameAppId.ToString()
+            );
+            var ugcIdPath = Directory.GetDirectories(workShopContentPath).OrderByDescending(ulong.Parse).First();
+            workShopContentPath = Path.Combine(workShopContentPath, ugcIdPath);
+            installPaths.Add((workshopId, workShopContentPath));
+            await SteamCmdLogAsync(LogLevel.Information, "DepotDownloader", $"Downloaded {GameAppId}/{workshopId} to {workShopContentPath}", DateTimeOffset.Now)
                 .ConfigureAwait(false);
             await UpdateStreamService.SendUpdateAsync(
                     $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
