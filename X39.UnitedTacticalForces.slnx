@@ -1,0 +1,20 @@
+﻿<Solution>
+  <Folder Name="/files/">
+    <File Path=".gitignore" />
+    <File Path=".editorconfig" />
+    <File Path="ReadMe.md" />
+  </Folder>
+  <Folder Name="/sources/">
+    <Project Path="sources\Api\Api.csproj" Type="Classic C#" />
+    <Project Path="sources\AppHost\AppHost.csproj" Type="Classic C#" />
+    <Project Path="sources\Claims\Claims.csproj" Type="Classic C#" />
+    <Project Path="sources\Common\Common.csproj" Type="Classic C#" />
+    <Project Path="sources\Contract\Contract.csproj" Type="Classic C#" />
+    <Project Path="sources\ServiceDefaults\ServiceDefaults.csproj" Type="Classic C#" />
+    <Project Path="sources\WebApp\WebApp.csproj" Type="Classic C#" />
+    <Project Path="sources\X39.BI.Config.Parsing\X39.BI.Config.Parsing.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests\X39.BI.Config.Parsing.Tests\X39.BI.Config.Parsing.Tests.csproj" Type="Classic C#" />
+  </Folder>
+</Solution>
