@@ -5,6 +5,7 @@
 @using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
 @using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
 @using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Pages.Events.Upcoming
 @page "/events"
 @inject IEventRepository EventRepository
 @inject IUserRepository UserRepository
@@ -79,7 +80,8 @@
                     </MudTooltip>
                 }
                 @(
-                context.PlainEvent.ScheduledFor
+                context.PlainEvent
+                    .ScheduledFor
                     ?.ToLocalTime()
                     .ToString("g")
                 )
@@ -100,20 +102,25 @@
             @if (context.ModPackRevision is not null)
             {
                 <div class="d-inline-flex align-center" style="white-space: nowrap">
-                    <MudText>@(context.ModPackRevision?.Definition?.Title)</MudText>
-                    <UtfModPackDownloadButton ModPack="@(context.ModPackRevision.Definition)"
-                                              Revision="@(context.ModPackRevision)"/>
+                    <MudText>@(context.ModPackRevision?.DefinitionTitle)</MudText>
+                    <UtfModPackDownloadButton
+                        bind-TimeStampDownloaded="@context.ModPackRevision.MetaTimeStampDownloaded"
+                        IsComposition="@(context.ModPackRevision.DefinitionIsComposition ?? false)"
+                        RevisionCreated="@(context.ModPackRevision.TimeStampCreated ?? default)"
+                        ModPackKey="@(context.ModPackRevision.DefinitionPrimaryKey ?? default)"
+                        RevisionKey="@(context.ModPackRevision.PrimaryKey ?? default)"
+                    />
                 </div>
             }
         </MudTd>
         <MudTd DataLabel="@Localizer[nameof(Language.Pages_Events_Table_Interactions)]">
             <MudButtonGroup>
-                <UpcommingEvents_HeaderActions_ModifyButton Event="context"
+                <Index_HeaderActions_ModifyButton Event="context"
                                                             ParentStateHasChanged="PropagateStateHasChanged"/>
-                <UpcommingEvents_HeaderActions_CloneButton Event="context"/>
+                <Index_HeaderActions_CloneButton Event="context"/>
                 <MudIconButton Icon="@Icons.Material.Filled.Link" Color="Color.Primary"
                                OnClick="@(() => CopyEventUrlToClipboardAsync(context))"/>
-                <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock" Href="@($"/events/{context.PrimaryKey}")"
+                <MudButton StartIcon="@Icons.Material.Filled.KeyboardCapslock" Href="@($"/events/{context.PlainEvent.PrimaryKey}")"
                            Color="Color.Primary">
                     @Localizer[nameof(Language.Pages_Events_EventCard_Slots)]
                 </MudButton>
@@ -158,11 +165,11 @@
         await Task.Delay(10);
     }
 
-    private          long                                      _eventCounts = -1;
-    private          MudTable<Event>                           _mudTable    = null!;
-    private readonly Dictionary<Guid, UserDto>                 _users       = new();
-    private readonly Dictionary<long, PlainModPackRevisionDto> _modPacks    = new();
-    private readonly Dictionary<long, PlainTerrainDto>         _terrains    = new();
+    private          long                                 _eventCounts = -1;
+    private          MudTable<Event>                      _mudTable    = null!;
+    private readonly Dictionary<Guid, UserDto>            _users       = new();
+    private readonly Dictionary<long, ModPackRevisionDto> _modPacks    = new();
+    private readonly Dictionary<long, PlainTerrainDto>    _terrains    = new();
 
     private async Task<TableData<Event>> ServerDataAsync(TableState arg, CancellationToken cancellationToken)
     {

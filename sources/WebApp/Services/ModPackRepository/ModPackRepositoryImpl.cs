@@ -138,7 +138,7 @@ internal class ModPackRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) : R
             .ConfigureAwait(false);
     }
 
-    public async Task<PlainModPackDefinitionDto?> GetModPackDefinitionAsync(
+    public async Task<ModPackDefinitionDto?> GetModPackDefinitionAsync(
         long modPackDefinitionId,
         CancellationToken cancellationToken = default
     )
@@ -149,7 +149,7 @@ internal class ModPackRepositoryImpl(HttpClient httpClient, BaseUrl baseUrl) : R
         return result;
     }
 
-    public async Task<PlainModPackRevisionDto?> GetModPackRevisionAsync(
+    public async Task<ModPackRevisionDto?> GetModPackRevisionAsync(
         long modPackRevisionPk,
         CancellationToken cancellationToken = default
     )

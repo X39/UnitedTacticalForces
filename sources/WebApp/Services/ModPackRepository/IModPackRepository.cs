@@ -43,12 +43,12 @@ public interface IModPackRepository
 
     Task DeleteModPackAsync(long modPackDefinitionId, CancellationToken cancellationToken = default);
 
-    Task<PlainModPackDefinitionDto?> GetModPackDefinitionAsync(
+    Task<ModPackDefinitionDto?> GetModPackDefinitionAsync(
         long modPackDefinitionId,
         CancellationToken cancellationToken = default
     );
 
-    Task<PlainModPackRevisionDto?> GetModPackRevisionAsync(
+    Task<ModPackRevisionDto?> GetModPackRevisionAsync(
         long modPackRevisionPk,
         CancellationToken cancellationToken = default
     );

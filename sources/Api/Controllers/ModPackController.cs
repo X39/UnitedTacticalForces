@@ -382,7 +382,7 @@ public class ModPackController : ControllerBase
     [Authorize]
     [HttpGet("{modPackId:long}", Name = nameof(GetModPackDefinitionAsync))]
     [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType<PlainModPackDefinitionDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ModPackDefinitionDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetModPackDefinitionAsync(
         [FromRoute] long modPackId,
         CancellationToken cancellationToken
@@ -394,7 +394,32 @@ public class ModPackController : ControllerBase
             .Include(e => e.ModPackRevisions!.Where(q => q.IsActive))
             .ThenInclude(e => e.UserMetas!.Where(q => q.UserFk == userId))
             .SingleAsync(q => q.PrimaryKey == modPackId, cancellationToken);
-        return Ok(existingModPack.ToPlainDto());
+        return Ok(
+            new ModPackDefinitionDto
+            {
+                PrimaryKey       = existingModPack.PrimaryKey,
+                TimeStampCreated = existingModPack.TimeStampCreated,
+                Title            = existingModPack.Title,
+                OwnerFk          = existingModPack.OwnerFk,
+                IsActive         = existingModPack.IsActive,
+                IsComposition    = existingModPack.IsComposition,
+                MetaTimeStampDownloaded = existingModPack.ModPackRevisions
+                    ?.FirstOrDefault()
+                    ?.UserMetas
+                    ?.FirstOrDefault()
+                    ?.TimeStampDownloaded,
+                RevisionPrimaryKey = existingModPack.ModPackRevisions?.FirstOrDefault()
+                    ?.PrimaryKey,
+                RevisionTimeStampCreated = existingModPack.ModPackRevisions?.FirstOrDefault()
+                    ?.TimeStampCreated,
+                RevisionHtml = existingModPack.ModPackRevisions?.FirstOrDefault()
+                    ?.Html,
+                RevisionUpdatedByFk = existingModPack.ModPackRevisions?.FirstOrDefault()
+                    ?.UpdatedByFk,
+                RevisionIsActive = existingModPack.ModPackRevisions?.FirstOrDefault()
+                    ?.IsActive,
+            }
+        );
     }
 
     /// <summary>
@@ -408,7 +433,7 @@ public class ModPackController : ControllerBase
     [Authorize]
     [HttpGet("revision/{modPackRevisionPk:long}", Name = nameof(GetModPackRevisionAsync))]
     [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType<PlainModPackRevisionDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ModPackRevisionDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetModPackRevisionAsync(
         [FromRoute] long modPackRevisionPk,
         CancellationToken cancellationToken
@@ -421,7 +446,24 @@ public class ModPackController : ControllerBase
             .Include(e => e.UserMetas!.Where(q => q.UserFk == userId))
             .Include(e => e.Definition)
             .SingleAsync(q => q.PrimaryKey == modPackRevisionPk, cancellationToken);
-        return Ok(existingModPack.ToPlainDto());
+        return Ok(
+            new ModPackRevisionDto
+            {
+                DefinitionPrimaryKey       = existingModPack.Definition?.PrimaryKey,
+                DefinitionTimeStampCreated = existingModPack.Definition?.TimeStampCreated,
+                DefinitionTitle            = existingModPack.Definition?.Title,
+                DefinitionOwnerFk          = existingModPack.Definition?.OwnerFk,
+                DefinitionIsActive         = existingModPack.Definition?.IsActive,
+                DefinitionIsComposition    = existingModPack.Definition?.IsComposition,
+                PrimaryKey                 = existingModPack.PrimaryKey,
+                TimeStampCreated           = existingModPack.TimeStampCreated,
+                Html                       = existingModPack.Html,
+                UpdatedByFk                = existingModPack.UpdatedByFk,
+                IsActive                   = existingModPack.IsActive,
+                MetaTimeStampDownloaded = existingModPack.UserMetas?.FirstOrDefault()
+                    ?.TimeStampDownloaded,
+            }
+        );
     }
 
     /// <summary>
@@ -514,18 +556,18 @@ public class ModPackController : ControllerBase
 
         if (search.IsNotNullOrWhiteSpace())
         {
-            search   = search.Trim();
-            search   = search.Replace("%", "\\%");
-            search   = search.Replace(",", "\\,");
-            search   = search.Replace("_", "\\_");
-            search   = search.Replace(",", "\\,");
-            search   = search.Replace("[", "\\[");
-            search   = search.Replace(",", "\\,");
-            search   = search.Replace("]", "\\]");
-            search   = search.Replace(",", "\\,");
-            search   = search.Replace("^", "\\^");
-            search   = search.Replace("\\", "\\\\");
-            search   = $"%{search}%";
+            search = search.Trim();
+            search = search.Replace("%", "\\%");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("_", "\\_");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("[", "\\[");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("]", "\\]");
+            search = search.Replace(",", "\\,");
+            search = search.Replace("^", "\\^");
+            search = search.Replace("\\", "\\\\");
+            search = $"%{search}%";
             // ReSharper disable once EntityFramework.ClientSideDbFunctionCall
             modPacks = modPacks.Where(q => EF.Functions.ILike(q.Title, search, "\\"));
         }

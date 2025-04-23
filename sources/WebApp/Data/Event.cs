@@ -7,6 +7,6 @@ public sealed class Event
     public PlainEventDto PlainEvent { get; set; }
     public UserDto? Owner { get; set; }
     public UserDto? HostedBy { get; set; }
-    public PlainModPackRevisionDto? ModPackRevision { get; set; }
+    public ModPackRevisionDto? ModPackRevision { get; set; }
     public PlainTerrainDto? Terrain { get; set; }
 }

@@ -2,44 +2,48 @@
 @using X39.Util.Collections
 @inject BaseUrl BaseUrl
 
-@if (ModPack?.IsComposition ?? false)
+@if (IsComposition)
 {
     <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color"
-                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack?.PrimaryKey}/download/latest")"
+                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPackKey}/download/latest")"
                    target="_blank"/>
 }
-else if ((Revision?.UserMetas?.FirstOrDefault()?.TimeStampDownloaded ?? DateTimeOffset.MinValue) < Revision?.TimeStampCreated)
+else if ((TimeStampDownloaded ?? DateTimeOffset.MinValue) < RevisionCreated)
 {
     <MudBadge Color="Color" Dot="true" Overlap="true">
         <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color"
-                       Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack?.PrimaryKey}/download/{Revision?.PrimaryKey}")"
+                       Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPackKey}/download/{RevisionKey}")"
                        target="_blank"
-                       OnClick="@(() => Revision!.UserMetas!.FirstOrAdd((_) => true, () => new UserModPackMeta()).TimeStampDownloaded = DateTimeOffset.MaxValue)"/>
+                       OnClick="@(() => TimeStampDownloadedChanged.InvokeAsync(DateTimeOffset.MaxValue))"/>
     </MudBadge>
 }
 else
 {
     <MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color"
-                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPack?.PrimaryKey}/download/{Revision?.PrimaryKey}")"
+                   Href="@BaseUrl.ResolveApiUrl($"/mod-packs/{ModPackKey}/download/{RevisionKey}")"
                    target="_blank"/>
 }
 
 
 @code {
+    [Parameter, Required, EditorRequired]
+    public bool IsComposition { get; set; }
 
     [Parameter, Required, EditorRequired]
-    public ModPackDefinition? ModPack { get; set; }
+    public DateTimeOffset? TimeStampDownloaded { get; set; }
 
-    [Parameter]
-    public ModPackRevision? Revision
-    {
-        get => _activeRevision ?? ModPack?.GetActiveRevision();
-        set => _activeRevision = value;
-    }
+    [Parameter, Required, EditorRequired]
+    public EventCallback<DateTimeOffset> TimeStampDownloadedChanged { get; set; }
 
-    private ModPackRevision? _activeRevision;
+    [Parameter, Required, EditorRequired]
+    public long ModPackKey { get; set; }
+
+    [Parameter, Required, EditorRequired]
+    public long RevisionKey { get; set; }
+
+    [Parameter, Required, EditorRequired]
+    public DateTimeOffset RevisionCreated { get; set; }
 
     [Parameter]
     public Color Color { get; set; }
-
 }
