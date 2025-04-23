@@ -589,7 +589,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         tmp.StartInfo = psi;
         Process       = tmp;
         using var disposable = new Disposable(() => Process = null);
-        await StartAndWaitForSteamCmdExitAndLogAsync(tmp);
+        await StartAndWaitForCmdExitAndLogAsync(tmp, "SteamCMD");
         if (tmp.ExitCode is not 0)
             throw new Exception("SteamCmd operation failed.");
         Logger.LogInformation(
@@ -600,7 +600,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         );
     }
 
-    private async Task SteamCmdLogAsync(LogLevel logLevel, string message, DateTimeOffset timeStamp)
+    private async Task SteamCmdLogAsync(LogLevel logLevel, string source, string message, DateTimeOffset timeStamp)
     {
         await using var dbContext = await DbContextFactory.CreateDbContextAsync()
             .ConfigureAwait(false);
@@ -608,8 +608,9 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             .ConfigureAwait(false);
         Logger.Log(
             logLevel,
-            "[{TimeStamp}] SteamCmd for {GameServer} ({GameServerId}): {Message}",
+            "[{TimeStamp}] {Source} for {GameServer} ({GameServerId}): {Message}",
             timeStamp,
+            source,
             gameServer.Title,
             gameServer.PrimaryKey,
             message
@@ -620,7 +621,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 Message      = message,
                 TimeStamp    = timeStamp,
                 LogLevel     = logLevel,
-                Source       = "SteamCmd",
+                Source       = source,
                 GameServerFk = gameServer.PrimaryKey,
             }
         );
@@ -633,7 +634,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                     Message      = message,
                     TimeStamp    = timeStamp,
                     LogLevel     = logLevel,
-                    Source       = "SteamCmd",
+                    Source       = source,
                     GameServerId = gameServer.PrimaryKey,
                 }
             )
@@ -710,7 +711,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             if (Process is not null && !Process.HasExited)
                 throw new InvalidOperationException("Process must be finished for the operation");
 
-            await ExecuteAsync(psi)
+            await ExecuteAsync(psi, "DepotDownloader")
                 .ConfigureAwait(false);
             await UpdateStreamService.SendUpdateAsync(
                     $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
@@ -724,7 +725,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 .ConfigureAwait(false);
 
             Logger.LogInformation(
-                "Finished update of workshop item {WorkshopId} via DebotDownloader, requested by user {UserId}",
+                "Finished update of workshop item {WorkshopId} via DepotDownloader, requested by user {UserId}",
                 workshopId,
                 executingUser?.PrimaryKey
             );
@@ -733,7 +734,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         return installPaths.AsReadOnly();
     }
 
-    private async Task ExecuteAsync(ProcessStartInfo psi, int attempts = 3)
+    private async Task ExecuteAsync(ProcessStartInfo psi, string source, int attempts = 3)
     {
         for (var i = 1; i <= attempts; i++)
         {
@@ -743,10 +744,10 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 tmp.StartInfo = psi;
                 Process       = tmp;
                 using var disposable = new Disposable(() => Process = null);
-                await StartAndWaitForSteamCmdExitAndLogAsync(tmp);
+                await StartAndWaitForCmdExitAndLogAsync(tmp, source);
 
                 if (tmp.ExitCode is not 0)
-                    throw new Exception("SteamCmd operation failed.");
+                    throw new Exception($"{source} operation failed.");
                 return;
             }
             catch (Exception ex) when (i < attempts)
@@ -761,23 +762,23 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
         }
     }
 
-    private async Task StartAndWaitForSteamCmdExitAndLogAsync(Process tmp)
+    private async Task StartAndWaitForCmdExitAndLogAsync(Process tmp, string source)
     {
         tmp.ErrorDataReceived += (sender, e) =>
         {
             if (e.Data is not { } message)
                 return;
-            _ = SteamCmdLogAsync(LogLevel.Error, message, DateTimeOffset.Now)
+            _ = SteamCmdLogAsync(LogLevel.Error, source, message, DateTimeOffset.Now)
                 .ConfigureAwait(false);
         };
         tmp.OutputDataReceived += (sender, e) =>
         {
             if (e.Data is not { } message)
                 return;
-            _ = SteamCmdLogAsync(LogLevel.Information, message, DateTimeOffset.Now)
+            _ = SteamCmdLogAsync(LogLevel.Information, source, message, DateTimeOffset.Now)
                 .ConfigureAwait(false);
         };
-        #if DEBUG
+#if DEBUG
         Logger.LogTrace(
             "Starting SteamCmd with {Command}",
             $"{tmp.StartInfo.FileName} {string.Join(' ', tmp.StartInfo.ArgumentList)}"
@@ -787,7 +788,7 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
             $"{tmp.StartInfo.FileName} {string.Join(' ', tmp.StartInfo.ArgumentList)}",
             DateTimeOffset.Now
         );
-        #endif
+#endif
         if (!tmp.Start())
             throw new FailedToStartProcessException(tmp.StartInfo);
         tmp.BeginErrorReadLine();
