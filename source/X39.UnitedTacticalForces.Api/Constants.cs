@@ -13,24 +13,26 @@ internal static class Constants
     {
         public static class AppId
         {
-            public const long Arma3Server          = 233780;
-            public const long Arma3                = 107410;
-            public const long DayZStandalone       = 221100;
-            public const long DayZStandaloneServer = 223350;
+            public const long Arma3Server                      = 233780;
+            public const long Arma3                            = 107410;
+            public const long DayZStandalone                   = 221100;
+            public const long DayZStandaloneServer             = 223350;
             public const long DayZStandaloneExperimentalServer = 1042420;
         }
     }
 
     public static class Routes
     {
-        public const string Events        = "events";
-        public const string GameServers   = "game-servers";
-        public const string EventSlotting = "slotting";
-        public const string Users         = "users";
-        public const string ModPacks      = "mod-packs";
-        public const string Terrains      = "terrains";
-        public const string Wiki          = "wiki";
-        public const string UpdateStream  = "update-stream";
+        public const string Events         = "events";
+        public const string GameServers    = "game-servers";
+        public const string EventSlotting  = "slotting";
+        public const string Users          = "users";
+        public const string ModPacks       = "mod-packs";
+        public const string Terrains       = "terrains";
+        public const string Wiki           = "wiki";
+        public const string UpdateStream   = "update-stream";
+        public const string Roles          = "roles";
+        public const string ResourceClaims = "resource-claim";
     }
 
     public static class AuthorizationSchemas
@@ -61,13 +63,13 @@ internal static class Constants
         [SuppressMessage("ReSharper", "MemberHidesStaticFromOuterClass")]
         public static class Steam
         {
-            public const string Enabled           = nameof(Steam) + ":" + nameof(Enabled);
-            public const string ApiKey            = nameof(Steam) + ":" + nameof(ApiKey);
-            public const string SteamCmdPath      = nameof(Steam) + ":" + nameof(SteamCmdPath);
-            public const string InstallBasePath   = nameof(Steam) + ":" + nameof(InstallBasePath);
-            public const string Username          = nameof(Steam) + ":" + nameof(Username);
-            public const string Password          = nameof(Steam) + ":" + nameof(Password);
-            public const string WorkshopChunkSize = nameof(Steam) + ":" + nameof(WorkshopChunkSize);
+            public const string Enabled             = nameof(Steam) + ":" + nameof(Enabled);
+            public const string ApiKey              = nameof(Steam) + ":" + nameof(ApiKey);
+            public const string SteamCmdPath        = nameof(Steam) + ":" + nameof(SteamCmdPath);
+            public const string DepotDownloaderPath = nameof(Steam) + ":" + nameof(DepotDownloaderPath);
+            public const string InstallBasePath     = nameof(Steam) + ":" + nameof(InstallBasePath);
+            public const string Username            = nameof(Steam) + ":" + nameof(Username);
+            public const string Password            = nameof(Steam) + ":" + nameof(Password);
         }
 
         public static class Discord
