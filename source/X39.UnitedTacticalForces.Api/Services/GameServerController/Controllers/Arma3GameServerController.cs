@@ -225,11 +225,10 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                     Directory.CreateDirectory(MpMissionsPath);
                 return Task.FromResult<IEnumerable<GameFileInfo>>(
                     Directory.GetFiles(MpMissionsPath, "*.pbo", SearchOption.TopDirectoryOnly)
-                        .Select(
-                            pboPath => new GameFileInfo(
-                                Path.GetFileName(pboPath),
-                                new FileInfo(pboPath).Length,
-                                "application/octet-stream"))
+                        .Select(pboPath => new GameFileInfo(
+                            Path.GetFileName(pboPath),
+                            new FileInfo(pboPath).Length,
+                            "application/octet-stream"))
                         .ToArray());
             }
             default:
@@ -567,8 +566,8 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? "arma3server_x64.exe"
                 : "arma3server_x64");
-        var modList = await GetWorkshopPathsAsync(dbContext, true)
-            .ConfigureAwait(false);
+        IReadOnlyCollection<(string? name, string path)> modListTuples = await GetWorkshopPathsAsync(dbContext, true)
+            .ConfigureAwait(false)!;
         var psi = new ProcessStartInfo
         {
             FileName               = fileName,
@@ -620,27 +619,27 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             psi.ArgumentList.Add($"-serverMod={serverMod}");
         var additionalMods = await GetAsync("host://mod").ConfigureAwait(false);
         if (additionalMods.IsNotNullOrEmpty())
-            modList = modList.Append(additionalMods).ToImmutableArray();
+            modListTuples = modListTuples.Append((null, additionalMods)).ToImmutableArray();
 
-        if (modList.Any())
+        IReadOnlyCollection<string> modList = Array.Empty<string>();
+        if (!modListTuples.Any())
+            return psi;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
+            var modsPath = Path.Combine(GameInstallPath, $"{GameServerPrimaryKey}-mods");
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                var modsPath = Path.Combine(GameInstallPath, $"{GameServerPrimaryKey}-mods");
-
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                    Directory.CreateDirectory(modsPath, DefaultUnixFileMode);
-                else
-                    Directory.CreateDirectory(modsPath);
-                var symLinks = await CreateOrReplaceSymlinksForAsync(
-                        modList,
-                        modsPath)
-                    .ConfigureAwait(false);
-                modList = symLinks.Select((q) => q.PathRelativeTo(GameInstallPath)).ToImmutableArray();
-            }
-
-            psi.ArgumentList.Add($"-mod={string.Join(';', modList)}");
+                Directory.CreateDirectory(modsPath, DefaultUnixFileMode);
+            else
+                Directory.CreateDirectory(modsPath);
+            var symLinks = await CreateOrReplaceSymlinksForAsync(
+                    modListTuples,
+                    modsPath)
+                .ConfigureAwait(false);
+            modList = symLinks.Select((q) => q.PathRelativeTo(GameInstallPath)).ToImmutableArray();
         }
+
+        psi.ArgumentList.Add($"-mod={string.Join(';', modList)}");
         // ReSharper restore StringLiteralTypo
 
         return psi;
@@ -648,14 +647,14 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
 
     [SupportedOSPlatform("linux")]
     private Task<IReadOnlyCollection<string>> CreateOrReplaceSymlinksForAsync(
-        IReadOnlyCollection<string> directories,
+        IReadOnlyCollection<(string? name, string path)> directories,
         string target)
     {
         var result = new List<string>(directories.Count);
-        foreach (var directory in directories)
+        foreach (var (name, path) in directories)
         {
-            var relative = directory.PathRelativeTo(target);
-            var directoryName = Path.GetFileName(directory);
+            var relative = path.PathRelativeTo(target);
+            var directoryName = name ?? Path.GetFileName(path);
             var file = Path.Combine(target, directoryName);
             var fileInfo = new FileInfo(file);
             result.Add(file);
@@ -663,7 +662,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
             {
                 if (fileInfo.LinkTarget != relative)
                 {
-                    Logger.LogDebug(
+                    Logger.LogInformation(
                         "Deleting SymLink at {FilePath} pointing towards {SymLinkTarget}",
                         file,
                         fileInfo.LinkTarget);
@@ -671,7 +670,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                 }
                 else
                 {
-                    Logger.LogTrace(
+                    Logger.LogInformation(
                         "Skipping {FilePath} as SymLink already points towards {SymLinkTarget}",
                         file,
                         relative);
@@ -685,7 +684,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                     file);
             }
 
-            Logger.LogDebug(
+            Logger.LogInformation(
                 "Creating SymLink at {FilePath} pointing towards {SymLinkTarget}",
                 file,
                 relative);
@@ -719,12 +718,11 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         const string workshopBase = "https://steamcommunity.com/sharedfiles/filedetails/?id=";
         var modPackData = await dbContext.GameServers
             .Where((q) => q.PrimaryKey == GameServerPrimaryKey)
-            .Select(
-                (q) => new
-                {
-                    q.ActiveModPackFk,
-                    q.SelectedModPackFk,
-                })
+            .Select((q) => new
+            {
+                q.ActiveModPackFk,
+                q.SelectedModPackFk,
+            })
             .SingleOrDefaultAsync()
             .ConfigureAwait(false);
         if (modPackData?.ActiveModPackFk is { } modPackRevisionId)
@@ -756,9 +754,8 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         if (modPackData?.SelectedModPackFk is { } selectedModPackFk)
         {
             var modPackRevisions = await dbContext.ModPackRevisions
-                .Where(
-                    (modPackRevision) => modPackRevision.ModPackDefinitions!.Any(
-                        (modPackDefinition) => modPackDefinition.PrimaryKey == selectedModPackFk))
+                .Where((modPackRevision) => modPackRevision.ModPackDefinitions!.Any((modPackDefinition) =>
+                    modPackDefinition.PrimaryKey == selectedModPackFk))
                 .ToArrayAsync();
             if (modPackRevisions is null)
                 throw new NullReferenceException(
@@ -787,20 +784,35 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
         return Array.Empty<long>();
     }
 
-    private async Task<IReadOnlyCollection<string>> GetWorkshopPathsAsync(
+    private async Task<IReadOnlyCollection<(string name, string path)>> GetWorkshopPathsAsync(
         ApiDbContext dbContext,
         bool lowercased)
     {
         var workshopIds = await GetWorkshopIdsAsync(dbContext).ConfigureAwait(false);
-        return workshopIds.Select(
-                (q) => Path.Combine(
-                    GameServerPath,
-                    "steamapps",
-                    "workshop",
-                    "content",
-                    GameAppId.ToString(),
-                    lowercased ? $"{q}-lowercased" : q.ToString()))
-            .ToImmutableArray();
+        var results = new List<(string name, string path)>();
+        foreach (var workshopId in workshopIds)
+        {
+            var path = Path.Combine(
+                GameServerPath,
+                "mods",
+                workshopId.ToString(),
+                "depots",
+                GameAppId.ToString());
+            var next = Directory.GetDirectories(path, "*", SearchOption.TopDirectoryOnly)
+                .Select(Path.GetFileName)
+                .NotNull()
+                .Where(e => e.EndsWith("-lowercased"))
+                .Select(e => e[..^"-lowercased".Length])
+                .OrderByDescending(ulong.Parse)
+                .First();
+            path = Path.Combine(
+                path,
+                lowercased ? $"{next}-lowercased" : next);
+            results.Add((workshopId.ToString(), path));
+            // /home/steam/steam-installs/233780/00000003/mods/1128145626/depots/107410/17852617-lowercased
+        }
+
+        return results.AsReadOnly();
     }
 
 
@@ -848,7 +860,7 @@ public sealed class Arma3GameServerController : SteamGameServerControllerBase, I
                         {
                             LifetimeStatus = ELifetimeStatus.Updating,
                             GameServerId   = GameServerPrimaryKey,
-                            Progress = index / (double)workshopItemIds.Count * 2,
+                            Progress       = index / (double) workshopItemIds.Count * 2,
                         })
                     .ConfigureAwait(false);
             }

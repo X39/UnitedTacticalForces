@@ -717,10 +717,19 @@ public abstract class SteamGameServerControllerBase : GameServerControllerBase
                 "depots",
                 GameAppId.ToString()
             );
-            var ugcIdPath = Directory.GetDirectories(workShopContentPath).OrderByDescending(e => ulong.Parse(Path.GetFileName(e))).First();
+            var ugcIdPath = Directory.GetDirectories(workShopContentPath, "*", SearchOption.TopDirectoryOnly)
+                .Select(Path.GetFileName)
+                .NotNull()
+                .Where(e => !e.EndsWith("-lowercased"))
+                .OrderByDescending(ulong.Parse)
+                .First();
             workShopContentPath = Path.Combine(workShopContentPath, ugcIdPath);
             installPaths.Add((workshopId, workShopContentPath));
-            await SteamCmdLogAsync(LogLevel.Information, "DepotDownloader", $"Downloaded {GameAppId}/{workshopId} to {workShopContentPath}", DateTimeOffset.Now)
+            await SteamCmdLogAsync(
+                    LogLevel.Information,
+                    "DepotDownloader",
+                    $"Downloaded {GameAppId}/{workshopId} to {workShopContentPath}",
+                    DateTimeOffset.Now)
                 .ConfigureAwait(false);
             await UpdateStreamService.SendUpdateAsync(
                     $"{Constants.Routes.GameServers}/{GameServerPrimaryKey}/lifetime-status",
