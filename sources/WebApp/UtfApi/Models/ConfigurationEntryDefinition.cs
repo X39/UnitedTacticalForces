@@ -63,7 +63,13 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
         public string Identifier { get; set; }
 #endif
         /// <summary>The kind property</summary>
-        public int? Kind { get; set; }
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#nullable enable
+        public global::X39.UnitedTacticalForces.WebApp.Api.Models.EConfigurationEntryKind? Kind { get; set; }
+#nullable restore
+#else
+        public global::X39.UnitedTacticalForces.WebApp.Api.Models.EConfigurationEntryKind Kind { get; set; }
+#endif
         /// <summary>The maxValue property</summary>
         public double? MaxValue { get; set; }
         /// <summary>The minValue property</summary>
@@ -125,7 +131,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
                 { "displayGroup", n => { DisplayGroup = n.GetStringValue(); } },
                 { "displayName", n => { DisplayName = n.GetStringValue(); } },
                 { "identifier", n => { Identifier = n.GetStringValue(); } },
-                { "kind", n => { Kind = n.GetIntValue(); } },
+                { "kind", n => { Kind = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.EConfigurationEntryKind>(global::X39.UnitedTacticalForces.WebApp.Api.Models.EConfigurationEntryKind.CreateFromDiscriminatorValue); } },
                 { "maxValue", n => { MaxValue = n.GetDoubleValue(); } },
                 { "minValue", n => { MinValue = n.GetDoubleValue(); } },
                 { "path", n => { Path = n.GetStringValue(); } },
@@ -147,7 +153,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
             writer.WriteStringValue("displayGroup", DisplayGroup);
             writer.WriteStringValue("displayName", DisplayName);
             writer.WriteStringValue("identifier", Identifier);
-            writer.WriteIntValue("kind", Kind);
+            writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.EConfigurationEntryKind>("kind", Kind);
             writer.WriteDoubleValue("maxValue", MaxValue);
             writer.WriteDoubleValue("minValue", MinValue);
             writer.WriteStringValue("path", Path);

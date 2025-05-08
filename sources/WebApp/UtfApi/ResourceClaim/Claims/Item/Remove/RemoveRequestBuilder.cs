@@ -69,7 +69,6 @@ namespace X39.UnitedTacticalForces.WebApp.Api.ResourceClaim.Claims.Item.Remove
 #endif
             var requestInfo = new RequestInformation(Method.GET, UrlTemplate, PathParameters);
             requestInfo.Configure(requestConfiguration);
-            requestInfo.Headers.TryAdd("Accept", "application/json, text/plain;q=0.9");
             return requestInfo;
         }
         /// <summary>

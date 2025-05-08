@@ -5,7 +5,8 @@
 @inject BaseUrl                    BaseUrl
 @inject IConfiguration             Configuration
 <MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_UpcommingEvents)]</MudNavLink>
+    <MudNavLink Href="" Match="NavLinkMatch.All"
+                Icon="@Icons.Material.Filled.Home">@Localizer[nameof(Language.Shared_NavMenu_UpcommingEvents)]</MudNavLink>
     @if (Me.IsVerified)
     {
         <MudNavLink Href="events" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Event">

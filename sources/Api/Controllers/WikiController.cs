@@ -37,9 +37,10 @@ public class WikiController : ControllerBase
     /// <param name="showDeleted">If true, deleted pages will be included in the result.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use. Injected by the ASP.Net Framework.</param>
     /// <returns>A list of <see cref="WikiPageHeader"/>s.</returns>
-    [HttpGet("all/header", Name = nameof(WikiController) + "." + nameof(GetAllWikiPageHeadersAsync))]
     [AllowAnonymous]
-    public async Task<IEnumerable<WikiPageHeader>> GetAllWikiPageHeadersAsync(
+    [ProducesResponseType<WikiPageHeader[]>(StatusCodes.Status200OK)]
+    [HttpGet("all/header", Name = nameof(WikiController) + "." + nameof(GetAllWikiPageHeadersAsync))]
+    public async Task<IActionResult> GetAllWikiPageHeadersAsync(
         [FromQuery] int? skip = null,
         [FromQuery] int? take = null,
         [FromQuery] bool? showDeleted = null,
@@ -64,7 +65,7 @@ public class WikiController : ControllerBase
         if (take is not null)
             query = query.Take(take.Value);
         var result = await query.ToArrayAsync(cancellationToken);
-        return result.Select(a => new WikiPageHeader(a.PrimaryKey, a.Title, a.LastModified));
+        return Ok(result.Select(a => new WikiPageHeader(a.PrimaryKey, a.Title, a.LastModified)));
     }
 
     /// <summary>
@@ -80,7 +81,8 @@ public class WikiController : ControllerBase
         Name = nameof(WikiController) + "." + nameof(GetWikiPageRevisionHeadersAsync)
     )]
     [AllowAnonymous]
-    public async Task<IEnumerable<WikiPageRevisionHeader>> GetWikiPageRevisionHeadersAsync(
+    [ProducesResponseType<WikiPageRevisionHeader[]>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetWikiPageRevisionHeadersAsync(
         [FromRoute] Guid pageKey,
         [FromQuery] int? skip = null,
         [FromQuery] int? take = null,
@@ -105,12 +107,14 @@ public class WikiController : ControllerBase
         if (take is not null)
             query = query.Take(take.Value);
         var result = await query.ToArrayAsync(cancellationToken);
-        return result.Select(a => new WikiPageRevisionHeader(
-                a.PrimaryKey,
-                a.TimeStampCreated,
-                a.AuthorPrimaryKey,
-                a.AuthorName,
-                a.Comment
+        return Ok(
+            result.Select(a => new WikiPageRevisionHeader(
+                    a.PrimaryKey,
+                    a.TimeStampCreated,
+                    a.AuthorPrimaryKey,
+                    a.AuthorName,
+                    a.Comment
+                )
             )
         );
     }

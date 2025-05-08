@@ -29,7 +29,13 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
         /// <summary>The isVisible property</summary>
         public bool? IsVisible { get; set; }
         /// <summary>The side property</summary>
-        public int? Side { get; set; }
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#nullable enable
+        public global::X39.UnitedTacticalForces.WebApp.Api.Models.EArmaSide? Side { get; set; }
+#nullable restore
+#else
+        public global::X39.UnitedTacticalForces.WebApp.Api.Models.EArmaSide Side { get; set; }
+#endif
         /// <summary>The title property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -67,7 +73,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
                 { "group", n => { Group = n.GetStringValue(); } },
                 { "isSelfAssignable", n => { IsSelfAssignable = n.GetBoolValue(); } },
                 { "isVisible", n => { IsVisible = n.GetBoolValue(); } },
-                { "side", n => { Side = n.GetIntValue(); } },
+                { "side", n => { Side = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.EArmaSide>(global::X39.UnitedTacticalForces.WebApp.Api.Models.EArmaSide.CreateFromDiscriminatorValue); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
         }
@@ -82,7 +88,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
             writer.WriteStringValue("group", Group);
             writer.WriteBoolValue("isSelfAssignable", IsSelfAssignable);
             writer.WriteBoolValue("isVisible", IsVisible);
-            writer.WriteIntValue("side", Side);
+            writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.EArmaSide>("side", Side);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);
         }

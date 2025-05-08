@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.FluentUI.AspNetCore.Components;
 using X39.UnitedTacticalForces.WebApp;
-using MudBlazor.Services;
 using X39.UnitedTacticalForces.WebApp.Services;
 using X39.Util.DependencyInjection;
 
@@ -10,7 +10,11 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped(_ => new HttpClient {BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)});
-builder.Services.AddMudServices();
+builder.Services.AddFluentUIComponents(options =>
+{
+    options.ValidateClassNames = false;
+});
+
 builder.Services.AddLocalization();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddSingleton(new BaseUrl(

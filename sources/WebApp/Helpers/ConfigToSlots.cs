@@ -1,21 +1,23 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Localization;
-using MudBlazor;
+using Microsoft.FluentUI.AspNetCore.Components;
 using X39.BI.Config.Parsing;
+using X39.UnitedTacticalForces.WebApp.Api.Models;
 using X39.UnitedTacticalForces.WebApp.Properties;
+using EventSlot = X39.UnitedTacticalForces.WebApp.Api.Models.PlainEventSlotDto;
 
 namespace X39.UnitedTacticalForces.WebApp.Helpers;
 
 internal class ConfigToSlots
 {
     private readonly IStringLocalizer<Language> _localizer;
-    private readonly ISnackbar                  _snackbar;
+    private readonly IToastService              _toastService;
 
-    public ConfigToSlots(IStringLocalizer<Language> localizer, ISnackbar snackbar)
+    public ConfigToSlots(IStringLocalizer<Language> localizer, IToastService toastService)
     {
-        _localizer = localizer;
-        _snackbar  = snackbar;
+        _localizer    = localizer;
+        _toastService = toastService;
     }
 
     [Conditional("DEBUG")]
@@ -29,10 +31,10 @@ internal class ConfigToSlots
         if (sidePair is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities/{configClass.Identifier}/side");
-            _snackbar.Add(text, Severity.Error);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities/{configClass.Identifier}/side"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -40,12 +42,14 @@ internal class ConfigToSlots
         if (sidePair.Value is not string tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{configClass.Identifier}/side",
                 "String",
-                sidePair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                sidePair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -68,10 +72,10 @@ internal class ConfigToSlots
         if (sidePair is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/side");
-            _snackbar.Add(text, Severity.Error);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/side"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -79,12 +83,14 @@ internal class ConfigToSlots
         if (sidePair.Value is not string tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/side",
                 "String",
-                sidePair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                sidePair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -108,10 +114,10 @@ internal class ConfigToSlots
         if (dataTypePair is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities/{configClass.Identifier}/dataType");
-            _snackbar.Add(text, Severity.Error);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities/{configClass.Identifier}/dataType"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -119,12 +125,14 @@ internal class ConfigToSlots
         if (dataTypePair.Value is not string tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{configClass.Identifier}/dataType",
                 "String",
-                dataTypePair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                dataTypePair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -137,7 +145,8 @@ internal class ConfigToSlots
     bool GetGroupItemDataTypePair(
         ConfigClass groupConfigClass,
         ConfigClass groupItemConfigClass,
-        [NotNullWhen(true)] out string? dataType)
+        [NotNullWhen(true)] out string? dataType
+    )
     {
         var dataTypePair = groupItemConfigClass.Children
             .OfType<ConfigPair>()
@@ -146,10 +155,10 @@ internal class ConfigToSlots
         if (dataTypePair is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/dataType");
-            _snackbar.Add(text, Severity.Error);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/dataType"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -157,12 +166,14 @@ internal class ConfigToSlots
         if (dataTypePair.Value is not string tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/dataType",
                 "String",
-                dataTypePair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                dataTypePair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -174,18 +185,15 @@ internal class ConfigToSlots
 
     bool GetConfigMissionClass(
         ConfigCollection configCollection1,
-        [NotNullWhen(true)] out ConfigClass? missionConfigClass1)
+        [NotNullWhen(true)] out ConfigClass? missionConfigClass1
+    )
     {
-        missionConfigClass1 = configCollection1
-            .OfType<ConfigClass>()
+        missionConfigClass1 = configCollection1.OfType<ConfigClass>()
             .SingleOrDefault((q) => q.Identifier is "Mission");
         if (missionConfigClass1 is null)
         {
-            var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission");
-            _snackbar.Add(text, Severity.Error);
+            var text = string.Format(_localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)], $"/Mission");
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             return false;
         }
@@ -201,12 +209,10 @@ internal class ConfigToSlots
         if (entitiesConfigClass1 is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities");
-            _snackbar.Add(
-                text,
-                Severity.Error);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             return false;
         }
@@ -222,12 +228,10 @@ internal class ConfigToSlots
         if (entitiesConfigClass1 is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities/{groupConfig.Identifier}/Entities");
-            _snackbar.Add(
-                text,
-                Severity.Warning);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities/{groupConfig.Identifier}/Entities"
+            );
+            _toastService.ShowWarning(text);
             Console.Error.WriteLine(text);
             return false;
         }
@@ -258,12 +262,14 @@ internal class ConfigToSlots
         if (isPlayablePair.Value is not double tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{configClass.Identifier}/isPlayable",
                 "String",
-                isPlayablePair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                isPlayablePair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -287,12 +293,14 @@ internal class ConfigToSlots
         if (isPlayablePair.Value is not double tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/isPlayable",
                 "Double",
-                isPlayablePair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                isPlayablePair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -309,10 +317,10 @@ internal class ConfigToSlots
         if (descriptionPair is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities/{configClass.Identifier}/description");
-            _snackbar.Add(text, Severity.Error);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities/{configClass.Identifier}/description"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -320,12 +328,14 @@ internal class ConfigToSlots
         if (descriptionPair.Value is not string tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{configClass.Identifier}/description",
                 "String",
-                descriptionPair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                descriptionPair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -336,7 +346,8 @@ internal class ConfigToSlots
     void GetGroupLogicDescription(
         ConfigClass groupConfigClass,
         ConfigClass groupItemConfigClass,
-        out string description)
+        out string description
+    )
     {
         var descriptionPair = groupItemConfigClass.Children
             .OfType<ConfigPair>()
@@ -344,10 +355,10 @@ internal class ConfigToSlots
         if (descriptionPair is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/description");
-            _snackbar.Add(text, Severity.Error);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/description"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -355,12 +366,14 @@ internal class ConfigToSlots
         if (descriptionPair.Value is not string tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/description",
                 "String",
-                descriptionPair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                descriptionPair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -371,7 +384,8 @@ internal class ConfigToSlots
     bool GetObjectAttributesIsPlayable(
         ConfigClass configClass,
         ConfigClass attributesConfigClass,
-        out double isPlayable)
+        out double isPlayable
+    )
     {
         var isPlayablePair = attributesConfigClass.Children
             .OfType<ConfigPair>()
@@ -386,12 +400,14 @@ internal class ConfigToSlots
         if (isPlayablePair.Value is not double tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{configClass.Identifier}/Attributes/isPlayable",
                 "Double",
-                isPlayablePair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                isPlayablePair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -404,7 +420,8 @@ internal class ConfigToSlots
         ConfigClass groupConfigClass,
         ConfigClass groupItemConfigClass,
         ConfigClass attributesConfigClass,
-        out double isPlayable)
+        out double isPlayable
+    )
     {
         var isPlayablePair = attributesConfigClass.Children
             .OfType<ConfigPair>()
@@ -419,12 +436,14 @@ internal class ConfigToSlots
         if (isPlayablePair.Value is not double tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/Attributes/isPlayable",
                 "Double",
-                isPlayablePair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                isPlayablePair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -436,7 +455,8 @@ internal class ConfigToSlots
     void GetObjectAttributesDescription(
         ConfigClass configClass,
         ConfigClass attributesConfigClass,
-        out string description)
+        out string description
+    )
     {
         var descriptionPair = attributesConfigClass.Children
             .OfType<ConfigPair>()
@@ -444,10 +464,10 @@ internal class ConfigToSlots
         if (descriptionPair is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities/{configClass.Identifier}/Attributes/description");
-            _snackbar.Add(text, Severity.Error);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities/{configClass.Identifier}/Attributes/description"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -455,12 +475,14 @@ internal class ConfigToSlots
         if (descriptionPair.Value is not string tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{configClass.Identifier}/Attributes/description",
                 "String",
-                descriptionPair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                descriptionPair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -472,7 +494,8 @@ internal class ConfigToSlots
         ConfigClass groupConfigClass,
         ConfigClass groupItemConfigClass,
         ConfigClass attributesConfigClass,
-        out string description)
+        out string description
+    )
     {
         var descriptionPair = attributesConfigClass.Children
             .OfType<ConfigPair>()
@@ -480,10 +503,10 @@ internal class ConfigToSlots
         if (descriptionPair is null)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_PathDoesNotExists_0path)],
-                $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/Attributes/description");
-            _snackbar.Add(text, Severity.Error);
+                _localizer[nameof(Language.Pages_EventView_PathDoesNotExists_0path)],
+                $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/Attributes/description"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -491,12 +514,14 @@ internal class ConfigToSlots
         if (descriptionPair.Value is not string tmp)
         {
             var text = string.Format(
-                _localizer[nameof(Language
-                    .Pages_EventView_InvalidDataType_0path_1expected_2got)],
+                _localizer[nameof(Language.Pages_EventView_InvalidDataType_0path_1expected_2got)],
                 $"/Mission/Entities/{groupConfigClass.Identifier}/Entities/{groupItemConfigClass.Identifier}/Attributes/description",
                 "String",
-                descriptionPair.Value?.GetType().Name ?? "null");
-            _snackbar.Add(text, Severity.Error);
+                descriptionPair.Value?.GetType()
+                    .Name
+                ?? "null"
+            );
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             throw new Exception(text);
         }
@@ -507,14 +532,15 @@ internal class ConfigToSlots
     public (IReadOnlyCollection<EventSlot>, bool) GetSlots(MemoryStream inputStream)
     {
         using var reader = new StreamReader(inputStream);
+        
         {
             var buff = new char[1024];
             var len = reader.Read(buff);
-            if (buff[..len].Any((c)=>char.IsControl(c) && !char.IsWhiteSpace(c)))
+            if (buff[..len]
+                .Any((c) => char.IsControl(c) && !char.IsWhiteSpace(c)))
             {
-                var text = _localizer[nameof(Language
-                    .Pages_EventView_FailedToParseConfig_ParsedConfigIsBinarized)];
-                _snackbar.Add(text, Severity.Error);
+                var text = _localizer[nameof(Language.Pages_EventView_FailedToParseConfig_ParsedConfigIsBinarized)];
+                _toastService.ShowError(text);
                 Console.Error.WriteLine(text);
                 return (ArraySegment<EventSlot>.Empty, false);
             }
@@ -525,7 +551,7 @@ internal class ConfigToSlots
         if (configParserError is not null)
         {
             var text = configParserError.ToString();
-            _snackbar.Add(text, Severity.Error);
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             return (ArraySegment<EventSlot>.Empty, false);
         }
@@ -534,9 +560,7 @@ internal class ConfigToSlots
         {
             var text = _localizer[nameof(Language
                 .Pages_EventView_FailedToParseConfig_ParsedConfigIsNoValidMissionFile)];
-            _snackbar.Add(
-                text,
-                Severity.Error);
+            _toastService.ShowError(text);
             Console.Error.WriteLine(text);
             return (ArraySegment<EventSlot>.Empty, false);
         }
@@ -545,10 +569,9 @@ internal class ConfigToSlots
             return (ArraySegment<EventSlot>.Empty, false);
         if (!GetMissionEntities(missionConfigClass, out var entitiesConfigClass))
             return (ArraySegment<EventSlot>.Empty, false);
-        var slots = new List<EventSlot>();
+        var slots = new List<PlainEventSlotDto>();
         var groupIndex = 0;
-        foreach (var itemClassConfig in entitiesConfigClass.Children
-                     .OfType<ConfigClass>())
+        foreach (var itemClassConfig in entitiesConfigClass.Children.OfType<ConfigClass>())
         {
             if (!GetItemDataTypePair(itemClassConfig, out var itemDataType))
                 return (ArraySegment<EventSlot>.Empty, false);
@@ -569,16 +592,15 @@ internal class ConfigToSlots
                         slots.Add(
                             new EventSlot
                             {
-                                Title = descriptionSplatted.Length > 1
-                                    ? descriptionSplatted.First()
-                                    : description,
+                                Title = descriptionSplatted.Length > 1 ? descriptionSplatted.First() : description,
                                 Group = descriptionSplatted.Length > 1
                                     ? string.Join("@", descriptionSplatted.Skip(1))
                                     : $"Alpha-{++groupIndex}",
                                 Side             = EArmaSide.Logic,
                                 IsSelfAssignable = true,
-                                IsVisible = true,
-                            });
+                                IsVisible        = true,
+                            }
+                        );
                     }
 
                     break;
@@ -596,20 +618,22 @@ internal class ConfigToSlots
                         DebugLine($"{itemClassConfig.Identifier} is playable");
                         GetObjectSidePair(itemClassConfig, out var side);
                         GetObjectAttributesDescription(itemClassConfig, attributesConfigClass, out var description);
-                        var descriptionSplatted = description.Split('@', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                        var descriptionSplatted = description.Split(
+                            '@',
+                            StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
+                        );
                         slots.Add(
                             new EventSlot
                             {
-                                Title = descriptionSplatted.Length > 1
-                                    ? descriptionSplatted.First()
-                                    : description,
+                                Title = descriptionSplatted.Length > 1 ? descriptionSplatted.First() : description,
                                 Group = descriptionSplatted.Length > 1
                                     ? string.Join("@", descriptionSplatted.Skip(1))
                                     : $"Alpha-{++groupIndex}",
                                 Side             = side,
                                 IsSelfAssignable = true,
                                 IsVisible        = true,
-                            });
+                            }
+                        );
                     }
 
                     break;
@@ -619,8 +643,7 @@ internal class ConfigToSlots
                     if (!GetGroupEntities(itemClassConfig, out var groupEntitiesConfigClass))
                         break;
                     ++groupIndex;
-                    foreach (var groupItemConfigClass in groupEntitiesConfigClass.Children
-                                 .OfType<ConfigClass>())
+                    foreach (var groupItemConfigClass in groupEntitiesConfigClass.Children.OfType<ConfigClass>())
                     {
                         if (!GetGroupItemDataTypePair(itemClassConfig, groupItemConfigClass, out var groupItemDataType))
                             return (ArraySegment<EventSlot>.Empty, false);
@@ -633,7 +656,8 @@ internal class ConfigToSlots
                                 if (!GetGroupLogicsIsPlayable(
                                         itemClassConfig,
                                         groupItemConfigClass,
-                                        out var isPlayable))
+                                        out var isPlayable
+                                    ))
                                     break;
                                 DebugLine($"{groupItemConfigClass.Identifier} has playable");
                                 if (isPlayable > 0)
@@ -642,8 +666,12 @@ internal class ConfigToSlots
                                     GetGroupLogicDescription(
                                         itemClassConfig,
                                         groupItemConfigClass,
-                                        out var description);
-                                    var descriptionSplatted = description.Split('@', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                                        out var description
+                                    );
+                                    var descriptionSplatted = description.Split(
+                                        '@',
+                                        StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
+                                    );
                                     slots.Add(
                                         new EventSlot
                                         {
@@ -656,7 +684,8 @@ internal class ConfigToSlots
                                             Side             = EArmaSide.Logic,
                                             IsSelfAssignable = true,
                                             IsVisible        = true,
-                                        });
+                                        }
+                                    );
                                 }
 
                                 break;
@@ -670,7 +699,8 @@ internal class ConfigToSlots
                                         itemClassConfig,
                                         groupItemConfigClass,
                                         attributesConfigClass,
-                                        out var isPlayable))
+                                        out var isPlayable
+                                    ))
                                     break;
                                 DebugLine($"{groupItemConfigClass.Identifier} has playable");
                                 if (isPlayable > 0)
@@ -681,10 +711,14 @@ internal class ConfigToSlots
                                         itemClassConfig,
                                         groupItemConfigClass,
                                         attributesConfigClass,
-                                        out var description);
-                                    var descriptionSplatted = description.Split('@', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                                        out var description
+                                    );
+                                    var descriptionSplatted = description.Split(
+                                        '@',
+                                        StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
+                                    );
                                     slots.Add(
-                                        new EventSlot
+                                        new PlainEventSlotDto()
                                         {
                                             Title = descriptionSplatted.Length > 1
                                                 ? descriptionSplatted.First()
@@ -695,7 +729,8 @@ internal class ConfigToSlots
                                             Side             = side,
                                             IsSelfAssignable = true,
                                             IsVisible        = true,
-                                        });
+                                        }
+                                    );
                                 }
 
                                 break;

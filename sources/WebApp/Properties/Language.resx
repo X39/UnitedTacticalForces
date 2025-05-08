@@ -405,7 +405,7 @@
     <data name="Shared_NavMenu_GDPR" xml:space="preserve">
         <value>GDPR</value>
     </data>
-    <data name="Shared_NavMenu_Settings" xml:space="preserve">
+    <data name="Shared_NavMenu_UserSettings" xml:space="preserve">
         <value>Settings</value>
     </data>
     <data name="Pages_Settings_PageSettings" xml:space="preserve">

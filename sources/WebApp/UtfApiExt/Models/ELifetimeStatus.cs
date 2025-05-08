@@ -1,11 +1,12 @@
-﻿namespace X39.UnitedTacticalForces.Contract.GameServer;
+﻿// ReSharper disable once CheckNamespace
+namespace X39.UnitedTacticalForces.WebApp.Api.Models;
 
-public enum ELifetimeStatus
+public partial class ELifetimeStatus
 {
     /// <summary>
     /// Status indicating that something is currently not running in any way.
     /// </summary>
-    Stopped,
+    public static ELifetimeStatus Stopped => new(){Integer = 0};
 
     /// <summary>
     /// Status indicating a transition from <see cref="Stopped"/> to <see cref="Running"/>.
@@ -13,7 +14,7 @@ public enum ELifetimeStatus
     /// <remarks>
     /// Implies that a lifetime change was requested.
     /// </remarks>
-    Starting,
+    public static ELifetimeStatus Starting => new(){Integer = 1};
 
     /// <summary>
     /// Status indicating a transition from <see cref="Running"/> to <see cref="Stopped"/>.
@@ -21,15 +22,15 @@ public enum ELifetimeStatus
     /// <remarks>
     /// Implies that a lifetime change was requested.
     /// </remarks>
-    Stopping,
+    public static ELifetimeStatus Stopping => new(){Integer = 2};
 
     /// <summary>
     /// Status indicating that something is currently running.
     /// </summary>
-    Running,
+    public static ELifetimeStatus Running => new(){Integer = 3};
         
     /// <summary>
     /// Status that indicates a transient, update state where the game server is generally unavailable.
     /// </summary>
-    Updating,
+    public static ELifetimeStatus Updating => new(){Integer = 4};
 }

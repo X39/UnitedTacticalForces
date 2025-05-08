@@ -19,4 +19,6 @@ public record BaseUrl(string ApiUrl, string SelfUrl)
         path = path.TrimStart('/');
         return new Uri(SelfUri, path);
     }
+
+    public string ResolveResourceUrl(string path) => ResolveSelfUrl(path);
 }

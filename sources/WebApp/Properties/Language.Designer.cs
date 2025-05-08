@@ -1781,15 +1781,6 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Settings.
-        /// </summary>
-        internal static string Shared_NavMenu_Settings {
-            get {
-                return ResourceManager.GetString("Shared_NavMenu_Settings", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Teamspeak 3.
         /// </summary>
         internal static string Shared_NavMenu_TeamSpeak3 {
@@ -1822,6 +1813,15 @@ namespace X39.UnitedTacticalForces.WebApp.Properties {
         internal static string Shared_NavMenu_Users {
             get {
                 return ResourceManager.GetString("Shared_NavMenu_Users", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Settings.
+        /// </summary>
+        internal static string Shared_NavMenu_UserSettings {
+            get {
+                return ResourceManager.GetString("Shared_NavMenu_UserSettings", resourceCulture);
             }
         }
         

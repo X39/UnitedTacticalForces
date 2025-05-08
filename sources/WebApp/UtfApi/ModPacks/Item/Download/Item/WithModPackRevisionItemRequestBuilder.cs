@@ -66,7 +66,6 @@ namespace X39.UnitedTacticalForces.WebApp.Api.ModPacks.Item.Download.Item
 #endif
             var requestInfo = new RequestInformation(Method.GET, UrlTemplate, PathParameters);
             requestInfo.Configure(requestConfiguration);
-            requestInfo.Headers.TryAdd("Accept", "text/plain, application/json, text/json");
             return requestInfo;
         }
         /// <summary>

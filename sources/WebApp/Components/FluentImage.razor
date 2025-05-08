@@ -1,0 +1,11 @@
+﻿<img src="@Source" alt="@Alt">
+
+@code {
+
+    [EditorRequired, Parameter, JetBrains.Annotations.UriString]
+    public string Source { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Alt { get; set; } = string.Empty;
+
+}

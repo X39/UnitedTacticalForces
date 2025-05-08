@@ -1,8 +1,8 @@
 {
-  "descriptionHash": "1A1918F793549B42213C0CC5DE0C149EA6BF5EF2833B61D32558FD897DF17AB05421FB7DB789B61CDF75981D43BAAA66A01B4A803C7E6C9D6F4891B0900051D1",
-  "descriptionLocation": "http://localhost:5148/openapi/v1.json",
+  "descriptionHash": "68488E8831A27E4C11526572BD311FAE904EFA61DC117489B2C8E6D386D88E20599BDA0550085BE18405E24A426E7CF5BA6A16C61EE2EAF3C2496CF676E484EC",
+  "descriptionLocation": "https://localhost:7072/openapi/v1.json",
   "lockFileVersion": "1.0.0",
-  "kiotaVersion": "1.25.1",
+  "kiotaVersion": "1.26.0",
   "clientClassName": "ApiClient",
   "typeAccessModifier": "Public",
   "clientNamespaceName": "X39.UnitedTacticalForces.WebApp.Api",

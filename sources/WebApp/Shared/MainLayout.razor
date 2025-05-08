@@ -1,145 +1,124 @@
-﻿@using X39.UnitedTacticalForces.WebApp.Services
-@using MudBlazor.Utilities
-@using JetBrains.Annotations
+﻿@using Microsoft.AspNetCore.Components.Sections
+@using X39.UnitedTacticalForces.WebApp.Services
 @inherits LayoutComponentBase
-@inject IJSRuntime JsRuntime
-@inject UiConfiguration UiConfig
+@inject IConfiguration Configuration
+@inject IStringLocalizer Localizer
+@inject MeService Me
+@inject BaseUrl BaseUrl
 
-<MudThemeProvider Theme="_theme" IsDarkMode="@UiConfig.DarkMode"/>
-<MudDialogProvider/>
-<MudSnackbarProvider/>
-
-<MudBreakpointProvider>
-    <MudLayout>
-        <MudHidden Breakpoint="Breakpoint.SmAndDown" Invert="true">
-            <MudAppBar Elevation="0">
-                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
-                               OnClick="@(_ => ToggleNormalDrawer())"/>
-                <MudSpacer/>
-                <MudImage Src="Insignia.svg" Height="40" ObjectFit="ObjectFit.ScaleDown"/>
-            </MudAppBar>
-            <MudDrawer Style="top: 0;" @bind-Open="_normalDrawerOpen" Elevation="1">
-                <NavMenu/>
-            </MudDrawer>
-        </MudHidden>
-        <MudHidden Breakpoint="Breakpoint.SmAndDown">
-            <MudDrawer @bind-Open="_miniDrawerOpen" Elevation="1" Variant="DrawerVariant.Mini" OpenMiniOnHover="true">
-                <MudImage Src="Insignia.svg" Height="40" ObjectFit="ObjectFit.ScaleDown"
-                          ObjectPosition="ObjectPosition.Center"/>
-                <NavMenu/>
-            </MudDrawer>
-        </MudHidden>
-        <MainLayoutContent>
-            @Body
-        </MainLayoutContent>
-    </MudLayout>
-</MudBreakpointProvider>
-
-
-@code {
-    bool _normalDrawerOpen = true;
-
-    bool _miniDrawerOpen = false;
-    void ToggleNormalDrawer() => _normalDrawerOpen = !_normalDrawerOpen;
-
-    protected override async Task OnInitializedAsync()
-    {
-        UiConfig.RegisterComponent(this);
-        await JsRuntime.InvokeVoidAsync("page_clear_init_dark_mode");
-    }
-
-
-    private static MudColor ToColor([LanguageInjection(InjectedLanguage.CSS, Prefix = ".any {color: ", Suffix = "}")] string color)
-    {
-        return new MudColor(color);
-    }
-
-    private readonly MudTheme _theme = new()
-    {
-        PaletteLight = new PaletteLight
+<FluentLayout Style="margin-top: 10px;">
+    <FluentHeader>
+        <FluentImage Source="@BaseUrl.ResolveResourceUrl("insignia-48px.png")"/>
+        <FluentSpacer/>
+        @if (Me.IsAuthenticated)
         {
-            Black                    = ToColor("#272c34ff"),
-            White                    = ToColor("#ffffffff"),
-            Primary                  = ToColor("#BAA05A"),
-            PrimaryContrastText      = ToColor("#ffffff"),
-            Secondary                = ToColor("#9d8f6e"),
-            SecondaryContrastText    = ToColor("#ffffff"),
-            Tertiary                 = ToColor("#78997a"),
-            TertiaryContrastText     = ToColor("#ffffff"),
-            Info                     = ToColor("#745b00"),
-            InfoContrastText         = ToColor("#ffffffff"),
-            Success                  = ToColor("#00c853ff"),
-            SuccessContrastText      = ToColor("#ffffffff"),
-            Warning                  = ToColor("#ff9800ff"),
-            WarningContrastText      = ToColor("#ffffffff"),
-            Error                    = ToColor("#ba1a1a"),
-            ErrorContrastText        = ToColor("#ffffff"),
-            Dark                     = ToColor("#424242ff"),
-            DarkContrastText         = ToColor("#ffffffff"),
-            TextPrimary              = ToColor("#424242ff"),
-            TextSecondary            = ToColor("#00000089"),
-            TextDisabled             = ToColor("#00000060"),
-            ActionDefault            = ToColor("#00000089"),
-            ActionDisabled           = ToColor("#00000042"),
-            ActionDisabledBackground = ToColor("#0000001e"),
-            Surface                  = ToColor("#fffbff"),
-            Background               = ToColor("#fffbff"),
-            BackgroundGray           = ToColor("#e6e1e6"),
-            DrawerBackground         = ToColor("#fffbff"),
-            DrawerText               = ToColor("#424242ff"),
-            DrawerIcon               = ToColor("#616161ff"),
-            AppbarBackground         = ToColor("#9d8f6e"),
-            AppbarText               = ToColor("#ffffffff"),
-            LinesDefault             = ToColor("#0000001e"),
-            LinesInputs              = ToColor("#bdbdbdff"),
-            TableLines               = ToColor("#e0e0e0ff"),
-            TableStriped             = ToColor("#00000005"),
-            TableHover               = ToColor("#0000000a"),
-            Divider                  = ToColor("#e0e0e0ff"),
-            DividerLight             = ToColor("#000000cc"),
-        },
-        PaletteDark = new PaletteDark
+            <FluentProfileMenu Image="@Me.User.ToImageSource()"
+                               FullName="@Me.User.Nickname"
+                               EMail="@Me.User.EMail"
+                               PopoverStyle="min-width: 330px;"
+                               HeaderButton="@Localizer[nameof(Language.Shared_NavMenu_Logout)]"
+                               FooterLabel="@Localizer[nameof(Language.Shared_NavMenu_UserSettings)]"/>
+        }
+        else
         {
-            Black                    = ToColor("#272c34ff"),
-            White                    = ToColor("#ffffffff"),
-            Primary                  = ToColor("#BAA05A"),
-            PrimaryContrastText      = ToColor("#3d2f00"),
-            Secondary                = ToColor("#ffb695"),
-            SecondaryContrastText    = ToColor("#571e00"),
-            Tertiary                 = ToColor("#58dbc2"),
-            TertiaryContrastText     = ToColor("#00382f"),
-            Info                     = ToColor("#ebc248"),
-            InfoContrastText         = ToColor("#3d2f00"),
-            Success                  = ToColor("#00c853ff"),
-            SuccessContrastText      = ToColor("#ffffffff"),
-            Warning                  = ToColor("#ff9800ff"),
-            WarningContrastText      = ToColor("#ffffffff"),
-            Error                    = ToColor("#93000a"),
-            ErrorContrastText        = ToColor("#ffdad6"),
-            Dark                     = ToColor("#ffffffff"),
-            DarkContrastText         = ToColor("#424242ff"),
-            TextPrimary              = ToColor("#efdbff"),
-            TextSecondary            = ToColor("#efdbff"),
-            TextDisabled             = ToColor("#ece1cf"),
-            ActionDefault            = ToColor("#efdbff"),
-            ActionDisabled           = ToColor("#ece1cf"),
-            ActionDisabledBackground = ToColor("#4c4639"),
-            Surface                  = ToColor("#20003d"),
-            Background               = ToColor("#150326"),
-            BackgroundGray           = ToColor("#1f0638"),
-            DrawerBackground         = ToColor("#2b0052"),
-            DrawerText               = ToColor("#ffe08e"),
-            DrawerIcon               = ToColor("#ffe08e"),
-            AppbarBackground         = ToColor("#584400"),
-            AppbarText               = ToColor("#ffe08e"),
-            LinesDefault             = ToColor("#989080"),
-            LinesInputs              = ToColor("#cfc5b4"),
-            TableLines               = ToColor("#989080"),
-            TableStriped             = ToColor("#00000005"),
-            TableHover               = ToColor("#0000000a"),
-            Divider                  = ToColor("#989080"),
-            DividerLight             = ToColor("#cfc5b4"),
-        },
-    };
+            <FluentNavLink Href="@BaseUrl.ResolveApiUrl($"/Users/login/steam?returnUrl={BaseUrl.SelfUrl}")">
+                <FluentImage
+                    Source="https://steamcdn-a.akamaihd.net/steamcommunity/public/images/steamworks_docs/german/sits_small.png"/>
+            </FluentNavLink>
+        }
+    </FluentHeader>
 
-}
+    <FluentStack Width="100%">
+        <FluentNavMenu Width="250">
+            @* <FluentNavLink Icon="@(new Icons.Regular.Size24.Home())" *@
+            @*                Match="NavLinkMatch.All"> *@
+            @*     @Localizer[nameof(Language.Shared_NavMenu_Social)] *@
+            @* </FluentNavLink> *@
+            <FluentNavLink Icon="@(new Icons.Regular.Size24.Calendar())"
+                           Href="@BaseUrl.ResolveSelfUrl("events/upcoming")">
+                @Localizer[nameof(Language.Shared_NavMenu_UpcommingEvents)]
+            </FluentNavLink>
+
+            @if (Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All))
+            {
+                <FluentNavLink Href="@BaseUrl.ResolveSelfUrl("data/mod-packs")"
+                               Icon="@(new Icons.Regular.Size24.LauncherSettings())">
+                    @Localizer[nameof(Language.Shared_NavMenu_ModPacks)]
+                </FluentNavLink>
+            }
+            @if (Me.HasBaseClaimOrModPackAdmin(Claims.Creation.Terrain, Claims.ResourceBased.Terrain.All))
+            {
+                <FluentNavLink Href="@BaseUrl.ResolveSelfUrl("terrains")"
+                               Icon="@(new Icons.Regular.Size24.Map())">
+                    @Localizer[nameof(Language.Shared_NavMenu_Terrains)]
+                </FluentNavLink>
+            }
+
+            @if (Me.HasBaseClaimOrUserAdmin(Claims.User.All))
+            {
+                <FluentNavLink Href="@BaseUrl.ResolveSelfUrl("users")"
+                               Icon="@(new Icons.Regular.Size24.PeopleList())">
+                    @Localizer[nameof(Language.Shared_NavMenu_Users)]
+                </FluentNavLink>
+            }
+
+            @if (Me.HasBaseClaimOrUserAdmin(Claims.User.Roles))
+            {
+                <FluentNavLink Href="@BaseUrl.ResolveSelfUrl("roles")"
+                               Icon="@(new Icons.Regular.Size24.PersonBoard())">
+                    @Localizer[nameof(Language.Shared_NavMenu_Users)]
+                </FluentNavLink>
+            }
+
+            @if (Me.HasBaseClaimOrServerAdmin(Claims.ResourceBased.Server.All))
+            {
+                <FluentNavLink Href="@BaseUrl.ResolveSelfUrl("servers")"
+                               Icon="@(new Icons.Regular.Size24.Server())">
+                    @Localizer[nameof(Language.Shared_NavMenu_GameServers)]
+                </FluentNavLink>
+            }
+        </FluentNavMenu>
+
+        <FluentBodyContent>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce quis lorem lacus.
+            Ut id leo non enim feugiat ultrices. Proin vulputate volutpat urna nec iaculis.
+            Integer dui lacus, fermentum sit amet aliquet in, scelerisque vitae dui.
+            Nulla fringilla sagittis orci eu consectetur. Fusce eget dolor non lectus placerat
+            tincidunt. Pellentesque aliquam non odio ac porttitor. Nam finibus mattis sagittis.
+            Ut hendrerit porttitor massa in aliquam. Duis laoreet fringilla feugiat.
+            Sed maximus, urna in fringilla posuere, enim urna bibendum justo, vel molestie nibh orci nec lectus.
+            Etiam a varius justo. Aenean nisl ante, interdum eget vulputate eget, iaculis ut massa.
+            Suspendisse maximus sed purus id molestie. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+        </FluentBodyContent>
+    </FluentStack>
+
+    <FluentFooter>
+        <SectionOutlet SectionName="Footer"/>
+        <FluentSpacer/>
+        @if (Configuration[Constants.Configuration.Urls.TeamSpeak3]
+                 .IsNotNullOrWhiteSpace())
+        {
+            <FluentNavLink Icon="@(new Icons.Custom.TeamSpeak3Size24())"
+                           Href="@Configuration[Constants.Configuration.Urls.TeamSpeak3]">
+                <FluentText>@Localizer[nameof(Language.Shared_NavMenu_TeamSpeak3)]</FluentText>
+            </FluentNavLink>
+        }
+        @if (Configuration[Constants.Configuration.Urls.Discord]
+                 .IsNotNullOrWhiteSpace())
+        {
+            <FluentNavLink Href="@Configuration[Constants.Configuration.Urls.Discord]">
+                <FluentText>@Localizer[nameof(Language.Shared_NavMenu_Discord)]</FluentText>
+            </FluentNavLink>
+        }
+        <FluentNavLink Href="@BaseUrl.ResolveSelfUrl("gdpr")" Icon="@(new Icons.Regular.Size24.Shield())">
+            <FluentText>@Localizer[nameof(Language.Shared_NavMenu_GDPR)]</FluentText>
+        </FluentNavLink>
+    </FluentFooter>
+</FluentLayout>
+
+
+<FluentToastProvider/>
+<FluentDialogProvider/>
+<FluentTooltipProvider/>
+<FluentMessageBarProvider/>
+<FluentMenuProvider/>

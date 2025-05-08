@@ -29,6 +29,18 @@ public static class UserExtensions
         return builder.ToString();
     }
 
+    public static string ToImageSource(this FullUserDto user)
+    {
+        if (user.Avatar is null || user.Avatar.Length is 0)
+            throw new ArgumentException("User.Avatar is null");
+        var builder = new StringBuilder();
+        builder.Append("data:");
+        builder.Append(user.AvatarMimeType);
+        builder.Append("; base64, ");
+        builder.Append(Convert.ToBase64String(user.Avatar));
+        return builder.ToString();
+    }
+
     public static PlainUserDto ToPlainUserDto(this FullUserDto self)
         => new()
         {

@@ -31,7 +31,13 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
         /// <summary>The selectedModPackFk property</summary>
         public long? SelectedModPackFk { get; set; }
         /// <summary>The status property</summary>
-        public int? Status { get; set; }
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#nullable enable
+        public global::X39.UnitedTacticalForces.WebApp.Api.Models.ELifetimeStatus? Status { get; set; }
+#nullable restore
+#else
+        public global::X39.UnitedTacticalForces.WebApp.Api.Models.ELifetimeStatus Status { get; set; }
+#endif
         /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>The timeStampUpgraded property</summary>
@@ -82,7 +88,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
                 { "isActive", n => { IsActive = n.GetBoolValue(); } },
                 { "primaryKey", n => { PrimaryKey = n.GetLongValue(); } },
                 { "selectedModPackFk", n => { SelectedModPackFk = n.GetLongValue(); } },
-                { "status", n => { Status = n.GetIntValue(); } },
+                { "status", n => { Status = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.ELifetimeStatus>(global::X39.UnitedTacticalForces.WebApp.Api.Models.ELifetimeStatus.CreateFromDiscriminatorValue); } },
                 { "timeStampCreated", n => { TimeStampCreated = n.GetDateTimeOffsetValue(); } },
                 { "timeStampUpgraded", n => { TimeStampUpgraded = n.GetDateTimeOffsetValue(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
@@ -101,7 +107,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
             writer.WriteBoolValue("isActive", IsActive);
             writer.WriteLongValue("primaryKey", PrimaryKey);
             writer.WriteLongValue("selectedModPackFk", SelectedModPackFk);
-            writer.WriteIntValue("status", Status);
+            writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.ELifetimeStatus>("status", Status);
             writer.WriteDateTimeOffsetValue("timeStampCreated", TimeStampCreated);
             writer.WriteDateTimeOffsetValue("timeStampUpgraded", TimeStampUpgraded);
             writer.WriteStringValue("title", Title);

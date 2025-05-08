@@ -93,7 +93,7 @@ internal class Program
     private static void AddServices(WebApplicationBuilder builder)
     {
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddOpenApi();
+        builder.Services.AddOpenApi(options => options.AddSchemaTransformer<OpenApi.FixEnumsSchemaTransformer>());
         builder.Services.AddAttributedServicesFromAssemblyOf<Program>(builder.Configuration);
         builder.Services.AddDbContextFactory<ApiDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("database")));
         builder.Services.AddSingleton<DiscordBot>();

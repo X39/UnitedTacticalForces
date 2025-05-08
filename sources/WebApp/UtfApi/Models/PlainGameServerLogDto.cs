@@ -17,7 +17,13 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
         /// <summary>The gameServerFk property</summary>
         public long? GameServerFk { get; set; }
         /// <summary>The logLevel property</summary>
-        public int? LogLevel { get; set; }
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#nullable enable
+        public global::X39.UnitedTacticalForces.WebApp.Api.Models.LogLevel? LogLevel { get; set; }
+#nullable restore
+#else
+        public global::X39.UnitedTacticalForces.WebApp.Api.Models.LogLevel LogLevel { get; set; }
+#endif
         /// <summary>The message property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -64,7 +70,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
             return new Dictionary<string, Action<IParseNode>>
             {
                 { "gameServerFk", n => { GameServerFk = n.GetLongValue(); } },
-                { "logLevel", n => { LogLevel = n.GetIntValue(); } },
+                { "logLevel", n => { LogLevel = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.LogLevel>(global::X39.UnitedTacticalForces.WebApp.Api.Models.LogLevel.CreateFromDiscriminatorValue); } },
                 { "message", n => { Message = n.GetStringValue(); } },
                 { "primaryKey", n => { PrimaryKey = n.GetLongValue(); } },
                 { "source", n => { Source = n.GetStringValue(); } },
@@ -79,7 +85,7 @@ namespace X39.UnitedTacticalForces.WebApp.Api.Models
         {
             _ = writer ?? throw new ArgumentNullException(nameof(writer));
             writer.WriteLongValue("gameServerFk", GameServerFk);
-            writer.WriteIntValue("logLevel", LogLevel);
+            writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.Api.Models.LogLevel>("logLevel", LogLevel);
             writer.WriteStringValue("message", Message);
             writer.WriteLongValue("primaryKey", PrimaryKey);
             writer.WriteStringValue("source", Source);

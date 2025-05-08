@@ -12,21 +12,26 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="9.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.4" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Localization" Version="9.0.4" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.11.8" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Emoji" Version="4.11.8" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.11.8" />
     <PackageReference Include="Microsoft.Kiota.Bundle" Version="1.17.2" />
-    <PackageReference Include="MudBlazor" Version="8.5.1" />
-    <PackageReference Include="MudBlazor.Markdown" Version="8.5.1" />
     <PackageReference Include="X39.Util" Version="1.0.0.52" />
     <PackageReference Include="X39.Util.Blazor.WebAssembly" Version="1.0.1.7" />
     <PackageReference Include="X39.Util.DependencyInjection" Version="2.0.1.8" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Contract\Contract.csproj" />
+    <ProjectReference Include="..\X39.BI.Config.Parsing\X39.BI.Config.Parsing.csproj" />
+    <ProjectReference Include="..\Common\Common.csproj" />
+    <ProjectReference Include="..\Claims\Claims.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <EmbeddedResource Update="Properties\Language.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Language.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
     <Compile Update="Properties\Language.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
@@ -40,12 +45,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Contract\Contract.csproj" />
-    <ProjectReference Include="..\X39.BI.Config.Parsing\X39.BI.Config.Parsing.csproj" />
-    <ProjectReference Include="..\Common\Common.csproj" />
-    <ProjectReference Include="..\Claims\Claims.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <_ContentIncludedByDefault Remove="wwwroot\js\exports\local-storage.js" />
+    <Compile Remove="Old\**" />
+    <Content Remove="Old\**" />
+    <None Include="Old\**" />
   </ItemGroup>
 </Project>
