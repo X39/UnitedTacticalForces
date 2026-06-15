@@ -1,0 +1,1041 @@
+@page "/wiki"
+@page "/wiki/{PageId:guid}"
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@using X39.UnitedTacticalForces.WebApp.Services.WikiRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@layout CommunityLayout
+@inject BaseUrl BaseUrl
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject IWikiRepository WikiRepository
+@inject MeService Me
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Wiki_Index_PageTitle)]</PageTitle>
+
+<div class="wiki-page">
+    <header class="wiki-hero" style="@HeroImageStyle">
+        <div class="wiki-hero__title">
+            <span class="wiki-hero__icon">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Library())"/>
+            </span>
+            <div>
+                <h1>@Localizer[nameof(Language.Pages_Wiki_Index_Title)]</h1>
+                <p>@Localizer[nameof(Language.Pages_Wiki_Index_Subtitle)]</p>
+            </div>
+        </div>
+
+        <label class="wiki-search-field">
+            <span>@Localizer[nameof(Language.Pages_Wiki_Index_SearchLabel)]</span>
+            <input class="utf-command-search"
+                   placeholder="@(Localizer[nameof(Language.Pages_Wiki_Index_SearchPlaceholder)])"
+                   @bind="_search"
+                   @bind:event="oninput"/>
+        </label>
+    </header>
+
+    <nav class="wiki-mobile-tabs" aria-label="@(Localizer[nameof(Language.Pages_Wiki_Index_MobileTabsAria)])">
+        <button class="@GetMobileTabClass(WikiMobileView.Pages)"
+                type="button"
+                @onclick="@(() => SetMobileView(WikiMobileView.Pages))">
+            @Localizer[nameof(Language.Pages_Wiki_Index_Tab_Pages)]
+        </button>
+        <button class="@GetMobileTabClass(WikiMobileView.Article)"
+                type="button"
+                @onclick="@(() => SetMobileView(WikiMobileView.Article))">
+            @Localizer[nameof(Language.Pages_Wiki_Index_Tab_Article)]
+        </button>
+        <button class="@GetMobileTabClass(WikiMobileView.History)"
+                type="button"
+                @onclick="@(() => SetMobileView(WikiMobileView.History))">
+            @Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]
+        </button>
+    </nav>
+
+    <section class="@WorkspaceClass">
+        <aside class="wiki-panel wiki-navigation-panel" aria-label="@(Localizer[nameof(Language.Pages_Wiki_Index_NavigationAria)])">
+            <div class="wiki-panel__header">
+            <div>
+                    <span class="utf-kicker">@Localizer[nameof(Language.Pages_Wiki_Index_KnowledgeBase)]</span>
+                    <h2>@Localizer[nameof(Language.Pages_Wiki_Index_Pages)]</h2>
+                </div>
+                @if (CanCreateWiki)
+                {
+                    <button class="utf-button utf-button--ghost wiki-icon-button"
+                            type="button"
+                            title="@(Localizer[nameof(Language.Pages_Wiki_Index_NewPage)])"
+                            @onclick="OpenCreateEditor">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.New())"/>
+                    </button>
+                }
+            </div>
+
+            @if (_isLoadingHeaders)
+            {
+                <div class="wiki-state">@Localizer[nameof(Language.Pages_Wiki_Index_LoadingIndex)]</div>
+            }
+            else if (_headersError is not null)
+            {
+                <div class="wiki-state wiki-state--danger">@_headersError</div>
+            }
+            else if (!VisibleHeaders.Any())
+            {
+                <div class="wiki-state">
+                    @(string.IsNullOrWhiteSpace(_search)
+                        ? Localizer[nameof(Language.Pages_Wiki_Index_NoPagesYet)]
+                        : Localizer[nameof(Language.Pages_Wiki_Index_NoPagesMatchSearch)])
+                </div>
+            }
+            else
+            {
+                <WikiTreeNode Node="@NavigationRoot"
+                              SelectedPageId="@_selectedPage?.PrimaryKey"
+                              OnSelect="@SelectPageAsync"/>
+            }
+
+            <div class="wiki-access-note">
+                <span class="wiki-access-note__icon">
+                    <FluentIcon Value="@(new Icons.Regular.Size24.Shield())"/>
+                </span>
+                @if (CanCreateWiki || CanModifyWiki || CanRenameWiki)
+                {
+                    <span>@Localizer[nameof(Language.Pages_Wiki_Index_ContributeWithPermissions)]</span>
+                }
+                else
+                {
+                    <span>@Localizer[nameof(Language.Pages_Wiki_Index_ReadOnlyAccessNotice)]</span>
+                }
+            </div>
+        </aside>
+
+        <article class="wiki-panel wiki-article-panel" aria-live="polite">
+            @if (_isLoadingPage)
+            {
+                <div class="wiki-state wiki-state--large">@Localizer[nameof(Language.Pages_Wiki_Index_LoadingArticle)]</div>
+            }
+            else if (_pageError is not null)
+            {
+                <div class="wiki-state wiki-state--danger wiki-state--large">@_pageError</div>
+            }
+            else if (_selectedPage is null)
+            {
+                <div class="wiki-empty-article">
+                    <span class="wiki-empty-article__icon">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.Library())"/>
+                    </span>
+                    <h2>@Localizer[nameof(Language.Pages_Wiki_Index_NoPagesYet)]</h2>
+                    <p>@Localizer[nameof(Language.Pages_Wiki_Index_NoPagesDescription)]</p>
+                    @if (CanCreateWiki)
+                    {
+                        <button class="utf-button utf-button--primary" type="button" @onclick="OpenCreateEditor">
+                            @Localizer[nameof(Language.Pages_Wiki_Index_NewPage)]
+                        </button>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="wiki-breadcrumb">
+                    <span>@Localizer[nameof(Language.Pages_Wiki_Index_KnowledgeBase)]</span>
+                    @if (GetCategoryPath(_selectedPage.Title) is { Length: > 0 } categoryPath)
+                    {
+                        <span>@categoryPath</span>
+                    }
+                    <strong>@GetLeafName(_selectedPage.Title)</strong>
+                </div>
+
+                <header class="wiki-article-header">
+                    <div>
+                        <h2>@(GetLeafName(_selectedPage.Title))</h2>
+                        <p>@GetArticleSummary(ActiveRevision?.Markdown)</p>
+                    </div>
+
+                    <div class="wiki-article-status">
+                        <span class="@PageStatusClass">
+                            <span class="utf-status__dot"></span>@PageStatusLabel
+                        </span>
+                    </div>
+                </header>
+
+                <div class="wiki-article-meta">
+                    <span>@Localizer[nameof(Language.Pages_Wiki_Index_UpdatedAt), FormatDate(ActiveRevision?.TimeStampCreated ?? _selectedPage.TimeStampCreated)]</span>
+                    <span>@Localizer[nameof(Language.Pages_Wiki_Index_By), FormatAuthor(ActiveRevision)]</span>
+                    <span>@FormatRevisionCount()</span>
+                </div>
+
+                <div class="wiki-article-actions">
+                    @if (CanCreateWiki)
+                    {
+                        <button class="utf-button utf-button--primary" type="button" @onclick="OpenCreateEditor">
+                            <span class="utf-button__icon">
+                                <FluentIcon Value="@(new Icons.Regular.Size24.New())"/>
+                            </span>
+                            @Localizer[nameof(Language.Pages_Wiki_Index_NewPage)]
+                        </button>
+                    }
+                    @if (CanEditSelectedPage)
+                    {
+                        <button class="utf-button utf-button--ghost" type="button" @onclick="OpenEditEditor">
+                            <span class="utf-button__icon">
+                                <FluentIcon Value="@(new Icons.Regular.Size24.Edit())"/>
+                            </span>
+                            @Localizer[nameof(Language.Pages_Wiki_Index_Edit)]
+                        </button>
+                    }
+                    <button class="utf-button utf-button--ghost"
+                            type="button"
+                            @onclick="@(() => ShowPanel(WikiPanelMode.History))">
+                        <span class="utf-button__icon">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                        </span>
+                        @Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]
+                    </button>
+                </div>
+
+                @if (_selectedPage.IsDeleted is true)
+                {
+                    <div class="wiki-callout wiki-callout--warning">
+                        @Localizer[nameof(Language.Pages_Wiki_Index_ArchivedNotice)]
+                    </div>
+                }
+
+                <div class="wiki-markdown">
+                    <FluentMarkdown @key="ActiveRevision?.PrimaryKey" Content="@ActiveMarkdown"/>
+                </div>
+
+                @if (!CanEditSelectedPage)
+                {
+                    <div class="wiki-readonly-note">
+                        <strong>@Localizer[nameof(Language.Pages_Wiki_Index_ReadOnlyAccessTitle)]</strong>
+                        <span>@Localizer[nameof(Language.Pages_Wiki_Index_ReadOnlyAccessMessage)]</span>
+                    </div>
+                }
+            }
+        </article>
+
+        <aside class="@IntelPanelClass" aria-label="@(Localizer[nameof(Language.Pages_Wiki_Index_ArticleDetailsAria)])">
+            <div class="wiki-intel-tabs">
+                <button class="@GetPanelTabClass(WikiPanelMode.Details)"
+                        type="button"
+                        @onclick="@(() => ShowPanel(WikiPanelMode.Details))">
+                    @Localizer[nameof(Language.Pages_Wiki_Index_DetailsTab)]
+                </button>
+                <button class="@GetPanelTabClass(WikiPanelMode.History)"
+                        type="button"
+                        @onclick="@(() => ShowPanel(WikiPanelMode.History))">
+                    @Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]
+                </button>
+                @if (CanEditSelectedPage || CanCreateWiki)
+                {
+                    <button class="@GetPanelTabClass(WikiPanelMode.Edit)"
+                            type="button"
+                            @onclick="OpenEditOrCreateEditor">
+                        @Localizer[nameof(Language.Pages_Wiki_Index_Edit)]
+                    </button>
+                }
+            </div>
+
+            @switch (_panelMode)
+            {
+                case WikiPanelMode.History:
+                    <section class="wiki-intel-section">
+                        <h2>@Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]</h2>
+                        @if (_selectedPage is null)
+                        {
+                            <div class="wiki-state">@Localizer[nameof(Language.Pages_Wiki_Index_SelectPageForRevisions)]</div>
+                        }
+                        else if (_revisionHeaders.Count is 0)
+                        {
+                            <div class="wiki-state">@Localizer[nameof(Language.Pages_Wiki_Index_NoRevisionsForPage)]</div>
+                        }
+                        else
+                        {
+                            <div class="wiki-revision-list">
+                                @foreach (var revision in _revisionHeaders)
+                                {
+                                    @if (revision.PrimaryKey is { } revisionId)
+                                    {
+                                        <button class="@GetRevisionClass(revision)"
+                                                type="button"
+                                                @onclick="@(() => SelectRevisionAsync(revisionId))">
+                                            <strong>@FormatDate(revision.TimeStampCreated)</strong>
+                                            <span>@FormatRevisionComment(revision.Comment)</span>
+                                            <small>@FormatUnknownAuthor(revision.AuthorName)</small>
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        }
+                    </section>
+                    break;
+                case WikiPanelMode.Edit:
+                    <section class="wiki-intel-section wiki-editor-section">
+                        <div class="wiki-editor-heading">
+                            <div>
+                                <h2>@EditorHeading</h2>
+                                <span>@EditorSubheading</span>
+                            </div>
+                            <button class="wiki-close-button"
+                                    type="button"
+                                    aria-label="@(Localizer[nameof(Language.Pages_Wiki_Index_CloseEditor)])"
+                                    @onclick="CloseEditor">
+                                X
+                            </button>
+                        </div>
+
+                        @if (_editor is not null)
+                        {
+                            <label class="utf-command-field wiki-editor-field">
+                                <span>@Localizer[nameof(Language.Pages_Wiki_Index_Editor_TitleLabel)]</span>
+                                <input class="utf-command-input" @bind="_editor.Title"/>
+                            </label>
+
+                            <label class="utf-command-field wiki-editor-field">
+                                <span>@Localizer[nameof(Language.Pages_Wiki_Index_Editor_CommentLabel)]</span>
+                                <textarea class="utf-command-input" rows="3" @bind="_editor.Comment"></textarea>
+                            </label>
+
+                            <div class="wiki-editor-tabs">
+                                <button class="@GetEditorTabClass(false)"
+                                        type="button"
+                                        @onclick="@(() => _editor.IsPreview = false)">
+                                    @Localizer[nameof(Language.Pages_Wiki_Index_Editor_Tab_Markdown)]
+                                </button>
+                                <button class="@GetEditorTabClass(true)"
+                                        type="button"
+                                        @onclick="@(() => _editor.IsPreview = true)">
+                                    @Localizer[nameof(Language.Pages_Wiki_Index_Editor_Tab_Preview)]
+                                </button>
+                            </div>
+
+                            @if (_editor.IsPreview)
+                            {
+                                <div class="wiki-editor-preview">
+                                    <FluentMarkdown Content="@GetPreviewMarkdown()"/>
+                                </div>
+                            }
+                            else
+                            {
+                                <textarea class="utf-command-input wiki-editor-markdown"
+                                          rows="18"
+                                          @bind="_editor.Markdown"></textarea>
+                            }
+
+                            @if (_editorError is not null)
+                            {
+                                <div class="wiki-validation wiki-validation--danger">@_editorError</div>
+                            }
+                            else
+                            {
+                                <div class="wiki-validation">
+                                    <span class="utf-status__dot"></span>
+                                    @EditorValidationLabel
+                                </div>
+                            }
+
+                            <div class="wiki-editor-actions">
+                                <button class="utf-button utf-button--ghost"
+                                        type="button"
+                                        disabled="@_isSaving"
+                                        @onclick="CloseEditor">
+                                    @Localizer[nameof(Language.Pages_Wiki_Index_Cancel)]
+                                </button>
+                                <button class="utf-button utf-button--primary"
+                                        type="button"
+                                        disabled="@_isSaving"
+                                        @onclick="SaveEditorAsync">
+                                    @(_isSaving
+                                        ? Localizer[nameof(Language.Pages_Wiki_Index_Saving)].Value
+                                        : Localizer[nameof(Language.Pages_Wiki_Index_SaveChanges)].Value)
+                                </button>
+                            </div>
+                        }
+                    </section>
+                    break;
+                default:
+                    <section class="wiki-intel-section">
+                        <h2>@Localizer[nameof(Language.Pages_Wiki_Index_ArticleDetailsTitle)]</h2>
+                        @if (_selectedPage is null)
+                        {
+                            <div class="wiki-state">@Localizer[nameof(Language.Pages_Wiki_Index_SelectPageForDetails)]</div>
+                        }
+                        else
+                        {
+                            <dl class="wiki-detail-list">
+                                <dt>@Localizer[nameof(Language.Pages_Wiki_Index_Detail_Title)]</dt>
+                                <dd>@_selectedPage.Title</dd>
+                                <dt>@Localizer[nameof(Language.Pages_Wiki_Index_Detail_Created)]</dt>
+                                <dd>@FormatDate(_selectedPage.TimeStampCreated)</dd>
+                                <dt>@Localizer[nameof(Language.Pages_Wiki_Index_Detail_LatestRevision)]</dt>
+                                <dd>@FormatDate(LatestRevision?.TimeStampCreated)</dd>
+                                <dt>@Localizer[nameof(Language.Pages_Wiki_Index_Detail_Author)]</dt>
+                                <dd>@FormatAuthor(LatestRevision)</dd>
+                                <dt>@Localizer[nameof(Language.Pages_Wiki_Index_Detail_Status)]</dt>
+                                <dd>
+                                    <span class="@PageStatusClass">
+                                        <span class="utf-status__dot"></span>@PageStatusLabel
+                                    </span>
+                                </dd>
+                            </dl>
+
+                            @if (RelatedPages.Any())
+                            {
+                                <div class="wiki-related">
+                                    <h3>@Localizer[nameof(Language.Pages_Wiki_Index_RelatedPages)]</h3>
+                                    @foreach (var relatedPage in RelatedPages)
+                                    {
+                                        @if (relatedPage.PrimaryKey is { } relatedPageId)
+                                        {
+                                            <button type="button" @onclick="@(() => SelectPageAsync(relatedPageId))">
+                                                @GetLeafName(relatedPage.Name)
+                                            </button>
+                                        }
+                                    }
+                                </div>
+                            }
+
+                            @if (CanDeleteSelectedPage || CanRestoreSelectedPage)
+                            {
+                                <div class="wiki-danger-zone">
+                                    <h3>@Localizer[nameof(Language.Pages_Wiki_Index_PageState)]</h3>
+                                    @if (CanRestoreSelectedPage)
+                                    {
+                                        <button class="utf-button utf-button--ghost"
+                                                type="button"
+                                                disabled="@_isSaving"
+                                                @onclick="RestorePageAsync">
+                                            @Localizer[nameof(Language.Pages_Wiki_Index_RestorePage)]
+                                        </button>
+                                    }
+                                    @if (CanDeleteSelectedPage)
+                                    {
+                                        @if (_showDeleteConfirm)
+                                        {
+                                            <p>@Localizer[nameof(Language.Pages_Wiki_Index_DeleteNotice)]</p>
+                                            <div>
+                                                <button class="utf-button utf-button--ghost"
+                                                        type="button"
+                                                        @onclick="@(() => _showDeleteConfirm = false)">
+                                                    @Localizer[nameof(Language.Pages_Wiki_Index_Cancel)]
+                                                </button>
+                                                <button class="utf-button utf-button--ghost wiki-danger-action"
+                                                        type="button"
+                                                        disabled="@_isSaving"
+                                                        @onclick="DeletePageAsync">
+                                                    @Localizer[nameof(Language.Pages_Wiki_Index_ConfirmArchive)]
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <button class="utf-button utf-button--ghost wiki-danger-action"
+                                                    type="button"
+                                                    @onclick="@(() => _showDeleteConfirm = true)">
+                                                    <span class="utf-button__icon">
+                                                        <FluentIcon Value="@(new Icons.Regular.Size24.Delete())"/>
+                                                    </span>
+                                                    @Localizer[nameof(Language.Pages_Wiki_Index_ArchivePage)]
+                                                </button>
+                                        }
+                                    }
+                                </div>
+                            }
+                        }
+                    </section>
+                    break;
+            }
+        </aside>
+    </section>
+</div>
+
+@code {
+    private const string WikiHeroImagePath = "media/generated/wiki-reference-table-hero.jpg";
+
+    [Parameter]
+    public Guid? PageId { get; set; }
+
+    private readonly List<WikiPageHeader> _headers = [];
+    private readonly List<WikiPageRevisionHeader> _revisionHeaders = [];
+    private WikiPageDto? _selectedPage;
+    private WikiPageRevisionDto? _selectedRevision;
+    private WikiEditorModel? _editor;
+    private string _search = string.Empty;
+    private string? _headersError;
+    private string? _pageError;
+    private string? _editorError;
+    private bool _hasLoadedHeaders;
+    private bool _isLoadingHeaders;
+    private bool _isLoadingPage;
+    private bool _isSaving;
+    private bool _showDeleteConfirm;
+    private Guid? _loadedPageId;
+    private WikiPanelMode _panelMode = WikiPanelMode.Details;
+    private WikiMobileView _mobileView = WikiMobileView.Article;
+    private bool _siteImagesLoaded;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private bool CanCreateWiki
+        => Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki);
+
+    private string HeroImageStyle
+        => $"--utf-hero-image: url(\"{EscapeCssUrl(GetSiteImageUrl("wiki-hero", WikiHeroImagePath))}\");";
+
+    private bool CanModifyWiki
+        => Me.HasBaseClaimOrWikiAdmin(Claims.Wiki.Modify);
+
+    private bool CanRenameWiki
+        => Me.HasBaseClaimOrWikiAdmin(Claims.Wiki.Rename);
+
+    private bool CanDeleteWiki
+        => Me.HasBaseClaimOrWikiAdmin(Claims.Wiki.Delete);
+
+    private bool CanRestoreDeletedPages
+        => Me.HasClaimOrWikiAdmin();
+
+    private bool CanEditSelectedPage
+        => _selectedPage is not null
+           && _selectedPage.IsDeleted is not true
+           && (CanModifyWiki || CanRenameWiki);
+
+    private bool CanDeleteSelectedPage
+        => _selectedPage is { IsDeleted: not true } && CanDeleteWiki;
+
+    private bool CanRestoreSelectedPage
+        => _selectedPage is { IsDeleted: true } && CanRestoreDeletedPages;
+
+    private WikiPageRevisionDto? LatestRevision
+        => ((List<WikiPageRevisionDto>?) _selectedPage?.Revisions)?
+            .OrderByDescending(q => q.TimeStampCreated)
+            .FirstOrDefault();
+
+    private WikiPageRevisionDto? ActiveRevision
+        => _selectedRevision ?? LatestRevision;
+
+    private string ActiveMarkdown
+        => ActiveRevision?.Markdown ?? Localizer[nameof(Language.Pages_Wiki_Index_NoMarkdownContent)].Value;
+
+    private IEnumerable<WikiPageHeader> VisibleHeaders
+        => _headers.Where(MatchesSearch).OrderBy(q => q.Name);
+
+    private IEnumerable<WikiPageHeader> RelatedPages
+    {
+        get
+        {
+            if (_selectedPage?.PrimaryKey is not { } selectedPageId)
+                return [];
+
+            var categoryPath = GetCategoryPath(_selectedPage.Title);
+            return _headers
+                .Where(q => q.PrimaryKey != selectedPageId && GetCategoryPath(q.Name) == categoryPath)
+                .Take(5);
+        }
+    }
+
+    private WikiNavigationNode NavigationRoot
+        => BuildNavigationRoot();
+
+    private string WorkspaceClass
+        => $"wiki-workspace wiki-mobile-view--{_mobileView.ToString().ToLowerInvariant()}";
+
+    private string IntelPanelClass
+        => _panelMode is WikiPanelMode.Edit
+            ? "wiki-panel wiki-intel-panel wiki-intel-panel--editing"
+            : "wiki-panel wiki-intel-panel";
+
+    private string PageStatusClass
+        => _selectedPage?.IsDeleted is true ? "utf-status utf-status--warning" : "utf-status utf-status--success";
+
+    private string PageStatusLabel
+        => _selectedPage?.IsDeleted is true
+            ? Localizer[nameof(Language.Pages_Wiki_Index_StatusArchived)].Value
+            : Localizer[nameof(Language.Pages_Wiki_Index_StatusVerified)].Value;
+
+    private string EditorHeading
+        => _editor?.Mode is WikiEditorMode.Create
+            ? Localizer[nameof(Language.Pages_Wiki_Index_NewPage)].Value
+            : Localizer[nameof(Language.Pages_Wiki_Index_EditArticle)].Value;
+
+    private string EditorSubheading
+        => _editor?.Mode is WikiEditorMode.Create
+        ? Localizer[nameof(Language.Pages_Wiki_Index_CreateArticleSubtitle)].Value
+            : _selectedPage?.Title ?? Localizer[nameof(Language.Pages_Wiki_Index_SelectedPageFallback)].Value;
+
+    private string EditorValidationLabel
+        => _editor is null || IsEditorValid()
+            ? Localizer[nameof(Language.Pages_Wiki_Index_EditorValidationValid)].Value
+            : Localizer[nameof(Language.Pages_Wiki_Index_EditorValidationMissingRequiredFields)].Value;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Task.WhenAll(EnsureHeadersAsync(), EnsureSiteImagesAsync()).ConfigureAwait(false);
+
+        var targetPageId = PageId ?? _selectedPage?.PrimaryKey ?? VisibleHeaders.FirstOrDefault()?.PrimaryKey;
+        if (targetPageId is not { } pageId)
+        {
+            _selectedPage = null;
+            _selectedRevision = null;
+            return;
+        }
+
+        if (_loadedPageId != pageId)
+            await LoadPageAsync(pageId);
+    }
+
+    private async Task EnsureHeadersAsync()
+    {
+        if (_hasLoadedHeaders)
+            return;
+
+        await RefreshHeadersAsync();
+    }
+
+    private async Task EnsureSiteImagesAsync()
+    {
+        if (_siteImagesLoaded)
+            return;
+
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            _siteImagesLoaded = true;
+        }
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+    private async Task RefreshHeadersAsync()
+    {
+        _isLoadingHeaders = true;
+        _headersError = null;
+        try
+        {
+            var headers = await WikiRepository.GetWikiPageHeadersAsync(
+                showDeleted: CanRestoreDeletedPages
+            );
+            _headers.Clear();
+            _headers.AddRange(headers.Where(q => q.PrimaryKey is not null));
+            _hasLoadedHeaders = true;
+        }
+        catch
+        {
+            _headersError = Localizer[nameof(Language.Pages_Wiki_Index_Error_LoadHeadersFailed)].Value;
+        }
+        finally
+        {
+            _isLoadingHeaders = false;
+        }
+    }
+
+    private async Task LoadPageAsync(Guid pageId)
+    {
+        _isLoadingPage = true;
+        _pageError = null;
+        _selectedRevision = null;
+        _showDeleteConfirm = false;
+
+        try
+        {
+            _selectedPage = await WikiRepository.GetWikiPageAsync(pageId);
+            _revisionHeaders.Clear();
+            _revisionHeaders.AddRange(await WikiRepository.GetWikiPageRevisionHeadersAsync(pageId));
+            _loadedPageId = pageId;
+        }
+        catch
+        {
+            _selectedPage = null;
+            _revisionHeaders.Clear();
+            _pageError = Localizer[nameof(Language.Pages_Wiki_Index_Error_LoadPageFailed)].Value;
+        }
+        finally
+        {
+            _isLoadingPage = false;
+        }
+    }
+
+    private async Task SelectPageAsync(Guid pageId)
+    {
+        _mobileView = WikiMobileView.Article;
+        if (PageId == pageId)
+        {
+            await LoadPageAsync(pageId);
+            return;
+        }
+
+        NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"wiki/{pageId}"));
+    }
+
+    private async Task SelectRevisionAsync(Guid revisionId)
+    {
+        if (_selectedPage?.PrimaryKey is not { } pageId)
+            return;
+
+        _selectedRevision = await WikiRepository.GetWikiPageRevisionAsync(pageId, revisionId);
+        _mobileView = WikiMobileView.Article;
+    }
+
+    private void SetMobileView(WikiMobileView view)
+    {
+        _mobileView = view;
+        if (view is WikiMobileView.History)
+            _panelMode = WikiPanelMode.History;
+    }
+
+    private void ShowPanel(WikiPanelMode mode)
+    {
+        _panelMode = mode;
+        _mobileView = mode is WikiPanelMode.History ? WikiMobileView.History : _mobileView;
+    }
+
+    private void OpenEditOrCreateEditor()
+    {
+        if (CanEditSelectedPage)
+            OpenEditEditor();
+        else
+            OpenCreateEditor();
+    }
+
+    private void OpenCreateEditor()
+    {
+        if (!CanCreateWiki)
+            return;
+
+        _editor = new WikiEditorModel
+        {
+            Mode     = WikiEditorMode.Create,
+            Title    = string.Empty,
+            Markdown  = Localizer[nameof(Language.Pages_Wiki_Index_DefaultMarkdownTemplate)].Value,
+            Comment  = string.Empty,
+            IsPreview = false,
+        };
+        _editorError = null;
+        _panelMode = WikiPanelMode.Edit;
+    }
+
+    private void OpenEditEditor()
+    {
+        if (!CanEditSelectedPage || _selectedPage is null)
+            return;
+
+        var markdown = ActiveRevision?.Markdown ?? string.Empty;
+        _editor = new WikiEditorModel
+        {
+            Mode             = WikiEditorMode.Edit,
+            PageId           = _selectedPage.PrimaryKey,
+            OriginalTitle    = _selectedPage.Title ?? string.Empty,
+            OriginalMarkdown = markdown,
+            Title            = _selectedPage.Title ?? string.Empty,
+            Markdown         = markdown,
+            Comment          = string.Empty,
+            IsPreview        = false,
+        };
+        _editorError = null;
+        _panelMode = WikiPanelMode.Edit;
+    }
+
+    private void CloseEditor()
+    {
+        _panelMode = WikiPanelMode.Details;
+        _editor = null;
+        _editorError = null;
+    }
+
+    private async Task SaveEditorAsync()
+    {
+        if (_editor is null)
+            return;
+
+        _editorError = ValidateEditor();
+        if (_editorError is not null)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            if (_editor.Mode is WikiEditorMode.Create)
+            {
+                var createdPage = await WikiRepository.CreatePageAsync(
+                    _editor.Title.Trim(),
+                    _editor.Markdown,
+                    _editor.Comment.Trim()
+                );
+                await RefreshHeadersAsync();
+                CloseEditor();
+                if (createdPage.PrimaryKey is { } createdPageId)
+                    NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"wiki/{createdPageId}"));
+                return;
+            }
+
+            if (_editor.PageId is not { } pageId)
+                return;
+
+            var titleChanged = !string.Equals(_editor.OriginalTitle, _editor.Title.Trim(), StringComparison.Ordinal);
+            var markdownChanged = !string.Equals(_editor.OriginalMarkdown, _editor.Markdown, StringComparison.Ordinal);
+
+            if (titleChanged)
+                await WikiRepository.RenameAsync(pageId, _editor.Title.Trim());
+            if (markdownChanged)
+                await WikiRepository.CreateRevisionAsync(pageId, _editor.Markdown, _editor.Comment.Trim());
+
+            await RefreshHeadersAsync();
+            await LoadPageAsync(pageId);
+            CloseEditor();
+        }
+        catch
+        {
+            _editorError = Localizer[nameof(Language.Pages_Wiki_Index_Error_SaveFailed)].Value;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeletePageAsync()
+    {
+        if (_selectedPage?.PrimaryKey is not { } pageId || !CanDeleteSelectedPage)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            await WikiRepository.DeleteWikiPageAsync(pageId);
+            await RefreshHeadersAsync();
+            if (CanRestoreDeletedPages)
+            {
+                await LoadPageAsync(pageId);
+            }
+            else if (VisibleHeaders.FirstOrDefault()?.PrimaryKey is { } nextPageId)
+            {
+                NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"wiki/{nextPageId}"));
+            }
+            else
+            {
+                _selectedPage = null;
+                _loadedPageId = null;
+            }
+        }
+        catch
+        {
+            _pageError = Localizer[nameof(Language.Pages_Wiki_Index_Error_DeleteFailed)].Value;
+        }
+        finally
+        {
+            _isSaving = false;
+            _showDeleteConfirm = false;
+        }
+    }
+
+    private async Task RestorePageAsync()
+    {
+        if (_selectedPage?.PrimaryKey is not { } pageId || !CanRestoreSelectedPage)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            await WikiRepository.RestoreWikiPageAsync(pageId);
+            await RefreshHeadersAsync();
+            await LoadPageAsync(pageId);
+        }
+        catch
+        {
+            _pageError = Localizer[nameof(Language.Pages_Wiki_Index_Error_RestoreFailed)].Value;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private string? ValidateEditor()
+    {
+        if (_editor is null)
+            return Localizer[nameof(Language.Pages_Wiki_Index_Error_EditorNotOpen)].Value;
+        if (string.IsNullOrWhiteSpace(_editor.Title))
+            return Localizer[nameof(Language.Pages_Wiki_Index_Error_TitleRequired)].Value;
+        if (string.IsNullOrWhiteSpace(_editor.Markdown))
+            return Localizer[nameof(Language.Pages_Wiki_Index_Error_MarkdownRequired)].Value;
+        if (string.IsNullOrWhiteSpace(_editor.Comment))
+            return Localizer[nameof(Language.Pages_Wiki_Index_Error_RevisionCommentRequired)].Value;
+        if (_editor.Mode is WikiEditorMode.Create && !CanCreateWiki)
+            return Localizer[nameof(Language.Pages_Wiki_Index_Error_NoPermissionCreate)].Value;
+
+        if (_editor.Mode is WikiEditorMode.Edit)
+        {
+            var titleChanged = !string.Equals(_editor.OriginalTitle, _editor.Title.Trim(), StringComparison.Ordinal);
+            var markdownChanged = !string.Equals(_editor.OriginalMarkdown, _editor.Markdown, StringComparison.Ordinal);
+            if (!titleChanged && !markdownChanged)
+                return Localizer[nameof(Language.Pages_Wiki_Index_Error_NoChanges)].Value;
+            if (titleChanged && !CanRenameWiki)
+                return Localizer[nameof(Language.Pages_Wiki_Index_Error_NoPermissionRename)].Value;
+            if (markdownChanged && !CanModifyWiki)
+                return Localizer[nameof(Language.Pages_Wiki_Index_Error_NoPermissionEdit)].Value;
+        }
+
+        return null;
+    }
+
+    private bool IsEditorValid()
+        => ValidateEditor() is null;
+
+    private WikiNavigationNode BuildNavigationRoot()
+    {
+        var root = new WikiNavigationNode(Localizer[nameof(Language.Pages_Wiki_Index_KnowledgeBase)].Value, isRoot: true);
+        foreach (var header in VisibleHeaders)
+        {
+            var title = header.Name ?? Localizer[nameof(Language.Pages_Wiki_Index_UntitledPage)].Value;
+            var parts = title.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length is 0)
+            {
+                root.Pages.Add(header);
+                continue;
+            }
+
+            var current = root;
+            for (var i = 0; i < parts.Length - 1; i++)
+            {
+                var child = current.Children.FirstOrDefault(q => q.Name == parts[i]);
+                if (child is null)
+                {
+                    child = new WikiNavigationNode(parts[i]);
+                    current.Children.Add(child);
+                }
+
+                current = child;
+            }
+
+            current.Pages.Add(header);
+        }
+
+        return root;
+    }
+
+    private bool MatchesSearch(WikiPageHeader header)
+        => string.IsNullOrWhiteSpace(_search)
+           || (header.Name ?? string.Empty).Contains(_search, StringComparison.OrdinalIgnoreCase);
+
+    private string GetMobileTabClass(WikiMobileView view)
+        => _mobileView == view ? "wiki-mobile-tab active" : "wiki-mobile-tab";
+
+    private string GetPanelTabClass(WikiPanelMode mode)
+        => _panelMode == mode ? "active" : string.Empty;
+
+    private string GetEditorTabClass(bool preview)
+        => _editor?.IsPreview == preview ? "active" : string.Empty;
+
+    private string GetRevisionClass(WikiPageRevisionHeader revision)
+        => revision.PrimaryKey == ActiveRevision?.PrimaryKey ? "wiki-revision-row active" : "wiki-revision-row";
+
+    private string GetPreviewMarkdown()
+        => string.IsNullOrWhiteSpace(_editor?.Markdown)
+            ? Localizer[nameof(Language.Pages_Wiki_Index_Editor_PreviewPlaceholder)].Value
+            : _editor.Markdown;
+
+    private string GetArticleSummary(string? markdown)
+    {
+        if (string.IsNullOrWhiteSpace(markdown))
+            return Localizer[nameof(Language.Pages_Wiki_Index_ArticleSummaryPlaceholder)].Value;
+
+        foreach (var rawLine in markdown.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (line.Length is 0 || line.StartsWith('#'))
+                continue;
+            return line.TrimStart('-', '*', '>', ' ').Trim();
+        }
+
+        return Localizer[nameof(Language.Pages_Wiki_Index_ArticleSummaryPlaceholder)].Value;
+    }
+
+    private string FormatAuthor(WikiPageRevisionDto? revision)
+        => FormatUnknownAuthor(revision?.Author?.Nickname);
+
+    private string FormatRevisionCount()
+        => _revisionHeaders.Count switch
+        {
+            0 => Localizer[nameof(Language.Pages_Wiki_Index_NoRevisions)].Value,
+            1 => Localizer[nameof(Language.Pages_Wiki_Index_RevisionVersion), 1].Value,
+            var count => Localizer[nameof(Language.Pages_Wiki_Index_RevisionVersion), count].Value,
+        };
+
+    private string FormatRevisionComment(string? comment)
+        => FormatNullable(comment, Localizer[nameof(Language.Pages_Wiki_Index_RevisionWithoutComment)].Value);
+
+    private string FormatUnknownAuthor(string? value)
+        => FormatNullable(value, Localizer[nameof(Language.Pages_Wiki_Index_UnknownAuthor)].Value);
+
+    private string FormatNullable(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+    private static string EscapeCssUrl(string url)
+        => url.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "%22", StringComparison.Ordinal);
+
+    private string FormatDate(DateTimeOffset? value)
+        => value is { } date
+            ? date.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+            : Localizer[nameof(Language.Pages_Wiki_Index_NotRecorded)].Value;
+
+    private string GetLeafName(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return Localizer[nameof(Language.Pages_Wiki_Index_UntitledPage)].Value;
+        var parts = title.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return parts.LastOrDefault() ?? title;
+    }
+
+    private static string GetCategoryPath(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return string.Empty;
+        var parts = title.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length <= 1 ? string.Empty : string.Join(" / ", parts.Take(parts.Length - 1));
+    }
+
+    private enum WikiPanelMode
+    {
+        Details,
+        History,
+        Edit,
+    }
+
+    private enum WikiMobileView
+    {
+        Pages,
+        Article,
+        History,
+    }
+
+    private enum WikiEditorMode
+    {
+        Create,
+        Edit,
+    }
+
+    private sealed class WikiEditorModel
+    {
+        public WikiEditorMode Mode { get; init; }
+        public Guid? PageId { get; init; }
+        public string OriginalTitle { get; init; } = string.Empty;
+        public string OriginalMarkdown { get; init; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Markdown { get; set; } = string.Empty;
+        public string Comment { get; set; } = string.Empty;
+        public bool IsPreview { get; set; }
+    }
+
+}

@@ -1,0 +1,1139 @@
+using System.Net;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using X39.UnitedTacticalForces.Database;
+using X39.UnitedTacticalForces.Database.Authority;
+using X39.UnitedTacticalForces.Database.Verein;
+using X39.UnitedTacticalForces.Api.DTO;
+using X39.UnitedTacticalForces.Api.DTO.Updates;
+using X39.UnitedTacticalForces.Api.ExtensionMethods;
+using X39.UnitedTacticalForces.Api.Helpers;
+using X39.UnitedTacticalForces.Api.Services;
+using X39.UnitedTacticalForces.Common.Verein;
+using X39.Util;
+
+namespace X39.UnitedTacticalForces.Api.Controllers;
+
+/// <summary>
+/// The UsersController class is a part of the API that manages user-related operations.
+/// It provides endpoints for user authentication, user information retrieval,
+/// and user data modification.
+/// Here's a brief overview of its responsibilities:
+/// <list type="bullet">
+///     <item>
+///         It allows users to log in via Steam or Discord.
+///         The login process is initiated by redirecting the user to the respective login page of the service.
+///     </item>
+///     <item>
+///         It provides a logout functionality that signs out the user from the application.
+///     </item>
+///     <item>
+///         It allows the current logged-in user to delete their own account.
+///         This operation anonymizes the user's data and marks the account as deleted.
+///     </item>
+///     <item>
+///         It provides endpoints to update user information.
+///         This can be done either for the current logged-in user or for any user,
+///         given the user performing the operation has the necessary permissions.
+///     </item>
+///     <item>
+///         It provides endpoints to retrieve user information.
+///         This can be done for a specific user by their ID, for the current logged-in user,
+///         or for all users with optional filters and pagination.
+///     </item>
+///     <item>
+///         It also provides an endpoint to get the total count of users, with optional filters.
+///     </item>
+/// </list>
+/// Please note that some operations require the user to have specific permissions.
+/// These permissions are checked using claims associated with the user's account.
+/// </summary>
+[ApiController]
+[Route(Constants.Routes.Users)]
+public class UsersController : ControllerBase
+{
+    private const int NicknameMaxLength     = 1024;
+    private const int EMailMaxLength        = 1024;
+    private const int FirstNameMaxLength    = 256;
+    private const int LastNameMaxLength     = 256;
+    private const int PhoneNumberMaxLength  = 64;
+    private const int AddressLineMaxLength  = 512;
+    private const int PostalCodeMaxLength   = 32;
+    private const int CityMaxLength         = 256;
+    private const int CountryMaxLength      = 128;
+
+    private readonly ILogger<UsersController> _logger;
+    private readonly DatabaseContext             _apiDbContext;
+    private readonly BaseUrl?                 _baseUrl;
+    private readonly IAuthenticationSchemeProvider? _authenticationSchemeProvider;
+
+    /// <summary>
+    /// Creates a new <see cref="UsersController"/> instance.
+    /// </summary>
+    /// <param name="logger">The <see cref="ILogger{TCategoryName}"/> to use for logging.</param>
+    /// <param name="apiDbContext">The <see cref="DatabaseContext"/> to use for database access.</param>
+    /// <param name="baseUrl">The configured API and client base URLs used for browser redirects.</param>
+    /// <param name="authenticationSchemeProvider">The registered authentication schemes.</param>
+    public UsersController(
+        ILogger<UsersController> logger,
+        DatabaseContext apiDbContext,
+        BaseUrl? baseUrl = null,
+        IAuthenticationSchemeProvider? authenticationSchemeProvider = null)
+    {
+        _logger                       = logger;
+        _apiDbContext                 = apiDbContext;
+        _baseUrl                      = baseUrl;
+        _authenticationSchemeProvider = authenticationSchemeProvider;
+    }
+
+    /// <summary>
+    /// Returns the authentication providers that are currently registered and usable.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("authentication-providers", Name = nameof(GetAuthenticationProvidersAsync))]
+    [ProducesResponseType<AuthenticationProvidersDto>(StatusCodes.Status200OK)]
+    [ResponseCache(NoStore = true, Duration = 0)]
+    public async Task<ActionResult<AuthenticationProvidersDto>> GetAuthenticationProvidersAsync()
+        => Ok(new AuthenticationProvidersDto
+        {
+            Steam   = await IsProviderSupportedAsync(Constants.AuthorizationSchemas.Steam),
+            Discord = await IsProviderSupportedAsync(Constants.AuthorizationSchemas.Discord),
+        });
+
+    /// <summary>
+    /// Change location to this URL to start the steam login process.
+    /// Only valid for browser clients as a redirect to the steam login page is mandatory.
+    /// If a user logs in using steam and was not yet registered, he will be auto-registered.
+    /// </summary>
+    /// <param name="returnUrl">The url to get back to after the login process has completed.</param>
+    [AllowAnonymous]
+    [HttpGet("login/steam", Name = nameof(LoginSteamAsync))]
+    [HttpPost("login/steam", Name = nameof(LoginSteamAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.TemporaryRedirect)]
+    [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
+    [ResponseCache(NoStore = true, Duration = 0)]
+    public async Task<IActionResult> LoginSteamAsync([FromQuery] string? returnUrl)
+    {
+        if (!await IsProviderSupportedAsync(Constants.AuthorizationSchemas.Steam))
+            return NotFound();
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        return Challenge(
+            new AuthenticationProperties
+            {
+                RedirectUri  = GetLocalReturnUrl(returnUrl),
+                IsPersistent = true,
+                IssuedUtc    = now.ToDateTimeOffset(),
+                ExpiresUtc   = now.Plus(Duration.FromDays(Constants.Lifetime.SteamAuthDays)).ToDateTimeOffset(),
+            },
+            Constants.AuthorizationSchemas.Steam
+        );
+    }
+
+    /// <summary>
+    /// Change location to this URL to start the discord login process.
+    /// Only valid for browser clients as a redirect to the discord login page is mandatory.
+    /// If a user logs in using discord and was not yet registered, he will be auto-registered.
+    /// </summary>
+    /// <param name="returnUrl">The url to get back to after the login process has completed.</param>
+    [AllowAnonymous]
+    [HttpGet("login/discord", Name = nameof(LoginDiscordAsync))]
+    [HttpPost("login/discord", Name = nameof(LoginDiscordAsync))]
+    [ProducesResponseType(typeof(void), (int) HttpStatusCode.TemporaryRedirect)]
+    [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
+    [ResponseCache(NoStore = true, Duration = 0)]
+    public async Task<IActionResult> LoginDiscordAsync([FromQuery] string? returnUrl)
+    {
+        if (!await IsProviderSupportedAsync(Constants.AuthorizationSchemas.Discord))
+            return NotFound();
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        return Challenge(
+            new AuthenticationProperties
+            {
+                RedirectUri  = GetLocalReturnUrl(returnUrl),
+                IsPersistent = true,
+                IssuedUtc    = now.ToDateTimeOffset(),
+                ExpiresUtc   = now.Plus(Duration.FromDays(Constants.Lifetime.DiscordAuthDays)).ToDateTimeOffset(),
+            },
+            Constants.AuthorizationSchemas.Discord
+        );
+    }
+
+    private async Task<bool> IsProviderSupportedAsync(string authenticationScheme)
+    {
+        if (_authenticationSchemeProvider is not null)
+            return await _authenticationSchemeProvider.GetSchemeAsync(authenticationScheme) is not null;
+
+        return await HttpContext.IsProviderSupportedAsync(authenticationScheme);
+    }
+
+    /// <summary>
+    /// Allows to logout a user.
+    /// </summary>
+    /// <param name="returnUrl">The url to get back to after the logout process has completed.</param>
+    [HttpPost("logout", Name = nameof(LogoutAsync))]
+    public IActionResult LogoutAsync([FromQuery] string? returnUrl)
+    {
+        return SignOut(
+            new AuthenticationProperties { RedirectUri = GetLocalReturnUrl(returnUrl), },
+            Constants.AuthorizationSchemas.Cookie
+        );
+    }
+
+    /// <summary>
+    /// Deletes the current user.
+    /// </summary>
+    /// <param name="returnUrl">The url to get back to after the logout process has completed.</param>
+    /// <param name="cancellationToken">Cancellation token for the request.</param>
+    [Authorize]
+    [HttpPost("me/delete", Name = nameof(MeDeleteAsync))]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> MeDeleteAsync([FromQuery] string? returnUrl, CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        var user = await _apiDbContext.Users.SingleOrDefaultAsync(q => q.PrimaryKey == userId, cancellationToken);
+        if (user is null)
+            return NotFound();
+
+        var membership = await _apiDbContext.VereinMemberships
+            .AsNoTracking()
+            .SingleOrDefaultAsync(q => q.UserFk == userId, cancellationToken);
+        if (IsSelfServiceAccountDeletionBlocked(membership))
+            return Conflict(AccountDeletionBlockedReason);
+
+        user.Steam          = new();
+        user.Discord        = new();
+        user.Nickname       = "[anonymous]";
+        user.Avatar         = [];
+        user.AvatarMimeType = string.Empty;
+        user.EMail          = null;
+        user.FirstName      = null;
+        user.LastName       = null;
+        user.DateOfBirth    = null;
+        user.PhoneNumber    = null;
+        user.AddressLine1   = null;
+        user.AddressLine2   = null;
+        user.PostalCode     = null;
+        user.City           = null;
+        user.Country        = null;
+        user.IsDeleted      = true;
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        return SignOut(
+            new AuthenticationProperties { RedirectUri = GetLocalReturnUrl(returnUrl), },
+            Constants.AuthorizationSchemas.Cookie
+        );
+    }
+
+    /// <summary>
+    /// Updates a <see cref="User"/>.
+    /// </summary>
+    /// <param name="userId">The <see cref="Guid"/> of the <see cref="User"/>.</param>
+    /// <param name="updatedUser">The updated <see cref="User"/>.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns></returns>
+    [Authorize]
+    [HttpPost("{userId:guid}/update", Name = nameof(UpdateUserAsync))]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UpdateUserAsync(
+        [FromRoute] Guid userId,
+        [FromBody] UserUpdate updatedUser,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!User.TryGetUserId(out var currentUserId))
+            return Unauthorized();
+        await DoUpdateUserAsync(userId, updatedUser, cancellationToken, currentUserId);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Updates the <see cref="User"/> that is currently logged in.
+    /// </summary>
+    /// <param name="updatedUser">The updated <see cref="User"/>.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns></returns>
+    [Authorize]
+    [HttpPost("me/update", Name = nameof(UpdateMeAsync))]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UpdateMeAsync(
+        [FromBody] UserUpdate updatedUser,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!User.TryGetUserId(out var currentUserId))
+            return Unauthorized();
+        await DoUpdateUserAsync(currentUserId, updatedUser, cancellationToken, currentUserId);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Returns editable profile settings for the currently logged-in user.
+    /// </summary>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns>The current user's editable profile settings.</returns>
+    [Authorize]
+    [HttpGet("me/settings", Name = nameof(GetMeSettingsAsync))]
+    [ProducesResponseType<ProfileSettingsDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMeSettingsAsync(CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var currentUserId))
+            return Unauthorized();
+
+        var existingUser = await _apiDbContext.Users
+            .AsNoTracking()
+            .SingleOrDefaultAsync(q => q.PrimaryKey == currentUserId, cancellationToken);
+        if (existingUser is null)
+            return NotFound();
+
+        var membership = await _apiDbContext.VereinMemberships
+            .AsNoTracking()
+            .SingleOrDefaultAsync(q => q.UserFk == currentUserId, cancellationToken);
+
+        return Ok(ToProfileSettingsDto(existingUser, membership));
+    }
+
+    /// <summary>
+    /// Updates editable profile settings for the currently logged-in user.
+    /// </summary>
+    /// <param name="updatedProfile">The updated profile settings.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns>The updated profile settings.</returns>
+    [Authorize]
+    [HttpPost("me/settings", Name = nameof(UpdateMeSettingsAsync))]
+    [ProducesResponseType<ProfileSettingsDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(void), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateMeSettingsAsync(
+        [FromBody] ProfileSettingsUpdate updatedProfile,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!User.TryGetUserId(out var currentUserId))
+            return Unauthorized();
+
+        var existingUser = await _apiDbContext.Users
+            .SingleOrDefaultAsync(q => q.PrimaryKey == currentUserId, cancellationToken);
+        if (existingUser is null)
+            return NotFound();
+
+        var membership = await _apiDbContext.VereinMemberships
+            .SingleOrDefaultAsync(q => q.UserFk == currentUserId, cancellationToken);
+
+        var validationError = ApplyProfileSettingsUpdate(existingUser, updatedProfile);
+        if (validationError is not null)
+            return BadRequest(validationError);
+
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(ToProfileSettingsDto(existingUser, membership));
+    }
+
+    /// <summary>
+    /// Returns a <see cref="User"/> if one exists with the given id.
+    /// </summary>
+    /// <remarks>
+    /// Full user information is only available if it is the own <see cref="User"/> or the user
+    /// requesting has the admin role.
+    /// </remarks>
+    /// <param name="userId">The <see cref="Guid"/> of the <see cref="User"/>.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>
+    ///     A valid <see cref="User"/> if one was found, <see langkeyword="null"/> if not.
+    /// </returns>
+    [Authorize]
+    [HttpGet("{userId:guid}", Name = nameof(GetUserAsync))]
+    [ProducesResponseType<UserDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> GetUserAsync([FromRoute] Guid userId, CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var currentUserId))
+            return Unauthorized();
+
+        var existingUser = await _apiDbContext.Users.AsNoTracking().SingleOrDefaultAsync(
+            user => user.PrimaryKey == userId,
+            cancellationToken
+        );
+        if (existingUser is null)
+            return NoContent();
+
+        return Ok(ToUserDto(existingUser, currentUserId));
+    }
+
+    /// <summary>
+    /// Returns the <see cref="User"/> of the authorized user.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <returns>
+    ///     The <see cref="User"/> of the current user.
+    /// </returns>
+    [HttpGet("me", Name = nameof(GetMeAsync))]
+    [ProducesResponseType<FullUserDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> GetMeAsync(CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        var existingUser = await _apiDbContext.Users
+            .AsNoTracking()
+            .SingleOrDefaultAsync(user => user.PrimaryKey == userId, cancellationToken);
+        if (existingUser is null)
+            return NotFound();
+        var membership = await _apiDbContext.VereinMemberships
+            .AsNoTracking()
+            .SingleOrDefaultAsync(q => q.UserFk == userId, cancellationToken);
+        var roles = new List<Role>();
+        var claims = new List<Claim>();
+        await foreach (var role in _apiDbContext.Roles
+                           .AsNoTracking()
+                           .Include(e => e.Claims)
+                           .Where(role => role.Users!.Any(user => user.PrimaryKey == userId))
+                           .AsAsyncEnumerable()
+                           .WithCancellation(cancellationToken))
+        {
+            roles.Add(role);
+            if (role.Claims is null)
+                continue;
+            claims.AddRange(role.Claims);
+        }
+
+        await foreach (var claim in _apiDbContext.Claims
+                           .AsNoTracking()
+                           .Where(claim => claim.Users!.Any(user => user.PrimaryKey == userId))
+                           .AsAsyncEnumerable()
+                           .WithCancellation(cancellationToken))
+        {
+            claims.Add(claim);
+        }
+
+        existingUser.Claims = claims;
+        existingUser.Roles  = roles;
+        return Ok(
+            new FullUserDto
+            {
+                PrimaryKey      = existingUser.PrimaryKey,
+                Nickname        = existingUser.Nickname,
+                EMail           = existingUser.EMail,
+                IsBanned        = existingUser.IsBanned,
+                Avatar          = existingUser.Avatar,
+                AvatarMimeType  = existingUser.AvatarMimeType,
+                IsVerified      = existingUser.IsVerified,
+                IsDeleted       = existingUser.IsDeleted,
+                IsVereinMember  = membership?.Status == EVereinMembershipStatus.Active,
+                VereinMembershipStatus = membership?.Status.ToString(),
+                VereinMemberNumber     = membership?.MemberNumber,
+                SteamId64       = FormatExternalId(existingUser.Steam.Id64),
+                DiscordId       = FormatExternalId(existingUser.Discord.Id),
+                DiscordUsername = existingUser.Discord.Username,
+                Roles = roles.Select(role => new RoleDto
+                        {
+                            PrimaryKey  = role.PrimaryKey,
+                            Title       = role.Title,
+                            Description = role.Description,
+                            Claims = role.Claims!.Select(claim => claim.ToPlainDto())
+                                .ToArray(),
+                        }
+                    )
+                    .ToArray(),
+                Claims = claims.Select(claim => claim.ToPlainDto())
+                    .ToArray(),
+            }
+        );
+    }
+
+    /// <summary>
+    /// Gets all claims of the user identified by <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="userId">The id of the user.</param>
+    /// <param name="skip">The amount of <see cref="Claim"/>'s to skip. Paging argument.</param>
+    /// <param name="take">The amount of <see cref="Claim"/>'s to take after skip. Paging argument.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the claims.</returns>
+    [HttpGet("{userId:guid}/claims", Name = nameof(GetClaimsOfUser))]
+    [ProducesResponseType<PlainClaimDto[]>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Claims.Administrative.Role)]
+    public async Task<IActionResult> GetClaimsOfUser(
+        CancellationToken cancellationToken,
+        [FromRoute] Guid userId,
+        [FromQuery] int? skip = null,
+        [FromQuery] int? take = null
+    )
+    {
+        var userExists = await _apiDbContext.Users
+            .AsNoTracking()
+            .AnyAsync(user => user.PrimaryKey == userId, cancellationToken);
+        if (!userExists)
+            return NotFound();
+        var claims = _apiDbContext.Claims
+            .AsNoTracking()
+            .Where(claim => claim.Users!.Any(user => user.PrimaryKey == userId))
+            .OrderBy(claim => claim.Title)
+            .Skip(skip ?? 0)
+            .Take(take ?? 10);
+
+        var result = await claims.ToArrayAsync(cancellationToken);
+        return Ok(result.Select(e => e.ToPlainDto()).ToArray());
+    }
+
+    /// <summary>
+    /// Updates a direct claim assignment of the user identified by <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="userId">The id of the user.</param>
+    /// <param name="claimId">The id of the claim to assign or remove.</param>
+    /// <param name="mode">
+    ///     If <see langword="true"/>, the <paramref name="claimId"/> will be given to the <see cref="User"/>.
+    ///     If <see langword="false"/>, the <paramref name="claimId"/> will be removed from the <see cref="User"/>.
+    /// </param>
+    [Authorize(Claims.Administrative.Role)]
+    [HttpPost("{userId:guid}/claims/{claimId:long}/to/{mode:bool}", Name = nameof(SetUserClaimToAsync))]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetUserClaimToAsync(
+        CancellationToken cancellationToken,
+        [FromRoute] Guid userId,
+        [FromRoute] long claimId,
+        [FromRoute] bool mode
+    )
+    {
+        if (!User.TryGetUserId(out var currentUserId))
+            return Unauthorized();
+
+        await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
+        var existingClaim = await _apiDbContext.Claims
+            .SingleOrDefaultAsync(q => q.PrimaryKey == claimId, cancellationToken);
+        if (existingClaim is null)
+            return NotFound();
+
+        var existingUser = await _apiDbContext.Users
+            .Include(e => e.Claims!.Where(q => q.PrimaryKey == claimId))
+            .SingleOrDefaultAsync(q => q.PrimaryKey == userId, cancellationToken);
+        if (existingUser is null)
+            return NotFound();
+
+        if (mode)
+        {
+            var claim = existingUser.Claims?.FirstOrDefault(q => q.PrimaryKey == claimId);
+            if (claim is null)
+            {
+                (existingUser.Claims ??= new List<Claim>()).Add(existingClaim);
+                _logger.LogInformation(
+                    "User {UserId} added claim {ClaimId} to user {TargetUserId}",
+                    currentUserId,
+                    claimId,
+                    userId
+                );
+            }
+        }
+        else
+        {
+            var claim = existingUser.Claims?.FirstOrDefault(q => q.PrimaryKey == claimId);
+            if (claim is not null)
+            {
+                existingUser.Claims!.Remove(claim);
+                _logger.LogInformation(
+                    "User {UserId} removed claim {ClaimId} from user {TargetUserId}",
+                    currentUserId,
+                    claimId,
+                    userId
+                );
+            }
+        }
+
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        await dbTransaction.CommitAsync(cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Gets the count of all claims of the user identified by <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="userId">The id of the user.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the count.</returns>
+    [HttpGet("{userId:guid}/claims/count", Name = nameof(GetClaimsOfUserCount))]
+    [ProducesResponseType<long>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Claims.Administrative.Role)]
+    public async Task<IActionResult> GetClaimsOfUserCount(CancellationToken cancellationToken, [FromRoute] Guid userId)
+    {
+        var userExists = await _apiDbContext.Users
+            .AsNoTracking()
+            .AnyAsync(user => user.PrimaryKey == userId, cancellationToken);
+        if (!userExists)
+            return NotFound();
+        var result = await _apiDbContext.Claims
+            .AsNoTracking()
+            .Where(claim => claim.Users!.Any(user => user.PrimaryKey == userId))
+            .CountAsync(cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Gets all roles related to the user identified by <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="userId">The id of the user.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the roles.</returns>
+    [HttpGet("{userId:guid}/roles", Name = nameof(GetRolesOfUser))]
+    [ProducesResponseType<PlainRoleDto[]>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Claims.Administrative.Role)]
+    public async Task<IActionResult> GetRolesOfUser(CancellationToken cancellationToken, [FromRoute] Guid userId)
+    {
+        var user = await _apiDbContext.Users
+            .Include(e => e.Roles)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.PrimaryKey == userId, cancellationToken);
+        if (user is null)
+            return NotFound();
+        return Ok(user.Roles!.Select(e => e.ToPlainDto()).ToArray());
+    }
+
+    /// <summary>
+    /// Gets the count of roles related to the user identified by <paramref name="userId"/>.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="userId">The id of the user.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation, yielding an <see cref="IActionResult"/> containing the count of roles.</returns>
+    [HttpGet("{userId:guid}/roles/count", Name = nameof(GetRolesOfUserCount))]
+    [ProducesResponseType<long>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Claims.Administrative.Role)]
+    public async Task<IActionResult> GetRolesOfUserCount(CancellationToken cancellationToken, [FromRoute] Guid userId)
+    {
+        var user = await _apiDbContext.Users
+            .Include(e => e.Roles)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.PrimaryKey == userId, cancellationToken);
+        if (user is null)
+            return NotFound();
+        return Ok(user.Roles?.Count ?? 0);
+    }
+
+
+    /// <summary>
+    /// Returns all <see cref="User"/>'s available.
+    /// </summary>
+    /// <param name="skip">The amount of <see cref="User"/>'s to skip. Paging argument.</param>
+    /// <param name="take">The amount of <see cref="User"/>'s to take after skip. Paging argument.</param>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="search">
+    ///     Searches the <see cref="User.Nickname"/> with a function akin to <see cref="string.StartsWith(string)"/>
+    /// </param>
+    /// <param name="includeRolesAndClaims">
+    ///     If <see langword="true"/>, the <see cref="User"/>'s returned will contain their <see cref="Role"/>'s
+    ///     and <see cref="Claim"/>'s.
+    /// </param>
+    /// <param name="includeUnverified">
+    ///     If <see langword="true"/>, the users returned will also contain unverified users.
+    /// </param>
+    /// <returns>
+    ///     The available <see cref="User"/>'s.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="take"/> is greater then 500.</exception>
+    [Authorize]
+    [HttpPost("all", Name = nameof(GetUsersAsync))]
+    [ProducesResponseType<FullUserDto[]>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetUsersAsync(
+        [FromQuery] int skip,
+        [FromQuery] int take,
+        CancellationToken cancellationToken,
+        [FromQuery] string? search = null,
+        [FromQuery] bool? includeRolesAndClaims = false,
+        [FromQuery] bool? includeUnverified = false
+    )
+    {
+        if (!User.TryGetUserId(out var userId))
+            return Unauthorized();
+        if (take > 500)
+            // ReSharper disable once LocalizableElement
+            throw new ArgumentOutOfRangeException(nameof(take), take, "Take has a hard-maximum of 500.");
+
+        var users = _apiDbContext.Users.AsNoTracking();
+        if (includeRolesAndClaims ?? false)
+        {
+            if (User.HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.Role))
+            {
+                users = users.Include(e => e.Claims)
+                    .Include(e => e.Roles!)
+                    .ThenInclude(e => e.Claims);
+            }
+            else
+            {
+                var roleClaimIds = await _apiDbContext.Roles
+                    .Where(role => role.Users!.Any(user => user.PrimaryKey == userId))
+                    .SelectMany(role => role.Claims!)
+                    .Select(claim => claim.PrimaryKey)
+                    .ToArrayAsync(cancellationToken);
+                var claimIds = await _apiDbContext.Claims
+                    .Where(claim => claim.Users!.Any(user => user.PrimaryKey == userId))
+                    .Select(claim => claim.PrimaryKey)
+                    .ToArrayAsync(cancellationToken);
+                users = users.Include(e => e.Claims!.Where(claim => claimIds.Contains(claim.PrimaryKey)))
+                    .Include(e => e.Roles!.Where(role => roleClaimIds.Contains(role.PrimaryKey)))
+                    .ThenInclude(e => e.Claims);
+            }
+        }
+
+        if (!(includeUnverified ?? false))
+        {
+            users = users.Where(q => q.IsVerified);
+        }
+        else
+        {
+            if (!User.HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.User, Claims.User.Verify))
+                return Unauthorized();
+        }
+
+        if (search.IsNotNullOrWhiteSpace())
+        {
+            search = search.Trim();
+            search = search.Replace("%", @"\%");
+            search = search.Replace(",", @"\,");
+            search = search.Replace("_", @"\_");
+            search = search.Replace(",", @"\,");
+            search = search.Replace("[", @"\[");
+            search = search.Replace(",", @"\,");
+            search = search.Replace("]", @"\]");
+            search = search.Replace(",", @"\,");
+            search = search.Replace("^", @"\^");
+            search = search.Replace(@"\", @"\\");
+            search = $"%{search}%";
+            users  = users.Where(q => EF.Functions.ILike(q.Nickname, search, "\\"));
+        }
+
+        users = users.OrderBy(q => q.Nickname)
+            .Skip(skip)
+            .Take(take);
+
+        var result = await users.ToArrayAsync(cancellationToken);
+
+        foreach (var role in result.SelectMany(q => q.Claims ?? Enumerable.Empty<Claim>()))
+        {
+            role.Users?.Clear();
+        }
+
+        return Ok(result.Select(existingUser => ToFullUserDto(existingUser, userId)));
+    }
+
+    /// <summary>
+    /// Returns the count of all <see cref="User"/>'s available.
+    /// </summary>
+    /// <param name="cancellationToken">
+    ///     A <see cref="CancellationToken"/> to cancel the operation.
+    ///     Passed automatically by ASP.Net framework.
+    /// </param>
+    /// <param name="search">
+    ///     Searches the <see cref="User.Nickname"/> with a function akin to <see cref="string.StartsWith(string)"/>
+    /// </param>
+    /// <param name="includeUnverified">
+    ///     If <see langword="true"/>, the users returned will also contain unverified users.
+    /// </param>
+    /// <returns>
+    ///     The count of available <see cref="User"/>'s.
+    /// </returns>
+    [Authorize]
+    [HttpPost("all/count", Name = nameof(GetUsersCountAsync))]
+    [ProducesResponseType<long>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetUsersCountAsync(
+        CancellationToken cancellationToken,
+        [FromQuery] string? search = null,
+        [FromQuery] bool? includeUnverified = false
+    )
+    {
+        IQueryable<User> users = _apiDbContext.Users;
+
+        if (!(includeUnverified ?? false))
+        {
+            users = users.Where(q => q.IsVerified);
+        }
+        else
+        {
+            if (!User.HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.User, Claims.User.Verify))
+                return Unauthorized();
+        }
+
+        if (search.IsNotNullOrWhiteSpace())
+        {
+            search = search.Trim();
+            search = search.Replace("%", @"\%");
+            search = search.Replace(",", @"\,");
+            search = search.Replace("_", @"\_");
+            search = search.Replace(",", @"\,");
+            search = search.Replace("[", @"\[");
+            search = search.Replace(",", @"\,");
+            search = search.Replace("]", @"\]");
+            search = search.Replace(",", @"\,");
+            search = search.Replace("^", @"\^");
+            search = search.Replace(@"\", @"\\");
+            search = $"%{search}%";
+            users  = users.Where(q => EF.Functions.ILike(q.Nickname, search, "\\"));
+        }
+
+        var result = await users.CountAsync(cancellationToken);
+
+        return Ok(result);
+    }
+
+    #region Helper Methods
+
+    private const string AccountDeletionBlockedReason =
+        "Active or suspended Verein members cannot delete their account through self-service. Leaving the Verein is a formal process.";
+
+    private string GetLocalReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl))
+            return "/";
+        if (Url.IsLocalUrl(returnUrl))
+            return returnUrl;
+
+        return IsConfiguredClientReturnUrl(returnUrl) ? returnUrl : "/";
+    }
+
+    private bool IsConfiguredClientReturnUrl(string returnUrl)
+    {
+        if (_baseUrl is null || !Uri.TryCreate(returnUrl, UriKind.Absolute, out var uri))
+            return false;
+
+        Uri clientUri;
+        try
+        {
+            clientUri = _baseUrl.ClientUri;
+        }
+        catch (UriFormatException)
+        {
+            return false;
+        }
+
+        if (!string.Equals(uri.Scheme, clientUri.Scheme, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(uri.Host, clientUri.Host, StringComparison.OrdinalIgnoreCase)
+            || uri.Port != clientUri.Port)
+            return false;
+
+        var clientPath = clientUri.AbsolutePath;
+        if (!clientPath.EndsWith("/", StringComparison.Ordinal))
+            clientPath += "/";
+
+        return string.Equals(uri.AbsolutePath, clientPath.TrimEnd('/'), StringComparison.OrdinalIgnoreCase)
+               || uri.AbsolutePath.StartsWith(clientPath, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task DoUpdateUserAsync(
+        Guid userId,
+        UserUpdate updatedUser,
+        CancellationToken cancellationToken,
+        Guid currentUserId
+    )
+    {
+        var existingUser = await _apiDbContext.Users.SingleAsync(q => q.PrimaryKey == userId, cancellationToken);
+        var isSelf = existingUser.PrimaryKey == currentUserId;
+        if (updatedUser.Avatar is not null && updatedUser.AvatarMimeType is not null)
+        {
+            if (CanModifyUserProfile(isSelf))
+            {
+                existingUser.Avatar         = updatedUser.Avatar;
+                existingUser.AvatarMimeType = ImageMimeType.NormalizeOrDefault(updatedUser.AvatarMimeType);
+            }
+        }
+
+        if (updatedUser.Nickname is not null)
+            if (User.HasClaim(Claims.User.Nickname, string.Empty)
+                || User.HasClaim(Claims.Administrative.User, string.Empty)
+                || isSelf)
+                existingUser.Nickname = updatedUser.Nickname;
+        if (updatedUser.EMail is not null)
+            if (User.HasClaim(Claims.User.EMail, string.Empty)
+                || User.HasClaim(Claims.Administrative.User, string.Empty)
+                || isSelf)
+                existingUser.EMail = updatedUser.EMail;
+        if (updatedUser.IsBanned is not null)
+            if (User.HasClaim(Claims.User.Ban, string.Empty) || User.HasClaim(Claims.Administrative.User, string.Empty))
+                existingUser.IsBanned = updatedUser.IsBanned.Value;
+        if (updatedUser.IsVerified is not null)
+            if (User.HasClaim(Claims.User.Verify, string.Empty)
+                || User.HasClaim(Claims.Administrative.User, string.Empty))
+                existingUser.IsVerified = updatedUser.IsVerified.Value;
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private bool CanModifyUserProfile(bool isSelf)
+        => isSelf
+           || User.HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.User, Claims.User.Modify);
+
+    private static ProfileSettingsDto ToProfileSettingsDto(User user, VereinMembership? membership)
+        => new()
+        {
+            PrimaryKey                = user.PrimaryKey,
+            Nickname                  = user.Nickname,
+            EMail                     = user.EMail,
+            Avatar                    = user.Avatar,
+            AvatarMimeType            = user.AvatarMimeType,
+            IsVerified                = user.IsVerified,
+            IsVereinMember            = membership?.Status == EVereinMembershipStatus.Active,
+            VereinMembershipStatus    = membership?.Status.ToString(),
+            VereinMemberNumber        = membership?.MemberNumber,
+            CanDeleteAccount          = !IsSelfServiceAccountDeletionBlocked(membership),
+            AccountDeletionBlockedReason = IsSelfServiceAccountDeletionBlocked(membership)
+                ? AccountDeletionBlockedReason
+                : null,
+            SteamId64                 = FormatExternalId(user.Steam.Id64),
+            DiscordId                 = FormatExternalId(user.Discord.Id),
+            DiscordUsername           = user.Discord.Username,
+            FirstName                 = user.FirstName,
+            LastName                  = user.LastName,
+            DateOfBirth               = user.DateOfBirth,
+            PhoneNumber               = user.PhoneNumber,
+            AddressLine1              = user.AddressLine1,
+            AddressLine2              = user.AddressLine2,
+            PostalCode                = user.PostalCode,
+            City                      = user.City,
+            Country                   = user.Country,
+        };
+
+    private static bool IsSelfServiceAccountDeletionBlocked(VereinMembership? membership)
+        => membership?.Status is EVereinMembershipStatus.Active or EVereinMembershipStatus.Suspended;
+
+    private static string? ApplyProfileSettingsUpdate(
+        User user,
+        ProfileSettingsUpdate updatedProfile
+    )
+    {
+        if (updatedProfile.Avatar is not null && updatedProfile.AvatarMimeType is not null)
+        {
+            user.Avatar         = updatedProfile.Avatar;
+            user.AvatarMimeType = ImageMimeType.NormalizeOrDefault(updatedProfile.AvatarMimeType);
+        }
+
+        if (updatedProfile.Nickname is not null)
+        {
+            var nickname = NormalizeRequiredString(updatedProfile.Nickname, NicknameMaxLength, nameof(updatedProfile.Nickname), out var validationError);
+            if (validationError is not null)
+                return validationError;
+            user.Nickname = nickname;
+        }
+
+        if (updatedProfile.EMail is not null)
+        {
+            user.EMail = NormalizeOptionalString(updatedProfile.EMail, EMailMaxLength, nameof(updatedProfile.EMail), out var validationError);
+            if (validationError is not null)
+                return validationError;
+        }
+
+        if (updatedProfile.FirstName is not null)
+        {
+            user.FirstName = NormalizeOptionalString(updatedProfile.FirstName, FirstNameMaxLength, nameof(updatedProfile.FirstName), out var validationError);
+            if (validationError is not null)
+                return validationError;
+        }
+
+        if (updatedProfile.LastName is not null)
+        {
+            user.LastName = NormalizeOptionalString(updatedProfile.LastName, LastNameMaxLength, nameof(updatedProfile.LastName), out var validationError);
+            if (validationError is not null)
+                return validationError;
+        }
+
+        if (updatedProfile.DateOfBirth is not null)
+        {
+            if (updatedProfile.DateOfBirth >= NodaSystemClock.Instance.GetCurrentInstant().InUtc().Date)
+                return $"{nameof(updatedProfile.DateOfBirth)} must be in the past.";
+            user.DateOfBirth = updatedProfile.DateOfBirth;
+        }
+
+        if (updatedProfile.PhoneNumber is not null)
+        {
+            user.PhoneNumber = NormalizeOptionalString(updatedProfile.PhoneNumber, PhoneNumberMaxLength, nameof(updatedProfile.PhoneNumber), out var validationError);
+            if (validationError is not null)
+                return validationError;
+        }
+
+        if (updatedProfile.AddressLine1 is not null)
+        {
+            user.AddressLine1 = NormalizeOptionalString(updatedProfile.AddressLine1, AddressLineMaxLength, nameof(updatedProfile.AddressLine1), out var validationError);
+            if (validationError is not null)
+                return validationError;
+        }
+
+        if (updatedProfile.AddressLine2 is not null)
+        {
+            user.AddressLine2 = NormalizeOptionalString(updatedProfile.AddressLine2, AddressLineMaxLength, nameof(updatedProfile.AddressLine2), out var validationError);
+            if (validationError is not null)
+                return validationError;
+        }
+
+        if (updatedProfile.PostalCode is not null)
+        {
+            user.PostalCode = NormalizeOptionalString(updatedProfile.PostalCode, PostalCodeMaxLength, nameof(updatedProfile.PostalCode), out var validationError);
+            if (validationError is not null)
+                return validationError;
+        }
+
+        if (updatedProfile.City is not null)
+        {
+            user.City = NormalizeOptionalString(updatedProfile.City, CityMaxLength, nameof(updatedProfile.City), out var validationError);
+            if (validationError is not null)
+                return validationError;
+        }
+
+        if (updatedProfile.Country is not null)
+        {
+            user.Country = NormalizeOptionalString(updatedProfile.Country, CountryMaxLength, nameof(updatedProfile.Country), out var validationError);
+            if (validationError is not null)
+                return validationError;
+        }
+
+        return null;
+    }
+
+    private static string NormalizeRequiredString(
+        string value,
+        int maxLength,
+        string fieldName,
+        out string? validationError
+    )
+    {
+        var normalized = value.Trim();
+        if (normalized.Length is 0)
+        {
+            validationError = $"{fieldName} must not be empty.";
+            return string.Empty;
+        }
+
+        if (normalized.Length > maxLength)
+        {
+            validationError = $"{fieldName} must not exceed {maxLength} characters.";
+            return string.Empty;
+        }
+
+        validationError = null;
+        return normalized;
+    }
+
+    private static string? NormalizeOptionalString(
+        string value,
+        int maxLength,
+        string fieldName,
+        out string? validationError
+    )
+    {
+        var normalized = value.Trim();
+        if (normalized.Length > maxLength)
+        {
+            validationError = $"{fieldName} must not exceed {maxLength} characters.";
+            return null;
+        }
+
+        validationError = null;
+        return normalized.Length is 0 ? null : normalized;
+    }
+
+    private UserDto ToUserDto(User user, Guid currentUserId)
+        => new()
+        {
+            PrimaryKey      = user.PrimaryKey,
+            Nickname        = user.Nickname,
+            EMail           = CanViewUserField(user, currentUserId, Claims.User.EMail) ? user.EMail : string.Empty,
+            IsBanned        = CanViewUserField(user, currentUserId, Claims.User.Ban) && user.IsBanned,
+            Avatar          = user.Avatar,
+            AvatarMimeType  = user.AvatarMimeType,
+            IsVerified      = CanViewUserField(user, currentUserId, Claims.User.Verify) && user.IsVerified,
+            IsDeleted       = user.IsDeleted,
+            SteamId64       = CanViewUserField(user, currentUserId, Claims.User.ViewSteamId64)
+                ? FormatExternalId(user.Steam.Id64)
+                : "0",
+            DiscordId       = CanViewUserField(user, currentUserId, Claims.User.ViewDiscordId)
+                ? FormatExternalId(user.Discord.Id)
+                : "0",
+            DiscordUsername = CanViewUserField(user, currentUserId, Claims.User.ViewDiscordId)
+                ? user.Discord.Username
+                : string.Empty,
+        };
+
+    private FullUserDto ToFullUserDto(User user, Guid currentUserId)
+        => new()
+        {
+            PrimaryKey      = user.PrimaryKey,
+            Nickname        = user.Nickname,
+            EMail           = CanViewUserField(user, currentUserId, Claims.User.EMail) ? user.EMail : string.Empty,
+            IsBanned        = CanViewUserField(user, currentUserId, Claims.User.Ban) && user.IsBanned,
+            Avatar          = user.Avatar,
+            AvatarMimeType  = user.AvatarMimeType,
+            IsVerified      = CanViewUserField(user, currentUserId, Claims.User.Verify) && user.IsVerified,
+            IsDeleted       = user.IsDeleted,
+            SteamId64       = CanViewUserField(user, currentUserId, Claims.User.ViewSteamId64)
+                ? FormatExternalId(user.Steam.Id64)
+                : "0",
+            DiscordId       = CanViewUserField(user, currentUserId, Claims.User.ViewDiscordId)
+                ? FormatExternalId(user.Discord.Id)
+                : "0",
+            DiscordUsername = CanViewUserField(user, currentUserId, Claims.User.ViewDiscordId)
+                ? user.Discord.Username
+                : string.Empty,
+            Roles = (user.Roles ?? Enumerable.Empty<Role>()).Select(role => new RoleDto
+                    {
+                        PrimaryKey  = role.PrimaryKey,
+                        Title       = role.Title,
+                        Description = role.Description,
+                        Claims = (role.Claims ?? Enumerable.Empty<Claim>()).Select(claim => claim.ToPlainDto())
+                            .ToArray(),
+                    }
+                )
+                .ToArray(),
+            Claims = (user.Claims ?? Enumerable.Empty<Claim>()).Select(claim => claim.ToPlainDto())
+                .ToArray(),
+        };
+
+    private static string? FormatExternalId(ulong id)
+        => id is 0 ? null : id.ToString();
+
+    private bool CanViewUserField(User user, Guid currentUserId, string claim)
+        => user.PrimaryKey == currentUserId
+           || User.HasClaim(claim, string.Empty)
+           || User.HasClaim(Claims.Administrative.User, string.Empty);
+
+    #endregion
+}

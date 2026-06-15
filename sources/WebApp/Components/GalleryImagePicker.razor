@@ -1,0 +1,168 @@
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@inject IDialogService DialogService
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<section class="@CssClass" aria-label="@T("Components_GalleryImagePicker_Aria", "Gallery image picker")">
+    @if (ShowPreview)
+    {
+        <div class="gallery-image-picker__preview">
+            @if (ImageSource is { } imageSource)
+            {
+                <img src="@imageSource"
+                     alt="@ImageAlt"
+                     loading="lazy"/>
+            }
+            else
+            {
+                <FluentIcon Value="@(new Icons.Regular.Size24.ImageOff())"/>
+            }
+        </div>
+    }
+    <div class="gallery-image-picker__body">
+        <span class="utf-kicker">@T("Components_GalleryImagePicker_Kicker", "Gallery image")</span>
+        <strong>@SelectedLabel</strong>
+        <span>@SelectedMetaLabel</span>
+        <div class="gallery-image-picker__actions">
+            <UtfCommandButton Disabled="@Disabled"
+                              OnClick="OpenPickerAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Image())"/>
+                </Icon>
+                <ChildContent>@PickerButtonLabel</ChildContent>
+            </UtfCommandButton>
+            @if (AllowClear && SelectedAssetId is not null)
+            {
+                <UtfCommandButton Disabled="@Disabled"
+                                  OnClick="ClearAsync">
+                    <Icon>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.DismissCircle())"/>
+                    </Icon>
+                    <ChildContent>@T("Components_GalleryImagePicker_Clear", "Clear")</ChildContent>
+                </UtfCommandButton>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter]
+    public bool AllowClear { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public MediaAssetFilterInfo? InitialFilter { get; set; }
+
+    [Parameter]
+    public Guid? SelectedAssetId { get; set; }
+
+    [Parameter]
+    public EventCallback<MediaAssetInfo?> SelectedAssetChanged { get; set; }
+
+    [Parameter]
+    public string? SelectedFileName { get; set; }
+
+    [Parameter]
+    public string? SelectedImagePath { get; set; }
+
+    [Parameter]
+    public bool ShowPreview { get; set; } = true;
+
+    [Parameter]
+    public string[] UploadTags { get; set; } = [];
+
+    private string CssClass
+    {
+        get
+        {
+            var className = ImageSource is null
+                ? "gallery-image-picker gallery-image-picker--empty"
+                : "gallery-image-picker";
+            if (Disabled)
+                className += " gallery-image-picker--disabled";
+            if (!ShowPreview)
+                className += " gallery-image-picker--without-preview";
+            return string.IsNullOrWhiteSpace(Class) ? className : $"{className} {Class}";
+        }
+    }
+
+    private string? ImageSource
+        => string.IsNullOrWhiteSpace(SelectedImagePath)
+            ? null
+            : BaseUrl.ResolveImageUrl(SelectedImagePath);
+
+    private string ImageAlt
+        => string.IsNullOrWhiteSpace(SelectedFileName)
+            ? T("Components_GalleryImagePicker_SelectedImageAlt", "Selected gallery image")
+            : string.Format(
+                CultureInfo.CurrentCulture,
+                T("Components_GalleryImagePicker_SelectedImageAltFormat", "Selected gallery image: {0}"),
+                SelectedFileName
+            );
+
+    private string PickerButtonLabel
+        => SelectedAssetId is null
+            ? T("Components_GalleryImagePicker_Select", "Select image")
+            : T("Components_GalleryImagePicker_Change", "Change image");
+
+    private string SelectedLabel
+        => string.IsNullOrWhiteSpace(SelectedFileName)
+            ? SelectedAssetId is null
+                ? T("Components_GalleryImagePicker_NoSelection", "No image selected")
+                : T("Components_GalleryImagePicker_SelectedFallback", "Selected gallery image")
+            : SelectedFileName;
+
+    private string SelectedMetaLabel
+        => SelectedAssetId is null
+            ? T("Components_GalleryImagePicker_NoSelectionMeta", "Choose an existing image or upload a new one.")
+            : T("Components_GalleryImagePicker_SelectedMeta", "Selected gallery asset");
+
+    private async Task OpenPickerAsync()
+    {
+        if (Disabled)
+            return;
+
+        var data = new GalleryImagePickerDialog.Data
+        {
+            InitialFilter   = InitialFilter ?? new MediaAssetFilterInfo(),
+            SelectedAssetId = SelectedAssetId,
+            UploadTags      = UploadTags,
+        };
+        var dialogReference = await DialogService.ShowDialogAsync<GalleryImagePickerDialog, GalleryImagePickerDialog.Data>(
+            data,
+            new DialogParameters
+            {
+                Title = T("Components_GalleryImagePicker_DialogTitle", "Select gallery image"),
+                Modal = true,
+                ShowDismiss = true,
+                PrimaryAction = T("Components_GalleryImagePicker_DialogApply", "Apply"),
+                SecondaryAction = T("Components_GalleryImagePicker_DialogCancel", "Cancel"),
+                Width = "min(92vw, 1040px)",
+                Height = "min(86vh, 760px)",
+                TrapFocus = true,
+                PreventScroll = true,
+                DialogBodyStyle = "overflow: hidden; background: var(--utf-bg-elevated); color: var(--utf-text); padding: 0;",
+            }
+        );
+        var result = await dialogReference.Result.ConfigureAwait(false);
+        if (result.Cancelled || data.SelectedAsset is null)
+            return;
+
+        await SelectedAssetChanged.InvokeAsync(data.SelectedAsset);
+    }
+
+    private Task ClearAsync()
+        => Disabled ? Task.CompletedTask : SelectedAssetChanged.InvokeAsync(null);
+
+    private string T(string key, string fallback)
+    {
+        var value = Localizer[key].Value;
+        return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+    }
+}

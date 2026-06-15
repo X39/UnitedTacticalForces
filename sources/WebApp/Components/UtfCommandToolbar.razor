@@ -1,0 +1,23 @@
+<section class="@CssClass" aria-label="@AriaLabel">
+    @ChildContent
+</section>
+
+@code {
+    [Parameter]
+    public string? AriaLabel { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    private string CssClass
+    {
+        get
+        {
+            const string className = "utf-command-toolbar";
+            return string.IsNullOrWhiteSpace(Class) ? className : $"{className} {Class}";
+        }
+    }
+}

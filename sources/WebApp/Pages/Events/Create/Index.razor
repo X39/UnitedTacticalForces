@@ -1,0 +1,664 @@
+@page "/events/create"
+@page "/command/events/create"
+@layout CommandCenterLayout
+@using System.Globalization
+@using Microsoft.FluentUI.AspNetCore.Components
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Data
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SlotRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IEventRepository EventRepository
+@inject ISlotRepository SlotRepository
+@inject NavigationManager NavigationManager
+@inject UserAutoCompleteService UserAutoCompleteService
+@inject ModPackAutoCompleteService ModPackAutoCompleteService
+@inject TerrainAutoCompleteService TerrainAutoCompleteService
+@inject BaseUrl BaseUrl
+@inject MeService Me
+
+@inject IStringLocalizer<Language> Localizer
+<PageTitle>@Localizer[nameof(Language.Auto_CreateEvent_7a9f7d42)]</PageTitle>
+
+<div class="event-create-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Auto_CreateEvent_7a9f7d42)])"
+                          Description="@(Localizer[nameof(Language.Auto_DefineAndPublishANewOperationPackageWithSchedule_811a8b30)])">
+        <Actions>
+            <UtfCommandButton OnClick="@(() => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/events")))">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Auto_BackToEvents_6f92c820)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanCreateEvents)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Auto_EventAdministratorAccessRequired_d59039c1)]</h2>
+            <p>@Localizer[nameof(Language.Auto_EventCreationIsVisibleOnlyToAuthorizedOperationPlanners_36297796)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_submitError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_submitError
+            </div>
+        }
+
+        <section class="utf-panel event-create-flow">
+            <ol class="event-create-stepper" aria-label="@(Localizer[nameof(Language.Auto_CreateEventSteps_f8fea672)])">
+                @foreach (var step in Steps)
+                {
+                    <li class="@GetStepClass(step.Index)" @key="step.Index">
+                        <button type="button" @onclick="@(() => SetStep(step.Index))">
+                            <span>@step.Index.ToString(CultureInfo.CurrentCulture)</span>
+                            <strong>@GetStepLabel(step.Index)</strong>
+                            <small>@GetStepDescription(step.Index)</small>
+                        </button>
+                    </li>
+                }
+            </ol>
+
+            <main class="event-create-step">
+                @switch (_step)
+                {
+                    case 2:
+                        <section class="event-create-section">
+                            <div class="event-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Schedule)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_TimeAndHost_40e63453)]</h2>
+                                </div>
+                                <span>@GetScheduleStatusLabel()</span>
+                            </div>
+                            <div class="event-create-form-grid">
+                                <label class="event-create-field">
+                                    <span>@Localizer[nameof(Language.Schedule)]</span>
+                                    <input class="utf-command-input" type="datetime-local" @bind="_model.ScheduledForLocal"/>
+                                </label>
+                                <FluentAutocomplete Required="true"
+                                                    TOption="PlainUserDto"
+                                                    MaximumSelectedOptions="1"
+                                                    OnOptionsSearch="UserAutoCompleteService.PlainUserDto.OnOptionsSearch"
+                                                    OptionText="UserAutoCompleteService.PlainUserDto.OptionText"
+                                                    Label="@(Localizer[nameof(Language.Host)])"
+                                                    Placeholder="@(Localizer[nameof(Language.Auto_SearchHost_abe3f02f)])"
+                                                    @bind-SelectedOption="_hostedBy"
+                                                    @bind-SelectedOption:after="OnHostChanged"/>
+                            </div>
+                        </section>
+                        break;
+                    case 3:
+                        <section class="event-create-section">
+                            <div class="event-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Assets)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_TerrainModPackAndImage_3f2b48a2)]</h2>
+                                </div>
+                                <span>@GetAssetStatusLabel()</span>
+                            </div>
+                            <div class="event-create-form-grid">
+                                <FluentAutocomplete Required="true"
+                                                    TOption="PlainTerrainDto"
+                                                    MaximumSelectedOptions="1"
+                                                    OnOptionsSearch="TerrainAutoCompleteService.PlainTerrainDto.OnOptionsSearch"
+                                                    OptionText="TerrainAutoCompleteService.PlainTerrainDto.OptionText"
+                                                    Label="@(Localizer[nameof(Language.Terrain)])"
+                                                    Placeholder="@(Localizer[nameof(Language.Auto_SearchTerrain_ca2ee95e)])"
+                                                    @bind-SelectedOption="_terrain"
+                                                    @bind-SelectedOption:after="OnTerrainChanged"/>
+                                <FluentAutocomplete Required="true"
+                                                    TOption="PlainModPackRevisionDto"
+                                                    MaximumSelectedOptions="1"
+                                                    OnOptionsSearch="ModPackAutoCompleteService.PlainModPackRevisionDto.OnOptionsSearch"
+                                                    OptionText="ModPackAutoCompleteService.PlainModPackRevisionDto.OptionText"
+                                                    Label="@(Localizer[nameof(Language.Auto_ModPackRevision_d199668f)])"
+                                                    Placeholder="@(Localizer[nameof(Language.Auto_SearchModPack_33ce4302)])"
+                                                    @bind-SelectedOption="_modPack"
+                                                    @bind-SelectedOption:after="OnModPackChanged"/>
+                            </div>
+                            <div class="event-create-image-grid">
+                                <div class="event-create-image-preview" style="@GetImageStyle()">
+                                    @if (!HasImage)
+                                    {
+                                        <span>@Localizer[nameof(Language.Auto_MissionImagePending_b4d8ba2b)]</span>
+                                    }
+                                </div>
+                                <GalleryImagePicker Class="event-create-field"
+                                                    SelectedAssetId="@_model.ImageAssetFk"
+                                                    SelectedImagePath="@_model.ImagePath"
+                                                    SelectedFileName="@GetSelectedImageFileName()"
+                                                    UploadTags="@EventUploadTags"
+                                                    AllowClear="true"
+                                                    SelectedAssetChanged="OnImageAssetSelected"/>
+                            </div>
+                        </section>
+                        break;
+                    case 4:
+                        <section class="event-create-section">
+                            <div class="event-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Briefing)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_MissionDetails_6c819bdd)]</h2>
+                                </div>
+                                <span>@GetBriefingLengthLabel()</span>
+                            </div>
+                            <label class="event-create-field event-create-field--wide">
+                                <span>@Localizer[nameof(Language.Auto_BriefingMarkdown_57d6b69f)]</span>
+                                <textarea class="utf-command-input event-create-textarea"
+                                          rows="16"
+                                          placeholder="Write the operation briefing, timetable, rules of engagement, and commander notes."
+                                          @bind="_model.Description"></textarea>
+                            </label>
+                            <section class="event-create-markdown-preview">
+                                <span class="utf-kicker">@Localizer[nameof(Language.Auto_RenderedBriefing_9d4f9366)]</span>
+                                <FluentMarkdown Content="@_model.Description"/>
+                            </section>
+                        </section>
+                        break;
+                    case 5:
+                        <section class="event-create-section">
+                            <div class="event-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Auto_ParticipantsSlots_77a3eae4)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_SignupReadiness_bde4bfc8)]</h2>
+                                </div>
+                                <button class="utf-button utf-button--ghost" type="button" @onclick="AddSlot">@Localizer[nameof(Language.Auto_AddSlot_21ac8a98)]</button>
+                            </div>
+                            <div class="event-create-form-grid event-create-form-grid--narrow">
+                                <label class="event-create-field">
+                                    <span>@Localizer[nameof(Language.Auto_MinimumAccepted_05ac548c)]</span>
+                                    <input class="utf-command-input" min="0" type="number" @bind="_model.MinimumAccepted"/>
+                                </label>
+                                <label class="event-create-field">
+                                    <span>@Localizer[nameof(Language.Visibility)]</span>
+                                    <select class="utf-command-input" @bind="VisibilityValue">
+                                        <option value="public">@Localizer[nameof(Language.Public)]</option>
+                                        <option value="hidden">@Localizer[nameof(Language.Hidden)]</option>
+                                    </select>
+                                </label>
+                            </div>
+                            @if (_slotDrafts.Count is 0)
+                            {
+                                <div class="event-create-empty">@Localizer[nameof(Language.Auto_NoInitialSlotsAttendeesCanOnlySignUpAfter_687cd1e2)]</div>
+                            }
+                            else
+                            {
+                                <div class="event-create-slot-list">
+                                    @foreach (var slot in _slotDrafts)
+                                    {
+                                        <article class="event-create-slot-row" @key="slot.DraftKey">
+                                            <label class="event-create-field">
+                                                <span>@Localizer[nameof(Language.Group)]</span>
+                                                <input class="utf-command-input" @bind="slot.Group"/>
+                                            </label>
+                                            <label class="event-create-field">
+                                                <span>@Localizer[nameof(Language.Role)]</span>
+                                                <input class="utf-command-input" @bind="slot.Title"/>
+                                            </label>
+                                            <label class="event-create-field">
+                                                <span>@Localizer[nameof(Language.Side)]</span>
+                                                <select class="utf-command-input" @bind="slot.Side">
+                                                    <option value="0">@Localizer[nameof(Language.Empty)]</option>
+                                                    <option value="1">@Localizer[nameof(Language.East)]</option>
+                                                    <option value="2">@Localizer[nameof(Language.West)]</option>
+                                                    <option value="3">@Localizer[nameof(Language.Resistance)]</option>
+                                                    <option value="4">@Localizer[nameof(Language.Civilian)]</option>
+                                                    <option value="5">@Localizer[nameof(Language.Ambient)]</option>
+                                                    <option value="6">@Localizer[nameof(Language.Logic)]</option>
+                                                </select>
+                                            </label>
+                                            <label class="event-create-check">
+                                                <input type="checkbox" @bind="slot.IsVisible"/>
+                                                <span>@Localizer[nameof(Language.Visible)]</span>
+                                            </label>
+                                            <label class="event-create-check">
+                                                <input type="checkbox" @bind="slot.IsSelfAssignable"/>
+                                                <span>@Localizer[nameof(Language.Auto_SelfAssign_fae0bc3e)]</span>
+                                            </label>
+                                            <button class="utf-button utf-button--ghost"
+                                                    type="button"
+                                                    @onclick="@(() => RemoveSlot(slot))">
+                                                @Localizer[nameof(Language.Remove)]
+                                            </button>
+                                        </article>
+                                    }
+                                </div>
+                            }
+                        </section>
+                        break;
+                    case 6:
+                        <section class="event-create-section">
+                            <div class="event-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Review)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_ReviewYourOperationPackage_09d725e7)]</h2>
+                                </div>
+                                <span class="@GetReviewStatusClass()">
+                                    <span class="utf-status__dot"></span>@GetReviewStatusLabel()
+                                </span>
+                            </div>
+                            <div class="event-create-review-grid">
+                                <article class="event-create-review-panel event-create-review-panel--wide">
+                                    <header>
+                                        <strong>@Localizer[nameof(Language.Scenario)]</strong>
+                                        <button type="button" @onclick="@(() => SetStep(1))">@Localizer[nameof(Language.Pages_Events_Create_ActionEdit)]</button>
+                                    </header>
+                                    <div class="event-create-review-scenario">
+                                        <div>
+                                            <dl>
+                                                <dt>@Localizer[nameof(Language.Title)]</dt>
+                                                <dd>@GetTitleLabel()</dd>
+                                                <dt>@Localizer[nameof(Language.Visibility)]</dt>
+                                                <dd>@GetVisibilityLabel()</dd>
+                                                <dt>@Localizer[nameof(Language.Description)]</dt>
+                                                <dd>@GetBriefingExcerpt()</dd>
+                                            </dl>
+                                        </div>
+                                        <div class="event-create-review-image" style="@GetImageStyle()"></div>
+                                    </div>
+                                </article>
+                                <article class="event-create-review-panel">
+                                    <header>
+                                        <strong>@Localizer[nameof(Language.Auto_ScheduleHost_a62a2806)]</strong>
+                                        <button type="button" @onclick="@(() => SetStep(2))">@Localizer[nameof(Language.Pages_Events_Create_ActionEdit)]</button>
+                                    </header>
+                                    <dl>
+                                        <dt>@Localizer[nameof(Language.Schedule)]</dt>
+                                        <dd>@FormatDateTime(_model.ScheduledForLocal)</dd>
+                                        <dt>@Localizer[nameof(Language.Host)]</dt>
+                                        <dd>@(_hostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Events_Create_Status_HostPending)].Value)</dd>
+                                        <dt>@Localizer[nameof(Language.Auto_EventOwner_462e33d5)]</dt>
+                                        <dd>@GetEventOwnerLabel()</dd>
+                                        <dt>@Localizer[nameof(Language.Auto_OriginalSchedule_b5c2561d)]</dt>
+                                        <dd>@FormatDateTime(_model.ScheduledForLocal)</dd>
+                                    </dl>
+                                </article>
+                                <article class="event-create-review-panel">
+                                    <header>
+                                        <strong>@Localizer[nameof(Language.Assets)]</strong>
+                                        <button type="button" @onclick="@(() => SetStep(3))">@Localizer[nameof(Language.Pages_Events_Create_ActionEdit)]</button>
+                                    </header>
+                                    <dl>
+                                        <dt>@Localizer[nameof(Language.Terrain)]</dt>
+                                        <dd>@(_terrain?.Title ?? Localizer[nameof(Language.Pages_Events_Create_Status_TerrainPending)].Value)</dd>
+                                        <dt>@Localizer[nameof(Language.Auto_ModPack_f151fb94)]</dt>
+                                        <dd>@GetModPackLabel()</dd>
+                                        <dt>@Localizer[nameof(Language.Auto_MissionImage_85cc2241)]</dt>
+                                        <dd>@Localizer[HasImage ? nameof(Language.Pages_Events_Create_Status_Attached) : nameof(Language.Pages_Events_Create_Status_NotAttached)]</dd>
+                                    </dl>
+                                </article>
+                                <article class="event-create-review-panel">
+                                    <header>
+                                        <strong>@Localizer[nameof(Language.Briefing)]</strong>
+                                        <button type="button" @onclick="@(() => SetStep(4))">@Localizer[nameof(Language.Pages_Events_Create_ActionEdit)]</button>
+                                    </header>
+                                    <dl>
+                                        <dt>@Localizer[nameof(Language.Format)]</dt>
+                                        <dd>@Localizer[nameof(Language.Markdown)]</dd>
+                                        <dt>@Localizer[nameof(Language.Length)]</dt>
+                                        <dd>@GetBriefingLengthLabel()</dd>
+                                        <dt>@Localizer[nameof(Language.Excerpt)]</dt>
+                                        <dd>@GetBriefingExcerpt()</dd>
+                                    </dl>
+                                </article>
+                                <article class="event-create-review-panel">
+                                    <header>
+                                        <strong>@Localizer[nameof(Language.Auto_ParticipantsSlots_77a3eae4)]</strong>
+                                        <button type="button" @onclick="@(() => SetStep(5))">@Localizer[nameof(Language.Pages_Events_Create_ActionEdit)]</button>
+                                    </header>
+                                    <dl>
+                                        <dt>@Localizer[nameof(Language.Auto_MinimumAccepted_05ac548c)]</dt>
+                                        <dd>@(_model.MinimumAccepted?.ToString(CultureInfo.CurrentCulture) ?? Localizer[nameof(Language.Pages_Events_Create_Status_Pending)].Value)</dd>
+                                        <dt>@Localizer[nameof(Language.Auto_InitialSlots_9a5c0b97)]</dt>
+                                        <dd>@_slotDrafts.Count.ToString(CultureInfo.CurrentCulture)</dd>
+                                        <dt>@Localizer[nameof(Language.Auto_SelfAssignable_a710027f)]</dt>
+                                        <dd>@_slotDrafts.Count((slot) =>slot.IsSelfAssignable).ToString(CultureInfo.CurrentCulture)</dd>
+                                    </dl>
+                                </article>
+                            </div>
+                            <section class="event-create-final-checklist">
+                                @foreach (var item in GetReadinessRows())
+                                {
+                                    <div class="@GetChecklistRowClass(item.IsComplete)" @key="item.Label">
+                                        <span class="utf-status__dot"></span>
+                                        <strong>@item.Label</strong>
+                                        <span>@Localizer[item.IsComplete ? nameof(Language.Pages_Events_Create_Status_Complete) : nameof(Language.Pages_Events_Create_Status_NeedsAttention)]</span>
+                                    </div>
+                                }
+                            </section>
+                            <div class="event-create-immutable-warning">
+                                @Localizer[nameof(Language.Auto_OnceCreatedTheEventOwnerAndOriginalScheduleTimestamp_67063c0b)]
+                            </div>
+                        </section>
+                        break;
+                    default:
+                        <section class="event-create-section">
+                            <div class="event-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Scenario)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_OperationIdentity_cdd656fa)]</h2>
+                                </div>
+                                <span>@GetScenarioStatusLabel()</span>
+                            </div>
+                            <div class="event-create-form-grid">
+                                <label class="event-create-field event-create-field--wide">
+                                    <span>@Localizer[nameof(Language.Title)]</span>
+                                    <input class="utf-command-input" maxlength="1024" @bind="_model.Title"/>
+                                </label>
+                                <label class="event-create-field">
+                                    <span>@Localizer[nameof(Language.Visibility)]</span>
+                                    <select class="utf-command-input" @bind="VisibilityValue">
+                                        <option value="public">@Localizer[nameof(Language.Public)]</option>
+                                        <option value="hidden">@Localizer[nameof(Language.Hidden)]</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </section>
+                        break;
+                }
+            </main>
+
+            <footer class="event-create-command-bar">
+                <div>
+                    <span>@GetCurrentStepLabel()</span>
+                    <strong>@GetReviewStatusLabel()</strong>
+                </div>
+                <div>
+                    <button class="utf-button utf-button--ghost"
+                            type="button"
+                            disabled="@(_step <= 1 || _isSubmitting)"
+                            @onclick="PreviousStep">
+                        @Localizer[nameof(Language.Previous)]
+                    </button>
+                    @if (_step < FinalStep)
+                    {
+                        <button class="utf-button utf-button--primary"
+                                type="button"
+                                @onclick="NextStep">
+                            @Localizer[nameof(Language.Next)]
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="utf-button utf-button--primary"
+                                type="button"
+                                disabled="@(!CanCreate)"
+                                @onclick="CreateEventAsync">
+                            @Localizer[_isSubmitting ? nameof(Language.Pages_Events_Create_ActionCreatingEvent) : nameof(Language.Pages_Events_Create_ActionCreateEvent)]
+                        </button>
+                    }
+                </div>
+            </footer>
+        </section>
+    }
+</div>
+
+@code {
+    private const int FinalStep = 6;
+    private static readonly string[] EventUploadTags = ["event"];
+
+    private readonly EventAuthoringModel _model = EventAuthoringModel.CreateDefault();
+    private readonly List<EventSlotDraftModel> _slotDrafts = [];
+    private PlainUserDto? _hostedBy;
+    private PlainTerrainDto? _terrain;
+    private PlainModPackRevisionDto? _modPack;
+    private string _imageFileName = string.Empty;
+    private int _step = 1;
+    private bool _isSubmitting;
+    private string? _submitError;
+
+    private static readonly IReadOnlyList<StepItem> Steps =
+    [
+        new(1),
+        new(2),
+        new(3),
+        new(4),
+        new(5),
+        new(6),
+    ];
+
+    private bool CanCreateEvents
+        => Me.HasClaimOrEventAdmin(Claims.Creation.Events);
+
+    private bool HasImage
+        => _model.ImageAssetFk is not null;
+
+    private string VisibilityValue
+    {
+        get => _model.IsVisible ? "public" : "hidden";
+        set => _model.IsVisible = string.Equals(value, "public", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool CanCreate
+        => !_isSubmitting
+           && _model.GetValidationErrors(requireImage: true).Count is 0
+           && _slotDrafts.Count > 0
+           && _slotDrafts.SelectMany((slot) => slot.GetValidationErrors()).Any() is false;
+
+    private void SetStep(int step)
+        => _step = Math.Clamp(step, 1, FinalStep);
+
+    private void PreviousStep()
+        => SetStep(_step - 1);
+
+    private void NextStep()
+        => SetStep(_step + 1);
+
+    private async Task CreateEventAsync()
+    {
+        if (!CanCreate)
+            return;
+
+        _isSubmitting = true;
+        _submitError = null;
+
+        try
+        {
+            var createdEvent = await EventRepository.CreateEventAsync(_model.ToCreationPayload());
+            if (createdEvent.PrimaryKey is null)
+            {
+                NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/events"));
+                return;
+            }
+
+            var slotCreationFailed = false;
+            foreach (var slot in _slotDrafts)
+            {
+                try
+                {
+                    await SlotRepository.CreateSlotAsync(createdEvent.PrimaryKey.Value, slot.ToCreationPayload());
+                }
+                catch
+                {
+                    slotCreationFailed = true;
+                }
+            }
+
+            var route = $"command/events/{createdEvent.PrimaryKey}";
+            if (slotCreationFailed)
+                route += "?slotSetup=failed";
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl(route));
+        }
+        catch
+        {
+            _submitError = Localizer[nameof(Language.Pages_Events_Create_ErrorCreateFailed)].Value;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void OnImageAssetSelected(MediaAssetInfo? asset)
+    {
+        if (asset is null)
+        {
+            _model.ImageAssetFk = null;
+            _model.ImagePath = null;
+            _imageFileName = string.Empty;
+            return;
+        }
+
+        _model.ImageAssetFk = asset.PrimaryKey;
+        _model.ImagePath = asset.ImagePath;
+        _imageFileName = asset.OriginalFileName;
+    }
+
+    private void OnHostChanged()
+        => _model.HostedByFk = _hostedBy?.PrimaryKey;
+
+    private void OnTerrainChanged()
+        => _model.TerrainFk = _terrain?.PrimaryKey;
+
+    private void OnModPackChanged()
+        => _model.ModPackRevisionFk = _modPack?.PrimaryKey;
+
+    private void AddSlot()
+        => _slotDrafts.Add(EventSlotDraftModel.CreateDefault());
+
+    private void RemoveSlot(EventSlotDraftModel slot)
+        => _slotDrafts.Remove(slot);
+
+    private string GetStepClass(int step)
+    {
+        if (_step == step)
+            return "active";
+        return IsStepComplete(step) ? "complete" : string.Empty;
+    }
+
+    private bool IsStepComplete(int step)
+        => step switch
+        {
+            1 => !string.IsNullOrWhiteSpace(_model.Title),
+            2 => _model.ScheduledForLocal is not null && _model.HostedByFk is not null,
+            3 => _model.TerrainFk is not null && _model.ModPackRevisionFk is not null,
+            4 => !string.IsNullOrWhiteSpace(_model.Description),
+            5 => _model.MinimumAccepted is >= 0
+                 && _slotDrafts.Count > 0
+                 && _slotDrafts.All((slot) => slot.GetValidationErrors().Count is 0),
+            6 => CanCreate,
+            _ => false,
+        };
+
+    private string GetCurrentStepLabel()
+        => GetStepLabel(_step);
+
+    private string GetStepLabel(int step)
+        => step switch
+        {
+            1 => Localizer[nameof(Language.Pages_Events_Create_Step_Scenario_Label)].Value,
+            2 => Localizer[nameof(Language.Pages_Events_Create_Step_Schedule_Label)].Value,
+            3 => Localizer[nameof(Language.Pages_Events_Create_Step_Assets_Label)].Value,
+            4 => Localizer[nameof(Language.Pages_Events_Create_Step_Briefing_Label)].Value,
+            5 => Localizer[nameof(Language.Pages_Events_Create_Step_Participants_Label)].Value,
+            6 => Localizer[nameof(Language.Pages_Events_Create_Step_Review_Label)].Value,
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, null),
+        };
+
+    private string GetStepDescription(int step)
+        => step switch
+        {
+            1 => Localizer[nameof(Language.Pages_Events_Create_Step_Scenario_Description)].Value,
+            2 => Localizer[nameof(Language.Pages_Events_Create_Step_Schedule_Description)].Value,
+            3 => Localizer[nameof(Language.Pages_Events_Create_Step_Assets_Description)].Value,
+            4 => Localizer[nameof(Language.Pages_Events_Create_Step_Briefing_Description)].Value,
+            5 => Localizer[nameof(Language.Pages_Events_Create_Step_Participants_Description)].Value,
+            6 => Localizer[nameof(Language.Pages_Events_Create_Step_Review_Description)].Value,
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, null),
+        };
+
+    private string GetVisibilityLabel()
+        => _model.IsVisible
+            ? Localizer[nameof(Language.Public)].Value
+            : Localizer[nameof(Language.Hidden)].Value;
+
+    private string GetScenarioStatusLabel()
+        => Localizer[IsStepComplete(1) ? nameof(Language.Pages_Events_Create_Status_ScenarioReady) : nameof(Language.Pages_Events_Create_Status_TitleRequired)].Value;
+
+    private string GetScheduleStatusLabel()
+        => Localizer[IsStepComplete(2) ? nameof(Language.Pages_Events_Create_Status_ScheduleReady) : nameof(Language.Pages_Events_Create_Status_ScheduleHostRequired)].Value;
+
+    private string GetAssetStatusLabel()
+        => Localizer[IsStepComplete(3) ? nameof(Language.Pages_Events_Create_Status_AssetsReady) : nameof(Language.Pages_Events_Create_Status_TerrainModPackRequired)].Value;
+
+    private string GetReviewStatusLabel()
+        => Localizer[CanCreate ? nameof(Language.Pages_Events_Create_Status_ReadyToCreate) : nameof(Language.Pages_Events_Create_Status_NeedsAttention)].Value;
+
+    private string GetReviewStatusClass()
+        => CanCreate ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+
+    private string GetBriefingLengthLabel()
+    {
+        var length = _model.Description?.Length ?? 0;
+        return length is 0
+            ? Localizer[nameof(Language.Pages_Events_Create_Status_NoBriefing)].Value
+            : Localizer[nameof(Language.Pages_Events_Create_Count_Characters), length].Value;
+    }
+
+    private string GetTitleLabel()
+        => string.IsNullOrWhiteSpace(_model.Title) ? Localizer[nameof(Language.Pages_Events_Create_UntitledOperation)].Value : _model.Title;
+
+    private string GetEventOwnerLabel()
+        => Me.IsAuthenticated && !string.IsNullOrWhiteSpace(Me.User.Nickname)
+            ? Me.User.Nickname
+            : Localizer[nameof(Language.Pages_Events_Create_Status_CurrentUser)].Value;
+
+    private string GetModPackLabel()
+        => _modPack is null
+            ? Localizer[nameof(Language.Pages_Events_Create_Status_ModPackPending)].Value
+            : ModPackAutoCompleteService.PlainModPackRevisionDto.OptionText(_modPack)
+              ?? Localizer[nameof(Language.Pages_Events_Create_Status_SelectedModPack)].Value;
+
+    private string GetBriefingExcerpt()
+    {
+        if (string.IsNullOrWhiteSpace(_model.Description))
+            return Localizer[nameof(Language.Pages_Events_Create_Status_BriefingPending)].Value;
+
+        var description = _model.Description.Trim();
+        return description.Length <= 180 ? description : $"{description[..180].TrimEnd()}...";
+    }
+
+    private IReadOnlyList<ReadinessRow> GetReadinessRows()
+        =>
+        [
+            new(Localizer[nameof(Language.Pages_Events_Create_Readiness_TitleDefined)].Value, !string.IsNullOrWhiteSpace(_model.Title)),
+            new(Localizer[nameof(Language.Pages_Events_Create_Readiness_ScheduleSet)].Value, _model.ScheduledForLocal is not null),
+            new(Localizer[nameof(Language.Pages_Events_Create_Readiness_HostAssigned)].Value, _model.HostedByFk is not null),
+            new(Localizer[nameof(Language.Pages_Events_Create_Readiness_TerrainSelected)].Value, _model.TerrainFk is not null),
+            new(Localizer[nameof(Language.Pages_Events_Create_Readiness_ModPackSelected)].Value, _model.ModPackRevisionFk is not null),
+            new(Localizer[nameof(Language.Pages_Events_Create_Readiness_BriefingAdded)].Value, !string.IsNullOrWhiteSpace(_model.Description)),
+            new(Localizer[nameof(Language.Pages_Events_Create_Readiness_MinimumAcceptedSet)].Value, _model.MinimumAccepted is >= 0),
+            new(Localizer[nameof(Language.Pages_Events_Create_Readiness_SlotPlanConfigured)].Value, _slotDrafts.Count > 0),
+        ];
+
+    private static string GetChecklistRowClass(bool isComplete)
+        => isComplete ? "event-create-checklist-row complete" : "event-create-checklist-row";
+
+    private string GetImageStyle()
+    {
+        if (string.IsNullOrWhiteSpace(_model.ImagePath))
+            return string.Empty;
+
+        var source = BaseUrl.ResolveImageUrl(_model.ImagePath);
+        return $"background-image: linear-gradient(180deg, rgba(7, 11, 15, 0.08), rgba(7, 11, 15, 0.72)), url('{source}');";
+    }
+
+    private string GetSelectedImageFileName()
+        => !string.IsNullOrWhiteSpace(_imageFileName)
+            ? _imageFileName
+            : Path.GetFileName(_model.ImagePath);
+
+    private string FormatDateTime(DateTime? value)
+        => value?.ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture) ?? Localizer[nameof(Language.Pages_Events_Create_Status_SchedulePending)].Value;
+
+    private sealed record StepItem(int Index);
+
+    private sealed record ReadinessRow(string Label, bool IsComplete);
+}

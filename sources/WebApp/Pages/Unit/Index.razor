@@ -1,0 +1,199 @@
+@page "/unit"
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@inject BaseUrl BaseUrl
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Unit_Index_PageTitle)]</PageTitle>
+
+<div class="utf-community-page utf-unit-page">
+    <header class="utf-community-page-hero utf-unit-hero" style="@HeroImageStyle">
+        <div class="utf-unit-hero__copy">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Unit_Index_Kicker)]</span>
+            <h1>@Localizer[nameof(Language.Pages_Unit_Index_Title)]</h1>
+            <p>@Localizer[nameof(Language.Pages_Unit_Index_HeroText)]</p>
+            <div class="utf-unit-actions">
+                <a class="utf-button utf-button--primary" href="@BaseUrl.ResolveSelfUrl("events/upcoming")">
+                    @Localizer[nameof(Language.Pages_Unit_Index_ViewOperations)]
+                </a>
+                <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("join")">
+                    @Localizer[nameof(Language.Pages_Unit_Index_JoinCommunity)]
+                </a>
+            </div>
+        </div>
+
+        <aside class="utf-unit-hero-panel" aria-label="@(Localizer[nameof(Language.Pages_Unit_Index_OperatingModelLabel)])">
+            <div class="utf-unit-panel-heading">
+                <FluentIcon Value="@(new Icons.Regular.Size24.PeopleTeam())"/>
+                <div>
+                    <span>@Localizer[nameof(Language.Pages_Unit_Index_OperatingModel)]</span>
+                    <strong>@Localizer[nameof(Language.Pages_Unit_Index_OperatingModelValue)]</strong>
+                </div>
+            </div>
+            <dl class="utf-unit-status-list">
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Unit_Index_MissionAccessLabel)]</dt>
+                    <dd>@Localizer[nameof(Language.Pages_Unit_Index_MissionAccessValue)]</dd>
+                </div>
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Unit_Index_CommunityCommsLabel)]</dt>
+                    <dd>@Localizer[nameof(Language.Pages_Unit_Index_CommunityCommsValue)]</dd>
+                </div>
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Unit_Index_OnboardingLabel)]</dt>
+                    <dd>@Localizer[nameof(Language.Pages_Unit_Index_OnboardingValue)]</dd>
+                </div>
+            </dl>
+        </aside>
+    </header>
+
+    <section class="utf-community-page-section utf-unit-section">
+        <div class="utf-section-heading">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Unit_Index_HowUtfWorks)]</span>
+            <h2>@Localizer[nameof(Language.Pages_Unit_Index_OpenOperations)]</h2>
+        </div>
+
+        <div class="utf-unit-governance">
+            <article class="utf-unit-statement">
+                <h3>@Localizer[nameof(Language.Pages_Unit_Index_ParticipationHeadline)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Unit_Index_ParticipationBody1)]</p>
+                <p>@Localizer[nameof(Language.Pages_Unit_Index_ParticipationBody2)]</p>
+            </article>
+
+            <ol class="utf-unit-process" aria-label="@(Localizer[nameof(Language.Pages_Unit_Index_GovernanceFlowLabel)])">
+                <li>
+                    <span>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.CalendarLtr())"/>
+                    </span>
+                    <div>
+                        <strong>@Localizer[nameof(Language.Pages_Unit_Index_GovernanceStep1Label)]</strong>
+                        <p>@Localizer[nameof(Language.Pages_Unit_Index_GovernanceStep1Body)]</p>
+                    </div>
+                </li>
+                <li>
+                    <span>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.PeopleTeam())"/>
+                    </span>
+                    <div>
+                        <strong>@Localizer[nameof(Language.Pages_Unit_Index_GovernanceStep2Label)]</strong>
+                        <p>@Localizer[nameof(Language.Pages_Unit_Index_GovernanceStep2Body)]</p>
+                    </div>
+                </li>
+                <li>
+                    <span>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.ShieldCheckmark())"/>
+                    </span>
+                    <div>
+                        <strong>@Localizer[nameof(Language.Pages_Unit_Index_GovernanceStep3Label)]</strong>
+                        <p>@Localizer[nameof(Language.Pages_Unit_Index_GovernanceStep3Body)]</p>
+                    </div>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="utf-community-page-section utf-unit-section">
+        <div class="utf-section-heading">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Unit_Index_CommunityResourcesKicker)]</span>
+            <h2>@Localizer[nameof(Language.Pages_Unit_Index_CommunityResourcesTitle)]</h2>
+        </div>
+
+        <div class="utf-unit-feature-grid utf-unit-feature-grid--three">
+            <article class="utf-unit-feature-card">
+                <div class="utf-unit-feature-card__top">
+                    <span class="utf-unit-feature-icon">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.Calendar())"/>
+                    </span>
+                    <span class="utf-unit-state utf-unit-state--active">@Localizer[nameof(Language.Pages_Unit_Index_StateActive)]</span>
+                </div>
+                <h3>@Localizer[nameof(Language.Pages_Unit_Index_OperationsBoardTitle)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Unit_Index_OperationsBoardBody)]</p>
+                <a class="utf-unit-feature-card__action" href="@BaseUrl.ResolveSelfUrl("events/upcoming")">
+                    @Localizer[nameof(Language.Pages_Unit_Index_ViewOperations)]
+                </a>
+            </article>
+
+            <article class="utf-unit-feature-card">
+                <div class="utf-unit-feature-card__top">
+                    <span class="utf-unit-feature-icon">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                    </span>
+                    <span class="utf-unit-state utf-unit-state--active">@Localizer[nameof(Language.Pages_Unit_Index_StateActive)]</span>
+                </div>
+                <h3>@Localizer[nameof(Language.Pages_Unit_Index_FieldReportsTitle)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Unit_Index_FieldReportsBody)]</p>
+                <a class="utf-unit-feature-card__action" href="@BaseUrl.ResolveSelfUrl("field-reports")">
+                    @Localizer[nameof(Language.Pages_Unit_Index_OpenFieldReports)]
+                </a>
+            </article>
+
+            <article class="utf-unit-feature-card">
+                <div class="utf-unit-feature-card__top">
+                    <span class="utf-unit-feature-icon">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.BookOpen())"/>
+                    </span>
+                    <span class="utf-unit-state utf-unit-state--active">@Localizer[nameof(Language.Pages_Unit_Index_StateActive)]</span>
+                </div>
+                <h3>@Localizer[nameof(Language.Pages_Unit_Index_WikiTitle)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Unit_Index_WikiBody)]</p>
+                <a class="utf-unit-feature-card__action" href="@BaseUrl.ResolveSelfUrl("wiki")">
+                    @Localizer[nameof(Language.Pages_Unit_Index_OpenWiki)]
+                </a>
+            </article>
+        </div>
+    </section>
+
+    <section class="utf-community-page-section utf-unit-section utf-unit-section--values">
+        <div class="utf-section-heading">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Unit_Index_ValuesKicker)]</span>
+            <h2>@Localizer[nameof(Language.Pages_Unit_Index_ValuesTitle)]</h2>
+        </div>
+
+        <div class="utf-unit-values">
+            <article>
+                <h3>@Localizer[nameof(Language.Pages_Unit_Index_Value1Title)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Unit_Index_Value1Body)]</p>
+            </article>
+            <article>
+                <h3>@Localizer[nameof(Language.Pages_Unit_Index_Value2Title)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Unit_Index_Value2Body)]</p>
+            </article>
+            <article>
+                <h3>@Localizer[nameof(Language.Pages_Unit_Index_Value3Title)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Unit_Index_Value3Body)]</p>
+            </article>
+            <article>
+                <h3>@Localizer[nameof(Language.Pages_Unit_Index_Value4Title)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Unit_Index_Value4Body)]</p>
+            </article>
+        </div>
+    </section>
+</div>
+
+@code {
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private string HeroImageStyle
+        => $"--utf-hero-image: url('{GetSiteImageUrl("unit-hero", "media/generated/unit-training-assembly-hero.jpg")}');";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+}

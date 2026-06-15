@@ -1,0 +1,245 @@
+.verein-membership-requests-page {
+    color: var(--utf-text);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 1560px;
+    min-width: 0;
+}
+
+.verein-membership-requests-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.verein-membership-requests-page ::deep .verein-membership-requests-toolbar {
+    align-items: center;
+    column-gap: 0.55rem;
+    row-gap: 0.6rem;
+}
+
+.verein-membership-requests-page ::deep .verein-membership-requests-toolbar .utf-command-search-field {
+    flex: 1 1 22rem;
+    max-width: 28rem;
+}
+
+.verein-membership-requests-page ::deep .verein-membership-requests-toolbar .utf-filter-chip {
+    min-height: 38px;
+    padding-inline: 0.72rem;
+    white-space: nowrap;
+}
+
+.verein-membership-request-workspace {
+    grid-template-columns: minmax(0, 1.35fr) minmax(23rem, 0.65fr);
+}
+
+.verein-membership-request-list.utf-command-ledger {
+    padding: 0;
+}
+
+.verein-membership-request-list__header {
+    align-items: center;
+}
+
+.verein-membership-request-table {
+    min-width: 1040px;
+    table-layout: fixed;
+}
+
+.verein-membership-request-table th:nth-child(1) {
+    width: 28%;
+}
+
+.verein-membership-request-table th:nth-child(2) {
+    width: 12rem;
+}
+
+.verein-membership-request-table th:nth-child(3),
+.verein-membership-request-table th:nth-child(4) {
+    width: 18%;
+}
+
+.verein-membership-request-table th:last-child,
+.verein-membership-request-table td:last-child {
+    text-align: right;
+    width: 8rem;
+}
+
+.verein-membership-request-row {
+    cursor: pointer;
+}
+
+.verein-membership-requests-page ::deep .verein-membership-request-row-action {
+    min-height: 34px;
+    white-space: nowrap;
+}
+
+.verein-empty {
+    color: var(--utf-text-muted);
+    line-height: 1.5;
+    padding: 1rem;
+}
+
+.verein-membership-request-detail {
+    align-self: start;
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    position: sticky;
+    top: 88px;
+}
+
+.verein-membership-request-detail__header {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--utf-stroke);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    min-width: 0;
+    padding-bottom: 1rem;
+}
+
+.verein-membership-request-detail__header h2 {
+    color: var(--utf-text);
+    font-size: 1.18rem;
+    line-height: 1.2;
+    margin: 0.2rem 0 0;
+}
+
+.verein-membership-request-detail__header p,
+.verein-membership-request-section p {
+    color: var(--utf-text-muted);
+    line-height: 1.55;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.verein-membership-request-meta {
+    display: grid;
+    gap: 0;
+    grid-template-columns: minmax(8rem, 0.56fr) minmax(0, 1fr);
+    margin: 0;
+}
+
+.verein-membership-request-meta div {
+    display: contents;
+}
+
+.verein-membership-request-meta dt,
+.verein-membership-request-meta dd {
+    border-bottom: 1px solid var(--utf-stroke);
+    margin: 0;
+    min-width: 0;
+    padding: 0.68rem 0;
+}
+
+.verein-membership-request-meta dt {
+    color: var(--utf-text-subtle);
+    font-size: 0.74rem;
+    font-weight: 850;
+    padding-right: 1rem;
+    text-transform: uppercase;
+}
+
+.verein-membership-request-meta dd {
+    color: var(--utf-text);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.verein-membership-request-section {
+    border-top: 1px solid var(--utf-stroke);
+    display: grid;
+    gap: 0.75rem;
+    padding-top: 1rem;
+}
+
+.verein-membership-request-ack-list {
+    color: var(--utf-text-muted);
+    display: grid;
+    gap: 0.5rem;
+    line-height: 1.45;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.verein-membership-request-ack-list li {
+    align-items: center;
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: auto minmax(0, 1fr);
+    min-width: 0;
+}
+
+.verein-membership-request-form.utf-command-form {
+    grid-template-columns: 1fr;
+    margin-top: 0;
+    padding-top: 1rem;
+}
+
+.verein-membership-request-form textarea.utf-command-input {
+    min-height: 6.5rem;
+}
+
+.verein-membership-request-actions {
+    justify-content: flex-start;
+}
+
+@media (max-width: 1240px) {
+    .verein-membership-request-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .verein-membership-request-detail {
+        position: static;
+    }
+}
+
+@media (max-width: 1040px) {
+    .verein-membership-requests-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .verein-membership-requests-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .verein-membership-requests-page ::deep .verein-membership-requests-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .verein-membership-requests-page ::deep .verein-membership-requests-toolbar .utf-command-search-field,
+    .verein-membership-requests-page ::deep .verein-membership-requests-toolbar .utf-button,
+    .verein-membership-requests-page ::deep .verein-membership-requests-toolbar .utf-filter-chip {
+        max-width: none;
+        width: 100%;
+    }
+
+    .verein-membership-request-list__header,
+    .verein-membership-request-detail__header,
+    .verein-membership-request-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .verein-membership-request-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .verein-membership-request-meta dt {
+        border-bottom: 0;
+        padding-bottom: 0.2rem;
+        padding-right: 0;
+    }
+
+    .verein-membership-request-meta dd {
+        padding-top: 0;
+    }
+
+    .verein-membership-request-actions ::deep .utf-button {
+        width: 100%;
+    }
+}

@@ -1,0 +1,334 @@
+@using Microsoft.AspNetCore.Components.Sections
+@using X39.UnitedTacticalForces.WebApp.Services
+@inherits LayoutComponentBase
+@inject IStringLocalizer<Language> Localizer
+@inject NavigationManager NavigationManager
+@inject MeService Me
+@inject BaseUrl BaseUrl
+
+<div class="utf-command-shell">
+    <aside class="@CommandNavClass">
+        <div class="utf-command-nav__brand">
+            <img src="@BaseUrl.ResolveResourceUrl("insignia-48px.png")" alt="" />
+            <div>
+                <span>@Localizer[nameof(Language.Shared_CommandCenter_BrandName)]</span>
+                <strong>@Localizer[nameof(Language.Shared_CommandCenter_HeaderTitle)]</strong>
+            </div>
+        </div>
+
+        <nav class="utf-command-nav__groups" aria-label="@(Localizer[nameof(Language.Shared_CommandCenter_NavigationAria)])">
+            <div class="utf-command-nav__group">
+                <div class="utf-command-nav__label">@Localizer[nameof(Language.Shared_CommandCenter_Group_CommandCenter)]</div>
+                <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command")" Match="NavLinkMatch.All">
+                    <FluentIcon Value="@(new Icons.Regular.Size24.Home())"/>
+                    <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_Overview)]</span>
+                </NavLink>
+            </div>
+
+            @if (CanManageOperations || Me.CanAccessGameServers())
+            {
+                <div class="utf-command-nav__group">
+                    <div class="utf-command-nav__label">@Localizer[nameof(Language.Shared_CommandCenter_Group_Operations)]</div>
+                    @if (Me.CanAccessGameServers())
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/servers")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.Settings())"/>
+                            <span>@Localizer["Hosting_Nav_Servers"]</span>
+                        </NavLink>
+                    }
+                    @if (Me.HasClaimOrEventAdmin(Claims.Creation.Events))
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/events")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.Calendar())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_Events)]</span>
+                        </NavLink>
+                    }
+                </div>
+            }
+
+            @if (CanManageAssets)
+            {
+                <div class="utf-command-nav__group">
+                    <div class="utf-command-nav__label">@Localizer[nameof(Language.Shared_CommandCenter_Group_Assets)]</div>
+                    @if (Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All))
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/mod-packs")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.BoxMultiple())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_ModPacks)]</span>
+                        </NavLink>
+                    }
+                    @if (Me.HasBaseClaimOrTerrainAdmin(Claims.Creation.Terrain, Claims.ResourceBased.Terrain.All))
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/terrains")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.Map())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_Terrains)]</span>
+                        </NavLink>
+                    }
+                    @if (CanManageWikiMedia)
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/field-reports")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_FieldReports)]</span>
+                        </NavLink>
+                    }
+                    @if (CanManageMediaGallery)
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/content/gallery")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.Image())"/>
+                            <span>@Localizer["Shared_CommandCenter_Nav_Gallery"]</span>
+                        </NavLink>
+                    }
+                    @if (CanManageContentPages)
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/content/images/home")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.Image())"/>
+                            <span>Public images</span>
+                        </NavLink>
+                    }
+                </div>
+            }
+
+            @if (CanManageCommunity)
+            {
+                <div class="utf-command-nav__group">
+                    <div class="utf-command-nav__label">@Localizer[nameof(Language.Shared_CommandCenter_Group_Community)]</div>
+                    @if (CanManageMembers)
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/members")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.PeopleTeam())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_Members)]</span>
+                        </NavLink>
+                    }
+                    @if (CanManageAuthority)
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/roles")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.Shield())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_Roles)]</span>
+                        </NavLink>
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/claims")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_Claims)]</span>
+                        </NavLink>
+                    }
+                </div>
+            }
+
+            @if (CanManageGovernance)
+            {
+                <div class="utf-command-nav__group">
+                    <div class="utf-command-nav__label">@Localizer[nameof(Language.Shared_CommandCenter_Group_Governance)]</div>
+                    @if (CanManageContentPages)
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/content/pages")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_PublicPages)]</span>
+                        </NavLink>
+                    }
+                    @if (CanManageVereinMemberships)
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/verein/membership-requests")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.PeopleTeam())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_VereinMembershipRequests)]</span>
+                        </NavLink>
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/verein/settings")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.Settings())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_VereinSettings)]</span>
+                        </NavLink>
+                    }
+                    @if (CanManageVereinDocuments)
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/verein/documents")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_VereinDocuments)]</span>
+                        </NavLink>
+                    }
+                    @if (CanManageVereinKassenbuch)
+                    {
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/verein/kassenbuch")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.WalletCreditCard())"/>
+                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_VereinKassenbuch)]</span>
+                        </NavLink>
+                    }
+                    <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/settings")">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.Shield())"/>
+                        <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_Settings)]</span>
+                    </NavLink>
+                </div>
+            }
+        </nav>
+    </aside>
+
+    @if (_isDrawerOpen)
+    {
+        <button class="utf-command-scrim"
+                type="button"
+                aria-label="@(Localizer[nameof(Language.Shared_CommandCenter_CloseNavigationAria)])"
+                @onclick="ToggleDrawer"></button>
+    }
+
+    <div class="utf-command-main">
+        <header class="utf-command-topbar">
+            <button class="utf-command-drawer-button"
+                    type="button"
+                    aria-label="@(Localizer[nameof(Language.Shared_CommandCenter_OpenNavigationAria)])"
+                    aria-expanded="@_isDrawerOpen"
+                    @onclick="ToggleDrawer">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <div class="utf-command-topbar__title">
+                <span>@Localizer[nameof(Language.Shared_CommandCenter_HeaderTitle)]</span>
+                <strong>@CurrentArea</strong>
+            </div>
+
+            <div class="utf-command-topbar__actions">
+                <SectionOutlet SectionName="@MainLayout.FooterSection"/>
+                <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("")" Match="NavLinkMatch.All">
+                    @Localizer[nameof(Language.Shared_CommandCenter_BackToSite)]
+                </UtfCommandButton>
+                @if (Me.IsAuthenticated)
+                {
+                    <UtfProfileMenu Mode="@EUtfProfileMenuMode.CommandCenter"
+                                    CanAccessCommandCenter="@CanAccessCommandCenter"
+                                    EnableOperationalAttention="true"/>
+                }
+            </div>
+        </header>
+
+        <main class="utf-command-content">
+            @Body
+        </main>
+    </div>
+</div>
+
+<AppProviders/>
+
+@code {
+
+    private bool _isDrawerOpen;
+
+    private bool CanManageOperations
+        => Me.HasClaimOrEventAdmin(Claims.Creation.Events)
+           || Me.CanCreateGameServers();
+
+    private bool CanManageAssets
+        => Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All)
+           || Me.HasBaseClaimOrTerrainAdmin(Claims.Creation.Terrain, Claims.ResourceBased.Terrain.All)
+           || CanManageWikiMedia
+           || CanManageMediaGallery;
+
+    private bool CanManageWikiMedia
+        => Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All);
+
+    private bool CanManageMediaGallery
+        => CanManageWikiMedia || CanManageContentPages;
+
+    private bool CanManageCommunity
+        => CanManageMembers || CanManageAuthority;
+
+    private bool CanManageMembers
+        => Me.HasBaseClaimOrUserAdmin(Claims.User.All)
+           || Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Members);
+
+    private bool CanManageAuthority
+        => Me.HasClaimOrRoleAdmin();
+
+    private bool CanManageGovernance
+        => CanManageVerein || CanManageContentPages;
+
+    private bool CanManageContentPages
+        => Me.HasClaim(Claims.Administrative.All) || Me.HasBaseClaim(Claims.Content.Pages);
+
+    private bool CanManageVerein
+        => CanManageVereinDocuments || CanManageVereinKassenbuch || CanManageVereinMemberships;
+
+    private bool CanManageVereinMemberships
+        => Me.HasBaseClaimOrUserAdmin(Claims.User.All)
+           || Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Members);
+
+    private bool CanManageVereinDocuments
+        => Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Documents);
+
+    private bool CanManageVereinKassenbuch
+        => Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Kassenbuch);
+
+    private bool CanAccessCommandCenter
+        => CanManageOperations
+           || CanManageAssets
+           || CanManageCommunity
+           || CanManageGovernance;
+
+    private string CurrentArea
+    {
+        get
+        {
+            var path = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+            var queryStart = path.IndexOfAny(['?', '#']);
+            if (queryStart >= 0)
+                path = path[..queryStart];
+            path = path.Trim('/').ToLowerInvariant();
+            return path switch
+            {
+                ""                      => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Overview)].Value,
+                "command"               => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Overview)].Value,
+                "command/servers"        => Localizer["Hosting_Nav_Servers"].Value,
+                "command/servers/create" => Localizer["Hosting_Create_Title"].Value,
+                _ when path.StartsWith("command/servers/", StringComparison.Ordinal) => Localizer["Hosting_Detail_Title"].Value,
+                "events/all"            => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventAdministration)].Value,
+                "command/events"        => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventAdministration)].Value,
+                "events/create"         => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_CreateEvent)].Value,
+                "command/events/create" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_CreateEvent)].Value,
+                _ when path.StartsWith("command/events/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventEditor)].Value,
+                "data/mod-packs/all"    => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_ModPacks)].Value,
+                "command/mod-packs"     => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_ModPacks)].Value,
+                _ when path.StartsWith("data/mod-packs/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_ModPackDetail)].Value,
+                _ when path.StartsWith("command/mod-packs/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_ModPackDetail)].Value,
+                "data/terrains/all"     => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Terrains)].Value,
+                "command/terrains"      => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Terrains)].Value,
+                _ when path.StartsWith("data/terrains/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Terrains)].Value,
+                _ when path.StartsWith("command/terrains/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Terrains)].Value,
+                "command/field-reports" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_FieldReports)].Value,
+                "command/field-reports/create" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_CreateFieldReport)].Value,
+                _ when path.StartsWith("command/field-reports/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EditFieldReport)].Value,
+                "command/wiki-media"    => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_FieldReports)].Value,
+                "command/content/gallery" => Localizer["Shared_CommandCenter_CurrentArea_Gallery"].Value,
+                "command/content/images" => "Public images",
+                _ when path.StartsWith("command/content/images/", StringComparison.Ordinal) => "Public images",
+                "command/members"       => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Members)].Value,
+                _ when path.StartsWith("command/members/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_MemberDetail)].Value,
+                "command/roles"         => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Roles)].Value,
+                _ when path.StartsWith("command/roles/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Roles)].Value,
+                "command/claims"        => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Claims)].Value,
+                "command/content/pages" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_PublicPages)].Value,
+                _ when path.StartsWith("command/content/pages/", StringComparison.Ordinal)
+                       && path.EndsWith("/edit", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EditPublicPage)].Value,
+                _ when path.StartsWith("command/content/pages/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_PublicPage)].Value,
+                "command/verein/membership-requests" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_VereinMembershipRequests)].Value,
+                "command/verein/settings" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_VereinSettings)].Value,
+                "command/verein/documents" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_VereinDocuments)].Value,
+                "command/verein/documents/create" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_CreateVereinDocument)].Value,
+                _ when path.StartsWith("command/verein/documents/", StringComparison.Ordinal)
+                       && path.EndsWith("/edit", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EditVereinDocument)].Value,
+                _ when path.StartsWith("command/verein/documents/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_VereinDocument)].Value,
+                "command/verein/kassenbuch" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_VereinKassenbuch)].Value,
+                "command/verein/kassenbuch/create" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_CreateKassenbuchEntry)].Value,
+                _ when path.StartsWith("command/verein/kassenbuch/", StringComparison.Ordinal)
+                       && path.EndsWith("/edit", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EditKassenbuchEntry)].Value,
+                "users"                 => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Members)].Value,
+                _ when path.StartsWith("users/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_MemberDetail)].Value,
+                "settings"              => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Settings)].Value,
+                "command/settings"      => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Settings)].Value,
+                _                        => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Operations)].Value,
+            };
+        }
+    }
+
+    private string CommandNavClass
+        => _isDrawerOpen ? "utf-command-nav open" : "utf-command-nav";
+
+    private void ToggleDrawer()
+        => _isDrawerOpen = !_isDrawerOpen;
+
+}

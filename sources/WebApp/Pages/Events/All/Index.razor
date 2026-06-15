@@ -1,0 +1,535 @@
+@page "/events/all"
+@page "/command/events"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject ICommandCenterRepository CommandCenterRepository
+@inject NavigationManager NavigationManager
+@inject BaseUrl BaseUrl
+@inject MeService Me
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Events_All_PageTitle)]</PageTitle>
+
+<div class="event-admin-page">
+    <UtfCommandPageHeader Class="event-admin-header"
+                          Title="@(Localizer[nameof(Language.Pages_Events_All_PageTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Events_All_PageDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Events_All_ActionRefresh)]</ChildContent>
+            </UtfCommandButton>
+            @if (CanManageEvents)
+            {
+                <UtfCommandButton Variant="primary"
+                                  OnClick="@(() => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/events/create")))">
+                    <Icon>
+                        <FluentIcon Value="@(new Icons.Regular.Size24.New())"/>
+                    </Icon>
+                    <ChildContent>@Localizer[nameof(Language.Pages_Events_All_ActionCreate)]</ChildContent>
+                </UtfCommandButton>
+            }
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageEvents)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Events_All_AccessDeniedTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Events_All_AccessDeniedBody)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics event-admin-attention" aria-label="@(Localizer[nameof(Language.Pages_Events_All_MetricsAria)])">
+            <UtfCommandMetric Active="@(_filter is EventFilter.All)"
+                              Description="@(Localizer[nameof(Language.Pages_Events_All_MetricDescriptionReturned), _events.Count.ToString(CultureInfo.CurrentCulture)])"
+                              OnClick="@(() => SetFilter(EventFilter.All))"
+                              Status="@(Localizer[nameof(Language.Pages_Events_All_MetricStatusArchive)])"
+                              StatusIntent="neutral"
+                              Value="@GetEventCountLabel()"/>
+            <UtfCommandMetric Active="@(_filter is EventFilter.Upcoming)"
+                              Description="@GetNextEventLabel()"
+                              OnClick="@(() => SetFilter(EventFilter.Upcoming))"
+                              Status="@(Localizer[nameof(Language.Pages_Events_All_MetricStatusUpcoming)])"
+                              StatusIntent="@GetUpcomingStatusIntent()"
+                              Value="@(Localizer[nameof(Language.Pages_Events_All_MetricValueUpcoming), UpcomingEventCount.ToString(CultureInfo.CurrentCulture)])"/>
+            <UtfCommandMetric Active="@(_filter is EventFilter.NeedsSlots)"
+                              Description="@(Localizer[nameof(Language.Pages_Events_All_MetricDescriptionNeedsSlots)])"
+                              OnClick="@(() => SetFilter(EventFilter.NeedsSlots))"
+                              Status="@(Localizer[nameof(Language.Pages_Events_All_MetricStatusSlots)])"
+                              StatusIntent="@GetSlotAttentionStatusIntent()"
+                              Value="@(Localizer[nameof(Language.Pages_Events_All_MetricValueBelowMinimum), LowSlotEventCount.ToString(CultureInfo.CurrentCulture)])"/>
+            <UtfCommandMetric Active="@(_filter is EventFilter.Hidden)"
+                              Description="@(Localizer[nameof(Language.Pages_Events_All_MetricDescriptionHidden)])"
+                              OnClick="@(() => SetFilter(EventFilter.Hidden))"
+                              Status="@(Localizer[nameof(Language.Pages_Events_All_MetricStatusVisibility)])"
+                              StatusIntent="@GetHiddenStatusIntent()"
+                              Value="@(Localizer[nameof(Language.Pages_Events_All_MetricValueHiddenEvents), HiddenEventCount.ToString(CultureInfo.CurrentCulture)])"/>
+        </section>
+
+        <UtfCommandToolbar AriaLabel="@(Localizer[nameof(Language.Pages_Events_All_FilterToolbarAria)])"
+                           Class="event-admin-toolbar">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Events_All_FilterPlaceholder)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            <UtfCommandFilter Active="@(_filter is EventFilter.All)"
+                              Count="@GetFilterCountLabel(EventFilter.All)"
+                              Label="@(Localizer[nameof(Language.Pages_Events_All_FilterAll)])"
+                              OnClick="@(() => SetFilter(EventFilter.All))"/>
+            <UtfCommandFilter Active="@(_filter is EventFilter.Upcoming)"
+                              Count="@GetFilterCountLabel(EventFilter.Upcoming)"
+                              Label="@(Localizer[nameof(Language.Pages_Events_All_FilterUpcoming)])"
+                              OnClick="@(() => SetFilter(EventFilter.Upcoming))"/>
+            <UtfCommandFilter Active="@(_filter is EventFilter.NeedsSlots)"
+                              Count="@GetFilterCountLabel(EventFilter.NeedsSlots)"
+                              Label="@(Localizer[nameof(Language.Pages_Events_All_FilterNeedsSlots)])"
+                              OnClick="@(() => SetFilter(EventFilter.NeedsSlots))"/>
+            <UtfCommandFilter Active="@(_filter is EventFilter.Hidden)"
+                              Count="@GetFilterCountLabel(EventFilter.Hidden)"
+                              Label="@(Localizer[nameof(Language.Pages_Events_All_FilterHidden)])"
+                              OnClick="@(() => SetFilter(EventFilter.Hidden))"/>
+            <UtfCommandFilter Active="@(_filter is EventFilter.Archived)"
+                              Count="@GetFilterCountLabel(EventFilter.Archived)"
+                              Label="@(Localizer[nameof(Language.Pages_Events_All_FilterArchived)])"
+                              OnClick="@(() => SetFilter(EventFilter.Archived))"/>
+            <UtfCommandFilter Active="@(!_onlyHostedByMe)"
+                              Label="@(Localizer[nameof(Language.Pages_Events_All_FilterAllHosts)])"
+                              OnClick="@(() => SetOnlyHostedByMeAsync(false))"/>
+            <UtfCommandFilter Active="@_onlyHostedByMe"
+                              Label="@(Localizer[nameof(Language.Pages_Events_All_FilterHostedByMe)])"
+                              OnClick="@(() => SetOnlyHostedByMeAsync(true))"/>
+        </UtfCommandToolbar>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Events_All_LoadingState)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <section class="utf-panel utf-command-ledger event-admin-workspace event-admin-ledger">
+                <div class="utf-command-ledger__header event-admin-ledger__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Events_All_Kicker)]</span>
+                        <h2>@GetListTitle()</h2>
+                    </div>
+                    <div class="event-admin-ledger__status">
+                        <UtfStatusBadge Intent="neutral"
+                                        Text="@(Localizer[nameof(Language.Pages_Events_All_VisibleCount), VisibleEventRows.Count().ToString(CultureInfo.CurrentCulture)])"/>
+                    </div>
+                </div>
+
+                @if (!VisibleEventRows.Any())
+                {
+                    <div class="event-admin-empty">@Localizer[nameof(Language.Pages_Events_All_NoEventsMatch)]</div>
+                }
+                else
+                {
+                    <div class="utf-command-table-scroll event-admin-table-scroll">
+                        <table class="utf-command-table event-admin-table">
+                            <thead>
+                            <tr>
+                                <th>@Localizer[nameof(Language.Pages_Events_All_TableHeaderOperation)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Events_All_TableHeaderStatus)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Events_All_TableHeaderHostOwner)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Events_All_TableHeaderSchedule)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Events_All_TableHeaderAssets)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Events_All_TableHeaderSlots)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Events_All_TableHeaderActions)]</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var row in VisibleEventRows)
+                            {
+                                <tr class="@GetEventRowClass(row)"
+                                    @key="row.PlainEvent.PrimaryKey"
+                                    @onclick="@(() => NavigateToEventEditor(row.PlainEvent.PrimaryKey))">
+                                    <td>
+                                        <strong>@FormatEventTitle(row.PlainEvent)</strong>
+                                        <span>@FormatEventId(row.PlainEvent.PrimaryKey)</span>
+                                    </td>
+                                    <td>
+                                        <UtfStatusBadge Intent="@GetEventStatusIntent(row.PlainEvent)"
+                                                        Text="@GetEventStatus(row.PlainEvent)"/>
+                                    </td>
+                                    <td>
+                                        <strong>@FormatUser(row.HostedBy)</strong>
+                                        <span>@FormatUser(row.Owner)</span>
+                                    </td>
+                                    <td>
+                                        <strong>@FormatDateTime(row.PlainEvent.ScheduledFor)</strong>
+                                        <span>@FormatRelativeSchedule(row.PlainEvent)</span>
+                                    </td>
+                                    <td>
+                                        <strong>@(row.Terrain?.Title ?? MissingValue)</strong>
+                                        <span>@(row.ModPackRevision?.DefinitionTitle ?? MissingValue)</span>
+                                    </td>
+                                    <td>
+                                        <strong>@GetSlotReadinessLabel(row.PlainEvent)</strong>
+                                        <span>@GetParticipantBreakdown(row.PlainEvent)</span>
+                                        <div class="event-admin-row-progress" aria-hidden="true">
+                                            <span style="@GetSlotProgressStyle(row.PlainEvent)"></span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button class="utf-button utf-button--ghost event-admin-row-action"
+                                                type="button"
+                                                disabled="@(row.PlainEvent.PrimaryKey is null)"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="@(() => NavigateToEventSlots(row.PlainEvent.PrimaryKey))">
+                                            @Localizer[nameof(Language.Pages_Events_All_ViewSlots)]
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <div class="event-admin-list__footer">
+                    <span>@GetLoadedWindowLabel()</span>
+                    <FluentButton Disabled="@(!CanLoadMore || _isLoadingMore)"
+                                  OnClick="LoadMoreAsync">
+                        @(_isLoadingMore ? Localizer[nameof(Language.Pages_Events_All_LoadingMore)] : Localizer[nameof(Language.Pages_Events_All_LoadMore)])
+                    </FluentButton>
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private const string MissingValue = "n/a";
+    private const int EventWindowSize = 80;
+
+    private IReadOnlyList<CommandCenterEventAdminEventInfo> _events = [];
+    private IReadOnlyList<UpcomingEventDto> _upcomingEvents = [];
+    private long _eventCount = -1;
+    private int _loadedTake = EventWindowSize;
+    private bool _onlyHostedByMe;
+    private EventFilter _filter = EventFilter.All;
+    private string _search = string.Empty;
+    private bool _isLoading;
+    private bool _isLoadingMore;
+    private string? _loadError;
+
+    private bool CanManageEvents
+        => Me.HasClaimOrEventAdmin(Claims.Creation.Events);
+
+    private IEnumerable<CommandCenterEventAdminEventInfo> VisibleEventRows
+        => _events
+            .Where(MatchesCurrentFilter)
+            .Where(MatchesSearch)
+            .OrderByDescending((row) => IsUpcoming(row.PlainEvent))
+            .ThenBy((row) => row.PlainEvent.ScheduledFor ?? DateTimeOffset.MaxValue)
+            .ThenBy((row) => row.PlainEvent.Title);
+
+    private int UpcomingEventCount
+        => _upcomingEvents.Count;
+
+    private int LowSlotEventCount
+        => _events.Count((row) => IsUnderMinimum(row.PlainEvent));
+
+    private int HiddenEventCount
+        => _events.Count((row) => !(row.PlainEvent.IsVisible ?? true));
+
+    private int ArchivedEventCount
+        => _events.Count((row) => IsArchived(row.PlainEvent));
+
+    private bool CanLoadMore
+        => _eventCount > _events.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageEvents)
+            await LoadAsync(resetWindow: true);
+    }
+
+    private async Task LoadAsync(bool resetWindow = false, CancellationToken cancellationToken = default)
+    {
+        if (resetWindow)
+        {
+            _loadedTake = EventWindowSize;
+        }
+
+        _isLoading = !_isLoadingMore;
+        _loadError = null;
+
+        try
+        {
+            var snapshot = await CommandCenterRepository
+                .GetEventAdminSnapshotAsync(
+                    take: _loadedTake,
+                    hostedByMeOnly: _onlyHostedByMe,
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+
+            _eventCount = snapshot.EventCount;
+            _upcomingEvents = [..snapshot.UpcomingEvents];
+            _events = [..snapshot.Events];
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            _eventCount = 0;
+            _events = [];
+            _upcomingEvents = [];
+            _loadError = Localizer[nameof(Language.Pages_Events_All_LoadError)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+            _isLoadingMore = false;
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        await LoadAsync(resetWindow: true)
+            .ConfigureAwait(false);
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (!CanLoadMore || _isLoadingMore)
+            return;
+
+        _loadedTake += EventWindowSize;
+        _isLoadingMore = true;
+        await LoadAsync();
+    }
+
+    private void NavigateToEventEditor(Guid? eventId)
+    {
+        if (eventId is null)
+            return;
+
+        NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/events/{eventId}"));
+    }
+
+    private void NavigateToEventSlots(Guid? eventId)
+    {
+        if (eventId is null)
+            return;
+
+        NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"events/{eventId}"));
+    }
+
+    private async Task SetOnlyHostedByMeAsync(bool value)
+    {
+        if (_onlyHostedByMe == value)
+            return;
+
+        _onlyHostedByMe = value;
+        await LoadAsync(resetWindow: true);
+    }
+
+    private void SetFilter(EventFilter filter)
+        => _filter = filter;
+
+    private void OnSearchChanged(string value)
+        => _search = value;
+
+    private bool MatchesCurrentFilter(CommandCenterEventAdminEventInfo row)
+        => _filter switch
+        {
+            EventFilter.Upcoming => IsUpcoming(row.PlainEvent),
+            EventFilter.NeedsSlots => IsUnderMinimum(row.PlainEvent),
+            EventFilter.Hidden => !(row.PlainEvent.IsVisible ?? true),
+            EventFilter.Archived => IsArchived(row.PlainEvent),
+            _ => true,
+        };
+
+    private bool MatchesSearch(CommandCenterEventAdminEventInfo row)
+    {
+        var search = _search.Trim();
+        if (search.Length is 0)
+            return true;
+
+        return FormatEventTitle(row.PlainEvent).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatEventId(row.PlainEvent.PrimaryKey).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || GetEventStatus(row.PlainEvent).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatUser(row.HostedBy).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatUser(row.Owner).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || (row.Terrain?.Title?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
+               || (((string?) row.ModPackRevision?.DefinitionTitle)?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    private string GetListTitle()
+        => _filter switch
+        {
+            EventFilter.Upcoming => Localizer[nameof(Language.Pages_Events_All_TitleUpcoming)].Value,
+            EventFilter.NeedsSlots => Localizer[nameof(Language.Pages_Events_All_TitleNeedsSlots)].Value,
+            EventFilter.Hidden => Localizer[nameof(Language.Pages_Events_All_TitleHidden)].Value,
+            EventFilter.Archived => Localizer[nameof(Language.Pages_Events_All_TitleArchived)].Value,
+            _ => Localizer[nameof(Language.Pages_Events_All_TitleAll)].Value,
+        };
+
+    private string GetEventRowClass(CommandCenterEventAdminEventInfo row)
+        => "event-admin-row";
+
+    private string GetEventCountLabel()
+        =>_eventCount< 0
+            ? Localizer[nameof(Language.Pages_Events_All_EventCountLoading)].Value
+            : Localizer[nameof(Language.Pages_Events_All_EventCountLoaded), _eventCount.ToString(CultureInfo.CurrentCulture)].Value;
+
+    private string GetLoadedWindowLabel()
+        =>_eventCount<= _events.Count
+            ? Localizer[nameof(Language.Pages_Events_All_EventsLoaded), _events.Count.ToString(CultureInfo.CurrentCulture)].Value
+            : Localizer[nameof(Language.Pages_Events_All_EventsLoadedOf), _events.Count.ToString(CultureInfo.CurrentCulture), _eventCount.ToString(CultureInfo.CurrentCulture)].Value;
+
+    private string GetFilterCountLabel(EventFilter filter)
+        => filter switch
+        {
+            EventFilter.Upcoming => UpcomingEventCount.ToString(CultureInfo.CurrentCulture),
+            EventFilter.NeedsSlots => LowSlotEventCount.ToString(CultureInfo.CurrentCulture),
+            EventFilter.Hidden => HiddenEventCount.ToString(CultureInfo.CurrentCulture),
+            EventFilter.Archived => ArchivedEventCount.ToString(CultureInfo.CurrentCulture),
+            _ => _events.Count.ToString(CultureInfo.CurrentCulture),
+        };
+
+    private string GetNextEventLabel()
+    {
+        var next = _upcomingEvents
+            .OrderBy((eventItem) => eventItem.ScheduledFor ?? DateTimeOffset.MaxValue)
+            .FirstOrDefault();
+        return next is null
+            ? Localizer[nameof(Language.Pages_Events_All_NoUpcomingReturned)].Value
+            : $"{next.Title ?? Localizer[nameof(Language.Pages_Events_All_UntitledEvent)].Value} / {FormatDateTime(next.ScheduledFor)}";
+    }
+
+    private string GetUpcomingStatusIntent()
+        => UpcomingEventCount > 0 ? "info" : "neutral";
+
+    private string GetSlotAttentionStatusIntent()
+        => LowSlotEventCount > 0 ? "warning" : "success";
+
+    private string GetHiddenStatusIntent()
+        => HiddenEventCount > 0 ? "warning" : "success";
+
+    private string GetEventStatus(PlainEventDto eventItem)
+    {
+        if (!(eventItem.IsVisible ?? true))
+            return Localizer[nameof(Language.Pages_Events_All_StatusHidden)].Value;
+
+        if (IsArchived(eventItem))
+            return Localizer[nameof(Language.Pages_Events_All_StatusArchived)].Value;
+
+        return IsUnderMinimum(eventItem) ? Localizer[nameof(Language.Pages_Events_All_StatusLowSlots)].Value : Localizer[nameof(Language.Pages_Events_All_StatusReady)].Value;
+    }
+
+    private string GetEventStatusIntent(PlainEventDto eventItem)
+        => ! (eventItem.IsVisible ?? true)
+            ? "info"
+            : IsArchived(eventItem)
+                ? "neutral"
+                : IsUnderMinimum(eventItem)
+                    ? "warning"
+                    : "success";
+
+    private string GetSlotReadinessLabel(PlainEventDto eventItem)
+        => Localizer[nameof(Language.Pages_Events_All_SlotReadiness), (eventItem.AcceptedCount ?? 0).ToString(CultureInfo.CurrentCulture), (eventItem.MinimumAccepted ?? 0).ToString(CultureInfo.CurrentCulture)].Value;
+
+    private string GetParticipantBreakdown(PlainEventDto eventItem)
+        => Localizer[nameof(Language.Pages_Events_All_ParticipantBreakdown), (eventItem.MaybeCount ?? 0).ToString(CultureInfo.CurrentCulture), (eventItem.RejectedCount ?? 0).ToString(CultureInfo.CurrentCulture)].Value;
+
+    private static string GetSlotProgressStyle(PlainEventDto eventItem)
+        => $"width: {GetSlotReadinessPercentage(eventItem).ToString("0.##", CultureInfo.InvariantCulture)}%;";
+
+    private static double GetSlotReadinessPercentage(PlainEventDto eventItem)
+    {
+        var minimum = eventItem.MinimumAccepted ?? 0;
+        if (minimum <= 0)
+            return (eventItem.AcceptedCount ?? 0) > 0 ? 100 : 0;
+        return Math.Clamp((eventItem.AcceptedCount ?? 0) * 100.0 / minimum, 0, 100);
+    }
+
+    private static bool IsUnderMinimum(PlainEventDto eventItem)
+        => (eventItem.MinimumAccepted ?? 0) > 0 && (eventItem.AcceptedCount ?? 0) < eventItem.MinimumAccepted;
+
+    private static bool IsUpcoming(PlainEventDto eventItem)
+        => eventItem.ScheduledFor is { } scheduledFor && scheduledFor >= DateTimeOffset.Now;
+
+    private static bool IsArchived(PlainEventDto eventItem)
+        => eventItem.ScheduledFor is { } scheduledFor && scheduledFor < DateTimeOffset.Now;
+
+    private string FormatRelativeSchedule(PlainEventDto eventItem)
+    {
+        if (eventItem.ScheduledFor is not { } scheduledFor)
+            return Localizer[nameof(Language.Pages_Events_All_SchedulePending)].Value;
+
+        var local = scheduledFor.ToLocalTime();
+        var delta = local - DateTimeOffset.Now;
+        if (delta.TotalMinutes >= 0)
+            return delta.TotalHours < 48
+                ? Localizer[nameof(Language.Pages_Events_All_TimeInHours), Math.Ceiling(delta.TotalHours).ToString(CultureInfo.CurrentCulture)].Value
+                : Localizer[nameof(Language.Pages_Events_All_TimeInDays), Math.Ceiling(delta.TotalDays).ToString(CultureInfo.CurrentCulture)].Value;
+
+        return Math.Abs(delta.TotalDays) < 2
+            ? Localizer[nameof(Language.Pages_Events_All_TimeAgoHours), Math.Ceiling(Math.Abs(delta.TotalHours)).ToString(CultureInfo.CurrentCulture)].Value
+            : Localizer[nameof(Language.Pages_Events_All_TimeAgoDays), Math.Ceiling(Math.Abs(delta.TotalDays)).ToString(CultureInfo.CurrentCulture)].Value;
+    }
+
+    private static string FormatDateTime(DateTimeOffset? value)
+        => value?.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture) ?? MissingValue;
+
+    private string FormatEventTitle(PlainEventDto eventItem)
+        => string.IsNullOrWhiteSpace(eventItem.Title)
+            ? Localizer[nameof(Language.Pages_Events_All_UntitledEvent)].Value
+            : eventItem.Title;
+
+    private static string FormatEventId(Guid? value)
+        => value?.ToString() ?? MissingValue;
+
+    private static string FormatUser(PlainUserDto? user)
+        => string.IsNullOrWhiteSpace(user?.Nickname) ? MissingValue : user.Nickname;
+
+    private string FormatDescription(string? description)
+        => string.IsNullOrWhiteSpace(description)
+            ? Localizer[nameof(Language.Pages_Events_All_NoDescriptionProvided)].Value
+            : description;
+
+    private string GetDescriptionLengthLabel(PlainEventDto eventItem)
+        => string.IsNullOrWhiteSpace(eventItem.Description)
+            ? Localizer[nameof(Language.Pages_Events_All_NoBriefing)].Value
+            : Localizer[nameof(Language.Pages_Events_All_CharacterCount), eventItem.Description.Length.ToString(CultureInfo.CurrentCulture)].Value;
+
+    private string GetEventImageStyle(PlainEventDto eventItem)
+    {
+        if (string.IsNullOrWhiteSpace(eventItem.ImagePath))
+            return string.Empty;
+
+        var source = BaseUrl.ResolveImageUrl(eventItem.ImagePath);
+        return $"background-image: linear-gradient(180deg, rgba(7, 11, 15, 0.12), rgba(7, 11, 15, 0.82)), url('{source}');";
+    }
+
+    private enum EventFilter
+    {
+        All,
+        Upcoming,
+        NeedsSlots,
+        Hidden,
+        Archived,
+    }
+}

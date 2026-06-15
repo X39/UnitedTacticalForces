@@ -1,0 +1,209 @@
+.terrain-detail-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+}
+
+.terrain-detail-attention {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.terrain-detail-workspace {
+    align-items: start;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+    min-width: 0;
+}
+
+.terrain-detail-preview,
+.terrain-detail-meta-panel {
+    overflow: hidden;
+}
+
+.terrain-detail-panel-header {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--utf-stroke);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 1rem;
+}
+
+.terrain-detail-panel-header h2 {
+    color: var(--utf-text);
+    font-size: 1.25rem;
+    line-height: 1.2;
+    margin: 0.2rem 0 0;
+}
+
+.terrain-detail-image {
+    align-items: center;
+    aspect-ratio: 16 / 9;
+    background-color: var(--utf-surface-2);
+    background-position: center;
+    background-size: cover;
+    color: var(--utf-text-muted);
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    min-height: 28rem;
+    overflow: hidden;
+    padding: 1rem;
+}
+
+.terrain-detail-image--empty {
+    border-top: 1px solid var(--utf-stroke);
+}
+
+.terrain-edit-form {
+    border-bottom: 1px solid var(--utf-stroke);
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.terrain-edit-field {
+    color: var(--utf-text-subtle);
+    display: grid;
+    font-size: 0.75rem;
+    font-weight: 800;
+    gap: 0.35rem;
+    text-transform: uppercase;
+}
+
+.terrain-edit-file {
+    display: grid;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.terrain-edit-file > span {
+    color: var(--utf-text-muted);
+    font-size: 0.86rem;
+    line-height: 1.4;
+}
+
+.terrain-edit-file ::deep fluent-input-file {
+    background: var(--utf-surface-2);
+    border: 1px dashed var(--utf-stroke-strong);
+    border-radius: var(--utf-radius-sm);
+    color: var(--utf-text);
+    min-height: 11rem;
+    width: 100%;
+}
+
+.terrain-edit-file ::deep fluent-input-file:hover {
+    border-color: var(--utf-gold);
+}
+
+.terrain-edit-file ::deep fluent-icon {
+    color: var(--utf-gold-strong);
+}
+
+.terrain-edit-file ::deep fluent-text,
+.terrain-edit-file ::deep label,
+.terrain-edit-file ::deep div {
+    color: var(--utf-text);
+}
+
+.terrain-edit-file ::deep label {
+    cursor: pointer;
+}
+
+.terrain-replacement-preview {
+    background: var(--utf-surface-2);
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-sm);
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.75rem;
+}
+
+.terrain-replacement-preview__image {
+    aspect-ratio: 16 / 9;
+    background-color: var(--utf-surface);
+    background-position: center;
+    background-size: cover;
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-sm);
+    min-height: 9rem;
+}
+
+.terrain-edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.terrain-detail-meta {
+    display: grid;
+    gap: 0;
+    grid-template-columns: minmax(9rem, 0.42fr) minmax(0, 1fr);
+    margin: 0;
+    padding: 1rem;
+}
+
+.terrain-detail-meta dt,
+.terrain-detail-meta dd {
+    border-bottom: 1px solid var(--utf-stroke);
+    margin: 0;
+    padding: 0.72rem 0;
+}
+
+.terrain-detail-meta dt {
+    color: var(--utf-text-subtle);
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding-right: 1rem;
+    text-transform: uppercase;
+}
+
+.terrain-detail-meta dd {
+    color: var(--utf-text);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.utf-state-panel--success {
+    border-color: rgba(34, 197, 94, 0.36);
+}
+
+@media (max-width: 1180px) {
+    .terrain-detail-attention {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .terrain-detail-workspace {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .terrain-detail-attention {
+        grid-template-columns: 1fr;
+    }
+
+    .terrain-detail-image {
+        min-height: 18rem;
+    }
+
+    .terrain-detail-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .terrain-detail-meta dt {
+        border-bottom: 0;
+        padding-bottom: 0.2rem;
+    }
+
+    .terrain-detail-meta dd {
+        padding-top: 0;
+    }
+
+    .terrain-edit-actions .utf-button {
+        width: 100%;
+    }
+}

@@ -1,0 +1,512 @@
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@implements IAsyncDisposable
+@inject IStringLocalizer<Language> Localizer
+@inject BaseUrl BaseUrl
+@inject MeService Me
+@inject IGameServerRepository GameServerRepository
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
+<div class="@RootClass" @onkeydown="HandleKeyDown">
+    <button class="utf-profile-menu__trigger"
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded="@_isOpen"
+            aria-label="@TriggerLabel"
+            @onclick="ToggleMenu">
+        <span class="utf-profile-menu__avatar"
+              style="@AvatarStyle"
+              aria-hidden="true">
+            @if (Me.User.Avatar is null || Me.User.Avatar.Length is 0)
+            {
+                <span>@Initials</span>
+            }
+            @if (AttentionCount > 0)
+            {
+                <span class="utf-profile-menu__attention-badge">@FormatAttentionCount()</span>
+            }
+        </span>
+        <span class="utf-profile-menu__trigger-copy">
+            <strong>@DisplayName</strong>
+            <span>@VerificationLabel</span>
+        </span>
+    </button>
+
+    @if (_isOpen)
+    {
+        <button class="utf-profile-menu__scrim"
+                type="button"
+                tabindex="-1"
+                aria-label="@(Localizer[nameof(Language.Components_UtfProfileMenu_CloseMenu)])"
+                @onclick="CloseMenu"></button>
+
+        <section class="utf-profile-menu__popover"
+                 role="dialog"
+                 aria-label="@(Localizer[nameof(Language.Components_UtfProfileMenu_ProfileMenu)])"
+                 @onclick:stopPropagation="true">
+            <header class="utf-profile-menu__hero">
+                <div class="utf-profile-menu__identity">
+                    <span class="utf-profile-menu__kicker">@IdentityKicker</span>
+                    <h2>@DisplayName</h2>
+                    <p>@PrimaryRoleSummary</p>
+                    <div class="utf-profile-menu__badges" aria-label="@(Localizer[nameof(Language.Components_UtfProfileMenu_AccountStatusLabel)])">
+                        <span class="@VerifiedBadgeClass">
+                            <span></span>@VerificationLabel
+                        </span>
+                        <span class="utf-profile-menu__badge utf-profile-menu__badge--gold">
+                            <span></span>@ShellBadgeLabel
+                        </span>
+                    </div>
+                </div>
+                <span class="utf-profile-menu__avatar utf-profile-menu__avatar--large"
+                      style="@AvatarStyle"
+                      aria-hidden="true">
+                    @if (Me.User.Avatar is null || Me.User.Avatar.Length is 0)
+                    {
+                        <span>@Initials</span>
+                    }
+                </span>
+            </header>
+
+            <div class="utf-profile-menu__metrics" aria-label="@(Localizer[nameof(Language.Components_UtfProfileMenu_AccountAccessSummary)])">
+                <div>
+                    <strong>@RoleCount</strong>
+                    <span>@Localizer[nameof(Language.Components_UtfProfileMenu_RolesLabel)]</span>
+                </div>
+                <div>
+                    <strong>@ClaimCount</strong>
+                    <span>@Localizer[nameof(Language.Components_UtfProfileMenu_ClaimsLabel)]</span>
+                </div>
+                <div>
+                    <strong>@LinkedAccountCount</strong>
+                    <span>@Localizer[nameof(Language.Components_UtfProfileMenu_LinkedLabel)]</span>
+                </div>
+            </div>
+
+            @if (EnableOperationalAttention)
+            {
+                <section class="utf-profile-menu__section utf-profile-menu__section--notifications">
+                    <div class="utf-profile-menu__notification-heading">
+                        <div class="utf-profile-menu__section-title">
+                            @Localizer["Hosting_Notification_Title"]
+                        </div>
+                        @if (AttentionCount > 0)
+                        {
+                            <span>@AttentionCount</span>
+                        }
+                    </div>
+
+                    @if (_notificationError is not null)
+                    {
+                        <p class="utf-profile-menu__notification-message" role="status">@_notificationError</p>
+                    }
+                    else if (_notifications.Count is 0)
+                    {
+                        <p class="utf-profile-menu__notification-message">
+                            @Localizer["Hosting_Notification_Empty"]
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="utf-profile-menu__notification-list">
+                            @foreach (var notification in _notifications.Take(5))
+                            {
+                                <ServerNotificationItem Notification="@notification"
+                                                        IsBusy="@(_notificationActionServerId == notification.ServerId)"
+                                                        OnActionRequested="ExecuteNotificationActionAsync"/>
+                            }
+                        </div>
+                        <a class="utf-profile-menu__notification-link"
+                           href="@BaseUrl.ResolveSelfUrl("command/servers")"
+                           @onclick="CloseMenu">
+                            @Localizer["Hosting_Notification_ViewServers"]
+                        </a>
+                    }
+                </section>
+            }
+
+            <section class="utf-profile-menu__section">
+                <div class="utf-profile-menu__section-title">@Localizer[nameof(Language.Components_UtfProfileMenu_Authority)]</div>
+                <div class="utf-profile-menu__authority-row">
+                    <span>
+                        <strong>@RoleSummaryTitle</strong>
+                        <small>@RoleSummaryDetail</small>
+                    </span>
+                    <b>@RoleAuthorityBadge</b>
+                </div>
+                <div class="utf-profile-menu__authority-row">
+                    <span>
+                        <strong>@ClaimSummaryTitle</strong>
+                        <small>@ClaimSummaryDetail</small>
+                    </span>
+                    <b>@ClaimAuthorityBadge</b>
+                </div>
+            </section>
+
+            <section class="utf-profile-menu__section">
+                <div class="utf-profile-menu__section-title">@Localizer[nameof(Language.Components_UtfProfileMenu_LinkedAccounts)]</div>
+                <div class="utf-profile-menu__linked-row">
+                    <span>
+                        <strong>@Localizer[nameof(Language.Components_UtfProfileMenu_SteamProvider)]</strong>
+                        <small>@SteamSummary</small>
+                    </span>
+                    <b class="@SteamBadgeClass">@SteamBadgeLabel</b>
+                </div>
+                <div class="utf-profile-menu__linked-row">
+                    <span>
+                        <strong>@Localizer[nameof(Language.Components_UtfProfileMenu_DiscordProvider)]</strong>
+                        <small>@DiscordSummary</small>
+                    </span>
+                    <b class="@DiscordBadgeClass">@DiscordBadgeLabel</b>
+                </div>
+            </section>
+
+            <footer class="utf-profile-menu__actions">
+                @if (CanAccessCommandCenter)
+                {
+                    <a class="utf-profile-menu__button utf-profile-menu__button--primary"
+                       href="@PrimaryCommandHref"
+                       @onclick="CloseMenu">
+                        @PrimaryCommandLabel
+                    </a>
+                }
+                <a class="utf-profile-menu__button utf-profile-menu__button--ghost"
+                   href="@BaseUrl.ResolveSelfUrl("settings")"
+                   @onclick="CloseMenu">
+                    @Localizer[nameof(Language.Components_UtfProfileMenu_AccountSettings)]
+                </a>
+                <form class="utf-profile-menu__logout-form"
+                      method="post"
+                      action="@BaseUrl.ResolveApiUrlWithReturnUrl("/users/logout", "")">
+                    <button class="utf-profile-menu__button utf-profile-menu__button--danger" type="submit">
+                        @Localizer[nameof(Language.Components_UtfProfileMenu_SignOut)]
+                    </button>
+                </form>
+            </footer>
+        </section>
+    }
+</div>
+
+@code {
+    private static readonly TimeSpan NotificationPollInterval = TimeSpan.FromSeconds(15);
+
+    private bool _isOpen;
+    private readonly CancellationTokenSource _notificationCancellationTokenSource = new();
+    private IReadOnlyList<GameServerNotificationInfo> _notifications = [];
+    private Task? _notificationPollTask;
+    private Guid? _notificationActionServerId;
+    private string? _notificationError;
+
+    [Parameter]
+    public bool CanAccessCommandCenter { get; set; }
+
+    [Parameter]
+    public bool EnableOperationalAttention { get; set; }
+
+    [Parameter]
+    public EUtfProfileMenuMode Mode { get; set; } = EUtfProfileMenuMode.Community;
+
+    private int RoleCount => Me.User.Roles?.Count ?? 0;
+
+    private int ClaimCount => Me.User.Claims?.Count ?? 0;
+
+    private int LinkedAccountCount
+        => (string.IsNullOrWhiteSpace(Me.User.SteamId64) ? 0 : 1)
+           + (string.IsNullOrWhiteSpace(Me.User.DiscordId) && string.IsNullOrWhiteSpace(Me.User.DiscordUsername) ? 0 : 1);
+
+    private int AttentionCount => _notifications.Count((notification) => notification.PossibleCost);
+
+    private string RootClass
+        => Mode is EUtfProfileMenuMode.CommandCenter
+            ? "utf-profile-menu utf-profile-menu--command"
+            : "utf-profile-menu utf-profile-menu--community";
+
+    private string DisplayName
+        => string.IsNullOrWhiteSpace(Me.User.Nickname) ? Localizer[nameof(Language.Components_UtfProfileMenu_DefaultMemberName)].Value : Me.User.Nickname;
+
+    private string Initials
+    {
+        get
+        {
+            var displayName = DisplayName.Trim();
+            if (displayName.Length is 0)
+                return "U";
+            return displayName[..1].ToUpperInvariant();
+        }
+    }
+
+    private string TriggerLabel
+        => string.Format(Localizer[nameof(Language.Components_UtfProfileMenu_TriggerLabel)].Value, DisplayName);
+
+    private string IdentityKicker
+        => Mode is EUtfProfileMenuMode.CommandCenter
+            ? Localizer[nameof(Language.Components_UtfProfileMenu_IdentityKicker_CommandCenter)].Value
+            : Localizer[nameof(Language.Components_UtfProfileMenu_IdentityKicker_Member)].Value;
+
+    private string ShellBadgeLabel
+        => Mode is EUtfProfileMenuMode.CommandCenter
+            ? Localizer[nameof(Language.Components_UtfProfileMenu_ShellBadge_CommandCenter)].Value
+            : CanAccessCommandCenter
+                ? Localizer[nameof(Language.Components_UtfProfileMenu_ShellBadge_CommandAccess)].Value
+                : Localizer[nameof(Language.Components_UtfProfileMenu_ShellBadge_Community)].Value;
+
+    private string VerificationLabel => Me.User.IsVerified is true
+        ? Localizer[nameof(Language.Components_UtfProfileMenu_VerificationVerified)].Value
+        : Localizer[nameof(Language.Components_UtfProfileMenu_VerificationUnverified)].Value;
+
+    private string VerifiedBadgeClass
+        => Me.User.IsVerified is true
+            ? "utf-profile-menu__badge utf-profile-menu__badge--success"
+            : "utf-profile-menu__badge utf-profile-menu__badge--warning";
+
+    private string PrimaryRoleSummary
+        => FirstNonEmptyRoleTitle()
+           ?? (CanAccessCommandCenter
+               ? Localizer[nameof(Language.Components_UtfProfileMenu_PrimaryRoleSummary_Command)].Value
+               : Localizer[nameof(Language.Components_UtfProfileMenu_PrimaryRoleSummary_Member)].Value);
+
+    private string RoleSummaryTitle
+        => RoleCount switch
+        {
+            0 => Localizer[nameof(Language.Components_UtfProfileMenu_RoleSummary_Zero)].Value,
+            1 => Localizer[nameof(Language.Components_UtfProfileMenu_RoleSummary_One)].Value,
+            _ => string.Format(Localizer[nameof(Language.Components_UtfProfileMenu_RoleSummary_Many_Count)].Value, RoleCount),
+        };
+
+    private string RoleSummaryDetail
+        => FormatList(
+            Me.User.Roles?
+                .Select((role) => role.Title)
+                .Where((title) => !string.IsNullOrWhiteSpace(title))
+                .Cast<string>()
+                .ToArray() ?? [],
+            Localizer[nameof(Language.Components_UtfProfileMenu_NoRoleAssignments)].Value
+        );
+
+    private string ClaimSummaryTitle
+        => ClaimCount switch
+        {
+            0 => Localizer[nameof(Language.Components_UtfProfileMenu_ClaimSummary_Zero)].Value,
+            1 => Localizer[nameof(Language.Components_UtfProfileMenu_ClaimSummary_One)].Value,
+            _ => string.Format(Localizer[nameof(Language.Components_UtfProfileMenu_ClaimSummary_Many_Count)].Value, ClaimCount),
+        };
+
+    private string ClaimSummaryDetail
+        => FormatList(
+            Me.User.Claims?
+                .Select(GetClaimDisplayName)
+                .Where((title) => !string.IsNullOrWhiteSpace(title))
+                .Cast<string>()
+                .Distinct(StringComparer.Ordinal)
+                .ToArray() ?? [],
+            Localizer[nameof(Language.Components_UtfProfileMenu_NoClaimAssignments)].Value
+        );
+
+    private string RoleAuthorityBadge
+        => CanAccessCommandCenter
+            ? Localizer[nameof(Language.Components_UtfProfileMenu_BadgeOperator)].Value
+            : Localizer[nameof(Language.Components_UtfProfileMenu_BadgeMember)].Value;
+
+    private string ClaimAuthorityBadge
+        => ClaimCount > 0
+            ? Localizer[nameof(Language.Components_UtfProfileMenu_BadgeClaims)].Value
+            : Localizer[nameof(Language.Components_UtfProfileMenu_BadgeNone)].Value;
+
+    private string SteamSummary
+        => string.IsNullOrWhiteSpace(Me.User.SteamId64) ? Localizer[nameof(Language.Components_UtfProfileMenu_LinkStatus_NotLinked)].Value : MaskIdentifier(Me.User.SteamId64);
+
+    private string DiscordSummary
+        => !string.IsNullOrWhiteSpace(Me.User.DiscordUsername)
+            ? Me.User.DiscordUsername
+            : string.IsNullOrWhiteSpace(Me.User.DiscordId)
+                ? Localizer[nameof(Language.Components_UtfProfileMenu_LinkStatus_NotLinked)].Value
+                : Localizer[nameof(Language.Components_UtfProfileMenu_DiscordLinkedTitle)].Value;
+
+    private string SteamBadgeLabel => string.IsNullOrWhiteSpace(Me.User.SteamId64)
+        ? Localizer[nameof(Language.Components_UtfProfileMenu_LinkBadge_Missing)].Value
+        : Localizer[nameof(Language.Components_UtfProfileMenu_LinkBadge_Linked)].Value;
+
+    private string DiscordBadgeLabel => string.IsNullOrWhiteSpace(Me.User.DiscordId)
+        && string.IsNullOrWhiteSpace(Me.User.DiscordUsername)
+        ? Localizer[nameof(Language.Components_UtfProfileMenu_LinkBadge_Missing)].Value
+        : Localizer[nameof(Language.Components_UtfProfileMenu_LinkBadge_Linked)].Value;
+
+    private string SteamBadgeClass
+        => string.IsNullOrWhiteSpace(Me.User.SteamId64)
+            ? "utf-profile-menu__link-badge utf-profile-menu__link-badge--warning"
+            : "utf-profile-menu__link-badge utf-profile-menu__link-badge--success";
+
+    private string DiscordBadgeClass
+        => string.IsNullOrWhiteSpace(Me.User.DiscordId) && string.IsNullOrWhiteSpace(Me.User.DiscordUsername)
+            ? "utf-profile-menu__link-badge utf-profile-menu__link-badge--warning"
+            : "utf-profile-menu__link-badge utf-profile-menu__link-badge--success";
+
+    private string PrimaryCommandHref
+        => BaseUrl.ResolveSelfUrl("command");
+
+    private string PrimaryCommandLabel
+        => Localizer[nameof(Language.Components_UtfProfileMenu_CommandCenter)].Value;
+
+    private string AvatarStyle
+        => Me.User.ToImageSource() is { } source
+            ? $"background-image: linear-gradient(180deg, rgba(7, 11, 15, 0), rgba(7, 11, 15, 0.42)), url('{source}');"
+            : string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!EnableOperationalAttention || !Me.IsAuthenticated)
+            return;
+
+        await RefreshNotificationsAsync(_notificationCancellationTokenSource.Token);
+        _notificationPollTask = PollNotificationsAsync(_notificationCancellationTokenSource.Token);
+    }
+
+    private async Task ToggleMenu()
+    {
+        _isOpen = !_isOpen;
+        if (_isOpen && EnableOperationalAttention && Me.IsAuthenticated)
+            await RefreshNotificationsAsync(_notificationCancellationTokenSource.Token);
+    }
+
+    private void CloseMenu() => _isOpen = false;
+
+    private async Task ExecuteNotificationActionAsync(GameServerNotificationInfo notification)
+    {
+        var action = notification.CostStopAction;
+        if (action is null || !action.Enabled || action.Pending)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(action.ConfirmationChallenge))
+        {
+            CloseMenu();
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/servers/{notification.ServerId}"));
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.ConfirmationText))
+        {
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", action.ConfirmationText);
+            if (!confirmed)
+                return;
+        }
+
+        _notificationActionServerId = notification.ServerId;
+        _notificationError = null;
+        try
+        {
+            await GameServerRepository.ExecuteActionAsync(
+                notification.ServerId,
+                action.Id,
+                cancellationToken: _notificationCancellationTokenSource.Token
+            );
+            await RefreshNotificationsAsync(_notificationCancellationTokenSource.Token);
+        }
+        catch (OperationCanceledException) when (_notificationCancellationTokenSource.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _notificationError = UserFacingError.Message(
+                exception,
+                Localizer["Hosting_Notification_ActionError"].Value
+            );
+        }
+        finally
+        {
+            _notificationActionServerId = null;
+        }
+    }
+
+    private async Task RefreshNotificationsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            _notifications = await GameServerRepository.GetNotificationsAsync(cancellationToken);
+            _notificationError = null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _notificationError = UserFacingError.Message(
+                exception,
+                Localizer["Hosting_Notification_LoadError"].Value
+            );
+        }
+    }
+
+    private async Task PollNotificationsAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(NotificationPollInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await RefreshNotificationsAsync(cancellationToken);
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private string FormatAttentionCount()
+        => AttentionCount > 99 ? "99+" : AttentionCount.ToString();
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key is "Escape")
+            CloseMenu();
+    }
+
+    private string? FirstNonEmptyRoleTitle()
+        => Me.User.Roles?
+            .Select((role) => role.Title)
+            .FirstOrDefault((title) => !string.IsNullOrWhiteSpace(title));
+
+    private static string GetClaimDisplayName(PlainClaimDto claim)
+        => !string.IsNullOrWhiteSpace(claim.Title)
+            ? claim.Title
+            : !string.IsNullOrWhiteSpace(claim.Identifier)
+                ? claim.Identifier
+                : claim.Category ?? string.Empty;
+
+    private string FormatList(IReadOnlyList<string> values, string emptyText)
+    {
+        if (values.Count is 0)
+            return emptyText;
+
+        const int visibleCount = 3;
+        var visibleValues = values.Take(visibleCount).ToArray();
+        var result = string.Join(", ", visibleValues);
+        var remainingCount = values.Count - visibleValues.Length;
+        return remainingCount > 0
+            ? string.Format(Localizer[nameof(Language.Components_UtfProfileMenu_AdditionalItemsCount)].Value, result, remainingCount)
+            : result;
+    }
+
+    private static string MaskIdentifier(string value)
+    {
+        if (value.Length <= 6)
+            return value;
+
+        return $"{value[..4]}...{value[^4..]}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _notificationCancellationTokenSource.CancelAsync();
+        if (_notificationPollTask is not null)
+            await _notificationPollTask;
+        _notificationCancellationTokenSource.Dispose();
+    }
+
+}

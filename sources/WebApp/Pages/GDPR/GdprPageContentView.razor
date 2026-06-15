@@ -1,0 +1,212 @@
+@using X39.UnitedTacticalForces.Common.PublicPages
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+@if (Content is not null)
+{
+    <section class="utf-gdpr-section utf-gdpr-intro">
+        <div>
+            <span class="utf-kicker">@Content.Intro.Kicker</span>
+            <h2>@Content.Intro.Title</h2>
+            <div class="utf-gdpr-copy">
+                <FluentMarkdown Content="@MarkdownText(Content.Intro.Description)"/>
+            </div>
+        </div>
+        <aside>
+            <strong>@Content.Intro.LastReviewedLabel</strong>
+            <span>@Content.Intro.LastReviewedDate</span>
+            <div class="utf-gdpr-copy">
+                <FluentMarkdown Content="@MarkdownText(Content.Intro.ProcessNote)"/>
+            </div>
+        </aside>
+    </section>
+
+    @if (Content.OpeningCards.Count > 0)
+    {
+        <section class="utf-gdpr-section utf-gdpr-policy-grid">
+            @foreach (var card in Content.OpeningCards)
+            {
+                <article @key="card">
+                    <span class="utf-kicker">@card.Kicker</span>
+                    <h2>@card.Title</h2>
+                    <div class="utf-gdpr-copy">
+                        @foreach (var paragraph in card.Paragraphs.Where(HasText))
+                        {
+                            <FluentMarkdown @key="paragraph" Content="@MarkdownText(paragraph)"/>
+                        }
+                    </div>
+                </article>
+            }
+        </section>
+    }
+
+    @if (Content.Lifecycle.Steps.Count > 0)
+    {
+        <section class="utf-gdpr-section">
+            <div class="utf-section-heading">
+                <span class="utf-kicker">@Content.Lifecycle.Kicker</span>
+                <h2>@Content.Lifecycle.Title</h2>
+            </div>
+
+            <div class="utf-gdpr-timeline">
+                @for (var index = 0; index < Content.Lifecycle.Steps.Count; index++)
+                {
+                    var step = Content.Lifecycle.Steps[index];
+                    <article @key="step">
+                        <span>@(index + 1)</span>
+                        <h3>@step.Title</h3>
+                        <div class="utf-gdpr-copy">
+                            @foreach (var paragraph in step.Paragraphs.Where(HasText))
+                            {
+                                <FluentMarkdown @key="paragraph" Content="@MarkdownText(paragraph)"/>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+
+    @if (Content.DataMap.Cards.Count > 0)
+    {
+        <section class="utf-gdpr-section">
+            <div class="utf-section-heading">
+                <span class="utf-kicker">@Content.DataMap.Kicker</span>
+                <h2>@Content.DataMap.Title</h2>
+            </div>
+
+            <div class="utf-gdpr-data-grid">
+                @foreach (var card in Content.DataMap.Cards)
+                {
+                    <article @key="card">
+                        <h3>@card.Title</h3>
+                        <dl>
+                            <div>
+                                <dt>@card.DataLabel</dt>
+                                <dd>
+                                    <FluentMarkdown Content="@MarkdownText(card.Data)"/>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>@card.PurposeLabel</dt>
+                                <dd>
+                                    <FluentMarkdown Content="@MarkdownText(card.Purpose)"/>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>@card.WhereLabel</dt>
+                                <dd>
+                                    <FluentMarkdown Content="@MarkdownText(card.Where)"/>
+                                </dd>
+                            </div>
+                        </dl>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+
+    @if (Content.Visibility.Cards.Count > 0)
+    {
+        <section class="utf-gdpr-section">
+            <div class="utf-section-heading">
+                <span class="utf-kicker">@Content.Visibility.Kicker</span>
+                <h2>@Content.Visibility.Title</h2>
+            </div>
+
+            <div class="utf-gdpr-columns">
+                @foreach (var card in Content.Visibility.Cards)
+                {
+                    <article @key="card">
+                        <h3>@card.Title</h3>
+                        <div class="utf-gdpr-copy">
+                            <FluentMarkdown Content="@MarkdownText(card.Body)"/>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+
+    @if (Content.Partners.Cards.Count > 0)
+    {
+        <section class="utf-gdpr-section">
+            <div class="utf-section-heading">
+                <span class="utf-kicker">@Content.Partners.Kicker</span>
+                <h2>@Content.Partners.Title</h2>
+            </div>
+
+            <div class="utf-gdpr-columns">
+                @foreach (var card in Content.Partners.Cards)
+                {
+                    <article @key="card">
+                        <h3>@card.Title</h3>
+                        <div class="utf-gdpr-copy">
+                            <FluentMarkdown Content="@MarkdownText(card.Body)"/>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+
+    @if (Content.PolicyCards.Count > 0)
+    {
+        <section class="utf-gdpr-section utf-gdpr-policy-grid">
+            @foreach (var card in Content.PolicyCards)
+            {
+                <article @key="card">
+                    <span class="utf-kicker">@card.Kicker</span>
+                    <h2>@card.Title</h2>
+                    <div class="utf-gdpr-copy">
+                        @foreach (var paragraph in card.Paragraphs.Where(HasText))
+                        {
+                            <FluentMarkdown @key="paragraph" Content="@MarkdownText(paragraph)"/>
+                        }
+                    </div>
+                </article>
+            }
+        </section>
+    }
+
+    <section class="utf-gdpr-section utf-gdpr-note">
+        <div>
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Public_GDPR_Reference_Kicker)]</span>
+            <h2>@Localizer[nameof(Language.Pages_Public_GDPR_Reference_Title)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Public_GDPR_Reference_Body)]</p>
+        </div>
+        <div class="utf-inline-actions">
+            <a class="utf-button utf-button--ghost"
+               href="https://commission.europa.eu/law/law-topic/data-protection_en"
+               target="_blank"
+               rel="noreferrer">
+                @Localizer[nameof(Language.Pages_Public_GDPR_Reference_EuropeanCommission)]
+            </a>
+            <a class="utf-button utf-button--ghost"
+               href="https://www.edpb.europa.eu/sme-data-protection-guide/respect-individuals-rights_en"
+               target="_blank"
+               rel="noreferrer">
+                @Localizer[nameof(Language.Pages_Public_GDPR_Reference_EDPB)]
+            </a>
+            <a class="utf-button utf-button--primary" href="@BaseUrl.ResolveSelfUrl("")">
+                @Localizer[nameof(Language.Pages_Public_GDPR_BackToUtf)]
+            </a>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public GdprPageContent Content { get; set; } = new();
+
+    protected override void OnParametersSet()
+        => Content = GdprPageContentNormalizer.Normalize(Content);
+
+    private static bool HasText(string? text)
+        => !string.IsNullOrWhiteSpace(text);
+
+    private static string MarkdownText(string? text)
+        => text ?? string.Empty;
+}
+

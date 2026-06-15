@@ -15,34 +15,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 6.0.x
+        dotnet-version: 10.0.201
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore X39.UnitedTacticalForces.slnx
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build X39.UnitedTacticalForces.slnx --no-restore
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test X39.UnitedTacticalForces.slnx --no-build --verbosity normal
     - name: Publish Backend
-      run: dotnet publish source/X39.UnitedTacticalForces.Api -c Release --no-restore
+      run: dotnet publish sources/Api/Api.csproj -c Release --no-restore
     - name: Upload backend artifact
-      uses: actions/upload-artifact@v3.1.2
+      uses: actions/upload-artifact@v4
       with:
-        # Artifact name
         name: "Backend"
-        # A file, directory or wildcard pattern that describes what to upload
-        path: "source/X39.UnitedTacticalForces.Api/bin/Release/net7.0/publish"
+        path: "sources/Api/bin/Release/net10.0/publish"
     - name: Publish frontend
-      run: dotnet publish source/X39.UnitedTacticalForces.WebApp -c Release --no-restore
+      run: dotnet publish sources/WebApp/WebApp.csproj -c Release --no-restore
     - name: Upload frontend artifact
-      uses: actions/upload-artifact@v3.1.2
+      uses: actions/upload-artifact@v4
       with:
-        # Artifact name
         name: "Frontend"
-        # A file, directory or wildcard pattern that describes what to upload
-        path: "source/X39.UnitedTacticalForces.WebApp/bin/Release/net7.0/publish"
+        path: "sources/WebApp/bin/Release/net10.0/publish"

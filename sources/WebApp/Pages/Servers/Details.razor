@@ -1,0 +1,1091 @@
+@page "/command/servers/{ServerId:guid}"
+@attribute [Authorize]
+@layout CommandCenterLayout
+@implements IAsyncDisposable
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@inject IGameServerRepository GameServerRepository
+@inject BaseUrl BaseUrl
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@(_server?.Title ?? Localizer["Hosting_Detail_Title"])</PageTitle>
+
+<div class="hosting-page hosting-detail-page">
+    @if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer["Hosting_Detail_Loading"]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_server is null)
+    {
+        <section class="utf-empty-state">
+            <h1>@Localizer["Hosting_Detail_NotFoundTitle"]</h1>
+            <p>@(_loadError ?? Localizer["Hosting_Detail_NotFoundDescription"])</p>
+            <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("command/servers")">
+                @Localizer["Hosting_Common_BackToServers"]
+            </a>
+        </section>
+    }
+    else
+    {
+        <UtfCommandPageHeader Title="@_server.Title"
+                              Description="@(Localizer["Hosting_Detail_Description"])" >
+            <Actions>
+                <UtfCommandButton Disabled="@_isRefreshing" OnClick="@(() => RefreshRuntimeAsync(showLoading: false))">
+                    <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/></Icon>
+                    <ChildContent>@Localizer["Hosting_Common_Refresh"]</ChildContent>
+                </UtfCommandButton>
+                <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/servers")">
+                    @Localizer["Hosting_Common_BackToServers"]
+                </UtfCommandButton>
+                @if (!_server.IsArchived && _server.CanModify)
+                {
+                    <UtfCommandButton Class="hosting-danger-button"
+                                      Disabled="@(!CanDeleteServer || _deletingServer)"
+                                      Title="@(CanDeleteServer ? null : Localizer["Hosting_Detail_DeleteUnavailable"].Value)"
+                                      OnClick="DeleteServerAsync">
+                        <Icon><FluentIcon Value="@(new Icons.Regular.Size20.Delete())"/></Icon>
+                        <ChildContent>@Localizer["Hosting_Detail_DeleteServer"]</ChildContent>
+                    </UtfCommandButton>
+                }
+            </Actions>
+            <ChildContent>
+                <div class="hosting-detail-identifiers">
+                    <span>@_server.GameIdentifier</span>
+                    <span>@_server.RuntimeProviderIdentifier</span>
+                    <span>@_server.PrimaryKey</span>
+                </div>
+            </ChildContent>
+        </UtfCommandPageHeader>
+
+        @if (_loadError is not null)
+        {
+            <UtfAlert Intent="MessageIntent.Error">@_loadError</UtfAlert>
+        }
+        @if (_operationError is not null)
+        {
+            <UtfAlert Intent="MessageIntent.Error">@_operationError</UtfAlert>
+        }
+
+        <section class="hosting-detail-overview">
+            <article class="utf-panel hosting-fact-panel">
+                <div class="hosting-section-heading">
+                    <span class="utf-kicker">@Localizer["Hosting_Detail_RecordKicker"]</span>
+                    <h2>@Localizer["Hosting_Detail_RecordTitle"]</h2>
+                </div>
+                <dl class="hosting-facts">
+                    <div>
+                        <dt>@Localizer["Hosting_Common_CostOwner"]</dt>
+                        <dd>@_server.CostOwnerName</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer["Hosting_Detail_LaunchPolicy"]</dt>
+                        <dd>@(_server.IsLaunchDisabled ? Localizer["Hosting_Detail_LaunchDisabled"] : Localizer["Hosting_Detail_LaunchEnabled"])</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer["Hosting_Detail_Archived"]</dt>
+                        <dd>@(_server.IsArchived ? Localizer["Hosting_Common_Yes"] : Localizer["Hosting_Common_No"])</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer["Hosting_Common_Updated"]</dt>
+                        <dd>@FormatDate(_server.TimeStampUpdated)</dd>
+                    </div>
+                </dl>
+            </article>
+
+            <article class="utf-panel hosting-fact-panel">
+                <div class="hosting-section-heading">
+                    <span class="utf-kicker">@Localizer["Hosting_Detail_DeploymentKicker"]</span>
+                    <h2>@Localizer["Hosting_Detail_DeploymentTitle"]</h2>
+                </div>
+                @if (_server.Deployment is not { } deployment)
+                {
+                    <p class="hosting-muted">@Localizer["Hosting_Detail_NoDeployment"]</p>
+                }
+                else
+                {
+                    <dl class="hosting-facts">
+                        <div>
+                            <dt>@Localizer["Hosting_Common_Status"]</dt>
+                            <dd>@deployment.Status</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer["Hosting_Common_Stage"]</dt>
+                            <dd>@deployment.Stage</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer["Hosting_Common_CostOwner"]</dt>
+                            <dd>@deployment.CostOwnerName</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer["Hosting_Detail_Worker"]</dt>
+                            <dd>@(deployment.WorkerStatus ?? Localizer["Hosting_Common_NotApplicable"])</dd>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(deployment.PublicAddress))
+                        {
+                            <div>
+                                <dt>@Localizer["Hosting_Detail_PublicAddress"]</dt>
+                                <dd><code>@deployment.PublicAddress</code></dd>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(deployment.ConnectionEndpoint))
+                        {
+                            <div>
+                                <dt>@Localizer["Hosting_Detail_ConnectionEndpoint"]</dt>
+                                <dd>
+                                    <code>@deployment.ConnectionEndpoint</code>
+                                    @if (!string.IsNullOrWhiteSpace(deployment.ConnectionProtocol))
+                                    {
+                                        <span> (@deployment.ConnectionProtocol)</span>
+                                    }
+                                </dd>
+                            </div>
+                        }
+                    </dl>
+                    @if (deployment.Resources.Count > 0)
+                    {
+                        <details class="hosting-commands">
+                            <summary>@Localizer["Hosting_Detail_ProviderResources", deployment.Resources.Count]</summary>
+                            <div>
+                                @foreach (var resource in deployment.Resources)
+                                {
+                                    <div class="hosting-command" @key="resource.PrimaryKey">
+                                        <span>@resource.Kind · @resource.State</span>
+                                        <strong>@(resource.ProviderState ?? Localizer["Hosting_Common_NotApplicable"])</strong>
+                                        <small>@(resource.ProviderResourceIdentifier ?? Localizer["Hosting_Common_NotApplicable"])</small>
+                                    </div>
+                                }
+                            </div>
+                        </details>
+                    }
+                    @if (deployment.PossibleCost)
+                    {
+                        <p class="hosting-cost-warning">@Localizer["Hosting_Detail_PossibleCost"]</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(deployment.FaultSummary))
+                    {
+                        <p class="hosting-fault">@deployment.FaultSummary</p>
+                    }
+                }
+            </article>
+        </section>
+
+        <section class="utf-panel hosting-actions-panel">
+            <div class="hosting-section-heading">
+                <span class="utf-kicker">@Localizer["Hosting_Detail_ActionsKicker"]</span>
+                <h2>@Localizer["Hosting_Detail_ActionsTitle"]</h2>
+                <p>@Localizer["Hosting_Detail_ActionsDescription"]</p>
+            </div>
+
+            @if (_server.Actions.Count is 0)
+            {
+                <p class="hosting-muted">@Localizer["Hosting_Detail_NoActions"]</p>
+            }
+            else
+            {
+                <div class="hosting-action-groups">
+                    @foreach (var group in OrderedActionGroups)
+                    {
+                        <section class="hosting-action-group">
+                            <h3>@group.Key</h3>
+                            <div class="hosting-action-grid">
+                                @foreach (var action in group.OrderBy((action) => action.Order))
+                                {
+                                    <article class="@GetActionClass(action)" @key="action.Id">
+                                        <div class="hosting-action-copy">
+                                            <div>
+                                                @if (!string.IsNullOrWhiteSpace(action.Icon))
+                                                {
+                                                    <span class="hosting-action-icon" aria-hidden="true">@GetActionIcon(action.Icon)</span>
+                                                }
+                                                <strong>@action.Label</strong>
+                                            </div>
+                                            <p>@action.Description</p>
+                                            <div class="hosting-action-meta">
+                                                <span>@action.CostImpact</span>
+                                                @if (action.ExpectedDurationSeconds is { } durationSeconds)
+                                                {
+                                                    <span>@Localizer["Hosting_Detail_ExpectedDuration", FormatDuration(durationSeconds)]</span>
+                                                }
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(action.CostDescription))
+                                            {
+                                                <small>@action.CostDescription</small>
+                                            }
+                                            @if (!action.Enabled && !string.IsNullOrWhiteSpace(action.UnavailableReason))
+                                            {
+                                                <span class="hosting-action-unavailable">@action.UnavailableReason</span>
+                                            }
+                                        </div>
+                                        <button class="@GetActionButtonClass(action)"
+                                                type="button"
+                                                disabled="@(_actionInProgress || !action.Enabled || action.Pending)"
+                                                title="@action.UnavailableReason"
+                                                @onclick="@(() => RequestActionAsync(action))">
+                                            @(action.Pending ? Localizer["Hosting_Detail_ActionPending"] : action.Label)
+                                        </button>
+                                    </article>
+                                }
+                            </div>
+                        </section>
+                    }
+                </div>
+            }
+
+            @if (_challengedAction is { } challengedAction)
+            {
+                <section class="hosting-challenge" role="alertdialog" aria-labelledby="hosting-challenge-title">
+                    <div>
+                        <span class="utf-kicker">@Localizer["Hosting_Detail_ConfirmationKicker"]</span>
+                        <h3 id="hosting-challenge-title">@challengedAction.Label</h3>
+                        <p>@challengedAction.ConfirmationText</p>
+                    </div>
+                    <label>
+                        <span>@Localizer["Hosting_Detail_TypeChallenge", challengedAction.ConfirmationChallenge!]</span>
+                        <input autocomplete="off"
+                               value="@_confirmationInput"
+                               @oninput="UpdateConfirmationInput"/>
+                    </label>
+                    <div>
+                        <button class="utf-button utf-button--ghost" type="button" @onclick="CancelChallenge">
+                            @Localizer["Hosting_Common_Cancel"]
+                        </button>
+                        <button class="utf-button hosting-danger-button"
+                                type="button"
+                                disabled="@(!ChallengeMatches || _actionInProgress)"
+                                @onclick="ConfirmChallengedActionAsync">
+                            @challengedAction.Label
+                        </button>
+                    </div>
+                </section>
+            }
+        </section>
+
+        <section class="utf-panel hosting-queue-panel">
+            <div class="hosting-section-heading hosting-section-heading--row">
+                <div>
+                    <span class="utf-kicker">@Localizer["Hosting_Detail_QueueKicker"]</span>
+                    <h2>@Localizer["Hosting_Detail_QueueTitle"]</h2>
+                    <p>@Localizer["Hosting_Detail_QueueDescription"]</p>
+                </div>
+                <UtfStatusBadge Intent="@(_server.PendingJobCount > 0 ? "info" : "neutral")">
+                    @Localizer["Hosting_Servers_JobCount", _server.PendingJobCount]
+                </UtfStatusBadge>
+            </div>
+
+            @if (_jobs.Count is 0)
+            {
+                <p class="hosting-muted">@Localizer["Hosting_Detail_QueueEmpty"]</p>
+            }
+            else
+            {
+                <div class="hosting-job-list">
+                    @foreach (var job in _jobs.OrderByDescending((job) => job.TimeStampCreated))
+                    {
+                        <article class="hosting-job" @key="job.PrimaryKey">
+                            <header>
+                                <div>
+                                    <strong>@job.ActionId</strong>
+                                    <span>@job.Kind · @job.Status · @job.Stage</span>
+                                </div>
+                                <time>@FormatDate(job.TimeStampUpdated)</time>
+                            </header>
+                            <progress max="100" value="@Math.Clamp(job.ProgressPercent, 0, 100)"></progress>
+                            <div class="hosting-job-meta">
+                                <span>@Localizer["Hosting_Detail_Progress", job.ProgressPercent]</span>
+                                <span>@Localizer["Hosting_Detail_Attempts", job.AttemptCount]</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(job.FailureReason))
+                            {
+                                <p class="hosting-fault">@job.FailureReason</p>
+                            }
+                            @if (job.CanRetry || job.CanSkip)
+                            {
+                                <div class="hosting-job-actions">
+                                    @if (job.CanRetry)
+                                    {
+                                        <button class="utf-button utf-button--primary"
+                                                type="button"
+                                                disabled="@_jobInterventionInProgress"
+                                                @onclick="@(() => InterveneAsync(job, retry: true))">
+                                            @Localizer["Hosting_Detail_Retry"]
+                                        </button>
+                                    }
+                                    @if (job.CanSkip)
+                                    {
+                                        <button class="utf-button utf-button--ghost"
+                                                type="button"
+                                                disabled="@_jobInterventionInProgress"
+                                                @onclick="@(() => InterveneAsync(job, retry: false))">
+                                            @Localizer["Hosting_Detail_Skip"]
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            @if (job.Commands.Count > 0)
+                            {
+                                <details class="hosting-commands">
+                                    <summary>@Localizer["Hosting_Detail_Commands", job.Commands.Count]</summary>
+                                    <div>
+                                        @foreach (var command in job.Commands.OrderBy((command) => command.Sequence))
+                                        {
+                                            <div class="hosting-command" @key="command.PrimaryKey">
+                                                <span>#@command.Sequence · @command.ActionId</span>
+                                                <strong>@command.Status · @command.Stage</strong>
+                                                @if (!string.IsNullOrWhiteSpace(command.FailureReason))
+                                                {
+                                                    <small>@command.FailureReason</small>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </details>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="utf-panel hosting-files-panel">
+            <div class="hosting-section-heading">
+                <span class="utf-kicker">@Localizer["Hosting_Detail_FilesKicker"]</span>
+                <h2>@Localizer["Hosting_Detail_FilesTitle"]</h2>
+                <p>@Localizer["Hosting_Detail_FilesDescription"]</p>
+            </div>
+
+            <div class="hosting-file-contexts" role="tablist" aria-label="@(Localizer["Hosting_Detail_FileContexts"])" >
+                <button class="@GetFileContextClass(EHostingFileContext.Persistent)"
+                        type="button"
+                        role="tab"
+                        aria-selected="@(_fileContext is EHostingFileContext.Persistent)"
+                        @onclick="@(() => SelectFileContextAsync(EHostingFileContext.Persistent))">
+                    <strong>@Localizer["Hosting_Detail_PersistentFiles"]</strong>
+                    <span>@Localizer["Hosting_Detail_PersistentFilesHint"]</span>
+                </button>
+            </div>
+
+            @if (_fileError is not null)
+            {
+                <UtfAlert Intent="MessageIntent.Warning">@_fileError</UtfAlert>
+            }
+
+            <div class="hosting-file-toolbar">
+                <button class="utf-button utf-button--ghost"
+                        type="button"
+                        disabled="@(string.IsNullOrEmpty(_currentPath) || _filesLoading)"
+                        @onclick="OpenParentDirectoryAsync">
+                    @Localizer["Hosting_Detail_ParentFolder"]
+                </button>
+                <label>
+                    <span>@Localizer["Hosting_Detail_CurrentPath"]</span>
+                    <input value="@_currentPath" @oninput="UpdateBrowsePath"/>
+                </label>
+                <button class="utf-button utf-button--ghost"
+                        type="button"
+                        disabled="@_filesLoading"
+                        @onclick="@(() => LoadFilesAsync(_currentPath))">
+                    @Localizer["Hosting_Detail_OpenPath"]
+                </button>
+            </div>
+
+            @if (_filesLoading)
+            {
+                <div class="utf-state-panel">@Localizer["Hosting_Detail_FilesLoading"]</div>
+            }
+            else if (_files.Count is 0)
+            {
+                <p class="hosting-muted">@Localizer["Hosting_Detail_FilesEmpty"]</p>
+            }
+            else
+            {
+                <div class="hosting-file-list">
+                    @foreach (var entry in _files.OrderByDescending((entry) => entry.IsDirectory).ThenBy((entry) => entry.Name))
+                    {
+                        <article class="hosting-file-entry" @key="entry.Path">
+                            <button class="hosting-file-name"
+                                    type="button"
+                                    disabled="@(!entry.IsDirectory)"
+                                    @onclick="@(() => OpenDirectoryAsync(entry))">
+                                <strong>@(entry.IsDirectory ? "▰" : "▱") @entry.Name</strong>
+                                <span>@entry.Classification · @FormatFileSize(entry.Size)</span>
+                            </button>
+                            <div>
+                                @if (!entry.IsDirectory)
+                                {
+                                    <a class="utf-button utf-button--ghost"
+                                       href="@GetDownloadUrl(entry)"
+                                       download="@entry.Name">
+                                        @Localizer["Hosting_Detail_Download"]
+                                    </a>
+                                }
+                                @if (entry.CanModify)
+                                {
+                                    <button class="utf-button utf-button--ghost"
+                                            type="button"
+                                            disabled="@_fileMutationInProgress"
+                                            @onclick="@(() => DeleteFileAsync(entry))">
+                                        @Localizer["Hosting_Detail_Delete"]
+                                    </button>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+
+            @if (_server.CanModify)
+            {
+                <div class="hosting-file-mutations">
+                <section>
+                    <h3>@Localizer["Hosting_Detail_UploadTitle"]</h3>
+                    <label class="hosting-field">
+                        <span>@Localizer["Hosting_Detail_TargetPath"]</span>
+                        <input @bind="_uploadPath" @bind:event="oninput"/>
+                    </label>
+                    <InputFile OnChange="SelectUploadAsync"/>
+                    <small>@(_selectedUploadName ?? Localizer["Hosting_Detail_NoFileSelected"])</small>
+                    <button class="utf-button utf-button--primary"
+                            type="button"
+                            disabled="@(_fileMutationInProgress || _selectedUpload is null || string.IsNullOrWhiteSpace(_uploadPath))"
+                            @onclick="UploadFileAsync">
+                        @Localizer["Hosting_Detail_Upload"]
+                    </button>
+                </section>
+                <section>
+                    <h3>@Localizer["Hosting_Detail_CreateFolderTitle"]</h3>
+                    <label class="hosting-field">
+                        <span>@Localizer["Hosting_Detail_TargetPath"]</span>
+                        <input @bind="_directoryPath" @bind:event="oninput"/>
+                    </label>
+                    <button class="utf-button utf-button--ghost"
+                            type="button"
+                            disabled="@(_fileMutationInProgress || string.IsNullOrWhiteSpace(_directoryPath))"
+                            @onclick="CreateDirectoryAsync">
+                        @Localizer["Hosting_Detail_CreateFolder"]
+                    </button>
+                </section>
+                </div>
+            }
+        </section>
+
+        @if (_server.CanModify)
+        {
+            <section class="utf-panel hosting-preservation-panel">
+            <div class="hosting-section-heading">
+                <span class="utf-kicker">@Localizer["Hosting_Detail_PreservationKicker"]</span>
+                <h2>@Localizer["Hosting_Detail_PreservationTitle"]</h2>
+                <p>@Localizer["Hosting_Detail_PreservationDescription"]</p>
+            </div>
+
+            @if (_selectionError is not null)
+            {
+                <UtfAlert Intent="MessageIntent.Warning">@_selectionError</UtfAlert>
+            }
+
+            <div class="hosting-preservation-grid">
+                <div class="hosting-selection-list">
+                    @if (_selections.Count is 0)
+                    {
+                        <p class="hosting-muted">@Localizer["Hosting_Detail_PreservationEmpty"]</p>
+                    }
+                    @foreach (var selection in _selections.OrderBy((selection) => selection.Path))
+                    {
+                        <article @key="selection.PrimaryKey">
+                            <div>
+                                <strong>@selection.Path</strong>
+                                <span>@selection.Scope · @selection.Mode</span>
+                                @if (selection.SeededByGame)
+                                {
+                                    <small>@Localizer["Hosting_Detail_SeededByGame"]</small>
+                                }
+                            </div>
+                            <button class="utf-button utf-button--ghost"
+                                    type="button"
+                                    disabled="@_selectionMutationInProgress"
+                                    @onclick="@(() => DeleteSelectionAsync(selection))">
+                                @Localizer["Hosting_Detail_Remove"]
+                            </button>
+                        </article>
+                    }
+                </div>
+
+                <form class="hosting-selection-form"
+                      @onsubmit="AddSelectionAsync"
+                      @onsubmit:preventDefault="true">
+                    <h3>@Localizer["Hosting_Detail_AddPreservation"]</h3>
+                    <label class="hosting-field">
+                        <span>@Localizer["Hosting_Detail_TargetPath"]</span>
+                        <input required @bind="_selectionPath" @bind:event="oninput"/>
+                    </label>
+                    <label class="hosting-field">
+                        <span>@Localizer["Hosting_Detail_Scope"]</span>
+                        <select @bind="_selectionScope">
+                            <option value="File">@Localizer["Hosting_Detail_ScopeFile"]</option>
+                            <option value="FlatFolder">@Localizer["Hosting_Detail_ScopeFlat"]</option>
+                            <option value="RecursiveFolder">@Localizer["Hosting_Detail_ScopeRecursive"]</option>
+                        </select>
+                    </label>
+                    <label class="hosting-field">
+                        <span>@Localizer["Hosting_Detail_DeletionPolicy"]</span>
+                        <select @bind="_selectionMode">
+                            <option value="CreateOrUpdate">@Localizer["Hosting_Detail_ModeCreateUpdate"]</option>
+                            <option value="MirrorDeletions">@Localizer["Hosting_Detail_ModeMirror"]</option>
+                        </select>
+                    </label>
+                    <button class="utf-button utf-button--primary"
+                            type="submit"
+                            disabled="@(_selectionMutationInProgress || string.IsNullOrWhiteSpace(_selectionPath))">
+                        @Localizer["Hosting_Detail_Add"]
+                    </button>
+                </form>
+            </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private const long MaxUploadBytes = 16 * 1024 * 1024;
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+
+    [Parameter]
+    public Guid ServerId { get; set; }
+
+    private GameServerInfo? _server;
+    private IReadOnlyList<LifecycleJobInfo> _jobs = [];
+    private IReadOnlyList<HostingFileInfo> _files = [];
+    private IReadOnlyList<PreservationSelectionInfo> _selections = [];
+    private Task? _pollTask;
+    private bool _isLoading = true;
+    private bool _isRefreshing;
+    private bool _actionInProgress;
+    private bool _jobInterventionInProgress;
+    private bool _filesLoading;
+    private bool _fileMutationInProgress;
+    private bool _selectionMutationInProgress;
+    private bool _deletingServer;
+    private string? _loadError;
+    private string? _operationError;
+    private string? _fileError;
+    private string? _selectionError;
+    private GameServerActionInfo? _challengedAction;
+    private string _confirmationInput = string.Empty;
+    private EHostingFileContext _fileContext = EHostingFileContext.Persistent;
+    private string _currentPath = string.Empty;
+    private byte[]? _selectedUpload;
+    private string? _selectedUploadName;
+    private string _uploadPath = string.Empty;
+    private string _directoryPath = string.Empty;
+    private string _selectionPath = string.Empty;
+    private string _selectionScope = "File";
+    private string _selectionMode = "CreateOrUpdate";
+
+    private bool CanDeleteServer
+        => _server is { IsArchived: false, CanModify: true, Deployment: null, PendingJobCount: 0 }
+           && _jobs.All(q => !q.CanRetry && !q.CanSkip);
+
+    private IEnumerable<IGrouping<string, GameServerActionInfo>> OrderedActionGroups
+        => _server is null
+            ? Array.Empty<IGrouping<string, GameServerActionInfo>>()
+            : _server.Actions
+                .GroupBy((action) => string.IsNullOrWhiteSpace(action.Group)
+                    ? Localizer["Hosting_Detail_OtherActions"].Value
+                    : action.Group)
+                .OrderBy((group) => group.Min((action) => action.Order));
+
+    private bool ChallengeMatches
+        => _challengedAction?.ConfirmationChallenge is { } challenge
+           && string.Equals(_confirmationInput, challenge, StringComparison.Ordinal);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshRuntimeAsync(showLoading: true, _cancellationTokenSource.Token);
+        if (_server is not null)
+        {
+            await LoadFilesAsync(string.Empty, _cancellationTokenSource.Token);
+            if (_server.CanModify)
+                await LoadSelectionsAsync(_cancellationTokenSource.Token);
+        }
+        _pollTask = PollAsync(_cancellationTokenSource.Token);
+    }
+
+    private async Task RefreshRuntimeAsync(bool showLoading, CancellationToken cancellationToken = default)
+    {
+        if (_isRefreshing)
+            return;
+
+        _isRefreshing = true;
+        if (showLoading)
+            _isLoading = true;
+        try
+        {
+            var serverTask = GameServerRepository.GetServerAsync(ServerId, cancellationToken);
+            var jobsTask = GameServerRepository.GetJobsAsync(ServerId, cancellationToken);
+            await Task.WhenAll(serverTask, jobsTask);
+            _server = await serverTask;
+            _jobs = await jobsTask;
+            _loadError = null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _loadError = UserFacingError.Message(exception, Localizer["Hosting_Detail_LoadError"].Value);
+        }
+        finally
+        {
+            _isRefreshing = false;
+            _isLoading = false;
+        }
+    }
+
+    private async Task PollAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(PollInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await RefreshRuntimeAsync(showLoading: false, cancellationToken);
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task RequestActionAsync(GameServerActionInfo action)
+    {
+        _operationError = null;
+        if (!action.Enabled || action.Pending)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(action.ConfirmationChallenge))
+        {
+            _challengedAction = action;
+            _confirmationInput = string.Empty;
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.ConfirmationText))
+        {
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", action.ConfirmationText);
+            if (!confirmed)
+                return;
+        }
+
+        await ExecuteActionAsync(action, confirmation: null);
+    }
+
+    private async Task ConfirmChallengedActionAsync()
+    {
+        if (_challengedAction is not { } action || !ChallengeMatches)
+            return;
+
+        await ExecuteActionAsync(action, _confirmationInput);
+        CancelChallenge();
+    }
+
+    private async Task ExecuteActionAsync(GameServerActionInfo action, string? confirmation)
+    {
+        _actionInProgress = true;
+        _operationError = null;
+        try
+        {
+            await GameServerRepository.ExecuteActionAsync(
+                ServerId,
+                action.Id,
+                confirmation,
+                _cancellationTokenSource.Token
+            );
+            await RefreshRuntimeAsync(showLoading: false, _cancellationTokenSource.Token);
+        }
+        catch (OperationCanceledException) when (_cancellationTokenSource.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _operationError = UserFacingError.Message(exception, Localizer["Hosting_Detail_ActionError"].Value);
+        }
+        finally
+        {
+            _actionInProgress = false;
+        }
+    }
+
+    private async Task DeleteServerAsync()
+    {
+        if (!CanDeleteServer || _server is null)
+            return;
+        var confirmed = await JSRuntime.InvokeAsync<bool>(
+            "confirm",
+            Localizer["Hosting_Detail_DeleteServerConfirm", _server.Title].Value
+        );
+        if (!confirmed)
+            return;
+
+        _deletingServer = true;
+        _operationError = null;
+        try
+        {
+            await GameServerRepository.DeleteServerAsync(ServerId, _cancellationTokenSource.Token);
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/servers"));
+        }
+        catch (Exception exception)
+        {
+            _operationError = UserFacingError.Message(exception, Localizer["Hosting_Detail_DeleteServerError"].Value);
+        }
+        finally
+        {
+            _deletingServer = false;
+        }
+    }
+
+    private async Task InterveneAsync(LifecycleJobInfo job, bool retry)
+    {
+        if ((retry && !job.CanRetry) || (!retry && !job.CanSkip))
+            return;
+
+        _jobInterventionInProgress = true;
+        _operationError = null;
+        try
+        {
+            if (retry)
+                await GameServerRepository.RetryJobAsync(job.PrimaryKey, _cancellationTokenSource.Token);
+            else
+                await GameServerRepository.SkipJobAsync(job.PrimaryKey, _cancellationTokenSource.Token);
+            await RefreshRuntimeAsync(showLoading: false, _cancellationTokenSource.Token);
+        }
+        catch (OperationCanceledException) when (_cancellationTokenSource.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _operationError = UserFacingError.Message(exception, Localizer["Hosting_Detail_JobError"].Value);
+        }
+        finally
+        {
+            _jobInterventionInProgress = false;
+        }
+    }
+
+    private async Task SelectFileContextAsync(EHostingFileContext context)
+    {
+        if (_fileContext == context)
+            return;
+        _fileContext = context;
+        _currentPath = string.Empty;
+        await LoadFilesAsync(string.Empty, _cancellationTokenSource.Token);
+    }
+
+    private async Task LoadFilesAsync(string path, CancellationToken cancellationToken = default)
+    {
+        _filesLoading = true;
+        _fileError = null;
+        try
+        {
+            _files = await GameServerRepository.GetFilesAsync(ServerId, _fileContext, path, cancellationToken);
+            _currentPath = path;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _files = [];
+            _fileError = UserFacingError.Message(exception, Localizer["Hosting_Detail_FilesError"].Value);
+        }
+        finally
+        {
+            _filesLoading = false;
+        }
+    }
+
+    private Task OpenDirectoryAsync(HostingFileInfo entry)
+        => entry.IsDirectory
+            ? LoadFilesAsync(entry.Path, _cancellationTokenSource.Token)
+            : Task.CompletedTask;
+
+    private Task OpenParentDirectoryAsync()
+        => LoadFilesAsync(ParentPath(_currentPath), _cancellationTokenSource.Token);
+
+    private async Task SelectUploadAsync(InputFileChangeEventArgs args)
+    {
+        _fileError = null;
+        try
+        {
+            var file = args.File;
+            await using var stream = file.OpenReadStream(MaxUploadBytes, _cancellationTokenSource.Token);
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory, _cancellationTokenSource.Token);
+            _selectedUpload = memory.ToArray();
+            _selectedUploadName = file.Name;
+            _uploadPath = CombinePath(_currentPath, file.Name);
+        }
+        catch (Exception exception)
+        {
+            _selectedUpload = null;
+            _selectedUploadName = null;
+            _fileError = UserFacingError.Message(exception, Localizer["Hosting_Detail_FileSelectionError"].Value);
+        }
+    }
+
+    private async Task UploadFileAsync()
+    {
+        if (_selectedUpload is null || string.IsNullOrWhiteSpace(_uploadPath))
+            return;
+
+        _fileMutationInProgress = true;
+        _fileError = null;
+        try
+        {
+            await GameServerRepository.UploadFileAsync(
+                ServerId,
+                _fileContext,
+                _uploadPath,
+                _selectedUpload,
+                _cancellationTokenSource.Token
+            );
+            _selectedUpload = null;
+            _selectedUploadName = null;
+            _uploadPath = string.Empty;
+            await LoadFilesAsync(_currentPath, _cancellationTokenSource.Token);
+        }
+        catch (Exception exception)
+        {
+            _fileError = UserFacingError.Message(exception, Localizer["Hosting_Detail_FileMutationError"].Value);
+        }
+        finally
+        {
+            _fileMutationInProgress = false;
+        }
+    }
+
+    private async Task CreateDirectoryAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_directoryPath))
+            return;
+
+        _fileMutationInProgress = true;
+        _fileError = null;
+        try
+        {
+            await GameServerRepository.CreateDirectoryAsync(
+                ServerId,
+                _fileContext,
+                _directoryPath,
+                _cancellationTokenSource.Token
+            );
+            _directoryPath = string.Empty;
+            await LoadFilesAsync(_currentPath, _cancellationTokenSource.Token);
+        }
+        catch (Exception exception)
+        {
+            _fileError = UserFacingError.Message(exception, Localizer["Hosting_Detail_FileMutationError"].Value);
+        }
+        finally
+        {
+            _fileMutationInProgress = false;
+        }
+    }
+
+    private async Task DeleteFileAsync(HostingFileInfo entry)
+    {
+        if (!entry.CanModify)
+            return;
+        var confirmed = await JSRuntime.InvokeAsync<bool>(
+            "confirm",
+            Localizer["Hosting_Detail_DeleteFileConfirm", entry.Path].Value
+        );
+        if (!confirmed)
+            return;
+
+        _fileMutationInProgress = true;
+        _fileError = null;
+        try
+        {
+            await GameServerRepository.DeleteFileAsync(
+                ServerId,
+                _fileContext,
+                entry.Path,
+                _cancellationTokenSource.Token
+            );
+            await LoadFilesAsync(_currentPath, _cancellationTokenSource.Token);
+        }
+        catch (Exception exception)
+        {
+            _fileError = UserFacingError.Message(exception, Localizer["Hosting_Detail_FileMutationError"].Value);
+        }
+        finally
+        {
+            _fileMutationInProgress = false;
+        }
+    }
+
+    private async Task LoadSelectionsAsync(CancellationToken cancellationToken = default)
+    {
+        _selectionError = null;
+        try
+        {
+            _selections = await GameServerRepository.GetPreservationSelectionsAsync(ServerId, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _selectionError = UserFacingError.Message(exception, Localizer["Hosting_Detail_PreservationError"].Value);
+        }
+    }
+
+    private async Task AddSelectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_selectionPath))
+            return;
+
+        _selectionMutationInProgress = true;
+        _selectionError = null;
+        try
+        {
+            await GameServerRepository.AddPreservationSelectionAsync(
+                ServerId,
+                new PreservationSelectionInfoRequest
+                {
+                    Path = _selectionPath,
+                    Scope = _selectionScope,
+                    Mode = _selectionMode,
+                },
+                _cancellationTokenSource.Token
+            );
+            _selectionPath = string.Empty;
+            await LoadSelectionsAsync(_cancellationTokenSource.Token);
+        }
+        catch (Exception exception)
+        {
+            _selectionError = UserFacingError.Message(exception, Localizer["Hosting_Detail_PreservationError"].Value);
+        }
+        finally
+        {
+            _selectionMutationInProgress = false;
+        }
+    }
+
+    private async Task DeleteSelectionAsync(PreservationSelectionInfo selection)
+    {
+        _selectionMutationInProgress = true;
+        _selectionError = null;
+        try
+        {
+            await GameServerRepository.DeletePreservationSelectionAsync(
+                ServerId,
+                selection.PrimaryKey,
+                _cancellationTokenSource.Token
+            );
+            await LoadSelectionsAsync(_cancellationTokenSource.Token);
+        }
+        catch (Exception exception)
+        {
+            _selectionError = UserFacingError.Message(exception, Localizer["Hosting_Detail_PreservationError"].Value);
+        }
+        finally
+        {
+            _selectionMutationInProgress = false;
+        }
+    }
+
+    private void CancelChallenge()
+    {
+        _challengedAction = null;
+        _confirmationInput = string.Empty;
+    }
+
+    private void UpdateConfirmationInput(ChangeEventArgs args)
+        => _confirmationInput = args.Value?.ToString() ?? string.Empty;
+
+    private void UpdateBrowsePath(ChangeEventArgs args)
+        => _currentPath = args.Value?.ToString() ?? string.Empty;
+
+    private string GetDownloadUrl(HostingFileInfo entry)
+        => BaseUrl.ResolveApiUrl(
+            $"game-servers/{ServerId}/files/{_fileContext.ToString().ToLowerInvariant()}/content"
+            + $"?path={Uri.EscapeDataString(entry.Path)}"
+        );
+
+    private static string GetActionClass(GameServerActionInfo action)
+        => action.Dangerous ? "hosting-action hosting-action--danger" : "hosting-action";
+
+    private static string GetActionButtonClass(GameServerActionInfo action)
+        => action.Dangerous
+            ? "utf-button hosting-danger-button"
+            : "utf-button utf-button--primary";
+
+    private static string GetActionIcon(string icon)
+        => icon.Trim().ToLowerInvariant() switch
+        {
+            "play" => "▶",
+            "stop" => "■",
+            "arrow-clockwise" => "↻",
+            "arrow-sync" => "⟳",
+            "cloud-download" => "⇩",
+            "document-text" => "▤",
+            _ => icon,
+        };
+
+    private string GetFileContextClass(EHostingFileContext context)
+        => _fileContext == context
+            ? "hosting-file-context hosting-file-context--active"
+            : "hosting-file-context";
+
+    private static string ParentPath(string path)
+    {
+        var normalized = path.Replace('\\', '/').Trim('/');
+        var separatorIndex = normalized.LastIndexOf('/');
+        return separatorIndex < 0 ? string.Empty : normalized[..separatorIndex];
+    }
+
+    private static string CombinePath(string directory, string name)
+        => string.IsNullOrWhiteSpace(directory) ? name : $"{directory.TrimEnd('/', '\\')}/{name}";
+
+    private static string FormatDate(DateTimeOffset value)
+        => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+
+    private string FormatFileSize(long? size)
+    {
+        if (size is null)
+            return Localizer["Hosting_Common_NotApplicable"].Value;
+        if (size < 1024)
+            return $"{size} B";
+        if (size < 1024 * 1024)
+            return $"{size / 1024d:0.#} KB";
+        return $"{size / 1024d / 1024d:0.#} MB";
+    }
+
+    private static string FormatDuration(int seconds)
+    {
+        var duration = TimeSpan.FromSeconds(seconds);
+        return duration.TotalHours >= 1
+            ? $"{duration.TotalHours:0.#} h"
+            : duration.TotalMinutes >= 1
+                ? $"{duration.TotalMinutes:0.#} min"
+                : $"{Math.Max(0, seconds)} s";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cancellationTokenSource.CancelAsync();
+        if (_pollTask is not null)
+            await _pollTask;
+        _cancellationTokenSource.Dispose();
+    }
+}

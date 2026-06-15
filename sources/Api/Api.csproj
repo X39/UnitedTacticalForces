@@ -1,0 +1,121 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <RootNamespace>X39.UnitedTacticalForces.Api</RootNamespace>
+        <AssemblyName>X39.UnitedTacticalForces.Api</AssemblyName>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="NodaTime" Version="3.3.2" />
+        <PackageReference Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.2" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.16.5" />
+        <PackageReference Include="AspNet.Security.OAuth.Discord" Version="10.0.0" />
+        <PackageReference Include="AspNet.Security.OpenId.Steam" Version="10.0.0" />
+        <PackageReference Include="Discord.Net" Version="3.20.1" />
+        <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
+        <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.15.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+        <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.9">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+        <PackageReference Include="SteamWebAPI2" Version="5.0.0"/>
+        <PackageReference Include="X39.Util" Version="1.0.0.56" />
+        <PackageReference Include="X39.Util.DependencyInjection" Version="3.0.0.10" />
+    </ItemGroup>
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+            <_Parameter1>Api.Tests</_Parameter1>
+        </AssemblyAttribute>
+    </ItemGroup>
+    <ItemGroup>
+        <Content Update="appsettings.secret.json_template">
+            <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        </Content>
+        <Content Update="appsettings.Development.json">
+            <DependentUpon>appsettings.json</DependentUpon>
+        </Content>
+        <Content Update="appsettings.Production.json">
+            <DependentUpon>appsettings.json</DependentUpon>
+        </Content>
+        <Content Update="appsettings.secret.json">
+            <DependentUpon>appsettings.json</DependentUpon>
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+            <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+        </Content>
+        <Content Update="appsettings.user.json">
+            <DependentUpon>appsettings.json</DependentUpon>
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+            <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+        </Content>
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="appsettings.secret.json">
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+            <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+        </None>
+        <None Update="appsettings.secret.json_template">
+            <DependentUpon>appsettings.json</DependentUpon>
+        </None>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Common\Common.csproj"/>
+        <ProjectReference Include="..\Database\Database.csproj"/>
+        <ProjectReference Include="..\HostingContracts\HostingContracts.csproj"/>
+        <ProjectReference Include="..\WebSocketContracts\WebSocketContracts.csproj"/>
+        <ProjectReference Include="..\Claims\Claims.csproj"/>
+        <ProjectReference Include="..\ServiceDefaults\ServiceDefaults.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Update="Properties\Language.resx">
+            <Generator>ResXFileCodeGenerator</Generator>
+            <LastGenOutput>Language.Designer.cs</LastGenOutput>
+        </EmbeddedResource>
+        <EmbeddedResource Include="SeedAssets\Debug\altis-debug-terrain.jpg" LogicalName="DebugDemoData.AltisTerrain.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\tanoa-debug-terrain.jpg" LogicalName="DebugDemoData.TanoaTerrain.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\livonia-debug-terrain.jpg" LogicalName="DebugDemoData.LivoniaTerrain.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\malden-debug-terrain.jpg" LogicalName="DebugDemoData.MaldenTerrain.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\copper-trail-event.jpg" LogicalName="DebugDemoData.CopperTrailEvent.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\storm-relay-event.jpg" LogicalName="DebugDemoData.StormRelayEvent.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\airstrip-logistics-event.jpg" LogicalName="DebugDemoData.AirstripLogisticsEvent.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\x39-debug-avatar.jpg" LogicalName="DebugDemoData.X39Avatar.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\debug-user-avatar-raven.jpg" LogicalName="DebugDemoData.RavenAvatar.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\debug-user-avatar-signal.jpg" LogicalName="DebugDemoData.SignalAvatar.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\debug-user-avatar-hammer.jpg" LogicalName="DebugDemoData.HammerAvatar.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\debug-user-avatar-slate.jpg" LogicalName="DebugDemoData.SlateAvatar.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\debug-user-avatar-fox.jpg" LogicalName="DebugDemoData.FoxAvatar.jpg" />
+        <EmbeddedResource Include="SeedAssets\Debug\debug-user-avatar-viper.jpg" LogicalName="DebugDemoData.ViperAvatar.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\briefing-room-signals.jpg" LogicalName="SiteImageDefaults.BriefingRoomSignals.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\convoy-crossing-at-first-light.jpg" LogicalName="SiteImageDefaults.ConvoyCrossingAtFirstLight.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\field-reports-table-hero.jpg" LogicalName="SiteImageDefaults.FieldReportsTableHero.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\gdpr-privacy-hero.png" LogicalName="SiteImageDefaults.GdprPrivacyHero.png" />
+        <EmbeddedResource Include="SeedAssets\Public\join-recruitment-staging-hero.jpg" LogicalName="SiteImageDefaults.JoinRecruitmentStagingHero.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\mission-overwatch-banner.jpg" LogicalName="SiteImageDefaults.MissionOverwatchBanner.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\night-cache-resupply.jpg" LogicalName="SiteImageDefaults.NightCacheResupply.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\operations-convoy-hero.jpg" LogicalName="SiteImageDefaults.OperationsConvoyHero.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\route-security-after-contact.jpg" LogicalName="SiteImageDefaults.RouteSecurityAfterContact.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\unit-training-assembly-hero.jpg" LogicalName="SiteImageDefaults.UnitTrainingAssemblyHero.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\verein-finance-ledger-hero.jpg" LogicalName="SiteImageDefaults.VereinFinanceLedgerHero.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\verein-governance-table-hero.jpg" LogicalName="SiteImageDefaults.VereinGovernanceTableHero.jpg" />
+        <EmbeddedResource Include="SeedAssets\Public\wiki-reference-table-hero.jpg" LogicalName="SiteImageDefaults.WikiReferenceTableHero.jpg" />
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Update="Properties\Language.Designer.cs">
+            <DesignTime>True</DesignTime>
+            <AutoGen>True</AutoGen>
+            <DependentUpon>Language.resx</DependentUpon>
+        </Compile>
+    </ItemGroup>
+    <ItemGroup>
+        <Folder Include="Authorization\Handlers\"/>
+    </ItemGroup>
+</Project>

@@ -1,0 +1,65 @@
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IStringLocalizer<Language> Localizer
+
+<div class="@NodeClass">
+    @if (!Node.IsRoot)
+    {
+        <div class="wiki-tree-category">
+            <span class="wiki-tree-category__icon" aria-hidden="true"></span>
+            <span>@Node.Name</span>
+        </div>
+    }
+
+    <div class="wiki-tree-node__children" aria-label="@(Localizer[nameof(Language.Components_WikiTreeNode_ChildrenAria)])">
+        @foreach (var child in Node.Children.OrderBy(q => q.Name))
+        {
+            <WikiTreeNode Node="@child"
+                          SelectedPageId="@SelectedPageId"
+                          OnSelect="@OnSelect"/>
+        }
+
+        @foreach (var page in Node.Pages.OrderBy(q => q.Name))
+        {
+            @if (page.PrimaryKey is { } pageId)
+            {
+                <button class="@GetPageClass(page)"
+                        type="button"
+                        @onclick="@(() => OnSelect.InvokeAsync(pageId))">
+                    <span class="wiki-tree-page__icon" aria-hidden="true"></span>
+                    <span class="wiki-tree-page__label">@GetLeafName(page)</span>
+                    <small>@FormatDate(page.LastModified)</small>
+                </button>
+            }
+        }
+    </div>
+</div>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public WikiNavigationNode Node { get; set; } = null!;
+
+    [Parameter]
+    public Guid? SelectedPageId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnSelect { get; set; }
+
+    private string NodeClass
+        => Node.IsRoot ? "wiki-tree-node wiki-tree-node--root" : "wiki-tree-node";
+
+    private string GetPageClass(WikiPageHeader page)
+        => page.PrimaryKey == SelectedPageId ? "wiki-tree-page active" : "wiki-tree-page";
+
+    private string GetLeafName(WikiPageHeader page)
+    {
+        var name = page.Name ?? Localizer[nameof(Language.Pages_Wiki_Index_UntitledPage)].Value;
+        var parts = name.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return parts.LastOrDefault() ?? name;
+    }
+
+    private string FormatDate(DateTimeOffset? value)
+        => value is { } date ? date.ToLocalTime().ToString("dd MMM yyyy") : Localizer[nameof(Language.Components_WikiTreeNode_NoRevisions)].Value;
+
+}

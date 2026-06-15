@@ -1,0 +1,1217 @@
+@page "/events/upcoming"
+@using System.Globalization
+@using Microsoft.JSInterop
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.Util.Blazor.WebAssembly.Services
+@inject IEventRepository EventRepository
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject NavigationManager NavigationManager
+@inject LocalStorage LocalStorage
+@inject IJSRuntime JSRuntime
+@inject BaseUrl BaseUrl
+
+@inject IStringLocalizer<Language> Localizer
+<PageTitle>@Localizer[nameof(Language.Auto_UpcomingOperations_f2355c40)]</PageTitle>
+
+<div class="@GetPageClass()">
+    <header class="utf-events-hero" style="@HeroImageStyle">
+        <div>
+            <span class="utf-kicker">@Localizer[nameof(Language.Operations)]</span>
+            <h1>@Localizer[nameof(Language.Auto_UpcomingOperations_f2355c40)]</h1>
+            <p>@Localizer[nameof(Language.Auto_FindPlannedMissionsTrainingWindowsTerrainRequirementsModSets_8b14be0c)]</p>
+        </div>
+        <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("")">
+            @Localizer[nameof(Language.Auto_BackToHome_76c5505f)]
+        </a>
+    </header>
+
+    <section class="utf-events-toolbar utf-events-toolbar--mode" aria-label="@(Localizer[nameof(Language.Auto_OperationsViewMode_c333479b)])">
+        <div class="utf-view-mode-switch" role="tablist" aria-label="@(Localizer[nameof(Language.Auto_OperationsViewMode_c333479b)])">
+            <button class="@GetViewModeClass(OperationViewMode.Calendar)"
+                    type="button"
+                    role="tab"
+                    aria-selected="@(_activeMode == OperationViewMode.Calendar)"
+                    @onclick="@(() => SetViewModeAsync(OperationViewMode.Calendar))">
+                <FluentIcon Value="@(new Icons.Regular.Size20.CalendarLtr())"/>
+                @Localizer[nameof(Language.Calendar)]
+            </button>
+            <button class="@GetViewModeClass(OperationViewMode.Board)"
+                    type="button"
+                    role="tab"
+                    aria-selected="@(_activeMode == OperationViewMode.Board)"
+                    @onclick="@(() => SetViewModeAsync(OperationViewMode.Board))">
+                <FluentIcon Value="@(new Icons.Regular.Size20.AppsListDetail())"/>
+                @Localizer[nameof(Language.Board)]
+            </button>
+        </div>
+        <div class="utf-events-toolbar__summary">
+            <span>@Localizer[nameof(Language.Auto_AllTimesInUTC_3b1ff9db)]</span>
+            <button class="utf-link-action utf-link-action--button"
+                    type="button"
+                    disabled="@_isLoading"
+                    @onclick="ReloadEventsAsync">
+                <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                @Localizer[nameof(Language.Common_Refresh)]
+            </button>
+        </div>
+    </section>
+
+    @if (_activeMode == OperationViewMode.Board)
+    {
+        <section class="utf-events-toolbar utf-events-toolbar--filters" aria-label="@(Localizer[nameof(Language.Auto_OperationFilters_97c0d6fc)])">
+            <div class="utf-filter-bar">
+                @foreach (var filter in Enum.GetValues<EventFilter>())
+                {
+                    <button class="@GetFilterClass(filter)"
+                            type="button"
+                            @onclick="@(() => SetFilter(filter))">
+                        @GetFilterLabel(filter)
+                    </button>
+                }
+            </div>
+        </section>
+    }
+
+    @if (_isLoading)
+    {
+        @if (_activeMode == OperationViewMode.Board)
+        {
+            <section class="utf-events-grid utf-events-grid--board utf-events-grid--skeleton"
+                     aria-label="@(Localizer[nameof(Language.Auto_OperationsBoardLoading_87acb824)])"
+                     aria-busy="true">
+                <span class="utf-sr-only">@Localizer[nameof(Language.Auto_OperationsAreLoading_609dd9f9)]</span>
+                @for (var index = 0; index < BoardSkeletonCardCount; index++)
+                {
+                    <article class="utf-event-card utf-event-card--skeleton" aria-hidden="true">
+                        <div class="utf-event-card__image utf-event-card-skeleton__image">
+                            <div class="utf-event-card__badges">
+                                <span class="utf-skeleton utf-skeleton--badge"></span>
+                                <span class="utf-skeleton utf-skeleton--badge utf-skeleton--badge-short"></span>
+                            </div>
+                        </div>
+
+                        <div class="utf-event-card__body">
+                            <div class="utf-event-card__schedule">
+                                <span class="utf-skeleton utf-skeleton--schedule"></span>
+                                <span class="utf-skeleton utf-skeleton--schedule utf-skeleton--schedule-short"></span>
+                            </div>
+
+                            <span class="utf-skeleton utf-skeleton--title"></span>
+
+                            <div class="utf-event-card__meta-row" aria-hidden="true">
+                                <span class="utf-skeleton utf-skeleton--meta"></span>
+                                <span class="utf-skeleton utf-skeleton--meta"></span>
+                                <span class="utf-skeleton utf-skeleton--meta"></span>
+                            </div>
+
+                            <div class="utf-event-card__progress">
+                                <span class="utf-skeleton utf-skeleton--progress-label"></span>
+                                <span class="utf-skeleton utf-skeleton--meter"></span>
+                                <span class="utf-skeleton utf-skeleton--progress-value"></span>
+                                <span class="utf-skeleton utf-skeleton--progress-state"></span>
+                            </div>
+
+                            <div class="utf-event-card__footer">
+                                <span class="utf-skeleton utf-skeleton--button"></span>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </section>
+        }
+        else
+        {
+            <section class="utf-calendar-workspace utf-calendar-workspace--skeleton"
+                     aria-label="@(Localizer[nameof(Language.Auto_OperationsCalendarLoading_9ce7b73a)])"
+                     aria-busy="true">
+                <span class="utf-sr-only">@Localizer[nameof(Language.Auto_OperationsAreLoading_609dd9f9)]</span>
+                <div class="utf-calendar-main">
+                    <section class="utf-calendar-panel utf-calendar-panel--skeleton" aria-hidden="true">
+                        <div class="utf-calendar-monthbar utf-calendar-monthbar--skeleton">
+                            <div>
+                                <span class="utf-skeleton utf-skeleton--calendar-icon"></span>
+                                <span class="utf-skeleton utf-skeleton--calendar-heading"></span>
+                                <span class="utf-skeleton utf-skeleton--calendar-icon"></span>
+                            </div>
+                            <span class="utf-skeleton utf-skeleton--calendar-summary"></span>
+                        </div>
+
+                        <div class="utf-calendar-week-strip utf-calendar-week-strip--skeleton">
+                            @for (var index = 0; index < CalendarWeekdaySkeletonCount; index++)
+                            {
+                                <span class="utf-calendar-week-day utf-calendar-week-day--skeleton">
+                                    <span class="utf-skeleton utf-skeleton--calendar-weekday"></span>
+                                    <span class="utf-skeleton utf-skeleton--calendar-weekdate"></span>
+                                </span>
+                            }
+                        </div>
+
+                        <div class="utf-calendar-month-overview utf-calendar-month-overview--skeleton">
+                            <span class="utf-skeleton utf-skeleton--calendar-overview"></span>
+                            <span class="utf-skeleton utf-skeleton--calendar-summary"></span>
+                        </div>
+
+                        <div class="utf-calendar-grid utf-calendar-grid--skeleton" role="grid">
+                            @foreach (var weekday in WeekdayLabels)
+                            {
+                                <div class="utf-calendar-weekday" role="columnheader">@weekday</div>
+                            }
+                            @for (var index = 0; index < CalendarDaySkeletonCount; index++)
+                            {
+                                <div class="utf-calendar-day utf-calendar-day--skeleton" role="gridcell">
+                                    <span class="utf-skeleton utf-skeleton--calendar-day-number"></span>
+                                    <div class="utf-calendar-day__events">
+                                        @if (index % 5 == 0)
+                                        {
+                                            <span class="utf-skeleton utf-skeleton--calendar-event"></span>
+                                        }
+                                        @if (index % 9 == 0)
+                                        {
+                                            <span class="utf-skeleton utf-skeleton--calendar-event utf-skeleton--calendar-event-short"></span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="utf-calendar-agenda utf-calendar-agenda--skeleton">
+                            @for (var groupIndex = 0; groupIndex < CalendarAgendaSkeletonCount; groupIndex++)
+                            {
+                                <section class="utf-calendar-agenda__group">
+                                    <h2>
+                                        <span class="utf-skeleton utf-skeleton--calendar-agenda-date"></span>
+                                    </h2>
+                                    <div>
+                                        <article class="utf-calendar-agenda__item utf-calendar-agenda__item--skeleton">
+                                            <span class="utf-skeleton utf-skeleton--calendar-agenda-time"></span>
+                                            <span class="utf-skeleton utf-skeleton--calendar-agenda-title"></span>
+                                            <div class="utf-calendar-agenda__meta">
+                                                <span class="utf-skeleton utf-skeleton--meta"></span>
+                                                <span class="utf-skeleton utf-skeleton--meta"></span>
+                                            </div>
+                                            <span class="utf-skeleton utf-skeleton--meter"></span>
+                                        </article>
+                                    </div>
+                                </section>
+                            }
+                        </div>
+                    </section>
+
+                    <aside class="utf-calendar-detail utf-calendar-detail--skeleton" aria-hidden="true">
+                        <div class="utf-calendar-detail__header">
+                            <span class="utf-skeleton utf-skeleton--calendar-detail-kicker"></span>
+                            <span class="utf-skeleton utf-skeleton--progress-state"></span>
+                        </div>
+                        <span class="utf-skeleton utf-skeleton--calendar-detail-title"></span>
+                        <div class="utf-calendar-detail__facts">
+                            @for (var index = 0; index < CalendarDetailFactSkeletonCount; index++)
+                            {
+                                <div>
+                                    <span class="utf-skeleton utf-skeleton--calendar-detail-label"></span>
+                                    <span class="utf-skeleton utf-skeleton--calendar-detail-value"></span>
+                                </div>
+                            }
+                        </div>
+                        <div class="utf-calendar-detail__progress">
+                            <span class="utf-skeleton utf-skeleton--progress-label"></span>
+                            <span class="utf-skeleton utf-skeleton--meter"></span>
+                            <span class="utf-skeleton utf-skeleton--progress-state"></span>
+                        </div>
+                        <span class="utf-skeleton utf-skeleton--calendar-detail-line"></span>
+                        <span class="utf-skeleton utf-skeleton--calendar-detail-line utf-skeleton--calendar-detail-line-short"></span>
+                        <span class="utf-skeleton utf-skeleton--button"></span>
+                    </aside>
+                </div>
+            </section>
+        }
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning">@_loadError</div>
+    }
+    else if (_activeMode == OperationViewMode.Calendar)
+    {
+        <section class="utf-calendar-workspace" aria-label="@(Localizer[nameof(Language.Auto_OperationsCalendar_aaaf0488)])">
+            <div class="utf-calendar-main">
+                <section class="utf-calendar-panel" aria-label="@GetDisplayedMonthLabel()">
+                    <div class="utf-calendar-monthbar">
+                        <div>
+                            <button class="utf-calendar-icon-button"
+                                    type="button"
+                                    aria-label="@(Localizer[nameof(Language.Auto_PreviousMonth_6a276950)])"
+                                    @onclick="ShowPreviousMonth">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.ChevronLeft())"/>
+                            </button>
+                            <strong>@GetDisplayedMonthLabel()</strong>
+                            <button class="utf-calendar-icon-button"
+                                    type="button"
+                                    aria-label="@(Localizer[nameof(Language.Auto_NextMonth_74e53211)])"
+                                    @onclick="ShowNextMonth">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.ChevronRight())"/>
+                            </button>
+                        </div>
+                        <span>@GetMonthSummaryLabel()</span>
+                    </div>
+
+                    <div class="utf-calendar-week-strip" aria-label="@(Localizer[nameof(Language.Auto_SelectedWeek_23900c8a)])">
+                        @foreach (var day in WeekStripDays)
+                        {
+                            <button class="@GetWeekDayClass(day)"
+                                    type="button"
+                                    @onclick="@(() => SelectCalendarDate(day.Date))">
+                                <span>@FormatWeekdayShort(day.Date)</span>
+                                <strong>@day.Date.Day.ToString(CultureInfo.CurrentCulture)</strong>
+                            </button>
+                        }
+                    </div>
+
+                    <div class="utf-calendar-month-overview">
+                        <span>
+                            <FluentIcon Value="@(new Icons.Regular.Size20.CalendarLtr())"/>
+                            @Localizer[nameof(Language.Auto_MonthOverview_32b62dd1)]
+                        </span>
+                        <strong>@GetMonthSummaryLabel()</strong>
+                    </div>
+
+                    <div class="utf-calendar-grid" role="grid" aria-label="@GetDisplayedMonthLabel()">
+                        @foreach (var weekday in WeekdayLabels)
+                        {
+                            <div class="utf-calendar-weekday" role="columnheader">@weekday</div>
+                        }
+                        @foreach (var day in CalendarDays)
+                        {
+                            <div class="@GetCalendarDayClass(day)" role="gridcell">
+                                <button class="utf-calendar-day__number"
+                                        type="button"
+                                        aria-label="@FormatDateLong(day.Date)"
+                                        @onclick="@(() => SelectCalendarDate(day.Date))">
+                                    @day.Date.Day
+                                </button>
+                                <div class="utf-calendar-day__events">
+                                    @foreach (var operation in day.Events.Take(3))
+                                    {
+                                        <button class="@GetCalendarEventClass(operation)"
+                                                type="button"
+                                                @onclick="@(() => SelectCalendarEvent(operation))">
+                                            <span>@operation.Time</span>
+                                            <strong>@operation.Title</strong>
+                                        </button>
+                                    }
+                                    @if (day.Events.Count > 3)
+                                    {
+                                        <span class="utf-calendar-day__more">
+                                            @Localizer[nameof(Language.Pages_Events_Upcoming_CountMore), day.Events.Count - 3]
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="utf-calendar-agenda" aria-label="@(Localizer[nameof(Language.Auto_CalendarAgenda_62c712a6)])">
+                        @if (CalendarAgendaGroups.Count is 0)
+                        {
+                            <div class="utf-calendar-empty">
+                                @Localizer[nameof(Language.Pages_Events_Upcoming_NoScheduledInMonth), GetDisplayedMonthLabel()]
+                            </div>
+                        }
+                        @foreach (var group in CalendarAgendaGroups)
+                        {
+                            <section class="utf-calendar-agenda__group" aria-label="@FormatAgendaDate(group.Date)">
+                                <h2>@FormatAgendaDate(group.Date)</h2>
+                                <div>
+                                    @foreach (var operation in group.Events)
+                                    {
+                                        <article class="@GetAgendaItemClass(operation)">
+                                            <button class="utf-calendar-agenda__select"
+                                                    type="button"
+                                                    @onclick="@(() => SelectCalendarEvent(operation))">
+                                                <span>@operation.Time</span>
+                                                <strong>@operation.Title</strong>
+                                            </button>
+                                            <div class="utf-calendar-agenda__meta">
+                                                <span>
+                                                    <FluentIcon Value="@(new Icons.Regular.Size20.Map())"/>
+                                                    @operation.Terrain
+                                                </span>
+                                                <span>
+                                                    <FluentIcon Value="@(new Icons.Regular.Size20.Cube())"/>
+                                                    @operation.ModPack
+                                                </span>
+                                            </div>
+                                            <div class="utf-calendar-agenda__progress">
+                                                <strong>@operation.SlotSummary @Localizer[nameof(Language.Pages_Events_Upcoming_SlotsLabel)]</strong>
+                                                <div class="utf-slot-meter" aria-label="@operation.SlotSummary">
+                                                    <span style="@operation.SlotMeterStyle"></span>
+                                                </div>
+                                                <span class="@operation.OperationStatusClass">@operation.OperationStatusLabel</span>
+                                            </div>
+                                            <button class="utf-button utf-button--ghost"
+                                                    type="button"
+                                                    disabled="@(operation.EventId is null)"
+                                                    @onclick="@(() => NavigateToEventDetails(operation.EventId))">
+                                                @Localizer[nameof(Language.Auto_ViewSlots_ddcd3598)]
+                                                <FluentIcon Value="@(new Icons.Regular.Size16.ChevronRight())"/>
+                                            </button>
+                                        </article>
+                                    }
+                                </div>
+                            </section>
+                        }
+                    </div>
+                </section>
+
+                <aside class="utf-calendar-detail" aria-label="@(Localizer[nameof(Language.Auto_SelectedOperation_3716235b)])">
+                    @if (SelectedCalendarCard is { } selectedOperation)
+                    {
+                        <div class="utf-calendar-detail__header">
+                            <span>@Localizer[nameof(Language.Auto_SelectedOperation_3716235b)]</span>
+                            <strong class="@selectedOperation.OperationStatusClass">@selectedOperation.OperationStatusLabel</strong>
+                        </div>
+                        <h2>@selectedOperation.Title</h2>
+                        <dl class="utf-calendar-detail__facts">
+                            <div>
+                                <dt>@Localizer[nameof(Language.Date)]</dt>
+                                <dd>@selectedOperation.Date</dd>
+                            </div>
+                            <div>
+                                <dt>@Localizer[nameof(Language.Time)]</dt>
+                                <dd>@selectedOperation.Time</dd>
+                            </div>
+                            <div>
+                                <dt>@Localizer[nameof(Language.Terrain)]</dt>
+                                <dd>@selectedOperation.Terrain</dd>
+                            </div>
+                            <div>
+                                <dt>@Localizer[nameof(Language.Auto_ModPack_f151fb94)]</dt>
+                                <dd>@selectedOperation.ModPack</dd>
+                            </div>
+                            <div>
+                                <dt>@Localizer[nameof(Language.Host)]</dt>
+                                <dd>@selectedOperation.Host</dd>
+                            </div>
+                        </dl>
+                        <div class="utf-calendar-detail__progress">
+                            <div>
+                                <span>@Localizer[nameof(Language.Auto_SlotProgress_ef2c2303)]</span>
+                                <strong>@selectedOperation.SlotSummary</strong>
+                            </div>
+                            <div class="utf-slot-meter" aria-label="@selectedOperation.SlotSummary">
+                                <span style="@selectedOperation.SlotMeterStyle"></span>
+                            </div>
+                            <div>
+                                <span class="@selectedOperation.AttendanceClass">@selectedOperation.AttendanceLabel</span>
+                                <span>@Localizer[nameof(Language.Auto_Pending_7948f853), selectedOperation.MaybeCount]</span>
+                            </div>
+                        </div>
+                        <p>@selectedOperation.Description</p>
+                        <button class="utf-button utf-button--primary"
+                                type="button"
+                                disabled="@(selectedOperation.EventId is null)"
+                                @onclick="@(() => NavigateToEventDetails(selectedOperation.EventId))">
+                            @Localizer[nameof(Language.Auto_ViewSlots_ddcd3598)]
+                            <FluentIcon Value="@(new Icons.Regular.Size16.ChevronRight())"/>
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="utf-calendar-detail__empty">
+                            <span>@Localizer[nameof(Language.Auto_SelectedOperation_3716235b)]</span>
+                            <h2>@Localizer[nameof(Language.Auto_NoOperationSelected_98bff4dc)]</h2>
+                            <p>@Localizer[nameof(Language.Auto_NoScheduledOperationIsPublishedInUseTheMonth_f3ebefc3), GetDisplayedMonthLabel()]</p>
+                        </div>
+                    }
+                </aside>
+            </div>
+        </section>
+    }
+    else if (_activeMode == OperationViewMode.Board && _events.Count > 0 && VisibleEvents.Count is 0)
+    {
+        <div class="utf-state-panel">@Localizer[nameof(Language.Auto_NoOperationsMatchTheSelectedFilter_eaf9aeab)]</div>
+    }
+    else if (_activeMode == OperationViewMode.Board && _events.Count is 0)
+    {
+        <div class="utf-state-panel">@Localizer[nameof(Language.Auto_NoOperationsArePublishedYet_9cc06b4d)]</div>
+    }
+    else if (_activeMode == OperationViewMode.Board && VisibleOperationCards.Count > 0)
+    {
+        <section class="utf-events-grid utf-events-grid--board" aria-label="@(Localizer[nameof(Language.Auto_OperationsBoard_49062d1b)])">
+            @foreach (var card in VisibleOperationCards)
+            {
+                <article class="@GetEventCardClass(card)"
+                         @key="card.Key"
+                         style="@card.ImageStyle">
+                    <div class="utf-event-card__image">
+                        <div class="utf-event-card__badges">
+                            <span class="@card.CategoryClass">@card.CategoryLabel</span>
+                            <span class="utf-event-card__slot-badge">@card.ShortSlots</span>
+                        </div>
+                        @if (card.IsPrimary)
+                        {
+                            <span class="utf-operation-card__star">
+                                <FluentIcon Value="@(new Icons.Filled.Size20.Star())"/>
+                            </span>
+                        }
+                    </div>
+
+                    <div class="utf-event-card__body">
+                        <div class="utf-event-card__schedule">
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size16.CalendarLtr())"/>
+                                @card.Date
+                            </span>
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size16.Clock())"/>
+                                @card.Time
+                            </span>
+                        </div>
+
+                        <h2>@card.Title</h2>
+
+                        <div class="utf-event-card__meta-row" aria-label="@(Localizer[nameof(Language.Auto_OperationMetadata_dc8caad0)])">
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Map())"/>
+                                @card.Terrain
+                            </span>
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Cube())"/>
+                                @card.ModPack
+                            </span>
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Person())"/>
+                                @card.Host
+                            </span>
+                        </div>
+
+                        <div class="utf-event-card__progress">
+                            <span class="utf-event-card__progress-label">@Localizer[nameof(Language.Auto_SlotProgress_ef2c2303)]</span>
+                            <div class="utf-slot-meter" aria-label="@card.SlotSummary">
+                                <span style="@card.SlotMeterStyle"></span>
+                            </div>
+                            <strong>@card.SlotSummary</strong>
+                            <span class="@card.AttendanceClass">@card.AttendanceLabel</span>
+                        </div>
+
+                        <div class="utf-event-card__footer">
+                            <button class="@GetEventActionClass(card)"
+                                    type="button"
+                                    disabled="@(card.EventId is null)"
+                                    @onclick="@(() => NavigateToEventDetails(card.EventId))">
+                                @card.ActionLabel
+                                <FluentIcon Value="@(new Icons.Regular.Size16.ChevronRight())"/>
+                            </button>
+                        </div>
+                    </div>
+                </article>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private const string DefaultOperationsHeroImagePath = "media/generated/operations-convoy-hero.jpg";
+    private const string DefaultOperationCardImagePath  = "media/generated/mission-overwatch-banner.jpg";
+    private const string ViewModeStorageKey = "UpcomingOperations.ViewMode";
+    private const int    BoardSkeletonCardCount           = 6;
+    private const int    CalendarAgendaSkeletonCount      = 3;
+    private const int    CalendarDaySkeletonCount         = 42;
+    private const int    CalendarDetailFactSkeletonCount  = 5;
+    private const int    CalendarWeekdaySkeletonCount     = 7;
+    private static IReadOnlyList<string> WeekdayLabels
+    {
+        get
+        {
+            var names = CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedDayNames;
+            return
+            [
+                names[(int) DayOfWeek.Monday],
+                names[(int) DayOfWeek.Tuesday],
+                names[(int) DayOfWeek.Wednesday],
+                names[(int) DayOfWeek.Thursday],
+                names[(int) DayOfWeek.Friday],
+                names[(int) DayOfWeek.Saturday],
+                names[(int) DayOfWeek.Sunday],
+            ];
+        }
+    }
+
+    private IReadOnlyList<UpcomingEventDto> _events = [];
+    private IReadOnlyList<UpcomingEventDto> _visibleEvents = [];
+    private IReadOnlyList<EventBoardCard> _visibleOperationCards = [];
+    private IReadOnlyList<CalendarOperationCard> _scheduledOperationCards = [];
+    private IReadOnlyList<CalendarOperationCard> _displayedMonthOperationCards = [];
+    private IReadOnlyList<CalendarDay> _calendarDays = [];
+    private IReadOnlyList<WeekStripDay> _weekStripDays = [];
+    private IReadOnlyList<CalendarAgendaGroup> _calendarAgendaGroups = [];
+    private CalendarOperationCard? _selectedCalendarCard;
+    private EventFilter _activeFilter = EventFilter.All;
+    private OperationViewMode _activeMode = OperationViewMode.Calendar;
+    private DateOnly _displayedMonth = GetCurrentUtcMonth();
+    private DateOnly? _selectedCalendarDate;
+    private string? _selectedCalendarEventKey;
+    private bool _isLoading = true;
+    private string? _loadError;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private IReadOnlyList<UpcomingEventDto> VisibleEvents
+        => _visibleEvents;
+
+    private IReadOnlyList<EventBoardCard> VisibleOperationCards
+        => _visibleOperationCards;
+
+    private IReadOnlyList<CalendarOperationCard> ScheduledOperationCards
+        => _scheduledOperationCards;
+
+    private IReadOnlyList<CalendarOperationCard> DisplayedMonthOperationCards
+        => _displayedMonthOperationCards;
+
+    private CalendarOperationCard? SelectedCalendarCard
+        => _selectedCalendarCard;
+
+    private DateOnly SelectedCalendarDate
+        => _selectedCalendarDate ?? _selectedCalendarCard?.UtcDate ?? _displayedMonth;
+
+    private IReadOnlyList<CalendarDay> CalendarDays
+        => _calendarDays;
+
+    private IReadOnlyList<WeekStripDay> WeekStripDays
+        => _weekStripDays;
+
+    private IReadOnlyList<CalendarAgendaGroup> CalendarAgendaGroups
+        => _calendarAgendaGroups;
+
+    private string HeroImageStyle
+        => ToCssImageVariable(
+            "--utf-hero-image",
+            GetSiteImageUrl("home-operation-hero", DefaultOperationsHeroImagePath));
+
+    protected override async Task OnInitializedAsync()
+    {
+        InitializeViewMode();
+        await Task.WhenAll(ReloadEventsAsync(), LoadSiteImagesAsync()).ConfigureAwait(false);
+    }
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private void InitializeViewMode()
+    {
+        var requestedMode = ParseViewMode(GetQueryValue(new Uri(NavigationManager.Uri), "mode"));
+        if (requestedMode is not null)
+        {
+            _activeMode = requestedMode.Value;
+            _ = StoreViewModeAsync(_activeMode);
+            return;
+        }
+
+        _activeMode = GetStoredViewMode() ?? OperationViewMode.Calendar;
+        _ = MigrateStoredViewModeAsync();
+    }
+
+    private async Task SetViewModeAsync(OperationViewMode mode)
+    {
+        if (_activeMode == mode)
+            return;
+
+        _activeMode = mode;
+        await StoreViewModeAsync(mode);
+    }
+
+    private OperationViewMode? GetStoredViewMode()
+    {
+        if (JSRuntime is not IJSInProcessRuntime inProcessRuntime)
+            return null;
+
+        return ParseViewMode(inProcessRuntime.Invoke<string?>("localStorage.getItem", ViewModeStorageKey));
+    }
+
+    private async Task MigrateStoredViewModeAsync()
+    {
+        if (GetStoredViewMode() is not null)
+            return;
+
+        try
+        {
+            var wrappedValue = await LocalStorage.GetAsync<string>(ViewModeStorageKey);
+            var wrappedMode = ParseViewMode(wrappedValue);
+            if (wrappedMode is null)
+                return;
+
+            await StoreViewModeAsync(wrappedMode.Value);
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task StoreViewModeAsync(OperationViewMode mode)
+        => await JSRuntime.InvokeVoidAsync("localStorage.setItem", ViewModeStorageKey, ToStorageValue(mode));
+
+    private async Task ReloadEventsAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+
+        try
+        {
+            _events = (await EventRepository.GetUpcomingEventsAsync())
+                .OrderBy((operation) => operation.ScheduledFor ?? DateTimeOffset.MaxValue)
+                .ToArray();
+            RebuildBoardCards();
+            RebuildCalendarCards();
+        }
+        catch
+        {
+            _loadError = Localizer[nameof(Language.Pages_Events_Upcoming_ErrorLoadFailed)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ShowPreviousMonth()
+    {
+        _displayedMonth = _displayedMonth.AddMonths(-1);
+        RefreshCalendarMonthState();
+    }
+
+    private void ShowNextMonth()
+    {
+        _displayedMonth = _displayedMonth.AddMonths(1);
+        RefreshCalendarMonthState();
+    }
+
+    private void SelectCalendarDate(DateOnly date)
+    {
+        _selectedCalendarDate = date;
+        _selectedCalendarEventKey = ScheduledOperationCards.FirstOrDefault((operation) => operation.UtcDate == date)?.Key;
+        RefreshSelectedCalendarState();
+    }
+
+    private void SelectCalendarEvent(CalendarOperationCard operation)
+    {
+        _selectedCalendarEventKey = operation.Key;
+        _selectedCalendarDate = operation.UtcDate;
+        RefreshSelectedCalendarState();
+    }
+
+    private void SetFilter(EventFilter filter)
+    {
+        if (_activeFilter == filter)
+            return;
+
+        _activeFilter = filter;
+        RebuildBoardCards();
+    }
+
+    private void RebuildBoardCards()
+    {
+        _visibleEvents = _events.Where(MatchesActiveFilter).ToArray();
+        _visibleOperationCards = _visibleEvents.Select(ToEventBoardCard).ToArray();
+    }
+
+    private void RebuildCalendarCards()
+    {
+        _scheduledOperationCards = _events
+            .Where((operation) => operation.ScheduledFor is not null)
+            .OrderBy((operation) => operation.ScheduledFor ?? DateTimeOffset.MaxValue)
+            .Select(ToCalendarOperationCard)
+            .ToArray();
+        RefreshCalendarMonthState();
+    }
+
+    private void RefreshCalendarMonthState()
+    {
+        _displayedMonthOperationCards = _scheduledOperationCards
+            .Where((operation) => operation.UtcDate.Year == _displayedMonth.Year
+                                  && operation.UtcDate.Month == _displayedMonth.Month)
+            .ToArray();
+        _calendarAgendaGroups = BuildCalendarAgendaGroups();
+        EnsureCalendarSelectionForDisplayedMonth();
+        RefreshSelectedCalendarState();
+    }
+
+    private void RefreshSelectedCalendarState()
+    {
+        _selectedCalendarCard = ResolveSelectedCalendarCard();
+        _calendarDays = BuildCalendarDays();
+        _weekStripDays = BuildWeekStripDays();
+    }
+
+    private CalendarOperationCard? ResolveSelectedCalendarCard()
+    {
+        if (_selectedCalendarEventKey is not null)
+        {
+            var selected = _scheduledOperationCards.FirstOrDefault((operation) => operation.Key == _selectedCalendarEventKey);
+            if (selected is not null)
+                return selected;
+        }
+
+        if (_selectedCalendarDate is { } selectedDate)
+            return _scheduledOperationCards.FirstOrDefault((operation) => operation.UtcDate == selectedDate);
+
+        return _displayedMonthOperationCards.FirstOrDefault();
+    }
+
+    private void EnsureCalendarSelectionForDisplayedMonth()
+    {
+        if (_selectedCalendarDate is { } selectedDate
+            && selectedDate.Year == _displayedMonth.Year
+            && selectedDate.Month == _displayedMonth.Month
+            && (_selectedCalendarEventKey is null
+                || _scheduledOperationCards.Any((operation) => operation.Key == _selectedCalendarEventKey)))
+            return;
+
+        SelectFirstCalendarEventInDisplayedMonth();
+    }
+
+    private void SelectFirstCalendarEventInDisplayedMonth()
+    {
+        var firstOperation = _displayedMonthOperationCards.FirstOrDefault();
+        _selectedCalendarEventKey = firstOperation?.Key;
+        _selectedCalendarDate = firstOperation?.UtcDate ?? _displayedMonth;
+    }
+
+    private IReadOnlyList<CalendarDay> BuildCalendarDays()
+    {
+        var offsetFromMonday = ((int) _displayedMonth.DayOfWeek + 6) % 7;
+        var startDate = _displayedMonth.AddDays(-offsetFromMonday);
+        var eventsByDate = DisplayedMonthOperationCards
+            .GroupBy((operation) => operation.UtcDate)
+            .ToDictionary((group) => group.Key, (group) => group.ToArray());
+
+        return Enumerable.Range(0, 42)
+            .Select((index) =>
+            {
+                var date = startDate.AddDays(index);
+                return new CalendarDay(
+                    date,
+                    date.Month == _displayedMonth.Month,
+                    date == DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime),
+                    date == SelectedCalendarDate,
+                    eventsByDate.GetValueOrDefault(date, []));
+            })
+            .ToArray();
+    }
+
+    private IReadOnlyList<WeekStripDay> BuildWeekStripDays()
+    {
+        var selectedDate = SelectedCalendarDate;
+        var offsetFromMonday = ((int) selectedDate.DayOfWeek + 6) % 7;
+        var startDate = selectedDate.AddDays(-offsetFromMonday);
+        var eventDates = DisplayedMonthOperationCards.Select((operation) => operation.UtcDate).ToHashSet();
+
+        return Enumerable.Range(0, 7)
+            .Select((index) =>
+            {
+                var date = startDate.AddDays(index);
+                return new WeekStripDay(
+                    date,
+                    date == selectedDate,
+                    date == DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime),
+                    eventDates.Contains(date));
+            })
+            .ToArray();
+    }
+
+    private IReadOnlyList<CalendarAgendaGroup> BuildCalendarAgendaGroups()
+        => _displayedMonthOperationCards
+            .GroupBy((operation) => operation.UtcDate)
+            .OrderBy((group) => group.Key)
+            .Select((group) => new CalendarAgendaGroup(group.Key, group.ToArray()))
+            .ToArray();
+
+    private bool MatchesActiveFilter(UpcomingEventDto operation)
+        => _activeFilter switch
+        {
+            EventFilter.Confirmed    => GetAcceptance(operation) is Common.Event.EEventAcceptance.Accepted,
+            EventFilter.NeedsSignups => IsUnderMinimum(operation),
+            EventFilter.Open         => GetAcceptance(operation) is not Common.Event.EEventAcceptance.Rejected,
+            _                        => true,
+        };
+
+    private string GetPageClass()
+        => _activeMode == OperationViewMode.Calendar
+            ? "utf-events-page utf-events-page--calendar"
+            : "utf-events-page utf-events-page--board";
+
+    private string GetViewModeClass(OperationViewMode mode)
+        => _activeMode == mode
+            ? "utf-view-mode-switch__button active"
+            : "utf-view-mode-switch__button";
+
+    private string GetFilterClass(EventFilter filter)
+        => filter == _activeFilter
+            ? "utf-filter-chip active"
+            : "utf-filter-chip";
+
+    private string GetCalendarDayClass(CalendarDay day)
+    {
+        var classes = new List<string> { "utf-calendar-day" };
+        if (!day.IsInDisplayedMonth)
+            classes.Add("utf-calendar-day--outside");
+        if (day.IsToday)
+            classes.Add("utf-calendar-day--today");
+        if (day.IsSelected)
+            classes.Add("utf-calendar-day--selected");
+        if (day.Events.Count > 0)
+            classes.Add("utf-calendar-day--has-events");
+        return string.Join(" ", classes);
+    }
+
+    private string GetCalendarEventClass(CalendarOperationCard operation)
+    {
+        var classes = new List<string> { "utf-calendar-event" };
+        if (operation.IsLowSlots)
+            classes.Add("utf-calendar-event--attention");
+        if (operation.Key == _selectedCalendarEventKey)
+            classes.Add("utf-calendar-event--selected");
+        return string.Join(" ", classes);
+    }
+
+    private string GetWeekDayClass(WeekStripDay day)
+    {
+        var classes = new List<string> { "utf-calendar-week-day" };
+        if (day.IsSelected)
+            classes.Add("active");
+        if (day.IsToday)
+            classes.Add("utf-calendar-week-day--today");
+        if (day.HasEvents)
+            classes.Add("utf-calendar-week-day--has-events");
+        return string.Join(" ", classes);
+    }
+
+    private string GetAgendaItemClass(CalendarOperationCard operation)
+    {
+        var classes = new List<string> { "utf-calendar-agenda__item" };
+        if (operation.Key == _selectedCalendarEventKey)
+            classes.Add("active");
+        if (operation.IsLowSlots)
+            classes.Add("utf-calendar-agenda__item--attention");
+        return string.Join(" ", classes);
+    }
+
+    private string GetFilterLabel(EventFilter filter)
+        => filter switch
+        {
+            EventFilter.Confirmed   => Localizer[nameof(Language.Pages_Events_Upcoming_FilterConfirmed)].Value,
+            EventFilter.NeedsSignups => Localizer[nameof(Language.Pages_Events_Upcoming_FilterNeedsSignups)].Value,
+            EventFilter.Open        => Localizer[nameof(Language.Pages_Events_Upcoming_FilterOpen)].Value,
+            _                       => Localizer[nameof(Language.Pages_Events_Upcoming_FilterAll)].Value,
+        };
+
+    private EventBoardCard ToEventBoardCard(UpcomingEventDto operation, int index)
+    {
+        var isPrimary = index == 0;
+        return new EventBoardCard(
+            operation.PrimaryKey?.ToString() ?? $"event-{index}",
+            operation.PrimaryKey,
+            operation.Title ?? Localizer[nameof(Language.Pages_Events_Upcoming_UntitledOperation)].Value,
+            FormatDate(operation.ScheduledFor),
+            FormatTime(operation.ScheduledFor),
+            operation.TerrainTitle ?? Localizer[nameof(Language.Pages_Events_Upcoming_TerrainPending)].Value,
+            operation.ModPackDefinitionTitle ?? Localizer[nameof(Language.Pages_Events_Upcoming_ModPackPending)].Value,
+            operation.HostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Events_Upcoming_HostPending)].Value,
+            FormatCardSlotCount(operation),
+            FormatShortSlots(operation),
+            Localizer[nameof(Language.Pages_Events_Upcoming_TypeOperation)].Value,
+            "utf-status utf-status--brand",
+            GetAttendanceLabel(operation),
+            GetAttendanceClass(operation),
+            GetSlotMeterStyle(operation),
+            GetEventImageStyle(operation),
+            Localizer[nameof(Language.Pages_Events_Upcoming_ActionViewSlots)].Value,
+            isPrimary);
+    }
+
+    private CalendarOperationCard ToCalendarOperationCard(UpcomingEventDto operation, int index)
+    {
+        var scheduledFor = operation.ScheduledFor!.Value;
+        return new CalendarOperationCard(
+            operation.PrimaryKey?.ToString() ?? $"calendar-event-{index}",
+            operation.PrimaryKey,
+            operation.Title ?? Localizer[nameof(Language.Pages_Events_Upcoming_UntitledOperation)].Value,
+            FormatDate(operation.ScheduledFor),
+            FormatTime(operation.ScheduledFor),
+            DateOnly.FromDateTime(scheduledFor.UtcDateTime),
+            operation.TerrainTitle ?? Localizer[nameof(Language.Pages_Events_Upcoming_TerrainPending)].Value,
+            operation.ModPackDefinitionTitle ?? Localizer[nameof(Language.Pages_Events_Upcoming_ModPackPending)].Value,
+            operation.HostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Events_Upcoming_HostPending)].Value,
+            FormatCardSlotCount(operation),
+            GetOperationStatusLabel(operation),
+            GetOperationStatusClass(operation),
+            GetAttendanceLabel(operation),
+            GetAttendanceClass(operation),
+            GetSlotMeterStyle(operation),
+            IsUnderMinimum(operation),
+            operation.AcceptedCount ?? 0,
+            operation.MaybeCount ?? 0,
+            operation.Description.IsNotNullOrWhiteSpace()
+                ? operation.Description!
+                : Localizer[nameof(Language.Pages_Events_Upcoming_NoBriefingSummary)].Value);
+    }
+
+    private string GetEventImageStyle(UpcomingEventDto operation)
+    {
+        var imageSource = !string.IsNullOrWhiteSpace(operation.ImagePath)
+            ? BaseUrl.ResolveImageUrl(operation.ImagePath)
+            : GetSiteImageUrl("home-operation-card", DefaultOperationCardImagePath);
+        return ToCssImageVariable("--utf-event-image", imageSource);
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+    private static string ToCssImageVariable(string variableName, string url)
+        => $"{variableName}: url(\"{EscapeCssUrl(url)}\");";
+
+    private static string EscapeCssUrl(string url)
+        => url.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "%22", StringComparison.Ordinal);
+
+    private void NavigateToEventDetails(Guid? eventId)
+    {
+        if (eventId is null)
+            return;
+
+        NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"events/{eventId}"));
+    }
+
+    private string GetDisplayedMonthLabel()
+        => _displayedMonth.ToDateTime(TimeOnly.MinValue).ToString("MMMM yyyy", CultureInfo.CurrentCulture);
+
+    private string GetMonthSummaryLabel()
+    {
+        var count = DisplayedMonthOperationCards.Count;
+        return count switch
+        {
+            0 => Localizer[nameof(Language.Pages_Events_Upcoming_CountNoScheduled)].Value,
+            1 => Localizer[nameof(Language.Pages_Events_Upcoming_CountOneScheduled)].Value,
+            _ => Localizer[nameof(Language.Pages_Events_Upcoming_CountScheduled), count].Value,
+        };
+    }
+
+    private static string FormatDate(DateTimeOffset? scheduledFor)
+        => scheduledFor?.UtcDateTime.ToString("dd MMM yyyy", CultureInfo.CurrentCulture) ?? "-- --- ----";
+
+    private static string FormatDateLong(DateOnly date)
+        => date.ToDateTime(TimeOnly.MinValue).ToString("dddd, dd MMMM yyyy", CultureInfo.CurrentCulture);
+
+    private static string FormatAgendaDate(DateOnly date)
+        => date.ToDateTime(TimeOnly.MinValue).ToString("dddd, dd MMMM yyyy", CultureInfo.CurrentCulture);
+
+    private static string FormatWeekdayShort(DateOnly date)
+        => date.ToDateTime(TimeOnly.MinValue).ToString("ddd", CultureInfo.CurrentCulture);
+
+    private static string FormatTime(DateTimeOffset? scheduledFor)
+        => scheduledFor is null
+            ? "--:-- UTC"
+            : $"{scheduledFor.Value.UtcDateTime.ToString("HH:mm", CultureInfo.InvariantCulture)} UTC";
+
+    private static string FormatCardSlotCount(UpcomingEventDto operation)
+    {
+        var accepted = operation.AcceptedCount ?? 0;
+        var minimum = operation.MinimumAccepted ?? 0;
+        return minimum > 0
+            ? $"{accepted} / {minimum}"
+            : $"{accepted}";
+    }
+
+    private string FormatShortSlots(UpcomingEventDto operation)
+    {
+        var minimum = operation.MinimumAccepted ?? 0;
+        return minimum > 0
+            ? $"{minimum} {Localizer[nameof(Language.Pages_Events_Upcoming_SlotsLabel)].Value}"
+            : $"{operation.AcceptedCount ?? 0} {Localizer[nameof(Language.Pages_Events_Upcoming_SlotsLabel)].Value}";
+    }
+
+    private static string GetSlotMeterStyle(UpcomingEventDto operation)
+        => $"width: {GetSlotProgress(operation).ToString(CultureInfo.InvariantCulture)}%;";
+
+    private static double GetSlotProgress(UpcomingEventDto operation)
+    {
+        var minimum = operation.MinimumAccepted ?? 0;
+        if (minimum <= 0)
+            return operation.AcceptedCount > 0 ? 100 : 0;
+
+        return Math.Clamp((operation.AcceptedCount ?? 0) * 100.0 / minimum, 0, 100);
+    }
+
+    private static string GetOperationStatusClass(UpcomingEventDto operation)
+        => IsUnderMinimum(operation)
+            ? "utf-status utf-status--warning"
+            : "utf-status utf-status--success";
+
+    private string GetOperationStatusLabel(UpcomingEventDto operation)
+        => IsUnderMinimum(operation)
+            ? Localizer[nameof(Language.Pages_Events_Upcoming_StatusLowSlots)].Value
+            : Localizer[nameof(Language.Pages_Events_Upcoming_StatusConfirmed)].Value;
+
+    private string GetAttendanceLabel(UpcomingEventDto operation)
+        => GetAcceptance(operation) switch
+        {
+            Common.Event.EEventAcceptance.Accepted => Localizer[nameof(Language.Pages_Events_Upcoming_StatusConfirmed)].Value,
+            Common.Event.EEventAcceptance.Maybe    => Localizer[nameof(Language.Pages_Events_Upcoming_StatusMaybe)].Value,
+            Common.Event.EEventAcceptance.Rejected => Localizer[nameof(Language.Pages_Events_Upcoming_StatusDeclined)].Value,
+            _                                        => IsUnderMinimum(operation) ? Localizer[nameof(Language.Pages_Events_Upcoming_StatusLowSlots)].Value : Localizer[nameof(Language.Pages_Events_Upcoming_StatusOpenSlots)].Value,
+        };
+
+    private static string GetAttendanceClass(UpcomingEventDto operation)
+        => GetAcceptance(operation) switch
+        {
+            Common.Event.EEventAcceptance.Accepted => "utf-operation-card__attendance-success",
+            Common.Event.EEventAcceptance.Maybe    => "utf-operation-card__attendance-warning",
+            Common.Event.EEventAcceptance.Rejected => "utf-operation-card__attendance-danger",
+            _                                        => IsUnderMinimum(operation) ? "utf-operation-card__attendance-warning" : "utf-operation-card__attendance-success",
+        };
+
+    private string GetEventCardClass(EventBoardCard card)
+        => card.IsPrimary ? "utf-event-card utf-event-card--featured" : "utf-event-card";
+
+    private string GetEventActionClass(EventBoardCard card)
+        => card.IsPrimary ? "utf-button utf-button--primary" : "utf-button utf-button--ghost";
+
+    private static Common.Event.EEventAcceptance? GetAcceptance(UpcomingEventDto operation)
+        => operation.MetaAcceptance switch
+        {
+            X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance.Accepted => Common.Event.EEventAcceptance.Accepted,
+            X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance.Maybe    => Common.Event.EEventAcceptance.Maybe,
+            X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance.Rejected => Common.Event.EEventAcceptance.Rejected,
+            _                                                                       => null,
+        };
+
+    private static bool IsUnderMinimum(UpcomingEventDto operation)
+        => (operation.MinimumAccepted ?? 0) > 0 && (operation.AcceptedCount ?? 0) < operation.MinimumAccepted;
+
+    private static DateOnly GetCurrentUtcMonth()
+    {
+        var utcNow = DateTimeOffset.UtcNow.UtcDateTime;
+        return new DateOnly(utcNow.Year, utcNow.Month, 1);
+    }
+
+    private static OperationViewMode? ParseViewMode(string? value)
+        => value?.Trim().ToLowerInvariant() switch
+        {
+            "calendar" => OperationViewMode.Calendar,
+            "board"    => OperationViewMode.Board,
+            _          => null,
+        };
+
+    private static string ToStorageValue(OperationViewMode mode)
+        => mode switch
+        {
+            OperationViewMode.Board => "board",
+            _                       => "calendar",
+        };
+
+    private static string? GetQueryValue(Uri uri, string key)
+    {
+        var query = uri.Query.TrimStart('?');
+        if (query.Length == 0)
+            return null;
+
+        foreach (var segment in query.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var parts = segment.Split('=', 2);
+            var segmentKey = Uri.UnescapeDataString(parts[0].Replace("+", " ", StringComparison.Ordinal));
+            if (!string.Equals(segmentKey, key, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            return parts.Length == 2
+                ? Uri.UnescapeDataString(parts[1].Replace("+", " ", StringComparison.Ordinal))
+                : string.Empty;
+        }
+
+        return null;
+    }
+
+    private sealed record EventBoardCard(
+        string Key,
+        Guid? EventId,
+        string Title,
+        string Date,
+        string Time,
+        string Terrain,
+        string ModPack,
+        string Host,
+        string SlotSummary,
+        string ShortSlots,
+        string CategoryLabel,
+        string CategoryClass,
+        string AttendanceLabel,
+        string AttendanceClass,
+        string SlotMeterStyle,
+        string ImageStyle,
+        string ActionLabel,
+        bool IsPrimary);
+
+    private sealed record CalendarOperationCard(
+        string Key,
+        Guid? EventId,
+        string Title,
+        string Date,
+        string Time,
+        DateOnly UtcDate,
+        string Terrain,
+        string ModPack,
+        string Host,
+        string SlotSummary,
+        string OperationStatusLabel,
+        string OperationStatusClass,
+        string AttendanceLabel,
+        string AttendanceClass,
+        string SlotMeterStyle,
+        bool IsLowSlots,
+        int AcceptedCount,
+        int MaybeCount,
+        string Description);
+
+    private sealed record CalendarDay(
+        DateOnly Date,
+        bool IsInDisplayedMonth,
+        bool IsToday,
+        bool IsSelected,
+        IReadOnlyList<CalendarOperationCard> Events);
+
+    private sealed record WeekStripDay(
+        DateOnly Date,
+        bool IsSelected,
+        bool IsToday,
+        bool HasEvents);
+
+    private sealed record CalendarAgendaGroup(
+        DateOnly Date,
+        IReadOnlyList<CalendarOperationCard> Events);
+
+    private enum OperationViewMode
+    {
+        Calendar,
+        Board,
+    }
+
+    private enum EventFilter
+    {
+        All,
+        Open,
+        Confirmed,
+        NeedsSignups,
+    }
+}

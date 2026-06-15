@@ -1,0 +1,329 @@
+@page "/command/verein/documents"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.Verein
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IVereinRepository VereinRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsPageTitle)]</PageTitle>
+
+<div class="verein-documents-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsPageTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsPageDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Verein_ActionRefresh)]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("verein/satzung")">
+                @Localizer[nameof(Language.Pages_Command_Verein_DocumentsPublicSatzungLink)]
+            </UtfCommandButton>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("verein/beschluesse")">
+                @Localizer[nameof(Language.Pages_Command_Verein_DocumentsPublicArchiveLink)]
+            </UtfCommandButton>
+            <UtfCommandButton Variant="primary" Href="@BaseUrl.ResolveSelfUrl("command/verein/documents/create")">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.AddCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Verein_DocumentFormCreateNew)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageDocuments)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsAccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsAccessRequiredDescription)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics verein-documents-metrics"
+                 aria-label="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsMetricsAria)])">
+            <UtfCommandMetric Active="@(_documentKindFilter is null)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsMetricAllDescription)])"
+                              OnClick="@(() => SetDocumentKindFilterAsync(null))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_MetricDocumentsStatus)])"
+                              StatusIntent="neutral"
+                              Value="@FormatCount(_documents.Length, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Document)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Document)].Value)"/>
+            <UtfCommandMetric Active="@(_documentKindFilter is EVereinDocumentKind.Satzung)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsMetricSatzungDescription)])"
+                              OnClick="@(() => SetDocumentKindFilterAsync(EVereinDocumentKind.Satzung))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsMetricSatzungStatus)])"
+                              StatusIntent="neutral"
+                              Value="@FormatCount(SatzungDocumentCount, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Document)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Document)].Value)"/>
+            <UtfCommandMetric Active="@(_documentKindFilter is EVereinDocumentKind.Minutes)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsMetricMinutesDescription)])"
+                              OnClick="@(() => SetDocumentKindFilterAsync(EVereinDocumentKind.Minutes))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsMetricMinutesStatus)])"
+                              StatusIntent="neutral"
+                              Value="@FormatCount(MinutesDocumentCount, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Document)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Document)].Value)"/>
+        </section>
+
+        <UtfCommandToolbar Class="verein-documents-toolbar"
+                           AriaLabel="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsToolbarAria)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsSearchPlaceholder)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            <UtfCommandFilter Active="@(_documentKindFilter is null)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsFilterAll)])"
+                              Count="@FormatNumber(_documents.Length)"
+                              OnClick="@(() => SetDocumentKindFilterAsync(null))"/>
+            <UtfCommandFilter Active="@(_documentKindFilter is EVereinDocumentKind.Satzung)"
+                              Label="@(Localizer[nameof(Language.Satzung)])"
+                              Count="@FormatNumber(SatzungDocumentCount)"
+                              OnClick="@(() => SetDocumentKindFilterAsync(EVereinDocumentKind.Satzung))"/>
+            <UtfCommandFilter Active="@(_documentKindFilter is EVereinDocumentKind.Minutes)"
+                              Label="@(Localizer[nameof(Language.Auto_BeschlussMinutes_6fa4d247)])"
+                              Count="@FormatNumber(MinutesDocumentCount)"
+                              OnClick="@(() => SetDocumentKindFilterAsync(EVereinDocumentKind.Minutes))"/>
+        </UtfCommandToolbar>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Command_Verein_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <section class="utf-panel utf-command-ledger verein-documents-list">
+                <div class="utf-command-ledger__header verein-documents-list__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_DocumentsKicker)]</span>
+                        <h2>@GetDocumentListTitle()</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@FormatCount(VisibleDocuments.Length, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Document)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Document)].Value)
+                    </span>
+                </div>
+
+                @if (VisibleDocuments.Length is 0)
+                {
+                    <div class="verein-empty">@Localizer[nameof(Language.Pages_Command_Verein_DocumentsNoRows)]</div>
+                }
+                else
+                {
+                    <div class="utf-command-table-scroll verein-documents-table-scroll">
+                        <table class="utf-command-table verein-documents-table">
+                            <thead>
+                            <tr>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsHeaderDocument)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsHeaderKind)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsHeaderPublished)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsHeaderRevisions)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsHeaderUpdated)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsHeaderActions)]</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var document in VisibleDocuments)
+                            {
+                                <tr class="verein-documents-row utf-command-row--interactive"
+                                    @key="document.PrimaryKey"
+                                    tabindex="0"
+                                    aria-label="@GetDocumentOpenLabel(document)"
+                                    @onclick="@(() => OpenDocumentDetail(document))"
+                                    @onkeydown="@((args) => HandleDocumentRowKeyDown(args, document))">
+                                    <td>
+                                        <strong @onclick:stopPropagation="true"
+                                                @onkeydown:stopPropagation="true">
+                                            <NavLink href="@BaseUrl.ResolveSelfUrl($"command/verein/documents/{document.PrimaryKey}")">
+                                                @GetDocumentTitle(document)
+                                            </NavLink>
+                                        </strong>
+                                        <span>@GetDocumentSummary(document)</span>
+                                    </td>
+                                    <td>@FormatDocumentKind(document.Kind)</td>
+                                    <td>
+                                        <span class="@GetDocumentPublishedStatusClass(document)">
+                                            <span class="utf-status__dot"></span>@GetDocumentPublishedLabel(document)
+                                        </span>
+                                    </td>
+                                    <td>@document.Revisions.Length</td>
+                                    <td>@FormatDateTime(document.TimeStampUpdated)</td>
+                                    <td @onclick:stopPropagation="true"
+                                        @onkeydown:stopPropagation="true">
+                                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/verein/documents/{document.PrimaryKey}")">
+                                            @Localizer[nameof(Language.Pages_Command_Verein_DocumentsOpenDetail)]
+                                        </UtfCommandButton>
+                                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/verein/documents/{document.PrimaryKey}/edit")">
+                                            @Localizer[nameof(Language.Pages_Command_Verein_DocumentsOpenEdit)]
+                                        </UtfCommandButton>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private VereinDocumentInfo[] _documents = [];
+    private EVereinDocumentKind? _documentKindFilter;
+    private bool _isLoading;
+    private string? _loadError;
+    private string _search = string.Empty;
+
+    private bool CanManageDocuments
+        => Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Documents);
+
+    private VereinDocumentInfo[] VisibleDocuments
+        => _documents
+            .Where(MatchesFilter)
+            .OrderBy(q => q.Kind)
+            .ThenByDescending(q => q.TimeStampUpdated)
+            .ToArray();
+
+    private int SatzungDocumentCount
+        => _documents.Count(q => q.Kind == EVereinDocumentKind.Satzung);
+
+    private int MinutesDocumentCount
+        => _documents.Count(q => q.Kind == EVereinDocumentKind.Minutes);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageDocuments)
+            await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!CanManageDocuments)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _documents = (await VereinRepository.GetAdminDocumentsAsync().ConfigureAwait(false)).ToArray();
+        }
+        catch (Exception ex)
+        {
+            _documents = [];
+            _loadError = string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Verein_LoadError)].Value,
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private Task SetDocumentKindFilterAsync(EVereinDocumentKind? kind)
+    {
+        _documentKindFilter = kind;
+        return Task.CompletedTask;
+    }
+
+    private void OnSearchChanged(string value)
+        => _search = value;
+
+    private void OpenDocumentDetail(VereinDocumentInfo document)
+        => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/verein/documents/{document.PrimaryKey}"));
+
+    private void HandleDocumentRowKeyDown(KeyboardEventArgs args, VereinDocumentInfo document)
+    {
+        if (UtfCommandRowInteraction.IsOpenKey(args))
+            OpenDocumentDetail(document);
+    }
+
+    private bool MatchesFilter(VereinDocumentInfo document)
+    {
+        if (_documentKindFilter is not null && document.Kind != _documentKindFilter)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(_search))
+            return true;
+
+        return GetDocumentTitle(document).Contains(_search, StringComparison.CurrentCultureIgnoreCase)
+               || GetDocumentSummary(document).Contains(_search, StringComparison.CurrentCultureIgnoreCase)
+               || FormatDocumentKind(document.Kind).Contains(_search, StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private string GetDocumentListTitle()
+        => _documentKindFilter switch
+        {
+            EVereinDocumentKind.Satzung => Localizer[nameof(Language.Pages_Command_Verein_DocumentsListTitleSatzung)].Value,
+            EVereinDocumentKind.Minutes => Localizer[nameof(Language.Pages_Command_Verein_DocumentsListTitleMinutes)].Value,
+            _ => Localizer[nameof(Language.Pages_Command_Verein_DocumentsListTitleAll)].Value,
+        };
+
+    private string GetDocumentTitle(VereinDocumentInfo document)
+        => document.Revision?.Title
+           ?? string.Format(
+               CultureInfo.CurrentCulture,
+               Localizer[nameof(Language.Pages_Command_Verein_DocumentFallbackTitle)].Value,
+               document.PrimaryKey
+           );
+
+    private string GetDocumentSummary(VereinDocumentInfo document)
+        => string.IsNullOrWhiteSpace(document.Revision?.Summary)
+            ? Localizer[nameof(Language.Pages_Command_Verein_DocumentNoSummary)].Value
+            : document.Revision.Summary;
+
+    private string GetDocumentOpenLabel(VereinDocumentInfo document)
+        => $"{Localizer[nameof(Language.Pages_Command_Verein_DocumentsOpenDetail)].Value}: {GetDocumentTitle(document)}";
+
+    private string FormatDocumentKind(EVereinDocumentKind kind)
+        => kind switch
+        {
+            EVereinDocumentKind.Satzung => Localizer[nameof(Language.Satzung)].Value,
+            EVereinDocumentKind.Minutes => Localizer[nameof(Language.Auto_BeschlussMinutes_6fa4d247)].Value,
+            _ => kind.ToString(),
+        };
+
+    private string GetDocumentPublishedStatusClass(VereinDocumentInfo document)
+        => GetLatestPublishedRevision(document) is null
+            ? "utf-status utf-status--warning"
+            : "utf-status utf-status--success";
+
+    private string GetDocumentPublishedLabel(VereinDocumentInfo document)
+    {
+        var revision = GetLatestPublishedRevision(document);
+        return revision is null
+            ? Localizer[nameof(Language.Pages_Command_Verein_DocumentsDraftOnly)].Value
+            : Localizer[nameof(Language.Pages_Command_Verein_DocumentsPublishedVersion), revision.Version].Value;
+    }
+
+    private static VereinDocumentRevisionInfo? GetLatestPublishedRevision(VereinDocumentInfo document)
+        => document.Revisions
+            .Where(q => q.IsPublished)
+            .OrderByDescending(q => q.TimeStampPublished)
+            .ThenByDescending(q => q.Version)
+            .FirstOrDefault();
+
+    private static string FormatDateTime(DateTimeOffset value)
+        => value.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture);
+
+    private static string FormatNumber(int count)
+        => count.ToString("N0", CultureInfo.CurrentCulture);
+
+    private static string FormatCount(int count, string singularTemplate, string pluralTemplate)
+        => count is 1
+            ? string.Format(CultureInfo.CurrentCulture, singularTemplate, count)
+            : string.Format(CultureInfo.CurrentCulture, pluralTemplate, count);
+}

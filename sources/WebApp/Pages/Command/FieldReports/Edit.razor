@@ -1,0 +1,700 @@
+@page "/command/field-reports/create"
+@page "/command/field-reports/{ReportId:guid}"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@using X39.UnitedTacticalForces.WebApp.Services.FieldReportRepository
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@inject IFieldReportRepository FieldReportRepository
+@inject IDialogService DialogService
+@inject IToastService ToastService
+@inject NavigationManager NavigationManager
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@GetPageTitle()</PageTitle>
+
+<div class="field-report-editor-page">
+    <UtfCommandPageHeader Title="@GetPageTitle()"
+                          Description="@(Localizer[nameof(Language.Pages_Command_FieldReports_Edit_HeaderDescription)])">
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/field-reports")">
+                @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_BackToLedger)]
+            </UtfCommandButton>
+            @if (CanManageFieldReports && _editor is not null)
+            {
+                <UtfCommandButton Variant="primary"
+                                  Disabled="@_isSaving"
+                                  OnClick="SaveAsync">
+                    <Icon><FluentIcon Value="@(new Icons.Regular.Size20.Save())"/></Icon>
+                    <ChildContent>@(_isSaving
+                        ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_Saving)]
+                        : Localizer[nameof(Language.Pages_Command_FieldReports_Edit_Save)])
+                    </ChildContent>
+                </UtfCommandButton>
+            }
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageFieldReports)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_NoAccessTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_NoAccessMessage)]</p>
+        </section>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_Loading)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning" role="alert">
+            @_loadError
+        </div>
+    }
+    else if (_editor is { } editor)
+    {
+        <section class="utf-panel field-report-editor-shell">
+            <div class="field-report-editor-shell__header">
+                <div>
+                    <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_EditorKicker)]</span>
+                    <h2>@GetEditorTitle(editor)</h2>
+                </div>
+                <span class="@GetEditorStatusClass(editor)">
+                    <span class="utf-status__dot"></span>@GetEditorStatusLabel(editor)
+                </span>
+            </div>
+
+            <section class="field-report-command__form field-report-editor-form" aria-label="@(Localizer[nameof(Language.Pages_Command_FieldReports_Edit_FormAria)])">
+                <label>
+                    <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelTitle)]</span>
+                    <input class="utf-command-input" type="text" maxlength="150" @bind="editor.Title"/>
+                </label>
+                <label>
+                    <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelSlug)]</span>
+                    <input class="utf-command-input" type="text" maxlength="120" placeholder="@GetSlugPlaceholder(editor)" @bind="editor.Slug"/>
+                </label>
+                <label class="field-report-command__field--wide">
+                    <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelExcerpt)]</span>
+                    <textarea class="utf-command-input" rows="3" maxlength="320" @bind="editor.Excerpt"></textarea>
+                </label>
+                <div class="field-report-command__form-grid field-report-command__field--wide">
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelCategory)]</span>
+                        <input class="utf-command-input" type="text" maxlength="64" @bind="editor.Category"/>
+                    </label>
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelSortOrder)]</span>
+                        <input class="utf-command-input" type="number" @bind="editor.SortOrder"/>
+                    </label>
+                </div>
+                <label>
+                    <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelHeroImageAlt)]</span>
+                    <input class="utf-command-input" type="text" maxlength="200" @bind="editor.HeroImageAlt"/>
+                </label>
+                <section class="field-report-command__image-panel field-report-command__field--wide"
+                         aria-label="@(T("Pages_Command_FieldReports_Edit_ImageUploadAria"))">
+                    <div class="field-report-command__image-heading">
+                        <div>
+                            <span class="utf-kicker">@T("Pages_Command_FieldReports_Edit_ImageKicker")</span>
+                            <strong>@T("Pages_Command_FieldReports_Edit_ImageTitle")</strong>
+                        </div>
+                        <span>@GetHeroImageStatusLabel(editor)</span>
+                    </div>
+                    <div class="field-report-command__image-grid">
+                        <div class="field-report-command__image-source">
+                            <section class="field-report-command__gallery-picker"
+                                     aria-label="@(T("Pages_Command_FieldReports_Edit_GalleryAria"))">
+                                <div class="field-report-command__gallery-heading">
+                                    <div>
+                                        <span class="utf-kicker">@T("Pages_Command_FieldReports_Edit_GalleryKicker")</span>
+                                        <strong>@T("Pages_Command_FieldReports_Edit_GalleryTitle")</strong>
+                                    </div>
+                                    <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content/gallery")">
+                                        @T("Pages_Command_FieldReports_Edit_GalleryOpen")
+                                    </UtfCommandButton>
+                                </div>
+                                <GalleryImagePicker SelectedAssetId="@editor.HeroImageAssetFk"
+                                                    SelectedImagePath="@editor.HeroImagePath"
+                                                    SelectedFileName="@GetHeroImageFileName(editor)"
+                                                    UploadTags="@FieldReportUploadTags"
+                                                    AllowClear="true"
+                                                    Disabled="@_isSaving"
+                                                    SelectedAssetChanged="OnGalleryAssetSelected"/>
+                            </section>
+                        </div>
+                        <section class="field-report-command__image-preview-shell"
+                                 aria-label="@(T("Pages_Command_FieldReports_Edit_ImagePreviewAria"))">
+                            <div class="@GetHeroImagePreviewClass(editor)"
+                                 style="@GetHeroImagePreviewStyle(editor)">
+                                @if (!HasHeroImagePreview(editor))
+                                {
+                                    <FluentIcon Value="@(new Icons.Regular.Size24.ImageOff())"/>
+                                    <span>@T("Pages_Command_FieldReports_Edit_ImagePreviewEmpty")</span>
+                                }
+                            </div>
+                            <dl>
+                                <dt>@T("Pages_Command_FieldReports_Edit_ImageFile")</dt>
+                                <dd>@GetHeroImageFileLabel(editor)</dd>
+                                <dt>@T("Pages_Command_FieldReports_Edit_ImageType")</dt>
+                                <dd>@GetHeroImageTypeLabel()</dd>
+                                <dt>@T("Pages_Command_FieldReports_Edit_ImageSize")</dt>
+                                <dd>@GetHeroImageSizeLabel()</dd>
+                            </dl>
+                        </section>
+                    </div>
+                </section>
+                <label>
+                    <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelPublicationDate)]</span>
+                    <input class="utf-command-input"
+                           type="datetime-local"
+                           value="@_publicationInput"
+                           @onchange="OnPublicationInputChanged"/>
+                </label>
+                <div class="field-report-command__checks">
+                    <label>
+                        <input type="checkbox" @bind="editor.IsFeatured"/>
+                        <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelFeatured)]</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" @bind="editor.IsPublished"/>
+                        <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelPublished)]</span>
+                    </label>
+                </div>
+                <label class="field-report-command__field--wide">
+                    <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelMarkdown)]</span>
+                    <textarea class="utf-command-input" rows="18" @bind="editor.Markdown"></textarea>
+                </label>
+            </section>
+
+            <section class="field-report-command__preview-shell field-report-editor-preview" aria-label="@(Localizer[nameof(Language.Pages_Command_FieldReports_Edit_PreviewAria)])">
+                <div class="field-report-command__preview-toggle">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_PreviewKicker)]</span>
+                        <strong>@(_isPreviewVisible ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_PreviewVisible)] : Localizer[nameof(Language.Pages_Command_FieldReports_Edit_PreviewHidden)])</strong>
+                    </div>
+                    <UtfCommandFilter Active="@_isPreviewVisible"
+                                      Label="@(_isPreviewVisible ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_HidePreview)] : Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ShowPreview)])"
+                                      OnClick="TogglePreview"/>
+                </div>
+                @if (_isPreviewVisible)
+                {
+                    <div class="field-report-command__preview">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_RenderedBodyKicker)]</span>
+                            <h3>@GetEditorTitle(editor)</h3>
+                            <p>@editor.Excerpt</p>
+                        </div>
+                        <FluentMarkdown Content="@GetPreviewMarkdown(editor)"/>
+                    </div>
+                }
+            </section>
+
+            <div class="field-report-editor-actions">
+                <UtfCommandButton Variant="primary"
+                                  Disabled="@_isSaving"
+                                  OnClick="SaveAsync">
+                    @(_isSaving
+                        ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonSaving)]
+                        : Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonSave)])
+                </UtfCommandButton>
+                @if (editor.PrimaryKey is not null && !editor.IsPublished && !editor.IsDeleted)
+                {
+                    <UtfCommandButton Disabled="@_isSaving"
+                                      OnClick="PublishAsync">
+                        @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonPublish)]
+                    </UtfCommandButton>
+                }
+                @if (editor.PrimaryKey is not null && editor.IsPublished && !editor.IsDeleted)
+                {
+                    <UtfCommandButton Disabled="@_isSaving"
+                                      OnClick="UnpublishAsync">
+                        @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonUnpublish)]
+                    </UtfCommandButton>
+                }
+                @if (editor.PrimaryKey is not null && !editor.IsDeleted)
+                {
+                    <UtfCommandButton Disabled="@_isSaving"
+                                      OnClick="DeleteAsync">
+                        @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonDelete)]
+                    </UtfCommandButton>
+                }
+                @if (editor.PrimaryKey is not null && editor.IsDeleted)
+                {
+                    <UtfCommandButton Disabled="@_isSaving"
+                                      OnClick="RestoreAsync">
+                        @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonRestore)]
+                    </UtfCommandButton>
+                }
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private static readonly string[] FieldReportUploadTags = ["field-report"];
+
+    private FieldReportEditorModel? _editor;
+    private string _publicationInput = string.Empty;
+    private string _heroImageFileName = string.Empty;
+    private string _heroImageContentType = string.Empty;
+    private long _heroImageSize;
+    private bool _isLoading;
+    private bool _isSaving;
+    private bool _isPreviewVisible = true;
+    private string? _loadError;
+
+    [Parameter]
+    public Guid? ReportId { get; set; }
+
+    private bool CanManageFieldReports
+        => Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageFieldReports)
+            await LoadAsync().ConfigureAwait(false);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CanManageFieldReports && _editor is not null && _editor.PrimaryKey != ReportId)
+            await LoadAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            if (ReportId is null)
+            {
+                _editor = FieldReportEditorModel.CreateNew(CreateTemplateMarkdown());
+                _publicationInput = FormatPublicationInput(DateTimeOffset.Now);
+                _isPreviewVisible = true;
+                ClearHeroImageMetadata();
+                return;
+            }
+
+            var report = await FieldReportRepository
+                .GetCommandCenterReportAsync(ReportId.Value)
+                .ConfigureAwait(false);
+            if (report is null)
+            {
+                _editor = null;
+                _loadError = Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ErrorNotFound)].Value;
+                return;
+            }
+
+            ApplyReport(report);
+        }
+        catch (Exception ex)
+        {
+            _editor = null;
+            _loadError = string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ErrorLoad)].Value, UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ApplyReport(CommandCenterFieldReportInfo report)
+    {
+        _editor = FieldReportEditorModel.From(report);
+        _publicationInput = report.TimeStampPublished is { } published
+            ? FormatPublicationInput(published)
+            : string.Empty;
+        _isPreviewVisible = true;
+        ClearHeroImageMetadata();
+    }
+
+    private void OnPublicationInputChanged(ChangeEventArgs args)
+        => _publicationInput = args.Value?.ToString() ?? string.Empty;
+
+    private void TogglePreview()
+        => _isPreviewVisible = !_isPreviewVisible;
+
+    private void ClearHeroImageMetadata()
+    {
+        _heroImageFileName = string.Empty;
+        _heroImageContentType = string.Empty;
+        _heroImageSize = 0;
+    }
+
+    private void OnGalleryAssetSelected(MediaAssetInfo? asset)
+    {
+        if (_editor is null)
+            return;
+
+        if (asset is null)
+        {
+            _editor.HeroImageAssetFk = null;
+            _editor.HeroImagePath = string.Empty;
+            ClearHeroImageMetadata();
+            return;
+        }
+
+        _editor.HeroImageAssetFk = asset.PrimaryKey;
+        _editor.HeroImagePath = asset.ImagePath;
+        _heroImageFileName = asset.OriginalFileName;
+        _heroImageContentType = asset.ContentType;
+        _heroImageSize = asset.Size;
+        if (string.IsNullOrWhiteSpace(_editor.HeroImageAlt))
+            _editor.HeroImageAlt = System.IO.Path.GetFileNameWithoutExtension(asset.OriginalFileName);
+        ToastService.ShowSuccess(T("Pages_Command_FieldReports_Edit_GallerySelectedToast"));
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editor is null || _isSaving)
+            return;
+
+        var validationError = ValidateEditor(_editor);
+        if (validationError is not null)
+        {
+            ToastService.ShowError(validationError);
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            var payload = CreatePayload(_editor);
+            var savedReport = _editor.PrimaryKey is { } reportId
+                ? await FieldReportRepository.UpdateReportAsync(reportId, payload).ConfigureAwait(false)
+                : await FieldReportRepository.CreateReportAsync(payload).ConfigureAwait(false);
+
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ToastSaved)].Value);
+            ApplyReport(savedReport);
+            if (ReportId != savedReport.PrimaryKey)
+                NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/field-reports/{savedReport.PrimaryKey}"));
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ErrorSave)].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task PublishAsync()
+    {
+        if (_editor?.PrimaryKey is not { } reportId || _isSaving)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            var report = await FieldReportRepository.PublishReportAsync(reportId).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ToastPublished)].Value);
+            ApplyReport(report);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ErrorPublish)].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task UnpublishAsync()
+    {
+        if (_editor?.PrimaryKey is not { } reportId || _isSaving)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            var report = await FieldReportRepository.UnpublishReportAsync(reportId).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ToastUnpublished)].Value);
+            ApplyReport(report);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ErrorUnpublish)].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_editor?.PrimaryKey is not { } reportId || _isSaving)
+            return;
+
+        var dialogReference = await DialogService.ShowConfirmationAsync(
+            Localizer[nameof(Language.Pages_Command_FieldReports_Edit_DeleteConfirm)].Value,
+            Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonDelete)].Value,
+            Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonCancel)].Value,
+            Localizer[nameof(Language.Pages_Command_FieldReports_Edit_DeleteTitle)].Value
+        );
+        var result = await dialogReference.Result;
+        if (result.Cancelled)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            var report = await FieldReportRepository.DeleteReportAsync(reportId).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ToastDeleted)].Value);
+            ApplyReport(report);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ErrorDelete)].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task RestoreAsync()
+    {
+        if (_editor?.PrimaryKey is not { } reportId || _isSaving)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            var report = await FieldReportRepository.RestoreReportAsync(reportId).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ToastRestored)].Value);
+            ApplyReport(report);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ErrorRestore)].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private FieldReportUpsertInfo CreatePayload(FieldReportEditorModel editor)
+    {
+        DateTimeOffset? publishedAt = editor.IsPublished
+            ? ParsePublicationInput() ?? DateTimeOffset.UtcNow
+            : null;
+        return new FieldReportUpsertInfo
+        {
+            Slug = string.IsNullOrWhiteSpace(editor.Slug) ? null : editor.Slug,
+            Title = editor.Title,
+            Excerpt = editor.Excerpt,
+            Category = editor.Category,
+            Markdown = editor.Markdown,
+            HeroImageAssetFk = editor.HeroImageAssetFk,
+            HeroImageAlt = string.IsNullOrWhiteSpace(editor.HeroImageAlt) ? null : editor.HeroImageAlt,
+            IsFeatured = editor.IsFeatured,
+            SortOrder = editor.SortOrder,
+            IsPublished = editor.IsPublished,
+            TimeStampPublished = publishedAt,
+        };
+    }
+
+    private string? ValidateEditor(FieldReportEditorModel editor)
+    {
+        if (string.IsNullOrWhiteSpace(editor.Title))
+            return Localizer[nameof(Language.Pages_Command_FieldReports_Edit_Validation_TitleRequired)].Value;
+        if (string.IsNullOrWhiteSpace(editor.Excerpt))
+            return Localizer[nameof(Language.Pages_Command_FieldReports_Edit_Validation_ExcerptRequired)].Value;
+        if (string.IsNullOrWhiteSpace(editor.Category))
+            return Localizer[nameof(Language.Pages_Command_FieldReports_Edit_Validation_CategoryRequired)].Value;
+        if (string.IsNullOrWhiteSpace(editor.Markdown))
+            return Localizer[nameof(Language.Pages_Command_FieldReports_Edit_Validation_BodyRequired)].Value;
+        if (editor.IsPublished && !string.IsNullOrWhiteSpace(_publicationInput) && ParsePublicationInput() is null)
+            return Localizer[nameof(Language.Pages_Command_FieldReports_Edit_Validation_PublicationDateInvalid)].Value;
+        return null;
+    }
+
+    private DateTimeOffset? ParsePublicationInput()
+    {
+        if (string.IsNullOrWhiteSpace(_publicationInput))
+            return null;
+        if (!DateTime.TryParse(_publicationInput, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal, out var localDateTime))
+            return null;
+        return new DateTimeOffset(localDateTime);
+    }
+
+    private string GetPageTitle()
+        => ReportId is null
+            ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_PageTitleCreate)].Value
+            : _editor is null
+                ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_PageTitleEdit)].Value
+                : string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_Edit_PageTitleEditReport)].Value, GetEditorTitle(_editor));
+
+    private string GetEditorStatusClass(FieldReportEditorModel editor)
+        => editor.IsDeleted
+            ? "utf-status utf-status--danger"
+            : editor.IsPublished
+                ? "utf-status utf-status--success"
+                : "utf-status utf-status--warning";
+
+    private string GetEditorStatusLabel(FieldReportEditorModel editor)
+        => editor.IsDeleted
+            ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_StatusDeleted)].Value
+            : editor.IsPublished
+                ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_StatusPublished)].Value
+                : Localizer[nameof(Language.Pages_Command_FieldReports_Edit_StatusDraft)].Value;
+
+    private string GetEditorTitle(FieldReportEditorModel editor)
+        => string.IsNullOrWhiteSpace(editor.Title) ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_FallbackUntitled)].Value : editor.Title;
+
+    private string GetPreviewMarkdown(FieldReportEditorModel editor)
+        => string.IsNullOrWhiteSpace(editor.Markdown)
+            ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_PlaceholderPreviewMarkdown)].Value
+            : editor.Markdown;
+
+    private string GetHeroImageStatusLabel(FieldReportEditorModel editor)
+        => string.IsNullOrWhiteSpace(editor.HeroImagePath)
+            ? T("Pages_Command_FieldReports_Edit_ImageStatusEmpty")
+            : T("Pages_Command_FieldReports_Edit_ImageStatusStored");
+
+    private string GetHeroImagePreviewClass(FieldReportEditorModel editor)
+        => HasHeroImagePreview(editor)
+            ? "field-report-command__image-preview"
+            : "field-report-command__image-preview field-report-command__image-preview--empty";
+
+    private string GetHeroImagePreviewStyle(FieldReportEditorModel editor)
+        => GetHeroImagePreviewSource(editor) is { } source
+            ? $"background-image: url(\"{EscapeCssUrl(source)}\");"
+            : string.Empty;
+
+    private bool HasHeroImagePreview(FieldReportEditorModel editor)
+        => GetHeroImagePreviewSource(editor) is not null;
+
+    private string? GetHeroImagePreviewSource(FieldReportEditorModel editor)
+        => string.IsNullOrWhiteSpace(editor.HeroImagePath)
+            ? null
+            : BaseUrl.ResolveImageUrl(editor.HeroImagePath);
+
+    private string GetHeroImageFileLabel(FieldReportEditorModel editor)
+        => string.IsNullOrWhiteSpace(editor.HeroImagePath)
+            ? T("Pages_Command_FieldReports_Edit_ImageNoFile")
+            : GetHeroImageFileName(editor);
+
+    private string GetHeroImageTypeLabel()
+        => !string.IsNullOrWhiteSpace(_heroImageContentType)
+            ? _heroImageContentType
+            : T("Pages_Command_FieldReports_Edit_ImageUnknownMetadata");
+
+    private string GetHeroImageSizeLabel()
+        => _heroImageSize > 0
+            ? FormatByteCount(_heroImageSize)
+            : T("Pages_Command_FieldReports_Edit_ImageUnknownMetadata");
+
+    private string GetHeroImageFileName(FieldReportEditorModel editor)
+        => !string.IsNullOrWhiteSpace(_heroImageFileName)
+            ? _heroImageFileName
+            : Path.GetFileName(editor.HeroImagePath);
+
+    private string GetSlugPlaceholder(FieldReportEditorModel editor)
+        => string.IsNullOrWhiteSpace(editor.Title) ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_PlaceholderSlug)].Value : CreateSlug(editor.Title);
+
+    private static string FormatPublicationInput(DateTimeOffset value)
+        => value.ToLocalTime().ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture);
+
+    private string CreateTemplateMarkdown()
+        => Localizer[nameof(Language.Pages_Command_FieldReports_Edit_TemplateMarkdown)].Value;
+
+    private string T(string key)
+        => Localizer[key].Value;
+
+    private static string EscapeCssUrl(string url)
+        => url.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "%22", StringComparison.Ordinal);
+
+    private static string FormatByteCount(long byteCount)
+    {
+        if (byteCount < 1024)
+            return $"{byteCount.ToString("N0", CultureInfo.CurrentCulture)} bytes";
+
+        var kilobytes = byteCount / 1024d;
+        if (kilobytes < 1024)
+            return $"{kilobytes.ToString("N1", CultureInfo.CurrentCulture)} KB";
+
+        var megabytes = kilobytes / 1024d;
+        return $"{megabytes.ToString("N1", CultureInfo.CurrentCulture)} MB";
+    }
+    
+    private static string CreateSlug(string value)
+    {
+        var slugCharacters = value.Trim()
+            .ToLowerInvariant()
+            .Select(character => char.IsLetterOrDigit(character) ? character : '-')
+            .ToArray();
+        var slug = string.Join(
+                "-",
+                new string(slugCharacters).Split('-', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            )
+            .Trim('-');
+        return string.IsNullOrWhiteSpace(slug) ? "field-report" : slug;
+    }
+
+    private sealed class FieldReportEditorModel
+    {
+        public Guid? PrimaryKey { get; init; }
+
+        public string Slug { get; set; } = string.Empty;
+
+        public string Title { get; set; } = string.Empty;
+
+        public string Excerpt { get; set; } = string.Empty;
+
+        public string Category { get; set; } = "After Action";
+
+        public string Markdown { get; set; } = string.Empty;
+
+        public Guid? HeroImageAssetFk { get; set; }
+
+        public string HeroImagePath { get; set; } = string.Empty;
+
+        public string HeroImageAlt { get; set; } = string.Empty;
+
+        public bool IsFeatured { get; set; }
+
+        public int SortOrder { get; set; }
+
+        public bool IsPublished { get; set; }
+
+        public bool IsDeleted { get; init; }
+
+        public static FieldReportEditorModel CreateNew(string template)
+            => new()
+            {
+                Markdown = template,
+            };
+
+        public static FieldReportEditorModel From(CommandCenterFieldReportInfo report)
+            => new()
+            {
+                PrimaryKey        = report.PrimaryKey,
+                Slug              = report.Slug,
+                Title             = report.Title,
+                Excerpt           = report.Excerpt,
+                Category          = report.Category,
+                Markdown          = report.Markdown,
+                HeroImageAssetFk  = report.HeroImageAssetFk,
+                HeroImagePath     = report.HeroImagePath ?? string.Empty,
+                HeroImageAlt      = report.HeroImageAlt ?? string.Empty,
+                IsFeatured        = report.IsFeatured,
+                SortOrder         = report.SortOrder,
+                IsPublished       = report.IsPublished,
+                IsDeleted         = report.IsDeleted,
+            };
+    }
+}

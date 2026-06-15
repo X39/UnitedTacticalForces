@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>X39.UnitedTacticalForces.Hosting.Contracts</RootNamespace>
+    <PackageId>X39.UnitedTacticalForces.Hosting.Contracts</PackageId>
+    <AssemblyName>X39.UnitedTacticalForces.Hosting.Contracts</AssemblyName>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,694 @@
+﻿{
+    "Shared_CommandCenter_BrandName":  {
+                                           "en":  "United Tactical Forces",
+                                           "de":  "United Tactical Forces"
+                                       },
+    "Shared_CommunityBrand_NamePart1":  {
+                                            "en":  "United",
+                                            "de":  "United"
+                                        },
+    "Shared_CommunityBrand_NamePart2":  {
+                                            "en":  "Tactical",
+                                            "de":  "Tactical"
+                                        },
+    "Shared_CommunityBrand_NamePart3":  {
+                                            "en":  "Forces",
+                                            "de":  "Forces"
+                                        },
+    "Pages_Unit_Kassenbuch_Index_Income":  {
+                                               "en":  "Income",
+                                               "de":  "Einnahmen"
+                                           },
+    "Pages_Unit_Kassenbuch_Index_Expense":  {
+                                                "en":  "Expense",
+                                                "de":  "Ausgaben"
+                                            },
+    "Pages_Unit_Kassenbuch_Index_Balance":  {
+                                                "en":  "Balance",
+                                                "de":  "Saldo"
+                                            },
+    "Pages_Public_Media_AllCategory":  {
+                                           "en":  "All",
+                                           "de":  "Alle"
+                                       },
+    "Components_UtfProfileMenu_CloseMenu":  {
+                                                "en":  "Close profile menu",
+                                                "de":  "ProfilmenÃ¼ schlieÃŸen"
+                                            },
+    "Components_UtfProfileMenu_ProfileMenu":  {
+                                                  "en":  "Profile menu",
+                                                  "de":  "ProfilmenÃ¼"
+                                              },
+    "Components_UtfProfileMenu_AccountStatusLabel":  {
+                                                         "en":  "Account status",
+                                                         "de":  "Kontostatus"
+                                                     },
+    "Components_UtfProfileMenu_AccountAccessSummary":  {
+                                                           "en":  "Account access summary",
+                                                           "de":  "Zusammenfassung der Kontozugriffe"
+                                                       },
+    "Components_UtfProfileMenu_RolesLabel":  {
+                                                 "en":  "Roles",
+                                                 "de":  "Rollen"
+                                             },
+    "Components_UtfProfileMenu_ClaimsLabel":  {
+                                                  "en":  "Claims",
+                                                  "de":  "Berechtigungen"
+                                              },
+    "Components_UtfProfileMenu_LinkedLabel":  {
+                                                  "en":  "Linked",
+                                                  "de":  "Verbunden"
+                                              },
+    "Components_UtfProfileMenu_NeedsAttention":  {
+                                                     "en":  "Needs attention",
+                                                     "de":  "Handlungsbedarf"
+                                                 },
+    "Components_UtfProfileMenu_PolicyApprovalsTitle":  {
+                                                           "en":  "Policy approvals waiting",
+                                                           "de":  "Ausstehende Richtlinienfreigaben"
+                                                       },
+    "Components_UtfProfileMenu_PolicyApprovalsDescription":  {
+                                                                 "en":  "Cloud plans require review before action.",
+                                                                 "de":  "Cloud-PlÃ¤ne mÃ¼ssen vor der AusfÃ¼hrung Ã¼berprÃ¼ft werden."
+                                                             },
+    "Components_UtfProfileMenu_WorkersStaleTitle":  {
+                                                        "en":  "Workers stale",
+                                                        "de":  "Veraltete Worker"
+                                                    },
+    "Components_UtfProfileMenu_WorkersStaleDescription":  {
+                                                              "en":  "Registered workers missed heartbeat checks.",
+                                                              "de":  "Registrierte Worker haben Heartbeat-ÃœberprÃ¼fungen verpasst."
+                                                          },
+    "Components_UtfProfileMenu_Authority":  {
+                                                "en":  "Authority",
+                                                "de":  "Befugnis"
+                                            },
+    "Components_UtfProfileMenu_LinkedAccounts":  {
+                                                     "en":  "Linked accounts",
+                                                     "de":  "VerknÃ¼pfte Konten"
+                                                 },
+    "Components_UtfProfileMenu_SteamProvider":  {
+                                                    "en":  "Steam",
+                                                    "de":  "Steam"
+                                                },
+    "Components_UtfProfileMenu_DiscordProvider":  {
+                                                      "en":  "Discord",
+                                                      "de":  "Discord"
+                                                  },
+    "Components_UtfProfileMenu_AccountSettings":  {
+                                                      "en":  "Account settings",
+                                                      "de":  "Kontoeinstellungen"
+                                                  },
+    "Components_UtfProfileMenu_SignOut":  {
+                                              "en":  "Sign out",
+                                              "de":  "Abmelden"
+                                          },
+    "Components_UtfProfileMenu_DefaultMemberName":  {
+                                                        "en":  "UTF Member",
+                                                        "de":  "UTF-Mitglied"
+                                                    },
+    "Components_UtfProfileMenu_TriggerLabel":  {
+                                                   "en":  "Open profile menu for {0}",
+                                                   "de":  "ProfilmenÃ¼ Ã¶ffnen fÃ¼r {0}"
+                                               },
+    "Components_UtfProfileMenu_IdentityKicker_CommandCenter":  {
+                                                                   "en":  "Signed in as operator",
+                                                                   "de":  "Als Operator angemeldet"
+                                                               },
+    "Components_UtfProfileMenu_IdentityKicker_Member":  {
+                                                            "en":  "Signed in as member",
+                                                            "de":  "Als Mitglied angemeldet"
+                                                        },
+    "Components_UtfProfileMenu_ShellBadge_CommandCenter":  {
+                                                               "en":  "Command Center",
+                                                               "de":  "Kommandozentrum"
+                                                           },
+    "Components_UtfProfileMenu_ShellBadge_CommandAccess":  {
+                                                               "en":  "Command access",
+                                                               "de":  "Kommandozugriff"
+                                                           },
+    "Components_UtfProfileMenu_ShellBadge_Community":  {
+                                                           "en":  "Community",
+                                                           "de":  "Community"
+                                                       },
+    "Components_UtfProfileMenu_VerificationVerified":  {
+                                                           "en":  "Verified",
+                                                           "de":  "Verifiziert"
+                                                       },
+    "Components_UtfProfileMenu_VerificationUnverified":  {
+                                                             "en":  "Unverified",
+                                                             "de":  "Nicht verifiziert"
+                                                         },
+    "Components_UtfProfileMenu_PrimaryRoleSummary_Command":  {
+                                                                 "en":  "Command access enabled",
+                                                                 "de":  "Befehlskettenzugriff aktiviert"
+                                                             },
+    "Components_UtfProfileMenu_PrimaryRoleSummary_Member":  {
+                                                                "en":  "Community account",
+                                                                "de":  "Community-Konto"
+                                                            },
+    "Components_UtfProfileMenu_RoleSummary_Zero":  {
+                                                       "en":  "No assigned roles",
+                                                       "de":  "Keine zugewiesenen Rollen"
+                                                   },
+    "Components_UtfProfileMenu_RoleSummary_One":  {
+                                                      "en":  "1 assigned role",
+                                                      "de":  "1 zugewiesene Rolle"
+                                                  },
+    "Components_UtfProfileMenu_RoleSummary_Many_Count":  {
+                                                             "en":  "{0} assigned roles",
+                                                             "de":  "{0} zugewiesene Rollen"
+                                                         },
+    "Components_UtfProfileMenu_NoRoleAssignments":  {
+                                                        "en":  "No role assignments are visible for this account.",
+                                                        "de":  "FÃ¼r dieses Konto sind keine Rollenzuweisungen sichtbar."
+                                                    },
+    "Components_UtfProfileMenu_ClaimSummary_Zero":  {
+                                                        "en":  "No direct claims",
+                                                        "de":  "Keine direkten Berechtigungen"
+                                                    },
+    "Components_UtfProfileMenu_ClaimSummary_One":  {
+                                                       "en":  "1 direct claim",
+                                                       "de":  "1 direkte Berechtigung"
+                                                   },
+    "Components_UtfProfileMenu_ClaimSummary_Many_Count":  {
+                                                              "en":  "{0} direct claims",
+                                                              "de":  "{0} direkte Berechtigungen"
+                                                          },
+    "Components_UtfProfileMenu_NoClaimAssignments":  {
+                                                         "en":  "No direct claim assignments are visible for this account.",
+                                                         "de":  "FÃ¼r dieses Konto sind keine direkten Berechtigungen sichtbar."
+                                                     },
+    "Components_UtfProfileMenu_BadgeOperator":  {
+                                                    "en":  "Operator",
+                                                    "de":  "Operator"
+                                                },
+    "Components_UtfProfileMenu_BadgeMember":  {
+                                                  "en":  "Member",
+                                                  "de":  "Mitglied"
+                                              },
+    "Components_UtfProfileMenu_BadgeClaims":  {
+                                                  "en":  "Claims",
+                                                  "de":  "Berechtigungen"
+                                              },
+    "Components_UtfProfileMenu_BadgeNone":  {
+                                                "en":  "None",
+                                                "de":  "Keine"
+                                            },
+    "Components_UtfProfileMenu_LinkStatus_NotLinked":  {
+                                                           "en":  "Not linked",
+                                                           "de":  "Nicht verbunden"
+                                                       },
+    "Components_UtfProfileMenu_DiscordLinkedTitle":  {
+                                                         "en":  "Discord identity linked",
+                                                         "de":  "Discord-IdentitÃ¤t verknÃ¼pft"
+                                                     },
+    "Components_UtfProfileMenu_LinkBadge_Missing":  {
+                                                        "en":  "Missing",
+                                                        "de":  "Fehlt"
+                                                    },
+    "Components_UtfProfileMenu_LinkBadge_Linked":  {
+                                                       "en":  "Linked",
+                                                       "de":  "VerknÃ¼pft"
+                                                   },
+    "Components_UtfProfileMenu_OpenApprovals":  {
+                                                    "en":  "Open approvals",
+                                                    "de":  "Freigaben Ã¶ffnen"
+                                                },
+    "Components_UtfProfileMenu_CommandCenter":  {
+                                                    "en":  "Command Center",
+                                                    "de":  "Kommandozentrum"
+                                                },
+    "Components_UtfProfileMenu_AdditionalItemsCount":  {
+                                                           "en":  "+{0} more",
+                                                           "de":  "+{0} weitere"
+                                                       },
+    "Pages_Public_GDPR_PageTitle":  {
+                                        "en":  "Data Protection",
+                                        "de":  "Datenschutz"
+                                    },
+    "Pages_Public_GDPR_Hero_Kicker":  {
+                                          "en":  "Data protection",
+                                          "de":  "Datenschutz"
+                                      },
+    "Pages_Public_GDPR_Hero_Title":  {
+                                         "en":  "Privacy and GDPR",
+                                         "de":  "Datenschutz und DSGVO"
+                                     },
+    "Pages_Public_GDPR_Hero_Description":  {
+                                               "en":  "This page explains in good faith how United Tactical Forces handles user data while running the community website, operations board, content tools, and game-server control plane.",
+                                               "de":  "Diese Seite beschreibt in gutem Glauben, wie United Tactical Forces Benutzerdaten beim Betrieb der Community-Website, EinsatzÃ¼bersicht, Inhaltswerkzeuge und des Game-Server-Steuerungssystems verarbeitet."
+                                           },
+    "Pages_Public_GDPR_Hero_SourceCode":  {
+                                              "en":  "Source code",
+                                              "de":  "Quellcode"
+                                          },
+    "Pages_Public_GDPR_Intro_Kicker":  {
+                                           "en":  "Short version",
+                                           "de":  "Kurzfassung"
+                                       },
+    "Pages_Public_GDPR_Intro_Title":  {
+                                          "en":  "We use data to operate the community service, not to sell profiles.",
+                                          "de":  "Wir nutzen Daten zur AusfÃ¼hrung des Community-Dienstes, nicht zum Verkauf von Profilen."
+                                      },
+    "Pages_Public_GDPR_Intro_Description":  {
+                                                "en":  "The application stores authentication information, role and permission data, community activity, published content, moderation context, and lifecycle records only as needed to run public services and investigate security incidents.",
+                                                "de":  "Die Anwendung speichert Authentifizierungsinformationen, Rollen- und Berechtigungsdaten, Community-AktivitÃ¤ten, verÃ¶ffentlichte Inhalte, Moderationskontexte und Lebenszyklusprotokolle nur, soweit sie fÃ¼r den Ã¶ffentlichen Betrieb und die Sicherheitsanalyse erforderlich sind."
+                                            },
+    "Pages_Public_GDPR_Intro_LastReviewedLabel":  {
+                                                      "en":  "Last reviewed",
+                                                      "de":  "Zuletzt Ã¼berprÃ¼ft"
+                                                  },
+    "Pages_Public_GDPR_Intro_LastReviewedDate":  {
+                                                     "en":  "June 23, 2026",
+                                                     "de":  "23. Juni 2026"
+                                                 },
+    "Pages_Public_GDPR_Intro_ProcessNote":  {
+                                                "en":  "The text reflects the current public codebase and deployment assumptions. If the operating environment changes, this page should be updated with the real practice.",
+                                                "de":  "Der Text spiegelt den aktuellen Ã¶ffentlichen Codebestand und die Betriebsannahmen wider. Ã„ndert sich die Betriebsumgebung, sollte diese Seite mit der tatsÃ¤chlichen Praxis aktualisiert werden."
+                                            },
+    "Pages_Public_GDPR_Responsibilities_Kicker":  {
+                                                      "en":  "Responsible operator",
+                                                      "de":  "Verantwortlicher Betreiber"
+                                                  },
+    "Pages_Public_GDPR_Responsibilities_Title":  {
+                                                     "en":  "Who is responsible",
+                                                     "de":  "Wer ist verantwortlich"
+                                                 },
+    "Pages_Public_GDPR_Responsibilities_Body_1":  {
+                                                      "en":  "The responsible controller for a live deployment is the person or organization operating that United Tactical Forces instance. For the community deployment, data requests should be sent through the official UTF operator, moderation, or association contact channels so the request can be routed to someone with database and hosting access.",
+                                                      "de":  "Verantwortlicher Controller einer aktiven Bereitstellung ist die Person oder Organisation, die diese Instanz von United Tactical Forces betreibt. FÃ¼r den Community-Betrieb sollten Datenschutzanfragen Ã¼ber den offiziellen UTF-Betreiber, Moderations- oder Verbandskontakt erfolgen, damit sie an Verantwortliche mit Datenbank- und Hostingzugriff weitergeleitet werden kÃ¶nnen."
+                                                  },
+    "Pages_Public_GDPR_Responsibilities_Body_2":  {
+                                                      "en":  "A production deployment should publish a concrete legal contact here or in an imprint page. Until that exists, the operational community contacts are the best available route for privacy requests.",
+                                                      "de":  "Eine Produktionsumgebung sollte einen konkreten rechtlichen Kontakt auf dieser Seite oder in einem Impressumsbereich verÃ¶ffentlichen. Bis dahin sind die operativen Community-Kontakte der beste verfÃ¼gbare Weg fÃ¼r Datenschutzanfragen."
+                                                  },
+    "Pages_Public_GDPR_Legal_Kicker":  {
+                                           "en":  "Legal basis",
+                                           "de":  "Rechtsgrundlage"
+                                       },
+    "Pages_Public_GDPR_Legal_Title":  {
+                                          "en":  "Why processing is necessary",
+                                          "de":  "Warum die Verarbeitung erforderlich ist"
+                                      },
+    "Pages_Public_GDPR_Legal_Body_1":  {
+                                           "en":  "Account, event, slot, content, and server-operation data is processed so the service can provide authenticated community features. Security logs, moderation records, audit trails, worker recovery, and abuse prevention are handled as legitimate operational interests.",
+                                           "de":  "Konto-, Veranstaltungs-, Platzierungs-, Inhalts- und Serverbetriebsdaten werden verarbeitet, damit der Dienst authentifizierte Community-Funktionen anbieten kann. Sicherheitsprotokolle, Moderationsdaten, Audit-Trails, Worker-Wiederherstellung und MissbrauchsprÃ¤vention werden als berechtigte betriebliche Interessen behandelt."
+                                       },
+    "Pages_Public_GDPR_Legal_Body_2":  {
+                                           "en":  "Billing attribution, provider reconciliation, and cost records may need to be kept for accounting, reimbursement, dispute resolution, or legal obligations. Optional profile and content data is processed because the user or an authorized editor supplied it for community use.",
+                                           "de":  "Zuordnung fÃ¼r Abrechnung, Provider-Abstimmung und Kostendaten kÃ¶nnen fÃ¼r BuchfÃ¼hrung, Erstattungen, StreitfÃ¤lle oder rechtliche Pflichten vorgehalten werden. Optionale Profil- und Inhaltsdaten werden verarbeitet, wenn Nutzer oder autorisierte Bearbeitende sie fÃ¼r die Community bereitstellen."
+                                       },
+    "Pages_Public_GDPR_Lifecycle_Kicker":  {
+                                               "en":  "Lifecycle",
+                                               "de":  "Datenlebenszyklus"
+                                           },
+    "Pages_Public_GDPR_Lifecycle_Title":  {
+                                              "en":  "What happens when",
+                                              "de":  "Was passiert wann"
+                                          },
+    "Pages_Public_GDPR_Lifecycle_Step1_Title":  {
+                                                    "en":  "When you visit the site",
+                                                    "de":  "Beim Besuch der Seite"
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step1_Body1":  {
+                                                    "en":  "The Blazor WebAssembly frontend is loaded by your browser. The server may create access and security logs containing technical request data such as IP address, request time, path, status code, referrer, user agent, and request size. These logs are used for operations, abuse detection, debugging, and attack investigation.",
+                                                    "de":  "Das Blazor-WebAssembly-Frontend wird im Browser geladen. Der Server kann Zugriffs- und Sicherheitsprotokolle mit technischen Request-Daten wie IP-Adresse, Anforderungszeit, Pfad, Statuscode, Referrer, User-Agent und Request-GrÃ¶ÃŸe erzeugen. Diese Protokolle werden fÃ¼r Betrieb, Missbrauchserkennung, Fehleranalyse und Angriffsuntersuchungen genutzt."
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step1_Body2":  {
+                                                    "en":  "The frontend may store local preferences such as the selected theme in your browser. This is client-side preference data and is not required to identify you.",
+                                                    "de":  "Das Frontend kann lokale PrÃ¤ferenzen wie das gewÃ¤hlte Theme im Browser speichern. Diese Daten sind clientseitig und werden nicht zur Identifikation verwendet."
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step2_Title":  {
+                                                    "en":  "When you sign in",
+                                                    "de":  "Beim Anmelden"
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step2_Body1":  {
+                                                    "en":  "Login is performed through external identity providers. Steam login identifies your Steam ID64. On first Steam login the API requests the public Steam profile used to create a local account, including display name and avatar when available. Discord login can attach Discord identity information to an existing local account and stores Discord ID and username.",
+                                                    "de":  "Die Anmeldung erfolgt Ã¼ber externe IdentitÃ¤tsanbieter. Bei Steam-Login wird die SteamID64 erkannt. Bei der ersten Steam-Anmeldung ruft die API das Ã¶ffentliche Steam-Profil ab, um ein lokales Konto zu erstellen, einschlieÃŸlich Anzeigename und Avatar, sofern vorhanden. Bei Discord-Login kÃ¶nnen Discord-IdentitÃ¤tsdaten an ein bestehendes lokales Konto angehÃ¤ngt werden, inklusive Discord-ID und Benutzername."
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step2_Body2":  {
+                                                    "en":  "The API issues a technical authentication cookie so the browser can stay signed in. The current cookie lifetime is seven days with sliding expiration. Temporary provider cookies can also be used during the Steam or Discord login redirect flow.",
+                                                    "de":  "Die API stellt ein technisches Authentifizierungs-Cookie aus, damit der Browser angemeldet bleibt. Die aktuelle Cookie-Lebensdauer betrÃ¤gt sieben Tage mit Gleitzeit-VerlÃ¤ngerung. WÃ¤hrend des Steam- oder Discord-Login-Redirects kÃ¶nnen temporÃ¤re Provider-Cookies verwendet werden."
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step3_Title":  {
+                                                    "en":  "When you use community features",
+                                                    "de":  "Bei Nutzung von Community-Funktionen"
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step3_Body1":  {
+                                                    "en":  "The system stores event acceptances, slot assignments, event ownership, event hosting records, mod-pack download timestamps, wiki revisions, field report authorship, roles, claims, verification state, and moderation state. These records keep operations auditable and make the community tools usable across sessions.",
+                                                    "de":  "Das System speichert VeranstaltungsbestÃ¤tigungen, Slot-Zuweisungen, Veranstalterzuordnungen, Hostingprotokolle, Download-Zeitstempel fÃ¼r Mod-Packs, Wiki-Revisionen, Autorenschaft von Feldberichten, Rollen, Berechtigungen, Verifikationsstatus und Moderationsstatus. Diese Daten halten VorgÃ¤nge nachvollziehbar und ermÃ¶glichen den Betrieb der Community-Werkzeuge Ã¼ber Sitzungen hinweg."
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step4_Title":  {
+                                                    "en":  "When game servers are operated",
+                                                    "de":  "Wenn Spielserver betrieben werden"
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step4_Body1":  {
+                                                    "en":  "Server lifecycle actions such as create, start, stop, upgrade, configuration, worker execution, and cloud dry runs are stored as persistent jobs, sessions, worker records, and audit entries. These records include who requested an action when known, which game server was affected, the lifecycle status, worker identifiers, timestamps, failure summaries, and secret-safe details.",
+                                                    "de":  "Aktionen zum Server-Lifecycle wie Erstellen, Starten, Stoppen, Aktualisieren, Konfiguration, Worker-AusfÃ¼hrung und Cloud-TrockendurchlÃ¤ufe werden als persistente Jobs, Sitzungen, Worker-EintrÃ¤ge und Audit-DatensÃ¤tze gespeichert. Diese DatensÃ¤tze enthalten, falls bekannt, wer eine Aktion angefordert hat, welcher Spielserver betroffen war, den Lifecycle-Status, Worker-IDs, Zeitstempel, Fehlerzusammenfassungen und sicherheitsrelevante Details."
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step4_Body2":  {
+                                                    "en":  "Game-server logs can contain whatever the server process or administration tooling emits. This may include player names, Steam identifiers, IP addresses, mission names, paths, errors, and operational messages.",
+                                                    "de":  "Speserverprotokolle kÃ¶nnen alle Ausgaben des Serverprozesses oder der Administration enthalten. Dazu kÃ¶nnen Spielernamen, Steam-IDs, IP-Adressen, Missionsnamen, Pfade, Fehler und Betriebsnachrichten gehÃ¶ren."
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step5_Title":  {
+                                                    "en":  "When cloud or billing features are used",
+                                                    "de":  "Wenn Cloud- oder Abrechnungsfunktionen genutzt werden"
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step5_Body1":  {
+                                                    "en":  "Hosting sessions are assigned to a billing account from creation until cleanup or transfer. The application stores billing owners, assignment intervals, cloud planning inputs, dry-run estimates, provider metadata references, inventory records, cost snapshots, billing imports, reconciliation results, policy decisions, approvals, and adjustment history.",
+                                                    "de":  "Hosting-Sitzungen werden vom Erstellen bis zur Bereinigung oder Ãœbernahme einem Rechnungsinhaber zugeordnet. Die Anwendung speichert Rechnungsinhaber, ZuordnungszeitrÃ¤ume, Cloud-Planungsdaten, SchÃ¤tzlÃ¤ufe, Provider-Metadaten-Referenzen, InventarbestÃ¤nde, Kostenstichtagswerte, Billing-Importe, Abstimmungsresultate, Richtlinienentscheidungen, Freigaben und Ã„nderungsverlÃ¤ufe."
+                                                },
+    "Pages_Public_GDPR_Lifecycle_Step5_Body2":  {
+                                                    "en":  "Provider credentials and worker credentials are kept server-side. The database stores token references or credential hashes where possible, not raw provider secrets in frontend-visible payloads.",
+                                                    "de":  "Provider- und Worker-Zugriffsdaten werden serverseitig verwaltet. In der Datenbank werden nach MÃ¶glichkeit Token-Referenzen oder gehashte Zugangsdaten gespeichert, keine rohen Anbieter-Geheimnisse in im Frontend sichtbaren Daten."
+                                                },
+    "Pages_Public_GDPR_DataMap_Kicker":  {
+                                             "en":  "Data map",
+                                             "de":  "DatenÃ¼bersicht"
+                                         },
+    "Pages_Public_GDPR_DataMap_Title":  {
+                                            "en":  "What is stored and why",
+                                            "de":  "Was gespeichert wird und warum"
+                                        },
+    "Pages_Public_GDPR_DataMap_Identity_Title":  {
+                                                     "en":  "Account and identity",
+                                                     "de":  "Konto und IdentitÃ¤t"
+                                                 },
+    "Pages_Public_GDPR_DataMap_Identity_DataLabel":  {
+                                                         "en":  "Data",
+                                                         "de":  "Daten"
+                                                     },
+    "Pages_Public_GDPR_DataMap_Identity_Data":  {
+                                                    "en":  "Local user ID, nickname, optional email, avatar, Steam ID64, Discord ID and username, roles, claims, verification, ban state, deleted marker.",
+                                                    "de":  "Lokale Benutzer-ID, Spitzname, optionale E-Mail, Avatar, SteamID64, Discord-ID und Benutzername, Rollen, Berechtigungen, Verifikation, Sperrstatus und LÃ¶schkennzeichen."
+                                                },
+    "Pages_Public_GDPR_DataMap_Identity_PurposeLabel":  {
+                                                            "en":  "Purpose",
+                                                            "de":  "Zweck"
+                                                        },
+    "Pages_Public_GDPR_DataMap_Identity_Purpose":  {
+                                                       "en":  "Authentication, authorization, profile display, moderation, role-based access, account support.",
+                                                       "de":  "Authentifizierung, Autorisierung, Profilanzeige, Moderation, rollenbasierter Zugriff, Kontosupport."
+                                                   },
+    "Pages_Public_GDPR_DataMap_Identity_WhereLabel":  {
+                                                          "en":  "Where",
+                                                          "de":  "Ablage"
+                                                      },
+    "Pages_Public_GDPR_DataMap_Identity_Where":  {
+                                                     "en":  "Stored in the API database. Authentication state is reflected in a browser cookie.",
+                                                     "de":  "Gespeichert in der API-Datenbank. Der Anmeldestatus wird Ã¼ber ein Browser-Cookie dargestellt."
+                                                 },
+    "Pages_Public_GDPR_DataMap_Participation_Title":  {
+                                                          "en":  "Events and participation",
+                                                          "de":  "EinsÃ¤tze und Teilnahme"
+                                                      },
+    "Pages_Public_GDPR_DataMap_Participation_DataLabel":  {
+                                                              "en":  "Data",
+                                                              "de":  "Daten"
+                                                          },
+    "Pages_Public_GDPR_DataMap_Participation_Data":  {
+                                                         "en":  "Event owners and hosts, attendance choices, slot assignment, timestamps, terrain and mod-pack references, event images and descriptions.",
+                                                         "de":  "Veranstalter und Gastgeber, Teilnahmeentscheidungen, Slot-Zuweisungen, Zeitstempel, GelÃ¤nde- und Modpack-Referenzen, Veranstaltungsbilder und Beschreibungen."
+                                                     },
+    "Pages_Public_GDPR_DataMap_Participation_PurposeLabel":  {
+                                                                 "en":  "Purpose",
+                                                                 "de":  "Zweck"
+                                                             },
+    "Pages_Public_GDPR_DataMap_Participation_Purpose":  {
+                                                            "en":  "Planning operations, showing who is attending, organizing slots, and preserving event history.",
+                                                            "de":  "Planung von Operationen, Anzeigen der Teilnehmenden, Slot-Organisation und Nachvollziehbarkeit der Einsatzhistorie."
+                                                        },
+    "Pages_Public_GDPR_DataMap_Participation_WhereLabel":  {
+                                                               "en":  "Where",
+                                                               "de":  "Ablage"
+                                                           },
+    "Pages_Public_GDPR_DataMap_Participation_Where":  {
+                                                          "en":  "Stored in the API database and shown through the operations pages according to permissions and event visibility.",
+                                                          "de":  "Gespeichert in der API-Datenbank und in Operationsseiten entsprechend Berechtigung und Sichtbarkeit angezeigt."
+                                                      },
+    "Pages_Public_GDPR_DataMap_Content_Title":  {
+                                                    "en":  "Content and assets",
+                                                    "de":  "Inhalte und Assets"
+                                                },
+    "Pages_Public_GDPR_DataMap_Content_DataLabel":  {
+                                                        "en":  "Data",
+                                                        "de":  "Daten"
+                                                    },
+    "Pages_Public_GDPR_DataMap_Content_Data":  {
+                                                   "en":  "Wiki pages, wiki revisions, wiki audits, field reports, field report audits, terrain entries, mod-pack definitions, uploaded or configured media references.",
+                                                   "de":  "Wiki-Seiten, Wiki-Revisionen, Wiki-Audits, Feldberichte, Auditdaten der Feldberichte, GelÃ¤ndeeintrÃ¤ge, Modpack-Definitionen und hochgeladene oder konfigurierte Medienreferenzen."
+                                               },
+    "Pages_Public_GDPR_DataMap_Content_PurposeLabel":  {
+                                                           "en":  "Purpose",
+                                                           "de":  "Zweck"
+                                                       },
+    "Pages_Public_GDPR_DataMap_Content_Purpose":  {
+                                                      "en":  "Publishing community information, maintaining review history, attributing edits, and recovering from mistakes.",
+                                                      "de":  "VerÃ¶ffentlichung von Community-Inhalten, Pflege der PrÃ¼f-/Versionshistorie, Zuordnung von Ã„nderungen und Wiederherstellung nach Fehlern."
+                                                  },
+    "Pages_Public_GDPR_DataMap_Content_WhereLabel":  {
+                                                         "en":  "Where",
+                                                         "de":  "Ablage"
+                                                     },
+    "Pages_Public_GDPR_DataMap_Content_Where":  {
+                                                    "en":  "Stored in the API database and, for media assets, in configured server storage or WebApp assets.",
+                                                    "de":  "Gespeichert in der API-Datenbank; Medienobjekte zusÃ¤tzlich im konfigurierten Server-Speicher oder WebApp-Assets."
+                                                },
+    "Pages_Public_GDPR_DataMap_Servers_Title":  {
+                                                    "en":  "Game-server operations",
+                                                    "de":  "Spielserverbetrieb"
+                                                },
+    "Pages_Public_GDPR_DataMap_Servers_DataLabel":  {
+                                                        "en":  "Data",
+                                                        "de":  "Daten"
+                                                    },
+    "Pages_Public_GDPR_DataMap_Servers_Data":  {
+                                                   "en":  "Server records, configuration entries, lifecycle events, lifecycle jobs, worker registrations, heartbeats, capability metadata, logs, failure summaries, audit records.",
+                                                   "de":  "ServerdatensÃ¤tze, KonfigurationseintrÃ¤ge, Lifecycle-Ereignisse, Lifecycle-Jobs, Worker-Registrierungen, Heartbeats, FÃ¤higkeits-Metadaten, Logs, Fehlerzusammenfassungen und Audit-EintrÃ¤ge."
+                                               },
+    "Pages_Public_GDPR_DataMap_Servers_PurposeLabel":  {
+                                                           "en":  "Purpose",
+                                                           "de":  "Zweck"
+                                                       },
+    "Pages_Public_GDPR_DataMap_Servers_Purpose":  {
+                                                      "en":  "Running servers reliably, recovering from API restarts, tracing who requested actions, diagnosing failures, and protecting secrets.",
+                                                      "de":  "ZuverlÃ¤ssiger Serverbetrieb, Wiederherstellung nach API-Neustarts, Nachvollziehen von Anforderern, Fehlerdiagnose und Schutz von Geheimnissen."
+                                                  },
+    "Pages_Public_GDPR_DataMap_Servers_WhereLabel":  {
+                                                         "en":  "Where",
+                                                         "de":  "Ablage"
+                                                     },
+    "Pages_Public_GDPR_DataMap_Servers_Where":  {
+                                                    "en":  "Stored in the API database. Workers receive only the data needed to execute assigned lifecycle jobs.",
+                                                    "de":  "Gespeichert in der API-Datenbank. Worker erhalten nur die Daten, die fÃ¼r ihre zugewiesenen Lifecycle-Jobs erforderlich sind."
+                                                },
+    "Pages_Public_GDPR_DataMap_Billing_Title":  {
+                                                    "en":  "Cloud and billing attribution",
+                                                    "de":  "Cloud- und Abrechnungszuordnung"
+                                                },
+    "Pages_Public_GDPR_DataMap_Billing_DataLabel":  {
+                                                        "en":  "Data",
+                                                        "de":  "Daten"
+                                                    },
+    "Pages_Public_GDPR_DataMap_Billing_Data":  {
+                                                   "en":  "Billing accounts, owners, server assignment intervals, cloud session plans, cost estimates, provider metadata, inventory, policy checks, approvals, imports, reconciliation and adjustments.",
+                                                   "de":  "Abrechnungskonten, Inhaber, Server-ZuordnungszeitrÃ¤ume, Cloud-SitzungsplÃ¤ne, KostenschÃ¤tzungen, Provider-Metadaten, Inventar, RichtlinienprÃ¼fungen, Freigaben, Importe, Abstimmung und Korrekturen."
+                                               },
+    "Pages_Public_GDPR_DataMap_Billing_PurposeLabel":  {
+                                                           "en":  "Purpose",
+                                                           "de":  "Zweck"
+                                                       },
+    "Pages_Public_GDPR_DataMap_Billing_Purpose":  {
+                                                      "en":  "Ensuring every cost-generating session has an owner, keeping reviewable cost records, and preventing accidental or unauthorized spend.",
+                                                      "de":  "Sicherstellung, dass jede kostenrelevante Sitzung einem Inhaber zugeordnet ist, nachvollziehbare Kostendokumentation sowie Verhinderung von versehentlicher oder unautorisierter Ausgabe."
+                                                  },
+    "Pages_Public_GDPR_DataMap_Billing_WhereLabel":  {
+                                                         "en":  "Where",
+                                                         "de":  "Ablage"
+                                                     },
+    "Pages_Public_GDPR_DataMap_Billing_Where":  {
+                                                    "en":  "Stored in the API database. Provider access tokens are not exposed to frontend clients.",
+                                                    "de":  "Gespeichert in der API-Datenbank. Provider-Zugriffstoken werden nicht an Frontend-Clients weitergegeben."
+                                                },
+    "Pages_Public_GDPR_DataMap_Diagnostics_Title":  {
+                                                        "en":  "Technical logs and diagnostics",
+                                                        "de":  "Technische Protokolle und Diagnostik"
+                                                    },
+    "Pages_Public_GDPR_DataMap_Diagnostics_DataLabel":  {
+                                                            "en":  "Data",
+                                                            "de":  "Daten"
+                                                        },
+    "Pages_Public_GDPR_DataMap_Diagnostics_Data":  {
+                                                       "en":  "HTTP access data, application logs, game-server logs, worker failure messages, provider verification status, operational timestamps.",
+                                                       "de":  "HTTP-Zugriffsprotokolle, Applikationslogs, Spielserver-Logs, Worker-Fehlermeldungen, Provider-Verifizierungsstatus, Betriebszeitstempel."
+                                                   },
+    "Pages_Public_GDPR_DataMap_Diagnostics_PurposeLabel":  {
+                                                               "en":  "Purpose",
+                                                               "de":  "Zweck"
+                                                           },
+    "Pages_Public_GDPR_DataMap_Diagnostics_Purpose":  {
+                                                          "en":  "Security monitoring, troubleshooting, abuse prevention, service reliability, and accountability.",
+                                                          "de":  "SicherheitsÃ¼berwachung, Fehlerbehebung, MissbrauchsverhÃ¼tung, ServicezuverlÃ¤ssigkeit und Verantwortbarkeit."
+                                                      },
+    "Pages_Public_GDPR_DataMap_Diagnostics_WhereLabel":  {
+                                                             "en":  "Where",
+                                                             "de":  "Ablage"
+                                                         },
+    "Pages_Public_GDPR_DataMap_Diagnostics_Where":  {
+                                                        "en":  "Stored in server logs, the API database, and the configured hosting environment.",
+                                                        "de":  "Gespeichert in Serverprotokollen, der API-Datenbank und der jeweiligen Hosting-Umgebung."
+                                                    },
+    "Pages_Public_GDPR_Visibility_Kicker":  {
+                                                "en":  "Visibility",
+                                                "de":  "Sichtbarkeit"
+                                            },
+    "Pages_Public_GDPR_Visibility_Title":  {
+                                               "en":  "Who can see what",
+                                               "de":  "Wer sieht was"
+                                           },
+    "Pages_Public_GDPR_Visibility_Public_Title":  {
+                                                      "en":  "Public visitors",
+                                                      "de":  "Ã–ffentliche Besucher"
+                                                  },
+    "Pages_Public_GDPR_Visibility_Public_Body":  {
+                                                     "en":  "Public visitors can see public pages, published field reports, public media, and visible event information. Public pages can include names or aliases that users or editors intentionally publish.",
+                                                     "de":  "Ã–ffentliche Besucher kÃ¶nnen Ã¶ffentlich zugÃ¤ngliche Seiten, verÃ¶ffentlichte Feldberichte, Ã¶ffentliche Medien und sichtbare Veranstaltungsinformationen sehen. In Ã¶ffentlichen Seiten kÃ¶nnen Namen oder Pseudonyme enthalten sein, die Nutzerinnen und Nutzer oder Redakteure absichtlich verÃ¶ffentlichen."
+                                                 },
+    "Pages_Public_GDPR_Visibility_Member_Title":  {
+                                                      "en":  "Logged-in members",
+                                                      "de":  "Angemeldete Mitglieder"
+                                                  },
+    "Pages_Public_GDPR_Visibility_Member_Body":  {
+                                                     "en":  "Logged-in members can see member-facing operational data such as events, slots, relevant profiles, and server information needed to participate. Access to sensitive views is controlled by roles and claims.",
+                                                     "de":  "Angemeldete Mitglieder sehen mitgliederbezogene Betriebsdaten wie EinsÃ¤tze, Slots, relevante Profile und Serverinformationen, die zur Teilnahme erforderlich sind. Der Zugriff auf sensitive Ansichten erfolgt rollen- und berechtigungsbasiert."
+                                                 },
+    "Pages_Public_GDPR_Visibility_Admin_Title":  {
+                                                     "en":  "Administrators and operators",
+                                                     "de":  "Administratoren und Operatoren"
+                                                 },
+    "Pages_Public_GDPR_Visibility_Admin_Body":  {
+                                                    "en":  "Authorized operators can access administrative data needed to moderate users, operate servers, review audits, manage billing attribution, inspect logs, and resolve incidents.",
+                                                    "de":  "Autorisierte Operatoren kÃ¶nnen auf Verwaltungsdaten zugreifen, um Nutzer zu moderieren, Server zu betreiben, Audits zu prÃ¼fen, Abrechnungszuordnungen zu verwalten, Logs einzusehen und VorfÃ¤lle zu bearbeiten."
+                                                },
+    "Pages_Public_GDPR_Partners_Kicker":  {
+                                              "en":  "External services",
+                                              "de":  "Externe Dienste"
+                                          },
+    "Pages_Public_GDPR_Partners_Title":  {
+                                             "en":  "Third parties and processors",
+                                             "de":  "Drittanbieter und Auftragsverarbeiter"
+                                         },
+    "Pages_Public_GDPR_Partners_Steam_Title":  {
+                                                   "en":  "Steam",
+                                                   "de":  "Steam"
+                                               },
+    "Pages_Public_GDPR_Partners_Steam_Body":  {
+                                                  "en":  "Steam is used for login and profile lookup. During login your browser is redirected to Steam, and the API stores the Steam ID64 plus public profile information needed for the local account.",
+                                                  "de":  "Steam wird fÃ¼r Login und Profilsuche verwendet. WÃ¤hrend der Anmeldung wird Ihr Browser zu Steam weitergeleitet; die API speichert die SteamID64 sowie Ã¶ffentliche Profildaten, die fÃ¼r das lokale Konto erforderlich sind."
+                                              },
+    "Pages_Public_GDPR_Partners_Discord_Title":  {
+                                                     "en":  "Discord",
+                                                     "de":  "Discord"
+                                                 },
+    "Pages_Public_GDPR_Partners_Discord_Body":  {
+                                                    "en":  "Discord can be used as an identity provider and community channel. When connected, the API stores Discord ID and username. Messages or voice activity on Discord are handled by Discord under its own terms.",
+                                                    "de":  "Discord kann als IdentitÃ¤tsanbieter und Community-Kanal genutzt werden. Bei Verbindung speichert die API Discord-ID und Benutzernamen. Nachrichten oder SprachaktivitÃ¤ten auf Discord werden von Discord gemÃ¤ÃŸ deren eigenen Nutzungsbedingungen verarbeitet."
+                                                },
+    "Pages_Public_GDPR_Partners_Providers_Title":  {
+                                                       "en":  "Voice, hosting, and providers",
+                                                       "de":  "Voice-, Hosting- und weitere Anbieter"
+                                                   },
+    "Pages_Public_GDPR_Partners_Providers_Body":  {
+                                                      "en":  "External TeamSpeak, Discord, cloud, server, and network providers process data required to run those services. Cloud provider metadata and billing information are stored only where needed for planning, operation, reconciliation, and cost attribution.",
+                                                      "de":  "Externe TeamSpeak-, Discord-, Cloud-, Server- und Netzwerk-Anbieter verarbeiten Daten, die zum Betrieb dieser Dienste erforderlich sind. Metadaten und Abrechnungsinformationen von Providern werden nur gespeichert, wo sie fÃ¼r Planung, Betrieb, Abgleich und Kostenzuordnung nÃ¶tig sind."
+                                                  },
+    "Pages_Public_GDPR_Retention_Kicker":  {
+                                               "en":  "Retention",
+                                               "de":  "Aufbewahrung"
+                                           },
+    "Pages_Public_GDPR_Retention_Title":  {
+                                              "en":  "How long data is kept",
+                                              "de":  "Wie lange Daten aufbewahrt werden"
+                                          },
+    "Pages_Public_GDPR_Retention_Body1":  {
+                                              "en":  "Account data is kept while the account is active. Authentication cookies expire after seven days unless renewed by continued use, and logout removes the local session cookie. Technical web access logs are intended to be short-lived and are typically kept for up to 90 days unless needed for a security incident, abuse investigation, or legal obligation.",
+                                              "de":  "Kontodaten werden solange gespeichert, wie das Konto aktiv ist. Authentifizierungs-Cookies laufen nach sieben Tagen ab, sofern sie nicht durch Nutzung verlÃ¤ngert werden; eine Abmeldung entfernt das lokale Sitzungs-Cookie. Technische Webzugriffsprotokolle werden grundsÃ¤tzlich kurzzeitig aufbewahrt und in der Regel bis zu 90 Tage, auÃŸer bei SicherheitsvorfÃ¤llen, Missbrauchsuntersuchungen oder rechtlichen Vorgaben."
+                                          },
+    "Pages_Public_GDPR_Retention_Body2":  {
+                                              "en":  "Event history, content history, hosting jobs, billing attribution, and audit records may be kept longer because they explain past community actions, server operation, cost ownership, and moderation decisions. The current application does not implement automatic deletion for every historical record, so requests are handled case by case.",
+                                              "de":  "Ereignis- und InhaltsverlÃ¤ufe, Hosting-Jobs, Abrechnungszuordnungen und Audit-Daten kÃ¶nnen lÃ¤nger aufbewahrt werden, da sie frÃ¼here Community-Aktionen, Serverbetrieb, Kostenzuordnungen und Moderationsentscheidungen erklÃ¤ren. Die aktuelle Anwendung fÃ¼hrt keine automatisierte LÃ¶schung aller historischen DatensÃ¤tze durch; Anfragen werden daher fallbezogen bearbeitet."
+                                          },
+    "Pages_Public_GDPR_Deletion_Kicker":  {
+                                              "en":  "Deletion",
+                                              "de":  "LÃ¶schung"
+                                          },
+    "Pages_Public_GDPR_Deletion_Title":  {
+                                             "en":  "What account deletion does",
+                                             "de":  "Was die KontolÃ¶schung bewirkt"
+                                         },
+    "Pages_Public_GDPR_Deletion_Body1":  {
+                                             "en":  "Deleting an account marks it as deleted and removes direct identity fields from the local account: Steam data, Discord data, nickname, avatar, and email are cleared or replaced with anonymous values. The account is then signed out.",
+                                             "de":  "Beim LÃ¶schen eines Kontos wird es als gelÃ¶scht markiert und direkte IdentitÃ¤tsdaten werden entfernt: Steam-Daten, Discord-Daten, Spitzname, Avatar und E-Mail werden gelÃ¶scht oder anonymisiert. Das Konto wird danach abgemeldet."
+                                         },
+    "Pages_Public_GDPR_Deletion_Body2":  {
+                                             "en":  "Historical interactions can remain where needed for integrity. For example, event history, slot records, wiki or field report audit trails, lifecycle jobs, and billing records may still exist, but they should no longer expose the deleted account\u0027s direct profile identity.",
+                                             "de":  "Historische Interaktionen kÃ¶nnen zur IntegritÃ¤t erhalten bleiben. Beispielsweise kÃ¶nnen Einsatzhistorien, Slot-DatensÃ¤tze, Wiki- oder Feldbericht-Audits, Lifecycle-Jobs und Abrechnungsdaten weiterhin existieren, dÃ¼rfen aber die direkte ProfilidentitÃ¤t des gelÃ¶schten Kontos nicht mehr offenlegen."
+                                         },
+    "Pages_Public_GDPR_Security_Kicker":  {
+                                              "en":  "Security",
+                                              "de":  "Sicherheit"
+                                          },
+    "Pages_Public_GDPR_Security_Title":  {
+                                             "en":  "How sensitive data is protected",
+                                             "de":  "Wie sensible Daten geschÃ¼tzt werden"
+                                         },
+    "Pages_Public_GDPR_Security_Body1":  {
+                                             "en":  "Authorization is role and claim based. Secret values such as Steam credentials, future provider tokens, and worker credentials are server-side concerns and must not be sent to frontend clients or written to unredacted logs. Worker and bootstrap credentials are represented with hashes or references in persistent records.",
+                                             "de":  "Die Autorisierung erfolgt rollen- und berechtigungsbasiert. Secret-Werte wie Steam-Zugangsdaten, zukÃ¼nftige Provider-Token und Worker-ZugÃ¤nge werden serverseitig verwaltet und dÃ¼rfen nicht an Frontend-Clients Ã¼bertragen oder ungeschwÃ¤rzt protokolliert werden. Worker- und Bootstrap-ZugÃ¤nge werden in persistente DatensÃ¤tzen als Hashes oder Referenzen abgelegt."
+                                         },
+    "Pages_Public_GDPR_Security_Body2":  {
+                                             "en":  "Development builds may enable detailed diagnostics for local debugging. Production deployments should avoid sensitive data logging and keep secrets in deployment configuration, user secrets, or environment-specific secret storage.",
+                                             "de":  "In Entwicklungsumgebungen kÃ¶nnen fÃ¼r das lokale Debugging detaillierte Diagnosen aktiviert sein. In produktiven Umgebungen sollte auf sensibles Logging verzichtet und das Handling von Geheimnissen auf Deployment-Konfiguration, User Secrets oder umgebungsspezifische Secret Stores beschrÃ¤nkt bleiben."
+                                         },
+    "Pages_Public_GDPR_Rights_Kicker":  {
+                                            "en":  "Rights",
+                                            "de":  "Rechte"
+                                        },
+    "Pages_Public_GDPR_Rights_Title":  {
+                                           "en":  "Your data rights",
+                                           "de":  "Ihre Datenrechte"
+                                       },
+    "Pages_Public_GDPR_Rights_Body1":  {
+                                           "en":  "You can ask the operators for access to your data, correction of inaccurate data, deletion or anonymization, restriction, objection, and a copy of portable account data where applicable. Some rights depend on the processing purpose and legal basis, especially for audit, billing, security, and integrity records.",
+                                           "de":  "Sie kÃ¶nnen die Operatoren um Datenzugriff, Korrektur unrichtiger Daten, LÃ¶schung oder Anonymisierung, EinschrÃ¤nkung, Widerspruch sowie eine portable Kopie der Kontodaten bitten, sofern anwendbar. Einige Rechte hÃ¤ngen vom Verarbeitungszweck und der Rechtsgrundlage ab, insbesondere bei Audit-, Abrechnungs-, Sicherheits- und IntegritÃ¤tsdaten."
+                                       },
+    "Pages_Public_GDPR_Rights_Body2":  {
+                                           "en":  "Requests should be sent through the community operator or moderation contact channels. The operators should confirm receipt, verify the requester, explain any records that cannot be erased immediately, and document the outcome.",
+                                           "de":  "Anfragen sollten Ã¼ber die Community-Operatoren oder ModerationskanÃ¤le erfolgen. Die Operatoren bestÃ¤tigen den Eingang, verifizieren die anfragende Person, erlÃ¤utern ggf. nicht sofort lÃ¶schbare DatensÃ¤tze und dokumentieren das Ergebnis."
+                                       },
+    "Pages_Public_GDPR_Reference_Kicker":  {
+                                               "en":  "Reference",
+                                               "de":  "Hinweise"
+                                           },
+    "Pages_Public_GDPR_Reference_Title":  {
+                                              "en":  "Official GDPR information",
+                                              "de":  "Offizielle DSGVO-Informationen"
+                                          },
+    "Pages_Public_GDPR_Reference_Body":  {
+                                             "en":  "For general GDPR guidance, see the European Commission\u0027s data protection information and the European Data Protection Board guidance on individual rights. Those official resources explain the legal framework; this page explains how this project currently behaves in practice.",
+                                             "de":  "FÃ¼r allgemeine DSGVO-Hinweise siehe die Datenschutzinformationen der EuropÃ¤ischen Kommission und die Leitlinien der EuropÃ¤ischen DatenschutzbehÃ¶rde zu Betroffenenrechten. Diese offiziellen Quellen beschreiben den Rechtsrahmen; diese Seite beschreibt das aktuelle Verhalten des Projekts im Betrieb."
+                                         },
+    "Pages_Public_GDPR_Reference_EuropeanCommission":  {
+                                                           "en":  "European Commission",
+                                                           "de":  "EuropÃ¤ische Kommission"
+                                                       },
+    "Pages_Public_GDPR_Reference_EDPB":  {
+                                             "en":  "EDPB rights guide",
+                                             "de":  "EDPB-Rechteleitfaden"
+                                         },
+    "Pages_Public_GDPR_BackToUtf":  {
+                                        "en":  "Back to UTF",
+                                        "de":  "ZurÃ¼ck zu UTF"
+                                    }
+}

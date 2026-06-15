@@ -1,0 +1,285 @@
+@page "/command/verein/documents/create"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.Verein
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IVereinRepository VereinRepository
+@inject IToastService ToastService
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsCreatePageTitle)]</PageTitle>
+
+<div class="verein-document-editor-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsCreatePageTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsCreatePageDescription)])">
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/verein/documents")">
+                @Localizer[nameof(Language.Pages_Command_Verein_DocumentsBackToList)]
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageDocuments)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsAccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsAccessRequiredDescription)]</p>
+        </section>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Pages_Command_Verein_Loading)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        @if (ExistingSatzung is not null)
+        {
+            <section class="utf-state-panel verein-inline-note">
+                <div>
+                    <strong>@Localizer[nameof(Language.Pages_Command_Verein_DocumentSatzungExistsTitle)]</strong>
+                    <span>@Localizer[nameof(Language.Pages_Command_Verein_DocumentSatzungExistsDescription)]</span>
+                </div>
+                <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/verein/documents/{ExistingSatzung.PrimaryKey}/edit")">
+                    @Localizer[nameof(Language.Pages_Command_Verein_DocumentsOpenEdit)]
+                </UtfCommandButton>
+            </section>
+        }
+
+        <div class="verein-document-editor-shell">
+            <section class="utf-panel verein-document-editor-form-panel">
+                <div class="verein-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_DocumentsEditorKickerNew)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsEditorTitleNew)]</h2>
+                    </div>
+                </div>
+
+                <div class="utf-command-form verein-document-editor-form">
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_DocumentFormKind)]</span>
+                        <select class="utf-command-input" @bind="_documentKind">
+                            <option value="@EVereinDocumentKind.Satzung" disabled="@(ExistingSatzung is not null)">
+                                @Localizer[nameof(Language.Satzung)]
+                            </option>
+                            <option value="@EVereinDocumentKind.Minutes">@Localizer[nameof(Language.Auto_BeschlussMinutes_6fa4d247)]</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_DocumentFormTitle)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="180"
+                               @bind="_documentTitle"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label class="utf-command-field--wide">
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_DocumentFormSummary)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="512"
+                               @bind="_documentSummary"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label class="utf-command-field--wide">
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_DocumentFormMarkdown)]</span>
+                        <textarea class="utf-command-input verein-document-editor-markdown"
+                                  rows="18"
+                                  @bind="_documentMarkdown"
+                                  @bind:event="oninput"></textarea>
+                    </label>
+                    <label class="utf-command-field--wide">
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_DocumentFormRevisionComment)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="512"
+                               @bind="_documentComment"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label class="utf-command-check verein-command-check">
+                        <input class="utf-command-checkbox" type="checkbox" @bind="_documentPublish"/>
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_DocumentFormPublish)]</span>
+                    </label>
+
+                    @if (_formError is not null)
+                    {
+                        <div class="verein-validation" role="alert">
+                            @_formError
+                        </div>
+                    }
+
+                    <div class="utf-command-actions">
+                        <UtfCommandButton Variant="primary"
+                                          Disabled="@_isSavingDocument"
+                                          OnClick="SaveDocumentAsync">
+                            <Icon>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                            </Icon>
+                            <ChildContent>
+                                @(_isSavingDocument
+                                    ? Localizer[nameof(Language.Pages_Command_Verein_DocumentFormSaving)]
+                                    : Localizer[nameof(Language.Pages_Command_Verein_DocumentsCreateButton)])
+                            </ChildContent>
+                        </UtfCommandButton>
+                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/verein/documents")"
+                                          Disabled="@_isSavingDocument">
+                            @Localizer[nameof(Language.Common_Cancel)]
+                        </UtfCommandButton>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="utf-panel verein-document-preview-panel">
+                <div class="verein-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_DocumentPreviewKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Verein_DocumentPreviewTitle)]</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@FormatDocumentKind(_documentKind)
+                    </span>
+                </div>
+                <div class="verein-document-editor-preview">
+                    <FluentMarkdown @key="_documentMarkdown" Content="@GetPreviewMarkdown()"/>
+                </div>
+            </aside>
+        </div>
+    }
+</div>
+
+@code {
+    private const int MaximumDocumentTitleLength = 180;
+    private const int MaximumDocumentSummaryLength = 512;
+    private const int MaximumDocumentCommentLength = 512;
+    private const int MaximumDocumentMarkdownLength = 60_000;
+
+    private VereinDocumentInfo[] _documents = [];
+    private bool _isLoading;
+    private bool _isSavingDocument;
+    private string? _loadError;
+    private string? _formError;
+
+    private EVereinDocumentKind _documentKind = EVereinDocumentKind.Satzung;
+    private string _documentTitle = string.Empty;
+    private string _documentSummary = string.Empty;
+    private string _documentMarkdown = string.Empty;
+    private string _documentComment = string.Empty;
+    private bool _documentPublish;
+
+    private bool CanManageDocuments
+        => Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Documents);
+
+    private VereinDocumentInfo? ExistingSatzung
+        => _documents.FirstOrDefault(q => q.Kind == EVereinDocumentKind.Satzung && !q.IsDeleted);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageDocuments)
+            await LoadDocumentsAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadDocumentsAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _documents = (await VereinRepository.GetAdminDocumentsAsync().ConfigureAwait(false)).ToArray();
+            if (ExistingSatzung is not null)
+                _documentKind = EVereinDocumentKind.Minutes;
+        }
+        catch (Exception ex)
+        {
+            _documents = [];
+            _loadError = string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Verein_LoadError)].Value,
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveDocumentAsync()
+    {
+        if (!CanManageDocuments || _isSavingDocument)
+            return;
+
+        _formError = ValidateDocument();
+        if (_formError is not null)
+            return;
+
+        _isSavingDocument = true;
+        try
+        {
+            var document = await VereinRepository
+                .CreateDocumentAsync(_documentKind, CreatePayload())
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Verein_DocumentToastSaved)].Value);
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/verein/documents/{document.PrimaryKey}"));
+        }
+        catch (Exception ex)
+        {
+            _formError = UserFacingError.Message(ex);
+            ToastService.ShowError(UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isSavingDocument = false;
+        }
+    }
+
+    private string? ValidateDocument()
+    {
+        if (_documentKind == EVereinDocumentKind.Satzung && ExistingSatzung is not null)
+            return Localizer[nameof(Language.Pages_Command_Verein_DocumentValidationSatzungExists)].Value;
+        if (string.IsNullOrWhiteSpace(_documentTitle) || _documentTitle.Trim().Length > MaximumDocumentTitleLength)
+            return Localizer[nameof(Language.Pages_Command_Verein_DocumentValidationTitle)].Value;
+        if (_documentSummary.Trim().Length > MaximumDocumentSummaryLength)
+            return Localizer[nameof(Language.Pages_Command_Verein_DocumentValidationSummary)].Value;
+        if (string.IsNullOrWhiteSpace(_documentMarkdown) || _documentMarkdown.Trim().Length > MaximumDocumentMarkdownLength)
+            return Localizer[nameof(Language.Pages_Command_Verein_DocumentValidationMarkdown)].Value;
+        if (_documentComment.Trim().Length > MaximumDocumentCommentLength)
+            return Localizer[nameof(Language.Pages_Command_Verein_DocumentValidationComment)].Value;
+        return null;
+    }
+
+    private VereinDocumentRevisionUpsertInfo CreatePayload()
+        => new()
+        {
+            Title       = _documentTitle.Trim(),
+            Summary     = _documentSummary.Trim(),
+            Markdown    = _documentMarkdown.Trim(),
+            Comment     = _documentComment.Trim(),
+            IsPublished = _documentPublish,
+        };
+
+    private string GetPreviewMarkdown()
+        => string.IsNullOrWhiteSpace(_documentMarkdown)
+            ? Localizer[nameof(Language.Pages_Command_Verein_DocumentPreviewEmpty)].Value
+            : _documentMarkdown;
+
+    private string FormatDocumentKind(EVereinDocumentKind kind)
+        => kind switch
+        {
+            EVereinDocumentKind.Satzung => Localizer[nameof(Language.Satzung)].Value,
+            EVereinDocumentKind.Minutes => Localizer[nameof(Language.Auto_BeschlussMinutes_6fa4d247)].Value,
+            _ => kind.ToString(),
+        };
+}

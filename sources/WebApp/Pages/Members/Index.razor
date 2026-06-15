@@ -1,0 +1,13 @@
+@page "/members"
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject NavigationManager NavigationManager
+@inject BaseUrl BaseUrl
+
+<div class="utf-community-page"></div>
+
+@code {
+
+    protected override void OnInitialized()
+        => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("join"), replace: true);
+
+}

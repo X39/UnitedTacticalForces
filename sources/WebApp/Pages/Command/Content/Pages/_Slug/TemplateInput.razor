@@ -1,0 +1,21 @@
+<label class="gdpr-template-field">
+    <span>@Label</span>
+    <input class="utf-command-input"
+           type="text"
+           value="@Value"
+           @oninput="OnInputAsync"/>
+</label>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    private async Task OnInputAsync(ChangeEventArgs args)
+        => await ValueChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty).ConfigureAwait(false);
+}

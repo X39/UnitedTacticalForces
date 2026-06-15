@@ -1,0 +1,123 @@
+@page "/unit/beschluesse"
+@page "/verein/beschluesse"
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IVereinRepository VereinRepository
+@inject BaseUrl BaseUrl
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_PageTitle)]</PageTitle>
+
+<div class="utf-community-page utf-unit-page">
+    <header class="utf-community-page-hero utf-unit-hero" style="@HeroImageStyle">
+            <div class="utf-unit-hero__copy">
+                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_Kicker)]</span>
+                <h1>@Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_Title)]</h1>
+                <p>
+                    @Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_Subtitle)]
+                </p>
+                <div class="utf-unit-actions">
+                    <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("verein")">
+                        @Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_BackToUnit)]
+                    </a>
+                </div>
+            </div>
+        </header>
+
+    <section class="utf-community-page-section utf-unit-section">
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+        else if (_documents.Length is 0)
+        {
+            <section class="utf-empty-state">
+                <h2>@Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_NoRecordsTitle)]</h2>
+                <p>@Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_NoRecordsDescription)]</p>
+            </section>
+        }
+        else
+        {
+            <div class="utf-unit-feature-grid">
+                @foreach (var document in _documents)
+                {
+                    <article class="utf-unit-feature-card" @key="document.PrimaryKey">
+                        <div class="utf-unit-feature-card__top">
+                            <span class="utf-unit-feature-icon">
+                                <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                            </span>
+                        <span class="utf-unit-state utf-unit-state--active">
+                                @Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_VersionPrefix), document.Revision?.Version]
+                            </span>
+                        </div>
+                        <h3>@document.Revision?.Title</h3>
+                        <p>@document.Revision?.Summary</p>
+                        <a class="utf-unit-feature-card__action"
+                           href="@BaseUrl.ResolveSelfUrl($"verein/beschluesse/{document.PrimaryKey}")">
+                            @Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_ReadDocument)]
+                        </a>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private VereinDocumentInfo[] _documents = [];
+    private bool _isLoading = true;
+    private string? _loadError;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private string HeroImageStyle
+        => $"--utf-hero-image: url('{GetSiteImageUrl("beschluesse-hero", "media/generated/verein-governance-table-hero.jpg")}');";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var documentsTask = VereinRepository.GetPublishedMinutesAsync();
+            var imagesTask = LoadSiteImagesAsync();
+            await Task.WhenAll(documentsTask, imagesTask).ConfigureAwait(false);
+            _documents = documentsTask.Result.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _loadError = Localizer[nameof(Language.Pages_Unit_Beschluesse_Index_Error_LoadFailed)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+}

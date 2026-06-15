@@ -1,0 +1,109 @@
+.modpacks-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+}
+
+.modpacks-attention {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.modpacks-toolbar {
+    align-items: flex-end;
+}
+
+.modpacks-toolbar ::deep .utf-command-search-field {
+    flex: 1 1 22rem;
+    min-width: min(100%, 18rem);
+}
+
+.modpacks-toolbar ::deep .utf-command-search,
+.modpacks-toolbar ::deep .utf-filter-chip,
+.modpacks-table__actions ::deep .utf-button {
+    min-height: 38px;
+}
+
+.modpacks-toolbar ::deep .utf-command-search {
+    border-color: var(--utf-stroke);
+}
+
+.modpacks-list {
+    overflow: hidden;
+}
+
+.modpacks-list__header {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--utf-stroke);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 1rem;
+}
+
+.modpacks-list__header h2 {
+    color: var(--utf-text);
+    font-size: 1.25rem;
+    line-height: 1.2;
+    margin: 0.2rem 0 0;
+}
+
+.modpacks-table {
+    min-width: 920px;
+}
+
+.modpacks-table__actions {
+    width: 1%;
+}
+
+.modpacks-row {
+    cursor: pointer;
+}
+
+.modpacks-row:hover {
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.modpacks-table__actions ::deep .utf-button,
+.modpacks-row-action {
+    white-space: nowrap;
+}
+
+.modpacks-list__footer {
+    align-items: center;
+    border-top: 1px solid var(--utf-stroke);
+    color: var(--utf-text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+    padding: 1rem;
+}
+
+.modpacks-empty {
+    color: var(--utf-text-muted);
+    line-height: 1.5;
+    padding: 1rem;
+}
+
+@media (max-width: 1320px) {
+    .modpacks-attention {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .modpacks-attention {
+        grid-template-columns: 1fr;
+    }
+
+    .modpacks-toolbar {
+        align-items: stretch;
+    }
+
+    .modpacks-toolbar ::deep .utf-command-search-field,
+    .modpacks-toolbar ::deep .utf-filter-chip,
+    .modpacks-list__footer ::deep .utf-button {
+        width: 100%;
+    }
+}

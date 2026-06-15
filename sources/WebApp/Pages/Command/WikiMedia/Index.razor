@@ -1,0 +1,378 @@
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@inject ICommandCenterRepository CommandCenterRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+
+@inject IStringLocalizer<Language> Localizer
+<PageTitle>@Localizer[nameof(Language.Auto_WikiMediaCommandCenter_ccc46728)]</PageTitle>
+
+<div class="authority-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Auto_WikiMedia_174d00c7)])"
+                          Description="@(Localizer[nameof(Language.Auto_CommandCenterViewForWikiPagesDeletedRecordsRevisions_c5c40ed2)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Common_Refresh)]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("media")">
+                @Localizer[nameof(Language.Auto_PublicMedia_b62600e8)]
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageWikiMedia)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Auto_WikiAdministrationRequired_ea8177a9)]</h2>
+            <p>@Localizer[nameof(Language.Auto_YourAccountDoesNotCurrentlyExposeWikiOrMedia_d2828c23)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics authority-attention" aria-label="@(Localizer[nameof(Language.Auto_WikiAndMediaSummary_f7e9627c)])">
+            <UtfCommandMetric Active="@(_activeView is WikiMediaView.All)"
+                              Description="@(Localizer[nameof(Language.Auto_ReturnedForInspection_847efdbf), FormatCount(
+                                               _pages.Count,
+                                               nameof(Language.Pages_Command_WikiMedia_Count_Singular_LoadedPage),
+                                               nameof(Language.Pages_Command_WikiMedia_Count_Plural_LoadedPage)
+                                           )])"
+                              OnClick="@(() => SetView(WikiMediaView.All))"
+                              Status="@(Localizer[nameof(Language.Pages)])"
+                              StatusIntent="info"
+                              Value="@FormatCount(
+                                         _snapshot.WikiPageCount,
+                                         nameof(Language.Pages_Command_WikiMedia_Count_Singular_Page),
+                                         nameof(Language.Pages_Command_WikiMedia_Count_Plural_Page)
+                                     )"/>
+            <UtfCommandMetric Active="@(_activeView is WikiMediaView.Recent)"
+                              Description="@(Localizer[nameof(Language.Auto_LoadedPagesWithARevisionInTheLast30_84862717)])"
+                              OnClick="@(() => SetView(WikiMediaView.Recent))"
+                              Status="@(Localizer[nameof(Language.Recent)])"
+                              StatusClass="@GetRecentStatusClass()"
+                              Value="@FormatCount(
+                                         LoadedRecentPageCount,
+                                         nameof(Language.Pages_Command_WikiMedia_Count_Singular_Page),
+                                         nameof(Language.Pages_Command_WikiMedia_Count_Plural_Page)
+                                     )"/>
+            <UtfCommandMetric Active="@(_activeView is WikiMediaView.Deleted)"
+                              Description="@(Localizer[nameof(Language.Auto_RetainedWikiRecordsThatMayNeedRestoreOrAudit_5dae70b7)])"
+                              OnClick="@(() => SetView(WikiMediaView.Deleted))"
+                              Status="@(Localizer[nameof(Language.Deleted)])"
+                              StatusClass="@GetDeletedStatusClass()"
+                              Value="@FormatCount(
+                                         _snapshot.DeletedWikiPageCount,
+                                         nameof(Language.Pages_Command_WikiMedia_Count_Singular_Page),
+                                         nameof(Language.Pages_Command_WikiMedia_Count_Plural_Page)
+                                     )"/>
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Auto_RecordedAcrossWikiContent_61f3d925), FormatCount(
+                                               _snapshot.WikiRevisionCount,
+                                               nameof(Language.Pages_Command_WikiMedia_Count_Singular_Revision),
+                                               nameof(Language.Pages_Command_WikiMedia_Count_Plural_Revision)
+                                           )])"
+                              Status="@(Localizer[nameof(Language.Audit)])"
+                              Value="@FormatCount(
+                                         _snapshot.WikiAuditRecordCount,
+                                         nameof(Language.Pages_Command_WikiMedia_Count_Singular_Record),
+                                         nameof(Language.Pages_Command_WikiMedia_Count_Plural_Record)
+                                     )"/>
+        </section>
+
+        <section class="utf-command-toolbar" aria-label="@(Localizer[nameof(Language.Auto_WikiAndMediaFilters_23cce27b)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Auto_SearchWikiPageTitles_210ca75b)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="RefreshAsync">
+                @Localizer[nameof(Language.Search)]
+            </UtfCommandButton>
+            <UtfCommandFilter Active="@(_activeView is WikiMediaView.All)"
+                              Label="@(Localizer[nameof(Language.All)])"
+                              OnClick="@(() => SetView(WikiMediaView.All))"/>
+            <UtfCommandFilter Active="@(_activeView is WikiMediaView.Recent)"
+                              Label="@(Localizer[nameof(Language.Recent)])"
+                              OnClick="@(() => SetView(WikiMediaView.Recent))"/>
+            <UtfCommandFilter Active="@(_activeView is WikiMediaView.Active)"
+                              Label="@(Localizer[nameof(Language.Active)])"
+                              OnClick="@(() => SetView(WikiMediaView.Active))"/>
+            <UtfCommandFilter Active="@(_activeView is WikiMediaView.Deleted)"
+                              Label="@(Localizer[nameof(Language.Deleted)])"
+                              OnClick="@(() => SetView(WikiMediaView.Deleted))"/>
+        </section>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Auto_LoadingWikiAndMediaControl_23f5253f)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <div class="utf-command-workspace authority-master-detail">
+                <section class="utf-panel utf-command-ledger authority-list-panel">
+                    <div class="utf-command-ledger__header authority-panel__header">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Auto_WikiLedger_13346e33)]</span>
+                            <h2>@GetListTitle()</h2>
+                        </div>
+                        <span class="utf-status utf-status--neutral">
+                            <span class="utf-status__dot"></span>@Localizer[nameof(Language.Auto_Rows_8f710eeb), VisiblePages.Count()]
+                        </span>
+                    </div>
+
+                    @if (!VisiblePages.Any())
+                    {
+                        <div class="authority-empty">@Localizer[nameof(Language.Auto_NoWikiPagesMatchTheCurrentFilters_5aae86ff)]</div>
+                    }
+                    else
+                    {
+                        <div class="utf-command-table-scroll authority-table-scroll">
+                            <table class="utf-command-table authority-table">
+                                <thead>
+                                <tr>
+                                    <th>@Localizer[nameof(Language.Page)]</th>
+                                    <th>@Localizer[nameof(Language.Status)]</th>
+                                    <th>@Localizer[nameof(Language.Auto_LatestRevision_305ad7b9)]</th>
+                                    <th>@Localizer[nameof(Language.Revisions)]</th>
+                                    <th>@Localizer[nameof(Language.Created)]</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                            @foreach (var wikiPage in VisiblePages)
+                            {
+                                <tr class="@GetPageRowClass(wikiPage)"
+                                    @key="wikiPage.PrimaryKey"
+                                    @onclick="@(() => SelectPage(wikiPage))">
+                                    <td>
+                                        <strong>@wikiPage.Title</strong>
+                                        <span>#@wikiPage.PrimaryKey</span>
+                                    </td>
+                                    <td>
+                                        <span class="@GetPageStatusClass(wikiPage)">
+                                            <span class="utf-status__dot"></span>@GetPageStatusLabel(wikiPage)
+                                        </span>
+                                    </td>
+                                    <td>@FormatLatestRevision(wikiPage)</td>
+                                    <td>@FormatCount(
+                                            wikiPage.RevisionCount,
+                                            nameof(Language.Pages_Command_WikiMedia_Count_Singular_Revision),
+                                            nameof(Language.Pages_Command_WikiMedia_Count_Plural_Revision)
+                                        )</td>
+                                    <td>@FormatDateTime(wikiPage.TimeStampCreated)</td>
+                                </tr>
+                            }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+
+                <aside class="utf-panel utf-command-detail authority-detail-panel" aria-label="@(Localizer[nameof(Language.Auto_SelectedWikiPageDetail_3f49b121)])">
+                    @if (_selectedPage is null)
+                    {
+                        <div class="authority-empty">@Localizer[nameof(Language.Auto_SelectAWikiPageToInspectPublicationStateAnd_1d0c0e6a)]</div>
+                    }
+                    else
+                    {
+                        <div class="authority-detail-panel__header">
+                            <div>
+                                <span class="utf-kicker">@Localizer[nameof(Language.Auto_SelectedWikiPage_68250876)]</span>
+                                <h2>@_selectedPage.Title</h2>
+                            </div>
+                            <span class="@GetPageStatusClass(_selectedPage)">
+                                <span class="utf-status__dot"></span>@GetPageStatusLabel(_selectedPage)
+                            </span>
+                        </div>
+
+                        <dl class="authority-meta">
+                            <dt>@Localizer[nameof(Language.Identifier)]</dt>
+                            <dd>@_selectedPage.PrimaryKey</dd>
+                            <dt>@Localizer[nameof(Language.Created)]</dt>
+                            <dd>@FormatDateTime(_selectedPage.TimeStampCreated)</dd>
+                            <dt>@Localizer[nameof(Language.Auto_LatestRevision_305ad7b9)]</dt>
+                            <dd>@FormatLatestRevision(_selectedPage)</dd>
+                            <dt>@Localizer[nameof(Language.Auto_LatestAuthor_b04fcff1)]</dt>
+                            <dd>@FormatNullable(_selectedPage.LatestRevisionAuthorName, Localizer[nameof(Language.Auto_NoAuthorReturned_6b1b6956)].Value)</dd>
+                            <dt>@Localizer[nameof(Language.Revisions)]</dt>
+                            <dd>@FormatCount(
+                                    _selectedPage.RevisionCount,
+                                    nameof(Language.Pages_Command_WikiMedia_Count_Singular_Revision),
+                                    nameof(Language.Pages_Command_WikiMedia_Count_Plural_Revision)
+                                )</dd>
+                            <dt>@Localizer[nameof(Language.Deleted)]</dt>
+                            <dd>@(_selectedPage.IsDeleted ? Localizer[nameof(Language.Yes)] : Localizer[nameof(Language.No)])</dd>
+                            <dt>@Localizer[nameof(Language.Auto_LatestComment_af38efaa)]</dt>
+                            <dd>@FormatNullable(_selectedPage.LatestRevisionComment, Localizer[nameof(Language.Auto_NoRevisionCommentReturned_543c9d84)].Value)</dd>
+                        </dl>
+
+                        <section class="authority-stack" aria-label="@(Localizer[nameof(Language.Auto_MediaPublicationSurface_632be98d)])">
+                            <h3>@Localizer[nameof(Language.Auto_MediaSurface_a58f6d67)]</h3>
+                            <p>@Localizer[nameof(Language.Auto_ThePublicMediaGalleryIsCurrentlyStaticWebAppContent_7a643fad)]</p>
+                        </section>
+
+                        <div class="authority-detail-panel__actions">
+                            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("media")">
+                                @Localizer[nameof(Language.Auto_PublicMedia_b62600e8)]
+                            </UtfCommandButton>
+                        </div>
+                    }
+                </aside>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private CommandCenterWikiMediaSnapshotInfo _snapshot = new();
+    private IReadOnlyList<CommandCenterWikiMediaPageInfo> _pages = [];
+    private CommandCenterWikiMediaPageInfo? _selectedPage;
+    private WikiMediaView _activeView = WikiMediaView.All;
+    private string _search = string.Empty;
+    private bool _isLoading;
+    private string? _loadError;
+
+    private bool CanManageWikiMedia
+        => Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All);
+
+    private IEnumerable<CommandCenterWikiMediaPageInfo> VisiblePages
+        => _pages
+            .Where(MatchesActiveView)
+            .OrderBy(page => page.IsDeleted)
+            .ThenByDescending(page => page.LatestRevisionTimeStamp ?? page.TimeStampCreated)
+            .ThenBy(page => page.Title);
+
+    private int LoadedRecentPageCount
+        => _pages.Count(IsRecentlyChanged);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageWikiMedia)
+            await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!CanManageWikiMedia)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _snapshot = await CommandCenterRepository
+                .GetWikiMediaSnapshotAsync(take: 120, search: _search)
+                .ConfigureAwait(false);
+            _pages = _snapshot.Pages;
+            _selectedPage = VisiblePages.FirstOrDefault()
+                            ?? _pages.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _snapshot     = new CommandCenterWikiMediaSnapshotInfo();
+            _pages        = [];
+            _selectedPage = null;
+            _loadError    = UserFacingError.Message(ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(string value)
+        => _search = value;
+
+    private void SetView(WikiMediaView view)
+    {
+        _activeView = view;
+        if (_selectedPage is null || !MatchesActiveView(_selectedPage))
+            _selectedPage = VisiblePages.FirstOrDefault();
+    }
+
+    private void SelectPage(CommandCenterWikiMediaPageInfo page)
+        => _selectedPage = page;
+
+    private bool MatchesActiveView(CommandCenterWikiMediaPageInfo page)
+        => _activeView switch
+        {
+            WikiMediaView.All     => true,
+            WikiMediaView.Recent  => IsRecentlyChanged(page),
+            WikiMediaView.Active  => !page.IsDeleted,
+            WikiMediaView.Deleted => page.IsDeleted,
+            _                     => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private string GetPageRowClass(CommandCenterWikiMediaPageInfo page)
+        => _selectedPage?.PrimaryKey == page.PrimaryKey
+            ? "authority-table-row utf-command-row--selected"
+            : "authority-table-row";
+
+    private string GetListTitle()
+        => _activeView switch
+        {
+            WikiMediaView.All     => Localizer[nameof(Language.Auto_AllReturnedWikiPages_ee335f7f)].Value,
+            WikiMediaView.Recent  => Localizer[nameof(Language.Auto_RecentlyRevisedPages_b1959fc2)].Value,
+            WikiMediaView.Active  => Localizer[nameof(Language.Auto_ActivePages_8d21156a)].Value,
+            WikiMediaView.Deleted => Localizer[nameof(Language.Auto_DeletedPages_0549ecc9)].Value,
+            _                     => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private string GetRecentStatusClass()
+        => LoadedRecentPageCount > 0 ? "utf-status utf-status--success" : "utf-status utf-status--neutral";
+
+    private string GetDeletedStatusClass()
+        => _snapshot.DeletedWikiPageCount > 0 ? "utf-status utf-status--warning" : "utf-status utf-status--success";
+
+    private static string GetPageStatusClass(CommandCenterWikiMediaPageInfo page)
+    {
+        if (page.IsDeleted)
+            return "utf-status utf-status--warning";
+        return IsRecentlyChanged(page) ? "utf-status utf-status--success" : "utf-status utf-status--neutral";
+    }
+
+    private string GetPageStatusLabel(CommandCenterWikiMediaPageInfo page)
+    {
+        if (page.IsDeleted)
+            return Localizer[nameof(Language.Deleted)].Value;
+        return IsRecentlyChanged(page) ? Localizer[nameof(Language.Recent)].Value : Localizer[nameof(Language.Active)].Value;
+    }
+
+    private static bool IsRecentlyChanged(CommandCenterWikiMediaPageInfo page)
+        => (page.LatestRevisionTimeStamp ?? page.TimeStampCreated) >= DateTimeOffset.UtcNow.AddDays(-30);
+
+    private string FormatLatestRevision(CommandCenterWikiMediaPageInfo page)
+        => page.LatestRevisionTimeStamp is { } latest
+            ? FormatDateTime(latest)
+            : Localizer[nameof(Language.Auto_NoRevisionsReturned_ddc5eda2)].Value;
+
+    private static string FormatDateTime(DateTimeOffset value)
+        => value.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture);
+
+    private static string FormatNullable(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+    private string FormatCount(long value, string singularLocalizationKey, string pluralLocalizationKey)
+        => value is 1
+            ? Localizer[nameof(Language.Auto_1_09b4affa), Localizer[singularLocalizationKey].Value].Value
+            : Localizer[nameof(Language.Auto_Text_f5be98c5), value, Localizer[pluralLocalizationKey].Value].Value;
+
+    private enum WikiMediaView
+    {
+        All,
+        Recent,
+        Active,
+        Deleted,
+    }
+}

@@ -1,0 +1,24 @@
+@inject IStringLocalizer<Language> Localizer
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <CascadingAuthenticationState>
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(CommunityLayout)">
+                <NotAuthorized>
+                    <RedirectToLogin/>
+                </NotAuthorized>
+                <Authorizing>
+                </Authorizing>
+            </AuthorizeRouteView>
+        </CascadingAuthenticationState>
+    </Found>
+    <NotFound>
+        <PageTitle>@Localizer[nameof(Language.App_NotFound_Title)]</PageTitle>
+        <LayoutView Layout="@typeof(CommunityLayout)">
+            <p role="alert">@Localizer[nameof(Language.App_NotFound_Message)]</p>
+        </LayoutView>
+    </NotFound>
+</Router>
+<FluentDesignTheme StorageName="theme" />
+<FluentDesignTheme Mode="DesignThemeModes.Dark" CustomColor="#BAA05A" />
+<FluentDesignTheme Mode="DesignThemeModes.Light" CustomColor="#BAA05A" />

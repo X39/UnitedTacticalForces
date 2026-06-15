@@ -1,0 +1,427 @@
+@page "/data/mod-packs/all"
+@page "/command/mod-packs"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IStringLocalizer<Language> Localizer
+@inject IModPackRepository ModPackRepository
+@inject NavigationManager NavigationManager
+@inject BaseUrl BaseUrl
+@inject MeService Me
+
+<PageTitle>@Localizer[nameof(Language.Pages_ModPacks_AllModPacks)]</PageTitle>
+
+<div class="modpacks-page">
+    <UtfCommandPageHeader Class="modpacks-header"
+                          Title="@(Localizer[nameof(Language.Pages_ModPacks_AllModPacks)])"
+                          Description="@(Localizer[nameof(Language.Auto_CommandWorkspaceForPackageDefinitionsCompositionStatusRevisionFreshness_1894ea65)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="@(() => LoadAsync(resetWindow: true))">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/></Icon>
+                <ChildContent>
+                    @Localizer[nameof(Language.Common_Refresh)]
+                </ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Variant="primary"
+                              Href="@BaseUrl.ResolveSelfUrl("command/mod-packs/create?kind=standalone")">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size24.New())"/></Icon>
+                <ChildContent>
+                    @Localizer[nameof(Language.Auto_CreateStandalone_e930c8fc)]
+                </ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/mod-packs/create?kind=composition")">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size24.New())"/></Icon>
+                <ChildContent>
+                    @Localizer[nameof(Language.Auto_CreateComposition_0aee6519)]
+                </ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageModPacks)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Auto_ModPackAdministratorAccessRequired_95eb8250)]</h2>
+            <p>@Localizer[nameof(Language.Auto_ModPackControlIsVisibleOnlyToAuthorizedAsset_16976818)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics modpacks-attention" aria-label="@(Localizer[nameof(Language.Auto_ModPackSummary_4a23e0b2)])">
+            <UtfCommandMetric Active="@(_filter is ModPackFilter.All)"
+                              Description="@GetActiveWindowDescription()"
+                              OnClick="@(() => SetFilter(ModPackFilter.All))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Assets_StatusModPacks)])"
+                              StatusIntent="neutral"
+                              Value="@GetModPackCountLabel()"/>
+            <UtfCommandMetric Active="@(_filter is ModPackFilter.Compositions)"
+                              Description="@(Localizer[nameof(Language.Auto_PackagesAssembledFromMultipleRevisions_ce39fa2a)])"
+                              OnClick="@(() => SetFilter(ModPackFilter.Compositions))"
+                              Status="@(Localizer[nameof(Language.Composition)])"
+                              StatusIntent="info"
+                              Value="@GetCompositionCountLabel()"/>
+            <UtfCommandMetric Active="@(_filter is ModPackFilter.Standalone)"
+                              Description="@(Localizer[nameof(Language.Auto_DirectPackageDefinitionsAvailableToMissions_6f62a750)])"
+                              OnClick="@(() => SetFilter(ModPackFilter.Standalone))"
+                              Status="@(Localizer[nameof(Language.Standalone)])"
+                              StatusIntent="neutral"
+                              Value="@GetStandaloneCountLabel()"/>
+            <UtfCommandMetric Active="@(_filter is ModPackFilter.NoRevisions)"
+                              Description="@(Localizer[nameof(Language.Auto_ReturnedPackagesMissingRevisionMetadata_d9a1fd57)])"
+                              OnClick="@(() => SetFilter(ModPackFilter.NoRevisions))"
+                              Status="@(Localizer[nameof(Language.Revision)])"
+                              StatusIntent="@GetRevisionAttentionIntent()"
+                              Value="@GetNoRevisionCountLabel()"/>
+        </section>
+
+        <section class="utf-command-toolbar modpacks-toolbar" aria-label="@(Localizer[nameof(Language.Auto_ModPackFilters_52e85bf3)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Auto_SearchModPacks_5fce5f83)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChangedAsync"/>
+            <UtfCommandFilter Active="@(_filter == ModPackFilter.All)"
+                              Label="@(Localizer[nameof(Language.All)])"
+                              OnClick="@(() => SetFilter(ModPackFilter.All))"/>
+            <UtfCommandFilter Active="@(_filter == ModPackFilter.Compositions)"
+                              Label="@(Localizer[nameof(Language.Compositions)])"
+                              OnClick="@(() => SetFilter(ModPackFilter.Compositions))"/>
+            <UtfCommandFilter Active="@(_filter == ModPackFilter.Standalone)"
+                              Label="@(Localizer[nameof(Language.Standalone)])"
+                              OnClick="@(() => SetFilter(ModPackFilter.Standalone))"/>
+            <UtfCommandFilter Active="@(_filter == ModPackFilter.NoRevisions)"
+                              Label="@(Localizer[nameof(Language.Auto_MissingRevisions_fd474e59)])"
+                              OnClick="@(() => SetFilter(ModPackFilter.NoRevisions))"/>
+            <UtfCommandFilter Active="@(!_myModPacksOnly)"
+                              Label="@(Localizer[nameof(Language.Auto_AllOwners_5f198db2)])"
+                              OnClick="@(() => SetMyModPacksOnlyAsync(false))"/>
+            <UtfCommandFilter Active="@_myModPacksOnly"
+                              Disabled="@(!Me.IsAuthenticated)"
+                              Label="@(Localizer[nameof(Language.Auto_MyModPacks_a70e2739)])"
+                              OnClick="@(() => SetMyModPacksOnlyAsync(true))"/>
+        </section>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Auto_LoadingModPackControl_4b9cc997)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <section class="utf-panel modpacks-list">
+                <div class="modpacks-list__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Auto_PackageLedger_7b725d5e)]</span>
+                        <h2>@GetListTitle()</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@Localizer["Pages_Data_ModPacks_All_VisibleCount", VisibleModPacks.Count()]
+                    </span>
+                </div>
+
+                @if (!VisibleModPacks.Any())
+                {
+                    <div class="modpacks-empty">@Localizer[nameof(Language.Auto_NoModPacksMatchTheCurrentFilters_33565b66)]</div>
+                }
+                else
+                {
+                    <div class="utf-command-table-scroll modpacks-table-scroll">
+                        <table class="utf-command-table modpacks-table">
+                            <thead>
+                            <tr>
+                                <th>@Localizer[nameof(Language.Package)]</th>
+                                <th>@Localizer[nameof(Language.Type)]</th>
+                                <th>@Localizer[nameof(Language.Owner)]</th>
+                                <th>@Localizer[nameof(Language.Revisions)]</th>
+                                <th>@Localizer[nameof(Language.Updated)]</th>
+                                <th>@Localizer[nameof(Language.Action)]</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var modPack in VisibleModPacks)
+                            {
+                                <tr class="modpacks-row"
+                                    @key="modPack.PrimaryKey"
+                                    @onclick="@(() => OpenModPack(modPack))">
+                                    <td>
+                                        <strong>@FormatTitle(modPack.Title)</strong>
+                                        <span>@FormatKey(modPack.PrimaryKey)</span>
+                                    </td>
+                                    <td>
+                                        <span class="@GetModPackTypeClass(modPack)">
+                                            <span class="utf-status__dot"></span>@GetModPackTypeLabel(modPack)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong>@FormatOwner(modPack.Owner)</strong>
+                                        <span>@FormatActiveState(modPack.IsActive ?? true)</span>
+                                    </td>
+                                    <td>
+                                        <strong>@GetRevisionCountLabel(modPack)</strong>
+                                        <span>@GetLatestRevisionLabel(modPack)</span>
+                                    </td>
+                                    <td>@FormatDateTimeOffset(GetLatestRevisionTimeStampCreated(modPack) ?? modPack.TimeStampCreated)</td>
+                                    <td class="modpacks-table__actions">
+                                        <button class="utf-button utf-button--ghost modpacks-row-action"
+                                                type="button"
+                                                disabled="@(modPack.PrimaryKey is null)"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="@(() => OpenModPack(modPack))">
+                                            @Localizer[nameof(Language.Open)]
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <div class="modpacks-list__footer">
+                    <span>@GetLoadedWindowLabel()</span>
+                    <UtfCommandButton Disabled="@(!CanLoadMore || _isLoadingMore)"
+                                      OnClick="LoadMoreAsync">
+                        @(_isLoadingMore ? Localizer[nameof(Language.Pages_Common_LoadingMore)] : Localizer[nameof(Language.Pages_Common_LoadMore)])
+                    </UtfCommandButton>
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private const int ModPackWindowSize = 80;
+    private const string MissingValue = "n/a";
+
+    private IReadOnlyList<FullModPackDefinitionDto> _modPacks = [];
+    private long? _modPackCounts;
+    private int _loadedTake = ModPackWindowSize;
+    private bool _myModPacksOnly;
+    private ModPackFilter _filter = ModPackFilter.All;
+    private string _search = string.Empty;
+    private bool _isLoading;
+    private bool _isLoadingMore;
+    private string? _loadError;
+
+    private bool CanManageModPacks
+        => Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All);
+
+    private IEnumerable<FullModPackDefinitionDto> VisibleModPacks
+        => _modPacks
+            .Where(MatchesCurrentFilter)
+            .OrderByDescending((modPack) => modPack.IsActive ?? true)
+            .ThenBy((modPack) => modPack.Title);
+
+    private int CompositionCount
+        => _modPacks.Count((modPack) => modPack.IsComposition ?? false);
+
+    private int StandaloneCount
+        => _modPacks.Count((modPack) => !(modPack.IsComposition ?? false));
+
+    private int NoRevisionCount
+        => _modPacks.Count((modPack) => modPack.ModPackRevisions is not { Count: > 0 });
+
+    private bool CanLoadMore
+        => _modPackCounts > _modPacks.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageModPacks)
+            await LoadAsync(resetWindow: true);
+    }
+
+    private async Task LoadAsync(bool resetWindow = false, CancellationToken cancellationToken = default)
+    {
+        if (resetWindow)
+            _loadedTake = ModPackWindowSize;
+
+        _isLoading = !_isLoadingMore;
+        _loadError = null;
+
+        try
+        {
+            _modPackCounts = await ModPackRepository.GetModPackCountAsync(_myModPacksOnly, cancellationToken)
+                .ConfigureAwait(false);
+            _modPacks =
+            [
+                ..await ModPackRepository.GetModPacksAsync(
+                        0,
+                        _loadedTake,
+                        _myModPacksOnly,
+                        NormalizeSearch(_search),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false),
+            ];
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            _modPackCounts = 0;
+            _modPacks = [];
+            _loadError = Localizer["Pages_Data_ModPacks_All_LoadError"].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+            _isLoadingMore = false;
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (!CanLoadMore || _isLoadingMore)
+            return;
+
+        _loadedTake += ModPackWindowSize;
+        _isLoadingMore = true;
+        await LoadAsync();
+    }
+
+    private async Task SetMyModPacksOnlyAsync(bool value)
+    {
+        if (_myModPacksOnly == value)
+            return;
+
+        _myModPacksOnly = value;
+        await LoadAsync(resetWindow: true);
+    }
+
+    private async Task OnSearchChangedAsync(string value)
+    {
+        if (_search == value)
+            return;
+
+        _search = value;
+        await LoadAsync(resetWindow: true);
+    }
+
+    private void SetFilter(ModPackFilter filter)
+    {
+        _filter = filter;
+    }
+
+    private void OpenModPack(FullModPackDefinitionDto modPack)
+    {
+        if (modPack.PrimaryKey is not { } primaryKey)
+            return;
+
+        NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/mod-packs/{primaryKey}"));
+    }
+
+    private bool MatchesCurrentFilter(FullModPackDefinitionDto modPack)
+        => _filter switch
+        {
+            ModPackFilter.Compositions => modPack.IsComposition ?? false,
+            ModPackFilter.Standalone => !(modPack.IsComposition ?? false),
+            ModPackFilter.NoRevisions => modPack.ModPackRevisions is not { Count: > 0 },
+            _ => true,
+        };
+
+    private string GetListTitle()
+        => _filter switch
+        {
+            ModPackFilter.Compositions => Localizer["Pages_Data_ModPacks_All_TitleCompositions"].Value,
+            ModPackFilter.Standalone => Localizer["Pages_Data_ModPacks_All_TitleStandalone"].Value,
+            ModPackFilter.NoRevisions => Localizer["Pages_Data_ModPacks_All_TitleNoRevisions"].Value,
+            _ => Localizer["Pages_Data_ModPacks_All_TitleAll"].Value,
+        };
+
+    private string GetActiveWindowDescription()
+        => Localizer["Pages_Data_ModPacks_All_MetricActiveWindow", _modPacks.Count].Value;
+
+    private string GetCompositionCountLabel()
+        => Localizer["Pages_Data_ModPacks_All_ValueCompositionCount", CompositionCount].Value;
+
+    private string GetStandaloneCountLabel()
+        => Localizer["Pages_Data_ModPacks_All_ValueStandaloneCount", StandaloneCount].Value;
+
+    private string GetNoRevisionCountLabel()
+        => Localizer["Pages_Data_ModPacks_All_ValueMissingRevisionCount", NoRevisionCount].Value;
+
+    private string GetModPackCountLabel()
+        => _modPackCounts is null
+            ? Localizer["Pages_Data_ModPacks_All_CountLoading"].Value
+            : Localizer["Pages_Data_ModPacks_All_CountLoaded", _modPackCounts.Value].Value;
+
+    private string GetLoadedWindowLabel()
+    {
+        var loadedCount = _modPacks.Count.ToString(CultureInfo.CurrentCulture);
+        if (_modPackCounts <= _modPacks.Count)
+            return Localizer["Pages_Data_ModPacks_All_WindowLoadedAll", loadedCount].Value;
+
+        var totalCount = (_modPackCounts ?? 0).ToString(CultureInfo.CurrentCulture);
+        return Localizer["Pages_Data_ModPacks_All_WindowLoadedPartial", loadedCount, totalCount].Value;
+    }
+
+    private string GetRevisionAttentionIntent()
+        => NoRevisionCount > 0 ? "warning" : "success";
+
+    private static string GetModPackTypeClass(FullModPackDefinitionDto modPack)
+        => modPack.IsComposition ?? false ? "utf-status utf-status--info" : "utf-status utf-status--neutral";
+
+    private string GetModPackTypeLabel(FullModPackDefinitionDto modPack)
+        => modPack.IsComposition ?? false
+            ? Localizer[nameof(Language.Composition)].Value
+            : Localizer[nameof(Language.Standalone)].Value;
+
+    private string GetRevisionCountLabel(FullModPackDefinitionDto modPack)
+        => Localizer["Pages_Data_ModPacks_All_RevisionCount", modPack.ModPackRevisions?.Count ?? 0].Value;
+
+    private string GetLatestRevisionLabel(FullModPackDefinitionDto modPack)
+    {
+        var latest = modPack.ModPackRevisions?
+            .OrderByDescending((revision) => revision.TimeStampCreated)
+            .FirstOrDefault();
+        return latest is null
+            ? MissingValue
+            : Localizer[nameof(Language.Pages_Command_Assets_LatestRevisionLabel), FormatKey(latest.PrimaryKey)].Value;
+    }
+
+    private static DateTimeOffset? GetLatestRevisionTimeStampCreated(FullModPackDefinitionDto modPack)
+        => modPack.ModPackRevisions?
+            .Select((revision) => revision.TimeStampCreated)
+            .Where((timeStampCreated) => timeStampCreated is not null)
+            .OrderByDescending((timeStampCreated) => timeStampCreated)
+            .FirstOrDefault();
+
+    private static string FormatDateTimeOffset(DateTimeOffset? value)
+        => value?.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture) ?? MissingValue;
+
+    private static string FormatOwner(PlainUserDto? owner)
+        => string.IsNullOrWhiteSpace(owner?.Nickname) ? MissingValue : owner.Nickname;
+
+    private string FormatTitle(string? title)
+        => string.IsNullOrWhiteSpace(title) ? Localizer[nameof(Language.Auto_UntitledModPack_68e62d9a)].Value : title;
+
+    private string FormatActiveState(bool isActive)
+        => isActive ? Localizer[nameof(Language.Active)].Value : Localizer[nameof(Language.Inactive)].Value;
+
+    private static string FormatKey(long? value)
+        => value?.ToString(CultureInfo.InvariantCulture) ?? MissingValue;
+
+    private static string? NormalizeSearch(string value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private enum ModPackFilter
+    {
+        All,
+        Compositions,
+        Standalone,
+        NoRevisions,
+    }
+}

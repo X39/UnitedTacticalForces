@@ -1,0 +1,966 @@
+@page "/command/roles/{RoleId:long}"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@using X39.UnitedTacticalForces.WebApp.Services.RoleRepository
+@inject ICommandCenterRepository CommandCenterRepository
+@inject IRoleRepository RoleRepository
+@inject IToastService ToastService
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@GetPageTitle()</PageTitle>
+
+<div class="authority-role-page">
+    <UtfCommandPageHeader Title="@GetHeaderTitle()"
+                          Description="@(Localizer[RoleDetailDescriptionKey])">
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/roles")">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/>
+                </Icon>
+                <ChildContent>@Localizer[BackToRolesKey]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="LoadAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Roles_ActionRefresh)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageAuthority)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Roles_AccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Roles_AccessRequiredDescription)]</p>
+        </section>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning" role="alert">
+            @_loadError
+        </div>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Pages_Command_Roles_Loading)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_role is null)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[RoleNotFoundTitleKey]</h2>
+            <p>@Localizer[RoleNotFoundDescriptionKey]</p>
+        </section>
+    }
+    else
+    {
+        <section class="role-dossier-hero"
+                 aria-label="@(Localizer[nameof(Language.Pages_Command_Roles_SelectedRoleDetailAria)])">
+            <div class="role-dossier-hero__mark" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Shield())"/>
+            </div>
+            <div class="role-dossier-hero__identity">
+                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Roles_SelectedRoleKicker)]</span>
+                <h2>@GetRoleTitle(_role.Role)</h2>
+                <p>@FormatNullable(_role.Role.Description, Localizer[nameof(Language.Pages_Command_Roles_NoRoleDescriptionReturned)].Value)</p>
+                <span>@Localizer[nameof(Language.Pages_Command_Roles_DetailIdentifier)]: #@RoleId</span>
+            </div>
+            <dl class="role-dossier-hero__facts">
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Roles_HeaderStatus)]</dt>
+                    <dd>
+                        <span class="@GetRoleStatusClass(_role)">
+                            <span class="utf-status__dot"></span>@GetRoleStatusLabel(_role)
+                        </span>
+                    </dd>
+                </div>
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Roles_DetailMembers)]</dt>
+                    <dd>
+                        <strong>@FormatNumber(_role.MemberCount)</strong>
+                        <span>@FormatCount(_roleMembers.AvailableMemberCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Member)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Member)].Value) @Localizer[AvailableShortKey]</span>
+                    </dd>
+                </div>
+                <div>
+                    <dt>@Localizer[AssignedClaimsKey]</dt>
+                    <dd>
+                        <strong>@FormatNumber(AssignedClaims.Count)</strong>
+                        <span>@FormatCount(AssignedClaims.Count, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Claim)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Claim)].Value)</span>
+                    </dd>
+                </div>
+                <div>
+                    <dt>@Localizer[AvailableClaimsKey]</dt>
+                    <dd>
+                        <strong>@FormatNumber(AvailableClaimCount)</strong>
+                        <span>@FormatCount(AvailableClaimCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Claim)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Claim)].Value)</span>
+                    </dd>
+                </div>
+            </dl>
+        </section>
+
+        <div class="role-dossier-workspace">
+            <section class="utf-panel role-claims-matrix" aria-label="@(Localizer[nameof(Language.Pages_Command_Roles_RoleClaimsAria)])">
+                <div class="role-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[ClaimsKickerKey]</span>
+                        <h2>@Localizer[ClaimsMatrixTitleKey]</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@FormatCount(VisibleClaimRows.Count(), Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Row)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Row)].Value)
+                    </span>
+                </div>
+
+                <div class="role-claims-toolbar">
+                    <UtfCommandSearch Placeholder="@(Localizer[SearchClaimsKey])"
+                                      Value="@_claimSearch"
+                                      ValueChanged="@((value) => _claimSearch = value)"/>
+                    <div class="role-filter-strip" aria-label="@(Localizer[ClaimFiltersAriaKey])">
+                        <UtfCommandFilter Active="@(_claimView is RoleClaimView.All)"
+                                          Count="@FormatNumber(GetClaimViewCount(RoleClaimView.All))"
+                                          Label="@(Localizer[nameof(Language.Pages_Command_Roles_FilterAll)])"
+                                          OnClick="@(() => SetClaimView(RoleClaimView.All))"/>
+                        <UtfCommandFilter Active="@(_claimView is RoleClaimView.Assigned)"
+                                          Count="@FormatNumber(GetClaimViewCount(RoleClaimView.Assigned))"
+                                          Label="@(Localizer[nameof(Language.Pages_Command_Roles_FilterAssigned)])"
+                                          OnClick="@(() => SetClaimView(RoleClaimView.Assigned))"/>
+                        <UtfCommandFilter Active="@(_claimView is RoleClaimView.Available)"
+                                          Count="@FormatNumber(GetClaimViewCount(RoleClaimView.Available))"
+                                          Label="@(Localizer[FilterAvailableKey])"
+                                          OnClick="@(() => SetClaimView(RoleClaimView.Available))"/>
+                        <UtfCommandFilter Active="@(_claimView is RoleClaimView.HighImpact)"
+                                          Count="@FormatNumber(GetClaimViewCount(RoleClaimView.HighImpact))"
+                                          Label="@(Localizer[nameof(Language.Pages_Command_Roles_FilterHighImpact)])"
+                                          OnClick="@(() => SetClaimView(RoleClaimView.HighImpact))"/>
+                    </div>
+                    <div class="role-category-strip" aria-label="@(Localizer[CategoryFiltersAriaKey])">
+                        <UtfCommandFilter Active="@(string.IsNullOrWhiteSpace(_claimCategoryFilter))"
+                                          Label="@(Localizer[FilterAllCategoriesKey])"
+                                          OnClick="@ClearClaimCategory"/>
+                        @foreach (var category in ClaimCategories)
+                        {
+                            <UtfCommandFilter Active="@(string.Equals(_claimCategoryFilter, category, StringComparison.OrdinalIgnoreCase))"
+                                              Count="@FormatNumber(GetClaimCategoryCount(category))"
+                                              Label="@category"
+                                              OnClick="@(() => SetClaimCategory(category))"/>
+                        }
+                    </div>
+                </div>
+
+                @if (!VisibleClaimRows.Any())
+                {
+                    <div class="role-empty-state">@Localizer[NoClaimsMatchKey]</div>
+                }
+                else
+                {
+                    <div class="role-claims-table-shell">
+                        <table class="utf-command-table role-claims-table">
+                            <thead>
+                            <tr>
+                                <th>@Localizer[ClaimStateKey]</th>
+                                <th>@Localizer[ClaimKey]</th>
+                                <th>@Localizer[CategoryKey]</th>
+                                <th>@Localizer[IdentifierValueKey]</th>
+                                <th>@Localizer[ImpactKey]</th>
+                                <th>@Localizer[ActionKey]</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var row in VisibleClaimRows)
+                            {
+                                <tr class="@GetClaimRowClass(row)" @key="GetClaimRowKey(row)">
+                                    <td>
+                                        <UtfStatusBadge Intent="@GetClaimStateIntent(row)" Text="@GetClaimStateLabel(row)"/>
+                                    </td>
+                                    <td>
+                                        <strong>@GetClaimTitle(row.Claim)</strong>
+                                        <span>@FormatNullable(row.Claim.Description, GetClaimCategory(row.Claim))</span>
+                                    </td>
+                                    <td>@GetClaimCategory(row.Claim)</td>
+                                    <td>@FormatClaimIdentifier(row.Claim)</td>
+                                    <td>
+                                        <UtfStatusBadge Intent="@GetClaimImpactIntent(row)" Text="@GetClaimImpactLabel(row)"/>
+                                    </td>
+                                    <td class="role-table-actions">
+                                        <UtfCommandButton Variant="@(row.IsAssigned ? "ghost" : "primary")"
+                                                          Class="role-row-button"
+                                                          Disabled="@IsClaimBusy(row.Claim)"
+                                                          OnClick="@(() => SetRoleClaimAsync(row.Claim, !row.IsAssigned))">
+                                            @GetClaimActionLabel(row)
+                                        </UtfCommandButton>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+
+            <aside class="utf-panel role-operations-rail" aria-label="@(Localizer[RoleOperationsAriaKey])">
+                <div class="role-panel-header role-panel-header--compact">
+                    <div>
+                        <span class="utf-kicker">@Localizer[OperationsKickerKey]</span>
+                        <h2>@Localizer[OperationsTitleKey]</h2>
+                    </div>
+                    <span class="@GetRoleStatusClass(_role)">
+                        <span class="utf-status__dot"></span>@GetRoleStatusLabel(_role)
+                    </span>
+                </div>
+
+                <section class="role-rail-section">
+                    <div class="role-rail-section__heading">
+                        <strong>@Localizer[RoleMetadataKey]</strong>
+                    </div>
+                    <div class="role-form">
+                        <label>
+                            <span>@Localizer[TitleKey]</span>
+                            <input class="utf-command-input"
+                                   type="text"
+                                   maxlength="1024"
+                                   disabled="@(_isSavingRole || _isDeletingRole)"
+                                   @bind="_roleTitle"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[DescriptionKey]</span>
+                            <textarea class="utf-command-input"
+                                      rows="5"
+                                      maxlength="1024"
+                                      disabled="@(_isSavingRole || _isDeletingRole)"
+                                      @bind="_roleDescription"></textarea>
+                        </label>
+                        <div class="role-rail-actions">
+                            <UtfCommandButton Variant="primary"
+                                              Disabled="@(!CanSaveRole)"
+                                              OnClick="SaveRoleAsync">
+                                <Icon>
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                                </Icon>
+                                <ChildContent>@Localizer[SaveRoleKey]</ChildContent>
+                            </UtfCommandButton>
+                            <UtfCommandButton Disabled="@(_isSavingRole || _isDeletingRole)"
+                                              OnClick="RequestDeleteRole">
+                                <Icon>
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.Delete())"/>
+                                </Icon>
+                                <ChildContent>@Localizer[DeleteRoleKey]</ChildContent>
+                            </UtfCommandButton>
+                        </div>
+                    </div>
+                    @if (_confirmDeleteRole)
+                    {
+                        <div class="utf-state-panel utf-state-panel--warning role-delete-confirm" role="alert">
+                            <span>@Localizer[DeleteRoleConfirmKey]</span>
+                            <div class="role-rail-actions">
+                                <UtfCommandButton Disabled="@_isDeletingRole" OnClick="DeleteRoleAsync">
+                                    @Localizer[DeleteRoleKey]
+                                </UtfCommandButton>
+                                <UtfCommandButton Disabled="@_isDeletingRole" OnClick="CancelDeleteRole">
+                                    @Localizer[CancelKey]
+                                </UtfCommandButton>
+                            </div>
+                        </div>
+                    }
+                </section>
+
+                <section class="role-rail-section">
+                    <div class="role-rail-section__heading">
+                        <strong>@Localizer[MembershipOverviewKey]</strong>
+                    </div>
+                    <dl class="role-summary-list">
+                        <div>
+                            <dt>@Localizer[nameof(Language.Pages_Command_Roles_HeaderCoverage)]</dt>
+                            <dd>@FormatRoleCoverage(_role)</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer[AssignedMembersKey]</dt>
+                            <dd>@FormatCount(_roleMembers.AssignedMemberCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Member)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Member)].Value)</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer[AvailableMembersKey]</dt>
+                            <dd>@FormatCount(_roleMembers.AvailableMemberCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Member)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Member)].Value)</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="role-rail-section">
+                    <div class="role-rail-section__heading">
+                        <strong>@Localizer[QuickLinksKey]</strong>
+                    </div>
+                    <div class="role-quick-links">
+                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/claims")">
+                            <Icon>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.DocumentBulletListClock())"/>
+                            </Icon>
+                            <ChildContent>@Localizer[nameof(Language.Pages_Command_Roles_ActionClaimsWorkspace)]</ChildContent>
+                        </UtfCommandButton>
+                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/members")">
+                            <Icon>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.PeopleTeam())"/>
+                            </Icon>
+                            <ChildContent>@Localizer[nameof(Language.Pages_Command_Roles_ActionMembersWorkspace)]</ChildContent>
+                        </UtfCommandButton>
+                    </div>
+                </section>
+            </aside>
+        </div>
+
+        <section class="utf-panel role-members-panel" aria-label="@(Localizer[RoleMembersPanelAriaKey])">
+            <div class="role-panel-header">
+                <div>
+                    <span class="utf-kicker">@Localizer[MembershipKickerKey]</span>
+                    <h2>@Localizer[MembersMatrixTitleKey]</h2>
+                </div>
+                <span class="utf-status utf-status--neutral">
+                    <span class="utf-status__dot"></span>@FormatCount(VisibleMembers.Count(), Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Row)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Row)].Value)
+                </span>
+            </div>
+
+            <div class="role-members-toolbar">
+                <div class="role-filter-strip">
+                    <UtfCommandFilter Active="@(_memberView is RoleMemberView.Assigned)"
+                                      Count="@FormatNumber(AssignedMembers.Count)"
+                                      Label="@(Localizer[AssignedMembersKey])"
+                                      OnClick="@(() => SetMemberView(RoleMemberView.Assigned))"/>
+                    <UtfCommandFilter Active="@(_memberView is RoleMemberView.Available)"
+                                      Count="@FormatNumber(AvailableMembers.Count)"
+                                      Label="@(Localizer[AvailableMembersKey])"
+                                      OnClick="@(() => SetMemberView(RoleMemberView.Available))"/>
+                </div>
+                <UtfCommandSearch Placeholder="@(Localizer[SearchMembersKey])"
+                                  Value="@_roleMemberSearch"
+                                  ValueChanged="@((value) => _roleMemberSearch = value)"/>
+                <UtfCommandButton Disabled="@_isLoadingRoleMembers" OnClick="RefreshRoleMembersAsync">
+                    @Localizer[FilterMembersKey]
+                </UtfCommandButton>
+            </div>
+
+            @if (_roleMembersError is not null)
+            {
+                <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                    @_roleMembersError
+                </div>
+            }
+
+            @if (_isLoadingRoleMembers)
+            {
+                <div class="utf-state-panel">
+                    @Localizer[LoadingRoleMembersKey]
+                    <FluentProgress Width="220px"/>
+                </div>
+            }
+            else if (!VisibleMembers.Any())
+            {
+                <div class="role-empty-state">@GetNoMembersMessage()</div>
+            }
+            else
+            {
+                <div class="role-members-table-shell">
+                    <table class="utf-command-table role-members-table">
+                        <thead>
+                        <tr>
+                            <th>@Localizer[MemberKey]</th>
+                            <th>@GetMemberContextHeader()</th>
+                            <th>@Localizer[ActionKey]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var member in VisibleMembers)
+                        {
+                            <tr @key="member.PrimaryKey">
+                                <td>
+                                    <strong>@member.Nickname</strong>
+                                    <span>@member.PrimaryKey</span>
+                                </td>
+                                <td>
+                                    @if (_memberView is RoleMemberView.Assigned)
+                                    {
+                                        <span class="@GetMemberStatusClass(member)">
+                                            <span class="utf-status__dot"></span>@GetMemberStatusLabel(member)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        @FormatMemberAuthority(member)
+                                    }
+                                </td>
+                                <td class="role-table-actions">
+                                    <UtfCommandButton Variant="@(_memberView is RoleMemberView.Available ? "primary" : "ghost")"
+                                                      Class="role-row-button"
+                                                      Disabled="@IsMemberBusy(member)"
+                                                      OnClick="@(() => SetRoleMembershipAsync(member, _memberView is RoleMemberView.Available))">
+                                        @(_memberView is RoleMemberView.Available ? Localizer[nameof(Language.Add)] : Localizer[nameof(Language.Remove)])
+                                    </UtfCommandButton>
+                                    <UtfCommandButton Class="role-row-button"
+                                                      Href="@BaseUrl.ResolveSelfUrl($"command/members/{member.PrimaryKey}")">
+                                        @Localizer[OpenDetailsKey]
+                                    </UtfCommandButton>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private const string ActionKey = "Pages_Command_Roles_Action";
+    private const string AssignedClaimsKey = "Pages_Command_Roles_AssignedClaims";
+    private const string AssignedMembersKey = "Pages_Command_Roles_AssignedMembers";
+    private const string AvailableClaimsKey = "Pages_Command_Roles_AvailableClaims";
+    private const string AvailableMembersKey = "Pages_Command_Roles_AvailableMembers";
+    private const string AvailableShortKey = "Pages_Command_Roles_AvailableShort";
+    private const string BackToRolesKey = "Pages_Command_Roles_BackToRoles";
+    private const string CancelKey = "Common_Cancel";
+    private const string CategoryFiltersAriaKey = "Pages_Command_Roles_CategoryFiltersAria";
+    private const string CategoryKey = "Pages_Command_Roles_Category";
+    private const string ClaimFiltersAriaKey = "Pages_Command_Roles_ClaimFiltersAria";
+    private const string ClaimKey = "Pages_Command_Roles_Claim";
+    private const string ClaimsKickerKey = "Pages_Command_Roles_ClaimsKicker";
+    private const string ClaimsMatrixTitleKey = "Pages_Command_Roles_ClaimsMatrixTitle";
+    private const string ClaimStateKey = "Pages_Command_Roles_ClaimState";
+    private const string CurrentRolesKey = "Pages_Command_Roles_CurrentRoles";
+    private const string DeleteRoleConfirmKey = "Pages_Command_Roles_DeleteConfirm";
+    private const string DeleteRoleKey = "Pages_Command_Roles_DeleteRole";
+    private const string DescriptionKey = "Pages_Command_Roles_FieldDescription";
+    private const string FilterAllCategoriesKey = "Pages_Command_Roles_FilterAllCategories";
+    private const string FilterAvailableKey = "Pages_Command_Roles_FilterAvailable";
+    private const string FilterMembersKey = "Pages_Command_Roles_FilterMembers";
+    private const string IdentifierValueKey = "Pages_Command_Roles_IdentifierValue";
+    private const string ImpactKey = "Pages_Command_Roles_Impact";
+    private const string LoadingRoleMembersKey = "Pages_Command_Roles_LoadingRoleMembers";
+    private const string MemberKey = "Pages_Command_Roles_Member";
+    private const string MembersMatrixTitleKey = "Pages_Command_Roles_MembersMatrixTitle";
+    private const string MembershipKickerKey = "Pages_Command_Roles_MembershipKicker";
+    private const string MembershipOverviewKey = "Pages_Command_Roles_MembershipOverview";
+    private const string NoAssignedMembersKey = "Pages_Command_Roles_NoAssignedMembers";
+    private const string NoAvailableMembersKey = "Pages_Command_Roles_NoAvailableMembers";
+    private const string NoClaimsMatchKey = "Pages_Command_Roles_NoClaimsMatch";
+    private const string OpenDetailsKey = "Pages_Command_Roles_OpenDetails";
+    private const string OperationsKickerKey = "Pages_Command_Roles_OperationsKicker";
+    private const string OperationsTitleKey = "Pages_Command_Roles_OperationsTitle";
+    private const string QuickLinksKey = "Pages_Command_Roles_QuickLinks";
+    private const string RoleDetailDescriptionKey = "Pages_Command_Roles_DetailPageDescription";
+    private const string RoleMembersPanelAriaKey = "Pages_Command_Roles_RoleMembersPanelAria";
+    private const string RoleMetadataKey = "Pages_Command_Roles_RoleMetadata";
+    private const string RoleNotFoundDescriptionKey = "Pages_Command_Roles_NotFoundDescription";
+    private const string RoleNotFoundTitleKey = "Pages_Command_Roles_NotFoundTitle";
+    private const string RoleOperationsAriaKey = "Pages_Command_Roles_RoleOperationsAria";
+    private const string SaveRoleKey = "Pages_Command_Roles_SaveRole";
+    private const string SearchClaimsKey = "Pages_Command_Roles_SearchClaims";
+    private const string SearchMembersKey = "Pages_Command_Roles_SearchMembers";
+    private const string StatusAvailableKey = "Pages_Command_Roles_Status_Available";
+    private const string StatusHighImpactClaimKey = "Pages_Command_Roles_Status_HighImpactClaim";
+    private const string StatusStandardClaimKey = "Pages_Command_Roles_Status_StandardClaim";
+    private const string TitleKey = "Pages_Command_Roles_FieldTitle";
+
+    [Parameter]
+    public long RoleId { get; set; }
+
+    private CommandCenterAuthoritySnapshotInfo _snapshot = new();
+    private CommandCenterAuthorityRoleInfo? _role;
+    private RoleMemberSnapshotInfo _roleMembers = new();
+    private RoleClaimView _claimView = RoleClaimView.All;
+    private RoleMemberView _memberView = RoleMemberView.Assigned;
+    private string? _claimCategoryFilter;
+    private string _roleMemberSearch = string.Empty;
+    private string _claimSearch = string.Empty;
+    private string _roleTitle = string.Empty;
+    private string _roleDescription = string.Empty;
+    private Guid? _busyMemberId;
+    private long? _busyClaimId;
+    private bool _confirmDeleteRole;
+    private bool _isLoading;
+    private bool _isLoadingRoleMembers;
+    private bool _isSavingRole;
+    private bool _isDeletingRole;
+    private string? _loadError;
+    private string? _roleMembersError;
+
+    private bool CanManageAuthority
+        => Me.HasClaimOrRoleAdmin();
+
+    private bool CanSaveRole
+        => CanManageAuthority && !_isSavingRole && !_isDeletingRole && !string.IsNullOrWhiteSpace(_roleTitle);
+
+    private IReadOnlyList<PlainClaimDto> AssignedClaims
+        => _role?.Claims ?? [];
+
+    private IReadOnlyList<CommandCenterCommunityMemberInfo> AssignedMembers
+        => _roleMembers.AssignedMembers ?? [];
+
+    private IReadOnlyList<CommandCenterCommunityMemberInfo> AvailableMembers
+        => _roleMembers.AvailableMembers ?? [];
+
+    private HashSet<long> AssignedClaimIds
+        => AssignedClaims
+            .Select(q => q.PrimaryKey)
+            .Where(q => q is not null)
+            .Select(q => q!.Value)
+            .ToHashSet();
+
+    private int AvailableClaimCount
+        => _snapshot.Claims.Count(q => q.Claim.PrimaryKey is { } claimId
+                                      && !AssignedClaimIds.Contains(claimId)
+                                      && q.Claim.IsPrefix is not true);
+
+    private IReadOnlyList<RoleClaimRow> ClaimRows
+    {
+        get
+        {
+            var assignedClaimIds = AssignedClaimIds;
+            var snapshotById = _snapshot.Claims
+                .Where(q => q.Claim.PrimaryKey is not null)
+                .GroupBy(q => q.Claim.PrimaryKey!.Value)
+                .ToDictionary(q => q.Key, q => q.First());
+            var rows = new List<RoleClaimRow>();
+
+            foreach (var claim in AssignedClaims)
+            {
+                var authorityInfo = claim.PrimaryKey is { } claimId && snapshotById.TryGetValue(claimId, out var snapshotClaim)
+                    ? snapshotClaim
+                    : null;
+                rows.Add(new RoleClaimRow(claim, IsAssigned: true, authorityInfo));
+            }
+
+            foreach (var claimInfo in _snapshot.Claims)
+            {
+                if (claimInfo.Claim.PrimaryKey is not { } claimId || assignedClaimIds.Contains(claimId))
+                    continue;
+                if (claimInfo.Claim.IsPrefix is true)
+                    continue;
+
+                rows.Add(new RoleClaimRow(claimInfo.Claim, IsAssigned: false, claimInfo));
+            }
+
+            return rows
+                .OrderByDescending(q => q.IsAssigned)
+                .ThenBy(q => GetClaimCategory(q.Claim))
+                .ThenBy(q => GetClaimTitle(q.Claim))
+                .ToArray();
+        }
+    }
+
+    private IEnumerable<RoleClaimRow> VisibleClaimRows
+        => ClaimRows
+            .Where(row => MatchesClaimView(row, _claimView))
+            .Where(MatchesClaimCategory)
+            .Where(row => MatchesClaimSearch(row.Claim));
+
+    private IReadOnlyList<string> ClaimCategories
+        => ClaimRows
+            .Select(row => GetClaimCategory(row.Claim))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(q => q)
+            .ToArray();
+
+    private IEnumerable<CommandCenterCommunityMemberInfo> VisibleMembers
+        => (_memberView is RoleMemberView.Assigned ? AssignedMembers : AvailableMembers)
+            .Where(MatchesMemberSearch);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CanManageAuthority)
+            await LoadAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!CanManageAuthority)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        _roleMembersError = null;
+        try
+        {
+            _snapshot = await CommandCenterRepository.GetAuthoritySnapshotAsync(take: 500)
+                .ConfigureAwait(false);
+            _role = _snapshot.Roles.FirstOrDefault(role => role.Role.PrimaryKey == RoleId);
+            _roleMembers = _role is null
+                ? new RoleMemberSnapshotInfo()
+                : await RoleRepository.GetRoleMembersAsync(RoleId, take: 160, search: _roleMemberSearch)
+                    .ConfigureAwait(false);
+            _confirmDeleteRole = false;
+            SetRoleFormFromSelected();
+        }
+        catch (Exception ex)
+        {
+            _snapshot = new CommandCenterAuthoritySnapshotInfo();
+            _role = null;
+            _roleMembers = new RoleMemberSnapshotInfo();
+            _loadError = UserFacingError.Message(ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RefreshRoleMembersAsync()
+    {
+        if (_role is null)
+            return;
+
+        _isLoadingRoleMembers = true;
+        _roleMembersError = null;
+        try
+        {
+            _roleMembers = await RoleRepository
+                .GetRoleMembersAsync(RoleId, take: 160, search: _roleMemberSearch)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _roleMembers = new RoleMemberSnapshotInfo();
+            _roleMembersError = UserFacingError.Message(ex);
+        }
+        finally
+        {
+            _isLoadingRoleMembers = false;
+        }
+    }
+
+    private async Task SaveRoleAsync()
+    {
+        if (!CanSaveRole)
+            return;
+
+        _isSavingRole = true;
+        try
+        {
+            await RoleRepository.UpdateRoleAsync(RoleId, _roleTitle.Trim(), _roleDescription.Trim())
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["Pages_Command_Roles_SaveSuccess"].Value);
+            await LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer["Pages_Command_Roles_SaveError"].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSavingRole = false;
+        }
+    }
+
+    private void RequestDeleteRole()
+        => _confirmDeleteRole = true;
+
+    private void CancelDeleteRole()
+        => _confirmDeleteRole = false;
+
+    private async Task DeleteRoleAsync()
+    {
+        if (!CanManageAuthority)
+            return;
+
+        _isDeletingRole = true;
+        try
+        {
+            await RoleRepository.DeleteRoleAsync(RoleId).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["Pages_Command_Roles_DeleteSuccess"].Value);
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/roles"));
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer["Pages_Command_Roles_SaveError"].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isDeletingRole = false;
+        }
+    }
+
+    private async Task SetRoleClaimAsync(PlainClaimDto claim, bool claimActive)
+    {
+        if (!CanManageAuthority || claim.PrimaryKey is not { } claimId)
+            return;
+
+        _busyClaimId = claimId;
+        try
+        {
+            await RoleRepository.SetRoleClaimAsync(RoleId, claimId, claimActive).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["Pages_Command_Roles_ClaimsSaved"].Value);
+            await LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer["Pages_Command_Roles_SaveError"].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _busyClaimId = null;
+        }
+    }
+
+    private async Task SetRoleMembershipAsync(CommandCenterCommunityMemberInfo member, bool roleActive)
+    {
+        if (!CanManageAuthority)
+            return;
+
+        _busyMemberId = member.PrimaryKey;
+        try
+        {
+            await RoleRepository.SetUserRoleAsync(member.PrimaryKey, RoleId, roleActive).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Member_AuthoritySaved)].Value);
+            await LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer["Pages_Command_Roles_SaveError"].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _busyMemberId = null;
+        }
+    }
+
+    private void SetRoleFormFromSelected()
+    {
+        _roleTitle = _role?.Role.Title ?? string.Empty;
+        _roleDescription = _role?.Role.Description ?? string.Empty;
+    }
+
+    private void SetClaimView(RoleClaimView view)
+        => _claimView = view;
+
+    private void SetMemberView(RoleMemberView view)
+        => _memberView = view;
+
+    private void SetClaimCategory(string category)
+        => _claimCategoryFilter = category;
+
+    private void ClearClaimCategory()
+        => _claimCategoryFilter = null;
+
+    private bool IsClaimBusy(PlainClaimDto claim)
+        => claim.PrimaryKey is not null && _busyClaimId == claim.PrimaryKey;
+
+    private bool IsMemberBusy(CommandCenterCommunityMemberInfo member)
+        => _busyMemberId == member.PrimaryKey;
+
+    private bool MatchesClaimSearch(PlainClaimDto claim)
+    {
+        var search = _claimSearch.Trim();
+        if (search.Length is 0)
+            return true;
+
+        return GetClaimTitle(claim).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatNullable(claim.Category, string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatNullable(claim.Identifier, string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatNullable(claim.Value, string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatNullable(claim.Description, string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool MatchesMemberSearch(CommandCenterCommunityMemberInfo member)
+    {
+        var search = _roleMemberSearch.Trim();
+        if (search.Length is 0)
+            return true;
+
+        return member.Nickname.Contains(search, StringComparison.OrdinalIgnoreCase)
+               || member.PrimaryKey.ToString("D").Contains(search, StringComparison.OrdinalIgnoreCase)
+               || member.RoleTitles.Any(role => role.Contains(search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool MatchesClaimCategory(RoleClaimRow row)
+        => string.IsNullOrWhiteSpace(_claimCategoryFilter)
+           || string.Equals(GetClaimCategory(row.Claim), _claimCategoryFilter, StringComparison.OrdinalIgnoreCase);
+
+    private bool MatchesClaimView(RoleClaimRow row, RoleClaimView view)
+        => view switch
+        {
+            RoleClaimView.All        => true,
+            RoleClaimView.Assigned   => row.IsAssigned,
+            RoleClaimView.Available  => !row.IsAssigned,
+            RoleClaimView.HighImpact => IsHighImpactClaim(row),
+            _                        => throw new ArgumentOutOfRangeException(nameof(view), view, null),
+        };
+
+    private int GetClaimViewCount(RoleClaimView view)
+        => ClaimRows.Count(row => MatchesClaimView(row, view));
+
+    private int GetClaimCategoryCount(string category)
+        => ClaimRows.Count(row => string.Equals(GetClaimCategory(row.Claim), category, StringComparison.OrdinalIgnoreCase));
+
+    private string GetPageTitle()
+        => _role is null
+            ? Localizer[nameof(Language.Pages_Command_Roles_PageTitle)].Value
+            : string.Format(CultureInfo.CurrentCulture, Localizer["Pages_Command_Roles_DetailPageTitleNamed"].Value, GetRoleTitle(_role.Role));
+
+    private string GetHeaderTitle()
+        => _role is null
+            ? Localizer["Pages_Command_Roles_DetailPageTitle"].Value
+            : string.Format(CultureInfo.CurrentCulture, Localizer["Pages_Command_Roles_DetailPageTitleNamed"].Value, GetRoleTitle(_role.Role));
+
+    private string GetRoleTitle(PlainRoleDto role)
+        => FormatNullable(
+            role.Title,
+            Localizer[nameof(Language.Pages_Command_Roles_RolePrefix), FormatRoleId(role)].Value
+        );
+
+    private static bool IsHighImpactRole(CommandCenterAuthorityRoleInfo role)
+        => role.MemberCount >= 5 || role.Claims.Length >= 6;
+
+    private static string GetRoleStatusClass(CommandCenterAuthorityRoleInfo role)
+    {
+        if (role.MemberCount is 0 || role.Claims.Length is 0)
+            return "utf-status utf-status--warning";
+        return IsHighImpactRole(role) ? "utf-status utf-status--danger" : "utf-status utf-status--success";
+    }
+
+    private string GetRoleStatusLabel(CommandCenterAuthorityRoleInfo role)
+    {
+        if (role.MemberCount is 0 && role.Claims.Length is 0)
+            return Localizer[nameof(Language.Pages_Command_Roles_Status_Empty)].Value;
+        if (role.Claims.Length is 0)
+            return Localizer[nameof(Language.Pages_Command_Roles_Status_NoClaims)].Value;
+        if (role.MemberCount is 0)
+            return Localizer[nameof(Language.Pages_Command_Roles_Status_NoMembers)].Value;
+        return IsHighImpactRole(role)
+            ? Localizer[nameof(Language.Pages_Command_Roles_Status_HighImpact)].Value
+            : Localizer[nameof(Language.Pages_Command_Roles_Status_Assigned)].Value;
+    }
+
+    private string FormatRoleCoverage(CommandCenterAuthorityRoleInfo role)
+        => $"{FormatCount(role.MemberCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Member)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Member)].Value)} / {FormatCount(role.Claims.Length, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Claim)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Claim)].Value)}";
+
+    private string FormatRoleId(PlainRoleDto role)
+        => role.PrimaryKey?.ToString(CultureInfo.InvariantCulture) ?? Localizer[nameof(Language.Pages_Command_Roles_UnknownRoleId)].Value;
+
+    private string GetClaimTitle(PlainClaimDto claim)
+        => FormatNullable(
+            claim.Title,
+            FormatNullable(claim.Identifier, string.Format(CultureInfo.CurrentCulture, Localizer["Pages_Command_Roles_FallbackClaimTitle"].Value, claim.PrimaryKey))
+        );
+
+    private string GetClaimCategory(PlainClaimDto claim)
+        => FormatNullable(claim.Category, Localizer[nameof(Language.Pages_Command_Roles_Uncategorized)].Value);
+
+    private string FormatClaimIdentifier(PlainClaimDto claim)
+    {
+        var identifier = FormatNullable(claim.Identifier, Localizer["Pages_Command_Roles_NoIdentifier"].Value);
+        var value = FormatNullable(claim.Value, string.Empty);
+        return string.IsNullOrWhiteSpace(value) ? identifier : $"{identifier} = {value}";
+    }
+
+    private string GetClaimStateLabel(RoleClaimRow row)
+        => row.IsAssigned
+            ? Localizer[nameof(Language.Pages_Command_Roles_Status_Assigned)].Value
+            : Localizer[StatusAvailableKey].Value;
+
+    private static string GetClaimStateIntent(RoleClaimRow row)
+        => row.IsAssigned ? "success" : "info";
+
+    private string GetClaimImpactLabel(RoleClaimRow row)
+        => IsHighImpactClaim(row)
+            ? Localizer[StatusHighImpactClaimKey].Value
+            : Localizer[StatusStandardClaimKey].Value;
+
+    private string GetClaimImpactIntent(RoleClaimRow row)
+        => IsHighImpactClaim(row) ? "warning" : row.IsAssigned ? "success" : "neutral";
+
+    private string GetClaimActionLabel(RoleClaimRow row)
+        => row.IsAssigned
+            ? Localizer[nameof(Language.Remove)].Value
+            : Localizer[nameof(Language.Add)].Value;
+
+    private string GetClaimRowClass(RoleClaimRow row)
+        => row.IsAssigned ? "role-claims-row role-claims-row--assigned" : "role-claims-row role-claims-row--available";
+
+    private string GetClaimRowKey(RoleClaimRow row)
+        => row.Claim.PrimaryKey?.ToString(CultureInfo.InvariantCulture) ?? $"{(row.IsAssigned ? "assigned" : "available")}-{GetClaimTitle(row.Claim)}";
+
+    private bool IsHighImpactClaim(RoleClaimRow row)
+    {
+        var identifier = FormatNullable(row.Claim.Identifier, string.Empty);
+        var title = GetClaimTitle(row.Claim);
+        return row.AuthorityInfo?.DirectMemberCount > 0
+               || row.AuthorityInfo?.RoleCount > 1
+               || identifier.Contains("adm", StringComparison.OrdinalIgnoreCase)
+               || identifier.Contains("admin", StringComparison.OrdinalIgnoreCase)
+               || identifier.Contains("all", StringComparison.OrdinalIgnoreCase)
+               || title.Contains("admin", StringComparison.OrdinalIgnoreCase)
+               || title.Contains("delete", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetMemberStatusClass(CommandCenterCommunityMemberInfo member)
+    {
+        if (member.IsDeleted || member.IsBanned)
+            return "utf-status utf-status--danger";
+        return member.IsVerified ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+    }
+
+    private string GetMemberStatusLabel(CommandCenterCommunityMemberInfo member)
+        => member.IsDeleted
+            ? Localizer[nameof(Language.Pages_Command_Members_StatusDeleted)].Value
+            : member.IsBanned
+                ? Localizer[nameof(Language.Pages_Command_Members_StatusBanned)].Value
+                : member.IsVerified
+                    ? Localizer[nameof(Language.Pages_Command_Members_StatusVerified)].Value
+                    : Localizer[nameof(Language.Pages_Command_Members_StatusUnverified)].Value;
+
+    private string GetMemberContextHeader()
+        => _memberView is RoleMemberView.Assigned
+            ? Localizer[nameof(Language.Pages_Command_Roles_HeaderStatus)].Value
+            : Localizer[CurrentRolesKey].Value;
+
+    private string GetNoMembersMessage()
+        => _memberView is RoleMemberView.Assigned
+            ? Localizer[NoAssignedMembersKey].Value
+            : Localizer[NoAvailableMembersKey].Value;
+
+    private string FormatMemberAuthority(CommandCenterCommunityMemberInfo member)
+    {
+        if (member.RoleTitles.Length is 0)
+            return Localizer[nameof(Language.Pages_Command_Members_NoRoleAssignments)].Value;
+
+        var roleSummary = string.Join(", ", member.RoleTitles.Take(3));
+        return member.RoleTitles.Length > 3
+            ? string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_MoreRoleAssignments)].Value, roleSummary, member.RoleTitles.Length - 3)
+            : roleSummary;
+    }
+
+    private static string FormatNullable(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+    private static string FormatCount(long value, string singularText, string pluralText)
+        => value is 1
+            ? $"{value:N0} {singularText}"
+            : $"{value:N0} {pluralText}";
+
+    private static string FormatNumber(long value)
+        => value.ToString("N0", CultureInfo.CurrentCulture);
+
+    private sealed record RoleClaimRow(
+        PlainClaimDto Claim,
+        bool IsAssigned,
+        CommandCenterAuthorityClaimInfo? AuthorityInfo
+    );
+
+    private enum RoleClaimView
+    {
+        All,
+        Assigned,
+        Available,
+        HighImpact,
+    }
+
+    private enum RoleMemberView
+    {
+        Assigned,
+        Available,
+    }
+}

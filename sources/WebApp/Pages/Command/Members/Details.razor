@@ -1,0 +1,936 @@
+@page "/command/members/{UserId:guid}"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.Verein
+@using X39.UnitedTacticalForces.WebApp
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using VereinMembershipStatus = X39.UnitedTacticalForces.Common.Verein.EVereinMembershipStatus
+@inject ICommandCenterRepository CommandCenterRepository
+@inject IUserRepository UserRepository
+@inject IVereinRepository VereinRepository
+@inject IToastService ToastService
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@GetPageTitle()</PageTitle>
+
+<div class="member-management-page">
+    <UtfCommandPageHeader Title="@GetHeaderTitle()"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Member_HeaderDescription)])">
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/members")">
+                @Localizer[nameof(Language.Pages_Command_Member_BackToRoster)]
+            </UtfCommandButton>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="LoadAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Member_Refresh)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageMembers)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Members_NoAccessTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Members_NoAccessMessage)]</p>
+        </section>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning" role="alert">
+            @_loadError
+        </div>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Pages_Command_Member_Loading)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_user is null)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Member_NotFoundTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Member_NotFoundMessage)]</p>
+        </section>
+    }
+    else
+    {
+        <section class="member-management-identity"
+                 aria-label="@(Localizer[nameof(Language.Pages_Command_Member_MetricsAria)])">
+            <div class="@GetUserBadgeClass()"
+                 style="@GetUserAvatarStyle()"
+                 aria-hidden="true">
+                @if (_userAvatarSource is null)
+                {
+                    @GetUserInitials()
+                }
+            </div>
+            <div class="member-management-identity__main">
+                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Member_ProfileKicker)]</span>
+                <h2>@FormatNullable(_user.Nickname, Localizer[nameof(Language.Pages_Command_Member_UnknownUser)].Value)</h2>
+                <span>@UserId</span>
+            </div>
+            <dl class="member-management-identity__facts">
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Member_StatusAccount)]</dt>
+                    <dd>
+                        <span class="@GetUserStatusClass()">
+                            <span class="utf-status__dot"></span>@GetUserStatusLabel()
+                        </span>
+                    </dd>
+                </div>
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Member_FieldEmail)]</dt>
+                    <dd>
+                        <strong>@FormatNullable(_user.EMail, Localizer[nameof(Language.Pages_Command_Member_NoEmail)].Value)</strong>
+                        <span>@((_user.IsVerified ?? false) ? Localizer[nameof(Language.Pages_Command_Members_StatusVerified)] : Localizer[nameof(Language.Pages_Command_Members_StatusUnverified)])</span>
+                    </dd>
+                </div>
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Member_StatusVerein)]</dt>
+                    <dd>
+                        <span class="@GetVereinStatusClass()">
+                            <span class="utf-status__dot"></span>@GetVereinStatusLabel()
+                        </span>
+                        <span>@FormatNullable(_membership?.MemberNumber, Localizer[nameof(Language.Pages_Command_Member_NoMemberNumber)].Value)</span>
+                    </dd>
+                </div>
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Member_StatusAuthority)]</dt>
+                    <dd>
+                        <strong>@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_MetricRolesValue)].Value, _assignedRoles.Count)</strong>
+                        <span>@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_MetricAuthorityDescription)].Value, _assignedClaims.Count)</span>
+                    </dd>
+                </div>
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Member_FieldDeleted)]</dt>
+                    <dd>
+                        <strong>@((_user.IsDeleted ?? false) ? Localizer[nameof(Language.Pages_Command_Member_Yes)] : Localizer[nameof(Language.Pages_Command_Member_No)])</strong>
+                    </dd>
+                </div>
+            </dl>
+        </section>
+
+        <div class="member-management-grid">
+            <section class="utf-panel member-management-panel member-management-panel--form">
+                <div class="member-management-panel__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Member_ProfileKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Member_ProfileTitle)]</h2>
+                    </div>
+                    <span class="@GetUserStatusClass()">
+                        <span class="utf-status__dot"></span>@GetUserStatusLabel()
+                    </span>
+                </div>
+
+                <dl class="member-management-meta">
+                    <dt>@Localizer[nameof(Language.Pages_Command_Member_FieldIdentifier)]</dt>
+                    <dd>@UserId</dd>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Member_FieldSteam)]</dt>
+                    <dd>@FormatNullable(_user.SteamId64, Localizer[nameof(Language.Pages_Command_Member_NotSpecified)].Value)</dd>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Member_FieldDiscord)]</dt>
+                    <dd>@GetDiscordIdentity()</dd>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Member_FieldDeleted)]</dt>
+                    <dd>@((_user.IsDeleted ?? false) ? Localizer[nameof(Language.Pages_Command_Member_Yes)] : Localizer[nameof(Language.Pages_Command_Member_No)])</dd>
+                </dl>
+
+                <div class="member-management-form">
+                    <label class="member-management-field">
+                        <span>@Localizer[nameof(Language.Pages_Command_Member_FieldNickname)]</span>
+                        <input class="utf-command-input member-management-control"
+                               type="text"
+                               maxlength="1024"
+                               disabled="@(!CanEditNickname)"
+                               @bind="_nickname"/>
+                    </label>
+                    <label class="member-management-field">
+                        <span>@Localizer[nameof(Language.Pages_Command_Member_FieldEmail)]</span>
+                        <input class="utf-command-input member-management-control"
+                               type="email"
+                               maxlength="1024"
+                               disabled="@(!CanEditEmail)"
+                               @bind="_email"/>
+                    </label>
+                    <div class="member-management-toggle-grid">
+                        <label class="member-management-toggle">
+                            <input type="checkbox"
+                                   disabled="@(!CanVerifyUsers)"
+                                   @bind="_isVerified"/>
+                            <span class="member-management-toggle__switch" aria-hidden="true"></span>
+                            <span>
+                                <strong>@Localizer[nameof(Language.Pages_Command_Member_FieldVerified)]</strong>
+                                <small>@(_isVerified ? Localizer[nameof(Language.Pages_Command_Member_Yes)] : Localizer[nameof(Language.Pages_Command_Member_No)])</small>
+                            </span>
+                        </label>
+                        <label class="member-management-toggle">
+                            <input type="checkbox"
+                                   disabled="@(!CanBanUsers)"
+                                   @bind="_isBanned"/>
+                            <span class="member-management-toggle__switch" aria-hidden="true"></span>
+                            <span>
+                                <strong>@Localizer[nameof(Language.Pages_Command_Member_FieldBanned)]</strong>
+                                <small>@(_isBanned ? Localizer[nameof(Language.Pages_Command_Member_Yes)] : Localizer[nameof(Language.Pages_Command_Member_No)])</small>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="member-management-actions">
+                        <UtfCommandButton Variant="primary"
+                                          Disabled="@(!CanSaveProfile)"
+                                          OnClick="SaveProfileAsync">
+                            <Icon>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                            </Icon>
+                            <ChildContent>@(_isSavingProfile ? Localizer[nameof(Language.Pages_Command_Member_Saving)] : Localizer[nameof(Language.Pages_Command_Member_SaveProfile)])</ChildContent>
+                        </UtfCommandButton>
+                    </div>
+                </div>
+            </section>
+
+            <section class="utf-panel member-management-panel member-management-panel--form">
+                <div class="member-management-panel__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Member_VereinKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Member_VereinTitle)]</h2>
+                    </div>
+                    <span class="@GetVereinStatusClass()">
+                        <span class="utf-status__dot"></span>@GetVereinStatusLabel()
+                    </span>
+                </div>
+
+                @if (!CanManageVereinMemberships)
+                {
+                    <div class="member-management-empty">@Localizer[nameof(Language.Pages_Command_Member_VereinNoAccess)]</div>
+                }
+                else
+                {
+                    <div class="member-management-form">
+                        <label class="member-management-field">
+                            <span>@Localizer[nameof(Language.Pages_Command_Member_FieldMembershipStatus)]</span>
+                            <span class="member-management-select">
+                                <select class="utf-command-input member-management-control" @bind="_membershipStatus">
+                                    <option value="@VereinMembershipStatus.Active">@GetVereinMembershipStatusLabel(VereinMembershipStatus.Active)</option>
+                                    <option value="@VereinMembershipStatus.Suspended">@GetVereinMembershipStatusLabel(VereinMembershipStatus.Suspended)</option>
+                                    <option value="@VereinMembershipStatus.Ended">@GetVereinMembershipStatusLabel(VereinMembershipStatus.Ended)</option>
+                                </select>
+                            </span>
+                        </label>
+                        <label class="member-management-field">
+                            <span>@Localizer[nameof(Language.Pages_Command_Member_FieldMemberNumber)]</span>
+                            <input class="utf-command-input member-management-control" type="text" maxlength="64" @bind="_membershipNumber"/>
+                        </label>
+                        <label class="member-management-field member-management-field--wide">
+                            <span>@Localizer[nameof(Language.Pages_Command_Member_FieldMembershipNotes)]</span>
+                            <textarea class="utf-command-input member-management-control" rows="4" maxlength="2048" @bind="_membershipNotes"></textarea>
+                        </label>
+                        <label class="member-management-field member-management-field--wide">
+                            <span>@Localizer[nameof(Language.Pages_Command_Member_FieldMembershipReason)]</span>
+                            <input class="utf-command-input member-management-control" type="text" @bind="_membershipReason"/>
+                        </label>
+                        <div class="member-management-actions">
+                            <UtfCommandButton Variant="primary"
+                                              Disabled="@_isSavingMembership"
+                                              OnClick="SaveMembershipAsync">
+                                <Icon>
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                                </Icon>
+                                <ChildContent>@(_isSavingMembership ? Localizer[nameof(Language.Pages_Command_Member_Saving)] : Localizer[nameof(Language.Pages_Command_Member_SaveMembership)])</ChildContent>
+                            </UtfCommandButton>
+                        </div>
+                    </div>
+                }
+            </section>
+        </div>
+
+        <div class="member-management-authority-grid">
+            <section class="utf-panel member-management-panel member-management-panel--authority">
+                <div class="member-management-panel__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Member_AuthorityKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Member_RolesTitle)]</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_RoleCount)].Value, _assignedRoles.Count)
+                    </span>
+                </div>
+
+                @if (!CanManageAuthority)
+                {
+                    <div class="member-management-empty">@Localizer[nameof(Language.Pages_Command_Member_AuthorityNoAccess)]</div>
+                }
+                else
+                {
+                    <div class="member-management-toolbar">
+                        <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Command_Member_SearchRoles)])"
+                                          Value="@_roleSearch"
+                                          ValueChanged="@((value) => _roleSearch = value)"/>
+                    </div>
+
+                    <div class="member-management-collections">
+                        <section class="member-management-collection">
+                            <h3>@Localizer[nameof(Language.Pages_Command_Member_AssignedRoles)]</h3>
+                            @if (!VisibleAssignedRoles.Any())
+                            {
+                                <div class="member-management-empty">@Localizer[nameof(Language.Pages_Command_Member_NoAssignedRoles)]</div>
+                            }
+                            else
+                            {
+                                <div class="utf-command-table-scroll">
+                                    <table class="utf-command-table member-management-table member-management-table--compact">
+                                        <thead>
+                                        <tr>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableRole)]</th>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableDescription)]</th>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableAction)]</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        @foreach (var role in VisibleAssignedRoles)
+                                        {
+                                            <tr @key="role.PrimaryKey">
+                                                <td>
+                                                    <strong>@GetRoleTitle(role)</strong>
+                                                    <span>#@FormatNullable(role.PrimaryKey?.ToString(CultureInfo.InvariantCulture), "n/a")</span>
+                                                </td>
+                                                <td>@FormatNullable(role.Description, Localizer[nameof(Language.Pages_Command_Member_NoDescription)].Value)</td>
+                                                <td>
+                                                    <UtfCommandButton Class="member-management-row-button"
+                                                                      Disabled="@IsRoleBusy(role)"
+                                                                      OnClick="@(() => SetUserRoleAsync(role, false))">
+                                                        @Localizer[nameof(Language.Remove)]
+                                                    </UtfCommandButton>
+                                                </td>
+                                            </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+
+                        <section class="member-management-collection">
+                            <h3>@Localizer[nameof(Language.Pages_Command_Member_AvailableRoles)]</h3>
+                            @if (!VisibleAvailableRoles.Any())
+                            {
+                                <div class="member-management-empty">@Localizer[nameof(Language.Pages_Command_Member_NoAvailableRoles)]</div>
+                            }
+                            else
+                            {
+                                <div class="utf-command-table-scroll">
+                                    <table class="utf-command-table member-management-table member-management-table--compact">
+                                        <thead>
+                                        <tr>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableRole)]</th>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableDescription)]</th>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableAction)]</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        @foreach (var role in VisibleAvailableRoles)
+                                        {
+                                            <tr @key="role.Role.PrimaryKey">
+                                                <td>
+                                                    <strong>@GetRoleTitle(role.Role)</strong>
+                                                    <span>@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_RoleClaimCount)].Value, role.Claims.Length)</span>
+                                                </td>
+                                                <td>@FormatNullable(role.Role.Description, Localizer[nameof(Language.Pages_Command_Member_NoDescription)].Value)</td>
+                                                <td>
+                                                    <UtfCommandButton Variant="primary"
+                                                                      Class="member-management-row-button"
+                                                                      Disabled="@IsRoleBusy(role.Role)"
+                                                                      OnClick="@(() => SetUserRoleAsync(role.Role, true))">
+                                                        <Icon>
+                                                            <FluentIcon Value="@(new Icons.Regular.Size20.AddCircle())"/>
+                                                        </Icon>
+                                                        <ChildContent>@Localizer[nameof(Language.Add)]</ChildContent>
+                                                    </UtfCommandButton>
+                                                </td>
+                                            </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+                    </div>
+                }
+            </section>
+
+            <section class="utf-panel member-management-panel member-management-panel--authority">
+                <div class="member-management-panel__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Member_DirectClaimsKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Member_DirectClaimsTitle)]</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_ClaimCount)].Value, _assignedClaims.Count)
+                    </span>
+                </div>
+
+                @if (!CanManageAuthority)
+                {
+                    <div class="member-management-empty">@Localizer[nameof(Language.Pages_Command_Member_AuthorityNoAccess)]</div>
+                }
+                else
+                {
+                    <div class="member-management-toolbar">
+                        <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Command_Member_SearchClaims)])"
+                                          Value="@_claimSearch"
+                                          ValueChanged="@((value) => _claimSearch = value)"/>
+                    </div>
+
+                    <div class="member-management-collections">
+                        <section class="member-management-collection">
+                            <h3>@Localizer[nameof(Language.Pages_Command_Member_AssignedClaims)]</h3>
+                            @if (!VisibleAssignedClaims.Any())
+                            {
+                                <div class="member-management-empty">@Localizer[nameof(Language.Pages_Command_Member_NoAssignedClaims)]</div>
+                            }
+                            else
+                            {
+                                <div class="utf-command-table-scroll">
+                                    <table class="utf-command-table member-management-table member-management-table--compact">
+                                        <thead>
+                                        <tr>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableClaim)]</th>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableIdentifier)]</th>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableAction)]</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        @foreach (var claim in VisibleAssignedClaims)
+                                        {
+                                            <tr @key="claim.PrimaryKey">
+                                                <td>
+                                                    <strong>@GetClaimTitle(claim)</strong>
+                                                    <span>@FormatNullable(claim.Category, Localizer[nameof(Language.Pages_Command_Member_Uncategorized)].Value)</span>
+                                                </td>
+                                                <td>@FormatClaimIdentifier(claim)</td>
+                                                <td>
+                                                    <UtfCommandButton Class="member-management-row-button"
+                                                                      Disabled="@IsClaimBusy(claim)"
+                                                                      OnClick="@(() => SetUserClaimAsync(claim, false))">
+                                                        @Localizer[nameof(Language.Remove)]
+                                                    </UtfCommandButton>
+                                                </td>
+                                            </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+
+                        <section class="member-management-collection">
+                            <h3>@Localizer[nameof(Language.Pages_Command_Member_AvailableClaims)]</h3>
+                            @if (!VisibleAvailableClaims.Any())
+                            {
+                                <div class="member-management-empty">@Localizer[nameof(Language.Pages_Command_Member_NoAvailableClaims)]</div>
+                            }
+                            else
+                            {
+                                <div class="utf-command-table-scroll">
+                                    <table class="utf-command-table member-management-table member-management-table--compact">
+                                        <thead>
+                                        <tr>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableClaim)]</th>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableIdentifier)]</th>
+                                            <th>@Localizer[nameof(Language.Pages_Command_Member_TableAction)]</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        @foreach (var claim in VisibleAvailableClaims)
+                                        {
+                                            <tr @key="claim.Claim.PrimaryKey">
+                                                <td>
+                                                    <strong>@GetClaimTitle(claim.Claim)</strong>
+                                                    <span>@FormatNullable(claim.Claim.Category, Localizer[nameof(Language.Pages_Command_Member_Uncategorized)].Value)</span>
+                                                </td>
+                                                <td>@FormatClaimIdentifier(claim.Claim)</td>
+                                                <td>
+                                                    <UtfCommandButton Variant="primary"
+                                                                      Class="member-management-row-button"
+                                                                      Disabled="@IsClaimBusy(claim.Claim)"
+                                                                      OnClick="@(() => SetUserClaimAsync(claim.Claim, true))">
+                                                        <Icon>
+                                                            <FluentIcon Value="@(new Icons.Regular.Size20.AddCircle())"/>
+                                                        </Icon>
+                                                        <ChildContent>@Localizer[nameof(Language.Add)]</ChildContent>
+                                                    </UtfCommandButton>
+                                                </td>
+                                            </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+                    </div>
+                }
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    private UserDto? _user;
+    private VereinMembershipInfo? _membership;
+    private IReadOnlyList<PlainRoleDto> _assignedRoles = [];
+    private IReadOnlyList<PlainClaimDto> _assignedClaims = [];
+    private IReadOnlyList<CommandCenterAuthorityRoleInfo> _authorityRoles = [];
+    private IReadOnlyList<CommandCenterAuthorityClaimInfo> _authorityClaims = [];
+    private string _nickname = string.Empty;
+    private string? _email;
+    private bool _isVerified;
+    private bool _isBanned;
+    private VereinMembershipStatus _membershipStatus = VereinMembershipStatus.Active;
+    private string? _membershipNumber;
+    private string _membershipNotes = string.Empty;
+    private string _membershipReason = string.Empty;
+    private string _roleSearch = string.Empty;
+    private string _claimSearch = string.Empty;
+    private string? _userAvatarSource;
+    private bool _isLoading;
+    private bool _isSavingProfile;
+    private bool _isSavingMembership;
+    private long? _busyRoleId;
+    private long? _busyClaimId;
+    private string? _loadError;
+
+    private bool CanManageMembers
+        => CanManageProfile || CanManageVereinMemberships || CanManageAuthority;
+
+    private bool CanManageProfile
+        => Me.HasClaimOrUserAdmin(
+            Claims.User.All,
+            Claims.User.Modify,
+            Claims.User.Nickname,
+            Claims.User.EMail,
+            Claims.User.Verify,
+            Claims.User.Ban
+        );
+
+    private bool CanEditNickname
+        => Me.HasClaimOrUserAdmin(Claims.User.All, Claims.User.Modify, Claims.User.Nickname);
+
+    private bool CanEditEmail
+        => Me.HasClaimOrUserAdmin(Claims.User.All, Claims.User.Modify, Claims.User.EMail);
+
+    private bool CanVerifyUsers
+        => Me.HasClaimOrUserAdmin(Claims.User.All, Claims.User.Verify);
+
+    private bool CanBanUsers
+        => Me.HasClaimOrUserAdmin(Claims.User.All, Claims.User.Ban);
+
+    private bool CanSaveProfile
+        => CanManageProfile && !_isSavingProfile;
+
+    private bool CanManageVereinMemberships
+        => Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Members)
+           || Me.HasClaimOrUserAdmin(Claims.User.All);
+
+    private bool CanManageAuthority
+        => Me.HasClaimOrRoleAdmin();
+
+    private HashSet<long> AssignedRoleIds
+        => _assignedRoles
+            .Select(q => q.PrimaryKey)
+            .Where(q => q is not null)
+            .Select(q => q!.Value)
+            .ToHashSet();
+
+    private HashSet<long> AssignedClaimIds
+        => _assignedClaims
+            .Select(q => q.PrimaryKey)
+            .Where(q => q is not null)
+            .Select(q => q!.Value)
+            .ToHashSet();
+
+    private IEnumerable<PlainRoleDto> VisibleAssignedRoles
+        => _assignedRoles
+            .Where(MatchesRoleSearch)
+            .OrderBy(GetRoleTitle);
+
+    private IEnumerable<CommandCenterAuthorityRoleInfo> VisibleAvailableRoles
+        => _authorityRoles
+            .Where(q => q.Role.PrimaryKey is not null && !AssignedRoleIds.Contains(q.Role.PrimaryKey.Value))
+            .Where(q => MatchesRoleSearch(q.Role))
+            .OrderBy(q => GetRoleTitle(q.Role));
+
+    private IEnumerable<PlainClaimDto> VisibleAssignedClaims
+        => _assignedClaims
+            .Where(MatchesClaimSearch)
+            .OrderBy(q => q.Category)
+            .ThenBy(GetClaimTitle);
+
+    private IEnumerable<CommandCenterAuthorityClaimInfo> VisibleAvailableClaims
+        => _authorityClaims
+            .Where(q => q.Claim.PrimaryKey is not null && !AssignedClaimIds.Contains(q.Claim.PrimaryKey.Value))
+            .Where(q => CanAssignClaimDirectly(q.Claim))
+            .Where(q => MatchesClaimSearch(q.Claim))
+            .OrderBy(q => q.Claim.Category)
+            .ThenBy(q => GetClaimTitle(q.Claim));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CanManageMembers)
+            await LoadAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!CanManageMembers)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _user = await UserRepository.GetUserAsync(UserId).ConfigureAwait(false);
+            if (_user is null)
+            {
+                ClearLoadedState();
+                return;
+            }
+
+            _assignedRoles = CanManageAuthority
+                ? [..await UserRepository.GetRolesOfUserAsync(UserId, cancellationToken: default).ConfigureAwait(false)]
+                : [];
+            _assignedClaims = CanManageAuthority
+                ? [..await UserRepository.GetClaimsOfUserAsync(UserId, skip: 0, take: 500).ConfigureAwait(false)]
+                : [];
+
+            if (CanManageAuthority)
+            {
+                var authoritySnapshot = await CommandCenterRepository.GetAuthoritySnapshotAsync(take: 500)
+                    .ConfigureAwait(false);
+                _authorityRoles  = authoritySnapshot.Roles;
+                _authorityClaims = authoritySnapshot.Claims;
+            }
+            else
+            {
+                _authorityRoles  = [];
+                _authorityClaims = [];
+            }
+
+            if (CanManageVereinMemberships)
+            {
+                _membership = await VereinRepository.GetMembershipAsync(UserId).ConfigureAwait(false);
+            }
+            else
+            {
+                _membership = null;
+            }
+
+            LoadEditorState();
+        }
+        catch (Exception ex)
+        {
+            ClearLoadedState();
+            _loadError = string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_LoadError)].Value, UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ClearLoadedState()
+    {
+        _assignedRoles    = [];
+        _assignedClaims   = [];
+        _authorityRoles   = [];
+        _authorityClaims  = [];
+        _membership       = null;
+        _userAvatarSource = null;
+        _busyRoleId       = null;
+        _busyClaimId      = null;
+    }
+
+    private void LoadEditorState()
+    {
+        if (_user is null)
+            return;
+
+        _nickname         = _user.Nickname ?? string.Empty;
+        _email            = _user.EMail;
+        _isVerified       = _user.IsVerified ?? false;
+        _isBanned         = _user.IsBanned ?? false;
+        _membershipStatus = _membership?.Status ?? VereinMembershipStatus.Active;
+        _membershipNumber = _membership?.MemberNumber;
+        _membershipNotes  = _membership?.Notes ?? string.Empty;
+        _membershipReason = string.Empty;
+        _userAvatarSource = _user.ToImageSource();
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (_user is null || !CanSaveProfile)
+            return;
+
+        _isSavingProfile = true;
+        try
+        {
+            await UserRepository.UpdateUserAsync(
+                    UserId,
+                    new UserUpdate
+                    {
+                        Nickname   = CanEditNickname ? _nickname : null,
+                        EMail      = CanEditEmail ? _email : null,
+                        IsVerified = CanVerifyUsers ? _isVerified : null,
+                        IsBanned   = CanBanUsers ? _isBanned : null,
+                    })
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Member_ProfileSaved)].Value);
+            await LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_SaveError)].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSavingProfile = false;
+        }
+    }
+
+    private async Task SaveMembershipAsync()
+    {
+        if (_user is null || !CanManageVereinMemberships)
+            return;
+
+        _isSavingMembership = true;
+        try
+        {
+            await VereinRepository.UpsertMembershipAsync(
+                    UserId,
+                    new VereinMembershipUpdateInfo
+                    {
+                        MemberNumber     = _membershipNumber,
+                        Status           = _membershipStatus,
+                        TimeStampStarted = _membership?.TimeStampStarted ?? DateTimeOffset.UtcNow,
+                        TimeStampEnded = _membershipStatus == VereinMembershipStatus.Ended
+                            ? _membership?.TimeStampEnded ?? DateTimeOffset.UtcNow
+                            : null,
+                        Notes  = _membershipNotes,
+                        Reason = _membershipReason,
+                    })
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Member_MembershipSaved)].Value);
+            await LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_SaveError)].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSavingMembership = false;
+        }
+    }
+
+    private async Task SetUserRoleAsync(PlainRoleDto role, bool roleActive)
+    {
+        if (!CanManageAuthority || role.PrimaryKey is not { } roleId)
+            return;
+
+        _busyRoleId = roleId;
+        try
+        {
+            await UserRepository.SetUserRoleAsync(UserId, roleId, roleActive).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Member_AuthoritySaved)].Value);
+            await LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_SaveError)].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _busyRoleId = null;
+        }
+    }
+
+    private async Task SetUserClaimAsync(PlainClaimDto claim, bool claimActive)
+    {
+        if (!CanManageAuthority || claim.PrimaryKey is not { } claimId)
+            return;
+
+        _busyClaimId = claimId;
+        try
+        {
+            await UserRepository.SetUserClaimAsync(UserId, claimId, claimActive).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Member_AuthoritySaved)].Value);
+            await LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_SaveError)].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _busyClaimId = null;
+        }
+    }
+
+    private bool IsRoleBusy(PlainRoleDto role)
+        => role.PrimaryKey is not null && _busyRoleId == role.PrimaryKey;
+
+    private bool IsClaimBusy(PlainClaimDto claim)
+        => claim.PrimaryKey is not null && _busyClaimId == claim.PrimaryKey;
+
+    private bool MatchesRoleSearch(PlainRoleDto role)
+    {
+        var search = _roleSearch.Trim();
+        if (search.Length is 0)
+            return true;
+
+        return GetRoleTitle(role).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatNullable(role.Description, string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || role.PrimaryKey?.ToString(CultureInfo.InvariantCulture).Contains(search, StringComparison.OrdinalIgnoreCase) is true;
+    }
+
+    private bool MatchesClaimSearch(PlainClaimDto claim)
+    {
+        var search = _claimSearch.Trim();
+        if (search.Length is 0)
+            return true;
+
+        return GetClaimTitle(claim).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatNullable(claim.Category, string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatNullable(claim.Identifier, string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase)
+               || FormatNullable(claim.Value, string.Empty).Contains(search, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool CanAssignClaimDirectly(PlainClaimDto claim)
+        => claim.IsPrefix is not true;
+
+    private string GetPageTitle()
+        => _user is null
+            ? Localizer[nameof(Language.Pages_Command_Member_PageTitle)].Value
+            : string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_PageTitleNamed)].Value, _user.Nickname);
+
+    private string GetHeaderTitle()
+        => _user is null
+            ? Localizer[nameof(Language.Pages_Command_Member_HeaderTitle)].Value
+            : string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_HeaderTitleNamed)].Value, _user.Nickname);
+
+    private string GetUserStatusClass()
+    {
+        if (_user?.IsDeleted is true || _user?.IsBanned is true)
+            return "utf-status utf-status--danger";
+        return _user?.IsVerified is true ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+    }
+
+    private string GetUserStatusLabel()
+    {
+        if (_user?.IsDeleted is true)
+            return Localizer[nameof(Language.Pages_Command_Members_StatusDeleted)].Value;
+        if (_user?.IsBanned is true)
+            return Localizer[nameof(Language.Pages_Command_Members_StatusBanned)].Value;
+        return _user?.IsVerified is true
+            ? Localizer[nameof(Language.Pages_Command_Members_StatusVerified)].Value
+            : Localizer[nameof(Language.Pages_Command_Members_StatusUnverified)].Value;
+    }
+
+    private string GetVereinStatusClass()
+        => _membership?.Status switch
+        {
+            VereinMembershipStatus.Active    => "utf-status utf-status--success",
+            VereinMembershipStatus.Suspended => "utf-status utf-status--warning",
+            VereinMembershipStatus.Ended     => "utf-status utf-status--neutral",
+            _                                => "utf-status utf-status--info",
+        };
+
+    private string GetVereinStatusLabel()
+    {
+        if (_membership is null)
+            return Localizer[nameof(Language.Pages_Command_Members_NoFormalMembership)].Value;
+
+        var status = GetVereinMembershipStatusLabel(_membership.Status);
+        return string.IsNullOrWhiteSpace(_membership.MemberNumber)
+            ? status
+            : $"{status} ({_membership.MemberNumber})";
+    }
+
+    private string GetVereinMembershipStatusLabel(VereinMembershipStatus status)
+        => status switch
+        {
+            VereinMembershipStatus.Active    => Localizer[nameof(Language.Pages_Command_Members_StatusActive)].Value,
+            VereinMembershipStatus.Suspended => Localizer[nameof(Language.Pages_Command_Members_StatusSuspended)].Value,
+            VereinMembershipStatus.Ended     => Localizer[nameof(Language.Pages_Command_Members_StatusEnded)].Value,
+            _                                => throw new ArgumentOutOfRangeException(nameof(status), status, null),
+        };
+
+    private string GetUserInitials()
+    {
+        var name = FormatNullable(_user?.Nickname, Localizer[nameof(Language.Pages_Command_Member_UnknownUser)].Value).Trim();
+        if (name.Length is 0)
+            return "?";
+
+        var initials = string.Concat(
+            name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Take(2)
+                .Select(q => q[0])
+        );
+        if (string.IsNullOrWhiteSpace(initials))
+            initials = name[0].ToString();
+
+        return initials.ToUpper(CultureInfo.CurrentCulture);
+    }
+
+    private string GetUserBadgeClass()
+        => _userAvatarSource is null
+            ? "member-management-identity__badge"
+            : "member-management-identity__badge member-management-identity__badge--image";
+
+    private string GetUserAvatarStyle()
+        => _userAvatarSource is null
+            ? string.Empty
+            : $"background-image: linear-gradient(180deg, rgba(7, 11, 15, 0), rgba(7, 11, 15, 0.28)), url('{_userAvatarSource}');";
+
+    private string GetDiscordIdentity()
+    {
+        var discordUsername = FormatNullable(_user?.DiscordUsername, string.Empty);
+        if (!string.IsNullOrWhiteSpace(discordUsername))
+            return discordUsername;
+
+        return FormatNullable(_user?.DiscordId, Localizer[nameof(Language.Pages_Command_Member_NotSpecified)].Value);
+    }
+
+    private string GetRoleTitle(PlainRoleDto role)
+        => FormatNullable(
+            role.Title,
+            string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_FallbackRoleTitle)].Value, role.PrimaryKey)
+        );
+
+    private string GetClaimTitle(PlainClaimDto claim)
+        => FormatNullable(
+            claim.Title,
+            FormatNullable(
+                claim.Identifier,
+                string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Member_FallbackClaimTitle)].Value, claim.PrimaryKey)
+            )
+        );
+
+    private string FormatClaimIdentifier(PlainClaimDto claim)
+    {
+        var identifier = FormatNullable(claim.Identifier, Localizer[nameof(Language.Pages_Command_Member_NoIdentifier)].Value);
+        var value = FormatNullable(claim.Value, string.Empty);
+        return string.IsNullOrWhiteSpace(value) ? identifier : $"{identifier} = {value}";
+    }
+
+    private static string FormatNullable(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value;
+}

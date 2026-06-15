@@ -1,0 +1,57 @@
+<label class="@CssClass">
+    <span>@LocalizedLabel</span>
+    <input class="utf-command-input utf-command-search"
+           type="@Type"
+           placeholder="@Placeholder"
+           value="@Value"
+           @oninput="HandleInput"/>
+</label>
+
+@code {
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string Label { get; set; } = string.Empty;
+
+    [Inject]
+    private IStringLocalizer<Language> Localizer { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<ChangeEventArgs> OnInput { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public string Type { get; set; } = "search";
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    private string CssClass
+    {
+        get
+        {
+            const string className = "utf-command-field utf-command-search-field";
+            return string.IsNullOrWhiteSpace(Class) ? className : $"{className} {Class}";
+        }
+    }
+
+    private string LocalizedLabel
+        => string.IsNullOrWhiteSpace(Label)
+            ? Localizer[nameof(Language.Components_CommandSearch_Label)].Value
+            : Label;
+
+    private async Task HandleInput(ChangeEventArgs args)
+    {
+        if (OnInput.HasDelegate)
+            await OnInput.InvokeAsync(args);
+
+        if (ValueChanged.HasDelegate)
+            await ValueChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+    }
+}

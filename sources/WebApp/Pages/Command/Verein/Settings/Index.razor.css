@@ -1,0 +1,80 @@
+.verein-settings-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.verein-settings-shell {
+    align-items: start;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.46fr);
+}
+
+.verein-settings-form-panel,
+.verein-settings-preview-panel {
+    padding: 1rem;
+}
+
+.verein-panel-header {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.verein-panel-header h2 {
+    color: var(--utf-text);
+    font-size: 1.1rem;
+    font-weight: 850;
+    line-height: 1.15;
+    margin: 0;
+}
+
+.verein-settings-form textarea.utf-command-input {
+    min-height: 7rem;
+    resize: vertical;
+}
+
+.verein-validation {
+    background: var(--utf-danger-bg);
+    border: 1px solid rgba(239, 68, 68, 0.42);
+    border-radius: var(--utf-radius-sm);
+    color: #fecaca;
+    grid-column: 1 / -1;
+    padding: 0.7rem 0.8rem;
+}
+
+.verein-settings-preview {
+    border-top: 1px solid var(--utf-stroke);
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+
+.verein-settings-preview strong {
+    color: var(--utf-text);
+    font-size: 0.84rem;
+    font-weight: 850;
+}
+
+.verein-settings-preview p {
+    color: var(--utf-text-muted);
+    line-height: 1.5;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 980px) {
+    .verein-settings-shell {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .verein-panel-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}

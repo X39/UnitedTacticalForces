@@ -1,0 +1,63 @@
+@page "/command"
+@namespace X39.UnitedTacticalForces.WebApp.Pages.Command
+@layout CommandCenterLayout
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Shared_CommandCenter_Nav_Overview)]</PageTitle>
+
+<UtfCommandPageHeader Title="@(Localizer[nameof(Language.Shared_CommandCenter_HeaderTitle)])"
+                      Description="@(Localizer[nameof(Language.Shared_CommandCenter_NavigationAria)])"/>
+
+<div class="utf-command-grid">
+    @if (Me.CanAccessGameServers())
+    {
+        <a class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/servers")">
+            @Localizer["Hosting_Nav_Servers"]
+        </a>
+    }
+
+    @if (Me.HasClaimOrEventAdmin(Claims.Creation.Events))
+    {
+        <a class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/events")">
+            @Localizer[nameof(Language.Shared_CommandCenter_Nav_Events)]
+        </a>
+    }
+
+    @if (Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All))
+    {
+        <a class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/mod-packs")">
+            @Localizer[nameof(Language.Shared_CommandCenter_Nav_ModPacks)]
+        </a>
+    }
+
+    @if (Me.HasBaseClaimOrTerrainAdmin(Claims.Creation.Terrain, Claims.ResourceBased.Terrain.All))
+    {
+        <a class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/terrains")">
+            @Localizer[nameof(Language.Shared_CommandCenter_Nav_Terrains)]
+        </a>
+    }
+
+    @if (Me.HasClaim(Claims.Content.Pages))
+    {
+        <a class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/content/pages")">
+            @Localizer[nameof(Language.Pages_Command_Content_Pages_PageTitle)]
+        </a>
+    }
+
+    @if (Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All))
+    {
+        <a class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/content/gallery")">
+            @Localizer["Shared_CommandCenter_Nav_Gallery"]
+        </a>
+    }
+
+    @if (Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Kassenbuch))
+    {
+        <a class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/verein/kassenbuch")">
+            @Localizer[nameof(Language.Shared_CommandCenter_Nav_VereinKassenbuch)]
+        </a>
+    }
+</div>

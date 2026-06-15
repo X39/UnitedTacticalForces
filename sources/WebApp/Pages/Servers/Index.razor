@@ -1,0 +1,222 @@
+@page "/command/servers"
+@layout CommandCenterLayout
+@attribute [Authorize]
+@implements IAsyncDisposable
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@inject IGameServerRepository GameServerRepository
+@inject BaseUrl BaseUrl
+@inject MeService Me
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer["Hosting_Servers_Title"]</PageTitle>
+
+<div class="hosting-page hosting-index">
+    <UtfCommandPageHeader Title="@(Localizer["Hosting_Servers_Title"])"
+                          Description="@(Localizer["Hosting_Servers_Description"])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isRefreshing" OnClick="@(() => LoadAsync(showLoading: false))">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/></Icon>
+                <ChildContent>@Localizer["Hosting_Common_Refresh"]</ChildContent>
+            </UtfCommandButton>
+            @if (CanCreate)
+            {
+                <UtfCommandButton Variant="primary" Href="@BaseUrl.ResolveSelfUrl("command/servers/create")">
+                    <Icon><FluentIcon Value="@(new Icons.Regular.Size24.New())"/></Icon>
+                    <ChildContent>@Localizer["Hosting_Servers_Create"]</ChildContent>
+                </UtfCommandButton>
+            }
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (_loadError is not null)
+    {
+        <UtfAlert Intent="MessageIntent.Error">@_loadError</UtfAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer["Hosting_Servers_Loading"]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_servers.Count is 0)
+    {
+        <section class="utf-empty-state hosting-empty">
+            <h2>@Localizer["Hosting_Servers_EmptyTitle"]</h2>
+            <p>@Localizer[CanCreate ? "Hosting_Servers_EmptyDescription" : "Hosting_Servers_EmptyAccessDescription"]</p>
+            @if (CanCreate)
+            {
+                <a class="utf-button utf-button--primary" href="@BaseUrl.ResolveSelfUrl("command/servers/create")">
+                    @Localizer["Hosting_Servers_Create"]
+                </a>
+            }
+        </section>
+    }
+    else
+    {
+        <section class="hosting-summary" aria-label="@(Localizer["Hosting_Servers_Summary"])">
+            <div>
+                <span>@Localizer["Hosting_Servers_Total"]</span>
+                <strong>@_servers.Count</strong>
+            </div>
+            <div>
+                <span>@Localizer["Hosting_Servers_PossibleCost"]</span>
+                <strong>@_servers.Count((server) => server.Deployment?.PossibleCost is true)</strong>
+            </div>
+            <div>
+                <span>@Localizer["Hosting_Servers_PendingWork"]</span>
+                <strong>@_servers.Sum((server) => server.PendingJobCount)</strong>
+            </div>
+        </section>
+
+        <section class="hosting-card-grid">
+            @foreach (var server in OrderedServers)
+            {
+                <article class="hosting-server-card" @key="server.PrimaryKey">
+                    <header>
+                        <div>
+                            <span class="utf-kicker">@server.GameIdentifier</span>
+                            <h2>@server.Title</h2>
+                        </div>
+                        <UtfStatusBadge Intent="@GetServerIntent(server)" ShowDot="true">
+                            @GetStatusLabel(server)
+                        </UtfStatusBadge>
+                    </header>
+
+                    <dl>
+                        <div>
+                            <dt>@Localizer["Hosting_Common_Runtime"]</dt>
+                            <dd>@server.RuntimeProviderIdentifier</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer["Hosting_Common_CostOwner"]</dt>
+                            <dd>@server.CostOwnerName</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer["Hosting_Common_Stage"]</dt>
+                            <dd>@GetStageLabel(server)</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer["Hosting_Common_Queue"]</dt>
+                            <dd>@Localizer["Hosting_Servers_JobCount", server.PendingJobCount]</dd>
+                        </div>
+                    </dl>
+
+                    @if (server.Deployment?.PossibleCost is true)
+                    {
+                        <p class="hosting-cost-warning">@Localizer["Hosting_Servers_CostWarning"]</p>
+                    }
+
+                    <footer>
+                        <span>@Localizer["Hosting_Common_Updated"] @FormatDate(server.TimeStampUpdated)</span>
+                        <a class="utf-button utf-button--ghost"
+                           href="@BaseUrl.ResolveSelfUrl($"command/servers/{server.PrimaryKey}")">
+                            @Localizer["Hosting_Common_Open"]
+                        </a>
+                    </footer>
+                </article>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private IReadOnlyList<GameServerInfo> _servers = [];
+    private Task? _pollTask;
+    private bool _isLoading = true;
+    private bool _isRefreshing;
+    private string? _loadError;
+
+    private bool CanCreate
+        => Me.CanCreateGameServers();
+
+    private IEnumerable<GameServerInfo> OrderedServers
+        => _servers
+            .OrderByDescending((server) => server.Deployment?.PossibleCost is true)
+            .ThenByDescending((server) => server.PendingJobCount > 0)
+            .ThenBy((server) => server.Title, StringComparer.CurrentCultureIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(showLoading: true, _cancellationTokenSource.Token);
+        _pollTask = PollAsync(_cancellationTokenSource.Token);
+    }
+
+    private async Task LoadAsync(bool showLoading, CancellationToken cancellationToken = default)
+    {
+        if (_isRefreshing)
+            return;
+
+        _isRefreshing = true;
+        if (showLoading)
+            _isLoading = true;
+        try
+        {
+            _servers = await GameServerRepository.GetServersAsync(cancellationToken);
+            _loadError = null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _loadError = UserFacingError.Message(exception, Localizer["Hosting_Servers_LoadError"].Value);
+        }
+        finally
+        {
+            _isRefreshing = false;
+            _isLoading = false;
+        }
+    }
+
+    private async Task PollAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(PollInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await LoadAsync(showLoading: false, cancellationToken);
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private string GetStatusLabel(GameServerInfo server)
+        => server.Deployment?.Status is { Length: > 0 } status
+            ? status
+            : Localizer["Hosting_Servers_NoDeployment"].Value;
+
+    private string GetStageLabel(GameServerInfo server)
+        => server.Deployment?.Stage is { Length: > 0 } stage
+            ? stage
+            : Localizer["Hosting_Common_NotApplicable"].Value;
+
+    private static string GetServerIntent(GameServerInfo server)
+        => server.Deployment?.PossibleCost is true
+            ? "warning"
+            : server.PendingJobCount > 0
+                ? "info"
+                : "neutral";
+
+    private static string FormatDate(DateTimeOffset value)
+        => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cancellationTokenSource.CancelAsync();
+        if (_pollTask is not null)
+            await _pollTask;
+        _cancellationTokenSource.Dispose();
+    }
+}

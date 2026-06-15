@@ -1,0 +1,216 @@
+.utf-gdpr-section {
+    min-width: 0;
+}
+
+.utf-gdpr-section h2,
+.utf-gdpr-section h3,
+.utf-gdpr-section p,
+.utf-gdpr-section dl,
+.utf-gdpr-section dd {
+    margin: 0;
+}
+
+.utf-gdpr-section h2 {
+    color: var(--utf-text);
+    font-size: 2rem;
+    font-weight: 850;
+    line-height: 1.12;
+}
+
+.utf-gdpr-section h3 {
+    color: var(--utf-text);
+    font-size: 1.08rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.utf-gdpr-section p,
+.utf-gdpr-section dd,
+.utf-gdpr-section li {
+    color: var(--utf-text-muted);
+    line-height: 1.65;
+}
+
+.utf-gdpr-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.utf-gdpr-copy ::deep :is(p, ul, ol, blockquote) {
+    margin: 0;
+}
+
+.utf-gdpr-copy ::deep :is(ul, ol) {
+    padding-left: 1.25rem;
+}
+
+.utf-gdpr-intro {
+    align-items: stretch;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.32fr);
+}
+
+.utf-gdpr-intro > div,
+.utf-gdpr-intro > aside,
+.utf-gdpr-data-grid article,
+.utf-gdpr-columns article,
+.utf-gdpr-policy-grid article,
+.utf-gdpr-note,
+.utf-gdpr-timeline article {
+    background: var(--utf-surface);
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-md);
+    box-shadow: var(--utf-shadow-panel);
+    color: var(--utf-text);
+}
+
+.utf-gdpr-intro > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1.5rem;
+}
+
+.utf-gdpr-intro > aside {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 1.25rem;
+}
+
+.utf-gdpr-intro strong {
+    color: var(--utf-text-subtle);
+    font-size: 0.72rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.utf-gdpr-intro aside span {
+    color: var(--utf-text);
+    font-size: 1.18rem;
+    font-weight: 850;
+}
+
+.utf-gdpr-timeline {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+}
+
+.utf-gdpr-timeline article {
+    display: grid;
+    gap: 0.8rem;
+    padding: 1.25rem;
+}
+
+.utf-gdpr-timeline article > span {
+    align-items: center;
+    background: var(--utf-gold);
+    border-radius: var(--utf-radius-sm);
+    color: #101014;
+    display: inline-flex;
+    font-size: 0.9rem;
+    font-weight: 900;
+    height: 2rem;
+    justify-content: center;
+    width: 2rem;
+}
+
+.utf-gdpr-data-grid,
+.utf-gdpr-columns,
+.utf-gdpr-policy-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.utf-gdpr-data-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+}
+
+.utf-gdpr-columns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.utf-gdpr-policy-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.utf-gdpr-data-grid article,
+.utf-gdpr-columns article,
+.utf-gdpr-policy-grid article {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    min-width: 0;
+    padding: 1.25rem;
+}
+
+.utf-gdpr-data-grid dl {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.utf-gdpr-data-grid dt {
+    color: var(--utf-text-subtle);
+    font-size: 0.72rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.utf-gdpr-data-grid dd {
+    margin-top: 0.15rem;
+    overflow-wrap: anywhere;
+}
+
+.utf-gdpr-data-grid dd ::deep :is(p, ul, ol) {
+    margin: 0;
+}
+
+.utf-gdpr-note {
+    align-items: end;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 1.5rem;
+}
+
+.utf-gdpr-note > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.utf-gdpr-note .utf-inline-actions {
+    justify-content: flex-end;
+    margin-top: 0;
+}
+
+@media (max-width: 1040px) {
+    .utf-gdpr-intro,
+    .utf-gdpr-columns,
+    .utf-gdpr-policy-grid,
+    .utf-gdpr-note {
+        grid-template-columns: 1fr;
+    }
+
+    .utf-gdpr-note {
+        align-items: start;
+    }
+
+    .utf-gdpr-note .utf-inline-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 720px) {
+    .utf-gdpr-section h2 {
+        font-size: 1.55rem;
+    }
+
+    .utf-gdpr-note .utf-inline-actions,
+    .utf-gdpr-note .utf-button {
+        width: 100%;
+    }
+}

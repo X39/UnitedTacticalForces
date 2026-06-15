@@ -1,0 +1,227 @@
+@page "/command/servers/create"
+@attribute [Authorize]
+@layout CommandCenterLayout
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@inject IGameServerRepository GameServerRepository
+@inject NavigationManager NavigationManager
+@inject BaseUrl BaseUrl
+@inject MeService Me
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer["Hosting_Create_Title"]</PageTitle>
+
+<div class="hosting-page hosting-create-page">
+    <UtfCommandPageHeader Title="@(Localizer["Hosting_Create_Title"])"
+                          Description="@(Localizer["Hosting_Create_Description"])"/>
+
+    <a class="hosting-back-link" href="@BaseUrl.ResolveSelfUrl("command/servers")">
+        &larr; @Localizer["Hosting_Common_BackToServers"]
+    </a>
+
+    @if (!CanCreate)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer["Hosting_Create_ForbiddenTitle"]</h2>
+            <p>@Localizer["Hosting_Create_ForbiddenDescription"]</p>
+        </section>
+    }
+    else if (_loadError is not null)
+    {
+        <UtfAlert Intent="MessageIntent.Error">@_loadError</UtfAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer["Hosting_Create_LoadingCapabilities"]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_capabilities.Count is 0)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer["Hosting_Create_NoCapabilitiesTitle"]</h2>
+            <p>@Localizer["Hosting_Create_NoCapabilitiesDescription"]</p>
+        </section>
+    }
+    else
+    {
+        <div class="hosting-create-grid">
+            <form class="utf-panel hosting-create-form"
+                  @onsubmit="CreateServerAsync"
+                  @onsubmit:preventDefault="true">
+                <div class="hosting-section-heading">
+                    <span class="utf-kicker">@Localizer["Hosting_Create_RecordKicker"]</span>
+                    <h2>@Localizer["Hosting_Create_RecordTitle"]</h2>
+                    <p>@Localizer["Hosting_Create_RecordDescription"]</p>
+                </div>
+
+                <label class="hosting-field">
+                    <span>@Localizer["Hosting_Create_Name"]</span>
+                    <input maxlength="256"
+                           required
+                           autocomplete="off"
+                           @bind="_title"
+                           @bind:event="oninput"/>
+                </label>
+
+                <label class="hosting-field">
+                    <span>@Localizer["Hosting_Create_Game"]</span>
+                    <select value="@_gameIdentifier" @onchange="ChangeGame">
+                        @foreach (var capability in _capabilities)
+                        {
+                            <option value="@capability.GameIdentifier">@capability.DisplayName</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="hosting-field">
+                    <span>@Localizer["Hosting_Create_Runtime"]</span>
+                    <select @bind="_runtimeProviderIdentifier">
+                        @foreach (var provider in SelectedCapability?.RuntimeProviders ?? [])
+                        {
+                            <option value="@provider">@provider</option>
+                        }
+                    </select>
+                    <small>@Localizer["Hosting_Create_RuntimeHint"]</small>
+                </label>
+
+                <label class="hosting-check-field">
+                    <input type="checkbox" @bind="_isLaunchDisabled"/>
+                    <span>
+                        <strong>@Localizer["Hosting_Create_LaunchDisabled"]</strong>
+                        <small>@Localizer["Hosting_Create_LaunchDisabledHint"]</small>
+                    </span>
+                </label>
+
+                @if (_saveError is not null)
+                {
+                    <UtfAlert Intent="MessageIntent.Error">@_saveError</UtfAlert>
+                }
+
+                <div class="hosting-form-actions">
+                    <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("command/servers")">
+                        @Localizer["Hosting_Common_Cancel"]
+                    </a>
+                    <button class="utf-button utf-button--primary"
+                            type="submit"
+                            disabled="@(_isSaving || !CanSubmit)">
+                        @(_isSaving ? Localizer["Hosting_Create_Saving"] : Localizer["Hosting_Create_Submit"])
+                    </button>
+                </div>
+            </form>
+
+            <aside class="hosting-create-aside">
+                <section class="utf-panel hosting-capability-card">
+                    <span class="utf-kicker">@Localizer["Hosting_Create_CapabilityKicker"]</span>
+                    <h2>@SelectedCapability?.DisplayName</h2>
+                    <p>@SelectedCapability?.Description</p>
+
+                    @if (SelectedCapability?.Actions.Count > 0)
+                    {
+                        <div class="hosting-capability-actions">
+                            @foreach (var action in SelectedCapability.Actions.OrderBy((action) => action.Order))
+                            {
+                                <span title="@action.Description">@action.Label</span>
+                            }
+                        </div>
+                    }
+                </section>
+
+                <section class="hosting-create-boundary">
+                    <strong>@Localizer["Hosting_Create_SeparateTitle"]</strong>
+                    <p>@Localizer["Hosting_Create_SeparateDescription"]</p>
+                    <ol>
+                        <li>@Localizer["Hosting_Create_SeparateStepCreate"]</li>
+                        <li>@Localizer["Hosting_Create_SeparateStepReview"]</li>
+                        <li>@Localizer["Hosting_Create_SeparateStepStart"]</li>
+                    </ol>
+                </section>
+            </aside>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<GameServerCapabilityInfo> _capabilities = [];
+    private string _title = string.Empty;
+    private string _gameIdentifier = string.Empty;
+    private string _runtimeProviderIdentifier = string.Empty;
+    private bool _isLaunchDisabled;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _loadError;
+    private string? _saveError;
+
+    private bool CanCreate
+        => Me.CanCreateGameServers();
+
+    private GameServerCapabilityInfo? SelectedCapability
+        => _capabilities.FirstOrDefault((capability) => capability.GameIdentifier == _gameIdentifier);
+
+    private bool CanSubmit
+        => !string.IsNullOrWhiteSpace(_title)
+           && SelectedCapability is not null
+           && SelectedCapability.RuntimeProviders.Contains(_runtimeProviderIdentifier, StringComparer.Ordinal);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!CanCreate)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            _capabilities = await GameServerRepository.GetCapabilitiesAsync();
+            if (_capabilities.FirstOrDefault() is { } capability)
+            {
+                _gameIdentifier = capability.GameIdentifier;
+                _runtimeProviderIdentifier = capability.RuntimeProviders.FirstOrDefault() ?? string.Empty;
+            }
+        }
+        catch (Exception exception)
+        {
+            _loadError = UserFacingError.Message(exception, Localizer["Hosting_Create_LoadError"].Value);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ChangeGame(ChangeEventArgs args)
+    {
+        _gameIdentifier = args.Value?.ToString() ?? string.Empty;
+        _runtimeProviderIdentifier = SelectedCapability?.RuntimeProviders.FirstOrDefault() ?? string.Empty;
+    }
+
+    private async Task CreateServerAsync()
+    {
+        if (!CanSubmit || _isSaving)
+            return;
+
+        _isSaving = true;
+        _saveError = null;
+        try
+        {
+            var server = await GameServerRepository.CreateServerAsync(new GameServerCreationInfo
+            {
+                Title = _title.Trim(),
+                GameIdentifier = _gameIdentifier,
+                RuntimeProviderIdentifier = _runtimeProviderIdentifier,
+                IsLaunchDisabled = _isLaunchDisabled,
+            });
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/servers/{server.PrimaryKey}"));
+        }
+        catch (Exception exception)
+        {
+            _saveError = UserFacingError.Message(exception, Localizer["Hosting_Create_SaveError"].Value);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

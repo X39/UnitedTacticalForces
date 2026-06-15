@@ -1,0 +1,253 @@
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.PublicPages
+@using X39.UnitedTacticalForces.WebApp.Pages.GDPR
+@using X39.UnitedTacticalForces.WebApp.Services.PublicPageRepository
+@inject IStringLocalizer<Language> Localizer
+
+<div class="gdpr-template-editor-shell">
+    <nav class="gdpr-template-section-nav" aria-label='@L("Pages_Command_Content_Gdpr_SectionNavAria", "GDPR content sections")'>
+        <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_SectionNavKicker", "Sections")</span>
+        <a href="#gdpr-template-intro">@L("Pages_Command_Content_Gdpr_IntroSection", "Intro")</a>
+        <a href="#gdpr-template-opening">@L("Pages_Command_Content_Gdpr_OpeningCards", "Opening cards")</a>
+        <a href="#gdpr-template-lifecycle">@L("Pages_Command_Content_Gdpr_LifecycleSection", "Lifecycle timeline")</a>
+        <a href="#gdpr-template-data-map">@L("Pages_Command_Content_Gdpr_DataMapSection", "Data map")</a>
+        <a href="#gdpr-template-visibility">@L("Pages_Command_Content_Gdpr_VisibilitySection", "Visibility cards")</a>
+        <a href="#gdpr-template-partners">@L("Pages_Command_Content_Gdpr_PartnersSection", "External service cards")</a>
+        <a href="#gdpr-template-policy">@L("Pages_Command_Content_Gdpr_PolicyCardsSection", "Policy cards")</a>
+    </nav>
+
+    <div class="gdpr-template-form" @oninput="NotifyContentChangedAsync">
+        <section id="gdpr-template-intro" class="utf-panel gdpr-template-section">
+            <header class="gdpr-template-section-header">
+                <div>
+                    <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_TemplateEditorKicker", "GDPR template")</span>
+                    <h3>@L("Pages_Command_Content_Gdpr_IntroSection", "Intro")</h3>
+                    <p>@L("Pages_Command_Content_Gdpr_IntroSectionDescription", "Top-level heading, review date, and editorial process note.")</p>
+                </div>
+                <span class="utf-status utf-status--neutral">
+                    <span class="utf-status__dot"></span>@RevisionLabel
+                </span>
+            </header>
+                <div class="gdpr-template-grid">
+                    <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Kicker", "Kicker")' @bind-Value="Content.Intro.Kicker"/>
+                    <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Title", "Title")' @bind-Value="Content.Intro.Title"/>
+                    <TemplateTextarea Label='@L("Pages_Command_Content_Gdpr_Description", "Description")' @bind-Value="Content.Intro.Description"/>
+                    <TemplateInput Label='@L("Pages_Command_Content_Gdpr_LastReviewedLabel", "Last reviewed label")' @bind-Value="Content.Intro.LastReviewedLabel"/>
+                    <TemplateInput Label='@L("Pages_Command_Content_Gdpr_LastReviewedDate", "Last reviewed date")' @bind-Value="Content.Intro.LastReviewedDate"/>
+                    <TemplateTextarea Label='@L("Pages_Command_Content_Gdpr_ProcessNote", "Process note")' @bind-Value="Content.Intro.ProcessNote"/>
+                </div>
+        </section>
+
+        <section id="gdpr-template-opening" class="utf-panel gdpr-template-section">
+            <header class="gdpr-template-section-header">
+                <div>
+                    <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_OpeningCardsKicker", "Opening")</span>
+                    <h3>@L("Pages_Command_Content_Gdpr_OpeningCards", "Opening cards")</h3>
+                    <p>@L("Pages_Command_Content_Gdpr_OpeningCardsDescription", "Responsibility and legal-basis cards shown near the top of the public page.")</p>
+                </div>
+            </header>
+            <div class="gdpr-template-repeater">
+                @for (var cardIndex = 0; cardIndex < Content.OpeningCards.Count; cardIndex++)
+                {
+                    var card = Content.OpeningCards[cardIndex];
+                    <article class="gdpr-template-item" @key="card">
+                        <header>
+                            <span>@FormatCardNumber(cardIndex)</span>
+                            <h4>@FormatCardLabel(cardIndex)</h4>
+                        </header>
+                        <div class="gdpr-template-grid">
+                            <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Kicker", "Kicker")' @bind-Value="card.Kicker"/>
+                            <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Title", "Title")' @bind-Value="card.Title"/>
+                            @for (var paragraphIndex = 0; paragraphIndex < card.Paragraphs.Count; paragraphIndex++)
+                            {
+                                var capturedParagraphIndex = paragraphIndex;
+                                <TemplateTextarea Label="@FormatParagraphLabel(capturedParagraphIndex)"
+                                                  @bind-Value="card.Paragraphs[capturedParagraphIndex]"/>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <section id="gdpr-template-lifecycle" class="utf-panel gdpr-template-section">
+            <header class="gdpr-template-section-header">
+                <div>
+                    <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_LifecycleKicker", "Timeline")</span>
+                    <h3>@L("Pages_Command_Content_Gdpr_LifecycleSection", "Lifecycle timeline")</h3>
+                    <p>@L("Pages_Command_Content_Gdpr_LifecycleDescription", "Edit the sequence that explains what happens as visitors sign in, participate, and request changes.")</p>
+                </div>
+            </header>
+            <div class="gdpr-template-grid gdpr-template-section-fields">
+                <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Kicker", "Kicker")' @bind-Value="Content.Lifecycle.Kicker"/>
+                <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Title", "Title")' @bind-Value="Content.Lifecycle.Title"/>
+            </div>
+            <div class="gdpr-template-repeater">
+                @for (var stepIndex = 0; stepIndex < Content.Lifecycle.Steps.Count; stepIndex++)
+                {
+                    var step = Content.Lifecycle.Steps[stepIndex];
+                    <article class="gdpr-template-item" @key="step">
+                        <header>
+                            <span>@FormatCardNumber(stepIndex)</span>
+                            <h4>@FormatStepLabel(stepIndex)</h4>
+                        </header>
+                        <div class="gdpr-template-grid">
+                            <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Title", "Title")' @bind-Value="step.Title"/>
+                            @for (var paragraphIndex = 0; paragraphIndex < step.Paragraphs.Count; paragraphIndex++)
+                            {
+                                var capturedParagraphIndex = paragraphIndex;
+                                <TemplateTextarea Label="@FormatParagraphLabel(capturedParagraphIndex)"
+                                                  @bind-Value="step.Paragraphs[capturedParagraphIndex]"/>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <section id="gdpr-template-data-map" class="utf-panel gdpr-template-section">
+            <header class="gdpr-template-section-header">
+                <div>
+                    <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_DataMapKicker", "Data map")</span>
+                    <h3>@L("Pages_Command_Content_Gdpr_DataMapSection", "Data map")</h3>
+                    <p>@L("Pages_Command_Content_Gdpr_DataMapDescription", "Maintain the public explanation of stored data, purpose, and storage location for each workflow.")</p>
+                </div>
+            </header>
+            <div class="gdpr-template-grid gdpr-template-section-fields">
+                <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Kicker", "Kicker")' @bind-Value="Content.DataMap.Kicker"/>
+                <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Title", "Title")' @bind-Value="Content.DataMap.Title"/>
+            </div>
+            <div class="gdpr-template-repeater">
+                @for (var cardIndex = 0; cardIndex < Content.DataMap.Cards.Count; cardIndex++)
+                {
+                    var card = Content.DataMap.Cards[cardIndex];
+                    <article class="gdpr-template-item" @key="card">
+                        <header>
+                            <span>@FormatCardNumber(cardIndex)</span>
+                            <h4>@FormatCardLabel(cardIndex)</h4>
+                        </header>
+                        <div class="gdpr-template-grid">
+                            <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Title", "Title")' @bind-Value="card.Title"/>
+                            <TemplateInput Label='@L("Pages_Command_Content_Gdpr_DataLabel", "Data label")' @bind-Value="card.DataLabel"/>
+                            <TemplateTextarea Label='@L("Pages_Command_Content_Gdpr_Data", "Data")' @bind-Value="card.Data"/>
+                            <TemplateInput Label='@L("Pages_Command_Content_Gdpr_PurposeLabel", "Purpose label")' @bind-Value="card.PurposeLabel"/>
+                            <TemplateTextarea Label='@L("Pages_Command_Content_Gdpr_Purpose", "Purpose")' @bind-Value="card.Purpose"/>
+                            <TemplateInput Label='@L("Pages_Command_Content_Gdpr_WhereLabel", "Where label")' @bind-Value="card.WhereLabel"/>
+                            <TemplateTextarea Label='@L("Pages_Command_Content_Gdpr_Where", "Where")' @bind-Value="card.Where"/>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <TemplateCardSectionEditor SectionId="gdpr-template-visibility"
+                                   Kicker='@L("Pages_Command_Content_Gdpr_VisibilityKicker", "Visibility")'
+                                   Title='@L("Pages_Command_Content_Gdpr_VisibilitySection", "Visibility cards")'
+                                   Description='@L("Pages_Command_Content_Gdpr_VisibilityDescription", "Who can see public, member, and administrator-facing information.")'
+                                   Section="@Content.Visibility"/>
+        <TemplateCardSectionEditor SectionId="gdpr-template-partners"
+                                   Kicker='@L("Pages_Command_Content_Gdpr_PartnersKicker", "Third parties")'
+                                   Title='@L("Pages_Command_Content_Gdpr_PartnersSection", "External service cards")'
+                                   Description='@L("Pages_Command_Content_Gdpr_PartnersDescription", "External providers and processors referenced by the privacy notice.")'
+                                   Section="@Content.Partners"/>
+
+        <section id="gdpr-template-policy" class="utf-panel gdpr-template-section">
+            <header class="gdpr-template-section-header">
+                <div>
+                    <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_PolicyKicker", "Policy")</span>
+                    <h3>@L("Pages_Command_Content_Gdpr_PolicyCardsSection", "Policy cards")</h3>
+                    <p>@L("Pages_Command_Content_Gdpr_PolicyCardsDescription", "Retention, deletion, security, and member-rights statements near the bottom of the page.")</p>
+                </div>
+            </header>
+            <div class="gdpr-template-repeater">
+                @for (var cardIndex = 0; cardIndex < Content.PolicyCards.Count; cardIndex++)
+                {
+                    var card = Content.PolicyCards[cardIndex];
+                    <article class="gdpr-template-item" @key="card">
+                        <header>
+                            <span>@FormatCardNumber(cardIndex)</span>
+                            <h4>@FormatCardLabel(cardIndex)</h4>
+                        </header>
+                        <div class="gdpr-template-grid">
+                            <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Kicker", "Kicker")' @bind-Value="card.Kicker"/>
+                            <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Title", "Title")' @bind-Value="card.Title"/>
+                            @for (var paragraphIndex = 0; paragraphIndex < card.Paragraphs.Count; paragraphIndex++)
+                            {
+                                var capturedParagraphIndex = paragraphIndex;
+                                <TemplateTextarea Label="@FormatParagraphLabel(capturedParagraphIndex)"
+                                                  @bind-Value="card.Paragraphs[capturedParagraphIndex]"/>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+    </div>
+
+    <aside class="utf-panel gdpr-template-preview-panel">
+        <div class="gdpr-template-panel-header">
+            <div>
+                <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_TemplatePreviewKicker", "Live preview")</span>
+                <h2>@L("Pages_Command_Content_Gdpr_TemplatePreviewTitle", "Rendered public layout")</h2>
+                <p>@L("Pages_Command_Content_Gdpr_TemplatePreviewDescription", "This preview uses the same structured renderer as the public GDPR page.")</p>
+            </div>
+            <span class="utf-status utf-status--neutral">
+                <span class="utf-status__dot"></span>@RevisionLabel
+            </span>
+        </div>
+        <div class="gdpr-template-preview">
+            <GdprPageContentView Content="@Content"/>
+        </div>
+    </aside>
+</div>
+
+@code {
+    [Parameter]
+    public GdprPageContent Content { get; set; } = GdprPageContentSupport.CreateDefaultContent();
+
+    [Parameter]
+    public string RevisionLabel { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnContentChanged { get; set; }
+
+    private async Task NotifyContentChangedAsync()
+    {
+        if (OnContentChanged.HasDelegate)
+            await OnContentChanged.InvokeAsync().ConfigureAwait(false);
+    }
+
+    private string L(string key, string fallback)
+    {
+        var value = Localizer[key].Value;
+        return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+    }
+
+    private string FormatCardLabel(int index)
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            L("Pages_Command_Content_Gdpr_CardNumber", "Card {0}"),
+            index + 1
+        );
+
+    private string FormatStepLabel(int index)
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            L("Pages_Command_Content_Gdpr_StepNumber", "Step {0}"),
+            index + 1
+        );
+
+    private string FormatParagraphLabel(int index)
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            L("Pages_Command_Content_Gdpr_ParagraphNumber", "Paragraph {0}"),
+            index + 1
+        );
+
+    private static string FormatCardNumber(int index)
+        => (index + 1).ToString("00", CultureInfo.InvariantCulture);
+}
+
+
+
+

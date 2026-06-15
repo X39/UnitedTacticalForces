@@ -1,0 +1,594 @@
+@page "/command/content/gallery"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@inject IMediaAssetRepository MediaAssetRepository
+@inject IToastService ToastService
+@inject IJSRuntime JS
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@T("Pages_Command_Gallery_PageTitle")</PageTitle>
+
+<div class="gallery-page">
+    <UtfCommandPageHeader Title="@(T("Pages_Command_Gallery_PageTitle"))"
+                          Description="@(T("Pages_Command_Gallery_PageDescription"))">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@T("Common_Refresh")</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageGallery)
+    {
+        <section class="utf-empty-state">
+            <h2>@T("Pages_Command_Gallery_NoAccessTitle")</h2>
+            <p>@T("Pages_Command_Gallery_NoAccessMessage")</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-toolbar gallery-toolbar"
+                 aria-label="@(T("Pages_Command_Gallery_FilterAria"))">
+            <UtfCommandSearch Placeholder="@(T("Pages_Command_Gallery_SearchPlaceholder"))"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            @foreach (var source in SourceOptions)
+            {
+                <button class="@GetSourceToggleClass(source.Domain)"
+                        type="button"
+                        aria-pressed="@GetSourceTogglePressed(source.Domain)"
+                        @onclick="@(() => ToggleSource(source.Domain))">
+                    <span class="gallery-source-toggle__state" aria-hidden="true"></span>
+                    <span>@source.Label</span>
+                </button>
+            }
+        </section>
+
+        <section class="utf-panel gallery-filter-panel">
+            <div class="gallery-filter-panel__fields">
+                <label>
+                    <span>@T("Pages_Command_Gallery_IncludeTagsLabel")</span>
+                    <input class="utf-command-input"
+                           type="text"
+                           placeholder="@(T("Pages_Command_Gallery_TagPlaceholder"))"
+                           @bind="_includeTagsInput"
+                           @bind:event="oninput"/>
+                </label>
+                <label>
+                    <span>@T("Pages_Command_Gallery_ExcludeTagsLabel")</span>
+                    <input class="utf-command-input"
+                           type="text"
+                           placeholder="@(T("Pages_Command_Gallery_NegativeTagPlaceholder"))"
+                           @bind="_excludeTagsInput"
+                           @bind:event="oninput"/>
+                </label>
+                <UtfCommandButton Disabled="@_isLoading"
+                                  OnClick="ApplyTagFiltersAsync">
+                    @T("Pages_Command_Gallery_ApplyTagFilters")
+                </UtfCommandButton>
+            </div>
+
+        </section>
+
+        <section class="utf-panel gallery-upload-panel"
+                 aria-label="@(T("Pages_Command_Gallery_UploadAria"))">
+            <div class="gallery-upload-panel__copy">
+                <span class="utf-kicker">@T("Pages_Command_Gallery_UploadKicker")</span>
+                <h2>@T("Pages_Command_Gallery_UploadTitle")</h2>
+                <p>@T("Pages_Command_Gallery_UploadDescription")</p>
+            </div>
+            <div class="gallery-upload-panel__controls">
+                <label>
+                    <span>@T("Pages_Command_Gallery_UploadTagsLabel")</span>
+                    <input class="utf-command-input"
+                           type="text"
+                           placeholder="@(T("Pages_Command_Gallery_TagPlaceholder"))"
+                           @bind="_uploadTagsInput"
+                           @bind:event="oninput"/>
+                </label>
+                <div class="gallery-upload-drop">
+                    <FluentInputFile Id="gallery-image-uploader"
+                                     Mode="InputFileMode.Stream"
+                                     Multiple="false"
+                                     MaximumFileCount="1"
+                                     MaximumFileSize="@MaximumImageFileSize"
+                                     Accept="@AcceptedImageMimeTypes"
+                                     OnCompleted="@OnUploadCompletedAsync">
+                        <ChildContent>
+                            <div class="gallery-upload-drop__content">
+                                <label class="gallery-upload-drop__icon"
+                                       for="gallery-image-uploader">
+                                    <FluentIcon Value="@(new Icons.Regular.Size32.ArrowUpload())"/>
+                                </label>
+                                <strong class="gallery-upload-drop__title">@T("Pages_Command_Gallery_UploadDropText")</strong>
+                                <span class="gallery-upload-drop__hint">@T("Pages_Command_Gallery_UploadHintText")</span>
+                            </div>
+                        </ChildContent>
+                    </FluentInputFile>
+                </div>
+            </div>
+        </section>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @T("Pages_Command_Gallery_Loading")
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <div class="utf-command-workspace gallery-workspace">
+                <section class="utf-panel gallery-grid-panel">
+                    <div class="gallery-panel-header">
+                        <div>
+                            <span class="utf-kicker">@T("Pages_Command_Gallery_ListKicker")</span>
+                            <h2>@T("Pages_Command_Gallery_ListTitle")</h2>
+                        </div>
+                        <span class="utf-status utf-status--neutral">
+                            <span class="utf-status__dot"></span>@GetVisibleAssetCountLabel()
+                        </span>
+                    </div>
+
+                    @if (VisibleAssets.Length == 0)
+                    {
+                        <div class="gallery-empty">@T("Pages_Command_Gallery_Empty")</div>
+                    }
+                    else
+                    {
+                        <div class="gallery-grid-scroll"
+                             role="region"
+                             tabindex="0"
+                             aria-label="@(T("Pages_Command_Gallery_ListTitle"))">
+                            <div class="gallery-grid">
+                                @foreach (var asset in VisibleAssets)
+                                {
+                                    <button class="@GetAssetCardClass(asset)"
+                                            type="button"
+                                            @key="asset.PrimaryKey"
+                                            @onclick="@(() => SelectAsset(asset))">
+                                        <span class="gallery-card__image">
+                                            <img src="@BaseUrl.ResolveImageUrl(asset.ImagePath)"
+                                                 alt="@GetImageAlt(asset)"
+                                                 loading="lazy"/>
+                                        </span>
+                                        <span class="gallery-card__body">
+                                            <strong>@asset.OriginalFileName</strong>
+                                            <span>@GetAssetMetaLabel(asset)</span>
+                                            <span class="@GetUsageStatusClass(asset)">
+                                                <span class="utf-status__dot"></span>@GetUsageStatusLabel(asset)
+                                            </span>
+                                        </span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </section>
+
+                <aside class="utf-panel gallery-detail">
+                    @if (_selectedAsset is null)
+                    {
+                        <div class="gallery-empty">@T("Pages_Command_Gallery_NoSelection")</div>
+                    }
+                    else
+                    {
+                        <div class="gallery-detail__preview">
+                            <div class="gallery-panel-header">
+                                <div>
+                                    <span class="utf-kicker">@T("Pages_Command_Gallery_DetailKicker")</span>
+                                    <h2>@_selectedAsset.OriginalFileName</h2>
+                                </div>
+                            </div>
+                            <img class="gallery-detail__image"
+                                 src="@BaseUrl.ResolveImageUrl(_selectedAsset.ImagePath)"
+                                 alt="@GetImageAlt(_selectedAsset)"/>
+                            <div class="gallery-reference-row">
+                                <label class="gallery-reference">
+                                    <span>@T("Pages_Command_Gallery_ReferenceLabel")</span>
+                                    <input class="utf-command-input"
+                                           type="text"
+                                           readonly
+                                           value="@_selectedAsset.ImagePath"/>
+                                </label>
+                                <UtfCommandButton Class="gallery-copy-reference"
+                                                  OnClick="CopyReferenceAsync">
+                                    @T("Pages_Command_Gallery_CopyReference")
+                                </UtfCommandButton>
+                            </div>
+                        </div>
+                        <div class="gallery-detail__scroll">
+                            <dl class="gallery-detail__meta">
+                                <dt>@T("Pages_Command_Gallery_ContentTypeLabel")</dt>
+                                <dd>@_selectedAsset.ContentType</dd>
+                                <dt>@T("Pages_Command_Gallery_SizeLabel")</dt>
+                                <dd>@FormatByteCount(_selectedAsset.Size)</dd>
+                                <dt>@T("Pages_Command_Gallery_CreatedLabel")</dt>
+                                <dd>@FormatDateTime(_selectedAsset.TimeStampCreated)</dd>
+                                <dt>@T("Pages_Command_Gallery_UploadedByLabel")</dt>
+                                <dd>@(_selectedAsset.CreatedByName ?? T("Pages_Command_Gallery_UnknownUser"))</dd>
+                            </dl>
+                            <section class="gallery-detail__section">
+                                <h3>@T("Pages_Command_Gallery_TagsTitle")</h3>
+                                <label>
+                                    <span>@T("Pages_Command_Gallery_TagEditorLabel")</span>
+                                    <input class="utf-command-input"
+                                           type="text"
+                                           @bind="_tagEditorValue"
+                                           @bind:event="oninput"/>
+                                </label>
+                                <UtfCommandButton Disabled="@_isSavingTags"
+                                                  OnClick="SaveTagsAsync">
+                                    @(_isSavingTags ? T("Pages_Command_Gallery_SavingTags") : T("Pages_Command_Gallery_SaveTags"))
+                                </UtfCommandButton>
+                                <div class="gallery-tags">
+                                    @foreach (var tag in _selectedAsset.Tags)
+                                    {
+                                        <span>@tag</span>
+                                    }
+                                </div>
+                            </section>
+                            <section class="gallery-detail__section">
+                                <h3>@T("Pages_Command_Gallery_UsageTitle")</h3>
+                                @if (_selectedAsset.Usages.Length == 0)
+                                {
+                                    <p>@T("Pages_Command_Gallery_NoUsage")</p>
+                                }
+                                else
+                                {
+                                    <ul class="gallery-usage-list">
+                                        @foreach (var usage in _selectedAsset.Usages)
+                                        {
+                                            <li>
+                                                <strong>@usage.DisplayName</strong>
+                                                <span>@GetUsageDomainLabel(usage.Domain)</span>
+                                                <NavLink href="@BaseUrl.ResolveSelfUrl(usage.Path)">
+                                                    @T("Pages_Command_Gallery_OpenUsage")
+                                                </NavLink>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </section>
+                        </div>
+                    }
+                </aside>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private const long MaximumImageFileSize = 10 * Constants.File.Megabyte;
+    private const string AcceptedImageMimeTypes = "image/avif,image/bmp,image/gif,image/jpeg,image/png,image/webp";
+    private const string TerrainDomain = "terrain";
+    private const string EventDomain = "event";
+    private const string FieldReportDomain = "field-report";
+    private const string PublicPageDomain = "public-page";
+    private const string SiteImageDomain = "site-image";
+    private const string UnusedDomain = "unused";
+
+    private MediaAssetInfo[] _assets = [];
+    private MediaAssetInfo? _selectedAsset;
+    private string _search = string.Empty;
+    private string _includeTagsInput = string.Empty;
+    private string _excludeTagsInput = string.Empty;
+    private string _uploadTagsInput = string.Empty;
+    private string _tagEditorValue = string.Empty;
+    private readonly HashSet<string> _enabledSources = new(StringComparer.Ordinal)
+    {
+        TerrainDomain,
+        EventDomain,
+        FieldReportDomain,
+        PublicPageDomain,
+        SiteImageDomain,
+        UnusedDomain,
+    };
+    private bool _isLoading;
+    private bool _isUploading;
+    private bool _isSavingTags;
+    private string? _loadError;
+
+    private bool CanManageGallery
+        => Me.HasClaim(Claims.Administrative.All)
+           || Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All)
+           || Me.HasBaseClaim(Claims.Content.Pages);
+
+    private MediaAssetInfo[] VisibleAssets
+        => _assets.Where(MatchesSourceToggles).ToArray();
+
+    private SourceOption[] SourceOptions
+        =>
+        [
+            new(TerrainDomain, GetUsageDomainLabel(TerrainDomain)),
+            new(EventDomain, GetUsageDomainLabel(EventDomain)),
+            new(FieldReportDomain, T("Pages_Command_Gallery_FilterFieldReports")),
+            new(PublicPageDomain, T("Pages_Command_Gallery_FilterPublicPages")),
+            new(SiteImageDomain, GetUsageDomainLabel(SiteImageDomain)),
+            new(UnusedDomain, T("Pages_Command_Gallery_FilterUnused")),
+        ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageGallery)
+            await LoadAsync().ConfigureAwait(false);
+    }
+
+    private Task RefreshAsync()
+        => LoadAsync();
+
+    private async Task OnSearchChanged(string value)
+    {
+        _search = value;
+        await LoadAsync().ConfigureAwait(false);
+    }
+
+    private Task ApplyTagFiltersAsync()
+        => LoadAsync();
+
+    private void ToggleSource(string domain)
+    {
+        if (!_enabledSources.Add(domain))
+            _enabledSources.Remove(domain);
+        EnsureSelectionVisible();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!CanManageGallery)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        var selectedAssetId = _selectedAsset?.PrimaryKey;
+        try
+        {
+            _assets = (await MediaAssetRepository
+                    .GetAssetsAsync(CreateFilter())
+                    .ConfigureAwait(false))
+                .ToArray();
+            var visibleAssets = VisibleAssets;
+            _selectedAsset = selectedAssetId is { } assetId
+                ? visibleAssets.FirstOrDefault(q => q.PrimaryKey == assetId) ?? visibleAssets.FirstOrDefault()
+                : visibleAssets.FirstOrDefault();
+            _tagEditorValue = _selectedAsset is null ? string.Empty : string.Join(", ", _selectedAsset.Tags);
+        }
+        catch (Exception ex)
+        {
+            _assets = [];
+            _selectedAsset = null;
+            _tagEditorValue = string.Empty;
+            _loadError = string.Format(
+                CultureInfo.CurrentCulture,
+                T("Pages_Command_Gallery_LoadError"),
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private MediaAssetFilterInfo CreateFilter()
+    {
+        return new MediaAssetFilterInfo
+        {
+            Search      = _search,
+            IncludeTags = SplitFilterValues(_includeTagsInput),
+            ExcludeTags = SplitFilterValues(_excludeTagsInput),
+            Take        = 200,
+        };
+    }
+
+    private async Task OnUploadCompletedAsync(IEnumerable<FluentInputFileEventArgs> files)
+    {
+        if (_isUploading)
+            return;
+
+        if (files.SingleOrDefault() is not { } file || file.IsCancelled)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(file.ErrorMessage))
+        {
+            ToastService.ShowError(T("Pages_Command_Gallery_UploadReadFailed"));
+            return;
+        }
+
+        if (file.Size > MaximumImageFileSize)
+        {
+            ToastService.ShowError(T("Pages_Command_Gallery_UploadTooLarge"));
+            return;
+        }
+
+        if (ImageSource.NormalizeMimeType(file.ContentType) is not { } contentType)
+        {
+            ToastService.ShowError(T("Pages_Command_Gallery_UploadUnsupportedType"));
+            return;
+        }
+
+        if (file.Stream is null)
+        {
+            ToastService.ShowError(T("Pages_Command_Gallery_UploadReadFailed"));
+            return;
+        }
+
+        _isUploading = true;
+        try
+        {
+            await using var stream = file.Stream;
+            var asset = await MediaAssetRepository
+                .UploadAssetAsync(stream, file.Name, contentType, SplitFilterValues(_uploadTagsInput))
+                .ConfigureAwait(false);
+            UpsertAsset(asset);
+            SelectAsset(asset);
+            _uploadTagsInput = string.Empty;
+            ToastService.ShowSuccess(T("Pages_Command_Gallery_UploadSuccess"));
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, T("Pages_Command_Gallery_UploadFailed"), UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private void SelectAsset(MediaAssetInfo asset)
+    {
+        _selectedAsset = asset;
+        _tagEditorValue = string.Join(", ", asset.Tags);
+    }
+
+    private async Task SaveTagsAsync()
+    {
+        if (_selectedAsset is null || _isSavingTags)
+            return;
+
+        _isSavingTags = true;
+        try
+        {
+            var asset = await MediaAssetRepository
+                .ReplaceTagsAsync(_selectedAsset.PrimaryKey, SplitFilterValues(_tagEditorValue))
+                .ConfigureAwait(false);
+            UpsertAsset(asset);
+            SelectAsset(asset);
+            ToastService.ShowSuccess(T("Pages_Command_Gallery_TagsSaved"));
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, T("Pages_Command_Gallery_TagsSaveFailed"), UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSavingTags = false;
+        }
+    }
+
+    private async Task CopyReferenceAsync()
+    {
+        if (_selectedAsset is null)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _selectedAsset.ImagePath).ConfigureAwait(false);
+            ToastService.ShowSuccess(T("Pages_Command_Gallery_CopiedReference"));
+        }
+        catch
+        {
+            ToastService.ShowError(T("Pages_Command_Gallery_CopyReferenceFailed"));
+        }
+    }
+
+    private void UpsertAsset(MediaAssetInfo asset)
+    {
+        _assets = _assets
+            .Where(q => q.PrimaryKey != asset.PrimaryKey)
+            .Append(asset)
+            .OrderByDescending(q => q.TimeStampCreated)
+            .ThenBy(q => q.OriginalFileName)
+            .ToArray();
+    }
+
+    private void EnsureSelectionVisible()
+    {
+        if (_selectedAsset is not null && MatchesSourceToggles(_selectedAsset))
+            return;
+
+        _selectedAsset = VisibleAssets.FirstOrDefault();
+        _tagEditorValue = _selectedAsset is null ? string.Empty : string.Join(", ", _selectedAsset.Tags);
+    }
+
+    private bool MatchesSourceToggles(MediaAssetInfo asset)
+        => asset.Usages.Length == 0
+            ? _enabledSources.Contains(UnusedDomain)
+            : asset.Usages.Any(usage => _enabledSources.Contains(usage.Domain));
+
+    private string GetAssetCardClass(MediaAssetInfo asset)
+        => _selectedAsset?.PrimaryKey == asset.PrimaryKey
+            ? "gallery-card gallery-card--selected"
+            : "gallery-card";
+
+    private string GetSourceToggleClass(string domain)
+        => _enabledSources.Contains(domain)
+            ? "gallery-source-toggle gallery-source-toggle--active"
+            : "gallery-source-toggle";
+
+    private string GetSourceTogglePressed(string domain)
+        => _enabledSources.Contains(domain)
+            ? "true"
+            : "false";
+
+    private string GetAssetMetaLabel(MediaAssetInfo asset)
+        => $"{asset.ContentType} - {FormatByteCount(asset.Size)}";
+
+    private string GetUsageStatusClass(MediaAssetInfo asset)
+        => asset.Usages.Length > 0
+            ? "utf-status utf-status--success"
+            : "utf-status utf-status--neutral";
+
+    private string GetUsageStatusLabel(MediaAssetInfo asset)
+        => asset.Usages.Length > 0
+            ? string.Format(CultureInfo.CurrentCulture, T("Pages_Command_Gallery_UsedCount"), asset.Usages.Length)
+            : T("Pages_Command_Gallery_Unused");
+
+    private string GetUsageDomainLabel(string domain)
+        => domain switch
+        {
+            TerrainDomain     => "Terrains",
+            EventDomain       => "Events",
+            FieldReportDomain => T("Pages_Command_Gallery_DomainFieldReport"),
+            PublicPageDomain  => T("Pages_Command_Gallery_DomainPublicPage"),
+            SiteImageDomain   => "Site images",
+            _                 => domain,
+        };
+
+    private string GetImageAlt(MediaAssetInfo asset)
+        => string.Format(CultureInfo.CurrentCulture, T("Pages_Command_Gallery_ImageAlt"), asset.OriginalFileName);
+
+    private string GetVisibleAssetCountLabel()
+        => string.Format(CultureInfo.CurrentCulture, T("Pages_Command_Gallery_AssetCount"), VisibleAssets.Length);
+
+    private string FormatDateTime(DateTimeOffset value)
+        => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+
+    private static string FormatByteCount(long byteCount)
+    {
+        if (byteCount < 1024)
+            return $"{byteCount.ToString("N0", CultureInfo.CurrentCulture)} B";
+
+        var kilobytes = byteCount / 1024d;
+        if (kilobytes < 1024)
+            return $"{kilobytes.ToString("N1", CultureInfo.CurrentCulture)} KB";
+
+        var megabytes = kilobytes / 1024d;
+        return $"{megabytes.ToString("N1", CultureInfo.CurrentCulture)} MB";
+    }
+
+    private static string[] SplitFilterValues(string value)
+        => value.Split([',', ';'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Where(q => !string.IsNullOrWhiteSpace(q))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private string T(string key)
+        => Localizer[key].Value;
+
+    private sealed record SourceOption(string Domain, string Label);
+}

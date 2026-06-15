@@ -1,0 +1,986 @@
+@page "/data/mod-packs/{ModPackId:long}"
+@page "/command/mod-packs/{ModPackId:long}"
+@page "/command/mod-packs/{ModPackId:long}/{Section}"
+@layout CommandCenterLayout
+@using System.Globalization
+@using Microsoft.FluentUI.AspNetCore.Components
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IModPackRepository ModPackRepository
+@inject NavigationManager NavigationManager
+@inject ModPackAutoCompleteService ModPackAutoCompleteService
+@inject BaseUrl BaseUrl
+@inject MeService Me
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@PageTitle</PageTitle>
+
+<div class="mod-pack-workspace-page">
+    <UtfCommandPageHeader Class="mod-pack-workspace-header"
+                          Title="@ModPackTitle"
+                          Description="@(Localizer[nameof(Language.Auto_OperatorWorkspaceForModPackReadinessArtifactsRevisionsDownloads_b3bb3d3e)])">
+        <ChildContent>
+            @if (_workspace is not null)
+            {
+                <div class="mod-pack-workspace-header-meta">
+                    <span>@FormatValue(_workspace.Definition.PrimaryKey)</span>
+                    <span>@ModPackKind</span>
+                    <span>@StatusText</span>
+                </div>
+            }
+        </ChildContent>
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/mod-packs")">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/></Icon>
+                <ChildContent>@Localizer[nameof(Language.Auto_AllModPacks_82ff50f7)]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="ReloadAsync">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/></Icon>
+                <ChildContent>@Localizer[nameof(Language.Common_Refresh)]</ChildContent>
+            </UtfCommandButton>
+            @if (_workspace is not null)
+            {
+                <UtfCommandButton Disabled="@(!CanDownload)"
+                                  OnClick="DownloadLatestRevision">
+                    <Icon><FluentIcon Value="@(new Icons.Regular.Size24.ArrowDownload())"/></Icon>
+                    <ChildContent>@Localizer[nameof(Language.Auto_DownloadLatest_fd1c57ad)]</ChildContent>
+                </UtfCommandButton>
+                @if (_workspace.CanModify)
+                {
+                    <UtfCommandButton Href="@WorkspaceHref("edit")">
+                        <Icon><FluentIcon Value="@(new Icons.Regular.Size20.Edit())"/></Icon>
+                        <ChildContent>@Localizer[nameof(Language.Edit)]</ChildContent>
+                    </UtfCommandButton>
+                }
+            }
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanAccessModPack)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Auto_ModPackAdministratorAccessRequired_95eb8250)]</h2>
+            <p>@Localizer[nameof(Language.Auto_ModPackDetailsAreVisibleOnlyToAuthorizedAsset_0513063c)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_errorMessage is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_errorMessage
+            </div>
+        }
+        @if (_successMessage is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--success" role="status">
+                @_successMessage
+            </div>
+        }
+
+        <section class="utf-panel mod-pack-workspace-frame">
+            @if (_workspace is not null)
+            {
+                <div class="mod-pack-selected-summary">
+                    <div>
+                        <span class="@ModPackKindClass">
+                            <span class="utf-status__dot"></span>@ModPackKind
+                        </span>
+                        <strong>@ModPackTitle</strong>
+                        <span>@FormatOwner(_workspace.Owner)</span>
+                    </div>
+                    <dl>
+                        <div>
+                            <dt>@Localizer[nameof(Language.Definition)]</dt>
+                            <dd>@FormatValue(_workspace.Definition.PrimaryKey)</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer[nameof(Language.Latest)]</dt>
+                            <dd>@FormatRevision(_workspace.LatestRevision)</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer[nameof(Language.Downloads)]</dt>
+                            <dd>@DownloadMetricValue</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <nav class="mod-pack-detail-tabs" aria-label="@(Localizer[nameof(Language.Auto_ModPackWorkspaceNavigation_755c1101)])">
+                    <NavLink class="mod-pack-detail-tab" href="@WorkspaceHref(null)" Match="NavLinkMatch.All">
+                        @Localizer[nameof(Language.Overview)]
+                    </NavLink>
+                    <NavLink class="mod-pack-detail-tab" href="@WorkspaceHref("artifact")">
+                        @Localizer[nameof(Language.Artifact)]
+                    </NavLink>
+                    <NavLink class="mod-pack-detail-tab" href="@WorkspaceHref("edit")">
+                        @Localizer[nameof(Language.Edit)]
+                    </NavLink>
+                    <NavLink class="mod-pack-detail-tab" href="@WorkspaceHref("revisions")">
+                        @Localizer[nameof(Language.Revisions)]
+                    </NavLink>
+                    <NavLink class="mod-pack-detail-tab" href="@WorkspaceHref("downloads")">
+                        @Localizer[nameof(Language.Downloads)]
+                    </NavLink>
+                    <NavLink class="mod-pack-detail-tab mod-pack-detail-tab--danger" href="@WorkspaceHref("danger")">
+                        @Localizer[nameof(Language.Danger)]
+                    </NavLink>
+                </nav>
+            }
+
+            @if (_isLoading)
+            {
+                <div class="utf-state-panel">
+                    @Localizer[nameof(Language.Auto_LoadingModPackWorkspace_b80419c1)]
+                    <FluentProgress Width="240px"/>
+                </div>
+            }
+            else if (_workspace is null)
+            {
+                <section class="utf-empty-state">
+                    <h2>@Localizer[nameof(Language.Auto_ModPackNotFound_7d5fe348)]</h2>
+                    <p>@Localizer[nameof(Language.Auto_NoModPackWasFoundForID_231b899a), ModPackId]</p>
+                </section>
+            }
+            else
+            {
+                @switch (ActiveSection)
+                {
+                    case "artifact":
+                        @ArtifactSection()
+                        break;
+                    case "edit":
+                        @EditSection()
+                        break;
+                    case "revisions":
+                        @RevisionsSection()
+                        break;
+                    case "downloads":
+                        @DownloadsSection()
+                        break;
+                    case "danger":
+                        @DangerSection()
+                        break;
+                    default:
+                        @OverviewSection()
+                        break;
+                }
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private const string MissingValue = "n/a";
+
+    private ModPackWorkspaceInfo? _workspace;
+    private IEnumerable<FullModPackDefinitionDto> _selectedCompositionDefinitions = [];
+    private string _editTitle = string.Empty;
+    private string _replacementHtml = string.Empty;
+    private string _replacementHtmlFileName = string.Empty;
+    private string _dangerConfirmation = string.Empty;
+    private bool _isLoading;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    [Parameter]
+    public long ModPackId { get; set; }
+
+    [Parameter]
+    public string? Section { get; set; }
+
+    private string PageTitle
+        => _workspace?.Definition.Title
+           ?? Localizer[nameof(Language.Panels_CreateModPackPanel_FallbackModPackTitle), ModPackId].Value;
+
+    private string ModPackTitle => string.IsNullOrWhiteSpace(_workspace?.Definition.Title)
+        ? Localizer[nameof(Language.Panels_CreateModPackPanel_FallbackModPackTitle), ModPackId].Value
+        : _workspace.Definition.Title;
+
+    private bool IsComposition => _workspace?.Definition.IsComposition ?? false;
+
+    private string ActiveSection => NormalizeSection(Section);
+
+    private bool CanAccessModPack
+        => Me.IsAuthenticated && (CanManageModPacks || CanModifyRouteModPack || CanDeleteRouteModPack);
+
+    private bool CanManageModPacks
+        => Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All);
+
+    private bool CanModifyRouteModPack
+        => HasRouteModPackPermission(Claims.ResourceBased.ModPack.Modify);
+
+    private bool CanDeleteRouteModPack
+        => HasRouteModPackPermission(Claims.ResourceBased.ModPack.Delete);
+
+    private bool CanDownload => _workspace?.Definition.PrimaryKey is not null;
+
+    private bool HasHtmlPreview => !string.IsNullOrWhiteSpace(_workspace?.Definition.RevisionHtml);
+
+    private string ModPackKind => IsComposition
+        ? Localizer[nameof(Language.Composition)].Value
+        : Localizer[nameof(Language.Standalone)].Value;
+
+    private string ModPackKindClass => IsComposition
+        ? "utf-status utf-status--info"
+        : "utf-status utf-status--neutral";
+
+    private string StatusText => _workspace?.Definition.IsActive ?? false
+        ? Localizer[nameof(Language.Active)].Value
+        : Localizer[nameof(Language.Inactive)].Value;
+
+    private string StatusClass => _workspace?.Definition.IsActive ?? false
+        ? "utf-status utf-status--success"
+        : "utf-status utf-status--neutral";
+
+    private string RevisionStatusText => IsComposition
+        ? _workspace?.CompositionMembers.Length > 0 ? Localizer[nameof(Language.Linked)].Value : Localizer[nameof(Language.Empty)].Value
+        : _workspace?.LatestRevision?.IsActive ?? false
+            ? Localizer[nameof(Language.Active)].Value
+            : Localizer[nameof(Language.Inactive)].Value;
+
+    private string RevisionStatusClass => IsComposition
+        ? _workspace?.CompositionMembers.Length > 0 ? "utf-status utf-status--success" : "utf-status utf-status--warning"
+        : _workspace?.LatestRevision?.IsActive ?? false
+            ? "utf-status utf-status--success"
+            : "utf-status utf-status--warning";
+
+    private string DownloadMetricValue
+        => _workspace is null
+            ? MissingValue
+            : _workspace.DownloadUserCount == 1
+                ? Localizer[nameof(Language.Auto_1User_8c2429ad)].Value
+                : Localizer[nameof(Language.Auto_Users_f5731263), _workspace.DownloadUserCount].Value;
+
+    private string LatestDownloadLabel
+        => _workspace?.LastDownloaded is null
+            ? Localizer[nameof(Language.Auto_NoRecordedDownloads_fb2fac90)].Value
+            : Localizer[nameof(Language.Auto_LastDownloaded_e6788b06), FormatDate(_workspace.LastDownloaded)].Value;
+
+    private string ReplacementHtmlFileLabel
+        => string.IsNullOrWhiteSpace(_replacementHtmlFileName)
+            ? Localizer[nameof(Language.Auto_CurrentHTMLWillBeKept_d8ccb23b)].Value
+            : _replacementHtmlFileName;
+
+    private string SelectedCompositionDefinitionsLabel
+    {
+        get
+        {
+            var count = _selectedCompositionDefinitions.Count();
+            return count == 1
+                ? Localizer[nameof(Language.Auto_1StandalonePackSelected_d8f0dc9c)].Value
+                : Localizer[nameof(Language.Auto_StandalonePacksSelected_e437ccf0), count].Value;
+        }
+    }
+
+    private bool CanSaveChanges
+        => !_isSaving
+           && _workspace?.CanModify is true
+           && !string.IsNullOrWhiteSpace(_editTitle)
+           && (IsComposition
+               ? _selectedCompositionDefinitions.Any()
+                 && _selectedCompositionDefinitions.All(q => GetLatestActiveRevision(q)?.PrimaryKey is not null)
+                 && (HasTitleChange || HasCompositionMemberChange)
+               : HasTitleChange || !string.IsNullOrWhiteSpace(_replacementHtml));
+
+    private bool HasTitleChange
+        => _workspace is not null
+           && !string.Equals(_editTitle.Trim(), _workspace.Definition.Title ?? string.Empty, StringComparison.Ordinal);
+
+    private bool HasCompositionMemberChange
+        => _workspace is not null
+           && !GetLatestRevisionIds()
+               .OrderBy(q => q)
+               .SequenceEqual(_workspace.CompositionMembers
+                   .Select(q => q.Revision.PrimaryKey)
+                   .Where(q => q.HasValue)
+                   .Select(q => q.GetValueOrDefault())
+                   .OrderBy(q => q));
+
+    private bool CanDeactivate
+        => !_isSaving
+           && _workspace?.CanDelete is true
+           && string.Equals(_dangerConfirmation, ModPackTitle, StringComparison.Ordinal);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync(clearMessages: true).ConfigureAwait(false);
+    }
+
+    private async Task ReloadAsync()
+        => await LoadAsync(clearMessages: false).ConfigureAwait(false);
+
+    private async Task LoadAsync(bool clearMessages)
+    {
+        _isLoading = true;
+        if (clearMessages)
+        {
+            _errorMessage = null;
+            _successMessage = null;
+        }
+
+        if (!CanAccessModPack)
+        {
+            _workspace = null;
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            _workspace = await ModPackRepository.GetModPackWorkspaceAsync(ModPackId)
+                .ConfigureAwait(false);
+            await ResetEditStateAsync().ConfigureAwait(false);
+            _dangerConfirmation = string.Empty;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _workspace = null;
+            _errorMessage = Localizer[nameof(Language.Auto_FailedToLoadModPack_8b2eb217), ModPackId, UserFacingError.Message(ex)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private RenderFragment OverviewSection()
+        => @<div class="mod-pack-section mod-pack-overview-section">
+               <section class="utf-command-metrics mod-pack-workspace-attention" aria-label="@(Localizer[nameof(Language.Auto_ModPackWorkspaceSummary_452859d2)])">
+                   <UtfCommandMetric Description="@FormatValue(_workspace?.Definition.PrimaryKey)"
+                                     Status="@Localizer[nameof(Language.Auto_PackageType_da0bbf9f)]"
+                                     StatusClass="@ModPackKindClass"
+                                     Value="@ModPackKind"/>
+                   <UtfCommandMetric Description="@FormatDate(_workspace?.Definition.TimeStampCreated)"
+                                     Status="@Localizer[nameof(Language.Auto_DefinitionStatus_0341b402)]"
+                                     StatusClass="@StatusClass"
+                                     Value="@StatusText"/>
+                   <UtfCommandMetric Description="@FormatRevision(_workspace?.LatestRevision)"
+                                     Status="@Localizer[nameof(Language.Auto_LatestRevision_305ad7b9)]"
+                                     StatusClass="@RevisionStatusClass"
+                                     Value="@RevisionStatusText"/>
+                   <UtfCommandMetric Description="@LatestDownloadLabel"
+                                     Status="@Localizer[nameof(Language.Downloads)]"
+                                     StatusIntent="@(_workspace?.DownloadUserCount > 0 ? "success" : "warning")"
+                                     Value="@DownloadMetricValue"/>
+               </section>
+
+               <div class="mod-pack-overview-grid">
+                   <section class="mod-pack-workspace-panel mod-pack-artifact-overview" aria-labelledby="mod-pack-artifact-overview-title">
+                       <div class="mod-pack-panel-header">
+                           <div>
+                               <span class="utf-kicker">@Localizer[nameof(Language.Artifact)]</span>
+                               <h2 id="mod-pack-artifact-overview-title">@(IsComposition ? Localizer[nameof(Language.Auto_CompositionMembers_4ddf9ad2)] : Localizer[nameof(Language.Auto_LatestHTMLPreview_c8066774)])</h2>
+                           </div>
+                           <UtfCommandButton Disabled="@(!CanDownload)"
+                                             OnClick="DownloadLatestRevision">
+                               <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowDownload())"/></Icon>
+                               <ChildContent>@Localizer[nameof(Language.Auto_DownloadLatest_fd1c57ad)]</ChildContent>
+                           </UtfCommandButton>
+                       </div>
+                       @ArtifactPreview(compact: true)
+                   </section>
+
+                   <aside class="mod-pack-workspace-panel mod-pack-operations-panel" aria-label="@(Localizer[nameof(Language.Auto_ModPackMetadataAndReadiness_ccb47fec)])">
+                       <div class="mod-pack-panel-header">
+                           <div>
+                               <span class="utf-kicker">@Localizer[nameof(Language.Auto_DefinitionLedger_6a38869e)]</span>
+                               <h2>@Localizer[nameof(Language.Auto_OperationalState_b11247c7)]</h2>
+                           </div>
+                           <span class="@StatusClass"><span class="utf-status__dot"></span>@StatusText</span>
+                       </div>
+                       @MetadataList()
+                        <div class="mod-pack-readiness-list">
+                            <div>
+                                <span class="utf-status__dot"></span>
+                                <strong>@Localizer[nameof(Language.Auto_EventUsage_57fe465e)]</strong>
+                                <span>@FormatCount(_workspace?.EventUsageCount, Localizer[nameof(Language.Auto_Event_b8e1f80b)].Value, Localizer[nameof(Language.events)].Value)</span>
+                            </div>
+                        </div>
+                   </aside>
+               </div>
+
+               <section class="mod-pack-ledger-preview-grid">
+                   @RevisionPreviewPanel()
+                   @DownloadPreviewPanel()
+               </section>
+           </div>;
+
+    private RenderFragment ArtifactSection()
+        => @<div class="mod-pack-section">
+               <section class="mod-pack-workspace-panel mod-pack-artifact-panel" aria-labelledby="mod-pack-artifact-title">
+                   <div class="mod-pack-panel-header">
+                       <div>
+                           <span class="utf-kicker">@Localizer[nameof(Language.Auto_RevisionArtifact_6abc0385)]</span>
+                           <h2 id="mod-pack-artifact-title">@(IsComposition ? Localizer[nameof(Language.Auto_CompositionMembers_4ddf9ad2)] : Localizer[nameof(Language.Auto_LatestHTMLPreview_c8066774)])</h2>
+                       </div>
+                       <UtfCommandButton Disabled="@(!CanDownload)"
+                                         OnClick="DownloadLatestRevision">
+                           <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowDownload())"/></Icon>
+                           <ChildContent>@Localizer[nameof(Language.Auto_DownloadLatest_fd1c57ad)]</ChildContent>
+                       </UtfCommandButton>
+                   </div>
+                   @ArtifactPreview(compact: false)
+               </section>
+           </div>;
+
+    private RenderFragment EditSection()
+        => @<div class="mod-pack-section">
+               @if (_workspace?.CanModify is not true)
+               {
+                   <section class="utf-empty-state">
+                       <h2>@Localizer[nameof(Language.Auto_ModifyAccessRequired_d7bf23e9)]</h2>
+                       <p>@Localizer[nameof(Language.Auto_YouNeedModPackModifyAccessBeforeThisPackage_6c91d52c)]</p>
+                   </section>
+               }
+               else
+               {
+                   <section class="mod-pack-workspace-panel" aria-labelledby="mod-pack-edit-title">
+                       <div class="mod-pack-panel-header">
+                           <div>
+                               <span class="utf-kicker">@Localizer[nameof(Language.Edit)]</span>
+                               <h2 id="mod-pack-edit-title">@Localizer[nameof(Language.Auto_PackageDefinition_3f802f56)]</h2>
+                           </div>
+                           <span>@(CanSaveChanges ? Localizer[nameof(Language.Auto_ReadyToSave_255249e7)] : Localizer[nameof(Language.Auto_NoValidChanges_3df50783)])</span>
+                       </div>
+                       <div class="mod-pack-edit-form">
+                           <label class="mod-pack-edit-field">
+                               <span>@Localizer[nameof(Language.Title)]</span>
+                               <input class="utf-command-input" maxlength="1024" @bind="_editTitle"/>
+                           </label>
+
+                           @if (IsComposition)
+                           {
+                               <div class="mod-pack-edit-composition">
+                                   <FluentAutocomplete Multiple="true"
+                                                       MaximumSelectedOptions="100"
+                                                       Required="true"
+                                                       TOption="FullModPackDefinitionDto"
+                                                       @bind-SelectedOptions="_selectedCompositionDefinitions"
+                                                       OnOptionsSearch="OnStandaloneOptionsSearch"
+                                                       OptionText="ModPackAutoCompleteService.FullModPackDefinitionDto.OptionText"
+                                                       Label="@(Localizer[nameof(Language.Auto_StandaloneModPacks_34afa7f0)])"
+                                                       Placeholder="@(Localizer[nameof(Language.Auto_SearchStandaloneModPacks_888f2c1f)])"/>
+                                   <span>@SelectedCompositionDefinitionsLabel</span>
+                               </div>
+                           }
+                           else
+                           {
+                               <div class="mod-pack-edit-file">
+                                   <span>@Localizer[nameof(Language.Auto_ReplacementHTML_9659da76)]</span>
+                                   <FluentInputFile Id="modpack-detail-html-file-uploader"
+                                                    Mode="InputFileMode.Stream"
+                                                    Multiple="false"
+                                                    MaximumFileCount="1"
+                                                    MaximumFileSize="@(10 * Constants.File.Megabyte)"
+                                                    Accept=".html,.htm,text/html"
+                                                    OnCompleted="@OnReplacementHtmlCompletedAsync">
+                                       <ChildContent>
+                                           <label for="modpack-detail-html-file-uploader">
+                                               <FluentIcon Value="@(new Icons.Regular.Size32.ArrowUpload())"/>
+                                           </label>
+                                           <div>@Localizer[nameof(Language.Auto_DropReplacementHTMLHereOrBrowse_6d051b04)]</div>
+                                           <div>@Localizer[nameof(Language.Auto_LeaveEmptyToKeepTheCurrentRevision_cb4dc7b1)]</div>
+                                       </ChildContent>
+                                   </FluentInputFile>
+                                   <span>@ReplacementHtmlFileLabel</span>
+                               </div>
+                           }
+
+                           <div class="mod-pack-edit-actions">
+                               <button class="utf-button utf-button--primary"
+                                       type="button"
+                                       disabled="@(!CanSaveChanges)"
+                                       @onclick="SaveChangesAsync">
+                                   @(_isSaving ? Localizer[nameof(Language.Auto_SavingChanges_2c149159)] : Localizer[nameof(Language.Auto_SaveChanges_dd0ae7a5)])
+                               </button>
+                               <button class="utf-button utf-button--ghost"
+                                       type="button"
+                                       disabled="@_isSaving"
+                                       @onclick="ResetEditStateAsync">
+                                   @Localizer[nameof(Language.Reset)]
+                               </button>
+                           </div>
+                       </div>
+                   </section>
+               }
+           </div>;
+
+    private RenderFragment RevisionsSection()
+        => @<div class="mod-pack-section">
+               @RevisionPreviewPanel(expanded: true)
+           </div>;
+
+    private RenderFragment DownloadsSection()
+        => @<div class="mod-pack-section">
+               @DownloadPreviewPanel(expanded: true)
+           </div>;
+
+    private RenderFragment DangerSection()
+        => @<div class="mod-pack-section">
+               @if (_workspace?.CanDelete is not true)
+               {
+                   <section class="utf-empty-state">
+                       <h2>@Localizer[nameof(Language.Auto_DeleteAccessRequired_1dcc15d9)]</h2>
+                       <p>@Localizer[nameof(Language.Auto_YouNeedModPackDeleteAccessBeforeThisPackage_d15df0c2)]</p>
+                   </section>
+               }
+               else
+               {
+                   <section class="mod-pack-workspace-panel mod-pack-danger-panel" aria-labelledby="mod-pack-danger-title">
+                       <div class="mod-pack-panel-header">
+                           <div>
+                               <span class="utf-kicker">@Localizer[nameof(Language.Danger)]</span>
+                               <h2 id="mod-pack-danger-title">@Localizer[nameof(Language.Auto_DeactivateModPack_9b34e1b1)]</h2>
+                           </div>
+                           <span class="utf-status utf-status--warning">
+                               <span class="utf-status__dot"></span>@Localizer[nameof(Language.Auto_OperatorConfirmationRequired_77dcdce2)]
+                           </span>
+                       </div>
+                       <div class="mod-pack-danger-body">
+                           <p>@Localizer[nameof(Language.Auto_DeactivationHidesThisModPackFromActiveSelectionLists_bf5e78cd)]</p>
+                           <label class="mod-pack-edit-field">
+                               <span>@Localizer[nameof(Language.Auto_TypeThePackageTitleToConfirm_88b3efaf)]</span>
+                               <input class="utf-command-input" @bind="_dangerConfirmation"/>
+                           </label>
+                           <button class="utf-button utf-button--primary mod-pack-danger-action"
+                                   type="button"
+                                   disabled="@(!CanDeactivate)"
+                                   @onclick="DeactivateModPackAsync">
+                               @(_isSaving ? Localizer[nameof(Language.Deactivating)] : Localizer[nameof(Language.Deactivate)])
+                           </button>
+                       </div>
+                   </section>
+               }
+           </div>;
+
+    private RenderFragment ArtifactPreview(bool compact)
+        => @<div class="@(compact ? "mod-pack-artifact-preview compact" : "mod-pack-artifact-preview")">
+               @if (IsComposition)
+               {
+                   @if (_workspace?.CompositionMembers.Length is null or 0)
+                   {
+                       <div class="mod-pack-empty-panel">
+                           @Localizer[nameof(Language.Auto_NoMemberRevisionsAreLinkedToThisComposition_23dc3057)]
+                       </div>
+                   }
+                   else
+                   {
+                       <div class="utf-command-table-scroll mod-pack-members-scroll">
+                           <table class="utf-command-table mod-pack-members-table">
+                               <thead>
+                               <tr>
+                                   <th>@Localizer[nameof(Language.Auto_MemberDefinition_a65c6a18)]</th>
+                                   <th>@Localizer[nameof(Language.Revision)]</th>
+                                   <th>@Localizer[nameof(Language.Owner)]</th>
+                                   <th>@Localizer[nameof(Language.Created)]</th>
+                                   <th>@Localizer[nameof(Language.Status)]</th>
+                               </tr>
+                               </thead>
+                               <tbody>
+                               @foreach (var member in _workspace!.CompositionMembers)
+                               {
+                                   <tr @key="member.Revision.PrimaryKey">
+                                       <td>
+                                           <strong>@FormatTitle(member.Definition.Title)</strong>
+                                           <span>@FormatValue(member.Definition.PrimaryKey)</span>
+                                       </td>
+                                       <td>@FormatValue(member.Revision.PrimaryKey)</td>
+                                       <td>@FormatOwner(member.Owner)</td>
+                                       <td>@FormatDate(member.Revision.TimeStampCreated)</td>
+                                       <td>
+                                           <span class="@GetRevisionStatusClass(member.Revision)">
+                                               <span class="utf-status__dot"></span>@FormatActiveState(member.Revision.IsActive ?? false)
+                                           </span>
+                                       </td>
+                                   </tr>
+                               }
+                               </tbody>
+                           </table>
+                       </div>
+                   }
+               }
+               else if (HasHtmlPreview)
+               {
+                   <iframe title="@(Localizer["Pages_Data_ModPacks_Detail_LatestRevisionPreviewTitle", ModPackTitle])"
+                           sandbox=""
+                           srcdoc="@_workspace!.Definition.RevisionHtml"></iframe>
+               }
+               else
+               {
+                   <div class="mod-pack-empty-panel">
+                       @Localizer[nameof(Language.Auto_NoHTMLPreviewIsAvailableForTheLatestRevision_c59154d6)]
+                   </div>
+               }
+           </div>;
+
+    private RenderFragment MetadataList()
+        => @<dl class="mod-pack-detail-meta">
+               <dt>@Localizer[nameof(Language.Owner)]</dt>
+               <dd>@FormatOwner(_workspace?.Owner)</dd>
+               <dt>@Localizer[nameof(Language.Auto_OwnerID_1611f5e0)]</dt>
+               <dd>@FormatValue(_workspace?.Definition.OwnerFk)</dd>
+               <dt>@Localizer[nameof(Language.Created)]</dt>
+               <dd>@FormatDate(_workspace?.Definition.TimeStampCreated)</dd>
+               <dt>@(IsComposition ? Localizer[nameof(Language.Auto_MemberRevisions_aab20f7c)] : Localizer[nameof(Language.Auto_LatestRevisionID_98c00280)])</dt>
+               <dd>@(IsComposition ? FormatValue(_workspace?.CompositionMembers.Length) : FormatValue(_workspace?.LatestRevision?.PrimaryKey))</dd>
+               <dt>@Localizer[nameof(Language.Auto_LatestRevisionCreated_72848b28)]</dt>
+               <dd>@FormatDate(_workspace?.LatestRevision?.TimeStampCreated)</dd>
+               <dt>@Localizer[nameof(Language.Auto_RevisionStatus_3db9188c)]</dt>
+               <dd><span class="@RevisionStatusClass"><span class="utf-status__dot"></span>@RevisionStatusText</span></dd>
+           </dl>;
+
+    private RenderFragment RevisionPreviewPanel(bool expanded = false)
+        => @<section class="mod-pack-workspace-panel mod-pack-ledger-panel" aria-labelledby="mod-pack-revisions-title">
+               <div class="mod-pack-panel-header">
+                   <div>
+                       <span class="utf-kicker">@Localizer[nameof(Language.Auto_RevisionHistory_5ae0d3d1)]</span>
+                       <h2 id="mod-pack-revisions-title">@(IsComposition ? Localizer[nameof(Language.Auto_LinkedMemberRevisions_eeae3f10)] : Localizer[nameof(Language.Auto_OwnedRevisions_d8fba5b9)])</h2>
+                   </div>
+                   <span class="utf-status utf-status--neutral">
+                       <span class="utf-status__dot"></span>@FormatValue(_workspace?.RevisionPreview.Length)
+                   </span>
+               </div>
+               @if (_workspace?.CanViewLedgers is not true)
+               {
+                   <div class="mod-pack-empty-panel">
+                       @Localizer[nameof(Language.Auto_ModifyAccessIsRequiredToViewRevisionHistory_db813722)]
+                   </div>
+               }
+               else if (_workspace.RevisionPreview.Length is 0)
+               {
+                   <div class="mod-pack-empty-panel">
+                       @Localizer[nameof(Language.Auto_NoRevisionRecordsWereReturnedForThisModPack_f59f059a)]
+                   </div>
+               }
+               else
+               {
+                   <div class="utf-command-table-scroll mod-pack-revision-scroll">
+                       <table class="utf-command-table mod-pack-revision-table">
+                           <thead>
+                           <tr>
+                               <th>@Localizer[nameof(Language.Revision)]</th>
+                               <th>@Localizer[nameof(Language.Definition)]</th>
+                               <th>@Localizer[nameof(Language.Created)]</th>
+                               <th>@Localizer[nameof(Language.Auto_UpdatedBy_20f0c472)]</th>
+                               <th>@Localizer[nameof(Language.Status)]</th>
+                           </tr>
+                           </thead>
+                           <tbody>
+                           @foreach (var revision in _workspace.RevisionPreview)
+                           {
+                               <tr @key="revision.PrimaryKey">
+                                   <td>@FormatValue(revision.PrimaryKey)</td>
+                                   <td>@FormatValue(revision.DefinitionFk)</td>
+                                   <td>@FormatDate(revision.TimeStampCreated)</td>
+                                   <td>@FormatValue(revision.UpdatedByFk)</td>
+                                   <td>
+                                       <span class="@GetRevisionStatusClass(revision)">
+                                           <span class="utf-status__dot"></span>@FormatActiveState(revision.IsActive ?? false)
+                                       </span>
+                                   </td>
+                               </tr>
+                           }
+                           </tbody>
+                       </table>
+                   </div>
+               }
+           </section>;
+
+    private RenderFragment DownloadPreviewPanel(bool expanded = false)
+        => @<section class="mod-pack-workspace-panel mod-pack-ledger-panel" aria-labelledby="mod-pack-downloads-title">
+               <div class="mod-pack-panel-header">
+                   <div>
+                       <span class="utf-kicker">@Localizer[nameof(Language.Auto_DownloadEvidence_a0f725da)]</span>
+                       <h2 id="mod-pack-downloads-title">@Localizer[nameof(Language.Auto_UsersWhoDownloadedThisModPack_9cc5e954)]</h2>
+                   </div>
+                   <span class="@(_workspace?.DownloadUserCount > 0 ? "utf-status utf-status--success" : "utf-status utf-status--warning")">
+                       <span class="utf-status__dot"></span>@DownloadMetricValue
+                   </span>
+               </div>
+               @if (_workspace?.CanViewLedgers is not true)
+               {
+                   <div class="mod-pack-empty-panel">
+                       @Localizer[nameof(Language.Auto_ModifyAccessIsRequiredToViewDownloadEvidence_f28cfc00)]
+                   </div>
+               }
+               else if (_workspace.DownloadPreview.Length is 0)
+               {
+                   <div class="mod-pack-empty-panel">
+                       @Localizer[nameof(Language.Auto_NoUserDownloadRecordsExistForThisModPack_22dc1e5d)]
+                   </div>
+               }
+               else
+               {
+                   <div class="utf-command-table-scroll mod-pack-download-scroll">
+                       <table class="utf-command-table mod-pack-download-table">
+                           <thead>
+                           <tr>
+                               <th>@Localizer[nameof(Language.User)]</th>
+                               <th>@Localizer[nameof(Language.Auto_DownloadedRevision_0476b013)]</th>
+                               <th>@Localizer[nameof(Language.Auto_RevisionOwner_6996d7e7)]</th>
+                               <th>@Localizer[nameof(Language.Auto_LastDownloaded_d1b0c35f)]</th>
+                           </tr>
+                           </thead>
+                           <tbody>
+                           @foreach (var audit in _workspace.DownloadPreview)
+                           {
+                               <tr @key="GetDownloadAuditKey(audit)">
+                                   <td>
+                                       <strong>@FormatUser(audit.User)</strong>
+                                       <span>@FormatValue(audit.User?.PrimaryKey)</span>
+                                   </td>
+                                   <td>
+                                       <strong>@FormatValue(audit.ModPackRevisionId)</strong>
+                                       <span>@FormatDate(audit.ModPackRevisionTimeStampCreated)</span>
+                                   </td>
+                                   <td>
+                                       <strong>@FormatTitle(audit.ModPackRevisionDefinitionTitle)</strong>
+                                       <span>@FormatValue(audit.ModPackRevisionDefinitionId)</span>
+                                   </td>
+                                   <td>@FormatDate(audit.TimeStampDownloaded)</td>
+                               </tr>
+                           }
+                           </tbody>
+                       </table>
+                   </div>
+               }
+           </section>;
+
+    private async Task SaveChangesAsync()
+    {
+        if (!CanSaveChanges || _workspace is null)
+            return;
+
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var title = HasTitleChange ? _editTitle.Trim() : null;
+            if (IsComposition)
+            {
+                var revisionIds = HasCompositionMemberChange ? GetLatestRevisionIds() : null;
+                await ModPackRepository.ModifyModPackAsync(
+                        ModPackId,
+                        title,
+                        useLatest: revisionIds is not null,
+                        modPackRevisionIds: revisionIds
+                    )
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                await ModPackRepository.ModifyModPackAsync(
+                        ModPackId,
+                        title,
+                        string.IsNullOrWhiteSpace(_replacementHtml) ? null : _replacementHtml
+                    )
+                    .ConfigureAwait(false);
+            }
+
+            _successMessage = Localizer[nameof(Language.Auto_ModPackChangesWereSaved_fcb4be49)].Value;
+            await LoadAsync(clearMessages: false).ConfigureAwait(false);
+        }
+        catch
+        {
+            _errorMessage = Localizer[nameof(Language.Auto_ModPackChangesCouldNotBeSavedCheckThe_11fc0ea1)].Value;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeactivateModPackAsync()
+    {
+        if (!CanDeactivate)
+            return;
+
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            await ModPackRepository.DeleteModPackAsync(ModPackId)
+                .ConfigureAwait(false);
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/mod-packs"));
+        }
+        catch
+        {
+            _errorMessage = Localizer[nameof(Language.Auto_ModPackCouldNotBeDeactivatedRetryFromThe_3003a328)].Value;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task ResetEditStateAsync()
+    {
+        _editTitle = _workspace?.Definition.Title ?? string.Empty;
+        _replacementHtml = string.Empty;
+        _replacementHtmlFileName = string.Empty;
+        _selectedCompositionDefinitions = IsComposition && _workspace is not null
+            ? await ResolveSelectedDefinitionsAsync(_workspace).ConfigureAwait(false)
+            : [];
+    }
+
+    private async Task OnReplacementHtmlCompletedAsync(IEnumerable<FluentInputFileEventArgs> files)
+    {
+        if (files.SingleOrDefault() is not { Stream: not null } file)
+            return;
+
+        using var reader = new StreamReader(file.Stream);
+        _replacementHtml = await reader.ReadToEndAsync();
+        _replacementHtmlFileName = file.Name;
+        _errorMessage = null;
+        _successMessage = null;
+    }
+
+    private async Task OnStandaloneOptionsSearch(OptionsSearchEventArgs<FullModPackDefinitionDto> arg)
+    {
+        await ModPackAutoCompleteService.FullModPackDefinitionDto.OnOptionsSearch(arg);
+        arg.Items = arg.Items?
+            .Where(IsSelectableStandalone)
+            .ToArray() ?? [];
+    }
+
+    private void DownloadLatestRevision()
+    {
+        if (_workspace?.Definition.PrimaryKey is not { } modPackId)
+            return;
+
+        var path = _workspace.Definition.RevisionPrimaryKey is { } revisionId && !IsComposition
+            ? $"mod-packs/{modPackId}/download/{revisionId}"
+            : $"mod-packs/{modPackId}/download/latest";
+        NavigationManager.NavigateTo(BaseUrl.ResolveApiUrl(path), forceLoad: true);
+    }
+
+    private async Task<IReadOnlyList<FullModPackDefinitionDto>> ResolveSelectedDefinitionsAsync(
+        ModPackWorkspaceInfo workspace)
+    {
+        var selectedDefinitions = new List<FullModPackDefinitionDto>();
+        foreach (var member in workspace.CompositionMembers
+                     .GroupBy(q => q.Definition.PrimaryKey)
+                     .Select(q => q.OrderByDescending(member => member.Revision.TimeStampCreated).First()))
+        {
+            if (member.Definition.PrimaryKey is not { } definitionId)
+                continue;
+
+            try
+            {
+                var fullDefinition = await ModPackRepository.GetFullModPackDefinitionAsync(definitionId)
+                    .ConfigureAwait(false);
+                if (IsSelectableStandalone(fullDefinition))
+                    selectedDefinitions.Add(fullDefinition);
+            }
+            catch
+            {
+                selectedDefinitions.Add(
+                    new FullModPackDefinitionDto
+                    {
+                        PrimaryKey = definitionId,
+                        Title = string.IsNullOrWhiteSpace(member.Definition.Title)
+                            ? Localizer[nameof(Language.Panels_CreateModPackPanel_FallbackModPackTitle), definitionId].Value
+                            : member.Definition.Title,
+                        Owner = member.Owner,
+                        IsActive = member.Definition.IsActive,
+                        IsComposition = false,
+                        ModPackRevisions = new List<PlainModPackRevisionDto> { member.Revision },
+                    }
+                );
+            }
+        }
+
+        return selectedDefinitions;
+    }
+
+    private bool HasRouteModPackPermission(string claimIdentifier)
+    {
+        if (!Me.IsAuthenticated)
+            return false;
+
+        var routeValue = ModPackId.ToString(CultureInfo.InvariantCulture);
+        return Me.HasResourceClaimOrModPackAdmin(Claims.ResourceBased.ModPack.All, routeValue)
+               || Me.HasResourceClaimOrModPackAdmin(claimIdentifier, routeValue);
+    }
+
+    private string WorkspaceHref(string? section)
+        => BaseUrl.ResolveSelfUrl(section is null
+            ? $"command/mod-packs/{ModPackId}"
+            : $"command/mod-packs/{ModPackId}/{section}");
+
+    private long[] GetLatestRevisionIds()
+        => _selectedCompositionDefinitions
+            .Select(q => GetLatestActiveRevision(q)?.PrimaryKey)
+            .Where(q => q is not null)
+            .Select(q => q!.Value)
+            .ToArray();
+
+    private static bool IsSelectableStandalone(FullModPackDefinitionDto definitionDto)
+        => !(definitionDto.IsComposition ?? false) && GetLatestActiveRevision(definitionDto)?.PrimaryKey is not null;
+
+    private static PlainModPackRevisionDto? GetLatestActiveRevision(FullModPackDefinitionDto definitionDto)
+        => definitionDto.ModPackRevisions
+            ?.Where(q => q.IsActive ?? true)
+            .OrderByDescending(q => q.TimeStampCreated)
+            .FirstOrDefault();
+
+    private static string NormalizeSection(string? section)
+        => section?.Trim().ToLowerInvariant() switch
+        {
+            "artifact"  => "artifact",
+            "edit"      => "edit",
+            "revisions" => "revisions",
+            "downloads" => "downloads",
+            "danger"    => "danger",
+            _           => "overview",
+        };
+
+    private static string GetRevisionStatusClass(PlainModPackRevisionDto revision)
+        => revision.IsActive ?? false
+            ? "utf-status utf-status--success"
+            : "utf-status utf-status--warning";
+
+    private static string GetDownloadAuditKey(ModPackDownloadAuditInfo audit)
+        => $"{audit.User?.PrimaryKey}:{audit.ModPackDefinitionId}:{audit.ModPackRevisionId}";
+
+    private string FormatActiveState(bool isActive)
+        => isActive ? Localizer[nameof(Language.Active)].Value : Localizer[nameof(Language.Inactive)].Value;
+
+    private static string FormatDate(DateTimeOffset? value)
+        => value?.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture) ?? MissingValue;
+
+    private static string FormatValue<T>(T? value)
+        => value?.ToString() ?? MissingValue;
+
+    private static string FormatOwner(PlainUserDto? owner)
+        => string.IsNullOrWhiteSpace(owner?.Nickname) ? MissingValue : owner.Nickname;
+
+    private static string FormatUser(PlainUserDto? user)
+        => string.IsNullOrWhiteSpace(user?.Nickname) ? MissingValue : user.Nickname;
+
+    private string FormatTitle(string? title)
+        => string.IsNullOrWhiteSpace(title) ? Localizer[nameof(Language.Auto_UntitledModPack_68e62d9a)].Value : title;
+
+    private static string FormatRevision(PlainModPackRevisionDto? revision)
+        => revision is null ? MissingValue : $"#{revision.PrimaryKey}";
+
+    private static string FormatCount(long? count, string singular, string plural)
+    {
+        if (count is null)
+            return MissingValue;
+        return count == 1
+            ? $"1 {singular}"
+            : $"{count.Value.ToString(CultureInfo.CurrentCulture)} {plural}";
+    }
+}

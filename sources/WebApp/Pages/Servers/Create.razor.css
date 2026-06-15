@@ -1,0 +1,139 @@
+.hosting-page {
+    color: var(--utf-text);
+    display: grid;
+    gap: 1rem;
+    padding: clamp(1rem, 2.5vw, 2rem);
+}
+
+.hosting-back-link {
+    color: var(--utf-gold-strong);
+    font-size: 0.84rem;
+    font-weight: 800;
+    justify-self: start;
+    text-decoration: none;
+}
+
+.hosting-create-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+}
+
+.hosting-create-form,
+.hosting-capability-card,
+.hosting-create-boundary {
+    display: grid;
+    gap: 1rem;
+    padding: clamp(1rem, 2vw, 1.4rem);
+}
+
+.hosting-section-heading h2,
+.hosting-capability-card h2 {
+    margin: 0.2rem 0 0;
+}
+
+.hosting-section-heading p,
+.hosting-capability-card p,
+.hosting-create-boundary p {
+    color: var(--utf-text-muted);
+    line-height: 1.5;
+    margin: 0.35rem 0 0;
+}
+
+.hosting-field {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.hosting-field > span {
+    color: var(--utf-text);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.hosting-field input,
+.hosting-field select {
+    background: var(--utf-surface-2);
+    border: 1px solid var(--utf-stroke-strong);
+    border-radius: var(--utf-radius-sm);
+    color: var(--utf-text);
+    font: inherit;
+    min-height: 2.65rem;
+    padding: 0.5rem 0.7rem;
+}
+
+.hosting-field small,
+.hosting-check-field small {
+    color: var(--utf-text-muted);
+    line-height: 1.4;
+}
+
+.hosting-check-field {
+    align-items: flex-start;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-sm);
+    display: flex;
+    gap: 0.7rem;
+    padding: 0.8rem;
+}
+
+.hosting-check-field > span {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.hosting-form-actions {
+    align-items: center;
+    border-top: 1px solid var(--utf-stroke);
+    display: flex;
+    gap: 0.65rem;
+    justify-content: flex-end;
+    padding-top: 1rem;
+}
+
+.hosting-create-aside {
+    align-self: start;
+    display: grid;
+    gap: 1rem;
+}
+
+.hosting-capability-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.hosting-capability-actions span {
+    background: var(--utf-gold-muted);
+    border: 1px solid rgba(212, 173, 84, 0.28);
+    border-radius: 999px;
+    color: var(--utf-gold-strong);
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 0.35rem 0.55rem;
+}
+
+.hosting-create-boundary {
+    background: rgba(212, 173, 84, 0.07);
+    border: 1px solid rgba(212, 173, 84, 0.28);
+    border-radius: var(--utf-radius-md);
+}
+
+.hosting-create-boundary strong {
+    color: var(--utf-gold-strong);
+}
+
+.hosting-create-boundary ol {
+    color: var(--utf-text-muted);
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+@media (max-width: 900px) {
+    .hosting-create-grid {
+        grid-template-columns: 1fr;
+    }
+}

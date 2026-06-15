@@ -1,0 +1,591 @@
+@page "/command/verein/membership-requests"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.Verein
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IVereinRepository VereinRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IToastService ToastService
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_PageTitle)]</PageTitle>
+
+<div class="verein-membership-requests-page">
+    <UtfCommandPageHeader Class="verein-membership-requests-header"
+                          Title="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_PageTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_PageDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Verein_ActionRefresh)]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("verein")">
+                @Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_PublicHub)]
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageVereinMemberships)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_AccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_AccessRequiredDescription)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics verein-membership-requests-metrics"
+                 aria-label="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MetricsAria)])">
+            <UtfCommandMetric Active="@(_view is RequestView.All)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MetricLoadedDescription)])"
+                              OnClick="@(() => SetView(RequestView.All))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MetricLoadedStatus)])"
+                              StatusIntent="neutral"
+                              Value="@FormatCount(_requests.Count, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Request)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Request)].Value)"/>
+            <UtfCommandMetric Active="@(_view is RequestView.Open)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MetricOpenDescription)])"
+                              OnClick="@(() => SetView(RequestView.Open))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MetricOpenStatus)])"
+                              StatusIntent="warning"
+                              Value="@FormatCount(OpenRequestCount, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Request)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Request)].Value)"/>
+            <UtfCommandMetric Active="@(_view is RequestView.Approved)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MetricApprovedDescription)])"
+                              OnClick="@(() => SetView(RequestView.Approved))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MetricApprovedStatus)])"
+                              StatusIntent="success"
+                              Value="@FormatCount(ApprovedRequestCount, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Request)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Request)].Value)"/>
+        </section>
+
+        <UtfCommandToolbar Class="verein-membership-requests-toolbar"
+                           AriaLabel="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_ToolbarAria)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_SearchPlaceholder)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            <UtfCommandFilter Active="@(_view is RequestView.All)"
+                              Count="@GetViewCountLabel(RequestView.All)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_FilterAll)])"
+                              OnClick="@(() => SetView(RequestView.All))"/>
+            <UtfCommandFilter Active="@(_view is RequestView.Open)"
+                              Count="@GetViewCountLabel(RequestView.Open)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MetricOpenStatus)])"
+                              OnClick="@(() => SetView(RequestView.Open))"/>
+            @foreach (var status in StatusFilters)
+            {
+                <UtfCommandFilter Active="@(_view == GetStatusView(status))"
+                                  Count="@GetStatusCountLabel(status)"
+                                  Label="@GetStatusLabel(status)"
+                                  OnClick="@(() => SetView(GetStatusView(status)))"/>
+            }
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                @Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_ApplySearch)]
+            </UtfCommandButton>
+        </UtfCommandToolbar>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Command_Verein_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            var visibleRequests = VisibleRequests.ToArray();
+
+            <section class="utf-command-workspace verein-membership-request-workspace">
+                <section class="utf-panel utf-command-ledger verein-membership-request-list">
+                    <div class="utf-command-ledger__header verein-membership-request-list__header">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_ListKicker)]</span>
+                            <h2>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_ListTitle)]</h2>
+                        </div>
+                        <UtfStatusBadge Intent="neutral"
+                                        Text="@FormatCount(visibleRequests.Length, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Request)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Request)].Value)"/>
+                    </div>
+
+                    @if (visibleRequests.Length is 0)
+                    {
+                        <div class="verein-empty">@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_NoRows)]</div>
+                    }
+                    else
+                    {
+                        <div class="utf-command-table-scroll verein-membership-request-table-scroll">
+                            <table class="utf-command-table verein-membership-request-table">
+                                <thead>
+                                <tr>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_HeaderApplicant)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_HeaderStatus)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_HeaderSubmitted)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_HeaderUpdated)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_HeaderAction)]</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var request in visibleRequests)
+                                {
+                                    <tr class="@GetRequestRowClass(request)"
+                                        @key="request.PrimaryKey"
+                                        @onclick="@(() => SelectRequest(request))">
+                                        <td>
+                                            <strong>@GetApplicantName(request)</strong>
+                                            <span>@(request.UserNickname ?? request.UserFk.ToString())</span>
+                                        </td>
+                                        <td>
+                                            <UtfStatusBadge Intent="@GetStatusIntent(request.Status)"
+                                                            Text="@GetStatusLabel(request.Status)"/>
+                                        </td>
+                                        <td>@FormatDate(request.TimeStampCreated)</td>
+                                        <td>@FormatDate(request.TimeStampUpdated)</td>
+                                        <td>
+                                            <UtfCommandButton Class="verein-membership-request-row-action"
+                                                              OnClick="@(() => SelectRequest(request))">
+                                                @Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_Open)]
+                                            </UtfCommandButton>
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+
+                <aside class="utf-panel utf-command-detail verein-membership-request-detail"
+                       aria-label="@(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_DetailAria)])">
+                    @if (_selectedRequest is null)
+                    {
+                        <section class="utf-empty-state">
+                            <h2>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_NoSelectionTitle)]</h2>
+                            <p>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_NoSelectionDescription)]</p>
+                        </section>
+                    }
+                    else
+                    {
+                        <div class="verein-membership-request-detail__header">
+                            <div>
+                                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_DetailAria)]</span>
+                                <h2>@GetApplicantName(_selectedRequest)</h2>
+                                <p>@_selectedRequest.UserNickname</p>
+                            </div>
+                            <UtfStatusBadge Intent="@GetStatusIntent(_selectedRequest.Status)"
+                                            Text="@GetStatusLabel(_selectedRequest.Status)"/>
+                        </div>
+
+                        @if (_commandError is not null)
+                        {
+                            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                                @_commandError
+                            </div>
+                        }
+
+                        <dl class="verein-membership-request-meta">
+                            <div>
+                                <dt>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_DetailBirthday)]</dt>
+                                <dd>@_selectedRequest.DateOfBirth.ToString("dd.MM.yyyy", CultureInfo.CurrentCulture)</dd>
+                            </div>
+                            <div>
+                                <dt>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_DetailEmail)]</dt>
+                                <dd>@_selectedRequest.Email</dd>
+                            </div>
+                            <div>
+                                <dt>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_DetailPhone)]</dt>
+                                <dd>@_selectedRequest.PhoneNumber</dd>
+                            </div>
+                            <div>
+                                <dt>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_DetailAddress)]</dt>
+                                <dd>@FormatAddress(_selectedRequest)</dd>
+                            </div>
+                            <div>
+                                <dt>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_DetailSubmitted)]</dt>
+                                <dd>@FormatDate(_selectedRequest.TimeStampCreated)</dd>
+                            </div>
+                            <div>
+                                <dt>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_DetailReviewedBy)]</dt>
+                                <dd>@(_selectedRequest.ReviewedByName ?? Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_NotReviewed)].Value)</dd>
+                            </div>
+                        </dl>
+
+                        <section class="verein-membership-request-section">
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MotivationKicker)]</span>
+                            <p>@_selectedRequest.Motivation</p>
+                        </section>
+
+                        <section class="verein-membership-request-section">
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_AcknowledgementsKicker)]</span>
+                            <ul class="verein-membership-request-ack-list">
+                                <li>
+                                    <UtfStatusBadge Intent="@GetAcknowledgementIntent(_selectedRequest.AcknowledgesMembershipSeparation)"
+                                                    Text="@GetAcknowledgementLabel(_selectedRequest.AcknowledgesMembershipSeparation)"/>
+                                    <span>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_AckSeparation)]</span>
+                                </li>
+                                <li>
+                                    <UtfStatusBadge Intent="@GetAcknowledgementIntent(_selectedRequest.AcknowledgesDataProcessing)"
+                                                    Text="@GetAcknowledgementLabel(_selectedRequest.AcknowledgesDataProcessing)"/>
+                                    <span>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_AckData)]</span>
+                                </li>
+                                <li>
+                                    <UtfStatusBadge Intent="@GetAcknowledgementIntent(_selectedRequest.AcknowledgesSatzung)"
+                                                    Text="@GetAcknowledgementLabel(_selectedRequest.AcknowledgesSatzung)"/>
+                                    <span>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_AckSatzung)]</span>
+                                </li>
+                            </ul>
+                        </section>
+
+                        @if (!string.IsNullOrWhiteSpace(_selectedRequest.DecisionReason))
+                        {
+                            <section class="verein-membership-request-section">
+                                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_DecisionKicker)]</span>
+                                <p>@_selectedRequest.DecisionReason</p>
+                            </section>
+                        }
+
+                        @if (CanTransition(_selectedRequest))
+                        {
+                            <section class="utf-command-form verein-membership-request-form">
+                                <label class="utf-command-field--wide">
+                                    <span>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_Reason)]</span>
+                                    <textarea class="utf-command-input"
+                                              rows="4"
+                                              maxlength="512"
+                                              @bind="_reason"></textarea>
+                                </label>
+                                <label class="utf-command-field">
+                                    <span>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_MemberNumber)]</span>
+                                    <input class="utf-command-input" maxlength="64" @bind="_memberNumber"/>
+                                </label>
+                                <label class="utf-command-field--wide">
+                                    <span>@Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_Notes)]</span>
+                                    <textarea class="utf-command-input"
+                                              rows="3"
+                                              maxlength="2000"
+                                              @bind="_notes"></textarea>
+                                </label>
+
+                                <div class="utf-command-actions verein-membership-request-actions">
+                                    <UtfCommandButton Disabled="@(!CanSubmitTransition(_selectedRequest, EVereinMembershipRequestStatus.AcceptedForContact))"
+                                                      OnClick="@(() => TransitionAsync(EVereinMembershipRequestStatus.AcceptedForContact))">
+                                        @Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_AcceptForContact)]
+                                    </UtfCommandButton>
+                                    <UtfCommandButton Disabled="@(!CanSubmitTransition(_selectedRequest, EVereinMembershipRequestStatus.Approved))"
+                                                      Variant="primary"
+                                                      OnClick="@(() => TransitionAsync(EVereinMembershipRequestStatus.Approved))">
+                                        @Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_Approve)]
+                                    </UtfCommandButton>
+                                    <UtfCommandButton Disabled="@(!CanSubmitTransition(_selectedRequest, EVereinMembershipRequestStatus.Rejected))"
+                                                      OnClick="@(() => TransitionAsync(EVereinMembershipRequestStatus.Rejected))">
+                                        @Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_Reject)]
+                                    </UtfCommandButton>
+                                </div>
+                            </section>
+                        }
+                    }
+                </aside>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private static readonly EVereinMembershipRequestStatus[] StatusFilters =
+    [
+        EVereinMembershipRequestStatus.Submitted,
+        EVereinMembershipRequestStatus.AcceptedForContact,
+        EVereinMembershipRequestStatus.Approved,
+        EVereinMembershipRequestStatus.Rejected,
+        EVereinMembershipRequestStatus.Withdrawn,
+    ];
+
+    private IReadOnlyList<VereinMembershipRequestInfo> _requests = [];
+    private VereinMembershipRequestInfo? _selectedRequest;
+    private RequestView _view = RequestView.Open;
+    private string _search = string.Empty;
+    private string _reason = string.Empty;
+    private string _memberNumber = string.Empty;
+    private string _notes = string.Empty;
+    private bool _isLoading;
+    private bool _isSubmitting;
+    private string? _loadError;
+    private string? _commandError;
+
+    private bool CanManageVereinMemberships
+        => Me.HasBaseClaimOrUserAdmin(Claims.User.All)
+           || Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Members);
+
+    private int OpenRequestCount
+        => _requests.Count(IsOpenRequest);
+
+    private int ApprovedRequestCount
+        => _requests.Count((request) => request.Status is EVereinMembershipRequestStatus.Approved);
+
+    private IEnumerable<VereinMembershipRequestInfo> VisibleRequests
+        => _requests
+            .Where(MatchesCurrentView)
+            .OrderByDescending(IsOpenRequest)
+            .ThenByDescending((request) => request.TimeStampUpdated);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageVereinMemberships)
+            await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!CanManageVereinMemberships)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        _commandError = null;
+        try
+        {
+            var selectedId = _selectedRequest?.PrimaryKey;
+            _requests = await VereinRepository
+                .GetAdminMembershipRequestsAsync(
+                    status: null,
+                    take: 100,
+                    search: _search
+                )
+                .ConfigureAwait(false);
+            _selectedRequest = VisibleRequests.FirstOrDefault((request) => request.PrimaryKey == selectedId)
+                               ?? VisibleRequests.FirstOrDefault();
+            LoadDecisionForm(_selectedRequest);
+        }
+        catch (Exception ex)
+        {
+            _requests = [];
+            _selectedRequest = null;
+            _loadError = string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_LoadError)].Value,
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void SetView(RequestView view)
+    {
+        if (_view == view)
+            return;
+
+        _view = view;
+        if (_selectedRequest is null || !VisibleRequests.Any((request) => request.PrimaryKey == _selectedRequest.PrimaryKey))
+        {
+            _selectedRequest = VisibleRequests.FirstOrDefault();
+            LoadDecisionForm(_selectedRequest);
+        }
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        _search = value;
+    }
+
+    private void SelectRequest(VereinMembershipRequestInfo request)
+    {
+        _selectedRequest = request;
+        _commandError = null;
+        LoadDecisionForm(request);
+    }
+
+    private async Task TransitionAsync(EVereinMembershipRequestStatus status)
+    {
+        if (_selectedRequest is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(_reason))
+        {
+            _commandError = Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_RejectReasonRequired)].Value;
+            return;
+        }
+
+        _isSubmitting = true;
+        _commandError = null;
+        try
+        {
+            var updated = await VereinRepository
+                .TransitionMembershipRequestAsync(
+                    _selectedRequest.PrimaryKey,
+                    new VereinMembershipRequestTransitionInfo
+                    {
+                        Status       = status,
+                        Reason       = string.IsNullOrWhiteSpace(_reason) ? null : _reason.Trim(),
+                        MemberNumber = status is EVereinMembershipRequestStatus.Approved && !string.IsNullOrWhiteSpace(_memberNumber)
+                            ? _memberNumber.Trim()
+                            : null,
+                        Notes        = status is EVereinMembershipRequestStatus.Approved && !string.IsNullOrWhiteSpace(_notes)
+                            ? _notes.Trim()
+                            : null,
+                    }
+                )
+                .ConfigureAwait(false);
+
+            _requests = _requests
+                .Select((request) => request.PrimaryKey == updated.PrimaryKey ? updated : request)
+                .ToArray();
+            _selectedRequest = updated;
+            LoadDecisionForm(updated);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_TransitionSuccess)].Value);
+        }
+        catch (Exception ex)
+        {
+            _commandError = string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_TransitionError)].Value,
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void LoadDecisionForm(VereinMembershipRequestInfo? request)
+    {
+        _reason = request?.DecisionReason ?? string.Empty;
+        _memberNumber = string.Empty;
+        _notes = string.Empty;
+    }
+
+    private bool IsSelected(VereinMembershipRequestInfo request)
+        => _selectedRequest?.PrimaryKey == request.PrimaryKey;
+
+    private string GetRequestRowClass(VereinMembershipRequestInfo request)
+        => IsSelected(request)
+            ? "verein-membership-request-row utf-command-row--selected"
+            : "verein-membership-request-row";
+
+    private static bool CanTransition(VereinMembershipRequestInfo request)
+        => request.Status is EVereinMembershipRequestStatus.Submitted
+            or EVereinMembershipRequestStatus.AcceptedForContact;
+
+    private static bool CanApprove(VereinMembershipRequestInfo request)
+        => request.Status is EVereinMembershipRequestStatus.Submitted
+            or EVereinMembershipRequestStatus.AcceptedForContact;
+
+    private static bool CanReject(VereinMembershipRequestInfo request)
+        => request.Status is EVereinMembershipRequestStatus.Submitted
+            or EVereinMembershipRequestStatus.AcceptedForContact;
+
+    private bool CanSubmitTransition(VereinMembershipRequestInfo request, EVereinMembershipRequestStatus status)
+        => !_isSubmitting
+           && !string.IsNullOrWhiteSpace(_reason)
+           && status switch
+           {
+               EVereinMembershipRequestStatus.AcceptedForContact => request.Status is EVereinMembershipRequestStatus.Submitted,
+               EVereinMembershipRequestStatus.Approved           => CanApprove(request),
+               EVereinMembershipRequestStatus.Rejected           => CanReject(request),
+               _                                                 => false,
+           };
+
+    private static string GetStatusIntent(EVereinMembershipRequestStatus status)
+        => status switch
+        {
+            EVereinMembershipRequestStatus.Submitted          => "warning",
+            EVereinMembershipRequestStatus.AcceptedForContact => "info",
+            EVereinMembershipRequestStatus.Approved           => "success",
+            EVereinMembershipRequestStatus.Rejected           => "danger",
+            EVereinMembershipRequestStatus.Withdrawn          => "neutral",
+            _                                                 => "neutral",
+        };
+
+    private string GetStatusLabel(EVereinMembershipRequestStatus status)
+        => status switch
+        {
+            EVereinMembershipRequestStatus.Submitted          => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_Submitted)].Value,
+            EVereinMembershipRequestStatus.AcceptedForContact => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_AcceptedForContact)].Value,
+            EVereinMembershipRequestStatus.Approved           => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_Approved)].Value,
+            EVereinMembershipRequestStatus.Rejected           => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_Rejected)].Value,
+            EVereinMembershipRequestStatus.Withdrawn          => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_Withdrawn)].Value,
+            _                                                 => throw new ArgumentOutOfRangeException(nameof(status), status, null),
+        };
+
+    private string GetViewCountLabel(RequestView view)
+        => _requests.Count((request) => MatchesView(request, view)).ToString(CultureInfo.CurrentCulture);
+
+    private string GetStatusCountLabel(EVereinMembershipRequestStatus status)
+        => GetViewCountLabel(GetStatusView(status));
+
+    private static RequestView GetStatusView(EVereinMembershipRequestStatus status)
+        => status switch
+        {
+            EVereinMembershipRequestStatus.Submitted          => RequestView.Submitted,
+            EVereinMembershipRequestStatus.AcceptedForContact => RequestView.AcceptedForContact,
+            EVereinMembershipRequestStatus.Approved           => RequestView.Approved,
+            EVereinMembershipRequestStatus.Rejected           => RequestView.Rejected,
+            EVereinMembershipRequestStatus.Withdrawn          => RequestView.Withdrawn,
+            _                                                 => throw new ArgumentOutOfRangeException(nameof(status), status, null),
+        };
+
+    private bool MatchesCurrentView(VereinMembershipRequestInfo request)
+        => MatchesView(request, _view);
+
+    private static bool MatchesView(VereinMembershipRequestInfo request, RequestView view)
+        => view switch
+        {
+            RequestView.All                => true,
+            RequestView.Open               => IsOpenRequest(request),
+            RequestView.Submitted          => request.Status is EVereinMembershipRequestStatus.Submitted,
+            RequestView.AcceptedForContact => request.Status is EVereinMembershipRequestStatus.AcceptedForContact,
+            RequestView.Approved           => request.Status is EVereinMembershipRequestStatus.Approved,
+            RequestView.Rejected           => request.Status is EVereinMembershipRequestStatus.Rejected,
+            RequestView.Withdrawn          => request.Status is EVereinMembershipRequestStatus.Withdrawn,
+            _                              => throw new ArgumentOutOfRangeException(nameof(view), view, null),
+        };
+
+    private static bool IsOpenRequest(VereinMembershipRequestInfo request)
+        => request.Status is EVereinMembershipRequestStatus.Submitted
+            or EVereinMembershipRequestStatus.AcceptedForContact;
+
+    private string GetApplicantName(VereinMembershipRequestInfo request)
+        => $"{request.FirstName} {request.LastName}".Trim();
+
+    private string FormatAddress(VereinMembershipRequestInfo request)
+    {
+        var line2 = string.IsNullOrWhiteSpace(request.AddressLine2) ? string.Empty : $"{request.AddressLine2}, ";
+        return $"{request.AddressLine1}, {line2}{request.PostalCode} {request.City}, {request.Country}";
+    }
+
+    private static string GetAcknowledgementIntent(bool acknowledged)
+        => acknowledged ? "success" : "danger";
+
+    private string GetAcknowledgementLabel(bool acknowledged)
+        => acknowledged
+            ? Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_AckYes)].Value
+            : Localizer[nameof(Language.Pages_Command_Verein_MembershipRequests_AckNo)].Value;
+
+    private static string FormatCount(int count, string singularTemplate, string pluralTemplate)
+        => count == 1
+            ? string.Format(CultureInfo.CurrentCulture, singularTemplate, count)
+            : string.Format(CultureInfo.CurrentCulture, pluralTemplate, count);
+
+    private static string FormatDate(DateTimeOffset value)
+        => value.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture);
+
+    private enum RequestView
+    {
+        All,
+        Open,
+        Submitted,
+        AcceptedForContact,
+        Approved,
+        Rejected,
+        Withdrawn,
+    }
+}

@@ -1,0 +1,689 @@
+@page "/"
+@using System.Globalization
+@using Microsoft.Extensions.Configuration
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.UnitedTacticalForces.WebApp.Services.FieldReportRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IEventRepository EventRepository
+@inject IFieldReportRepository FieldReportRepository
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+@inject CommunityConnectionConfiguration CommunityConnections
+
+<PageTitle>@Localizer[nameof(Language.Pages_Public_Home_PageTitle)]</PageTitle>
+
+<div class="utf-landing">
+    <section class="utf-landing-hero" style="@GetHeroStyle()">
+        <div class="utf-landing-hero__inner">
+            <div class="utf-landing-hero__content">
+                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Public_Home_NextOperationKicker)]</span>
+                <h1>@GetHeroTitle()</h1>
+                <p class="utf-landing-hero__summary">@GetHeroSummary()</p>
+
+                <div class="utf-hero-meta" aria-label="@(Localizer[nameof(Language.Pages_Public_Home_OperationMetadataAria)])">
+                    <span>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.CalendarLtr())"/>
+                        @FormatHeroDate(_nextEvent?.ScheduledFor)
+                    </span>
+                    <span>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Clock())"/>
+                        @FormatHeroTime(_nextEvent?.ScheduledFor)
+                    </span>
+                    <span>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.PeopleTeam())"/>
+                        @FormatSlotSummary(_nextEvent)
+                    </span>
+                </div>
+
+                <div class="utf-hero-meta utf-hero-meta--secondary" aria-label="@(Localizer[nameof(Language.Pages_Public_Home_OperationRequirementsAria)])">
+                    <span>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Map())"/>
+                        @(_nextEvent?.TerrainTitle ?? Localizer[nameof(Language.Pages_Public_Home_NoTerrainData)].Value)
+                    </span>
+                    <span>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Cube())"/>
+                        @(_nextEvent?.ModPackDefinitionTitle ?? Localizer[nameof(Language.Pages_Public_Home_NoModsetData)].Value)
+                    </span>
+                    <span>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Person())"/>
+                        @(_nextEvent?.HostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Public_Home_NoHostData)].Value)
+                    </span>
+                </div>
+
+                <div class="utf-hero-actions">
+                    <a class="utf-button utf-button--primary"
+                       href="@GetHeroPrimaryActionUrl()">
+                        @GetHeroPrimaryActionLabel()
+                    </a>
+                    <a class="utf-button utf-button--ghost"
+                       href="@BaseUrl.ResolveSelfUrl("events/upcoming?mode=calendar")">
+                        @Localizer[nameof(Language.Pages_Public_Home_ViewCalendar)]
+                    </a>
+                </div>
+
+            </div>
+
+            <div class="utf-hero-rail">
+                <aside class="utf-hero-status-panel" aria-label="@(Localizer[nameof(Language.Pages_Public_Home_OperationStatusPanelAria)])">
+                    <div>
+                        <span>@Localizer[nameof(Language.Pages_Public_Home_OperationStatusLabel)]</span>
+                        <strong class="@GetHeroStatusClass()">@GetHeroStatusLabel()</strong>
+                    </div>
+                    <div>
+                        <span>@Localizer[nameof(Language.Pages_Public_Home_YourStatusLabel)]</span>
+                        <strong class="@GetHeroUserStatusClass()">@GetHeroUserStatusLabel()</strong>
+                    </div>
+                    <div>
+                        <span>@Localizer[nameof(Language.Pages_Public_Home_TimeRemainingLabel)]</span>
+                        <strong>@FormatTimeRemaining(_nextEvent?.ScheduledFor)</strong>
+                    </div>
+                </aside>
+
+                @if (CommunityConnections.HasAny)
+                {
+                    <div class="utf-hero-comms" aria-label="@(Localizer[nameof(Language.Pages_Public_Home_CommunityChannelsLabel)])">
+                        @if (CommunityConnections.DiscordUrl is not null)
+                        {
+                            <a href="@CommunityConnections.DiscordUrl"
+                               target="_blank"
+                               rel="noreferrer">
+                                <span class="utf-hero-comms__service">
+                                    <FluentIcon Class="utf-brand-icon utf-brand-icon--discord"
+                                                Value="@(new Icons.Custom.Size24.Discord())"/>
+                                    @Localizer[nameof(Language.Pages_Public_Home_DiscordLabel)]
+                                </span>
+                                <strong>@Localizer["Pages_Public_Home_ChannelJoin"]</strong>
+                            </a>
+                        }
+                        @if (CommunityConnections.TeamSpeak3Url is not null)
+                        {
+                            <a href="@CommunityConnections.TeamSpeak3Url"
+                               target="_blank"
+                               rel="noreferrer">
+                                <span class="utf-hero-comms__service">
+                                    <FluentIcon Value="@(new Icons.Custom.Size24.TeamSpeak3())"/>
+                                    @Localizer[nameof(Language.Pages_Public_Home_TeamSpeakLabel)]
+                                </span>
+                                <strong>@Localizer["Pages_Public_Home_ChannelConnect"]</strong>
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <section class="utf-landing-band" aria-label="@(Localizer[nameof(Language.Pages_Public_Home_UpcomingOperationsAria)])">
+        <div class="utf-section-heading utf-section-heading--row">
+            <div>
+                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Public_Home_UpcomingOperationsKicker)]</span>
+                <h2>@Localizer[nameof(Language.Pages_Public_Home_OperationsBoardTitle)]</h2>
+            </div>
+            <a class="utf-link-action" href="@BaseUrl.ResolveSelfUrl("events/upcoming?mode=calendar")">
+                @Localizer[nameof(Language.Pages_Public_Home_ViewCalendar)]
+            </a>
+        </div>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">@Localizer[nameof(Language.Pages_Public_Home_OperationsLoading)]</div>
+        }
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning">@_loadError</div>
+        }
+        @if (!_isLoading && _loadError is null && LandingOperations.Count is 0)
+        {
+            <div class="utf-state-panel">@Localizer[nameof(Language.Pages_Public_Home_NoOperationsPublished)]</div>
+        }
+
+        <div class="utf-operation-strip">
+            @foreach (var operation in LandingOperations)
+            {
+                <a class="@GetOperationCardClass(operation)"
+                   href="@operation.Link"
+                   style="@operation.ImageStyle">
+                    <div class="utf-operation-card__image">
+                        <div class="utf-event-card__badges">
+                            <span class="@operation.StatusClass">@operation.StatusLabel</span>
+                            <span class="utf-event-card__slot-badge">@operation.ShortSlots</span>
+                        </div>
+                        @if (operation.IsPrimary)
+                        {
+                            <span class="utf-operation-card__star">
+                                <FluentIcon Value="@(new Icons.Filled.Size20.Star())"/>
+                            </span>
+                        }
+                    </div>
+                    <div class="utf-operation-card__body">
+                        <div class="utf-operation-card__schedule">
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size16.CalendarLtr())"/>
+                                @operation.Date
+                            </span>
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size16.Clock())"/>
+                                @operation.Time
+                            </span>
+                        </div>
+                        <h3>@operation.Title</h3>
+                        <div class="utf-event-card__meta-row" aria-label="@(Localizer[nameof(Language.Pages_Public_Home_OperationMetadataAria)])">
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Map())"/>
+                                @operation.Terrain
+                            </span>
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Cube())"/>
+                                @operation.ModPack
+                            </span>
+                            <span>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Person())"/>
+                                @operation.Host
+                            </span>
+                        </div>
+                        <div class="utf-event-card__progress">
+                            <span class="utf-event-card__progress-label">@Localizer[nameof(Language.Pages_Public_Home_SlotProgressLabel)]</span>
+                            <div class="utf-slot-meter" aria-label="@operation.Slots">
+                                <span style="@operation.SlotMeterStyle"></span>
+                            </div>
+                            <strong>@operation.Slots</strong>
+                            <span class="@operation.AttendanceClass">@operation.AttendanceLabel</span>
+                        </div>
+                        <div class="utf-operation-card__footer">
+                            <span class="utf-operation-card__cta">
+                                @Localizer[nameof(Language.Pages_Public_Home_ViewSlots)]
+                                <FluentIcon Value="@(new Icons.Regular.Size16.ChevronRight())"/>
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+    </section>
+
+    <section class="utf-who-we-are" aria-label="@(Localizer[nameof(Language.Pages_Public_Home_CommunityPreviewAria)])">
+        <div class="utf-section-heading utf-section-heading--row">
+            <div>
+                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Public_Home_CommunityKicker)]</span>
+                <h2>@Localizer[nameof(Language.Pages_Public_Home_CommunityTitle)]</h2>
+            </div>
+            <a class="utf-link-action" href="@BaseUrl.ResolveSelfUrl("unit")">
+                @Localizer[nameof(Language.Pages_Public_Home_ReadAboutUnit)]
+            </a>
+        </div>
+
+        <div class="utf-story-grid">
+            <section class="utf-preview-card">
+                <h3>@Localizer[nameof(Language.Pages_Public_Home_CoopArmaOperationsTitle)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Public_Home_CoopArmaOperationsBody)]</p>
+                <a class="utf-link-action" href="@BaseUrl.ResolveSelfUrl("unit")">
+                    @Localizer[nameof(Language.Pages_Public_Home_UnitOverview)]
+                </a>
+            </section>
+
+            <section class="utf-preview-card">
+                <h3>@Localizer[nameof(Language.Pages_Public_Home_VereinHubTitle)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Public_Home_VereinHubBody)]</p>
+                <a class="utf-link-action" href="@BaseUrl.ResolveSelfUrl("verein")">
+                    @Localizer[nameof(Language.Pages_Public_Home_VereinHub)]
+                </a>
+            </section>
+
+            <section class="utf-preview-card">
+                <h3>@Localizer[nameof(Language.Pages_Public_Home_ReadyForNextOperationTitle)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Public_Home_ReadyForNextOperationBody)]</p>
+                <a class="utf-link-action" href="@BaseUrl.ResolveSelfUrl("join")">
+                    @Localizer[nameof(Language.Pages_Public_Home_JoinUtf)]
+                </a>
+            </section>
+        </div>
+    </section>
+
+    <section class="utf-field-report-band" aria-label="@(Localizer[nameof(Language.Pages_Public_Home_FieldReportsAria)])">
+        <div class="utf-section-heading utf-section-heading--row">
+            <div>
+                <h2>@Localizer[nameof(Language.Pages_Public_Home_FieldReportsTitle)]</h2>
+            </div>
+            <a class="utf-link-action" href="@BaseUrl.ResolveSelfUrl("field-reports")">
+                @Localizer[nameof(Language.Pages_Public_Home_ReadReports)]
+            </a>
+        </div>
+        @if (_fieldReportsLoading)
+        {
+            <div class="utf-field-report-preview" aria-busy="true"
+                 aria-label="@(Localizer[nameof(Language.Loading)])">
+                <span class="utf-sr-only">@Localizer[nameof(Language.Loading)]</span>
+                <div class="utf-field-report-feature utf-field-report-feature--skeleton" aria-hidden="true">
+                    <div class="utf-field-report-feature__image utf-field-report-skeleton__image"></div>
+                    <div class="utf-field-report-feature__body">
+                        <span class="utf-skeleton utf-field-report-skeleton__category"></span>
+                        <span class="utf-skeleton utf-field-report-skeleton__date"></span>
+                        <span class="utf-skeleton utf-field-report-skeleton__title"></span>
+                        <span class="utf-skeleton utf-field-report-skeleton__line"></span>
+                        <span class="utf-skeleton utf-field-report-skeleton__line utf-field-report-skeleton__line--short"></span>
+                    </div>
+                </div>
+                <div class="utf-field-report-rail" aria-hidden="true">
+                    @for (var index = 0; index < 2; index++)
+                    {
+                        <div class="utf-field-report-row utf-field-report-row--skeleton">
+                            <div class="utf-field-report-row__image utf-field-report-skeleton__image"></div>
+                            <div>
+                                <span class="utf-skeleton utf-field-report-skeleton__category"></span>
+                                <span class="utf-skeleton utf-field-report-skeleton__date"></span>
+                                <span class="utf-skeleton utf-field-report-skeleton__row-title"></span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else if (_fieldReportLoadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning">@_fieldReportLoadError</div>
+        }
+        else if (LandingFieldReports.Count is 0)
+        {
+            <div class="utf-state-panel">@Localizer[nameof(Language.Pages_Public_Home_NoFieldReportsPublished)]</div>
+        }
+        else
+        {
+            <div class="utf-field-report-preview">
+                @foreach (var report in LandingFieldReports.Take(1))
+                {
+                    <a class="utf-field-report-feature"
+                       href="@report.Link"
+                       style="@report.ImageStyle">
+                        <div class="utf-field-report-feature__image" aria-hidden="true"></div>
+                        <div class="utf-field-report-feature__body">
+                            <span>@report.Category</span>
+                            <small>@report.Date</small>
+                            <h3>@report.Title</h3>
+                            <p>@report.Excerpt</p>
+                        </div>
+                    </a>
+                }
+                <div class="utf-field-report-rail">
+                    @foreach (var report in LandingFieldReports.Skip(1).Take(2))
+                    {
+                        <a class="utf-field-report-row"
+                           href="@report.Link"
+                           style="@report.ImageStyle">
+                            <div class="utf-field-report-row__image" aria-hidden="true"></div>
+                            <div>
+                                <span>@report.Category</span>
+                                <small>@report.Date</small>
+                                <h3>@report.Title</h3>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+    </section>
+
+</div>
+
+@code {
+    private const string DefaultOperationHeroImagePath = "media/generated/operations-convoy-hero.jpg";
+    private const string DefaultOperationCardImagePath = "media/generated/mission-overwatch-banner.jpg";
+    private const string DefaultReportCardImagePath    = "media/generated/field-reports-table-hero.jpg";
+
+    private IReadOnlyList<UpcomingEventDto> _events = [];
+    private UpcomingEventDto? _nextEvent;
+    private IReadOnlyList<FieldReportSummaryInfo> _fieldReports = [];
+    private bool _isLoading = true;
+    private bool _fieldReportsLoading = true;
+    private string? _loadError;
+    private string? _fieldReportLoadError;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private IReadOnlyList<LandingOperationCard> LandingOperations
+        => _events.Take(3).Select(ToLandingCard).ToArray();
+
+    private IReadOnlyList<LandingFieldReportCard> LandingFieldReports
+        => _fieldReports.Take(3).Select(ToLandingFieldReportCard).ToArray();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadOperationsAsync(), LoadFieldReportsAsync(), LoadSiteImagesAsync()).ConfigureAwait(false);
+    }
+
+    private async Task LoadOperationsAsync()
+    {
+        try
+        {
+            _events = (await EventRepository.GetUpcomingEventsAsync())
+                .OrderBy((operation) => operation.ScheduledFor ?? DateTimeOffset.MaxValue)
+                .ToArray();
+            _nextEvent = _events.FirstOrDefault();
+        }
+        catch
+        {
+            _loadError = Localizer[nameof(Language.Pages_Public_Home_ErrorOperationsLoadFailed)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadFieldReportsAsync()
+    {
+        try
+        {
+            _fieldReports = await FieldReportRepository.GetPublishedReportsAsync(take: 3).ConfigureAwait(false);
+        }
+        catch
+        {
+            _fieldReports = [];
+            _fieldReportLoadError = Localizer[nameof(Language.Pages_Public_Home_ErrorFieldReportsLoadFailed)].Value;
+        }
+        finally
+        {
+            _fieldReportsLoading = false;
+        }
+    }
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private string GetHeroTitle()
+        => _nextEvent?.Title ?? Localizer[nameof(Language.Pages_Public_Home_DefaultHeroTitle)].Value;
+
+    private string GetHeroSummary()
+    {
+        if (_nextEvent?.Description.IsNotNullOrWhiteSpace() == true)
+            return _nextEvent.Description!;
+
+        return _loadError is null
+            ? Localizer[nameof(Language.Pages_Public_Home_UpcomingSummaryEmpty)].Value
+            : Localizer[nameof(Language.Pages_Public_Home_UpcomingSummaryError)].Value;
+    }
+
+    private string GetHeroStyle()
+    {
+        var imageSource = !string.IsNullOrWhiteSpace(_nextEvent?.ImagePath)
+            ? BaseUrl.ResolveImageUrl(_nextEvent.ImagePath)
+            : GetSiteImageUrl("home-operation-hero", DefaultOperationHeroImagePath);
+        return ToCssImageVariable("--utf-hero-image", imageSource);
+    }
+
+    private string GetHeroPrimaryActionLabel()
+        => _nextEvent?.PrimaryKey is null
+            ? Localizer[nameof(Language.Pages_Public_Home_ViewOperations)].Value
+            : Localizer[nameof(Language.Pages_Public_Home_ViewSlots)].Value;
+
+    private string GetHeroPrimaryActionUrl()
+        => _nextEvent?.PrimaryKey is { } eventId
+            ? BaseUrl.ResolveSelfUrl($"events/{eventId}")
+            : BaseUrl.ResolveSelfUrl("events/upcoming");
+
+    private string GetHeroStatusLabel()
+    {
+        if (_nextEvent is null)
+            return _loadError is null
+                ? Localizer[nameof(Language.Pages_Public_Home_StatusNoOperation)].Value
+                : Localizer[nameof(Language.Pages_Public_Home_StatusUnavailable)].Value;
+
+        return IsUnderMinimum(_nextEvent)
+            ? Localizer[nameof(Language.Pages_Public_Home_StatusLowSlots)].Value
+            : Localizer[nameof(Language.Pages_Public_Home_StatusConfirmed)].Value;
+    }
+
+    private string GetHeroStatusClass()
+    {
+        if (_nextEvent is null)
+            return "utf-hero-status-panel__neutral";
+
+        return IsUnderMinimum(_nextEvent)
+            ? "utf-hero-status-panel__warning"
+            : "utf-hero-status-panel__success";
+    }
+
+    private string GetHeroUserStatusLabel()
+        => _nextEvent is null
+            ? Localizer[nameof(Language.Pages_Public_Home_UserStatusNone)].Value
+            : GetAcceptance(_nextEvent) switch
+            {
+                Common.Event.EEventAcceptance.Accepted => Localizer[nameof(Language.Pages_Public_Home_UserStatusConfirmed)].Value,
+                Common.Event.EEventAcceptance.Maybe    => Localizer[nameof(Language.Pages_Public_Home_UserStatusMaybe)].Value,
+                Common.Event.EEventAcceptance.Rejected => Localizer[nameof(Language.Pages_Public_Home_UserStatusDeclined)].Value,
+                _                                        => Localizer[nameof(Language.Pages_Public_Home_UserStatusUnassigned)].Value,
+            };
+
+    private string GetHeroUserStatusClass()
+        => _nextEvent is null
+            ? "utf-hero-status-panel__neutral"
+            : GetAcceptance(_nextEvent) switch
+            {
+                Common.Event.EEventAcceptance.Accepted => "utf-hero-status-panel__success",
+                Common.Event.EEventAcceptance.Maybe    => "utf-hero-status-panel__warning",
+                Common.Event.EEventAcceptance.Rejected => "utf-hero-status-panel__danger",
+                _                                        => "utf-hero-status-panel__neutral",
+            };
+
+    private LandingOperationCard ToLandingCard(UpcomingEventDto operation, int index)
+    {
+        var isPrimary = index == 0;
+        return new LandingOperationCard(
+            operation.Title ?? Localizer[nameof(Language.Pages_Public_Home_UntitledOperation)].Value,
+            FormatCardDate(operation.ScheduledFor),
+            FormatHeroTime(operation.ScheduledFor),
+            operation.TerrainTitle ?? Localizer[nameof(Language.Pages_Public_Home_NoTerrainData)].Value,
+            operation.ModPackDefinitionTitle ?? Localizer[nameof(Language.Pages_Public_Home_NoModsetData)].Value,
+            operation.HostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Public_Home_NoHostData)].Value,
+            FormatCardSlotCount(operation),
+            FormatShortSlots(operation),
+            Localizer[nameof(Language.Pages_Public_Home_StatusCategoryOperation)].Value,
+            "utf-status utf-status--brand",
+            GetAttendanceLabel(operation),
+            GetAttendanceClass(operation),
+            GetSlotMeterStyle(operation),
+            GetEventImageStyle(operation),
+            GetEventLink(operation),
+            isPrimary);
+    }
+
+    private LandingFieldReportCard ToLandingFieldReportCard(FieldReportSummaryInfo report, int index)
+        => new(
+            report.Title,
+            report.Excerpt,
+            report.Category,
+            FormatReportDate(report.TimeStampPublished ?? report.TimeStampUpdated),
+            GetReportImageStyle(report.HeroImagePath, index),
+            BaseUrl.ResolveSelfUrl($"field-reports/{Uri.EscapeDataString(report.Slug)}"));
+
+    private string GetReportImageStyle(string? heroImagePath, int index)
+        => ToCssImageVariable(
+            "--utf-report-image",
+            string.IsNullOrWhiteSpace(heroImagePath)
+                ? GetSiteImageUrl($"home-field-report-fallback-{(index % 3) + 1}", DefaultReportCardImagePath)
+                : BaseUrl.ResolveImageUrl(heroImagePath));
+
+    private string GetEventImageStyle(UpcomingEventDto operation)
+    {
+        var imageSource = !string.IsNullOrWhiteSpace(operation.ImagePath)
+            ? BaseUrl.ResolveImageUrl(operation.ImagePath)
+            : GetSiteImageUrl("home-operation-card", DefaultOperationCardImagePath);
+        return ToCssImageVariable("--utf-event-image", imageSource);
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+    private static string ToCssImageVariable(string variableName, string url)
+        => $"{variableName}: url(\"{EscapeCssUrl(url)}\");";
+
+    private static string EscapeCssUrl(string url)
+        => url.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "%22", StringComparison.Ordinal);
+
+    private string GetEventLink(UpcomingEventDto operation)
+        => operation.PrimaryKey is { } eventId
+            ? BaseUrl.ResolveSelfUrl($"events/{eventId}")
+            : BaseUrl.ResolveSelfUrl("events/upcoming");
+
+    private static string FormatCardDate(DateTimeOffset? scheduledFor)
+        => scheduledFor?.UtcDateTime.ToString("dd MMM yyyy", CultureInfo.CurrentCulture) ?? "-- --- ----";
+
+    private static string FormatReportDate(DateTimeOffset value)
+        => value.UtcDateTime.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
+
+    private static string FormatHeroDate(DateTimeOffset? scheduledFor)
+        => scheduledFor?.UtcDateTime.ToString("dd MMM yyyy", CultureInfo.CurrentCulture).ToUpperInvariant() ?? "-- --- ----";
+
+    private static string FormatHeroTime(DateTimeOffset? scheduledFor)
+    => scheduledFor is null
+        ? "--:-- UTC"
+        : $"{scheduledFor.Value.UtcDateTime.ToString("HH:mm", CultureInfo.InvariantCulture)} UTC";
+
+    private string FormatTimeRemaining(DateTimeOffset? scheduledFor)
+    {
+        if (scheduledFor is null)
+            return Localizer[nameof(Language.Pages_Public_Home_TimeRemainingUnknown)].Value;
+
+        var remaining = scheduledFor.Value - DateTimeOffset.Now;
+        if (remaining <= TimeSpan.Zero)
+            return Localizer[nameof(Language.Pages_Public_Home_TimeRemainingLiveOrArchived)].Value;
+
+        return $"{remaining.Days}d {remaining.Hours}h {remaining.Minutes}m";
+    }
+
+    private string FormatSlotSummary(UpcomingEventDto? operation)
+    {
+        if (operation is null)
+            return $"-- / -- {Localizer[nameof(Language.Pages_Public_Home_SlotsLabel)].Value}";
+
+        var accepted = operation.AcceptedCount ?? 0;
+        var minimum = operation.MinimumAccepted ?? 0;
+        return minimum > 0
+            ? $"{accepted} / {minimum} {Localizer[nameof(Language.Pages_Public_Home_SlotsLabel)].Value}"
+            : $"{accepted} {Localizer[nameof(Language.Pages_Public_Home_AcceptedLabel)].Value}";
+    }
+
+    private string FormatShortSlots(UpcomingEventDto operation)
+    {
+        var minimum = operation.MinimumAccepted ?? 0;
+        return minimum > 0
+            ? $"{minimum} {Localizer[nameof(Language.Pages_Public_Home_SlotsLabel)].Value}"
+            : $"{operation.AcceptedCount ?? 0} {Localizer[nameof(Language.Pages_Public_Home_SlotsLabel)].Value}";
+    }
+
+    private static string FormatCardSlotCount(UpcomingEventDto operation)
+    {
+        var accepted = operation.AcceptedCount ?? 0;
+        var minimum = operation.MinimumAccepted ?? 0;
+        return minimum > 0
+            ? $"{accepted} / {minimum}"
+            : $"{accepted}";
+    }
+
+    private static string GetSlotMeterStyle(UpcomingEventDto operation)
+        => $"width: {GetSlotProgress(operation).ToString(CultureInfo.InvariantCulture)}%;";
+
+    private static double GetSlotProgress(UpcomingEventDto operation)
+    {
+        var minimum = operation.MinimumAccepted ?? 0;
+        if (minimum <= 0)
+            return operation.AcceptedCount > 0 ? 100 : 0;
+
+        return Math.Clamp((operation.AcceptedCount ?? 0) * 100.0 / minimum, 0, 100);
+    }
+
+    private static string GetStatusClass(UpcomingEventDto operation)
+        => GetAcceptance(operation) switch
+        {
+            Common.Event.EEventAcceptance.Accepted => "utf-status utf-status--success",
+            Common.Event.EEventAcceptance.Maybe    => "utf-status utf-status--warning",
+            Common.Event.EEventAcceptance.Rejected => "utf-status utf-status--danger",
+            _                                        => IsUnderMinimum(operation) ? "utf-status utf-status--warning" : "utf-status utf-status--success",
+        };
+
+    private string GetStatusLabel(UpcomingEventDto operation)
+    => GetAcceptance(operation) switch
+    {
+            Common.Event.EEventAcceptance.Accepted => Localizer[nameof(Language.Pages_Public_Home_StatusConfirmed)].Value,
+            Common.Event.EEventAcceptance.Maybe    => Localizer[nameof(Language.Pages_Public_Home_UserStatusMaybe)].Value,
+            Common.Event.EEventAcceptance.Rejected => Localizer[nameof(Language.Pages_Public_Home_UserStatusDeclined)].Value,
+            _                                        => IsUnderMinimum(operation) ? Localizer[nameof(Language.Pages_Public_Home_StatusLowSlots)].Value : Localizer[nameof(Language.Pages_Public_Home_StatusConfirmed)].Value,
+    };
+
+    private string GetAttendanceLabel(UpcomingEventDto operation)
+    => GetAcceptance(operation) switch
+    {
+            Common.Event.EEventAcceptance.Accepted => Localizer[nameof(Language.Pages_Public_Home_AttendanceConfirmed)].Value,
+            Common.Event.EEventAcceptance.Maybe    => Localizer[nameof(Language.Pages_Public_Home_UserStatusMaybe)].Value,
+            Common.Event.EEventAcceptance.Rejected => Localizer[nameof(Language.Pages_Public_Home_UserStatusDeclined)].Value,
+            _                         => IsUnderMinimum(operation)
+                ? Localizer[nameof(Language.Pages_Public_Home_AttendanceNeedsSignups)].Value
+                : Localizer[nameof(Language.Pages_Public_Home_AttendanceOpenSlots)].Value,
+    };
+
+    private static string GetAttendanceClass(UpcomingEventDto operation)
+        => GetAcceptance(operation) switch
+        {
+            Common.Event.EEventAcceptance.Accepted => "utf-operation-card__attendance-success",
+            Common.Event.EEventAcceptance.Maybe    => "utf-operation-card__attendance-warning",
+            Common.Event.EEventAcceptance.Rejected => "utf-operation-card__attendance-danger",
+            _                                        => IsUnderMinimum(operation) ? "utf-operation-card__attendance-warning" : "utf-operation-card__attendance-success",
+        };
+
+    private string GetOperationCardClass(LandingOperationCard operation)
+        => operation.IsPrimary ? "utf-operation-card utf-operation-card--featured" : "utf-operation-card";
+
+    private static Common.Event.EEventAcceptance? GetAcceptance(UpcomingEventDto operation)
+        => operation.MetaAcceptance switch
+        {
+            X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance.Accepted => Common.Event.EEventAcceptance.Accepted,
+            X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance.Maybe    => Common.Event.EEventAcceptance.Maybe,
+            X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance.Rejected => Common.Event.EEventAcceptance.Rejected,
+            _                                                                       => null,
+        };
+
+    private static bool IsUnderMinimum(UpcomingEventDto operation)
+        => (operation.MinimumAccepted ?? 0) > 0 && (operation.AcceptedCount ?? 0) < operation.MinimumAccepted;
+
+    private sealed record LandingOperationCard(
+        string Title,
+        string Date,
+        string Time,
+        string Terrain,
+        string ModPack,
+        string Host,
+        string Slots,
+        string ShortSlots,
+        string StatusLabel,
+        string StatusClass,
+        string AttendanceLabel,
+        string AttendanceClass,
+        string SlotMeterStyle,
+        string ImageStyle,
+        string Link,
+        bool IsPrimary);
+
+    private sealed record LandingFieldReportCard(
+        string Title,
+        string Excerpt,
+        string Category,
+        string Date,
+        string ImageStyle,
+        string Link);
+}

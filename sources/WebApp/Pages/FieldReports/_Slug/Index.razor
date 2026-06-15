@@ -1,0 +1,150 @@
+@page "/field-reports/{Slug}"
+@page "/media/{Slug}"
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.FieldReportRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@inject IFieldReportRepository FieldReportRepository
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@GetPageTitle()</PageTitle>
+
+<article class="utf-field-report-detail">
+    @if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Pages_FieldReports_Detail_Loading)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (Report is null)
+    {
+        <section class="utf-empty-state">
+            <h1>@Localizer[nameof(Language.Pages_FieldReports_Detail_NotFound)]</h1>
+            <p>@Localizer[nameof(Language.Pages_FieldReports_Detail_NotFoundDescription)]</p>
+            <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("field-reports")">
+                @Localizer[nameof(Language.Pages_FieldReports_Detail_BackToReports)]
+            </a>
+        </section>
+    }
+    else
+    {
+        <header class="utf-field-report-detail__hero" style="@GetReportImageStyle(Report)">
+            <div>
+                <a class="utf-button utf-button--ghost utf-field-report-detail__back"
+                   href="@BaseUrl.ResolveSelfUrl("field-reports")">
+                    <span class="utf-button__icon" aria-hidden="true">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/>
+                    </span>
+                    <span>@Localizer[nameof(Language.Pages_FieldReports_Detail_BackToReports)]</span>
+                </a>
+                <span class="utf-kicker">@Report.Category</span>
+                <h1>@Report.Title</h1>
+                <p>@Report.Excerpt</p>
+                <small>@FormatReportDate(Report.TimeStampPublished ?? Report.TimeStampUpdated)</small>
+            </div>
+        </header>
+
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <div class="utf-field-report-detail__layout">
+            <aside class="utf-field-report-detail__meta">
+                <a class="utf-link-action" href="@BaseUrl.ResolveSelfUrl("field-reports")">
+                    @Localizer[nameof(Language.Pages_FieldReports_Detail_AllReports)]
+                </a>
+                <dl>
+                    <dt>@Localizer[nameof(Language.Pages_FieldReports_Detail_Category)]</dt>
+                    <dd>@Report.Category</dd>
+                    <dt>@Localizer[nameof(Language.Pages_FieldReports_Detail_Published)]</dt>
+                    <dd>@FormatReportDate(Report.TimeStampPublished ?? Report.TimeStampUpdated)</dd>
+                    <dt>@Localizer[nameof(Language.Pages_FieldReports_Detail_ReportId)]</dt>
+                    <dd>@Report.Slug</dd>
+                </dl>
+            </aside>
+
+            <section class="utf-field-report-detail__body">
+                <FluentMarkdown Content="@Report.Markdown"/>
+            </section>
+        </div>
+    }
+</article>
+
+@code {
+    private const string DefaultFieldReportDetailImagePath = "media/generated/field-reports-table-hero.jpg";
+
+    [Parameter]
+    public string? Slug { get; set; }
+
+    private FieldReportInfo? Report { get; set; }
+
+    private bool _isLoading = true;
+    private string? _loadError;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+
+        try
+        {
+            var reportTask = string.IsNullOrWhiteSpace(Slug)
+                ? Task.FromResult<FieldReportInfo?>(null)
+                : FieldReportRepository.GetPublishedReportAsync(Slug);
+            var imagesTask = LoadSiteImagesAsync();
+            await Task.WhenAll(reportTask, imagesTask).ConfigureAwait(false);
+            Report = reportTask.Result;
+        }
+        catch
+        {
+            Report = null;
+            _loadError = Localizer[nameof(Language.Pages_FieldReports_Detail_Error_LoadFailed)].Value;
+        }
+
+        _isLoading = false;
+    }
+
+    private string GetPageTitle()
+        => Report is null
+            ? Localizer[nameof(Language.Pages_FieldReports_Detail_PageTitle_NotFound)].Value
+            : Localizer[nameof(Language.Pages_FieldReports_Detail_PageTitle), Report.Title].Value;
+
+    private string GetReportImageStyle(FieldReportInfo report)
+        => $"--utf-report-image: url(\"{EscapeCssUrl(
+            string.IsNullOrWhiteSpace(report.HeroImagePath)
+                ? GetSiteImageUrl("media-hero", DefaultFieldReportDetailImagePath)
+                : BaseUrl.ResolveImageUrl(report.HeroImagePath))}\");";
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+    private static string EscapeCssUrl(string url)
+        => url.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "%22", StringComparison.Ordinal);
+
+    private static string FormatReportDate(DateTimeOffset value)
+        => value.UtcDateTime.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
+}

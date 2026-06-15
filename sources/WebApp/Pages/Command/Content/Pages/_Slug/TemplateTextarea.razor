@@ -1,0 +1,23 @@
+<label class="gdpr-template-field gdpr-template-field--wide">
+    <span>@Label</span>
+    <textarea class="utf-command-input gdpr-template-textarea"
+              rows="@Rows"
+              @oninput="OnInputAsync">@Value</textarea>
+</label>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter]
+    public int Rows { get; set; } = 4;
+
+    private async Task OnInputAsync(ChangeEventArgs args)
+        => await ValueChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty).ConfigureAwait(false);
+}

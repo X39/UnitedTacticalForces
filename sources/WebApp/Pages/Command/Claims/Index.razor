@@ -1,0 +1,411 @@
+@page "/command/claims"
+@namespace X39.UnitedTacticalForces.WebApp.Pages.Command.AuthorityClaims
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject ICommandCenterRepository CommandCenterRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Claims_PageTitle)]</PageTitle>
+
+<div class="authority-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Claims_HeaderTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Claims_HeaderDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Claims_Refresh)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageAuthority)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Claims_NoAccessTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Claims_NoAccessMessage)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics authority-attention" aria-label="@(Localizer[nameof(Language.Pages_Command_Claims_SummaryAria)])">
+            <UtfCommandMetric Active="@(_activeView is ClaimView.All)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_MetricDescription_All)].Value, _claims.Count)"
+                              OnClick="@(() => SetView(ClaimView.All))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Claims_MetricStatus_Claims)])"
+                              StatusIntent="info"
+                              Value="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_MetricValue_Claims)].Value, _snapshot.ClaimCount)"
+                              />
+            <UtfCommandMetric Active="@(_activeView is ClaimView.Prefix)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Claims_MetricDescription_Prefix)])"
+                              OnClick="@(() => SetView(ClaimView.Prefix))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Claims_MetricStatus_Prefix)])"
+                              StatusClass="@GetPrefixStatusClass()"
+                              Value="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_MetricValue_PrefixClaims)].Value, LoadedPrefixClaimCount)"
+                              />
+            <UtfCommandMetric Active="@(_activeView is ClaimView.RoleBacked)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_MetricDescription_RoleBacked)].Value, LoadedRoleAttachmentCount)"
+                              OnClick="@(() => SetView(ClaimView.RoleBacked))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Claims_MetricStatus_RoleBacked)])"
+                              StatusIntent="success"
+                              Value="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_MetricValue_RoleBackedClaims)].Value, LoadedRoleBackedClaimCount)"
+                              />
+            <UtfCommandMetric Active="@(_activeView is ClaimView.Direct)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Claims_MetricDescription_Direct)])"
+                              OnClick="@(() => SetView(ClaimView.Direct))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Claims_MetricStatus_Direct)])"
+                              StatusClass="@GetDirectStatusClass()"
+                              Value="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_MetricValue_DirectClaims)].Value, LoadedDirectClaimAssignmentCount)"
+                              />
+        </section>
+
+        <section class="utf-command-toolbar" aria-label="@(Localizer[nameof(Language.Pages_Command_Claims_FilterAria)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Command_Claims_SearchPlaceholder)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="RefreshAsync">
+                @Localizer[nameof(Language.Pages_Command_Claims_Search)]
+            </UtfCommandButton>
+            <UtfCommandFilter Active="@(_activeView is ClaimView.All)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Claims_FilterAll)])"
+                              OnClick="@(() => SetView(ClaimView.All))"/>
+            <UtfCommandFilter Active="@(_activeView is ClaimView.Prefix)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Claims_FilterPrefix)])"
+                              OnClick="@(() => SetView(ClaimView.Prefix))"/>
+            <UtfCommandFilter Active="@(_activeView is ClaimView.RoleBacked)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Claims_FilterRoleBacked)])"
+                              OnClick="@(() => SetView(ClaimView.RoleBacked))"/>
+            <UtfCommandFilter Active="@(_activeView is ClaimView.Direct)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Claims_FilterDirect)])"
+                              OnClick="@(() => SetView(ClaimView.Direct))"/>
+            <UtfCommandFilter Active="@(_activeView is ClaimView.Unused)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Claims_FilterUnused)])"
+                              OnClick="@(() => SetView(ClaimView.Unused))"/>
+        </section>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Command_Claims_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <div class="utf-command-workspace authority-master-detail">
+                <section class="utf-panel utf-command-ledger authority-list-panel">
+                    <div class="utf-command-ledger__header authority-panel__header">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Claims_ListKicker)]</span>
+                            <h2>@GetListTitle()</h2>
+                        </div>
+                        <span class="utf-status utf-status--neutral">
+                            <span class="utf-status__dot"></span>@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_RowCount)].Value, VisibleClaims.Count())
+                        </span>
+                    </div>
+
+                    @if (!VisibleClaims.Any())
+                    {
+                        <div class="authority-empty">@Localizer[nameof(Language.Pages_Command_Claims_NoClaims)]</div>
+                    }
+                    else
+                    {
+                        <div class="utf-command-table-scroll authority-table-scroll">
+                            <table class="utf-command-table authority-table">
+                                <thead>
+                                <tr>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Claims_TableHeader_Claim)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Claims_TableHeader_Status)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Claims_TableHeader_Identifier)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Claims_TableHeader_Category)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Claims_TableHeader_Usage)]</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                            @foreach (var claim in VisibleClaims)
+                            {
+                                <tr class="@GetClaimRowClass(claim)"
+                                    @key="claim.Claim.PrimaryKey"
+                                    @onclick="@(() => SelectClaim(claim))">
+                                    <td>
+                                        <strong>@GetClaimTitle(claim.Claim)</strong>
+                                        <span>@FormatClaimValue(claim.Claim)</span>
+                                    </td>
+                                    <td>
+                                        <span class="@GetClaimStatusClass(claim)">
+                                            <span class="utf-status__dot"></span>@GetClaimStatusLabel(claim)
+                                        </span>
+                                    </td>
+                                    <td>@FormatClaimIdentifier(claim.Claim)</td>
+                                    <td>@FormatNullable(claim.Claim.Category, Localizer[nameof(Language.Pages_Command_Claims_NotCategorized)].Value)</td>
+                                    <td>@FormatClaimUsage(claim)</td>
+                                </tr>
+                            }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+
+                <aside class="utf-panel utf-command-detail authority-detail-panel" aria-label="@(Localizer[nameof(Language.Pages_Command_Claims_DetailAria)])">
+                    @if (_selectedClaim is null)
+                    {
+                        <div class="authority-empty">@Localizer[nameof(Language.Pages_Command_Claims_SelectClaim)]</div>
+                    }
+                    else
+                    {
+                        <div class="authority-detail-panel__header">
+                            <div>
+                                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Claims_SelectedKicker)]</span>
+                                <h2>@GetClaimTitle(_selectedClaim.Claim)</h2>
+                            </div>
+                            <span class="@GetClaimStatusClass(_selectedClaim)">
+                                <span class="utf-status__dot"></span>@GetClaimStatusLabel(_selectedClaim)
+                            </span>
+                        </div>
+
+                        <dl class="authority-meta">
+                            <dt>@Localizer[nameof(Language.Pages_Command_Claims_Detail_LabelIdentifier)]</dt>
+                            <dd>@FormatNullable(_selectedClaim.Claim.Identifier, Localizer[nameof(Language.Pages_Command_Claims_NoIdentifier)].Value)</dd>
+                            <dt>@Localizer[nameof(Language.Pages_Command_Claims_Detail_LabelCategory)]</dt>
+                            <dd>@FormatNullable(_selectedClaim.Claim.Category, Localizer[nameof(Language.Pages_Command_Claims_NotCategorized)].Value)</dd>
+                            <dt>@Localizer[nameof(Language.Pages_Command_Claims_Detail_LabelValue)]</dt>
+                            <dd>@FormatClaimValue(_selectedClaim.Claim)</dd>
+                            <dt>@Localizer[nameof(Language.Pages_Command_Claims_Detail_LabelPrefix)]</dt>
+                            <dd>@(_selectedClaim.Claim.IsPrefix ?? false ? Localizer[nameof(Language.Pages_Command_Claims_Yes)].Value : Localizer[nameof(Language.Pages_Command_Claims_No)].Value)</dd>
+                            <dt>@Localizer[nameof(Language.Pages_Command_Claims_Detail_LabelDirectMembers)]</dt>
+                            <dd>@FormatCount(_selectedClaim.DirectMemberCount, Localizer[nameof(Language.Pages_Command_Claims_LabelDirectMembers)].Value)</dd>
+                            <dt>@Localizer[nameof(Language.Pages_Command_Claims_Detail_LabelRoles)]</dt>
+                            <dd>@FormatCount(_selectedClaim.RoleCount, Localizer[nameof(Language.Pages_Command_Claims_LabelRoles)].Value)</dd>
+                            <dt>@Localizer[nameof(Language.Pages_Command_Claims_Detail_LabelDescription)]</dt>
+                            <dd>@FormatNullable(_selectedClaim.Claim.Description, Localizer[nameof(Language.Pages_Command_Claims_NoDescription)].Value)</dd>
+                        </dl>
+
+                        <section class="authority-stack" aria-label="@(Localizer[nameof(Language.Pages_Command_Claims_RolesAria)])">
+                            <h3>@Localizer[nameof(Language.Pages_Command_Claims_RoleCoverage)]</h3>
+                            @if (_selectedClaim.RoleTitles.Length is 0)
+                            {
+                                <p>@Localizer[nameof(Language.Pages_Command_Claims_NoRoleCoverage)]</p>
+                            }
+                            else
+                            {
+                                <div>
+                                    @foreach (var roleTitle in _selectedClaim.RoleTitles)
+                                    {
+                                        <span>@roleTitle</span>
+                                    }
+                                </div>
+                            }
+                        </section>
+
+                        <div class="authority-detail-panel__actions">
+                            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/roles")">
+                                @Localizer[nameof(Language.Pages_Command_Claims_OpenRolesWorkspace)]
+                            </UtfCommandButton>
+                            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/members")">
+                                @Localizer[nameof(Language.Pages_Command_Claims_OpenMembersAuthority)]
+                            </UtfCommandButton>
+                        </div>
+                    }
+                </aside>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private CommandCenterAuthoritySnapshotInfo _snapshot = new();
+    private IReadOnlyList<CommandCenterAuthorityClaimInfo> _claims = [];
+    private CommandCenterAuthorityClaimInfo? _selectedClaim;
+    private ClaimView _activeView = ClaimView.All;
+    private string _search = string.Empty;
+    private bool _isLoading;
+    private string? _loadError;
+
+    private bool CanManageAuthority
+        => Me.HasClaimOrRoleAdmin();
+
+    private IEnumerable<CommandCenterAuthorityClaimInfo> VisibleClaims
+        => _claims
+            .Where(MatchesActiveView)
+            .OrderByDescending(claim => claim.DirectMemberCount + claim.RoleCount)
+            .ThenBy(claim => claim.Claim.Category)
+            .ThenBy(claim => GetClaimTitle(claim.Claim));
+
+    private int LoadedPrefixClaimCount
+        => _claims.Count(claim => claim.Claim.IsPrefix ?? false);
+
+    private int LoadedRoleBackedClaimCount
+        => _claims.Count(claim => claim.RoleCount > 0);
+
+    private int LoadedRoleAttachmentCount
+        => _claims.Sum(claim => claim.RoleCount);
+
+    private int LoadedDirectClaimAssignmentCount
+        => _claims.Sum(claim => claim.DirectMemberCount);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageAuthority)
+            await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!CanManageAuthority)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _snapshot = await CommandCenterRepository
+                .GetAuthoritySnapshotAsync(take: 240, search: _search)
+                .ConfigureAwait(false);
+            _claims = _snapshot.Claims;
+            _selectedClaim = VisibleClaims.FirstOrDefault()
+                             ?? _claims.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _snapshot      = new CommandCenterAuthoritySnapshotInfo();
+            _claims        = [];
+            _selectedClaim = null;
+            _loadError     = string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_LoadError)].Value, UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(string value)
+        => _search = value;
+
+    private void SetView(ClaimView view)
+    {
+        _activeView = view;
+        if (_selectedClaim is null || !MatchesActiveView(_selectedClaim))
+            _selectedClaim = VisibleClaims.FirstOrDefault();
+    }
+
+    private void SelectClaim(CommandCenterAuthorityClaimInfo claim)
+        => _selectedClaim = claim;
+
+    private bool MatchesActiveView(CommandCenterAuthorityClaimInfo claim)
+        => _activeView switch
+        {
+            ClaimView.All        => true,
+            ClaimView.Prefix     => claim.Claim.IsPrefix ?? false,
+            ClaimView.RoleBacked => claim.RoleCount > 0,
+            ClaimView.Direct     => claim.DirectMemberCount > 0,
+            ClaimView.Unused     => claim.DirectMemberCount is 0 && claim.RoleCount is 0,
+            _                    => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private string GetClaimRowClass(CommandCenterAuthorityClaimInfo claim)
+        => _selectedClaim?.Claim.PrimaryKey == claim.Claim.PrimaryKey
+            ? "authority-table-row utf-command-row--selected"
+            : "authority-table-row";
+
+    private string GetListTitle()
+        => _activeView switch
+        {
+            ClaimView.All        => Localizer[nameof(Language.Pages_Command_Claims_ListTitle_All)].Value,
+            ClaimView.Prefix     => Localizer[nameof(Language.Pages_Command_Claims_ListTitle_Prefix)].Value,
+            ClaimView.RoleBacked => Localizer[nameof(Language.Pages_Command_Claims_ListTitle_RoleBacked)].Value,
+            ClaimView.Direct     => Localizer[nameof(Language.Pages_Command_Claims_ListTitle_Direct)].Value,
+            ClaimView.Unused     => Localizer[nameof(Language.Pages_Command_Claims_ListTitle_Unused)].Value,
+            _                    => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private string GetPrefixStatusClass()
+        => LoadedPrefixClaimCount > 0 ? "utf-status utf-status--warning" : "utf-status utf-status--neutral";
+
+    private string GetDirectStatusClass()
+        => LoadedDirectClaimAssignmentCount > 0 ? "utf-status utf-status--warning" : "utf-status utf-status--success";
+
+    private string GetClaimStatusLabel(CommandCenterAuthorityClaimInfo claim)
+        => claim.DirectMemberCount is 0 && claim.RoleCount is 0
+            ? Localizer[nameof(Language.Pages_Command_Claims_StatusUnused)].Value
+            : claim.DirectMemberCount > 0
+                ? Localizer[nameof(Language.Pages_Command_Claims_StatusDirect)].Value
+                : claim.Claim.IsPrefix ?? false
+                    ? Localizer[nameof(Language.Pages_Command_Claims_StatusPrefix)].Value
+                    : Localizer[nameof(Language.Pages_Command_Claims_StatusRoleBacked)].Value;
+
+    private string GetClaimTitle(PlainClaimDto claim)
+        => FormatNullable(
+            claim.Title,
+            FormatNullable(
+                claim.Identifier,
+                Localizer[nameof(Language.Pages_Command_Claims_FallbackUnamedClaim)].Value
+            )
+        );
+
+    private string FormatClaimIdentifier(PlainClaimDto claim)
+    {
+        var identifier = FormatNullable(claim.Identifier, Localizer[nameof(Language.Pages_Command_Claims_FallbackNoIdentifier)].Value);
+        if (string.IsNullOrWhiteSpace(claim.Value))
+            return identifier;
+        return $"{identifier} = {claim.Value}";
+    }
+
+    private string FormatClaimUsage(CommandCenterAuthorityClaimInfo claim)
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            Localizer[nameof(Language.Pages_Command_Claims_UsageSummary)].Value,
+            FormatCount(claim.RoleCount, Localizer[nameof(Language.Pages_Command_Claims_LabelRole)].Value),
+            FormatCount(claim.DirectMemberCount, Localizer[nameof(Language.Pages_Command_Claims_LabelDirectMember)].Value)
+        );
+
+    private string FormatClaimValue(PlainClaimDto claim)
+    {
+        if (string.IsNullOrWhiteSpace(claim.Value))
+            return Localizer[nameof(Language.Pages_Command_Claims_FallbackNoFixedValue)].Value;
+        return string.IsNullOrWhiteSpace(claim.ValueType)
+            ? claim.Value
+            : $"{claim.Value} ({claim.ValueType})";
+    }
+
+    private static string FormatNullable(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+    private static string GetClaimStatusClass(CommandCenterAuthorityClaimInfo claim)
+    {
+        if (claim.DirectMemberCount is 0 && claim.RoleCount is 0)
+            return "utf-status utf-status--neutral";
+        if (claim.DirectMemberCount > 0)
+            return "utf-status utf-status--warning";
+        return claim.Claim.IsPrefix ?? false ? "utf-status utf-status--info" : "utf-status utf-status--success";
+    }
+
+    private string FormatCount(long value, string singular)
+        => value is 1
+            ? string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_CountSingular)].Value, singular)
+            : string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Claims_CountPlural)].Value, value, singular);
+
+    private enum ClaimView
+    {
+        All,
+        Prefix,
+        RoleBacked,
+        Direct,
+        Unused,
+    }
+}

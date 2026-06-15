@@ -1,0 +1,454 @@
+.authority-role-page {
+    color: var(--utf-text);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.authority-role-page ::deep .utf-command-page-header {
+    align-items: center;
+}
+
+.authority-role-page ::deep .utf-page-header h1 {
+    font-size: clamp(1.85rem, 2.35rem, 2.35rem);
+}
+
+.role-dossier-hero {
+    align-items: stretch;
+    background:
+        radial-gradient(circle at 12% 0%, rgba(186, 160, 90, 0.16), transparent 30rem),
+        linear-gradient(135deg, rgba(20, 30, 36, 0.96), rgba(8, 12, 16, 0.98));
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-sm);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: auto minmax(18rem, 0.72fr) minmax(0, 1.28fr);
+    min-width: 0;
+    padding: 1rem;
+}
+
+.role-dossier-hero__mark {
+    align-items: center;
+    aspect-ratio: 1;
+    background:
+        linear-gradient(135deg, rgba(226, 200, 119, 0.95), rgba(143, 111, 45, 0.98)),
+        var(--utf-gold);
+    border: 1px solid rgba(255, 236, 165, 0.58);
+    border-radius: var(--utf-radius-sm);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    color: #11181d;
+    display: flex;
+    justify-content: center;
+    width: 4.4rem;
+}
+
+.role-dossier-hero__identity {
+    align-content: center;
+    display: grid;
+    gap: 0.28rem;
+    min-width: 0;
+}
+
+.role-dossier-hero__identity h2 {
+    color: var(--utf-text);
+    font-size: 1.55rem;
+    line-height: 1.12;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.role-dossier-hero__identity p {
+    color: var(--utf-text-muted);
+    line-height: 1.42;
+    margin: 0;
+    max-width: 46rem;
+    overflow-wrap: anywhere;
+}
+
+.role-dossier-hero__identity > span:last-child {
+    color: var(--utf-text-subtle);
+    font-size: 0.82rem;
+}
+
+.role-dossier-hero__facts {
+    border-left: 1px solid var(--utf-stroke);
+    display: grid;
+    gap: 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+    min-width: 0;
+}
+
+.role-dossier-hero__facts div {
+    border-right: 1px solid var(--utf-stroke);
+    display: grid;
+    gap: 0.42rem;
+    min-width: 0;
+    padding: 0.2rem 0.9rem;
+}
+
+.role-dossier-hero__facts div:last-child {
+    border-right: 0;
+}
+
+.role-dossier-hero__facts dt {
+    color: var(--utf-text-subtle);
+    font-size: 0.7rem;
+    font-weight: 850;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.role-dossier-hero__facts dd {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0;
+    min-width: 0;
+}
+
+.role-dossier-hero__facts strong {
+    color: var(--utf-text);
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.role-dossier-hero__facts dd > span:not(.utf-status) {
+    color: var(--utf-text-muted);
+    font-size: 0.8rem;
+    line-height: 1.25;
+}
+
+.role-dossier-workspace {
+    align-items: start;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.34fr);
+    min-width: 0;
+}
+
+.role-claims-matrix,
+.role-operations-rail,
+.role-members-panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.role-operations-rail {
+    position: sticky;
+    top: 1rem;
+}
+
+.role-panel-header {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--utf-stroke);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 1rem;
+}
+
+.role-panel-header--compact {
+    align-items: flex-start;
+}
+
+.role-panel-header h2 {
+    color: var(--utf-text);
+    font-size: 1.2rem;
+    line-height: 1.2;
+    margin: 0.18rem 0 0;
+}
+
+.role-claims-toolbar,
+.role-members-toolbar {
+    align-items: flex-end;
+    border-bottom: 1px solid var(--utf-stroke);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    padding: 0.75rem 1rem;
+}
+
+.role-claims-toolbar ::deep .utf-command-search-field {
+    flex: 1 1 16rem;
+    max-width: 24rem;
+    min-width: min(100%, 14rem);
+}
+
+.role-members-toolbar ::deep .utf-command-search-field {
+    flex: 1 1 16rem;
+    max-width: 26rem;
+    min-width: min(100%, 14rem);
+}
+
+.role-filter-strip,
+.role-category-strip {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.role-category-strip {
+    border-top: 1px solid rgba(139, 151, 160, 0.18);
+    flex-basis: 100%;
+    padding-top: 0.65rem;
+}
+
+.role-filter-strip ::deep .utf-command-filter,
+.role-category-strip ::deep .utf-command-filter {
+    min-height: 34px;
+    padding-inline: 0.68rem;
+}
+
+.role-claims-table-shell {
+    max-height: min(54vh, 39rem);
+    min-height: 20rem;
+    overflow: auto;
+}
+
+.role-claims-table {
+    min-width: 980px;
+}
+
+.role-claims-table thead th,
+.role-members-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.role-claims-table th:first-child,
+.role-claims-table td:first-child {
+    width: 8.5rem;
+}
+
+.role-claims-table th:nth-child(3),
+.role-claims-table td:nth-child(3) {
+    width: 11rem;
+}
+
+.role-claims-table th:nth-child(5),
+.role-claims-table td:nth-child(5) {
+    width: 9rem;
+}
+
+.role-claims-table th:last-child,
+.role-claims-table td:last-child,
+.role-members-table th:last-child,
+.role-members-table td:last-child {
+    text-align: right;
+    width: 12rem;
+}
+
+.role-claims-row--available {
+    background: rgba(96, 165, 250, 0.018);
+}
+
+.role-table-actions {
+    white-space: nowrap;
+}
+
+.role-row-button {
+    height: 2.25rem;
+    min-height: 2.25rem;
+    min-width: 5.7rem;
+    padding-inline: 0.72rem;
+}
+
+.role-rail-section {
+    border-top: 1px solid var(--utf-stroke);
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+}
+
+.role-panel-header + .role-rail-section {
+    border-top: 0;
+}
+
+.role-rail-section__heading {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.role-rail-section__heading strong {
+    color: var(--utf-text);
+    font-size: 0.95rem;
+}
+
+.role-form {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.role-form label {
+    color: var(--utf-text-subtle);
+    display: grid;
+    font-size: 0.74rem;
+    font-weight: 850;
+    gap: 0.38rem;
+    text-transform: uppercase;
+}
+
+.role-form textarea {
+    line-height: 1.45;
+    min-height: 8rem;
+    padding-block: 0.7rem;
+    resize: vertical;
+}
+
+.role-rail-actions,
+.role-quick-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.role-quick-links {
+    align-items: stretch;
+    flex-direction: column;
+}
+
+.role-quick-links ::deep .utf-command-button {
+    justify-content: flex-start;
+    width: 100%;
+}
+
+.role-delete-confirm {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.role-summary-list {
+    display: grid;
+    gap: 0;
+    margin: 0;
+}
+
+.role-summary-list div {
+    border-bottom: 1px solid var(--utf-stroke);
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.68rem 0;
+}
+
+.role-summary-list div:first-child {
+    padding-top: 0;
+}
+
+.role-summary-list div:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.role-summary-list dt {
+    color: var(--utf-text-subtle);
+    font-size: 0.72rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.role-summary-list dd {
+    color: var(--utf-text);
+    line-height: 1.35;
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.role-members-table-shell {
+    max-height: 23rem;
+    overflow: auto;
+}
+
+.role-members-table {
+    min-width: 760px;
+}
+
+.role-empty-state {
+    color: var(--utf-text-muted);
+    line-height: 1.5;
+    padding: 1rem;
+}
+
+@media (max-width: 1380px) {
+    .role-dossier-hero {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .role-dossier-hero__facts {
+        border-left: 0;
+        border-top: 1px solid var(--utf-stroke);
+        grid-column: 1 / -1;
+        padding-top: 1rem;
+    }
+
+    .role-dossier-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .role-operations-rail {
+        position: static;
+    }
+
+    .role-claims-table-shell {
+        max-height: 38rem;
+    }
+}
+
+@media (max-width: 760px) {
+    .authority-role-page ::deep .utf-command-page-header {
+        align-items: stretch;
+    }
+
+    .role-dossier-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .role-dossier-hero__mark {
+        width: 3.6rem;
+    }
+
+    .role-dossier-hero__facts {
+        grid-template-columns: 1fr;
+    }
+
+    .role-dossier-hero__facts div {
+        border-bottom: 1px solid var(--utf-stroke);
+        border-right: 0;
+        padding: 0.75rem 0;
+    }
+
+    .role-dossier-hero__facts div:last-child {
+        border-bottom: 0;
+    }
+
+    .role-panel-header,
+    .role-claims-toolbar,
+    .role-members-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .role-claims-toolbar ::deep .utf-command-search-field,
+    .role-members-toolbar ::deep .utf-command-search-field {
+        max-width: 100%;
+    }
+
+    .role-claims-table-shell {
+        max-height: 30rem;
+        min-height: 16rem;
+    }
+
+    .role-rail-actions ::deep .utf-command-button,
+    .role-members-toolbar ::deep .utf-command-button {
+        width: 100%;
+    }
+}

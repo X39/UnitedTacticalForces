@@ -1,0 +1,329 @@
+@page "/command/field-reports"
+@page "/command/wiki-media"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@inject ICommandCenterRepository CommandCenterRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_FieldReports_PageTitle)]</PageTitle>
+
+<div class="authority-page field-report-command">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_FieldReports_HeaderTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_FieldReports_HeaderDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="@(() => LoadAsync())">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/></Icon>
+                <ChildContent>
+                    @Localizer[nameof(Language.Pages_Command_FieldReports_Refresh)]
+                </ChildContent>
+            </UtfCommandButton>
+            @if (CanManageFieldReports)
+            {
+                <UtfCommandButton Variant="primary"
+                                  Href="@BaseUrl.ResolveSelfUrl("command/field-reports/create")">
+                    <Icon><FluentIcon Value="@(new Icons.Regular.Size24.New())"/></Icon>
+                    <ChildContent>
+                        @Localizer[nameof(Language.Pages_Command_FieldReports_NewReport)]
+                    </ChildContent>
+                </UtfCommandButton>
+            }
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("field-reports")">
+                @Localizer[nameof(Language.Pages_Command_FieldReports_PublicReports)]
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageFieldReports)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_FieldReports_NoAccessTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_FieldReports_NoAccessMessage)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+        <section class="utf-command-metrics authority-attention" aria-label="@(Localizer[nameof(Language.Pages_Command_FieldReports_SummaryAria)])">
+            <UtfCommandMetric Active="@(_activeView is FieldReportView.All)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_MetricDescription_All)].Value, _reports.Count)"
+                              OnClick="@(() => SetView(FieldReportView.All))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_FieldReports_MetricStatus_Reports)])"
+                              StatusIntent="info"
+                              Value="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_MetricValue_Report)].Value, _snapshot.FieldReportCount)"
+                              />
+            <UtfCommandMetric Active="@(_activeView is FieldReportView.Published)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_FieldReports_MetricDescription_Published)])"
+                              OnClick="@(() => SetView(FieldReportView.Published))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_FieldReports_MetricStatus_Published)])"
+                              StatusIntent="success"
+                              Value="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_MetricValue_Report)].Value, _snapshot.PublishedFieldReportCount)"
+                              />
+            <UtfCommandMetric Active="@(_activeView is FieldReportView.Drafts)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_FieldReports_MetricDescription_Drafts)])"
+                              OnClick="@(() => SetView(FieldReportView.Drafts))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_FieldReports_MetricStatus_Drafts)])"
+                              StatusIntent="warning"
+                              Value="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_MetricValue_Draft)].Value, _snapshot.DraftFieldReportCount)"
+                              />
+            <UtfCommandMetric Active="@(_activeView is FieldReportView.Deleted)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_FieldReports_MetricDescription_Deleted)])"
+                              OnClick="@(() => SetView(FieldReportView.Deleted))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_FieldReports_MetricStatus_Deleted)])"
+                              StatusClass="@GetDeletedStatusClass()"
+                              Value="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_MetricValue_Report)].Value, _snapshot.DeletedFieldReportCount)"
+                              />
+        </section>
+
+        <section class="utf-command-toolbar" aria-label="@(Localizer[nameof(Language.Pages_Command_FieldReports_FilterAria)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Command_FieldReports_SearchPlaceholder)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="@(() => LoadAsync())">
+                @Localizer[nameof(Language.Pages_Command_FieldReports_Search)]
+            </UtfCommandButton>
+            <UtfCommandFilter Active="@(_activeView is FieldReportView.All)"
+                              Count="@GetFilterCountLabel(FieldReportView.All)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_FieldReports_FilterAll)])"
+                              OnClick="@(() => SetView(FieldReportView.All))"/>
+            <UtfCommandFilter Active="@(_activeView is FieldReportView.Published)"
+                              Count="@GetFilterCountLabel(FieldReportView.Published)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_FieldReports_FilterPublished)])"
+                              OnClick="@(() => SetView(FieldReportView.Published))"/>
+            <UtfCommandFilter Active="@(_activeView is FieldReportView.Drafts)"
+                              Count="@GetFilterCountLabel(FieldReportView.Drafts)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_FieldReports_FilterDrafts)])"
+                              OnClick="@(() => SetView(FieldReportView.Drafts))"/>
+            <UtfCommandFilter Active="@(_activeView is FieldReportView.Featured)"
+                              Count="@GetFilterCountLabel(FieldReportView.Featured)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_FieldReports_FilterFeatured)])"
+                              OnClick="@(() => SetView(FieldReportView.Featured))"/>
+            <UtfCommandFilter Active="@(_activeView is FieldReportView.Deleted)"
+                              Count="@GetFilterCountLabel(FieldReportView.Deleted)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_FieldReports_FilterDeleted)])"
+                              OnClick="@(() => SetView(FieldReportView.Deleted))"/>
+        </section>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Command_FieldReports_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <section class="utf-panel utf-command-ledger field-report-command__ledger">
+                <div class="utf-command-ledger__header field-report-command__ledger-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_FieldReports_LedgerKicker)]</span>
+                        <h2>@GetListTitle()</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_RowCount)].Value, VisibleReports.Count())
+                    </span>
+                </div>
+
+                @if (!VisibleReports.Any())
+                {
+                    <div class="authority-empty">@Localizer[nameof(Language.Pages_Command_FieldReports_NoReports)]</div>
+                }
+                else
+                {
+                    <div class="utf-command-table-scroll field-report-command__table-scroll">
+                        <table class="utf-command-table field-report-command__table">
+                            <thead>
+                            <tr>
+                                <th>@Localizer[nameof(Language.Pages_Command_FieldReports_TableHeader_Report)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_FieldReports_TableHeader_Status)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_FieldReports_TableHeader_Category)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_FieldReports_TableHeader_Updated)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_FieldReports_TableHeader_Flags)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_FieldReports_TableHeader_Audit)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_FieldReports_TableHeader_Actions)]</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var report in VisibleReports)
+                            {
+                                <tr class="field-report-command__table-row" @key="report.PrimaryKey">
+                                    <td>
+                                        <strong>@report.Title</strong>
+                                        <span>@report.Slug</span>
+                                    </td>
+                                    <td>
+                                        <span class="@GetReportStatusClass(report)">
+                                            <span class="utf-status__dot"></span>@GetReportStatusLabel(report)
+                                        </span>
+                                    </td>
+                                    <td>@report.Category</td>
+                                    <td>
+                                        <strong>@FormatReportDate(report.TimeStampUpdated)</strong>
+                                        <span>@FormatReportDate(report.TimeStampPublished ?? report.TimeStampUpdated)</span>
+                                    </td>
+                                    <td>
+                                        <strong>@(report.IsFeatured ? Localizer[nameof(Language.Pages_Command_FieldReports_FlagFeatured)].Value : Localizer[nameof(Language.Pages_Command_FieldReports_FlagStandard)].Value)</strong>
+                                        <span>@(report.IsPublished ? Localizer[nameof(Language.Pages_Command_FieldReports_FlagPublic)].Value : Localizer[nameof(Language.Pages_Command_FieldReports_FlagEditorial)].Value)</span>
+                                    </td>
+                                    <td>
+                                        <strong>@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_RecordCount)].Value, report.AuditRecordCount)</strong>
+                                        <span>@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_SortValue)].Value, report.SortOrder)</span>
+                                    </td>
+                                    <td>
+                                        <UtfCommandButton Href="@GetEditorHref(report)">
+                                            @Localizer[nameof(Language.Pages_Command_FieldReports_Edit)]
+                                        </UtfCommandButton>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private CommandCenterFieldReportsSnapshotInfo _snapshot = new();
+    private IReadOnlyList<CommandCenterFieldReportInfo> _reports = [];
+    private FieldReportView _activeView = FieldReportView.All;
+    private string _search = string.Empty;
+    private bool _isLoading;
+    private string? _loadError;
+
+    private bool CanManageFieldReports
+        => Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All);
+
+    private IEnumerable<CommandCenterFieldReportInfo> VisibleReports
+        => _reports
+            .Where(MatchesActiveView)
+            .OrderBy(report => report.IsDeleted)
+            .ThenByDescending(report => report.IsFeatured)
+            .ThenBy(report => report.SortOrder)
+            .ThenByDescending(report => report.TimeStampPublished ?? report.TimeStampUpdated)
+            .ThenBy(report => report.Title);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageFieldReports)
+            await LoadAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!CanManageFieldReports)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _snapshot = await CommandCenterRepository
+                .GetFieldReportsSnapshotAsync(take: 160, search: NormalizeSearch(_search))
+                .ConfigureAwait(false);
+            _reports = _snapshot.Reports;
+        }
+        catch (Exception ex)
+        {
+            _snapshot = new CommandCenterFieldReportsSnapshotInfo();
+            _reports = [];
+            _loadError = string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_FieldReports_LoadError)].Value, UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(string value)
+        => _search = value;
+
+    private void SetView(FieldReportView view)
+        => _activeView = view;
+
+    private bool MatchesActiveView(CommandCenterFieldReportInfo report)
+        => _activeView switch
+        {
+            FieldReportView.All       => true,
+            FieldReportView.Published => report.IsPublished && !report.IsDeleted,
+            FieldReportView.Drafts    => !report.IsPublished && !report.IsDeleted,
+            FieldReportView.Featured  => report.IsFeatured && !report.IsDeleted,
+            FieldReportView.Deleted   => report.IsDeleted,
+            _ => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private string GetListTitle()
+        => _activeView switch
+        {
+            FieldReportView.All       => Localizer[nameof(Language.Pages_Command_FieldReports_ListTitle_All)].Value,
+            FieldReportView.Published => Localizer[nameof(Language.Pages_Command_FieldReports_ListTitle_Published)].Value,
+            FieldReportView.Drafts    => Localizer[nameof(Language.Pages_Command_FieldReports_ListTitle_Drafts)].Value,
+            FieldReportView.Featured  => Localizer[nameof(Language.Pages_Command_FieldReports_ListTitle_Featured)].Value,
+            FieldReportView.Deleted   => Localizer[nameof(Language.Pages_Command_FieldReports_ListTitle_Deleted)].Value,
+            _                         => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private string GetFilterCountLabel(FieldReportView view)
+        => view switch
+        {
+            FieldReportView.All => _reports.Count.ToString(CultureInfo.CurrentCulture),
+            FieldReportView.Published => _reports.Count((report) => report.IsPublished && !report.IsDeleted).ToString(CultureInfo.CurrentCulture),
+            FieldReportView.Drafts => _reports.Count((report) => !report.IsPublished && !report.IsDeleted).ToString(CultureInfo.CurrentCulture),
+            FieldReportView.Featured => _reports.Count((report) => report.IsFeatured && !report.IsDeleted).ToString(CultureInfo.CurrentCulture),
+            FieldReportView.Deleted => _reports.Count((report) => report.IsDeleted).ToString(CultureInfo.CurrentCulture),
+            _ => throw new ArgumentOutOfRangeException(nameof(view)),
+        };
+
+    private string GetEditorHref(CommandCenterFieldReportInfo report)
+        => BaseUrl.ResolveSelfUrl($"command/field-reports/{report.PrimaryKey}");
+
+    private string GetDeletedStatusClass()
+        => _snapshot.DeletedFieldReportCount > 0 ? "utf-status utf-status--warning" : "utf-status utf-status--success";
+
+    private static string GetReportStatusClass(CommandCenterFieldReportInfo report)
+    {
+        if (report.IsDeleted)
+            return "utf-status utf-status--danger";
+        if (!report.IsPublished)
+            return "utf-status utf-status--warning";
+        return report.TimeStampPublished > DateTimeOffset.UtcNow
+            ? "utf-status utf-status--info"
+            : "utf-status utf-status--success";
+    }
+
+    private string GetReportStatusLabel(CommandCenterFieldReportInfo report)
+        => report.IsDeleted
+            ? Localizer[nameof(Language.Pages_Command_FieldReports_StatusDeleted)].Value
+            : !report.IsPublished
+                ? Localizer[nameof(Language.Pages_Command_FieldReports_StatusDraft)].Value
+                : report.TimeStampPublished > DateTimeOffset.UtcNow
+                    ? Localizer[nameof(Language.Pages_Command_FieldReports_StatusScheduled)].Value
+                    : Localizer[nameof(Language.Pages_Command_FieldReports_StatusPublished)].Value;
+
+    private static string? NormalizeSearch(string value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string FormatReportDate(DateTimeOffset value)
+        => value.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture);
+
+    private enum FieldReportView
+    {
+        All,
+        Published,
+        Drafts,
+        Featured,
+        Deleted,
+    }
+}

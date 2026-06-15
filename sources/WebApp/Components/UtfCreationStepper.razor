@@ -1,0 +1,40 @@
+@using System.Globalization
+
+<nav class="@CssClass" aria-label="@AriaLabel">
+    @foreach (var step in Steps.Select((item, index) => (item, index)))
+    {
+        <button class="@StepClass(step.item)"
+                type="button"
+                disabled="@(!step.item.IsEnabled)"
+                @onclick="@(() => SelectStepAsync(step.item))">
+            <span>@((step.index + 1).ToString(CultureInfo.InvariantCulture))</span>
+            @step.item.Label
+        </button>
+    }
+</nav>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<UtfCreationStepItem> Steps { get; set; } = [];
+
+    [Parameter]
+    public string AriaLabel { get; set; } = "Creation steps";
+
+    [Parameter]
+    public string CssClass { get; set; } = "server-create-stepper";
+
+    [Parameter]
+    public EventCallback<string> StepSelected { get; set; }
+
+    private Task SelectStepAsync(UtfCreationStepItem step)
+        => step.IsEnabled
+            ? StepSelected.InvokeAsync(step.Key)
+            : Task.CompletedTask;
+
+    private static string StepClass(UtfCreationStepItem step)
+        => step.IsActive
+            ? "active"
+            : step.IsComplete
+                ? "complete"
+                : string.Empty;
+}

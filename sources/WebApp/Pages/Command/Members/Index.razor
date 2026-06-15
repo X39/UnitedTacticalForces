@@ -1,0 +1,410 @@
+@page "/command/members"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@inject ICommandCenterRepository CommandCenterRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Members_PageTitle)]</PageTitle>
+
+<div class="members-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Members_HeaderTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Members_HeaderDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Members_Refresh)]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("members")">
+                @Localizer[nameof(Language.Pages_Command_Members_PublicPage)]
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageMembers)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Members_NoAccessTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Members_NoAccessMessage)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics members-attention" aria-label="@(Localizer[nameof(Language.Pages_Command_Members_MetricAria)])">
+            <UtfCommandMetric Active="@(_activeView is MemberView.Attention)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_MetricDescriptionAttention)].Value, GetCountText(_snapshot.UnverifiedMemberCount, Localizer[nameof(Language.Pages_Command_Members_LabelUnverifiedMember)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelUnverifiedMembers)].Value), GetCountText(_snapshot.BannedMemberCount, Localizer[nameof(Language.Pages_Command_Members_LabelBannedMember)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelBannedMembers)].Value))"
+                              OnClick="@(() => SetView(MemberView.Attention))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Members_StatusAttention)])"
+                              StatusClass="@GetAttentionStatusClass()"
+                              Value="@GetCountText(AttentionMemberCount, Localizer[nameof(Language.Pages_Command_Members_LabelMember)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelMembers)].Value)"/>
+            <UtfCommandMetric Active="@(_activeView is MemberView.Verified)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_MetricDescriptionVerified)].Value, GetPercentageText(_snapshot.VerifiedMemberCount, _snapshot.MemberCount))"
+                              OnClick="@(() => SetView(MemberView.Verified))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Members_StatusVerified)])"
+                              StatusIntent="success"
+                              Value="@GetCountText(_snapshot.VerifiedMemberCount, Localizer[nameof(Language.Pages_Command_Members_LabelMember)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelMembers)].Value)"/>
+            <UtfCommandMetric Active="@(_activeView is MemberView.Roles)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_MetricDescriptionRoles)].Value, GetCountText(_snapshot.ClaimCount, Localizer[nameof(Language.Pages_Command_Members_LabelClaim)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelClaims)].Value), Localizer[nameof(Language.Pages_Command_Members_LabelAuthority)].Value)"
+                              OnClick="@(() => SetView(MemberView.Roles))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Members_StatusAuthority)])"
+                              StatusIntent="info"
+                              Value="@GetCountText(_snapshot.RoleCount, Localizer[nameof(Language.Pages_Command_Members_LabelRole)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelRoles)].Value)"/>
+            <UtfCommandMetric Active="@(_activeView is MemberView.Verein)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_MetricDescriptionVerein)].Value, GetCountText(_snapshot.SuspendedVereinMemberCount, Localizer[nameof(Language.Pages_Command_Members_LabelSuspendedMember)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelSuspendedMembers)].Value), GetCountText(_snapshot.EndedVereinMemberCount, Localizer[nameof(Language.Pages_Command_Members_LabelEndedMember)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelEndedMembers)].Value))"
+                              OnClick="@(() => SetView(MemberView.Verein))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Members_StatusVerein)])"
+                              StatusIntent="success"
+                              Value="@GetCountText(_snapshot.ActiveVereinMemberCount, Localizer[nameof(Language.Pages_Command_Members_LabelMember)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelMembers)].Value)"/>
+            <UtfCommandMetric Active="@(_activeView is MemberView.All)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_MetricDescriptionAll)].Value, GetCountText(_snapshot.DeletedMemberCount, Localizer[nameof(Language.Pages_Command_Members_LabelDeletedRecord)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelDeletedRecords)].Value))"
+                              OnClick="@(() => SetView(MemberView.All))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Members_StatusRoster)])"
+                              Value="@GetCountText(_snapshot.MemberCount, Localizer[nameof(Language.Pages_Command_Members_LabelMember)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelMembers)].Value)"/>
+        </section>
+
+        <section class="utf-command-toolbar" aria-label="@(Localizer[nameof(Language.Pages_Command_Members_FilterAria)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Command_Members_SearchPlaceholder)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="RefreshAsync">
+                @Localizer[nameof(Language.Pages_Command_Members_Search)]
+            </UtfCommandButton>
+            <UtfCommandFilter Active="@(_activeView is MemberView.All)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Members_FilterAll)])"
+                              OnClick="@(() => SetView(MemberView.All))"/>
+            <UtfCommandFilter Active="@(_activeView is MemberView.Attention)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Members_FilterAttention)])"
+                              OnClick="@(() => SetView(MemberView.Attention))"/>
+            <UtfCommandFilter Active="@(_activeView is MemberView.Verified)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Members_FilterVerified)])"
+                              OnClick="@(() => SetView(MemberView.Verified))"/>
+            <UtfCommandFilter Active="@(_activeView is MemberView.Roles)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Members_FilterRoles)])"
+                              OnClick="@(() => SetView(MemberView.Roles))"/>
+            <UtfCommandFilter Active="@(_activeView is MemberView.Verein)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Members_FilterVerein)])"
+                              OnClick="@(() => SetView(MemberView.Verein))"/>
+        </section>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Command_Members_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <div class="utf-command-workspace members-roster-workspace">
+                <section class="utf-panel utf-command-ledger members-list-panel">
+                    <div class="utf-command-ledger__header members-panel__header">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Members_ListKicker)]</span>
+                            <h2>@GetListTitle()</h2>
+                        </div>
+                        <span class="utf-status utf-status--neutral">
+                            <span class="utf-status__dot"></span>@FormatRowCount()
+                        </span>
+                    </div>
+
+                    @if (!VisibleMembers.Any())
+                    {
+                        <div class="members-empty">@Localizer[nameof(Language.Pages_Command_Members_NoRows)]</div>
+                    }
+                    else
+                    {
+                        <div class="utf-command-table-scroll members-table-scroll">
+                            <table class="utf-command-table members-table">
+                                <thead>
+                                <tr>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Members_ColumnMember)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Members_ColumnStatus)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Members_ColumnVerein)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Members_ColumnAuthority)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Members_ColumnDirectClaims)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Members_ColumnDeleted)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Members_ColumnActions)]</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var member in VisibleMembers)
+                                {
+                                    <tr class="@GetMemberRowClass(member)"
+                                        @key="member.PrimaryKey"
+                                        tabindex="0"
+                                        aria-label="@GetMemberOpenLabel(member)"
+                                        @onclick="@(() => OpenMember(member))"
+                                        @onkeydown="@((args) => HandleMemberRowKeyDown(args, member))">
+                                        <td>
+                                            <div class="members-table-member">
+                                                @if (GetMemberAvatarSource(member) is { } avatarSource)
+                                                {
+                                                    <img class="members-table-avatar"
+                                                         src="@avatarSource"
+                                                         alt="@GetMemberAvatarAlt(member)"
+                                                         width="40"
+                                                         height="40"
+                                                         loading="lazy"
+                                                         decoding="async"
+                                                         @onerror="@(() => MarkMemberAvatarFailed(member.PrimaryKey))"/>
+                                                }
+                                                else
+                                                {
+                                                    <div class="members-table-avatar members-table-avatar--fallback"
+                                                         role="img"
+                                                         aria-label="@GetMemberAvatarAlt(member)">
+                                                        @GetMemberInitials(member)
+                                                    </div>
+                                                }
+                                                <div class="members-table-member__identity">
+                                                    <strong>@member.Nickname</strong>
+                                                    <span>@member.PrimaryKey</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="@GetMemberStatusClass(member)">
+                                                <span class="utf-status__dot"></span>@GetMemberStatusLabel(member)
+                                            </span>
+                                        </td>
+                                        <td>@GetVereinStatusLabel(member)</td>
+                                        <td>@FormatMemberAuthority(member)</td>
+                                        <td>@FormatClaimCount(member.DirectClaimCount)</td>
+                                        <td>@(member.IsDeleted ? Localizer[nameof(Language.Pages_Command_Members_Yes)].Value : Localizer[nameof(Language.Pages_Command_Members_No)].Value)</td>
+                                        <td class="members-actions-cell"
+                                            @onclick:stopPropagation="true"
+                                            @onkeydown:stopPropagation="true">
+                                            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/members/{member.PrimaryKey}")">
+                                                @Localizer[nameof(Language.Pages_Command_Members_ActionManage)]
+                                            </UtfCommandButton>
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private CommandCenterCommunitySnapshotInfo _snapshot = new();
+    private IReadOnlyList<CommandCenterCommunityMemberInfo> _members = [];
+    private readonly HashSet<Guid> _failedAvatarUserIds = [];
+    private MemberView _activeView = MemberView.Attention;
+    private string _search = string.Empty;
+    private bool _isLoading;
+    private string? _loadError;
+
+    private bool CanManageMembers
+        => Me.HasBaseClaimOrUserAdmin(Claims.User.All)
+           || Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Members)
+           || Me.HasClaimOrRoleAdmin();
+
+    private long AttentionMemberCount
+        => _snapshot.UnverifiedMemberCount + _snapshot.BannedMemberCount + _snapshot.DeletedMemberCount;
+
+    private IEnumerable<CommandCenterCommunityMemberInfo> VisibleMembers
+        => _members
+            .Where(MatchesActiveView)
+            .OrderBy((member) => member.IsVerified)
+            .ThenByDescending((member) => member.IsBanned)
+            .ThenBy((member) => member.IsDeleted)
+            .ThenBy((member) => member.Nickname);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageMembers)
+            await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!CanManageMembers)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _snapshot = await CommandCenterRepository
+                .GetCommunitySnapshotAsync(take: 100, search: _search)
+                .ConfigureAwait(false);
+            _members = _snapshot.Members;
+        }
+        catch (Exception ex)
+        {
+            _snapshot  = new CommandCenterCommunitySnapshotInfo();
+            _members   = [];
+            _loadError = string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_ErrorLoad)].Value, UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(string value)
+        => _search = value;
+
+    private void SetView(MemberView view)
+        => _activeView = view;
+
+    private void OpenMember(CommandCenterCommunityMemberInfo member)
+        => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/members/{member.PrimaryKey}"));
+
+    private void HandleMemberRowKeyDown(KeyboardEventArgs args, CommandCenterCommunityMemberInfo member)
+    {
+        if (UtfCommandRowInteraction.IsOpenKey(args))
+            OpenMember(member);
+    }
+
+    private bool MatchesActiveView(CommandCenterCommunityMemberInfo member)
+        => _activeView switch
+        {
+            MemberView.Attention => !member.IsVerified || member.IsBanned || member.IsDeleted,
+            MemberView.Verified  => member.IsVerified && !member.IsBanned && !member.IsDeleted,
+            MemberView.Roles     => member.RoleTitles.Length > 0 || member.DirectClaimCount > 0,
+            MemberView.Verein    => member.VereinMembershipStatus is not null,
+            MemberView.All       => true,
+            _                    => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private string GetListTitle()
+        => _activeView switch
+        {
+            MemberView.Attention => Localizer[nameof(Language.Pages_Command_Members_ListTitleAttention)].Value,
+            MemberView.Verified  => Localizer[nameof(Language.Pages_Command_Members_ListTitleVerified)].Value,
+            MemberView.Roles     => Localizer[nameof(Language.Pages_Command_Members_ListTitleAuthorityAssignments)].Value,
+            MemberView.Verein    => Localizer[nameof(Language.Pages_Command_Members_ListTitleVerein)].Value,
+            MemberView.All       => Localizer[nameof(Language.Pages_Command_Members_ListTitleAll)].Value,
+            _                    => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private static string GetMemberRowClass(CommandCenterCommunityMemberInfo member)
+        => "members-table-row utf-command-row--interactive";
+
+    private string GetMemberOpenLabel(CommandCenterCommunityMemberInfo member)
+        => $"{Localizer[nameof(Language.Pages_Command_Members_ActionManage)].Value}: {member.Nickname}";
+
+    private string? GetMemberAvatarSource(CommandCenterCommunityMemberInfo member)
+        => _failedAvatarUserIds.Contains(member.PrimaryKey)
+            ? null
+            : member.ToImageSource();
+
+    private void MarkMemberAvatarFailed(Guid userId)
+        => _failedAvatarUserIds.Add(userId);
+
+    private string GetMemberAvatarAlt(CommandCenterCommunityMemberInfo member)
+    {
+        var nickname = string.IsNullOrWhiteSpace(member.Nickname)
+            ? Localizer[nameof(Language.Pages_Command_Member_UnknownUser)].Value
+            : member.Nickname;
+        return string.Format(CultureInfo.CurrentCulture, Localizer["Pages_Command_Members_AvatarAlt"].Value, nickname);
+    }
+
+    private string GetMemberInitials(CommandCenterCommunityMemberInfo member)
+    {
+        var name = string.IsNullOrWhiteSpace(member.Nickname)
+            ? Localizer[nameof(Language.Pages_Command_Member_UnknownUser)].Value
+            : member.Nickname;
+        var initials = string.Concat(
+            name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Take(2)
+                .Select(q => q[0])
+        );
+        if (string.IsNullOrWhiteSpace(initials))
+            initials = name[0].ToString();
+
+        return initials.ToUpper(CultureInfo.CurrentCulture);
+    }
+
+    private string FormatRowCount()
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            Localizer[nameof(Language.Pages_Command_Members_RowCount)].Value,
+            GetCountText(VisibleMembers.Count(), Localizer[nameof(Language.Pages_Command_Members_LabelRow)].Value, Localizer[nameof(Language.Pages_Command_Members_LabelRows)].Value)
+        );
+
+    private string GetAttentionStatusClass()
+        => AttentionMemberCount > 0 ? "utf-status utf-status--warning" : "utf-status utf-status--success";
+
+    private static string GetMemberStatusClass(CommandCenterCommunityMemberInfo member)
+    {
+        if (member.IsDeleted || member.IsBanned)
+            return "utf-status utf-status--danger";
+        return member.IsVerified ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+    }
+
+    private string GetMemberStatusLabel(CommandCenterCommunityMemberInfo member)
+        => member.IsDeleted
+            ? Localizer[nameof(Language.Pages_Command_Members_StatusDeleted)].Value
+            : member.IsBanned
+                ? Localizer[nameof(Language.Pages_Command_Members_StatusBanned)].Value
+                : member.IsVerified
+                    ? Localizer[nameof(Language.Pages_Command_Members_StatusVerified)].Value
+                    : Localizer[nameof(Language.Pages_Command_Members_StatusUnverified)].Value;
+
+    private string GetVereinStatusLabel(CommandCenterCommunityMemberInfo member)
+        => member.VereinMembershipStatus is null
+            ? Localizer[nameof(Language.Pages_Command_Members_NoFormalMembership)].Value
+            : string.IsNullOrWhiteSpace(member.VereinMemberNumber)
+                ? $"{member.VereinMembershipStatus}"
+                : $"{member.VereinMembershipStatus} ({member.VereinMemberNumber})";
+
+    private string FormatMemberAuthority(CommandCenterCommunityMemberInfo member)
+    {
+        if (member.RoleTitles.Length is 0)
+            return Localizer[nameof(Language.Pages_Command_Members_NoRoleAssignments)].Value;
+
+        var roleSummary = string.Join(", ", member.RoleTitles.Take(3));
+        return member.RoleTitles.Length > 3
+            ? string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_MoreRoleAssignments)].Value, roleSummary, member.RoleTitles.Length - 3)
+            : roleSummary;
+    }
+
+    private string FormatClaimCount(int claimCount)
+        => GetCountText(
+            claimCount,
+            Localizer[nameof(Language.Pages_Command_Members_LabelDirectClaim)].Value,
+            Localizer[nameof(Language.Pages_Command_Members_LabelDirectClaims)].Value
+        );
+
+    private string GetCountText(long value, string singularText, string pluralText)
+        => value is 1
+            ? string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_CountSingular)], singularText)
+            : string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Members_CountPlural)], value, pluralText);
+
+    private static string GetPercentage(long value, long total)
+        => total <= 0 ? "0%" : $"{(double) value / total:P0}";
+
+    private string GetPercentageText(long value, long total)
+        => GetPercentage(value, total);
+
+    private enum MemberView
+    {
+        Attention,
+        Verified,
+        Roles,
+        Verein,
+        All,
+    }
+}

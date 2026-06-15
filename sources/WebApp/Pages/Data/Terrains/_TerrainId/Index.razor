@@ -1,0 +1,484 @@
+@page "/data/terrains/{TerrainId:long}"
+@page "/command/terrains/{TerrainId:long}"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IStringLocalizer<Language> Localizer
+@inject ITerrainRepository TerrainRepository
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject BaseUrl BaseUrl
+@inject MeService Me
+
+<PageTitle>@PageTitle</PageTitle>
+
+<div class="terrain-detail-page">
+    <UtfCommandPageHeader Class="terrain-detail-header"
+                          Title="@TerrainTitle"
+                          Description="@(Localizer[nameof(Language.Auto_TerrainRecordInlineEditingImageStateAndCommandCenter_a52c4fd4)])">
+        <Actions>
+            <UtfCommandButton OnClick="NavigateToTerrains">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/></Icon>
+                <ChildContent>@Localizer[nameof(Language.Auto_AllTerrains_b84779a5)]</ChildContent>
+            </UtfCommandButton>
+            @if (_terrain is not null && CanDelete)
+            {
+                <UtfCommandButton Disabled="@_isSaving"
+                                  OnClick="DeactivateTerrainAsync">
+                    <Icon><FluentIcon Value="@(new Icons.Regular.Size24.Delete())"/></Icon>
+                    <ChildContent>@Localizer[nameof(Language.Deactivate)]</ChildContent>
+                </UtfCommandButton>
+            }
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanAccessTerrain)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Auto_TerrainAdministratorAccessRequired_22faf377)]</h2>
+            <p>@Localizer[nameof(Language.Auto_TerrainDetailsAreVisibleOnlyToAuthorizedAssetOperators_5b3d72af)]</p>
+        </section>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Auto_LoadingTerrainDetail_df82cbfe)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning" role="alert">
+            @_loadError
+        </div>
+    }
+    else if (_terrain is null)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Auto_TerrainNotFound_e99f0e69)]</h2>
+            <p>@Localizer[nameof(Language.Auto_NoTerrainWasFoundForID_3bcd5fa2), TerrainId.ToString(CultureInfo.InvariantCulture)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_saveError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_saveError
+            </div>
+        }
+        else if (_saveMessage is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--success" role="status">
+                @_saveMessage
+            </div>
+        }
+
+        <section class="utf-command-metrics terrain-detail-attention" aria-label="@(Localizer[nameof(Language.Auto_TerrainDetailSummary_84968ec0)])">
+            <UtfCommandMetric Description="@FormatKey(_terrain.PrimaryKey)"
+                              Status="@(Localizer[nameof(Language.Identifier)])"
+                              StatusIntent="neutral"
+                              Value="@(Localizer[nameof(Language.Auto_TerrainRecord_51769df4)])"/>
+            <UtfCommandMetric Description="@StatusDescription"
+                              Status="@(Localizer[nameof(Language.Status)])"
+                              StatusClass="@StatusClass"
+                              Value="@StatusText"/>
+            <UtfCommandMetric Description="@ImageDescription"
+                              Status="@(Localizer[nameof(Language.Image)])"
+                              StatusIntent="@ImageStatusIntent"
+                              Value="@ImageMetricValue"/>
+            <UtfCommandMetric Description="@GetImageSizeLabel(_terrain)"
+                              Status="@(Localizer[nameof(Language.Auto_AssetSize_91ddf030)])"
+                              StatusIntent="neutral"
+                              Value="@GetImageTypeLabel(_terrain)"/>
+        </section>
+
+        <div class="terrain-detail-workspace">
+            <section class="utf-panel terrain-detail-preview" aria-labelledby="terrain-preview-title">
+                <div class="terrain-detail-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Auto_TerrainImage_20701e8d)]</span>
+                        <h2 id="terrain-preview-title">@TerrainTitle</h2>
+                    </div>
+                    <span class="@StatusClass">
+                        <span class="utf-status__dot"></span>@StatusText
+                    </span>
+                </div>
+
+                <div class="@GetTerrainPreviewClass(_terrain)"
+                     style="@GetTerrainImageStyle(_terrain)"
+                     aria-label="@GetTerrainImageLabel(_terrain)">
+                    @if (!HasTerrainImage(_terrain))
+                    {
+                        <FluentIcon Value="@(new Icons.Regular.Size24.ImageOff())"/>
+                        <span>@Localizer[nameof(Language.Pages_Data_Terrains_All_NoImage)]</span>
+                    }
+                </div>
+            </section>
+
+            <aside class="utf-panel terrain-detail-meta-panel" aria-label="@(Localizer[nameof(Language.Auto_TerrainMetadataAndEditing_ad6e77ea)])">
+                <div class="terrain-detail-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Metadata)]</span>
+                        <h2>@(CanUpdate ? Localizer[nameof(Language.Auto_InlineEditing_e0013c16)] : Localizer[nameof(Language.Auto_TerrainMetadata_74a769e8)])</h2>
+                    </div>
+                </div>
+
+                @if (CanUpdate)
+                {
+                    <div class="terrain-edit-form">
+                        <label class="terrain-edit-field">
+                            <span>@Localizer[nameof(Language.Panels_UpdateTerrainPanel_Title)]</span>
+                            <input class="utf-command-input"
+                                   maxlength="1024"
+                                   required
+                                   @bind="_editTitle"/>
+                        </label>
+
+                        <GalleryImagePicker Class="terrain-edit-field"
+                                            SelectedAssetId="@_replacementImageAssetFk"
+                                            SelectedImagePath="@_replacementImagePath"
+                                            SelectedFileName="@ReplacementImageLabel"
+                                            UploadTags="@TerrainUploadTags"
+                                            AllowClear="true"
+                                            Disabled="@_isSaving"
+                                            SelectedAssetChanged="OnReplacementAssetSelected"/>
+
+                        @if (HasReplacementImage)
+                        {
+                            <section class="terrain-replacement-preview">
+                                <span class="utf-kicker">@Localizer[nameof(Language.Auto_ReplacementPreview_3feff485)]</span>
+                                <div class="terrain-replacement-preview__image"
+                                     style="@ReplacementImageStyle"></div>
+                            </section>
+                        }
+
+                        <div class="terrain-edit-actions">
+                            <button class="utf-button utf-button--primary"
+                                    type="button"
+                                    disabled="@(!CanSaveChanges)"
+                                    @onclick="SaveChangesAsync">
+                                @(_isSaving ? Localizer[nameof(Language.Auto_SavingChanges_2c149159)] : Localizer[nameof(Language.Auto_SaveChanges_dd0ae7a5)])
+                            </button>
+                            <button class="utf-button utf-button--ghost"
+                                    type="button"
+                                    disabled="@_isSaving"
+                                    @onclick="ResetEditState">
+                                @Localizer[nameof(Language.Reset)]
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                <dl class="terrain-detail-meta">
+                    <dt>@Localizer[nameof(Language.Title)]</dt>
+                    <dd>@TerrainTitle</dd>
+                    <dt>@Localizer[nameof(Language.Key)]</dt>
+                    <dd>@FormatKey(_terrain.PrimaryKey)</dd>
+                    <dt>@Localizer[nameof(Language.Status)]</dt>
+                    <dd>@StatusText</dd>
+                    <dt>@Localizer[nameof(Language.Auto_ImageType_a77e1c47)]</dt>
+                    <dd>@GetImageTypeLabel(_terrain)</dd>
+                    <dt>@Localizer[nameof(Language.Auto_ImageSize_80bb38dc)]</dt>
+                    <dd>@GetImageSizeLabel(_terrain)</dd>
+                </dl>
+            </aside>
+        </div>
+    }
+</div>
+
+@code {
+    private const string MissingValue = "n/a";
+
+    private PlainTerrainDto? _terrain;
+    private string _editTitle = string.Empty;
+    private Guid? _replacementImageAssetFk;
+    private string _replacementImagePath = string.Empty;
+    private string _replacementImageMimeType = string.Empty;
+    private string _replacementImageFileName = string.Empty;
+    private bool _isLoading;
+    private bool _isSaving;
+    private string? _loadError;
+    private string? _saveError;
+    private string? _saveMessage;
+
+    private static readonly string[] TerrainUploadTags = ["terrain"];
+
+    [Parameter]
+    public long TerrainId { get; set; }
+
+    private string PageTitle
+        => _terrain is null ? Localizer[nameof(Language.Auto_TerrainDetail_2b627581)].Value : TerrainTitle;
+
+    private string TerrainTitle
+        => _terrain is null
+            ? Localizer[nameof(Language.Auto_TerrainDetail_2b627581)].Value
+            : string.IsNullOrWhiteSpace(_terrain.Title)
+                ? Localizer[nameof(Language.Auto_UntitledTerrain_6aba91cc)].Value
+                : _terrain.Title;
+
+    private string TerrainIdValue
+        => TerrainId.ToString(CultureInfo.InvariantCulture);
+
+    private bool CanAccessTerrain
+        => Me.IsAuthenticated
+           && (Me.HasClaimOrTerrainAdmin(Claims.Creation.Terrain)
+               || Me.HasResourceClaimOrTerrainAdmin(Claims.ResourceBased.Terrain.All, TerrainIdValue)
+               || Me.HasResourceClaimOrTerrainAdmin(Claims.ResourceBased.Terrain.Modify, TerrainIdValue)
+               || Me.HasResourceClaimOrTerrainAdmin(Claims.ResourceBased.Terrain.Delete, TerrainIdValue));
+
+    private bool CanUpdate
+        => _terrain?.PrimaryKey is { } primaryKey
+           && (Me.HasResourceClaimOrTerrainAdmin(Claims.ResourceBased.Terrain.Modify, primaryKey.ToString(CultureInfo.InvariantCulture))
+               || Me.HasResourceClaim(Claims.ResourceBased.Terrain.All, primaryKey.ToString(CultureInfo.InvariantCulture)));
+
+    private bool CanDelete
+        => _terrain?.PrimaryKey is { } primaryKey
+           && (Me.HasResourceClaimOrTerrainAdmin(Claims.ResourceBased.Terrain.Delete, primaryKey.ToString(CultureInfo.InvariantCulture))
+               || Me.HasResourceClaim(Claims.ResourceBased.Terrain.All, primaryKey.ToString(CultureInfo.InvariantCulture)));
+
+    private bool HasReplacementImage
+        => _replacementImageAssetFk is not null;
+
+    private bool HasChanges
+        => _terrain is not null
+           && (!string.Equals(_editTitle.Trim(), _terrain.Title, StringComparison.Ordinal)
+               || HasReplacementImage);
+
+    private bool CanSaveChanges
+        => !_isSaving
+           && CanUpdate
+           && HasChanges
+           && !string.IsNullOrWhiteSpace(_editTitle)
+           && (!HasReplacementImage || _replacementImageAssetFk is not null);
+
+    private string StatusText
+        => _terrain?.IsActive ?? false ? Localizer[nameof(Language.Pages_Data_Terrains_All_StatusActive)].Value : Localizer[nameof(Language.Pages_Data_Terrains_All_StatusInactive)].Value;
+
+    private string StatusDescription
+        => _terrain?.IsActive ?? false
+            ? Localizer[nameof(Language.Auto_AvailableForActiveSelections_622c00f1)].Value
+            : Localizer[nameof(Language.Auto_DeactivatedAndHiddenFromActiveTerrainLists_52ca2f75)].Value;
+
+    private string StatusClass
+        => _terrain?.IsActive ?? false ? "utf-status utf-status--success" : "utf-status utf-status--neutral";
+
+    private string ImageStatusIntent
+        => HasTerrainImage(_terrain) ? "success" : "warning";
+
+    private string ImageDescription
+        => HasTerrainImage(_terrain)
+            ? Localizer[nameof(Language.Auto_ReferenceImageryIsAvailable_8fcbe772)].Value
+            : Localizer[nameof(Language.Auto_NoImageIsStoredForThisTerrain_3045a490)].Value;
+
+    private string ImageMetricValue
+        => HasTerrainImage(_terrain) ? Localizer[nameof(Language.Auto_ImageReady_7e953d5b)].Value : Localizer[nameof(Language.Auto_MissingImage_2c8126ac)].Value;
+
+    private string ReplacementImageLabel
+        => string.IsNullOrWhiteSpace(_replacementImageFileName) ? Localizer[nameof(Language.Auto_NoReplacementSelected_2a49c463)].Value : _replacementImageFileName;
+
+    private string ReplacementImageStyle
+        => HasReplacementImage
+            ? $"background-image: url('{BaseUrl.ResolveImageUrl(_replacementImagePath)}');"
+            : string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CanAccessTerrain)
+            await LoadAsync();
+    }
+
+    private async Task LoadAsync(bool preserveMessages = false)
+    {
+        _isLoading = true;
+        _loadError = null;
+        if (!preserveMessages)
+        {
+            _saveError = null;
+            _saveMessage = null;
+        }
+
+        try
+        {
+            _terrain = await TerrainRepository.GetTerrainAsync(TerrainId)
+                .ConfigureAwait(false);
+            ResetEditState();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            _terrain = null;
+            _loadError = Localizer[nameof(Language.Auto_TerrainDataCouldNotBeLoadedCheckTheAPI_ff13b797)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void NavigateToTerrains()
+        => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/terrains"));
+
+    private void ResetEditState()
+    {
+        if (_terrain is null)
+            return;
+
+        _editTitle = _terrain.Title ?? string.Empty;
+        _replacementImageAssetFk = null;
+        _replacementImagePath = string.Empty;
+        _replacementImageMimeType = string.Empty;
+        _replacementImageFileName = string.Empty;
+        _saveError = null;
+    }
+
+    private async Task SaveChangesAsync()
+    {
+        if (!CanSaveChanges || _terrain?.PrimaryKey is not { } primaryKey)
+            return;
+
+        _isSaving = true;
+        _saveError = null;
+        _saveMessage = null;
+
+        try
+        {
+            var payload = new TerrainUpdate();
+            var title = _editTitle.Trim();
+            if (!string.Equals(title, _terrain.Title, StringComparison.Ordinal))
+            {
+                payload.Title = title;
+            }
+
+            if (HasReplacementImage)
+            {
+                payload.ImageAssetFk = _replacementImageAssetFk;
+            }
+
+            await TerrainRepository.ModifyTerrainAsync(primaryKey, payload)
+                .ConfigureAwait(false);
+            _saveMessage = Localizer[nameof(Language.Auto_TerrainChangesSaved_63c6a8f0)].Value;
+            await LoadAsync(preserveMessages: true);
+        }
+        catch
+        {
+            _saveError = Localizer[nameof(Language.Auto_TerrainChangesCouldNotBeSavedCheckTheInputs_b8dfe7de)].Value;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeactivateTerrainAsync()
+    {
+        if (!CanDelete || _terrain?.PrimaryKey is not { } primaryKey)
+            return;
+
+        var dialogReference = await DialogService.ShowConfirmationAsync(
+            Localizer[nameof(Language.Pages_Data_Terrains_All_ConfirmDeleteTerrain_Body)],
+            Localizer[nameof(Language.Common_Delete)],
+            Localizer[nameof(Language.Common_Cancel)],
+            Localizer[nameof(Language.Pages_Data_Terrains_All_ConfirmDeleteTerrain_Title)]
+        );
+        var result = await dialogReference.Result;
+        if (result.Cancelled)
+            return;
+
+        _isSaving = true;
+        _saveError = null;
+
+        try
+        {
+            await TerrainRepository.DeleteTerrainAsync(primaryKey)
+                .ConfigureAwait(false);
+            NavigateToTerrains();
+        }
+        catch
+        {
+            _saveError = Localizer[nameof(Language.Auto_TerrainCouldNotBeDeactivatedRetryFromTheDetail_d843ca7a)].Value;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void OnReplacementAssetSelected(MediaAssetInfo? asset)
+    {
+        if (asset is null)
+        {
+            _replacementImageAssetFk = null;
+            _replacementImagePath = string.Empty;
+            _replacementImageMimeType = string.Empty;
+            _replacementImageFileName = string.Empty;
+            return;
+        }
+
+        ApplyReplacementAsset(asset);
+        _saveError = null;
+        _saveMessage = null;
+    }
+
+    private void ApplyReplacementAsset(MediaAssetInfo asset)
+    {
+        _replacementImageAssetFk = asset.PrimaryKey;
+        _replacementImagePath = asset.ImagePath;
+        _replacementImageMimeType = asset.ContentType;
+        _replacementImageFileName = asset.OriginalFileName;
+    }
+
+    private string GetTerrainImageLabel(PlainTerrainDto terrain)
+    {
+        var imageState = HasTerrainImage(terrain)
+            ? Localizer[nameof(Language.Pages_Data_Terrains_All_StatusImagery)].Value
+            : Localizer[nameof(Language.Pages_Data_Terrains_All_NoImage)].Value;
+        return $"{TerrainTitle}: {imageState}";
+    }
+
+    private string GetImageTypeLabel(PlainTerrainDto? terrain)
+        => !HasTerrainImage(terrain)
+            ? Localizer[nameof(Language.Pages_Data_Terrains_All_NoImage)].Value
+            : Localizer[nameof(Language.Pages_Data_Terrains_All_StatusImagery)].Value;
+
+    private string GetImageSizeLabel(PlainTerrainDto? terrain)
+        => MissingValue;
+
+    private static string GetTerrainPreviewClass(PlainTerrainDto terrain)
+        => HasTerrainImage(terrain)
+            ? "terrain-detail-image"
+            : "terrain-detail-image terrain-detail-image--empty";
+
+    private string GetTerrainImageStyle(PlainTerrainDto terrain)
+    {
+        if (!HasTerrainImage(terrain))
+            return string.Empty;
+
+        return $"background-image: url('{BaseUrl.ResolveImageUrl(terrain.ImagePath)}');";
+    }
+
+    private static bool HasTerrainImage(PlainTerrainDto? terrain)
+        => !string.IsNullOrWhiteSpace(terrain?.ImagePath);
+
+    private static string FormatKey(long? value)
+        => value?.ToString(CultureInfo.InvariantCulture) ?? MissingValue;
+
+    private string FormatByteCount(int byteCount)
+    {
+        if (byteCount < 1024)
+            return Localizer[nameof(Language.Auto_Bytes_a2fbcf5d), byteCount].Value;
+
+        var kilobytes = byteCount / 1024d;
+        if (kilobytes < 1024)
+            return $"{kilobytes.ToString("N1", CultureInfo.CurrentCulture)} KB";
+
+        var megabytes = kilobytes / 1024d;
+        return $"{megabytes.ToString("N1", CultureInfo.CurrentCulture)} MB";
+    }
+}

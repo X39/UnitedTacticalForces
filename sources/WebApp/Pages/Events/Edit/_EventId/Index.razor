@@ -1,0 +1,1539 @@
+@page "/command/events/{EventId:guid}"
+@layout CommandCenterLayout
+@using System.Globalization
+@using System.Text.RegularExpressions
+@using Microsoft.FluentUI.AspNetCore.Components
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Data
+@using X39.UnitedTacticalForces.WebApp.ExtensionMethods
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SlotRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IEventRepository EventRepository
+@inject ISlotRepository SlotRepository
+@inject IUserRepository UserRepository
+@inject NavigationManager NavigationManager
+@inject UserAutoCompleteService UserAutoCompleteService
+@inject ModPackAutoCompleteService ModPackAutoCompleteService
+@inject TerrainAutoCompleteService TerrainAutoCompleteService
+@inject BaseUrl BaseUrl
+@inject MeService Me
+
+@inject IStringLocalizer<Language> Localizer
+<PageTitle>@(_event?.Title ?? Localizer[nameof(Language.Pages_Events_Edit_PageTitleFallback)].Value)</PageTitle>
+
+<div class="event-editor-page">
+    <UtfCommandPageHeader Title="@GetPageTitle()"
+                          Description="@(Localizer[nameof(Language.Auto_AuthoringWorkspaceForOperationMetadataBriefingMediaReadinessAnd_560063d1)])">
+        <Actions>
+            <UtfCommandButton OnClick="@(() => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/events")))"
+                              Class="event-editor-tooltip"
+                              Title="@(Localizer[nameof(Language.Auto_ReturnToTheCommandCenterEventListWithoutSaving_f8feea2c)])">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Auto_BackToEvents_6f92c820)]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton OnClick="@(() => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"events/{EventId}")))"
+                              Class="event-editor-tooltip"
+                              Title="@(Localizer[nameof(Language.Auto_OpenThePublicEventViewAndSlotRegister_b06a244f)])">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.PeopleTeam())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Auto_ViewSlots_ddcd3598)]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Disabled="@(!CanSubmit)"
+                              Variant="primary"
+                              Class="event-editor-tooltip"
+                              Title="@(Localizer[nameof(Language.Auto_SaveEventMetadataAssetsBriefingObjectivesAndTheCurrent_1dca84a9)])"
+                              OnClick="SaveAllAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                </Icon>
+                <ChildContent>@Localizer[_isSaving ? nameof(Language.Pages_Events_Edit_ActionSaving) : nameof(Language.Pages_Events_Edit_ActionSaveChanges)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageEvents)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Auto_EventAdministratorAccessRequired_d59039c1)]</h2>
+            <p>@Localizer[nameof(Language.Auto_EventAuthoringIsVisibleOnlyToAuthorizedOperationPlanners_b8740e86)]</p>
+        </section>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Auto_LoadingEventEditor_f4351c62)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning" role="alert">
+            @_loadError
+        </div>
+    }
+    else if (_model is not null && _event is not null)
+    {
+        @if (_submitError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_submitError
+            </div>
+        }
+        @if (_saveMessage is not null)
+        {
+            <div class="utf-state-panel event-editor-save-state">
+                @_saveMessage
+            </div>
+        }
+
+        <section class="utf-panel event-editor-hero">
+            <div>
+                <span class="@GetVisibilityStatusClass()">
+                    <span class="utf-status__dot"></span>@GetVisibilityLabel()
+                </span>
+                <h2>@GetPageTitle()</h2>
+                <p>@FormatDateTime(_model.ScheduledForLocal) / @Localizer[nameof(Language.Host)]: @(_hostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Events_Edit_Status_HostPending)].Value)</p>
+            </div>
+            <div class="event-editor-hero__actions">
+                <button class="@GetTabClass(EditorTab.Details)" type="button" @onclick="@(() => SetTab(EditorTab.Details))">@Localizer["Details"]</button>
+                <button class="@GetTabClass(EditorTab.Briefing)" type="button" @onclick="@(() => SetTab(EditorTab.Briefing))">@Localizer[nameof(Language.Briefing)]</button>
+                <button class="@GetTabClass(EditorTab.Objectives)" type="button" @onclick="@(() => SetTab(EditorTab.Objectives))">@Localizer[nameof(Language.Objectives)]</button>
+                <button class="@GetTabClass(EditorTab.Slots)" type="button" @onclick="@(() => SetTab(EditorTab.Slots))">@Localizer[nameof(Language.Slots)]</button>
+            </div>
+        </section>
+
+        <div class="event-editor-workspace">
+            <main class="utf-panel event-editor-main">
+                @switch (_activeTab)
+                {
+                    case EditorTab.Briefing:
+                        <section class="event-editor-section">
+                            <div class="event-editor-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Briefing)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_CommanderSNotes_99b2f4e5)]</h2>
+                                </div>
+                                <span>@GetBriefingLengthLabel()</span>
+                            </div>
+                            <label class="utf-command-field event-editor-field event-editor-field--wide">
+                                <span>@Localizer[nameof(Language.Auto_BriefingMarkdown_57d6b69f)]</span>
+                                <textarea class="utf-command-input event-editor-textarea"
+                                          rows="18"
+                                          title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_BriefingMarkdown)])"
+                                          @bind="_model.Description"
+                                          @bind:after="RefreshObjectivesFromBriefing"></textarea>
+                            </label>
+                            <section class="event-editor-markdown-preview">
+                                <span class="utf-kicker">@Localizer[nameof(Language.Auto_RenderedBriefing_9d4f9366)]</span>
+                                <FluentMarkdown Content="@_model.Description"/>
+                            </section>
+                        </section>
+                        break;
+                    case EditorTab.Objectives:
+                        <section class="event-editor-section">
+                            <div class="event-editor-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Auto_MissionObjectives_9474605d)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_PublicBriefingHighlights_dd5597fe)]</h2>
+                                </div>
+                                <div class="event-editor-heading-actions">
+                                    <span>@GetObjectivesStatusLabel()</span>
+                                    <button class="utf-button utf-button--ghost"
+                                            type="button"
+                                            title="@Localizer["Pages_Events_Edit_Tooltip_AddObjective"]"
+                                            @onclick="AddObjective">
+                                        @Localizer["Pages_Events_Edit_ActionAddObjective"]
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="event-editor-objectives">
+                                @for (var index = 0; index < _objectiveDrafts.Count; index++)
+                                {
+                                    var objective = _objectiveDrafts[index];
+                                    <article class="event-editor-objective-row" @key="objective.DraftKey">
+                                        <label class="utf-command-field event-editor-field event-editor-objective-row__icon">
+                                            <span>@Localizer[nameof(Language.Icon)]</span>
+                                            <div class="event-editor-objective-select">
+                                                <FluentSelect TOption="ObjectiveIconOption"
+                                                              Items="@ObjectiveIconOptions"
+                                                              OptionText="@(static (icon) => icon.Label)"
+                                                              OptionValue="@(static (icon) => icon.Icon)"
+                                                              SelectedOption="@GetSelectedObjectiveIconOption(objective)"
+                                                              SelectedOptionChanged="@((icon) => OnObjectiveIconChanged(objective, icon))"
+                                                              Position="@SelectPosition.Below"
+                                                              AriaLabel="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_ObjectiveIcon)])">
+                                                    <OptionTemplate Context="icon">
+                                                        <div class="event-editor-objective-select-option">
+                                                            <span class="@GetObjectiveIconOptionClass(icon)" aria-hidden="true"></span>
+                                                            <span>@icon.Label</span>
+                                                        </div>
+                                                    </OptionTemplate>
+                                                </FluentSelect>
+                                            </div>
+                                        </label>
+                                        <label class="utf-command-field event-editor-field">
+                                            <span>@Localizer[nameof(Language.Pages_Events_Edit_LabelObjective), index + 1]</span>
+                                            <input class="utf-command-input"
+                                                   maxlength="150"
+                                                   placeholder="@(Localizer[nameof(Language.Pages_Events_Edit_Placeholder_Objective)])"
+                                                   title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_ObjectiveText)])"
+                                                   @bind="objective.Text"
+                                                   @bind:after="ApplyObjectiveDraftsToBriefing"/>
+                                        </label>
+                                        <span class="@GetObjectiveIconClass(objective.Icon)" aria-hidden="true"></span>
+                                        <button class="@GetObjectiveRemoveButtonClass(objective)"
+                                                type="button"
+                                                title="@GetObjectiveRemoveButtonTitle(objective)"
+                                                @onclick="@(() => RequestOrConfirmObjectiveRemoval(objective))">
+                                            <FluentIcon Value="@(new Icons.Regular.Size20.Delete())"/>
+                                            <span>@GetObjectiveRemoveButtonLabel(objective)</span>
+                                        </button>
+                                    </article>
+                                }
+                            </div>
+                            <section class="event-editor-objective-preview">
+                                <span class="utf-kicker">@Localizer[nameof(Language.Auto_PublicPreview_f948bc45)]</span>
+                                @if (_objectiveDrafts.All((objective) => !objective.HasText))
+                                {
+                                    <p>@Localizer[nameof(Language.Auto_NoMissionObjectivesHaveBeenAdded_d6bd1a03)]</p>
+                                }
+                                else
+                                {
+                                    <ul>
+                                        @foreach (var objective in _objectiveDrafts.Where((objective) => objective.HasText))
+                                        {
+                                            <li @key="objective.DraftKey">
+                                                <span class="@GetObjectiveIconClass(objective.Icon)" aria-hidden="true"></span>
+                                                <span>@objective.Text.Trim()</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </section>
+                        </section>
+                        break;
+                    case EditorTab.Slots:
+                        <section class="event-editor-section">
+                            <div class="event-editor-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Slots)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_SlotPlan_7b3bf485)]</h2>
+                                </div>
+                                <button class="utf-button utf-button--ghost"
+                                        type="button"
+                                        title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_AddSlot)])"
+                                        @onclick="AddSlot">
+                                    @Localizer[nameof(Language.Auto_AddSlot_21ac8a98)]
+                                </button>
+                            </div>
+                            @if (VisibleSlots.Count is 0)
+                            {
+                                <div class="event-editor-empty">@Localizer[nameof(Language.Auto_NoSlotsConfiguredAddAtLeastOneSlotFor_a7e2439d)]</div>
+                            }
+                            else
+                            {
+                                <div class="event-editor-slot-register" role="table" aria-label="@(Localizer[nameof(Language.Auto_EditableSlotPlan_f406ee7b)])">
+                                    <div class="event-editor-slot-register__head" aria-hidden="true">
+                                        <span>@Localizer[nameof(Language.Role)]</span>
+                                        <span>@Localizer[nameof(Language.Assigned)]</span>
+                                        <span>@Localizer[nameof(Language.Status)]</span>
+                                        <span></span>
+                                    </div>
+                                    @foreach (var slotGroup in SlotEditorGroups)
+                                    {
+                                        <section class="event-editor-roster-group" @key="slotGroup.Name">
+                                            <header class="event-editor-roster-group__header">
+                                                <div>
+                                                    <span class="utf-roster-group__icon" aria-hidden="true"></span>
+                                                    <h3>@slotGroup.Name</h3>
+                                                </div>
+                                                <span>@GetSlotGroupAssignmentLabel(slotGroup)</span>
+                                            </header>
+
+                                            @foreach (var slot in slotGroup.Slots)
+                                            {
+                                                <article class="@GetSlotRowClass(slot)" @key="slot.DraftKey">
+                                                    <div class="event-editor-slot-role-cell">
+                                                        <span class="@GetSlotRoleIconClass(slot)" aria-hidden="true"></span>
+                                                        <div class="event-editor-slot-role-fields">
+                                                            <label class="utf-command-field event-editor-field">
+                                                                <span>@Localizer[nameof(Language.Group)]</span>
+                                                                <input class="utf-command-input"
+                                                                       title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_SlotGroup)])"
+                                                                       @bind="slot.Group"/>
+                                                            </label>
+                                                            <label class="utf-command-field event-editor-field">
+                                                                <span>@Localizer[nameof(Language.Role)]</span>
+                                                                <input class="utf-command-input"
+                                                                       title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_SlotRole)])"
+                                                                       @bind="slot.Title"/>
+                                                            </label>
+                                                            <label class="utf-command-field event-editor-field">
+                                                                <span>@Localizer[nameof(Language.Side)]</span>
+                                                                <select class="utf-command-input"
+                                                                        title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_SlotSide)])"
+                                                                        @bind="slot.Side">
+                                                                    <option value="0">@Localizer[nameof(Language.Empty)]</option>
+                                                                    <option value="1">@Localizer[nameof(Language.East)]</option>
+                                                                    <option value="2">@Localizer[nameof(Language.West)]</option>
+                                                                    <option value="3">@Localizer[nameof(Language.Resistance)]</option>
+                                                                    <option value="4">@Localizer[nameof(Language.Civilian)]</option>
+                                                                    <option value="5">@Localizer[nameof(Language.Ambient)]</option>
+                                                                    <option value="6">@Localizer[nameof(Language.Logic)]</option>
+                                                                </select>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="event-editor-slot-assignee">
+                                                        <div class="event-editor-slot-current-user">
+                                                            @if (slot.AssignedUser?.ToImageSource() is { } avatar)
+                                                            {
+                                                                <img src="@avatar" alt=""/>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="event-editor-avatar-fallback" aria-hidden="true"></span>
+                                                            }
+                                                            <div>
+                                                                <strong>@GetSlotStateLabel(slot)</strong>
+                                                                <small>@Localizer[slot.IsPersisted ? nameof(Language.Pages_Events_Edit_Status_SavedAssignment) : nameof(Language.Pages_Events_Edit_Status_StagedAssignment)]</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="utf-command-field event-editor-field event-editor-autocomplete event-editor-slot-autocomplete">
+                                                            <FluentAutocomplete Id="@GetSlotAutocompleteId(slot)"
+                                                                                TOption="PlainUserDto"
+                                                                                MaximumSelectedOptions="1"
+                                                                                MaximumOptionsSearch="8"
+                                                                                AutoComplete="off"
+                                                                                Position="@SelectPosition.Below"
+                                                                                OnOptionsSearch="UserAutoCompleteService.PlainUserDto.OnOptionsSearch"
+                                                                                OptionText="UserAutoCompleteService.PlainUserDto.OptionText"
+                                                                                Label="@(Localizer[nameof(Language.Auto_AssignMember_c88914b5)])"
+                                                                                Placeholder="@(Localizer[nameof(Language.Auto_SearchMember_ef216823)])"
+                                                                                @bind-ValueText="slot.AssignmentSearchText"
+                                                                                @bind-SelectedOption="slot.AssignmentCandidate"
+                                                                                @bind-SelectedOption:after="@(() => OnSlotAssignmentCandidateChanged(slot))">
+                                                                <OptionTemplate Context="user">
+                                                                    <div class="event-editor-autocomplete-option">
+                                                                        @if (user.ToImageSource() is { } optionAvatar)
+                                                                        {
+                                                                            <img src="@optionAvatar" alt=""/>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="event-editor-avatar-fallback" aria-hidden="true"></span>
+                                                                        }
+                                                                        <span>@GetUserLabel(user)</span>
+                                                                    </div>
+                                                                </OptionTemplate>
+                                                                <SelectedOptionTemplate Context="user">
+                                                                    <span class="event-editor-selected-option">@GetUserLabel(user)</span>
+                                                                </SelectedOptionTemplate>
+                                                            </FluentAutocomplete>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="event-editor-slot-status">
+                                                        <span class="@GetSideClass(slot)">@GetSideLabel(slot.Side)</span>
+                                                        <span class="@GetSlotStatusClass(slot)">
+                                                            <span class="utf-status__dot"></span>@GetSlotStatusText(slot)
+                                                        </span>
+                                                        <label class="event-editor-toggle" title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_SlotVisibility)])">
+                                                            <input type="checkbox" @bind="slot.IsVisible"/>
+                                                            <span>@Localizer[nameof(Language.Visible)]</span>
+                                                        </label>
+                                                        <label class="event-editor-toggle" title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_SlotSelfAssign)])">
+                                                            <input type="checkbox" @bind="slot.IsSelfAssignable"/>
+                                                            <span>@Localizer[nameof(Language.Auto_SelfAssign_fae0bc3e)]</span>
+                                                        </label>
+                                                    </div>
+
+                                                    <div class="event-editor-slot-actions">
+                                                        <button class="utf-button utf-button--ghost"
+                                                                type="button"
+                                                                title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_ApplySlotAssignment)])"
+                                                                disabled="@(!CanAssignSlot(slot))"
+                                                                @onclick="@(() => AssignSlotAsync(slot))">
+                                                            @Localizer["Pages_Events_Edit_ActionAssignSlot"]
+                                                        </button>
+                                                        <button class="utf-button utf-button--ghost"
+                                                                type="button"
+                                                                title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_ClearSlotAssignment)])"
+                                                                disabled="@(slot.AssignedToFk is null)"
+                                                                @onclick="@(() => UnassignSlotAsync(slot))">
+                                                            @Localizer["Pages_Events_Edit_ActionUnassignSlot"]
+                                                        </button>
+                                                        <button class="utf-button utf-button--ghost"
+                                                                type="button"
+                                                                title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_RemoveSlot)])"
+                                                                @onclick="@(() => RemoveSlot(slot))">
+                                                            @Localizer["Pages_Events_Edit_ActionRemoveSlot"]
+                                                        </button>
+                                                    </div>
+                                                </article>
+                                            }
+                                        </section>
+                                    }
+                                </div>
+                            }
+                            <div class="event-editor-section__footer">
+                                <span>@GetSlotSummaryLabel()</span>
+                                <button class="utf-button utf-button--primary"
+                                        type="button"
+                                        title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_SaveSlotPlan)])"
+                                        disabled="@(_isSavingSlots || _isSaving)"
+                                        @onclick="@(() => SaveSlotsAsync(showSuccess: true))">
+                                    @Localizer[_isSavingSlots ? nameof(Language.Pages_Events_Edit_ActionSavingSlots) : nameof(Language.Pages_Events_Edit_ActionSaveSlotPlan)]
+                                </button>
+                            </div>
+                        </section>
+                        break;
+                    default:
+                        <section class="event-editor-section">
+                            <div class="event-editor-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer["Details"]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_BasicInformation_6c092c9c)]</h2>
+                                </div>
+                                <span>@GetEventReadinessLabel()</span>
+                            </div>
+                            <div class="event-editor-form-grid">
+                                <label class="utf-command-field event-editor-field event-editor-field--wide">
+                                    <span>@Localizer[nameof(Language.Title)]</span>
+                                    <input class="utf-command-input"
+                                           maxlength="1024"
+                                           title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_PublicTitle)])"
+                                           @bind="_model.Title"/>
+                                </label>
+                                <label class="utf-command-field event-editor-field">
+                                    <span>@Localizer[nameof(Language.Schedule)]</span>
+                                    <input class="utf-command-input"
+                                           type="datetime-local"
+                                           title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_LocalSchedule)])"
+                                           @bind="_model.ScheduledForLocal"/>
+                                </label>
+                                <div class="utf-command-field event-editor-field event-editor-autocomplete">
+                                    <FluentAutocomplete Id="event-editor-host"
+                                                        Required="true"
+                                                        TOption="PlainUserDto"
+                                                        MaximumSelectedOptions="1"
+                                                        MaximumOptionsSearch="8"
+                                                        AutoComplete="off"
+                                                        Position="@SelectPosition.Below"
+                                                        OnOptionsSearch="UserAutoCompleteService.PlainUserDto.OnOptionsSearch"
+                                                        OptionText="UserAutoCompleteService.PlainUserDto.OptionText"
+                                                        Label="@(Localizer[nameof(Language.Host)])"
+                                                        Placeholder="@(Localizer[nameof(Language.Auto_SearchHost_abe3f02f)])"
+                                                        @bind-ValueText="_hostedByText"
+                                                        @bind-SelectedOption="_hostedBy"
+                                                        @bind-SelectedOption:after="OnHostChanged">
+                                        <OptionTemplate Context="user">
+                                            <div class="event-editor-autocomplete-option">
+                                                @if (user.ToImageSource() is { } avatar)
+                                                {
+                                                    <img src="@avatar" alt=""/>
+                                                }
+                                                else
+                                                {
+                                                    <span class="event-editor-avatar-fallback" aria-hidden="true"></span>
+                                                }
+                                                <span>@GetUserLabel(user)</span>
+                                            </div>
+                                        </OptionTemplate>
+                                        <SelectedOptionTemplate Context="user">
+                                            <span class="event-editor-selected-option">@GetUserLabel(user)</span>
+                                        </SelectedOptionTemplate>
+                                    </FluentAutocomplete>
+                                </div>
+                                <label class="utf-command-field event-editor-field">
+                                    <span>@Localizer[nameof(Language.Auto_MinimumAccepted_05ac548c)]</span>
+                                    <input class="utf-command-input"
+                                           min="0"
+                                           type="number"
+                                           title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_MinimumAccepted)])"
+                                           @bind="_model.MinimumAccepted"/>
+                                </label>
+                                <label class="utf-command-field event-editor-field">
+                                    <span>@Localizer[nameof(Language.Visibility)]</span>
+                                    <select class="utf-command-input"
+                                            title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_Visibility)])"
+                                            @bind="VisibilityValue">
+                                        <option value="public">@Localizer[nameof(Language.Public)]</option>
+                                        <option value="hidden">@Localizer[nameof(Language.Hidden)]</option>
+                                    </select>
+                                </label>
+                                <div class="utf-command-field event-editor-field event-editor-autocomplete">
+                                    <FluentAutocomplete Id="event-editor-terrain"
+                                                        Required="true"
+                                                        TOption="PlainTerrainDto"
+                                                        MaximumSelectedOptions="1"
+                                                        MaximumOptionsSearch="8"
+                                                        AutoComplete="off"
+                                                        Position="@SelectPosition.Below"
+                                                        OnOptionsSearch="TerrainAutoCompleteService.PlainTerrainDto.OnOptionsSearch"
+                                                        OptionText="TerrainAutoCompleteService.PlainTerrainDto.OptionText"
+                                                        Label="@(Localizer[nameof(Language.Terrain)])"
+                                                        Placeholder="@(Localizer[nameof(Language.Auto_SearchTerrain_ca2ee95e)])"
+                                                        @bind-ValueText="_terrainText"
+                                                        @bind-SelectedOption="_terrain"
+                                                        @bind-SelectedOption:after="OnTerrainChanged">
+                                        <OptionTemplate Context="terrain">
+                                            <div class="event-editor-autocomplete-option">
+                                                <span class="utf-md-icon utf-md-icon--map" aria-hidden="true"></span>
+                                                <span>@GetTerrainLabel(terrain)</span>
+                                            </div>
+                                        </OptionTemplate>
+                                        <SelectedOptionTemplate Context="terrain">
+                                            <span class="event-editor-selected-option">@GetTerrainLabel(terrain)</span>
+                                        </SelectedOptionTemplate>
+                                    </FluentAutocomplete>
+                                </div>
+                                <div class="utf-command-field event-editor-field event-editor-autocomplete">
+                                    <FluentAutocomplete Id="event-editor-modpack"
+                                                        Required="true"
+                                                        TOption="PlainModPackRevisionDto"
+                                                        MaximumSelectedOptions="1"
+                                                        MaximumOptionsSearch="8"
+                                                        AutoComplete="off"
+                                                        Position="@SelectPosition.Below"
+                                                        OnOptionsSearch="ModPackAutoCompleteService.PlainModPackRevisionDto.OnOptionsSearch"
+                                                        OptionText="ModPackAutoCompleteService.PlainModPackRevisionDto.OptionText"
+                                                        Label="@(Localizer[nameof(Language.Auto_ModPackRevision_d199668f)])"
+                                                        Placeholder="@(Localizer[nameof(Language.Auto_SearchModPack_33ce4302)])"
+                                                        @bind-ValueText="_modPackText"
+                                                        @bind-SelectedOption="_modPack"
+                                                        @bind-SelectedOption:after="OnModPackChanged">
+                                        <OptionTemplate Context="modPack">
+                                            <div class="event-editor-autocomplete-option">
+                                                <span class="utf-md-icon utf-md-icon--modpack" aria-hidden="true"></span>
+                                                <span>@GetModPackLabel(modPack)</span>
+                                            </div>
+                                        </OptionTemplate>
+                                        <SelectedOptionTemplate Context="modPack">
+                                            <span class="event-editor-selected-option">@GetModPackLabel(modPack)</span>
+                                        </SelectedOptionTemplate>
+                                    </FluentAutocomplete>
+                                </div>
+                            </div>
+                            <section class="event-editor-resource-panel">
+                                <div class="event-editor-section__heading">
+                                    <div>
+                                        <span class="utf-kicker">@Localizer[nameof(Language.Assets)]</span>
+                                        <h2>@Localizer[nameof(Language.Auto_TerrainModPackAndMissionImage_7e5fddd3)]</h2>
+                                    </div>
+                                    <span>@GetAssetReadinessLabel()</span>
+                                </div>
+                                <div class="event-editor-image-grid">
+                                    <div class="event-editor-image-preview" style="@GetImageStyle()">
+                                        @if (!HasImage)
+                                        {
+                                            <span>@Localizer[nameof(Language.Auto_NoMissionImage_4188cdba)]</span>
+                                        }
+                                    </div>
+                                    <div class="event-editor-gallery-picker">
+                                        <GalleryImagePicker SelectedAssetId="@_model.ImageAssetFk"
+                                                            SelectedImagePath="@_model.ImagePath"
+                                                            SelectedFileName="@GetSelectedImageFileName()"
+                                                            UploadTags="@EventUploadTags"
+                                                            AllowClear="true"
+                                                            Disabled="@_isSaving"
+                                                            SelectedAssetChanged="OnImageAssetSelected"/>
+                                    </div>
+                                </div>
+                            </section>
+                            <section class="event-editor-readiness">
+                                @foreach (var item in GetReadinessRows())
+                                {
+                                    <div class="@GetReadinessRowClass(item.IsComplete)" @key="item.Label">
+                                        <span class="utf-status__dot"></span>
+                                        <strong>@item.Label</strong>
+                                        <span>@Localizer[item.IsComplete ? nameof(Language.Pages_Events_Edit_Status_Complete) : nameof(Language.Pages_Events_Edit_Status_NeedsAttention)]</span>
+                                    </div>
+                                }
+                            </section>
+                        </section>
+                        break;
+                }
+            </main>
+
+            <aside class="utf-panel event-editor-detail" aria-label="@(Localizer[nameof(Language.Auto_EventAuditContext_53811520)])">
+                <div class="event-editor-detail__section">
+                    <span class="utf-kicker">@Localizer[nameof(Language.Auto_EventDetails_f9c7f3d8)]</span>
+                    <dl>
+                        <dt>@Localizer[nameof(Language.Owner)]</dt>
+                        <dd>@(_event.Owner?.Nickname ?? MissingValue)</dd>
+                        <dt>@Localizer[nameof(Language.Auto_OriginalSchedule_b5c2561d)]</dt>
+                        <dd>@FormatDateTime(_event.ScheduledForOriginal)</dd>
+                        <dt>@Localizer[nameof(Language.Created)]</dt>
+                        <dd>@FormatDateTime(_event.TimeStampCreated)</dd>
+                        <dt>@Localizer[nameof(Language.Auto_EventId_82e663fd)]</dt>
+                        <dd>@EventId</dd>
+                    </dl>
+                </div>
+                <div class="event-editor-detail__section">
+                    <span class="utf-kicker">@Localizer[nameof(Language.Participation)]</span>
+                    <dl>
+                        <dt>@Localizer[nameof(Language.Accepted)]</dt>
+                        <dd>@FormatCount(_event.AcceptedCount)</dd>
+                        <dt>@Localizer[nameof(Language.Maybe)]</dt>
+                        <dd>@FormatCount(_event.MaybeCount)</dd>
+                        <dt>@Localizer[nameof(Language.Rejected)]</dt>
+                        <dd>@FormatCount(_event.RejectedCount)</dd>
+                        <dt>@Localizer[nameof(Language.Slots)]</dt>
+                        <dd>@GetSlotSummaryLabel()</dd>
+                    </dl>
+                </div>
+                <div class="event-editor-detail__section">
+                    <span class="utf-kicker">@Localizer[nameof(Language.Auto_ReadinessChecklist_13d029ae)]</span>
+                    <ol class="event-editor-checklist">
+                        @foreach (var item in GetReadinessRows())
+                        {
+                            <li class="@GetChecklistClass(item.IsComplete)" @key="item.Label">
+                                <span class="utf-status__dot"></span>
+                                <strong>@item.Label</strong>
+                            </li>
+                        }
+                    </ol>
+                </div>
+            </aside>
+        </div>
+    }
+</div>
+
+@code {
+    private const string MissingValue = "n/a";
+    private const int InitialObjectiveDraftCount = 1;
+
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    private FullEventDto? _event;
+    private EventAuthoringModel? _model;
+    private PlainUserDto? _hostedBy;
+    private PlainTerrainDto? _terrain;
+    private PlainModPackRevisionDto? _modPack;
+    private string? _hostedByText;
+    private string? _terrainText;
+    private string? _modPackText;
+    private string? _imageFileName;
+    private List<EventSlotDraftModel> _slots = [];
+    private List<EventObjectiveDraftModel> _objectiveDrafts = CreateEmptyObjectiveDrafts();
+    private EditorTab _activeTab = EditorTab.Details;
+    private bool _isLoading;
+    private bool _isSaving;
+    private bool _isSavingSlots;
+    private bool _isSyncingObjectives;
+    private Guid? _objectiveRemovalConfirmationKey;
+    private string? _loadError;
+    private string? _submitError;
+    private string? _saveMessage;
+
+    private static readonly string[] EventUploadTags = ["event"];
+
+    private static readonly Regex ObjectiveHeadingRegex =
+        new(@"^\s{0,3}#{1,6}\s+mission objectives\s*$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+    private static readonly Regex ObjectiveMarkdownRegex =
+        new(@"^\s*(?:[-*+]\s+|\d+[.)]\s+)?(?::(?<icon>[a-z0-9-]+):\s*)?(?<text>.+?)\s*$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownFormattingRegex =
+        new(@"[*_~>#`]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownLinkRegex =
+        new(@"\[(?<text>[^\]]+)\]\([^\)]*\)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownWhitespaceRegex =
+        new(@"\s+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly IReadOnlyList<ObjectiveIconOption> ObjectiveIconOptions =
+    [
+        new("objective", "Objective"),
+        new("intel", "Intel"),
+        new("map", "Map"),
+        new("rally", "Rally"),
+        new("radio", "Radio"),
+        new("warning", "Warning"),
+        new("stealth", "Stealth"),
+        new("support", "Support"),
+        new("medical", "Medical"),
+        new("extract", "Extract"),
+        new("host", "Host"),
+        new("time", "Time"),
+        new("modpack", "Mod pack"),
+        new("slot", "Slot"),
+        new("document", "Document"),
+    ];
+
+    private bool CanManageEvents
+        => Me.HasClaimOrEventAdmin();
+
+    private bool CanSubmit
+        => CanManageEvents && !_isLoading && !_isSaving && _model is not null;
+
+    private bool HasImage
+        => _model?.ImageAssetFk is not null;
+
+    private string VisibilityValue
+    {
+        get => _model?.IsVisible is false ? "hidden" : "public";
+        set
+        {
+            if (_model is not null)
+                _model.IsVisible = string.Equals(value, "public", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private IReadOnlyList<EventSlotDraftModel> VisibleSlots
+        => [.._slots.Where((slot) => !slot.IsDeleted)];
+
+    private IReadOnlyList<SlotEditorGroup> SlotEditorGroups
+        =>
+        [
+            ..VisibleSlots
+                .GroupBy((slot) => NormalizeSlotGroup(slot.Group))
+                .Select((slotGroup) => new SlotEditorGroup(
+                    slotGroup.Key,
+                    [
+                        ..slotGroup
+                            .OrderBy((slot) => GetSideSort(slot.Side))
+                            .ThenBy((slot) => slot.SlotNumber ?? int.MaxValue)
+                            .ThenBy((slot) => slot.Title, StringComparer.CurrentCultureIgnoreCase),
+                    ]
+                ))
+                .OrderBy((slotGroup) => slotGroup.Name, StringComparer.CurrentCultureIgnoreCase),
+        ];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!CanManageEvents)
+            return;
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        _submitError = null;
+        _saveMessage = null;
+
+        try
+        {
+            _event = await EventRepository.GetEventAsync(EventId);
+            if (_event is null)
+            {
+                _loadError = "Event could not be found.";
+                return;
+            }
+
+            _model          = EventAuthoringModel.FromFullEvent(_event);
+            _hostedBy       = _event.HostedBy;
+            _terrain        = CreateTerrainOption(_event);
+            _modPack        = CreateModPackOption(_event);
+            _hostedByText   = GetUserLabel(_hostedBy);
+            _terrainText    = GetTerrainLabel(_terrain);
+            _modPackText    = GetModPackLabel(_modPack);
+            _imageFileName   = string.Empty;
+            _objectiveDrafts = CreateObjectiveDrafts(_model.Description);
+
+            var slots = await SlotRepository.AllSlotsAsync(EventId);
+            _slots = [..slots.Select(EventSlotDraftModel.FromSlot)];
+            await LoadSlotAssigneesAsync();
+
+            if (NavigationManager.ToAbsoluteUri(NavigationManager.Uri).Query.Contains("slotSetup=failed", StringComparison.OrdinalIgnoreCase))
+                _submitError = "Event was created, but one or more initial slots could not be created. Review and save the slot plan here.";
+        }
+        catch
+        {
+            _loadError = "Event editor data could not be loaded. Check the API connection and retry.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveAllAsync()
+    {
+        await SaveEventAsync();
+        if (_submitError is null)
+            await SaveSlotsAsync(showSuccess: false);
+        if (_submitError is null)
+            _saveMessage = "Event changes saved.";
+    }
+
+    private async Task SaveEventAsync()
+    {
+        if (_model is null || _isSaving)
+            return;
+
+        _isSaving = true;
+        _submitError = null;
+        _saveMessage = null;
+
+        var errors = _model.GetValidationErrors(requireImage: false);
+        if (errors.Count > 0)
+        {
+            _submitError = string.Join(" ", errors);
+            _isSaving = false;
+            return;
+        }
+
+        try
+        {
+            await EventRepository.ModifyEventAsync(EventId, _model.ToUpdatePayload());
+        }
+        catch
+        {
+            _submitError = "Event changes could not be saved.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task SaveSlotsAsync(bool showSuccess)
+    {
+        if (_isSavingSlots)
+            return;
+
+        _isSavingSlots = true;
+        _submitError = null;
+        if (showSuccess)
+            _saveMessage = null;
+
+        var errors = _slots
+            .Where((slot) => !slot.IsDeleted)
+            .SelectMany((slot) => slot.GetValidationErrors())
+            .ToArray();
+        if (errors.Length > 0)
+        {
+            _submitError = string.Join(" ", errors);
+            _isSavingSlots = false;
+            return;
+        }
+
+        try
+        {
+            foreach (var slot in _slots.Where((slot) => slot.IsDeleted && slot.SlotNumber is not null).ToArray())
+            {
+                await SlotRepository.DeleteSlotAsync(EventId, slot.SlotNumber!.Value);
+                _slots.Remove(slot);
+            }
+
+            foreach (var slot in _slots.Where((slot) => !slot.IsDeleted))
+            {
+                if (slot.SlotNumber is null)
+                {
+                    await SlotRepository.CreateSlotAsync(EventId, slot.ToCreationPayload());
+                }
+                else
+                {
+                    await SlotRepository.UpdateSlotAsync(EventId, slot.SlotNumber.Value, slot.ToUpdatePayload());
+                }
+            }
+
+            var slots = await SlotRepository.AllSlotsAsync(EventId);
+            _slots = [..slots.Select(EventSlotDraftModel.FromSlot)];
+            await LoadSlotAssigneesAsync();
+            if (showSuccess)
+                _saveMessage = Localizer["Pages_Events_Edit_Message_SlotPlanSaved"].Value;
+        }
+        catch
+        {
+            _submitError = Localizer["Pages_Events_Edit_Message_SlotPlanSaveFailed"].Value;
+        }
+        finally
+        {
+            _isSavingSlots = false;
+        }
+    }
+
+    private async Task AssignSlotAsync(EventSlotDraftModel slot)
+    {
+        if (!CanAssignSlot(slot) || slot.AssignmentCandidate?.PrimaryKey is not { } userId)
+            return;
+
+        if (slot.SlotNumber is null)
+        {
+            SetSlotAssignedUser(slot, slot.AssignmentCandidate);
+            _saveMessage = Localizer["Pages_Events_Edit_Message_SlotAssignmentStaged"].Value;
+            return;
+        }
+
+        try
+        {
+            await SlotRepository.AssignSlotAsync(EventId, slot.SlotNumber.Value, userId);
+            _saveMessage = Localizer["Pages_Events_Edit_Message_SlotAssignmentUpdated"].Value;
+            await ReloadSlotsAsync();
+        }
+        catch
+        {
+            _submitError = Localizer["Pages_Events_Edit_Message_SlotAssignFailed"].Value;
+        }
+    }
+
+    private async Task UnassignSlotAsync(EventSlotDraftModel slot)
+    {
+        if (slot.AssignedToFk is null)
+            return;
+
+        if (slot.SlotNumber is null)
+        {
+            SetSlotAssignedUser(slot, null);
+            _saveMessage = Localizer["Pages_Events_Edit_Message_StagedSlotAssignmentRemoved"].Value;
+            return;
+        }
+
+        try
+        {
+            await SlotRepository.UnassignSlotAsync(EventId, slot.SlotNumber.Value, slot.AssignedToFk.Value);
+            _saveMessage = Localizer["Pages_Events_Edit_Message_SlotAssignmentRemoved"].Value;
+            await ReloadSlotsAsync();
+        }
+        catch
+        {
+            _submitError = Localizer["Pages_Events_Edit_Message_SlotUnassignFailed"].Value;
+        }
+    }
+
+    private bool CanAssignSlot(EventSlotDraftModel slot)
+        => slot.AssignmentCandidate?.PrimaryKey is not null
+           && slot.AssignmentCandidate.PrimaryKey != slot.AssignedToFk;
+
+    private void AddSlot()
+        => _slots.Add(EventSlotDraftModel.CreateDefault());
+
+    private void RemoveSlot(EventSlotDraftModel slot)
+    {
+        if (slot.IsPersisted)
+            slot.IsDeleted = true;
+        else
+            _slots.Remove(slot);
+    }
+
+    private async Task ReloadSlotsAsync()
+    {
+        var slots = await SlotRepository.AllSlotsAsync(EventId);
+        _slots = [..slots.Select(EventSlotDraftModel.FromSlot)];
+        await LoadSlotAssigneesAsync();
+    }
+
+    private async Task LoadSlotAssigneesAsync()
+    {
+        var assignedUserIds = _slots
+            .Select((slot) => slot.AssignedToFk)
+            .Where((assignedToFk) => assignedToFk is not null)
+            .Select((assignedToFk) => assignedToFk!.Value)
+            .Distinct()
+            .ToArray();
+
+        if (assignedUserIds.Length is 0)
+            return;
+
+        var usersById = new Dictionary<Guid, PlainUserDto>();
+        foreach (var assignedUserId in assignedUserIds)
+        {
+            try
+            {
+                if (await UserRepository.GetUserAsync(assignedUserId) is { } user)
+                    usersById[assignedUserId] = CreatePlainUserOption(user);
+            }
+            catch
+            {
+                usersById[assignedUserId] = new PlainUserDto
+                {
+                    PrimaryKey = assignedUserId,
+                    Nickname   = Localizer[nameof(Language.Pages_Events_Edit_Status_AssignedMember)].Value,
+                };
+            }
+        }
+
+        foreach (var slot in _slots)
+        {
+            if (slot.AssignedToFk is { } assignedToFk && usersById.TryGetValue(assignedToFk, out var user))
+                SetSlotAssignedUser(slot, user);
+        }
+    }
+
+    private void OnSlotAssignmentCandidateChanged(EventSlotDraftModel slot)
+    {
+        slot.AssignmentSearchText = GetUserLabel(slot.AssignmentCandidate);
+        if (slot.SlotNumber is null)
+            SetSlotAssignedUser(slot, slot.AssignmentCandidate);
+    }
+
+    private static void SetSlotAssignedUser(EventSlotDraftModel slot, PlainUserDto? user)
+    {
+        slot.AssignedUser          = user;
+        slot.AssignedToFk          = user?.PrimaryKey;
+        slot.AssignmentCandidate   = user;
+        slot.AssignmentSearchText  = GetUserLabel(user);
+    }
+
+    private void OnImageAssetSelected(MediaAssetInfo? asset)
+    {
+        if (_model is null)
+            return;
+
+        if (asset is null)
+        {
+            _model.ImageAssetFk = null;
+            _model.ImagePath = null;
+            _imageFileName = string.Empty;
+            return;
+        }
+
+        _model.ImageAssetFk = asset.PrimaryKey;
+        _model.ImagePath = asset.ImagePath;
+        _imageFileName = asset.OriginalFileName;
+    }
+
+    private void OnHostChanged()
+    {
+        if (_model is not null)
+            _model.HostedByFk = _hostedBy?.PrimaryKey;
+        _hostedByText = GetUserLabel(_hostedBy);
+    }
+
+    private void OnTerrainChanged()
+    {
+        if (_model is not null)
+            _model.TerrainFk = _terrain?.PrimaryKey;
+        _terrainText = GetTerrainLabel(_terrain);
+    }
+
+    private void OnModPackChanged()
+    {
+        if (_model is not null)
+            _model.ModPackRevisionFk = _modPack?.PrimaryKey;
+        _modPackText = GetModPackLabel(_modPack);
+    }
+
+    private void SetTab(EditorTab tab)
+        => _activeTab = tab;
+
+    private string GetPageTitle()
+        => string.IsNullOrWhiteSpace(_model?.Title ?? _event?.Title)
+            ? Localizer[nameof(Language.Pages_Events_Edit_UntitledOperation)].Value
+            : (_model?.Title ?? _event?.Title)!;
+
+    private string GetTabClass(EditorTab tab)
+        => _activeTab == tab ? "event-editor-tab active" : "event-editor-tab";
+
+    private string GetVisibilityStatusClass()
+        => _model?.IsVisible is true ? "utf-status utf-status--success" : "utf-status utf-status--neutral";
+
+    private string GetVisibilityLabel()
+        => _model?.IsVisible is true
+            ? Localizer[nameof(Language.Public)].Value
+            : Localizer[nameof(Language.Hidden)].Value;
+
+    private string GetEventReadinessLabel()
+        => Localizer[_model?.GetValidationErrors(requireImage: false).Count is 0
+            ? nameof(Language.Pages_Events_Edit_Status_Ready)
+            : nameof(Language.Pages_Events_Edit_Status_NeedsAttention)].Value;
+
+    private string GetAssetReadinessLabel()
+        => Localizer[_terrain is not null && _modPack is not null && HasImage
+            ? nameof(Language.Pages_Events_Edit_Status_AssetsReady)
+            : nameof(Language.Pages_Events_Edit_Status_AssetsIncomplete)].Value;
+
+    private string GetObjectivesStatusLabel()
+    {
+        var count = _objectiveDrafts.Count((objective) => objective.HasText);
+        return count is 0
+            ? Localizer[nameof(Language.Pages_Events_Edit_Status_NoObjectives)].Value
+            : Localizer[count is 1
+                ? nameof(Language.Pages_Events_Edit_Count_PublicObjective)
+                : nameof(Language.Pages_Events_Edit_Count_PublicObjectives), count].Value;
+    }
+
+    private void RefreshObjectivesFromBriefing()
+    {
+        if (_isSyncingObjectives || _model is null)
+            return;
+
+        _objectiveDrafts = CreateObjectiveDrafts(_model.Description);
+    }
+
+    private void ApplyObjectiveDraftsToBriefing()
+    {
+        if (_model is null)
+            return;
+
+        var objectiveLines = _objectiveDrafts
+            .Where((objective) => objective.HasText)
+            .Select((objective) => objective.ToMarkdownLine())
+            .ToArray();
+        var body = RemoveObjectiveBlock(_model.Description);
+
+        _isSyncingObjectives = true;
+        try
+        {
+            _model.Description = objectiveLines.Length is 0
+                ? body.TrimStart()
+                : BuildObjectiveMarkdown(objectiveLines, body);
+        }
+        finally
+        {
+            _isSyncingObjectives = false;
+        }
+    }
+
+    private void AddObjective()
+    {
+        _objectiveRemovalConfirmationKey = null;
+        _objectiveDrafts.Add(EventObjectiveDraftModel.CreateDefault(_objectiveDrafts.Count));
+    }
+
+    private void RequestOrConfirmObjectiveRemoval(EventObjectiveDraftModel objective)
+    {
+        if (_objectiveRemovalConfirmationKey != objective.DraftKey)
+        {
+            _objectiveRemovalConfirmationKey = objective.DraftKey;
+            return;
+        }
+
+        _objectiveDrafts.Remove(objective);
+        _objectiveRemovalConfirmationKey = null;
+        ApplyObjectiveDraftsToBriefing();
+    }
+
+    private ObjectiveIconOption GetSelectedObjectiveIconOption(EventObjectiveDraftModel objective)
+        => ObjectiveIconOptions.FirstOrDefault((option) => string.Equals(option.Icon, objective.Icon, StringComparison.OrdinalIgnoreCase))
+           ?? ObjectiveIconOptions[0];
+
+    private void OnObjectiveIconChanged(EventObjectiveDraftModel objective, ObjectiveIconOption? icon)
+    {
+        if (icon is null)
+            return;
+
+        objective.Icon = icon.Icon;
+        ApplyObjectiveDraftsToBriefing();
+    }
+
+    private string GetObjectiveRemoveButtonClass(EventObjectiveDraftModel objective)
+        => _objectiveRemovalConfirmationKey == objective.DraftKey
+            ? "utf-button event-editor-objective-remove is-confirming"
+            : "utf-button event-editor-objective-remove";
+
+    private string GetObjectiveRemoveButtonLabel(EventObjectiveDraftModel objective)
+        => _objectiveRemovalConfirmationKey == objective.DraftKey
+            ? Localizer["Pages_Events_Edit_ActionConfirmRemoveObjective"].Value
+            : Localizer["Pages_Events_Edit_ActionRemoveObjective"].Value;
+
+    private string GetObjectiveRemoveButtonTitle(EventObjectiveDraftModel objective)
+        => _objectiveRemovalConfirmationKey == objective.DraftKey
+            ? Localizer["Pages_Events_Edit_Tooltip_ConfirmRemoveObjective"].Value
+            : Localizer["Pages_Events_Edit_Tooltip_RemoveObjective"].Value;
+
+    private static List<EventObjectiveDraftModel> CreateObjectiveDrafts(string? description)
+    {
+        var drafts = new List<EventObjectiveDraftModel>();
+        foreach (var line in GetCandidateObjectiveLines(description))
+        {
+            if (!TryParseObjectiveLine(line, out var icon, out var text))
+                continue;
+
+            drafts.Add(new EventObjectiveDraftModel
+            {
+                Icon = NormalizeObjectiveIcon(icon),
+                Text = text,
+            });
+        }
+
+        while (drafts.Count < InitialObjectiveDraftCount)
+            drafts.Add(EventObjectiveDraftModel.CreateDefault(drafts.Count));
+
+        return drafts;
+    }
+
+    private static List<EventObjectiveDraftModel> CreateEmptyObjectiveDrafts()
+        => [..Enumerable.Range(0, InitialObjectiveDraftCount).Select(EventObjectiveDraftModel.CreateDefault)];
+
+    private static IEnumerable<string> GetCandidateObjectiveLines(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            yield break;
+
+        var normalized = NormalizeNewlines(description);
+        var lines = normalized.Split('\n');
+        var firstContentIndex = FindFirstContentLine(lines);
+        if (firstContentIndex is not null && ObjectiveHeadingRegex.IsMatch(lines[firstContentIndex.Value]))
+        {
+            var hasStartedBlock = false;
+            for (var index = firstContentIndex.Value + 1; index < lines.Length; index++)
+            {
+                if (string.IsNullOrWhiteSpace(lines[index]))
+                {
+                    if (hasStartedBlock)
+                        yield break;
+                    continue;
+                }
+                if (!TryParseObjectiveLine(lines[index], out _, out _))
+                    yield break;
+
+                hasStartedBlock = true;
+                yield return lines[index];
+            }
+
+            yield break;
+        }
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+            if (line.Length is 0
+                || line.StartsWith("#", StringComparison.Ordinal)
+                || line.StartsWith("```", StringComparison.Ordinal)
+                || line.StartsWith("|", StringComparison.Ordinal)
+                || line.StartsWith("<!--", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            yield return line;
+        }
+    }
+
+    private static bool TryParseObjectiveLine(string line, out string icon, out string text)
+    {
+        icon = "objective";
+        text = string.Empty;
+
+        var match = ObjectiveMarkdownRegex.Match(line.Trim());
+        if (!match.Success)
+            return false;
+
+        if (match.Groups["icon"].Success)
+            icon = match.Groups["icon"].Value;
+
+        text = NormalizeObjectiveText(match.Groups["text"].Value);
+        return text.Length > 0;
+    }
+
+    private static string NormalizeObjectiveText(string value)
+    {
+        var text = MarkdownLinkRegex.Replace(value, "${text}");
+        text = MarkdownFormattingRegex.Replace(text, string.Empty);
+        return MarkdownWhitespaceRegex.Replace(text, " ").Trim();
+    }
+
+    private static string NormalizeObjectiveIcon(string icon)
+        => ObjectiveIconOptions.Any((option) => string.Equals(option.Icon, icon, StringComparison.OrdinalIgnoreCase))
+            ? icon.ToLowerInvariant()
+            : "objective";
+
+    private static string RemoveObjectiveBlock(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return string.Empty;
+
+        var normalized = NormalizeNewlines(description);
+        var lines = normalized.Split('\n');
+        var firstContentIndex = FindFirstContentLine(lines);
+        if (firstContentIndex is null || !ObjectiveHeadingRegex.IsMatch(lines[firstContentIndex.Value]))
+            return description;
+
+        var index = firstContentIndex.Value + 1;
+        while (index < lines.Length && string.IsNullOrWhiteSpace(lines[index]))
+            index++;
+        while (index < lines.Length && TryParseObjectiveLine(lines[index], out _, out _))
+            index++;
+        while (index < lines.Length && string.IsNullOrWhiteSpace(lines[index]))
+            index++;
+
+        return string.Join(Environment.NewLine, lines.Skip(index)).TrimStart();
+    }
+
+    private static string BuildObjectiveMarkdown(IReadOnlyList<string> objectiveLines, string body)
+    {
+        var objectiveBlock = $"## Mission objectives{Environment.NewLine}{string.Join(Environment.NewLine, objectiveLines)}";
+        return string.IsNullOrWhiteSpace(body)
+            ? objectiveBlock
+            : $"{objectiveBlock}{Environment.NewLine}{Environment.NewLine}{body.TrimStart()}";
+    }
+
+    private static string NormalizeNewlines(string value)
+        => value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+
+    private static int? FindFirstContentLine(IReadOnlyList<string> lines)
+    {
+        for (var index = 0; index < lines.Count; index++)
+        {
+            if (!string.IsNullOrWhiteSpace(lines[index]))
+                return index;
+        }
+
+        return null;
+    }
+
+    private static string GetObjectiveIconClass(string icon)
+        => $"utf-md-icon utf-md-icon--{NormalizeObjectiveIcon(icon)}";
+
+    private static string GetObjectiveIconOptionClass(ObjectiveIconOption icon)
+        => GetObjectiveIconClass(icon.Icon);
+
+    private string GetBriefingLengthLabel()
+    {
+        var length = _model?.Description?.Length ?? 0;
+        return length is 0
+            ? Localizer[nameof(Language.Pages_Events_Edit_Status_NoBriefing)].Value
+            : Localizer[nameof(Language.Pages_Events_Edit_Count_Characters), length].Value;
+    }
+
+    private string GetSlotSummaryLabel()
+    {
+        var visibleSlots = VisibleSlots;
+        var assigned = visibleSlots.Count((slot) => slot.AssignedToFk is not null);
+        return Localizer[nameof(Language.Pages_Events_Edit_Count_AssignedSlots), assigned, visibleSlots.Count].Value;
+    }
+
+    private string GetSlotStateLabel(EventSlotDraftModel slot)
+    {
+        if (slot.AssignedToFk is not null)
+            return string.IsNullOrWhiteSpace(GetUserLabel(slot.AssignedUser))
+                ? Localizer[nameof(Language.Pages_Events_Edit_Status_AssignedMember)].Value
+                : GetUserLabel(slot.AssignedUser);
+        if (slot.SlotNumber is null)
+            return Localizer[nameof(Language.Pages_Events_Edit_Status_UnassignedNewSlot)].Value;
+        return Localizer[nameof(Language.Pages_Events_Edit_Status_SlotUnassigned), slot.SlotNumber.Value].Value;
+    }
+
+    private string GetSlotGroupAssignmentLabel(SlotEditorGroup slotGroup)
+        => Localizer[nameof(Language.Pages_Events_Edit_Count_GroupAssigned), slotGroup.AssignedCount, slotGroup.TotalCount].Value;
+
+    private string NormalizeSlotGroup(string? group)
+        => string.IsNullOrWhiteSpace(group) ? Localizer[nameof(Language.Pages_Events_Edit_Status_Ungrouped)].Value : group.Trim();
+
+    private static int GetSideSort(int side)
+        => side switch
+        {
+            2 => 0,
+            1 => 1,
+            3 => 2,
+            4 => 3,
+            5 => 4,
+            6 => 5,
+            _ => 6,
+        };
+
+    private static string GetSideKey(EventSlotDraftModel slot)
+        => slot.Side switch
+        {
+            1 => "east",
+            2 => "west",
+            3 => "resistance",
+            4 => "civilian",
+            5 => "ambient",
+            6 => "logic",
+            _ => "empty",
+        };
+
+    private string GetSideLabel(int side)
+        => side switch
+        {
+            1 => Localizer[nameof(Language.East)].Value,
+            2 => Localizer[nameof(Language.West)].Value,
+            3 => Localizer[nameof(Language.Resistance)].Value,
+            4 => Localizer[nameof(Language.Civilian)].Value,
+            5 => Localizer[nameof(Language.Ambient)].Value,
+            6 => Localizer[nameof(Language.Logic)].Value,
+            _ => Localizer[nameof(Language.Empty)].Value,
+        };
+
+    private static string GetSideClass(EventSlotDraftModel slot)
+        => $"utf-side-pill utf-side-pill--{GetSideKey(slot)}";
+
+    private static string GetSlotStatusClass(EventSlotDraftModel slot)
+    {
+        var classes = "utf-status ";
+        if (!slot.IsVisible)
+            return classes + "utf-status--neutral";
+        if (slot.AssignedToFk is not null)
+            return classes + "utf-status--success";
+        if (!slot.IsSelfAssignable)
+            return classes + "utf-status--warning";
+        return classes + "utf-status--brand";
+    }
+
+    private string GetSlotStatusText(EventSlotDraftModel slot)
+    {
+        if (!slot.IsVisible)
+            return Localizer[nameof(Language.Pages_Events_Edit_Status_Hidden)].Value;
+        if (slot.AssignedToFk is not null)
+            return Localizer[nameof(Language.Pages_Events_Edit_Status_Assigned)].Value;
+        if (!slot.IsSelfAssignable)
+            return Localizer[nameof(Language.Pages_Events_Edit_Status_Locked)].Value;
+        return Localizer[nameof(Language.Pages_Events_Edit_Status_Available)].Value;
+    }
+
+    private static string GetSlotRowClass(EventSlotDraftModel slot)
+    {
+        var classes = "event-editor-slot-row";
+        if (slot.AssignedToFk is not null)
+            classes += " assigned";
+        if (!slot.IsVisible)
+            classes += " hidden";
+        return classes;
+    }
+
+    private static string GetSlotRoleIconClass(EventSlotDraftModel slot)
+    {
+        var title = slot.Title.ToLowerInvariant();
+        var icon = title switch
+        {
+            var value when value.Contains("medic", StringComparison.Ordinal)
+                           || value.Contains("medical", StringComparison.Ordinal)
+                           || value.Contains("corpsman", StringComparison.Ordinal) => "medical",
+            var value when value.Contains("radio", StringComparison.Ordinal)
+                           || value.Contains("rto", StringComparison.Ordinal)
+                           || value.Contains("jtac", StringComparison.Ordinal)
+                           || value.Contains("fac", StringComparison.Ordinal) => "radio",
+            var value when value.Contains("lead", StringComparison.Ordinal)
+                           || value.Contains("command", StringComparison.Ordinal)
+                           || value.Contains("officer", StringComparison.Ordinal) => "host",
+            var value when value.Contains("pilot", StringComparison.Ordinal)
+                           || value.Contains("transport", StringComparison.Ordinal)
+                           || value.Contains("driver", StringComparison.Ordinal)
+                           || value.Contains("crew", StringComparison.Ordinal) => "extract",
+            var value when value.Contains("marksman", StringComparison.Ordinal)
+                           || value.Contains("sniper", StringComparison.Ordinal)
+                           || value.Contains("scout", StringComparison.Ordinal)
+                           || value.Contains("recon", StringComparison.Ordinal) => "stealth",
+            var value when value.Contains("support", StringComparison.Ordinal)
+                           || value.Contains("engineer", StringComparison.Ordinal)
+                           || value.Contains("gunner", StringComparison.Ordinal)
+                           || value.Contains("autorifleman", StringComparison.Ordinal) => "support",
+            _ => "slot",
+        };
+
+        return $"utf-md-icon utf-md-icon--{icon} event-editor-slot-role-icon";
+    }
+
+    private static string GetSlotAutocompleteId(EventSlotDraftModel slot)
+        => $"event-editor-slot-user-{slot.DraftKey:N}";
+
+    private static string GetUserLabel(PlainUserDto? user)
+        => string.IsNullOrWhiteSpace(user?.Nickname)
+            ? user?.PrimaryKey?.ToString() ?? string.Empty
+            : user.Nickname;
+
+    private static string GetTerrainLabel(PlainTerrainDto? terrain)
+        => string.IsNullOrWhiteSpace(terrain?.Title) ? string.Empty : terrain.Title;
+
+    private string GetModPackLabel(PlainModPackRevisionDto? modPack)
+        => modPack is null
+            ? string.Empty
+            : ModPackAutoCompleteService.PlainModPackRevisionDto.OptionText(modPack)
+              ?? Localizer[nameof(Language.Pages_Events_Edit_Status_SelectedModPack)].Value;
+
+    private IReadOnlyList<ReadinessRow> GetReadinessRows()
+        =>
+        [
+            new(Localizer[nameof(Language.Pages_Events_Edit_Readiness_TitleDefined)].Value, !string.IsNullOrWhiteSpace(_model?.Title)),
+            new(Localizer[nameof(Language.Pages_Events_Edit_Readiness_ScheduleSet)].Value, _model?.ScheduledForLocal is not null),
+            new(Localizer[nameof(Language.Pages_Events_Edit_Readiness_HostAssigned)].Value, _model?.HostedByFk is not null),
+            new(Localizer[nameof(Language.Pages_Events_Edit_Readiness_TerrainSelected)].Value, _model?.TerrainFk is not null),
+            new(Localizer[nameof(Language.Pages_Events_Edit_Readiness_ModPackSelected)].Value, _model?.ModPackRevisionFk is not null),
+            new(Localizer[nameof(Language.Pages_Events_Edit_Readiness_BriefingAdded)].Value, !string.IsNullOrWhiteSpace(_model?.Description)),
+            new(Localizer[nameof(Language.Pages_Events_Edit_Readiness_ObjectivesAdded)].Value, _objectiveDrafts.Any((objective) => objective.HasText)),
+            new(Localizer[nameof(Language.Pages_Events_Edit_Readiness_MinimumAcceptedSet)].Value, _model?.MinimumAccepted is >= 0),
+            new(Localizer[nameof(Language.Pages_Events_Edit_Readiness_SlotPlanConfigured)].Value, VisibleSlots.Count > 0),
+        ];
+
+    private static string GetReadinessRowClass(bool isComplete)
+        => isComplete ? "event-editor-readiness-row complete" : "event-editor-readiness-row";
+
+    private static string GetChecklistClass(bool isComplete)
+        => isComplete ? "complete" : string.Empty;
+
+    private string GetImageStyle()
+    {
+        if (string.IsNullOrWhiteSpace(_model?.ImagePath))
+            return string.Empty;
+
+        var source = BaseUrl.ResolveImageUrl(_model.ImagePath);
+        return $"background-image: linear-gradient(180deg, rgba(7, 11, 15, 0.08), rgba(7, 11, 15, 0.72)), url('{source}');";
+    }
+
+    private string GetSelectedImageFileName()
+        => !string.IsNullOrWhiteSpace(_imageFileName)
+            ? _imageFileName
+            : string.IsNullOrWhiteSpace(_model?.ImagePath)
+                ? string.Empty
+                : Path.GetFileName(_model.ImagePath);
+
+    private static string FormatDateTime(DateTime? value)
+        => value?.ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture) ?? MissingValue;
+
+    private static string FormatDateTime(DateTimeOffset? value)
+        => value?.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture) ?? MissingValue;
+
+    private static string FormatCount(int? value)
+        => (value ?? 0).ToString(CultureInfo.CurrentCulture);
+
+    private static PlainTerrainDto? CreateTerrainOption(FullEventDto eventItem)
+        => eventItem.TerrainPrimaryKey is null
+            ? null
+            : new PlainTerrainDto
+            {
+                PrimaryKey    = eventItem.TerrainPrimaryKey,
+                Title         = eventItem.TerrainTitle,
+                ImageAssetFk  = eventItem.TerrainImageAssetFk,
+                ImagePath     = eventItem.TerrainImagePath,
+                IsActive      = eventItem.TerrainIsActive,
+            };
+
+    private static PlainModPackRevisionDto? CreateModPackOption(FullEventDto eventItem)
+        => eventItem.ModPackRevisionPrimaryKey is null
+            ? null
+            : new PlainModPackRevisionDto
+            {
+                PrimaryKey      = eventItem.ModPackRevisionPrimaryKey,
+                Html            = eventItem.ModPackRevisionHtml,
+                IsActive        = eventItem.ModPackRevisionIsActive,
+                TimeStampCreated = eventItem.ModPackRevisionTimeStampCreated,
+                AdditionalData = new Dictionary<string, object>
+                {
+                    ["Title"] = eventItem.ModPackDefinitionTitle ?? "Selected mod pack",
+                },
+            };
+
+    private static PlainUserDto CreatePlainUserOption(UserDto user)
+        => new()
+        {
+            Avatar         = user.Avatar,
+            AvatarMimeType = user.AvatarMimeType,
+            Nickname       = user.Nickname,
+            PrimaryKey     = user.PrimaryKey,
+        };
+
+    private enum EditorTab
+    {
+        Details,
+        Briefing,
+        Objectives,
+        Slots,
+    }
+
+    private sealed record ReadinessRow(string Label, bool IsComplete);
+
+    private sealed record ObjectiveIconOption(string Icon, string Label);
+
+    private sealed record SlotEditorGroup(string Name, IReadOnlyList<EventSlotDraftModel> Slots)
+    {
+        public int TotalCount
+            => Slots.Count;
+
+        public int AssignedCount
+            => Slots.Count((slot) => slot.AssignedToFk is not null);
+    }
+}

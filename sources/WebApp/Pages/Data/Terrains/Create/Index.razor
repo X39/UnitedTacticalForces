@@ -1,0 +1,413 @@
+@page "/data/terrains/create"
+@page "/command/terrains/create"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IStringLocalizer<Language> Localizer
+@inject ITerrainRepository TerrainRepository
+@inject NavigationManager NavigationManager
+@inject BaseUrl BaseUrl
+@inject MeService Me
+
+<PageTitle>@Localizer[nameof(Language.Auto_CreateTerrain_636ac171)]</PageTitle>
+
+<div class="terrain-create-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Auto_CreateTerrain_636ac171)])"
+                          Description="@(Localizer[nameof(Language.Auto_CreateATerrainRecordWithTheTitleAndReference_59bfb0a1)])">
+        <Actions>
+            <UtfCommandButton OnClick="NavigateToTerrains">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/></Icon>
+                <ChildContent>@Localizer[nameof(Language.Auto_BackToTerrains_c72569b2)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanCreateTerrain)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Auto_TerrainAdministratorAccessRequired_22faf377)]</h2>
+            <p>@Localizer[nameof(Language.Auto_TerrainCreationIsVisibleOnlyToAuthorizedAssetOperators_05b4c15c)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_submitError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_submitError
+            </div>
+        }
+
+        <section class="utf-panel terrain-create-flow">
+            <ol class="terrain-create-stepper" aria-label="@(Localizer[nameof(Language.Auto_CreateTerrainSteps_aff7544c)])">
+                @foreach (var step in Steps)
+                {
+                    <li class="@GetStepClass(step.Index)" @key="step.Index">
+                        <button type="button" @onclick="@(() => SetStep(step.Index))">
+                            <span>@step.Index.ToString(CultureInfo.CurrentCulture)</span>
+                            <strong>@GetStepLabel(step.Index)</strong>
+                            <small>@GetStepDescription(step.Index)</small>
+                        </button>
+                    </li>
+                }
+            </ol>
+
+            <main class="terrain-create-step">
+                @switch (_step)
+                {
+                    case 2:
+                        <section class="terrain-create-section">
+                            <div class="terrain-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Imagery)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_UploadTerrainImage_b50dd465)]</h2>
+                                </div>
+                                <span>@GetImageStatusLabel()</span>
+                            </div>
+
+                            <div class="terrain-create-image-grid">
+                                <GalleryImagePicker Class="terrain-create-field"
+                                                    SelectedAssetId="@_imageAssetFk"
+                                                    SelectedImagePath="@_imagePath"
+                                                    SelectedFileName="@ImageFileLabel"
+                                                    UploadTags="@TerrainUploadTags"
+                                                    AllowClear="true"
+                                                    SelectedAssetChanged="OnImageAssetSelected"/>
+
+                                <section class="terrain-create-preview" aria-label="@(Localizer[nameof(Language.Auto_TerrainImagePreview_bd8f0624)])">
+                                    <div class="@PreviewClass"
+                                         style="@PreviewStyle">
+                                        @if (!HasImage)
+                                        {
+                                            <FluentIcon Value="@(new Icons.Regular.Size24.ImageOff())"/>
+                                            <span>@Localizer[nameof(Language.Pages_Data_Terrains_All_NoImage)]</span>
+                                        }
+                                    </div>
+                                    <dl>
+                                        <dt>@Localizer[nameof(Language.File)]</dt>
+                                        <dd>@ImageFileLabel</dd>
+                                        <dt>@Localizer[nameof(Language.Type)]</dt>
+                                        <dd>@GetImageTypeLabel()</dd>
+                                        <dt>@Localizer[nameof(Language.Size)]</dt>
+                                        <dd>@GetImageSizeLabel()</dd>
+                                    </dl>
+                                </section>
+                            </div>
+                        </section>
+                        break;
+                    case 3:
+                        <section class="terrain-create-section">
+                            <div class="terrain-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Review)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_ConfirmTerrain_09fe1c07)]</h2>
+                                </div>
+                                <span class="@GetReviewStatusClass()">
+                                    <span class="utf-status__dot"></span>@GetReviewStatusLabel()
+                                </span>
+                            </div>
+
+                            <div class="terrain-create-review-grid">
+                                <article class="terrain-create-review-panel">
+                                    <header>
+                                        <strong>@Localizer[nameof(Language.Definition)]</strong>
+                                        <button type="button" @onclick="@(() => SetStep(1))">@Localizer[nameof(Language.Edit)]</button>
+                                    </header>
+                                    <dl>
+                                        <dt>@Localizer[nameof(Language.Title)]</dt>
+                                        <dd>@GetTitleLabel()</dd>
+                                        <dt>@Localizer[nameof(Language.Status)]</dt>
+                                        <dd>@Localizer[nameof(Language.Auto_ActiveAfterCreation_cf374b33)]</dd>
+                                    </dl>
+                                </article>
+                                <article class="terrain-create-review-panel">
+                                    <header>
+                                        <strong>@Localizer[nameof(Language.Image)]</strong>
+                                        <button type="button" @onclick="@(() => SetStep(2))">@Localizer[nameof(Language.Edit)]</button>
+                                    </header>
+                                    <dl>
+                                        <dt>@Localizer[nameof(Language.File)]</dt>
+                                        <dd>@ImageFileLabel</dd>
+                                        <dt>@Localizer[nameof(Language.Type)]</dt>
+                                        <dd>@GetImageTypeLabel()</dd>
+                                        <dt>@Localizer[nameof(Language.Size)]</dt>
+                                        <dd>@GetImageSizeLabel()</dd>
+                                    </dl>
+                                </article>
+                            </div>
+
+                            <section class="terrain-create-final-checklist">
+                                @foreach (var item in GetReadinessRows())
+                                {
+                                    <div class="@GetChecklistRowClass(item.IsComplete)" @key="item.Label">
+                                        <span class="utf-status__dot"></span>
+                                        <strong>@item.Label</strong>
+                                        <span>@(item.IsComplete ? Localizer[nameof(Language.Complete)] : Localizer[nameof(Language.Auto_NeedsAttention_c1ebc781)])</span>
+                                    </div>
+                                }
+                            </section>
+                        </section>
+                        break;
+                    default:
+                        <section class="terrain-create-section">
+                            <div class="terrain-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Definition)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_TerrainIdentity_3eb3ba27)]</h2>
+                                </div>
+                                <span>@GetDefinitionStatusLabel()</span>
+                            </div>
+
+                            <label class="terrain-create-field terrain-create-field--wide">
+                                <span>@Localizer[nameof(Language.Panels_CreateTerrainPanel_Title)]</span>
+                                <input class="utf-command-input"
+                                       maxlength="1024"
+                                       required
+                                       @bind="_title"/>
+                            </label>
+                        </section>
+                        break;
+                }
+            </main>
+
+            <footer class="terrain-create-command-bar">
+                <div>
+                    <span>@GetCurrentStepLabel()</span>
+                    <strong>@GetReviewStatusLabel()</strong>
+                </div>
+                <div>
+                    <button class="utf-button utf-button--ghost"
+                            type="button"
+                            disabled="@(_step <= 1 || _isSubmitting)"
+                            @onclick="PreviousStep">
+                        @Localizer[nameof(Language.Previous)]
+                    </button>
+                    @if (_step < FinalStep)
+                    {
+                        <button class="utf-button utf-button--primary"
+                                type="button"
+                                disabled="@_isSubmitting"
+                                @onclick="NextStep">
+                            @Localizer[nameof(Language.Next)]
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="utf-button utf-button--primary"
+                                type="button"
+                                disabled="@(!CanCreate)"
+                                @onclick="CreateTerrainAsync">
+                            @(_isSubmitting ? Localizer[nameof(Language.Pages_Data_Terrains_Create_ActionCreating)] : Localizer[nameof(Language.Pages_Data_Terrains_Create_ActionCreate)])
+                        </button>
+                    }
+                </div>
+            </footer>
+        </section>
+    }
+</div>
+
+@code {
+    private const int FinalStep = 3;
+    private const string MissingValue = "n/a";
+
+    private string _title = string.Empty;
+    private Guid? _imageAssetFk;
+    private string _imagePath = string.Empty;
+    private string _imageMimeType = string.Empty;
+    private string _imageFileName = string.Empty;
+    private long _imageSize;
+    private int _step = 1;
+    private bool _isSubmitting;
+    private string? _submitError;
+
+    private static readonly string[] TerrainUploadTags = ["terrain"];
+
+    private static readonly IReadOnlyList<StepItem> Steps =
+    [
+        new(1),
+        new(2),
+        new(3),
+    ];
+
+    private bool CanCreateTerrain
+        => Me.HasClaimOrTerrainAdmin(Claims.Creation.Terrain);
+
+    private bool CanCreate
+        => !_isSubmitting
+           && !string.IsNullOrWhiteSpace(_title)
+           && _imageAssetFk is not null;
+
+    private bool HasImage
+        => _imageAssetFk is not null;
+
+    private string ImageFileLabel
+        => string.IsNullOrWhiteSpace(_imageFileName) ? Localizer[nameof(Language.Auto_TerrainImageRequired_addf7b1b)].Value : _imageFileName;
+
+    private string PreviewClass
+        => HasImage ? "terrain-create-image-preview" : "terrain-create-image-preview terrain-create-image-preview--empty";
+
+    private string PreviewStyle
+        => HasImage
+            ? $"background-image: url('{BaseUrl.ResolveImageUrl(_imagePath)}');"
+            : string.Empty;
+
+    private void NavigateToTerrains()
+        => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/terrains"));
+
+    private void SetStep(int step)
+        => _step = Math.Clamp(step, 1, FinalStep);
+
+    private void PreviousStep()
+        => SetStep(_step - 1);
+
+    private void NextStep()
+        => SetStep(_step + 1);
+
+    private async Task CreateTerrainAsync()
+    {
+        if (!CanCreate)
+            return;
+
+        _isSubmitting = true;
+        _submitError = null;
+
+        try
+        {
+            var createdTerrain = await TerrainRepository.CreateTerrainAsync(
+                    new TerrainCreationPayload
+                    {
+                        Title        = _title.Trim(),
+                        ImageAssetFk = _imageAssetFk!.Value,
+                    }
+                )
+                .ConfigureAwait(false);
+
+            var route = createdTerrain.PrimaryKey is { } primaryKey
+                ? $"command/terrains/{primaryKey}"
+                : "command/terrains";
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl(route));
+        }
+        catch
+        {
+            _submitError = Localizer[nameof(Language.Auto_TerrainCouldNotBeCreatedCheckTheTitleAnd_4e51c776)].Value;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void OnImageAssetSelected(MediaAssetInfo? asset)
+    {
+        if (asset is null)
+        {
+            _imageAssetFk = null;
+            _imagePath = string.Empty;
+            _imageMimeType = string.Empty;
+            _imageFileName = string.Empty;
+            _imageSize = 0;
+            return;
+        }
+
+        ApplyImageAsset(asset);
+        _submitError = null;
+    }
+
+    private void ApplyImageAsset(MediaAssetInfo asset)
+    {
+        _imageAssetFk = asset.PrimaryKey;
+        _imagePath = asset.ImagePath;
+        _imageMimeType = asset.ContentType;
+        _imageFileName = asset.OriginalFileName;
+        _imageSize = asset.Size;
+    }
+
+    private string GetStepClass(int step)
+    {
+        if (_step == step)
+            return "active";
+        return IsStepComplete(step) ? "complete" : string.Empty;
+    }
+
+    private bool IsStepComplete(int step)
+        => step switch
+        {
+            1 => !string.IsNullOrWhiteSpace(_title),
+            2 => HasImage,
+            3 => CanCreate,
+            _ => false,
+        };
+
+    private string GetCurrentStepLabel()
+        => GetStepLabel(_step);
+
+    private string GetStepLabel(int step)
+        => step switch
+        {
+            1 => Localizer[nameof(Language.Pages_Data_Terrains_Create_Step_Definition_Label)].Value,
+            2 => Localizer[nameof(Language.Pages_Data_Terrains_Create_Step_Image_Label)].Value,
+            3 => Localizer[nameof(Language.Pages_Data_Terrains_Create_Step_Review_Label)].Value,
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, null),
+        };
+
+    private string GetStepDescription(int step)
+        => step switch
+        {
+            1 => Localizer[nameof(Language.Pages_Data_Terrains_Create_Step_Definition_Description)].Value,
+            2 => Localizer[nameof(Language.Pages_Data_Terrains_Create_Step_Image_Description)].Value,
+            3 => Localizer[nameof(Language.Pages_Data_Terrains_Create_Step_Review_Description)].Value,
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, null),
+        };
+
+    private string GetDefinitionStatusLabel()
+        => IsStepComplete(1) ? Localizer[nameof(Language.Auto_DefinitionReady_5e834525)].Value : Localizer[nameof(Language.Auto_TitleRequired_c9a0236c)].Value;
+
+    private string GetImageStatusLabel()
+        => IsStepComplete(2) ? Localizer[nameof(Language.Auto_ImageReady_7e953d5b)].Value : Localizer[nameof(Language.Auto_ImageRequired_7e9a789a)].Value;
+
+    private string GetReviewStatusLabel()
+        => CanCreate ? Localizer[nameof(Language.Auto_ReadyToCreate_ff2d530f)].Value : Localizer[nameof(Language.Auto_NeedsAttention_c1ebc781)].Value;
+
+    private string GetReviewStatusClass()
+        => CanCreate ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+
+    private string GetTitleLabel()
+        => string.IsNullOrWhiteSpace(_title) ? Localizer[nameof(Language.Auto_UntitledTerrain_6aba91cc)].Value : _title;
+
+    private string GetImageTypeLabel()
+        => HasImage && !string.IsNullOrWhiteSpace(_imageMimeType) ? _imageMimeType : MissingValue;
+
+    private string GetImageSizeLabel()
+        => _imageSize > 0 ? FormatByteCount(_imageSize) : MissingValue;
+
+    private IReadOnlyList<ReadinessRow> GetReadinessRows()
+        =>
+        [
+            new(Localizer[nameof(Language.Auto_TitleDefined_288586ef)].Value, !string.IsNullOrWhiteSpace(_title)),
+            new(Localizer[nameof(Language.Auto_ImageUploaded_6c3ba36c)].Value, HasImage),
+            new(Localizer[nameof(Language.Auto_ImageTypeKnown_0e953683)].Value, !string.IsNullOrWhiteSpace(_imageMimeType)),
+        ];
+
+    private static string GetChecklistRowClass(bool isComplete)
+        => isComplete ? "terrain-create-checklist-row complete" : "terrain-create-checklist-row";
+
+    private string FormatByteCount(long byteCount)
+    {
+        if (byteCount < 1024)
+            return Localizer[nameof(Language.Auto_Bytes_a2fbcf5d), byteCount].Value;
+
+        var kilobytes = byteCount / 1024d;
+        if (kilobytes < 1024)
+            return $"{kilobytes.ToString("N1", CultureInfo.CurrentCulture)} KB";
+
+        var megabytes = kilobytes / 1024d;
+        return $"{megabytes.ToString("N1", CultureInfo.CurrentCulture)} MB";
+    }
+
+    private sealed record StepItem(int Index);
+
+    private sealed record ReadinessRow(string Label, bool IsComplete);
+}

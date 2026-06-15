@@ -1,0 +1,371 @@
+@page "/data/terrains/all"
+@page "/command/terrains"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IStringLocalizer<Language> Localizer
+@inject ITerrainRepository TerrainRepository
+@inject NavigationManager NavigationManager
+@inject BaseUrl BaseUrl
+@inject MeService Me
+
+<PageTitle>@Localizer[nameof(Language.Pages_Terrains_AllTerrains)]</PageTitle>
+
+<div class="terrains-page">
+    <UtfCommandPageHeader Class="terrains-header"
+                          Title="@(Localizer[nameof(Language.Pages_Terrains_AllTerrains)])"
+                          Description="@(Localizer[nameof(Language.Pages_Data_Terrains_All_PageDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="@(() => LoadAsync(resetWindow: true))">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/></Icon>
+                <ChildContent>
+                    @Localizer[nameof(Language.Pages_Data_Terrains_All_ActionRefresh)]
+                </ChildContent>
+            </UtfCommandButton>
+            @if (CanCreateTerrain)
+            {
+                <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/terrains/create")"
+                                  Variant="primary">
+                    <Icon><FluentIcon Value="@(new Icons.Regular.Size24.New())"/></Icon>
+                    <ChildContent>
+                        @Localizer[nameof(Language.Pages_Data_Terrains_All_ActionCreate)]
+                    </ChildContent>
+                </UtfCommandButton>
+            }
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageTerrains)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Data_Terrains_All_AccessDeniedTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Data_Terrains_All_AccessDeniedBody)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics terrains-attention" aria-label="@(Localizer[nameof(Language.Pages_Data_Terrains_All_MetricsAria)])">
+            <UtfCommandMetric Active="@(_filter is TerrainFilter.All)"
+                              Description="@(Localizer[nameof(Language.Pages_Data_Terrains_All_MetricAllDescription), _terrains.Count.ToString(CultureInfo.CurrentCulture)])"
+                              OnClick="@(() => SetFilter(TerrainFilter.All))"
+                              Status="@(Localizer[nameof(Language.Pages_Data_Terrains_All_StatusTerrains)])"
+                              StatusIntent="neutral"
+                              Value="@GetTerrainCountLabel()"/>
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Data_Terrains_All_ReadyImageMetricDescription), ReadyImageCount.ToString(CultureInfo.CurrentCulture)])"
+                              Status="@(Localizer[nameof(Language.Pages_Data_Terrains_All_StatusImagery)])"
+                              StatusIntent="@GetReadyImageStatusIntent()"
+                              Value="@(Localizer[nameof(Language.Pages_Data_Terrains_All_ValueReadyImageCount), ReadyImageCount.ToString(CultureInfo.CurrentCulture)])"/>
+            <UtfCommandMetric Active="@(_filter is TerrainFilter.MissingImage)"
+                              Description="@(Localizer[nameof(Language.Pages_Data_Terrains_All_MissingImageMetricDescription)])"
+                              OnClick="@(() => SetFilter(TerrainFilter.MissingImage))"
+                              Status="@(Localizer[nameof(Language.Pages_Data_Terrains_All_StatusImagery)])"
+                              StatusIntent="@GetImageStatusIntent()"
+                              Value="@(Localizer[nameof(Language.Pages_Data_Terrains_All_ValueMissingImageCount), MissingImageCount.ToString(CultureInfo.CurrentCulture)])"/>
+        </section>
+
+        <section class="utf-command-toolbar terrains-toolbar" aria-label="@(Localizer[nameof(Language.Pages_Data_Terrains_All_FilterBarAria)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Data_Terrains_All_SearchPlaceholder)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChangedAsync"/>
+            <UtfCommandFilter Active="@(_filter == TerrainFilter.All)"
+                              Label="@(Localizer[nameof(Language.Pages_Data_Terrains_All_FilterAll)])"
+                              OnClick="@(() => SetFilter(TerrainFilter.All))"/>
+            <UtfCommandFilter Active="@(_filter == TerrainFilter.MissingImage)"
+                              Label="@(Localizer[nameof(Language.Pages_Data_Terrains_All_FilterMissingImage)])"
+                              OnClick="@(() => SetFilter(TerrainFilter.MissingImage))"/>
+        </section>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Data_Terrains_All_LoadingState)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <section class="utf-panel terrains-list">
+                <div class="terrains-list__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Data_Terrains_All_Kicker)]</span>
+                        <h2>@GetListTitle()</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@Localizer[nameof(Language.Pages_Data_Terrains_All_VisibleCount), VisibleTerrains.Count().ToString(CultureInfo.CurrentCulture)]
+                    </span>
+                </div>
+
+                @if (!VisibleTerrains.Any())
+                {
+                    <div class="terrains-empty">@Localizer[nameof(Language.Pages_Data_Terrains_All_NoTerrainsMatch)]</div>
+                }
+                else
+                {
+                    <div class="utf-command-table-scroll terrains-table-scroll">
+                        <table class="utf-command-table terrains-table">
+                            <thead>
+                            <tr>
+                                <th>@Localizer[nameof(Language.Pages_Data_Terrains_All_TableHeaderPreview)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Data_Terrains_All_TableHeaderTerrain)]</th>
+                                <th>@Localizer[nameof(Language.Panels_CreateTerrainPanel_Image)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Data_Terrains_All_TableHeaderKey)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Data_Terrains_All_TableHeaderActions)]</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var terrain in VisibleTerrains)
+                            {
+                                <tr class="terrains-row"
+                                    @key="terrain.PrimaryKey"
+                                    @onclick="@(() => OpenTerrain(terrain))">
+                                    <td>
+                                        <div class="@GetTerrainThumbnailClass(terrain)"
+                                             style="@GetTerrainImageStyle(terrain)"
+                                             aria-label="@GetTerrainImageLabel(terrain)">
+                                            @if (!HasTerrainImage(terrain))
+                                            {
+                                                <span>@Localizer[nameof(Language.Pages_Data_Terrains_All_NoImage)]</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong>@FormatTitle(terrain)</strong>
+                                        <span>@Localizer[nameof(Language.Pages_Data_Terrains_All_SubtitleTerrainRecord)]</span>
+                                    </td>
+                                    <td>
+                                        <strong>@GetTerrainImageTypeLabel(terrain)</strong>
+                                        <span>@GetTerrainImageSizeLabel(terrain)</span>
+                                    </td>
+                                    <td>@FormatKey(terrain.PrimaryKey)</td>
+                                    <td class="terrains-table__actions">
+                                        <button class="utf-button utf-button--ghost terrains-row-action"
+                                                type="button"
+                                                disabled="@(terrain.PrimaryKey is null)"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="@(() => OpenTerrain(terrain))">
+                                            @Localizer[nameof(Language.Open)]
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <div class="terrains-list__footer">
+                    <span>@GetLoadedWindowLabel()</span>
+                    <UtfCommandButton Disabled="@(!CanLoadMore || _isLoadingMore)"
+                                      OnClick="LoadMoreAsync">
+                        <ChildContent>
+                            @(_isLoadingMore ? Localizer[nameof(Language.Pages_Common_LoadingMore)] : Localizer[nameof(Language.Pages_Common_LoadMore)])
+                        </ChildContent>
+                    </UtfCommandButton>
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private const int TerrainWindowSize = 80;
+    private const string MissingValue = "n/a";
+
+    private IReadOnlyList<PlainTerrainDto> _terrains = [];
+    private long? _terrainsCount;
+    private int _loadedTake = TerrainWindowSize;
+    private TerrainFilter _filter = TerrainFilter.All;
+    private string _search = string.Empty;
+    private bool _isLoading;
+    private bool _isLoadingMore;
+    private string? _loadError;
+
+    private bool CanManageTerrains
+        => Me.HasBaseClaimOrTerrainAdmin(Claims.Creation.Terrain, Claims.ResourceBased.Terrain.All);
+
+    private bool CanCreateTerrain
+        => Me.HasClaimOrTerrainAdmin(Claims.Creation.Terrain);
+
+    private IEnumerable<PlainTerrainDto> VisibleTerrains
+        => _terrains
+            .Where(MatchesCurrentFilter)
+            .OrderBy((terrain) => terrain.Title);
+
+    private int MissingImageCount
+        => _terrains.Count((terrain) => !HasTerrainImage(terrain));
+
+    private int ReadyImageCount
+        => _terrains.Count - MissingImageCount;
+
+    private bool CanLoadMore
+        => _terrainsCount > _terrains.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageTerrains)
+            await LoadAsync(resetWindow: true);
+    }
+
+    private async Task LoadAsync(bool resetWindow = false, CancellationToken cancellationToken = default)
+    {
+        if (resetWindow)
+            _loadedTake = TerrainWindowSize;
+
+        _isLoading = !_isLoadingMore;
+        _loadError = null;
+
+        try
+        {
+            _terrainsCount = await TerrainRepository.GetTerrainCountAsync(cancellationToken)
+                .ConfigureAwait(false);
+            _terrains =
+            [
+                ..await TerrainRepository.GetTerrainsAsync(
+                        0,
+                        _loadedTake,
+                        NormalizeSearch(_search),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false),
+            ];
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            _terrainsCount = 0;
+            _terrains = [];
+            _loadError = Localizer[nameof(Language.Auto_TerrainDataCouldNotBeLoadedCheckTheAPI_ff13b797)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+            _isLoadingMore = false;
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (!CanLoadMore || _isLoadingMore)
+            return;
+
+        _loadedTake += TerrainWindowSize;
+        _isLoadingMore = true;
+        await LoadAsync();
+    }
+
+    private void SetFilter(TerrainFilter filter)
+    {
+        _filter = filter;
+    }
+
+    private async Task OnSearchChangedAsync(string value)
+    {
+        if (_search == value)
+            return;
+
+        _search = value;
+        await LoadAsync(resetWindow: true);
+    }
+
+    private void OpenTerrain(PlainTerrainDto terrain)
+    {
+        if (terrain.PrimaryKey is not { } primaryKey)
+            return;
+
+        NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/terrains/{primaryKey}"));
+    }
+
+    private bool MatchesCurrentFilter(PlainTerrainDto terrain)
+        => _filter switch
+        {
+            TerrainFilter.MissingImage => !HasTerrainImage(terrain),
+            _ => true,
+        };
+
+    private string GetListTitle()
+        => _filter switch
+        {
+            TerrainFilter.MissingImage => Localizer[nameof(Language.Pages_Data_Terrains_All_TitleMissingImage)].Value,
+            _ => Localizer[nameof(Language.Pages_Data_Terrains_All_TitleAll)].Value,
+        };
+
+    private string GetTerrainCountLabel()
+        => _terrainsCount is null
+            ? Localizer[nameof(Language.Pages_Data_Terrains_All_CountLoading)].Value
+            : Localizer[nameof(Language.Pages_Data_Terrains_All_CountLoaded), _terrainsCount.Value.ToString(CultureInfo.CurrentCulture)].Value;
+
+    private string GetLoadedWindowLabel()
+        => _terrainsCount <= _terrains.Count
+            ? Localizer[nameof(Language.Pages_Data_Terrains_All_WindowLoadedAll), _terrains.Count.ToString(CultureInfo.CurrentCulture)].Value
+            : Localizer[nameof(Language.Pages_Data_Terrains_All_WindowLoadedPartial),
+                _terrains.Count.ToString(CultureInfo.CurrentCulture),
+                _terrainsCount?.ToString(CultureInfo.CurrentCulture) ?? "0"].Value;
+
+    private string GetReadyImageStatusIntent()
+        => ReadyImageCount > 0 ? "success" : "warning";
+
+    private string GetImageStatusIntent()
+        => MissingImageCount > 0 ? "warning" : "success";
+
+    private string GetTerrainImageLabel(PlainTerrainDto terrain)
+    {
+        var imageState = HasTerrainImage(terrain)
+            ? Localizer[nameof(Language.Pages_Data_Terrains_All_StatusImagery)].Value
+            : Localizer[nameof(Language.Pages_Data_Terrains_All_NoImage)].Value;
+        return $"{FormatTitle(terrain)}: {imageState}";
+    }
+
+    private string GetTerrainImageTypeLabel(PlainTerrainDto terrain)
+        => !HasTerrainImage(terrain)
+            ? Localizer[nameof(Language.Pages_Data_Terrains_All_NoImage)].Value
+            : Localizer[nameof(Language.Pages_Data_Terrains_All_StatusImagery)].Value;
+
+    private static string GetTerrainImageSizeLabel(PlainTerrainDto terrain)
+        => MissingValue;
+
+    private static string GetTerrainThumbnailClass(PlainTerrainDto terrain)
+        => HasTerrainImage(terrain)
+            ? "terrains-thumbnail"
+            : "terrains-thumbnail terrains-thumbnail--empty";
+
+    private string FormatTitle(PlainTerrainDto terrain)
+        => string.IsNullOrWhiteSpace(terrain.Title)
+            ? Localizer[nameof(Language.Pages_Data_Terrains_All_UntitledTerrain)].Value
+            : terrain.Title;
+
+    private static string FormatKey(long? value)
+        => value?.ToString(CultureInfo.InvariantCulture) ?? MissingValue;
+
+    private static string? NormalizeSearch(string value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private string GetTerrainImageStyle(PlainTerrainDto terrain)
+    {
+        if (!HasTerrainImage(terrain))
+            return string.Empty;
+
+        return $"background-image: url('{BaseUrl.ResolveImageUrl(terrain.ImagePath)}');";
+    }
+
+    private static bool HasTerrainImage(PlainTerrainDto terrain)
+        => !string.IsNullOrWhiteSpace(terrain.ImagePath);
+
+    private enum TerrainFilter
+    {
+        All,
+        MissingImage,
+    }
+}

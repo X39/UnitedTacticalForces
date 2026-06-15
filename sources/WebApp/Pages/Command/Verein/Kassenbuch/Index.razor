@@ -1,0 +1,260 @@
+@page "/command/verein/kassenbuch"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.Verein
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IVereinRepository VereinRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchPageTitle)]</PageTitle>
+
+<div class="verein-kassenbuch-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Verein_KassenbuchPageTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Verein_KassenbuchPageDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Verein_ActionRefresh)]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("verein/kassenbuch")">
+                @Localizer[nameof(Language.Pages_Command_Verein_KassenbuchMemberView)]
+            </UtfCommandButton>
+            <UtfCommandButton Variant="primary" Href="@BaseUrl.ResolveSelfUrl("command/verein/kassenbuch/create")">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.AddCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Verein_LedgerAddEntry)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageKassenbuch)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchAccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchAccessRequiredDescription)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics verein-kassenbuch-metrics"
+                 aria-label="@(Localizer[nameof(Language.Pages_Command_Verein_KassenbuchMetricsAria)])">
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Command_Verein_MetricBalanceDescription), _kassenbuch.TotalCount])"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_MetricBalanceStatus)])"
+                              StatusIntent="@(_kassenbuch.Balance >= 0 ? "success" : "warning")"
+                              Value="@FormatMoney(_kassenbuch.Balance, _kassenbuch.Currency)"/>
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Command_Verein_MetricIncomeDescription)])"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_MetricIncomeStatus)])"
+                              StatusIntent="success"
+                              Value="@FormatMoney(_kassenbuch.IncomeTotal, _kassenbuch.Currency)"/>
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Command_Verein_MetricExpenseDescription)])"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_MetricExpenseStatus)])"
+                              StatusIntent="danger"
+                              Value="@FormatMoney(_kassenbuch.ExpenseTotal, _kassenbuch.Currency)"/>
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Command_Verein_KassenbuchMetricRowsDescription)])"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Verein_KassenbuchMetricRowsStatus)])"
+                              StatusIntent="neutral"
+                              Value="@FormatCount(_kassenbuch.TotalCount, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Row)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Row)].Value)"/>
+        </section>
+
+        <UtfCommandToolbar Class="verein-kassenbuch-toolbar"
+                           AriaLabel="@(Localizer[nameof(Language.Pages_Command_Verein_KassenbuchToolbarAria)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Command_Verein_KassenbuchSearchPlaceholder)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            <label class="utf-command-field">
+                <span>@Localizer[nameof(Language.Pages_Command_Verein_LedgerFormCategory)]</span>
+                <input class="utf-command-input" type="text" maxlength="96" @bind="_category"/>
+            </label>
+            <label class="utf-command-field">
+                <span>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchFilterFrom)]</span>
+                <input class="utf-command-input" type="date" @bind="_fromDate"/>
+            </label>
+            <label class="utf-command-field">
+                <span>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchFilterTo)]</span>
+                <input class="utf-command-input" type="date" @bind="_toDate"/>
+            </label>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                @Localizer[nameof(Language.Pages_Command_Verein_KassenbuchApplyFilters)]
+            </UtfCommandButton>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="ClearFiltersAsync">
+                @Localizer[nameof(Language.Pages_Command_Verein_KassenbuchClearFilters)]
+            </UtfCommandButton>
+        </UtfCommandToolbar>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Command_Verein_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <section class="utf-panel utf-command-ledger verein-kassenbuch-list">
+                <div class="utf-command-ledger__header verein-kassenbuch-list__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchTitle)]</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@FormatCount(_kassenbuch.TotalCount, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Row)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Row)].Value)
+                    </span>
+                </div>
+
+                @if (_kassenbuch.Entries.Length is 0)
+                {
+                    <div class="verein-empty">@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchNoRows)]</div>
+                }
+                else
+                {
+                    <div class="utf-command-table-scroll verein-kassenbuch-table-scroll">
+                        <table class="utf-command-table verein-kassenbuch-table">
+                            <thead>
+                            <tr>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchHeaderDate)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchHeaderCategory)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchHeaderDescription)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchHeaderReference)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchHeaderAmount)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Verein_KassenbuchHeaderActions)]</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var entry in _kassenbuch.Entries)
+                            {
+                                <tr class="verein-kassenbuch-row" @key="entry.PrimaryKey">
+                                    <td>@FormatDate(entry.TimeStampBooked)</td>
+                                    <td>@entry.Category</td>
+                                    <td>@entry.Description</td>
+                                    <td>@FormatReference(entry)</td>
+                                    <td>
+                                        <span class="@GetEntryDirectionStatusClass(entry)">
+                                            <span class="utf-status__dot"></span>@FormatSignedMoney(entry)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/verein/kassenbuch/{entry.PrimaryKey}/edit")">
+                                            @Localizer[nameof(Language.Pages_Command_Verein_KassenbuchActionEdit)]
+                                        </UtfCommandButton>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private KassenbuchPageInfo _kassenbuch = new();
+    private bool _isLoading;
+    private string? _loadError;
+    private string _search = string.Empty;
+    private string _category = string.Empty;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+
+    private bool CanManageKassenbuch
+        => Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Kassenbuch);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageKassenbuch)
+            await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!CanManageKassenbuch)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _kassenbuch = await VereinRepository.GetKassenbuchAsync(
+                    take: 100,
+                    from: ParseDateFilter(_fromDate, endOfDay: false),
+                    to: ParseDateFilter(_toDate, endOfDay: true),
+                    search: _search,
+                    category: _category
+                )
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _kassenbuch = new KassenbuchPageInfo();
+            _loadError = string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Verein_LoadError)].Value,
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        _search = string.Empty;
+        _category = string.Empty;
+        _fromDate = null;
+        _toDate   = null;
+        await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private void OnSearchChanged(string value)
+        => _search = value;
+
+    private static DateTimeOffset? ParseDateFilter(DateTime? value, bool endOfDay)
+    {
+        if (value is not { } date)
+            return null;
+
+        date = endOfDay ? date.Date.AddDays(1).AddTicks(-1) : date.Date;
+        return new DateTimeOffset(date);
+    }
+
+    private static string FormatDate(DateTimeOffset value)
+        => value.ToLocalTime().ToString("dd.MM.yyyy", CultureInfo.CurrentCulture);
+
+    private static string FormatMoney(decimal value, string currency)
+        => $"{value:N2} {currency}";
+
+    private static string FormatSignedMoney(KassenbuchEntryInfo entry)
+    {
+        var prefix = entry.Direction == EKassenbuchEntryDirection.Expense ? "-" : "+";
+        return $"{prefix}{entry.Amount:N2} {entry.Currency}";
+    }
+
+    private static string FormatReference(KassenbuchEntryInfo entry)
+        => entry.DocumentNumber ?? entry.Reference ?? "-";
+
+    private static string GetEntryDirectionStatusClass(KassenbuchEntryInfo entry)
+        => entry.Direction == EKassenbuchEntryDirection.Expense
+            ? "utf-status utf-status--danger"
+            : "utf-status utf-status--success";
+
+    private static string FormatCount(long count, string singularTemplate, string pluralTemplate)
+        => count is 1
+            ? string.Format(CultureInfo.CurrentCulture, singularTemplate, count)
+            : string.Format(CultureInfo.CurrentCulture, pluralTemplate, count);
+}

@@ -1,0 +1,329 @@
+@page "/command/content/pages/{Slug}"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.PublicPages
+@using X39.UnitedTacticalForces.WebApp.Pages.GDPR
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.PublicPageRepository
+@inject IPublicPageRepository PublicPageRepository
+@inject IToastService ToastService
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@GetPageTitle()</PageTitle>
+
+<div class="public-page-detail-page">
+    <UtfCommandPageHeader Title="@GetHeaderTitle()"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Content_PageDetailDescription)])">
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content/pages")">
+                @Localizer[nameof(Language.Pages_Command_Content_Pages_BackToList)]
+            </UtfCommandButton>
+            @if (_page is not null)
+            {
+                <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl(Slug)">
+                    @Localizer[nameof(Language.Pages_Command_Content_Pages_OpenPublic)]
+                </UtfCommandButton>
+                <UtfCommandButton Variant="primary" Href="@BaseUrl.ResolveSelfUrl($"command/content/pages/{Slug}/edit")">
+                    @Localizer[nameof(Language.Pages_Command_Content_Pages_OpenEdit)]
+                </UtfCommandButton>
+            }
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManagePages)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Content_Pages_AccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Content_Pages_AccessRequiredDescription)]</p>
+        </section>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Pages_Command_Content_Pages_Loading)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning" role="alert">
+            @_loadError
+        </div>
+    }
+    else if (_page is null)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Content_Pages_NotFoundTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Content_Pages_NotFoundDescription)]</p>
+            <UtfCommandButton Variant="primary" Href="@BaseUrl.ResolveSelfUrl($"command/content/pages/{Slug}/edit")">
+                @Localizer[nameof(Language.Pages_Command_Content_Pages_CreateFirstRevision)]
+            </UtfCommandButton>
+        </section>
+    }
+    else
+    {
+        <div class="public-page-detail-shell">
+            <section class="utf-panel public-page-preview-panel">
+                <div class="public-page-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Content_PagePreviewKicker)]</span>
+                        <h2>@GetPublicPageTitle(_page)</h2>
+                    </div>
+                    <span class="@GetPagePublishedStatusClass(_page)">
+                        <span class="utf-status__dot"></span>@GetPagePublishedLabel(_page)
+                    </span>
+                </div>
+                <div class="@GetPreviewClass()">
+                    @if (ActiveGdprContent is { } gdprContent)
+                    {
+                        <GdprPageContentView @key="ActiveRevision?.PrimaryKey" Content="@gdprContent"/>
+                    }
+                    else
+                    {
+                        <FluentMarkdown @key="ActiveRevision?.PrimaryKey" Content="@GetPreviewMarkdown()"/>
+                    }
+                </div>
+            </section>
+
+            <aside class="utf-panel public-page-meta-panel">
+                <div class="public-page-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Content_PageMetadataKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Content_PageMetadataTitle)]</h2>
+                    </div>
+                </div>
+                <dl class="public-page-facts">
+                    <div>
+                        <dt>@Localizer[nameof(Language.Pages_Command_Content_PageSlug)]</dt>
+                        <dd>@_page.Slug</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer[nameof(Language.Pages_Command_Content_PageLatestRevision)]</dt>
+                        <dd>@FormatRevisionVersion(ActiveRevision)</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer[nameof(Language.Pages_Command_Content_PageLatestPublic)]</dt>
+                        <dd>@FormatRevisionVersion(GetLatestPublishedRevision(_page))</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer[nameof(Language.Pages_Command_Content_Pages_HeaderUpdated)]</dt>
+                        <dd>@FormatDateTime(_page.TimeStampUpdated)</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer[nameof(Language.Pages_Command_Content_PageHeroImage)]</dt>
+                        <dd>@(ActiveRevision?.HeroImagePath ?? "-")</dd>
+                    </div>
+                </dl>
+                @if (!string.IsNullOrWhiteSpace(ActiveRevision?.Summary))
+                {
+                    <div class="public-page-summary">
+                        <strong>@Localizer[nameof(Language.Pages_Command_Content_PageFormSummary)]</strong>
+                        <p>@ActiveRevision.Summary</p>
+                    </div>
+                }
+            </aside>
+
+            <section class="utf-panel public-page-revision-panel">
+                <div class="public-page-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Content_PageRevisionsKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Content_PageRevisionsTitle)]</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@FormatCount(_page.Revisions.Length, Localizer[nameof(Language.Pages_Command_Content_PageRevisionCountSingular)].Value, Localizer[nameof(Language.Pages_Command_Content_PageRevisionCountPlural)].Value)
+                    </span>
+                </div>
+                <div class="public-page-revision-stack">
+                    @foreach (var revision in _page.Revisions.OrderByDescending(q => q.Version))
+                    {
+                        <article class="public-page-revision-row" @key="revision.PrimaryKey">
+                            <div>
+                                <strong>@Localizer[nameof(Language.Pages_Command_Content_PageRevisionVersion), revision.Version]</strong>
+                                <span>@FormatRevisionMeta(revision)</span>
+                            </div>
+                            <span class="@GetRevisionStatusClass(revision)">
+                                <span class="utf-status__dot"></span>@GetRevisionStatusLabel(revision)
+                            </span>
+                            <UtfCommandButton Disabled="@_isSavingPublication"
+                                              OnClick="@(() => ToggleRevisionAsync(revision))">
+                                @(revision.IsPublished
+                                    ? Localizer[nameof(Language.Pages_Command_Content_PageActionUnpublish)]
+                                    : Localizer[nameof(Language.Pages_Command_Content_PageActionPublish)])
+                            </UtfCommandButton>
+                        </article>
+                    }
+                </div>
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = "gdpr";
+
+    private PublicPageInfo? _page;
+    private bool _isLoading;
+    private bool _isSavingPublication;
+    private string? _loadError;
+
+    private bool CanManagePages
+        => Me.HasClaim(Claims.Administrative.All) || Me.HasBaseClaim(Claims.Content.Pages);
+
+    private PublicPageRevisionInfo? ActiveRevision
+        => _page?.Revision ?? _page?.Revisions.OrderByDescending(q => q.Version).FirstOrDefault();
+
+    private bool IsGdprPage
+        => string.Equals(Slug, "gdpr", StringComparison.OrdinalIgnoreCase);
+
+    private GdprPageContent? ActiveGdprContent
+    {
+        get
+        {
+            if (!IsGdprPage || ActiveRevision is null)
+                return null;
+            return GdprPageContentSupport.TryDeserialize(ActiveRevision.ContentJson, out var content)
+                ? content
+                : null;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManagePages)
+            await LoadPageAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadPageAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _page = await PublicPageRepository.GetAdminPageAsync(Slug).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _page = null;
+            _loadError = string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Content_Pages_LoadError)].Value,
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ToggleRevisionAsync(PublicPageRevisionInfo revision)
+    {
+        if (_isSavingPublication)
+            return;
+
+        _isSavingPublication = true;
+        try
+        {
+            _page = revision.IsPublished
+                ? await PublicPageRepository.UnpublishRevisionAsync(revision.PrimaryKey).ConfigureAwait(false)
+                : await PublicPageRepository.PublishRevisionAsync(revision.PrimaryKey).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Content_PageToastPublicationUpdated)].Value);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isSavingPublication = false;
+        }
+    }
+
+    private string GetPageTitle()
+        => _page is null
+            ? Localizer[nameof(Language.Pages_Command_Content_PageDetailTitle)].Value
+            : string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Content_PageDetailTitleWithPage)].Value,
+                GetPublicPageTitle(_page)
+            );
+
+    private string GetHeaderTitle()
+        => _page is null
+            ? Localizer[nameof(Language.Pages_Command_Content_PageDetailTitle)].Value
+            : GetPublicPageTitle(_page);
+
+    private string GetPreviewMarkdown()
+        => string.IsNullOrWhiteSpace(ActiveRevision?.Markdown)
+            ? Localizer[nameof(Language.Pages_Command_Content_PagePreviewEmpty)].Value
+            : ActiveRevision.Markdown;
+
+    private string GetPreviewClass()
+        => ActiveGdprContent is null
+            ? "public-page-preview"
+            : "public-page-preview public-page-gdpr-preview";
+
+    private string GetPublicPageTitle(PublicPageInfo page)
+        => page.Revision?.Title
+           ?? string.Format(
+               CultureInfo.CurrentCulture,
+               Localizer[nameof(Language.Pages_Command_Content_Pages_FallbackTitle)].Value,
+               page.Slug
+           );
+
+    private string GetPagePublishedStatusClass(PublicPageInfo page)
+        => GetLatestPublishedRevision(page) is null
+            ? "utf-status utf-status--warning"
+            : "utf-status utf-status--success";
+
+    private string GetPagePublishedLabel(PublicPageInfo page)
+    {
+        var revision = GetLatestPublishedRevision(page);
+        return revision is null
+            ? Localizer[nameof(Language.Pages_Command_Content_Pages_DraftOnly)].Value
+            : Localizer[nameof(Language.Pages_Command_Content_Pages_PublishedVersion), revision.Version].Value;
+    }
+
+    private string GetRevisionStatusClass(PublicPageRevisionInfo revision)
+        => revision.IsPublished ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+
+    private string GetRevisionStatusLabel(PublicPageRevisionInfo revision)
+        => revision.IsPublished
+            ? Localizer[nameof(Language.Pages_Command_Content_Pages_Published)].Value
+            : Localizer[nameof(Language.Pages_Command_Content_Pages_DraftOnly)].Value;
+
+    private string FormatRevisionMeta(PublicPageRevisionInfo revision)
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            Localizer[nameof(Language.Pages_Command_Content_PageRevisionMeta)].Value,
+            revision.IsPublished ? Localizer[nameof(Language.Pages_Command_Content_Pages_Published)].Value : Localizer[nameof(Language.Pages_Command_Content_Pages_DraftOnly)].Value,
+            revision.AuthorName ?? Localizer[nameof(Language.Pages_Command_Content_PageUnknownAuthor)].Value,
+            FormatDateTime(revision.TimeStampCreated)
+        );
+
+    private string FormatRevisionVersion(PublicPageRevisionInfo? revision)
+        => revision is null
+            ? Localizer[nameof(Language.Pages_Command_Content_PageNoPublicRevision)].Value
+            : Localizer[nameof(Language.Pages_Command_Content_PageRevisionVersion), revision.Version].Value;
+
+    private static PublicPageRevisionInfo? GetLatestPublishedRevision(PublicPageInfo page)
+        => page.Revisions
+            .Where(q => q.IsPublished)
+            .OrderByDescending(q => q.TimeStampPublished)
+            .ThenByDescending(q => q.Version)
+            .FirstOrDefault();
+
+    private static string FormatDateTime(DateTimeOffset value)
+        => value.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture);
+
+    private static string FormatCount(int count, string singularTemplate, string pluralTemplate)
+        => count is 1
+            ? string.Format(CultureInfo.CurrentCulture, singularTemplate, count)
+            : string.Format(CultureInfo.CurrentCulture, pluralTemplate, count);
+}
+
+
+

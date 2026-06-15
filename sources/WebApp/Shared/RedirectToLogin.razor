@@ -1,0 +1,13 @@
+@inject NavigationManager Navigation
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject BaseUrl BaseUrl
+
+@code {
+    protected override void OnInitialized()
+    {
+        var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+        var loginUrl = BaseUrl.ResolveSelfUrl($"authentication/login?returnUrl={returnUrl}");
+
+        Navigation.NavigateTo(loginUrl);
+    }
+}

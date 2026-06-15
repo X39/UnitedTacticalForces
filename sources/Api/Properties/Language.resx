@@ -1,0 +1,601 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>1.3</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral,
+            PublicKeyToken=b77a5c561934e089
+        </value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral,
+            PublicKeyToken=b77a5c561934e089
+        </value>
+  </resheader>
+  <data name="ServerController_Arma3_ServerCfg_PasswordAdmin_Title" xml:space="preserve">
+        <value>Admin password</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_PasswordAdmin_Description" xml:space="preserve">
+        <value>Password to protect admin access via "#login &lt;PASSWORD&gt;".</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Password_Title" xml:space="preserve">
+        <value>Server password</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Password_Description" xml:space="preserve">
+        <value>Password for the connection to the server.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_ServerCommandPassword_Title" xml:space="preserve">
+        <value>SQF command password</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_ServerCommandPassword_Description" xml:space="preserve">
+        <value>Password required for the alternative syntax of serverCommand's server-side scripting (case-sensitive).</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_GeneralGroup" xml:space="preserve">
+        <value>General</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Hostname_Title" xml:space="preserve">
+        <value>Servername</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxPlayers_Title" xml:space="preserve">
+        <value>Maximum players</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Motd_Title" xml:space="preserve">
+        <value>Motd</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Hostname_Description" xml:space="preserve">
+        <value>Server name visible in the game browser.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxPlayers_Description" xml:space="preserve">
+        <value>The maximum number of players that can connect to the server. The final number is the smaller value between the number given here and the number of mission slots.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Motd_Description" xml:space="preserve">
+        <value>Message displayed when connecting to the server.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Admins_Title" xml:space="preserve">
+        <value>Admins</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_HeadlessClients_Title" xml:space="preserve">
+        <value>Headless client IPs</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_LocalClient_Title" xml:space="preserve">
+        <value>Local client IPs</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_FilePatchingExceptions_Title" xml:space="preserve">
+        <value>File patching exceptions</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Admins_Description" xml:space="preserve">
+        <value>List of player uids (SteamID64) that are able to #login without providing a password. Format: {"1234567890", "2345678901"}</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_LocalClient_Description" xml:space="preserve">
+        <value>Declares clients with unlimited bandwidth and almost no latency.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_FilePatchingExceptions_Description" xml:space="preserve">
+        <value>List of player Uids (SteamId64) that are allowed to ignore the rules of allowedFilePatching and verifySignatures so they can join the server with any mods of their choice.
+Signature errors are still logged by the server on connection and can kick the user if the error occurs before the server knows the client's SteamID, e.g. if they try to join with completely unsigned pbo's.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_HeadlessClients_Description" xml:space="preserve">
+        <value>Headless Client IPs. Im Falle mehrerer Headless Clients sind mehrere Verbindungen und Adressen zulässig.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_VoteThreshold_Title" xml:space="preserve">
+    <value>Vote threshold</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_VoteMissionPlayers_Title" xml:space="preserve">
+    <value>Vote mission players</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Title" xml:space="preserve">
+    <value>Allowed #vote commands</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Title" xml:space="preserve">
+    <value>Allowed commands for voted administrator</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Kickduplicate_Title" xml:space="preserve">
+    <value>Kick duplicate players</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Loopback_Title" xml:space="preserve">
+    <value>LAN mode</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Upnp_Title" xml:space="preserve">
+    <value>UPNP</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Title" xml:space="preserve">
+    <value>File patching</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedLoadFileExtensionsArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedPreprocessFileExtensionsArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedHTMLLoadExtensionsArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedHTMLLoadURIsArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_DisconnectTimeout_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Maxdesync_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Maxping_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Maxpacketloss_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_KickClientsOnSlowNetworkArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_EnablePlayerDiag_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_CallExtReportLimit_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_KickTimeoutArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_VotingTimeOut_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_VotingTimeOutArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_RoleTimeOut_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_RoleTimeOutArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_BriefingTimeOut_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_BriefingTimeOutArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_DebriefingTimeOut_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_DebriefingTimeOutArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_LobbyIdleTimeout_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_MissionsToServerRestart_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_MissionsToShutdown_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AutoSelectMission_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_RandomMissionOrder_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_DisableChannelsArray_Title" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_VoteThreshold_Description" xml:space="preserve">
+    <value>Percentage of votes needed to confirm a vote.</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_VoteMissionPlayers_Description" xml:space="preserve">
+    <value>Required number of players for the start of the mission selection</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedVoteCmdsArray_Description" xml:space="preserve">
+    <value>allowedVoteCmds[] = {{&lt;commandName&gt;, &lt;preMissionStart&gt;, &lt;postMissionStart&gt;, &lt;votingThreshold&gt;}, ...};, where:
+&lt;commandName&gt;: string - name of the command, for example "admin".
+&lt;preMissionStart&gt; (Optional): Boolean value - true to allow the command before the mission start. Default: true
+&lt;postMissionStart&gt; (Optional): Boolean value - true to allow the command after the mission start. Default: true
+&lt;votingThreshold&gt; (Optional): Number - voting threshold 0...1. Default: value assigned to voteThreshold parameter. Otherwise 0.5
+&lt;percentSideVotingThreshold&gt; (Optional): Number - Percentage side threshold 0...1. Default: 0.5 (since Arma 3 1.90+ PerformaceBranch).</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedVotedAdminCmdsArray_Description" xml:space="preserve">
+    <value>allowedVoteAdminCmds[] = {{&lt;commandName&gt;, &lt;preMissionStart&gt;}, ...};, where:
+&lt;commandName&gt;: string - name of the command, for example "admin".
+&lt;preMissionStart&gt; (Optional): Boolean value - true to allow the command before the mission start. Default: true
+&lt;postMissionStart&gt; (Optional): Boolean value - true to allow the command after the mission start. Default: true
+If no command is specified ( allowedVotedAdminCmds[] = {}; ), it means that such commands are disabled for the selected administrator.
+No specification of allowedVotedAdminCmds means that everything is allowed for the selected admin at all times!
+</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Kickduplicate_Description" xml:space="preserve">
+    <value>If this option is enabled, duplicate player IDs will not be allowed. The second player with an existing ID will be kicked automatically.</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Loopback_Description" xml:space="preserve">
+    <value>When this option is enabled, the server is set to LAN mode. This allows multiple local instances of the game to connect to the server for testing purposes. At the same time, all non-local instances are prevented from connecting.</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Upnp_Description" xml:space="preserve">
+    <value>Creates an automatic port mapping on a UPNP/IGD enabled router, if enabled. This option allows you to create a server behind NAT (the router must have a public IP and support UPNP/IGD protocol).
+
+If this setting is enabled, the server startup may be delayed by 600 seconds (default UDP timeout of 10 minutes) if it is blocked by a firewall, bad routing, etc. Therefore, it is recommended to disable this setting in such cases.</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Description" xml:space="preserve">
+    <value>Prevent or allow file changes at runtime for the clients (including HC).</value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedLoadFileExtensionsArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedPreprocessFileExtensionsArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedHTMLLoadExtensionsArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedHTMLLoadURIsArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_DisconnectTimeout_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Maxdesync_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Maxping_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_Maxpacketloss_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_KickClientsOnSlowNetworkArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_EnablePlayerDiag_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_CallExtReportLimit_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_KickTimeoutArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_VotingTimeOut_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_VotingTimeOutArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_RoleTimeOut_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_RoleTimeOutArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_BriefingTimeOut_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_BriefingTimeOutArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_DebriefingTimeOut_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_DebriefingTimeOutArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_LobbyIdleTimeout_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_MissionsToServerRestart_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_MissionsToShutdown_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_AutoSelectMission_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_RandomMissionOrder_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_ServerCfg_DisableChannelsArray_Description" xml:space="preserve">
+    <value>
+    </value>
+  </data>
+  <data name="ServerController_Arma3_Host" xml:space="preserve">
+        <value>Host</value>
+    </data>
+  <data name="ServerController_Arma3_Host_Port_Title" xml:space="preserve">
+        <value>Port</value>
+    </data>
+  <data name="ServerController_Arma3_Host_ServerMod_Title" xml:space="preserve">
+        <value>Server mods</value>
+    </data>
+  <data name="ServerController_Arma3_Host_Port_Description" xml:space="preserve">
+        <value>Port on which the dedicated server should listen.</value>
+    </data>
+  <data name="ServerController_Arma3_Host_ServerMod_Description" xml:space="preserve">
+        <value>Loads the specified subfolders for various server-side (not transferred to clients) mods. Separated by semicolons. Absolute path and multiple stacked folders are possible.
+In Linux, arguments for multiple folders require the following separator syntax: -mod=mod1\;mod2\;mod3.</value>
+    </data>
+  <data name="ServerController_Arma3_BasicCfg_GeneralGroup" xml:space="preserve">
+        <value>General</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxMsgSend_Title" xml:space="preserve">
+        <value>Maximum messages per frame</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Title" xml:space="preserve">
+        <value>Maximum TCP package size</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Title" xml:space="preserve">
+        <value>Maximum UDP package size</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MinBandwidth_Title" xml:space="preserve">
+        <value>Expected minimal bandwidth</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxBandwidth_Title" xml:space="preserve">
+        <value>Maximum bandwidth</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MinErrorToSend_Title" xml:space="preserve">
+        <value>Minmal error to send</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MinErrorToSendNear_Title" xml:space="preserve">
+        <value>Minimal error to send near</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxCustomFileSize_Title" xml:space="preserve">
+        <value>Maximum custom file size</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Title" xml:space="preserve">
+        <value>Max package size</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxMsgSend_Description" xml:space="preserve">
+        <value>Maximum number of packets (grouped messages) that can be sent in one simulation cycle ("frame"). Increasing this value can reduce the delay on servers with high upload bandwidth.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxSizeGuaranteed_Description" xml:space="preserve">
+        <value>Maximum size (payload) of the guaranteed packet in bytes (without header). Small messages are packed into larger packets (aggregate messages). Guaranteed packets (aggregate messages) are used for non-recurring events like firing.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxSizeNonguaranteed_Description" xml:space="preserve">
+        <value>Maximum size (payload) of the non-guaranteed packet in bytes (without header). Small messages are packed into larger packets (aggregate messages). Non-guaranteed packets (aggregate messages) are used for repetitive updates such as the position of soldiers or vehicles. Increasing this value can improve the bandwidth requirement, but may increase the delay.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MinBandwidth_Description" xml:space="preserve">
+        <value>Bandwidth guaranteed to the server (in bps). This value helps the server estimate the available bandwidth. An overly optimistic value can increase delay and CPU load because too many messages are sent but discarded.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxBandwidth_Description" xml:space="preserve">
+        <value>Bandwidth that is guaranteed never to be available to the server (in bps). This value helps the server estimate the available bandwidth.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MinErrorToSend_Description" xml:space="preserve">
+        <value>Minimal bug when sending updates over the network. Using a smaller value can cause units observed with binoculars or sniper rifles to move more smoothly, but this comes with increased network traffic.
+Example: A unit 1 km (distance d = 1 km) from the player with MinErrorToSend = 0.001 (METS = 0.001) would send an update if that unit moved 50 m (error value E = 50).
+Formula: d = sqrt[(20E)/METS] ; 1000 = sqrt[(20E)/0.001] -&gt; E = 50
+In reality, other factors of the object are also considered according to a weighted scale.
+If the error value (E) between the master copy of an object (whoever "owns" the object) and the perceived/simulated copy of the same object by a client is &gt;= MinErrorToSend (METS), a network update message is sent for that object.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MinErrorToSendNear_Description" xml:space="preserve">
+        <value>Minimal error when sending updates over the network for nearby units. Using a larger value may reduce traffic for nearby units. Also used to control traffic between client and server.
+Using MinErrorToSend alone, for small distance values (d), the frequency of high errors (E) would result in excessive network messages that are not necessary but could negatively affect FPS.
+Too large a value for METSN may prevent desirable network update messages from being sent in a timely manner, causing units to appear to "warp".</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_MaxCustomFileSize_Description" xml:space="preserve">
+        <value>Users with a custom face or custom tone larger than this size will be rejected when attempting to connect.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_SocketsMaxPacketSize_Description" xml:space="preserve">
+        <value>Maximum size of the packet sent over the network. This can be set independently for both client-to-server and server-to-client(s)!
+!!! Only use if your router or ISP enforces a smaller packet size and you have connection problems with the game.
+Desync could happen if MaxSizeGuaranteed/MaxSizeNonuaranteed values above maxPacketSize are used.</value>
+    </data>
+  <data name="ServerController_Arma3_Host_Mod_Title" xml:space="preserve">
+        <value>Mods</value>
+    </data>
+  <data name="ServerController_Arma3_Host_Mod_Description" xml:space="preserve">
+        <value>Loads the specified subfolders for different mods. Separated by semicolons. Absolute path and multiple stacked folders are possible.
+In Linux, arguments for multiple folders require the following separation syntax: mod1\;mod2\;modn.
+The "relative path" starts with the directory from which the Arma 3 executable was launched, and is not always the same as where the executable is located, as in betas.
+Usually this is the same as the installation path and the same as the one entered in the Windows registry. However, if you copy or symlink the necessary files and folders, you can have different roots. This is useful if you have multiple dedicated servers.
+
+</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_ServerBehavior" xml:space="preserve">
+        <value>Server behavior</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Name" xml:space="preserve">
+        <value>Disabled</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value0_Description" xml:space="preserve">
+        <value>Disabled for both headless clients and normal clients</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Name" xml:space="preserve">
+        <value>HC Only</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value1_Description" xml:space="preserve">
+        <value>Allowed for headless client, disabled for normal clients</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Name" xml:space="preserve">
+        <value>Enabled</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AllowedFilePatching_Value2_Description" xml:space="preserve">
+        <value>Allowed for both headless clients and normal clients</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_OtherOptions" xml:space="preserve">
+        <value>Other options</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Title" xml:space="preserve">
+        <value>Max steam package size</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_SteamProtocolMaxSize_Description" xml:space="preserve">
+        <value>Limit value for the maximum length of Steam Query packets. Increasing this value is dangerous, as it can cause the Arma 3 server to send UDP packets that are larger than the MTU. This causes UDP packets to be fragmented, which is not supported by some older routers. However, increasing this value fixes the length limitation of the modlists in Arma 3: Launcher.</value>
+    </data>
+  <data name="ServerController_Arma3_GameFolders_MPMissions_Name" xml:space="preserve">
+        <value>Missions</value>
+    </data>
+  <data name="ServerController_Arma3_GameFolders_MPMissions_Description" xml:space="preserve">
+        <value>The folder in which the missions are to be stored.</value>
+    </data>
+  <data name="ServerController_Arma3_Host_HeadlessClientIp_Title" xml:space="preserve">
+        <value>Headless Client IP</value>
+    </data>
+  <data name="ServerController_Arma3_Host_HeadlessClientPassword_Title" xml:space="preserve">
+        <value>Headless Client password</value>
+    </data>
+  <data name="ServerController_Arma3_Host_HeadlessClientIp_Description" xml:space="preserve">
+        <value>The ip address to connect the headless client to.</value>
+    </data>
+  <data name="ServerController_Arma3_Host_HeadlessClientPassword_Description" xml:space="preserve">
+        <value>The password of the server to connect the client to.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Title" xml:space="preserve">
+        <value>Log object not found</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Title" xml:space="preserve">
+        <value>Skip parsing description.ext</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Title" xml:space="preserve">
+        <value>Ignore errors when loading missions</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Title" xml:space="preserve">
+        <value>Log large queue sizes</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsLogObjectNotFound_Description" xml:space="preserve">
+        <value>If set, "Server: Object not found" messages are logged</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsSkipDescriptionParsing_Description" xml:space="preserve">
+        <value>Set to skip parsing description.ext/mission.sqm. Shows the pbo filename instead of the configured mission name. OverviewText and similar will not work, but loading the mission list is much faster when there are many missions</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsIgnoreMissionLoadErrors_Description" xml:space="preserve">
+        <value>If set to , the mission is loaded regardless of the number of load errors. If not set, the server will abort loading the mission and return to the mission selection.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_AdvancedOptionsQueueSizeLogG_Description" xml:space="preserve">
+        <value>If #monitor is running and the size of a player's guaranteed message queue (listed as G: in #monitor) exceeds the threshold, all message types and sizes of that player are written to a log file in the RPT directory (see Crash Files); the writing itself is logged server-side.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_BattlEye_Title" xml:space="preserve">
+        <value>BattlEye</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Persistent_Title" xml:space="preserve">
+        <value>Persistent Mission</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_BattlEye_Description" xml:space="preserve">
+        <value>Enables or disables the BattlEye anti-cheat engine. Requires BattlEye to be installed on the server and clients joining the server.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_Persistent_Description" xml:space="preserve">
+        <value>Mission continues when all clients disconnect. If you enable the Persistence option, missions with base or instant respawn continue to run after all players disconnect. The other respawn types do not make a mission persistent. The type of respawn that a particular mission uses is specified in its Description.ext.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_DisableVoN_Title" xml:space="preserve">
+        <value>Disable voice chat</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_DisableVoN_Description" xml:space="preserve">
+        <value>Activates or deactivates voice chat (VON)</value>
+    </data>
+  <data name="ServerController_Arma3_Host_Branch_Title" xml:space="preserve">
+        <value>Branch</value>
+    </data>
+  <data name="ServerController_Arma3_Host_Branch_Description" xml:space="preserve">
+        <value>The selected game branch</value>
+    </data>
+  <data name="DiscordCommand_TeamSpeak_IpAddress" xml:space="preserve">
+        <value>IP Address</value>
+    </data>
+  <data name="DiscordCommand_TeamSpeak_Port" xml:space="preserve">
+        <value>Port</value>
+    </data>
+  <data name="DiscordCommand_TeamSpeak_Password" xml:space="preserve">
+        <value>Password</value>
+    </data>
+  <data name="DiscordCommand_TeamSpeak_JoinButton" xml:space="preserve">
+        <value>Join</value>
+    </data>
+  <data name="DiscordCommand_TeamSpeak_NotConfigured" xml:space="preserve">
+        <value>No TeamSpeak has been set up.</value>
+    </data>
+  <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Title" xml:space="preserve">
+        <value>Password</value>
+    </data>
+  <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Title" xml:space="preserve">
+        <value>Port</value>
+    </data>
+  <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPort_Description" xml:space="preserve">
+        <value>The port which accepts rcon connections.</value>
+    </data>
+  <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RconPassword_Description" xml:space="preserve">
+        <value>The password for access to rcon.</value>
+    </data>
+  <data name="ServerController_Arma3_BattlEyeCfg_Rcon" xml:space="preserve">
+        <value>RCON</value>
+    </data>
+  <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Title" xml:space="preserve">
+        <value>IP</value>
+    </data>
+  <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RConIP_Description" xml:space="preserve">
+        <value>The remote access ip address.</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_ForcedDifficulty_Title" xml:space="preserve">
+        <value>Force difficulty</value>
+    </data>
+  <data name="ServerController_Arma3_ServerCfg_ForcedDifficulty_Description" xml:space="preserve">
+        <value>Forces the selected difficulty on the server. forcedDifficulty = "&lt;difficultyClass&gt;";
+- If Recruit, Regular, or Veteran is passed as a parameter, the respective difficulty options are taken from the data configuration, CfgDifficultyPresets class.
+- If Custom is passed as a parameter, the individual flags from the CustomDifficulty class are taken from the server profile (only Custom is stored in the profile).
+- If a mission cycle is defined in server.cfg, the difficulty set in the mission cycle overrides the difficulty set by the forcedDifficulty parameter.</value>
+    </data>
+  <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Description" xml:space="preserve">
+        <value>Enables/disables RCon functions (kick/ban/connection restrictions).</value>
+    </data>
+  <data name="ServerController_Arma3_BattlEyeCfg_Rcon_RestrictRCon_Title" xml:space="preserve">
+        <value>Restrict</value>
+    </data>
+  <data name="Pages_UsersDetail_Tabs_Details_Nickname" xml:space="preserve">
+        <value>Nickname</value>
+    </data>
+  <data name="Panels_CreateModPackPanel_Title" xml:space="preserve">
+        <value />
+    </data>
+</root>

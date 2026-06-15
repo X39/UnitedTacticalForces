@@ -1,0 +1,13 @@
+**
+!global.json
+!sources/
+!sources/**
+!deploy/
+!deploy/**
+
+sources/**/bin/
+sources/**/obj/
+sources/Api/App_Data/
+sources/Api/.local/
+sources/Api/appsettings.secret.json
+sources/Api/appsettings.user.json

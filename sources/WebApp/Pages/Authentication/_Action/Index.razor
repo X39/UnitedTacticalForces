@@ -1,0 +1,55 @@
+@page "/authentication/{action}"
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject BaseUrl BaseUrl
+@inject IJSRuntime JSRuntime
+@inject IStringLocalizer<Language> Localizer
+
+@if (IsLogout)
+{
+    <form @ref="_logoutForm" method="post" action="@LogoutUrl">
+        <button type="submit">@Localizer[nameof(Language.Shared_NavMenu_Logout)]</button>
+    </form>
+}
+else
+{
+    <div class="utf-community-page utf-authentication-page">
+        <section class="utf-panel utf-authentication-panel">
+            <div>
+                <span class="utf-kicker">@Localizer[nameof(Language.Shared_CommunityDialog_AccountAccessKicker)]</span>
+                <h1>@Localizer[nameof(Language.Shared_CommunityDialog_SignInTitle)]</h1>
+                <p>@Localizer[nameof(Language.Shared_CommunityDialog_SignInSubtitle)]</p>
+            </div>
+            <AuthenticationProviderOptions
+                ReturnUrl="@EffectiveReturnUrl"
+                SteamDescription="@(Localizer[nameof(Language.Shared_CommunityDialog_UseSteamIdentity)])"
+                DiscordDescription="@(Localizer[nameof(Language.Shared_CommunityDialog_UseDiscordIdentity)])"/>
+        </section>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public string Action { get; set; } = string.Empty;
+
+    [Parameter, SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    private ElementReference _logoutForm;
+
+    private bool IsLogout => Action.Equals("logout", StringComparison.OrdinalIgnoreCase);
+
+    private string EffectiveReturnUrl
+        => string.IsNullOrWhiteSpace(ReturnUrl) ? BaseUrl.ResolveSelfUrl("") : ReturnUrl;
+
+    private string LogoutUrl => BaseUrl.ResolveApiUrlWithReturnUrl("/users/logout", EffectiveReturnUrl);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !IsLogout)
+            return;
+
+        await JSRuntime.InvokeVoidAsync("utfForms.submit", _logoutForm);
+    }
+
+}

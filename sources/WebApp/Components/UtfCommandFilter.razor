@@ -1,0 +1,39 @@
+<button class="@CssClass"
+        type="button"
+        disabled="@Disabled"
+        @onclick="OnClick">
+    <span>@Label</span>
+    @if (!string.IsNullOrWhiteSpace(Count))
+    {
+        <span class="utf-command-filter__count">@Count</span>
+    }
+</button>
+
+@code {
+    [Parameter]
+    public bool Active { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string? Count { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private string CssClass
+    {
+        get
+        {
+            var className = Active ? "utf-filter-chip utf-command-filter active" : "utf-filter-chip utf-command-filter";
+            return string.IsNullOrWhiteSpace(Class) ? className : $"{className} {Class}";
+        }
+    }
+}

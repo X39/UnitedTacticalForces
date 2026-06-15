@@ -1,0 +1,253 @@
+@page "/field-reports"
+@page "/media"
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.FieldReportRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@inject IFieldReportRepository FieldReportRepository
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Public_Media_PageTitle)]</PageTitle>
+
+<div class="utf-field-reports-page">
+    <header class="utf-field-reports-hero" style="@HeroImageStyle">
+        <div class="utf-field-reports-hero__content">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Public_Media_Kicker)]</span>
+            <h1>@Localizer[nameof(Language.Pages_Public_Media_Title)]</h1>
+            <p>@Localizer[nameof(Language.Pages_Public_Media_Subtitle)]</p>
+            <div class="utf-field-reports-hero__actions">
+                <a class="utf-button utf-button--primary" href="#reports">
+                    @Localizer[nameof(Language.Pages_Public_Media_ReadReports)]
+                </a>
+                <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("events/upcoming")">
+                    @Localizer[nameof(Language.Pages_Public_Media_OperationsBoard)]
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="utf-field-reports-main" id="reports">
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Public_Media_LoadingReports)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <section class="utf-field-report-feature-block" aria-label="@(Localizer[nameof(Language.Pages_Public_Media_FeaturedReport)])">
+                @if (FeaturedReport is { } featuredReport)
+                {
+                    <a class="utf-field-report-feature-card"
+                       href="@featuredReport.Link"
+                       style="@featuredReport.ImageStyle">
+                        <div class="utf-field-report-feature-card__image" aria-hidden="true"></div>
+                        <div class="utf-field-report-feature-card__body">
+                            <span>@featuredReport.Category</span>
+                            <small>@featuredReport.Date</small>
+                            <h2>@featuredReport.Title</h2>
+                            <p>@featuredReport.Excerpt</p>
+                            <strong>@Localizer[nameof(Language.Pages_Public_Media_ReadReport)]</strong>
+                        </div>
+                    </a>
+                }
+            </section>
+
+            <section class="utf-field-report-filters" aria-label="@(Localizer[nameof(Language.Pages_Public_Media_ReportFilters)])">
+                @foreach (var category in Categories)
+                {
+                    <button class="@GetCategoryClass(category)"
+                            type="button"
+                            @onclick="@(() => SetCategory(category))">
+                        @category
+                    </button>
+                }
+            </section>
+
+            @if (ReportCards.Count is 0)
+            {
+                <div class="utf-state-panel">@Localizer[nameof(Language.Pages_Public_Media_NoReportsPublished)]</div>
+            }
+            else if (!VisibleReports.Any())
+            {
+                <div class="utf-state-panel">@Localizer[nameof(Language.Pages_Public_Media_NoReportsMatchCategory)]</div>
+            }
+            else
+            {
+                <section class="utf-field-report-list" aria-label="@(Localizer[nameof(Language.Pages_Public_Media_ReportList)])">
+                    @foreach (var report in VisibleReports)
+                    {
+                        <a class="utf-field-report-list-row"
+                           href="@report.Link"
+                           style="@report.ImageStyle"
+                           @key="report.Slug">
+                            <div class="utf-field-report-list-row__image" aria-hidden="true"></div>
+                            <div class="utf-field-report-list-row__body">
+                                <div>
+                                    <span>@report.Category</span>
+                                    <small>@report.Date</small>
+                                </div>
+                                <h2>@report.Title</h2>
+                                <p>@report.Excerpt</p>
+                            </div>
+                        </a>
+                    }
+                </section>
+            }
+        }
+    </main>
+</div>
+
+@code {
+    private const string DefaultFieldReportsHeroImagePath = "media/generated/field-reports-table-hero.jpg";
+    private const string DefaultFieldReportCardImagePath  = "media/generated/field-reports-table-hero.jpg";
+
+    private string _activeCategory = string.Empty;
+
+    private IReadOnlyList<FieldReportSummaryInfo> _reports = [];
+    private bool _isLoading = true;
+    private string? _loadError;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private IReadOnlyList<FieldReportCard> ReportCards
+        => _reports.Select(ToCard).ToArray();
+
+    private FieldReportCard? FeaturedReport
+        => ReportCards
+            .OrderByDescending(report => report.IsFeatured)
+            .ThenBy(report => report.SortOrder)
+            .ThenByDescending(report => report.PublishedAt)
+            .FirstOrDefault();
+
+    private IEnumerable<FieldReportCard> VisibleReports
+        => ReportCards
+            .Where(report => _activeCategory == AllCategory || report.Category == _activeCategory)
+            .OrderByDescending(report => report.IsFeatured)
+            .ThenBy(report => report.SortOrder)
+            .ThenByDescending(report => report.PublishedAt);
+
+    private IReadOnlyList<string> Categories
+        =>
+        [
+            AllCategory,
+            ..ReportCards
+                .Select(report => report.Category)
+                .Where(category => !string.IsNullOrWhiteSpace(category))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase),
+        ];
+
+    private string HeroImageStyle
+        => ToCssImageVariable(
+            "--utf-hero-image",
+            GetSiteImageUrl("media-hero", DefaultFieldReportsHeroImagePath));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _activeCategory = AllCategory;
+        await Task.WhenAll(LoadReportsAsync(), LoadSiteImagesAsync()).ConfigureAwait(false);
+    }
+
+    private async Task LoadReportsAsync()
+    {
+        try
+        {
+            _reports = await FieldReportRepository.GetPublishedReportsAsync(take: 48).ConfigureAwait(false);
+        }
+        catch
+        {
+            _reports = [];
+            _loadError = Localizer[nameof(Language.Pages_Public_Media_Error_LoadFailed)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private void SetCategory(string category)
+        => _activeCategory = category;
+
+    private string GetCategoryClass(string category)
+        => string.Equals(_activeCategory, category, StringComparison.Ordinal)
+            ? "utf-filter-chip active"
+            : "utf-filter-chip";
+
+    private string AllCategory => Localizer[nameof(Language.Pages_Public_Media_AllCategory)].Value;
+
+    private FieldReportCard ToCard(FieldReportSummaryInfo report, int index)
+        => new(
+            report.Slug,
+            report.Title,
+            report.Excerpt,
+            report.Category,
+            FormatReportDate(report.TimeStampPublished ?? report.TimeStampUpdated),
+            GetReportImageStyle(report.HeroImagePath, index),
+            BaseUrl.ResolveSelfUrl($"field-reports/{Uri.EscapeDataString(report.Slug)}"),
+            report.IsFeatured,
+            report.SortOrder,
+            report.TimeStampPublished ?? report.TimeStampUpdated);
+
+    private string GetReportImageStyle(string? heroImagePath, int index)
+        => ToCssImageVariable(
+            "--utf-report-image",
+            string.IsNullOrWhiteSpace(heroImagePath)
+                ? GetSiteImageUrl(GetMediaReportFallbackKey(index), DefaultFieldReportCardImagePath)
+                : BaseUrl.ResolveImageUrl(heroImagePath));
+
+    private static string GetMediaReportFallbackKey(int index)
+        => index == 0
+            ? "media-field-report-card"
+            : $"media-field-report-fallback-{((index - 1) % 3) + 1}";
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+    private static string ToCssImageVariable(string variableName, string url)
+        => $"{variableName}: url(\"{EscapeCssUrl(url)}\");";
+
+    private static string EscapeCssUrl(string url)
+        => url.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "%22", StringComparison.Ordinal);
+
+    private static string FormatReportDate(DateTimeOffset value)
+        => value.UtcDateTime.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
+
+    private sealed record FieldReportCard(
+        string Slug,
+        string Title,
+        string Excerpt,
+        string Category,
+        string Date,
+        string ImageStyle,
+        string Link,
+        bool IsFeatured,
+        int SortOrder,
+        DateTimeOffset PublishedAt);
+}

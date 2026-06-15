@@ -1,0 +1,78 @@
+@if (string.IsNullOrWhiteSpace(Href))
+{
+    <button class="@CssClass"
+            type="@Type"
+            title="@Title"
+            disabled="@Disabled"
+            @onclick="OnClick">
+        @ButtonContent
+    </button>
+}
+else
+{
+    <NavLink class="@CssClass"
+             href="@Href"
+             title="@Title"
+             Match="@Match">
+        @ButtonContent
+    </NavLink>
+}
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string? Href { get; set; }
+
+    [Parameter]
+    public RenderFragment? Icon { get; set; }
+
+    [Parameter]
+    public NavLinkMatch Match { get; set; } = NavLinkMatch.Prefix;
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    [Parameter]
+    public string Type { get; set; } = "button";
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string Variant { get; set; } = "ghost";
+
+    private string CssClass
+    {
+        get
+        {
+            var className = $"utf-button utf-command-button utf-button--{NormalizeVariant(Variant)}";
+            if (Disabled)
+                className += " utf-button--disabled";
+            return string.IsNullOrWhiteSpace(Class) ? className : $"{className} {Class}";
+        }
+    }
+
+    private RenderFragment ButtonContent
+        => @<text>
+               @if (Icon is not null)
+               {
+                   <span class="utf-button__icon" aria-hidden="true">@Icon</span>
+               }
+               <span>@ChildContent</span>
+           </text>;
+
+    private static string NormalizeVariant(string? variant)
+        => variant?.Trim().ToLowerInvariant() switch
+        {
+            "primary" => "primary",
+            _ => "ghost",
+        };
+}

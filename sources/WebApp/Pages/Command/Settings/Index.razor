@@ -1,0 +1,259 @@
+@page "/command/settings"
+@layout CommandCenterLayout
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@inject ICommandCenterRepository CommandCenterRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Settings_PageTitle)]</PageTitle>
+
+<div class="authority-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Settings_HeaderTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Settings_HeaderDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="RefreshAsync">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/></Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Settings_ActionRefresh)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageSettings)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Settings_AccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Settings_AccessRequiredDescription)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics authority-attention" aria-label="@(Localizer[nameof(Language.Pages_Command_Settings_MetricsAriaLabel)])">
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Command_Settings_MetricReadinessDescription), UnconfiguredEnabledFeatureCount])"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Settings_MetricReadinessStatus)])"
+                              StatusClass="@GetReadinessStatusClass()"
+                              Value="@FormatCount(
+                                      ConfiguredFeatureCount,
+                                      Localizer[nameof(Language.Pages_Command_Settings_Count_Singular_ConfiguredFeature)].Value,
+                                      Localizer[nameof(Language.Pages_Command_Settings_Count_Plural_ConfiguredFeature)].Value
+                                  )"/>
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Command_Settings_MetricRoutingDescription)])"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Settings_MetricRoutingStatus)])"
+                              StatusIntent="info"
+                              Value="@FormatRoutingSummary()"/>
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Command_Settings_MetricUsersDescription)])"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Settings_MetricUsersStatus)])"
+                              StatusClass="@GetAutoVerifyStatusClass()"
+                              Value="@( _snapshot.AutoVerifyNewUsers
+                                  ? Localizer[nameof(Language.Pages_Command_Settings_AutoVerifyEnabled)]
+                                  : Localizer[nameof(Language.Pages_Command_Settings_AutoVerifyManual)] )"/>
+        </section>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Command_Settings_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <div class="utf-command-workspace authority-master-detail">
+                <section class="utf-panel utf-command-ledger authority-list-panel">
+                    <div class="utf-command-ledger__header authority-panel__header">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Settings_ReadinessKicker)]</span>
+                            <h2>@Localizer[nameof(Language.Pages_Command_Settings_FeatureRowsTitle)]</h2>
+                        </div>
+                        <span class="utf-status utf-status--neutral">
+                            <span class="utf-status__dot"></span>@FormatCount(_snapshot.Features.Length, Localizer[nameof(Language.Pages_Command_Settings_Count_Singular_Row)].Value, Localizer[nameof(Language.Pages_Command_Settings_Count_Plural_Row)].Value)
+                        </span>
+                    </div>
+
+                    @if (_snapshot.Features.Length is 0)
+                    {
+                        <div class="authority-empty">@Localizer[nameof(Language.Pages_Command_Settings_NoRowsReturned)]</div>
+                    }
+                    else
+                    {
+                        <div class="utf-command-table-scroll authority-table-scroll">
+                            <table class="utf-command-table authority-table">
+                                <thead>
+                                <tr>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Settings_HeaderFeature)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Settings_HeaderStatus)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Settings_HeaderEnabled)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Settings_HeaderConfigured)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Settings_HeaderDetail)]</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                            @foreach (var feature in _snapshot.Features.OrderBy(q => q.Area))
+                            {
+                                <tr class="@GetFeatureRowClass(feature)"
+                                    @key="feature.Area"
+                                    @onclick="@(() => SelectFeature(feature))">
+                                    <td>
+                                        <strong>@feature.Area</strong>
+                                        <span>@feature.Detail</span>
+                                    </td>
+                                    <td>
+                                        <span class="@GetFeatureStatusClass(feature)">
+                                            <span class="utf-status__dot"></span>@GetFeatureStatusLabel(feature)
+                                        </span>
+                                    </td>
+                                    <td>@(feature.IsEnabled ? Localizer[nameof(Language.Pages_Command_Settings_ValueEnabled)] : Localizer[nameof(Language.Pages_Command_Settings_ValueDisabled)])</td>
+                                    <td>@(feature.IsConfigured ? Localizer[nameof(Language.Pages_Command_Settings_ValueConfigured)] : Localizer[nameof(Language.Pages_Command_Settings_ValueMissing)])</td>
+                                    <td>@feature.Detail</td>
+                                </tr>
+                            }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+
+                <aside class="utf-panel utf-command-detail authority-detail-panel" aria-label="@(Localizer[nameof(Language.Auto_SelectedSettingsDetail_9a11f6a5)])">
+                    @if (_selectedFeature is null)
+                    {
+                        <div class="authority-empty">@Localizer[nameof(Language.Pages_Command_Settings_NoFeatureSelected)]</div>
+                    }
+                    else
+                    {
+                        <div class="authority-detail-panel__header">
+                            <div>
+                                <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Settings_SelectedSettingKicker)]</span>
+                                <h2>@_selectedFeature.Area</h2>
+                            </div>
+                            <span class="@GetFeatureStatusClass(_selectedFeature)">
+                                <span class="utf-status__dot"></span>@GetFeatureStatusLabel(_selectedFeature)
+                            </span>
+                        </div>
+
+                        <dl class="authority-meta">
+                            <dt>@Localizer[nameof(Language.Pages_Command_Settings_DetailEnabled)]</dt>
+                            <dd>@(_selectedFeature.IsEnabled ? Localizer[nameof(Language.Pages_Command_Settings_ValueYes)] : Localizer[nameof(Language.Pages_Command_Settings_ValueNo)])</dd>
+                            <dt>@Localizer[nameof(Language.Pages_Command_Settings_DetailConfigured)]</dt>
+                            <dd>@(_selectedFeature.IsConfigured ? Localizer[nameof(Language.Pages_Command_Settings_ValueYes)] : Localizer[nameof(Language.Pages_Command_Settings_ValueNo)])</dd>
+                            <dt>@Localizer[nameof(Language.Pages_Command_Settings_DetailLabel)]</dt>
+                            <dd>@_selectedFeature.Detail</dd>
+                        </dl>
+
+                        <section class="authority-stack" aria-label="@(Localizer[nameof(Language.Pages_Command_Settings_RedactionPolicyTitle)])">
+                            <h3>@Localizer[nameof(Language.Pages_Command_Settings_RedactionPolicyTitle)]</h3>
+                            <p>@Localizer[nameof(Language.Pages_Command_Settings_RedactionPolicyBody)]</p>
+                        </section>
+
+                        <div class="authority-detail-panel__actions">
+                        </div>
+                    }
+                </aside>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private CommandCenterSettingsSnapshotInfo _snapshot = new();
+    private CommandCenterSettingsFeatureInfo? _selectedFeature;
+    private bool _isLoading;
+    private string? _loadError;
+
+    private bool CanManageSettings
+        => Me.HasClaim(Claims.Administrative.All);
+
+    private int ConfiguredFeatureCount
+        => _snapshot.Features.Count(q => q.IsConfigured);
+
+    private int UnconfiguredEnabledFeatureCount
+        => _snapshot.Features.Count(q => q.IsEnabled && !q.IsConfigured);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageSettings)
+            await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!CanManageSettings)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _snapshot = await CommandCenterRepository
+                .GetSettingsSnapshotAsync()
+                .ConfigureAwait(false);
+            _selectedFeature = _snapshot.Features
+                .OrderByDescending(q => q.IsEnabled && !q.IsConfigured)
+                .ThenBy(q => q.Area)
+                .FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _snapshot        = new CommandCenterSettingsSnapshotInfo();
+            _selectedFeature = null;
+            _loadError       = UserFacingError.Message(ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void SelectFeature(CommandCenterSettingsFeatureInfo feature)
+        => _selectedFeature = feature;
+
+    private string GetFeatureRowClass(CommandCenterSettingsFeatureInfo feature)
+        => _selectedFeature?.Area == feature.Area
+            ? "authority-table-row utf-command-row--selected"
+            : "authority-table-row";
+
+    private string GetReadinessStatusClass()
+        => UnconfiguredEnabledFeatureCount > 0 ? "utf-status utf-status--warning" : "utf-status utf-status--success";
+
+    private string GetAutoVerifyStatusClass()
+        => _snapshot.AutoVerifyNewUsers ? "utf-status utf-status--warning" : "utf-status utf-status--success";
+
+    private string FormatRoutingSummary()
+    {
+        var configuredCount = new[]
+            {
+                _snapshot.ApiBaseUrlConfigured,
+                _snapshot.ClientBaseUrlConfigured,
+                _snapshot.BasePathConfigured,
+            }
+            .Count(q => q);
+        return Localizer[nameof(Language.Pages_Command_Settings_RoutingSummary), configuredCount].Value;
+    }
+
+    private static string GetFeatureStatusClass(CommandCenterSettingsFeatureInfo feature)
+    {
+        if (!feature.IsEnabled)
+            return "utf-status utf-status--neutral";
+        return feature.IsConfigured ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+    }
+
+    private string GetFeatureStatusLabel(CommandCenterSettingsFeatureInfo feature)
+    {
+        if (!feature.IsEnabled)
+            return Localizer[nameof(Language.Pages_Command_Settings_StatusDisabled)];
+        return feature.IsConfigured ? Localizer[nameof(Language.Pages_Command_Settings_StatusReady)] : Localizer[nameof(Language.Pages_Command_Settings_StatusNeedsConfig)];
+    }
+
+    private static string FormatCount(long value, string singularText, string pluralText)
+        => value is 1
+            ? $"{value:N0} {singularText}"
+            : $"{value:N0} {pluralText}";
+}

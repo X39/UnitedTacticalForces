@@ -1,0 +1,53 @@
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject AuthenticationProviderAvailability AuthenticationProviders
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<div class="@CssClass">
+    @if (AuthenticationProviders.Steam)
+    {
+        <a class="utf-sign-in-option"
+           href="@BaseUrl.ResolveApiUrlWithReturnUrl("/users/login/steam", ReturnUrl)">
+            <FluentIcon Class="utf-brand-icon utf-brand-icon--steam"
+                        Value="@(new Icons.Custom.Size24.Steam())"/>
+            <span class="utf-sign-in-option__copy">
+                <span>@Localizer[nameof(Language.Steam)]</span>
+                <strong>@SteamDescription</strong>
+            </span>
+        </a>
+    }
+    @if (AuthenticationProviders.Discord)
+    {
+        <a class="utf-sign-in-option"
+           href="@BaseUrl.ResolveApiUrlWithReturnUrl("/users/login/discord", ReturnUrl)">
+            <FluentIcon Class="utf-brand-icon utf-brand-icon--discord"
+                        Value="@(new Icons.Custom.Size24.Discord())"/>
+            <span class="utf-sign-in-option__copy">
+                <span>@Localizer[nameof(Language.Discord)]</span>
+                <strong>@DiscordDescription</strong>
+            </span>
+        </a>
+    }
+    @if (!AuthenticationProviders.HasAvailableProvider)
+    {
+        <p class="utf-sign-in-unavailable" role="status">
+            @Localizer["Authentication_NoMethodsAvailable"]
+        </p>
+    }
+</div>
+
+@code {
+
+    [Parameter]
+    public string ReturnUrl { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string SteamDescription { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string DiscordDescription { get; set; } = string.Empty;
+
+    [Parameter]
+    public string CssClass { get; set; } = "utf-sign-in-options";
+
+}

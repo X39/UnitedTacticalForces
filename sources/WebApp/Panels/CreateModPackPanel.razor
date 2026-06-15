@@ -1,0 +1,72 @@
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@implements IDialogContentComponent<X39.UnitedTacticalForces.WebApp.Panels.CreateModPackPanel.Data>
+@inject IStringLocalizer<Language> Localizer
+@inject ModPackAutoCompleteService ModPackAutoCompleteService
+
+<FluentDialogBody>
+    <div class="modpack-editor">
+        <div class="modpack-editor__summary">
+            <span class="@ModeStatusClass">
+                <span class="utf-status__dot"></span>@ModeLabel
+            </span>
+            <strong>@(Content.IsNew ? Localizer[nameof(Language.Panels_CreateModPackPanel_NewModPack)].Value : FormatTitle(Content.ModPack?.Title))</strong>
+        </div>
+
+        <div class="utf-command-form modpack-editor__form">
+            <label class="utf-command-field--wide">
+                <span>@Localizer[nameof(Language.Panels_CreateModPackPanel_Title)]</span>
+                <input class="utf-command-input"
+                       maxlength="1024"
+                       required
+                       @bind="Content.Title"/>
+            </label>
+
+            @if (Content.IsComposition)
+            {
+                <div class="modpack-editor__composition utf-command-field--wide">
+                    <span class="modpack-editor__label">@Localizer[nameof(Language.Panels_CreateModPackPanel_ModPacks)]</span>
+                    <FluentAutocomplete Multiple="true"
+                                        MaximumSelectedOptions="100"
+                                        Required="true"
+                                        TOption="FullModPackDefinitionDto"
+                                        @bind-SelectedOptions="Content.SelectedModPacks"
+                                        OnOptionsSearch="OnStandaloneOptionsSearch"
+                                        OptionText="ModPackAutoCompleteService.FullModPackDefinitionDto.OptionText"/>
+                    <span class="modpack-editor__hint">@SelectedModPacksLabel</span>
+                </div>
+            }
+            else
+            {
+                <div class="modpack-editor__file utf-command-field--wide">
+                    <span class="modpack-editor__label">@Localizer[nameof(Language.Panels_CreateModPackPanel_Html)]</span>
+                    <FluentInputFile Id="@HtmlUploaderId"
+                                     Mode="InputFileMode.Stream"
+                                     Multiple="false"
+                                     MaximumFileCount="1"
+                                     MaximumFileSize="@(10 * Constants.File.Megabyte)"
+                                     Accept=".html,.htm,text/html"
+                                     OnCompleted="@OnCompletedAsync">
+                        <ChildContent>
+                            <label for="@HtmlUploaderId">
+                                <FluentIcon Value="@(new Icons.Regular.Size32.ArrowUpload())"/>
+                            </label>
+                            <div>
+                                <FluentText>@Localizer[nameof(Language.Panels_CreateModPackPanel_Html_StartText)]</FluentText>
+                                <label for="@HtmlUploaderId">
+                                    @Localizer[nameof(Language.Panels_CreateModPackPanel_Html_HintText)]
+                                </label>
+                                <FluentText>@Localizer[nameof(Language.Panels_CreateModPackPanel_Html_EndText)]</FluentText>
+                            </div>
+                            <div>
+                                @Localizer[nameof(Language.Panels_CreateModPackPanel_Html_OnlyHtmlFilesAreSupported)]
+                            </div>
+                        </ChildContent>
+                    </FluentInputFile>
+                    <span class="modpack-editor__hint">@HtmlFileLabel</span>
+                </div>
+            }
+        </div>
+    </div>
+</FluentDialogBody>

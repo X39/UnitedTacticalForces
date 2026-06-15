@@ -1,0 +1,318 @@
+@page "/command/verein/settings"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IVereinRepository VereinRepository
+@inject IToastService ToastService
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Verein_SettingsPageTitle)]</PageTitle>
+
+<div class="verein-settings-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Verein_SettingsPageTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Verein_SettingsPageDescription)])">
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("join")">
+                @Localizer[nameof(Language.Pages_Command_Verein_SettingsOpenJoin)]
+            </UtfCommandButton>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="LoadSettingsAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Common_Refresh)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageSettings)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Verein_SettingsAccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Verein_SettingsAccessRequiredDescription)]</p>
+        </section>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Pages_Command_Verein_Loading)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <div class="verein-settings-shell">
+            <section class="utf-panel verein-settings-form-panel">
+                <div class="verein-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_SettingsFormKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Verein_SettingsFormTitle)]</h2>
+                    </div>
+                </div>
+
+                <div class="utf-command-form verein-settings-form">
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_SettingsMonthlyAmount)]</span>
+                        <input class="utf-command-input"
+                               type="number"
+                               min="0"
+                               step="0.01"
+                               @bind="_monthlyAmount"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_SettingsAnnualAmount)]</span>
+                        <input class="utf-command-input"
+                               type="number"
+                               min="0"
+                               step="0.01"
+                               @bind="_annualAmount"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_SettingsCurrency)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="3"
+                               @bind="_currency"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label class="utf-command-field--wide">
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_SettingsTextDe)]</span>
+                        <textarea class="utf-command-input"
+                                  rows="5"
+                                  maxlength="4096"
+                                  @bind="_publicTextDe"
+                                  @bind:event="oninput"></textarea>
+                    </label>
+                    <label class="utf-command-field--wide">
+                        <span>@Localizer[nameof(Language.Pages_Command_Verein_SettingsTextEn)]</span>
+                        <textarea class="utf-command-input"
+                                  rows="5"
+                                  maxlength="4096"
+                                  @bind="_publicTextEn"
+                                  @bind:event="oninput"></textarea>
+                    </label>
+
+                    @if (_formError is not null)
+                    {
+                        <div class="verein-validation" role="alert">
+                            @_formError
+                        </div>
+                    }
+
+                    <div class="utf-command-actions">
+                        <UtfCommandButton Variant="primary"
+                                          Disabled="@_isSaving"
+                                          OnClick="SaveSettingsAsync">
+                            <Icon>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                            </Icon>
+                            <ChildContent>@(_isSaving ? Localizer[nameof(Language.Common_Saving)] : Localizer[nameof(Language.Pages_Command_Verein_SettingsSave)])</ChildContent>
+                        </UtfCommandButton>
+                        <UtfCommandButton Disabled="@_isSaving" OnClick="ResetForm">
+                            @Localizer[nameof(Language.Common_Reset)]
+                        </UtfCommandButton>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="utf-panel verein-settings-preview-panel">
+                <div class="verein-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_SettingsPreviewKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Verein_SettingsPreviewTitle)]</h2>
+                    </div>
+                    <span class="@ContributionStatusClass">
+                        <span class="utf-status__dot"></span>@FormatContributionAmounts()
+                    </span>
+                </div>
+                <div class="verein-settings-preview">
+                    <strong>@Localizer[nameof(Language.Pages_Command_Verein_SettingsPreviewGerman)]</strong>
+                    <p>@FormatPreviewText(_publicTextDe)</p>
+                    <strong>@Localizer[nameof(Language.Pages_Command_Verein_SettingsPreviewEnglish)]</strong>
+                    <p>@FormatPreviewText(_publicTextEn)</p>
+                </div>
+            </aside>
+        </div>
+    }
+</div>
+
+@code {
+    private const int MaximumCurrencyLength = 3;
+    private const int MaximumPublicTextLength = 4096;
+
+    private VereinSettingsInfo? _settings;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _loadError;
+    private string? _formError;
+
+    private string _monthlyAmount = string.Empty;
+    private string _annualAmount = string.Empty;
+    private string _currency = "EUR";
+    private string _publicTextDe = string.Empty;
+    private string _publicTextEn = string.Empty;
+
+    private bool CanManageSettings
+        => Me.HasBaseClaimOrUserAdmin(Claims.User.All)
+           || Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Members);
+
+    private string ContributionStatusClass
+        => string.IsNullOrWhiteSpace(_monthlyAmount) || string.IsNullOrWhiteSpace(_annualAmount)
+            ? "utf-status utf-status--warning"
+            : "utf-status utf-status--info";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageSettings)
+            await LoadSettingsAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        _formError = null;
+        try
+        {
+            _settings = await VereinRepository.GetAdminSettingsAsync().ConfigureAwait(false);
+            LoadForm(_settings);
+        }
+        catch (Exception ex)
+        {
+            _settings = null;
+            _loadError = string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Verein_LoadError)].Value, UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        if (!CanManageSettings || _isSaving)
+            return;
+
+        if (!TryCreatePayload(out var payload, out var error))
+        {
+            _formError = error;
+            return;
+        }
+
+        _isSaving = true;
+        _formError = null;
+        try
+        {
+            _settings = await VereinRepository.UpdateSettingsAsync(payload).ConfigureAwait(false);
+            LoadForm(_settings);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Verein_SettingsSavedToast)].Value);
+        }
+        catch (Exception ex)
+        {
+            _formError = UserFacingError.Message(ex);
+            ToastService.ShowError(UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        if (_settings is not null)
+            LoadForm(_settings);
+    }
+
+    private void LoadForm(VereinSettingsInfo settings)
+    {
+        _monthlyAmount = settings.MembershipContributionMonthlyAmount?.ToString("0.##", CultureInfo.CurrentCulture)
+                         ?? string.Empty;
+        _annualAmount = settings.MembershipContributionAnnualAmount?.ToString("0.##", CultureInfo.CurrentCulture)
+                        ?? string.Empty;
+        _currency = string.IsNullOrWhiteSpace(settings.MembershipContributionCurrency)
+            ? "EUR"
+            : settings.MembershipContributionCurrency;
+        _publicTextDe = settings.MembershipContributionPublicTextDe;
+        _publicTextEn = settings.MembershipContributionPublicTextEn;
+    }
+
+    private bool TryCreatePayload(out VereinSettingsUpdateInfo payload, out string error)
+    {
+        payload = new VereinSettingsUpdateInfo();
+        if (!TryParseAmount(_monthlyAmount, out var monthlyAmount)
+            || !TryParseAmount(_annualAmount, out var annualAmount)
+            || (monthlyAmount is null) != (annualAmount is null))
+        {
+            error = Localizer[nameof(Language.Pages_Command_Verein_SettingsValidationAmounts)].Value;
+            return false;
+        }
+
+        if (_currency.Trim().Length != MaximumCurrencyLength)
+        {
+            error = Localizer[nameof(Language.Pages_Command_Verein_SettingsValidationCurrency)].Value;
+            return false;
+        }
+
+        if (_publicTextDe.Trim().Length > MaximumPublicTextLength
+            || _publicTextEn.Trim().Length > MaximumPublicTextLength)
+        {
+            error = Localizer[nameof(Language.Pages_Command_Verein_SettingsValidationText)].Value;
+            return false;
+        }
+
+        payload = new VereinSettingsUpdateInfo
+        {
+            MembershipContributionMonthlyAmount = monthlyAmount,
+            MembershipContributionAnnualAmount = annualAmount,
+            MembershipContributionCurrency = _currency.Trim().ToUpperInvariant(),
+            MembershipContributionPublicTextDe = _publicTextDe.Trim(),
+            MembershipContributionPublicTextEn = _publicTextEn.Trim(),
+        };
+        error = string.Empty;
+        return true;
+    }
+
+    private bool TryParseAmount(string value, out decimal? amount)
+    {
+        amount = null;
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
+
+        if ((!decimal.TryParse(value, NumberStyles.Number, CultureInfo.CurrentCulture, out var parsedAmount)
+             && !decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out parsedAmount))
+            || parsedAmount <= 0)
+            return false;
+
+        amount = parsedAmount;
+        return true;
+    }
+
+    private string FormatContributionAmounts()
+        => TryCreatePayload(out var payload, out _)
+           && payload.MembershipContributionMonthlyAmount is not null
+           && payload.MembershipContributionAnnualAmount is not null
+            ? string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Public_Join_ContributionAmountsFormat)].Value,
+                payload.MembershipContributionMonthlyAmount.Value,
+                payload.MembershipContributionAnnualAmount.Value,
+                payload.MembershipContributionCurrency ?? "EUR")
+            : Localizer[nameof(Language.Pages_Public_Join_ContributionAmountPending)].Value;
+
+    private string FormatPreviewText(string value)
+        => string.IsNullOrWhiteSpace(value)
+            ? Localizer[nameof(Language.Pages_Command_Verein_SettingsPreviewDefault)].Value
+            : value;
+}

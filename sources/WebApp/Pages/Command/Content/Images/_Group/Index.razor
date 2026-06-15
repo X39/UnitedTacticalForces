@@ -1,0 +1,329 @@
+@page "/command/content/images"
+@page "/command/content/images/{Group}"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject IToastService ToastService
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@GetPageTitle()</PageTitle>
+
+<div class="site-image-editor-page">
+    <UtfCommandPageHeader Title="@GetPageTitle()"
+                          Description="@T("Pages_Command_SiteImages_Description", "Edit the reusable public image slots for this page area.")">
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content/gallery")">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Image())"/>
+                </Icon>
+                <ChildContent>@T("Pages_Command_SiteImages_OpenGallery", "Open gallery")</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="LoadAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Common_Refresh)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageSiteImages)
+    {
+        <section class="utf-empty-state">
+            <h2>@T("Pages_Command_SiteImages_AccessRequiredTitle", "Access required")</h2>
+            <p>@T("Pages_Command_SiteImages_AccessRequiredDescription", "You need content administration access to edit public image slots.")</p>
+        </section>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @T("Pages_Command_SiteImages_Loading", "Loading image slots...")
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-toolbar site-image-group-toolbar"
+                 aria-label="@T("Pages_Command_SiteImages_GroupNavigationAria", "Public image groups")">
+            @foreach (var group in GroupOptions)
+            {
+                <UtfCommandButton Variant="@(string.Equals(CurrentGroup, group.Key, StringComparison.OrdinalIgnoreCase) ? "primary" : "neutral")"
+                                  Href="@BaseUrl.ResolveSelfUrl($"command/content/images/{group.Key}")">
+                    @group.Label
+                </UtfCommandButton>
+            }
+        </section>
+
+        @if (_settings.Length is 0)
+        {
+            <section class="utf-empty-state">
+                <h2>@T("Pages_Command_SiteImages_EmptyTitle", "No image slots")</h2>
+                <p>@T("Pages_Command_SiteImages_EmptyDescription", "No public image slots are configured for this area.")</p>
+            </section>
+        }
+        else
+        {
+            <section class="utf-panel utf-command-ledger site-image-settings-list">
+                <div class="utf-command-ledger__header">
+                    <div>
+                        <span class="utf-kicker">@T("Pages_Command_SiteImages_ListKicker", "Public imagery")</span>
+                        <h2>@GetGroupLabel(CurrentGroup)</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@FormatCount(_settings.Length)
+                    </span>
+                </div>
+
+                <div class="site-image-settings-grid">
+                    @foreach (var setting in _settings)
+                    {
+                        <article class="site-image-setting-card" @key="setting.Key">
+                            <div class="site-image-setting-card__preview"
+                                 style="@GetPreviewStyle(setting)"
+                                 role="img"
+                                 aria-label="@setting.Title"></div>
+                            <div class="site-image-setting-card__body">
+                                <div>
+                                    <span class="utf-kicker">@setting.Key</span>
+                                    <h3>@setting.Title</h3>
+                                    @if (!string.IsNullOrWhiteSpace(setting.Description))
+                                    {
+                                        <p>@setting.Description</p>
+                                    }
+                                </div>
+                                <GalleryImagePicker SelectedAssetId="@GetSelectedAssetId(setting)"
+                                                    SelectedImagePath="@GetSelectedImagePath(setting)"
+                                                    SelectedFileName="@GetSelectedFileName(setting)"
+                                                    ShowPreview="false"
+                                                    UploadTags="@SiteImageUploadTags"
+                                                    Disabled="@IsSaving(setting.Key)"
+                                                    SelectedAssetChanged="@((asset) => OnAssetSelected(setting.Key, asset))"/>
+                                <div class="utf-command-actions">
+                                    <UtfCommandButton Variant="primary"
+                                                      Disabled="@(!CanSave(setting) || IsSaving(setting.Key))"
+                                                      OnClick="@(() => SaveAsync(setting))">
+                                        <Icon>
+                                            <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                                        </Icon>
+                                        <ChildContent>
+                                            @(IsSaving(setting.Key)
+                                                ? T("Pages_Command_SiteImages_Saving", "Saving...")
+                                                : T("Pages_Command_SiteImages_Save", "Save"))
+                                        </ChildContent>
+                                    </UtfCommandButton>
+                                    <UtfCommandButton Disabled="@(!HasPendingChange(setting) || IsSaving(setting.Key))"
+                                                      OnClick="@(() => ResetSelection(setting))">
+                                        @T("Pages_Command_SiteImages_Reset", "Reset")
+                                    </UtfCommandButton>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private static readonly SiteImageGroup[] GroupOptions =
+    [
+        new("home", "Home"),
+        new("media", "Media"),
+        new("wiki", "Wiki"),
+        new("join", "Join"),
+        new("unit", "Unit"),
+        new("verein", "Verein"),
+        new("satzung", "Satzung"),
+        new("beschluesse", "Beschluesse"),
+        new("kassenbuch", "Kassenbuch"),
+        new("gdpr", "GDPR"),
+        new("public-pages", "Public pages"),
+    ];
+    private static readonly string[] SiteImageUploadTags = ["site-image"];
+
+    [Parameter]
+    public string? Group { get; set; }
+
+    private SiteImageSettingInfo[] _settings = [];
+    private readonly Dictionary<string, Guid> _selectedAssetIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _selectedAssetNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _selectedImagePaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _savingKeys = new(StringComparer.OrdinalIgnoreCase);
+    private bool _isLoading;
+    private string? _loadError;
+
+    private bool CanManageSiteImages
+        => Me.HasClaim(Claims.Administrative.All)
+           || Me.HasClaim(Claims.Administrative.Wiki)
+           || Me.HasClaim(Claims.Creation.Wiki)
+           || Me.HasBaseClaim(Claims.Content.Pages);
+
+    private string CurrentGroup
+        => NormalizeGroup(Group);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CanManageSiteImages)
+            await LoadAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _settings = (await SiteImageSettingsRepository.GetAdminSettingsAsync(CurrentGroup).ConfigureAwait(false))
+                .OrderBy(q => q.SortOrder)
+                .ThenBy(q => q.Title)
+                .ToArray();
+            _selectedAssetIds.Clear();
+            _selectedAssetNames.Clear();
+            _selectedImagePaths.Clear();
+            foreach (var setting in _settings)
+            {
+                _selectedAssetIds[setting.Key] = setting.ImageAssetFk;
+                _selectedImagePaths[setting.Key] = setting.ImagePath;
+            }
+        }
+        catch (Exception ex)
+        {
+            _settings = [];
+            _loadError = UserFacingError.Message(ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnAssetSelected(string key, MediaAssetInfo? asset)
+    {
+        if (asset is null)
+            return;
+
+        _selectedAssetIds[key] = asset.PrimaryKey;
+        _selectedImagePaths[key] = asset.ImagePath;
+        _selectedAssetNames[key] = asset.OriginalFileName;
+    }
+
+    private async Task SaveAsync(SiteImageSettingInfo setting)
+    {
+        if (!_selectedAssetIds.TryGetValue(setting.Key, out var assetId) || assetId == default)
+            return;
+
+        _savingKeys.Add(setting.Key);
+        try
+        {
+            var updated = await SiteImageSettingsRepository
+                .UpdateSettingAsync(setting.Key, new SiteImageSettingUpdateInfo { ImageAssetFk = assetId })
+                .ConfigureAwait(false);
+            var index = Array.FindIndex(_settings, q => string.Equals(q.Key, setting.Key, StringComparison.OrdinalIgnoreCase));
+            if (index >= 0)
+                _settings[index] = updated;
+            _selectedAssetIds[setting.Key] = updated.ImageAssetFk;
+            _selectedImagePaths[setting.Key] = updated.ImagePath;
+            ToastService.ShowSuccess(T("Pages_Command_SiteImages_SavedToast", "Image slot updated."));
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _savingKeys.Remove(setting.Key);
+        }
+    }
+
+    private void ResetSelection(SiteImageSettingInfo setting)
+    {
+        _selectedAssetIds[setting.Key] = setting.ImageAssetFk;
+        _selectedImagePaths[setting.Key] = setting.ImagePath;
+        _selectedAssetNames.Remove(setting.Key);
+    }
+
+    private bool CanSave(SiteImageSettingInfo setting)
+        => _selectedAssetIds.TryGetValue(setting.Key, out var assetId)
+           && assetId != default
+           && assetId != setting.ImageAssetFk;
+
+    private bool HasPendingChange(SiteImageSettingInfo setting)
+        => _selectedAssetIds.TryGetValue(setting.Key, out var assetId)
+           && assetId != default
+           && assetId != setting.ImageAssetFk;
+
+    private bool IsSaving(string key)
+        => _savingKeys.Contains(key);
+
+    private Guid? GetSelectedAssetId(SiteImageSettingInfo setting)
+        => _selectedAssetIds.TryGetValue(setting.Key, out var assetId)
+            ? assetId
+            : setting.ImageAssetFk;
+
+    private string GetSelectedImagePath(SiteImageSettingInfo setting)
+        => _selectedImagePaths.TryGetValue(setting.Key, out var imagePath)
+            ? imagePath
+            : setting.ImagePath;
+
+    private string GetSelectedFileName(SiteImageSettingInfo setting)
+        => _selectedAssetNames.TryGetValue(setting.Key, out var fileName)
+            ? fileName
+            : setting.Title;
+
+    private string GetPreviewStyle(SiteImageSettingInfo setting)
+    {
+        var imagePath = GetSelectedImagePath(setting);
+        return string.IsNullOrWhiteSpace(imagePath)
+            ? string.Empty
+            : $"background-image: url(\"{EscapeCssUrl(BaseUrl.ResolveImageUrl(imagePath))}\");";
+    }
+
+    private string GetPageTitle()
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            T("Pages_Command_SiteImages_TitleFormat", "{0} images"),
+            GetGroupLabel(CurrentGroup)
+        );
+
+    private static string NormalizeGroup(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "home";
+        var normalized = value.Trim().ToLowerInvariant();
+        return GroupOptions.Any(q => q.Key == normalized)
+            ? normalized
+            : "home";
+    }
+
+    private static string GetGroupLabel(string group)
+        => GroupOptions.FirstOrDefault(q => q.Key == group)?.Label ?? "Home";
+
+    private static string EscapeCssUrl(string value)
+        => value.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal);
+
+    private string FormatCount(int count)
+        => count == 1
+            ? T("Pages_Command_SiteImages_CountSingular", "1 slot")
+            : string.Format(CultureInfo.CurrentCulture, T("Pages_Command_SiteImages_CountPlural", "{0} slots"), count);
+
+    private string T(string key, string fallback)
+    {
+        var value = Localizer[key].Value;
+        return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+    }
+
+    private sealed record SiteImageGroup(string Key, string Label);
+}

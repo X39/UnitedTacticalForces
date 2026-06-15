@@ -1,0 +1,399 @@
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@implements IDialogContentComponent<X39.UnitedTacticalForces.WebApp.Components.GalleryImagePickerDialog.Data>
+@inject IMediaAssetRepository MediaAssetRepository
+@inject IToastService ToastService
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<FluentDialogBody Class="gallery-picker-dialog-body">
+    <div class="gallery-picker-dialog">
+        <section class="gallery-picker-dialog__tools">
+            <label>
+                <span>@T("Components_GalleryImagePicker_SearchLabel", "Search gallery")</span>
+                <input class="utf-command-input"
+                       type="search"
+                       value="@_search"
+                       placeholder="@T("Components_GalleryImagePicker_SearchPlaceholder", "File name or tag")"
+                       @oninput="OnSearchInput"/>
+            </label>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="ApplySearchAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Search())"/>
+                </Icon>
+                <ChildContent>@T("Components_GalleryImagePicker_SearchAction", "Search")</ChildContent>
+            </UtfCommandButton>
+            <div class="gallery-picker-dialog__upload">
+                <FluentInputFile Id="@_uploaderId"
+                                 Mode="InputFileMode.Stream"
+                                 Multiple="false"
+                                 MaximumFileCount="1"
+                                 MaximumFileSize="@MaximumImageFileSize"
+                                 Accept="@AcceptedImageMimeTypes"
+                                 OnCompleted="@OnUploadCompletedAsync">
+                    <ChildContent>
+                        <label class="gallery-picker-dialog__upload-icon"
+                               for="@_uploaderId">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.ArrowUpload())"/>
+                        </label>
+                        <strong class="gallery-picker-dialog__upload-title">
+                            @T("Components_GalleryImagePicker_UploadText", "Upload image")
+                        </strong>
+                        <span class="gallery-picker-dialog__upload-hint">
+                            @T("Components_GalleryImagePicker_UploadHint", "Image files up to 10 MB")
+                        </span>
+                    </ChildContent>
+                </FluentInputFile>
+            </div>
+        </section>
+
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning gallery-picker-dialog__state" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <div class="gallery-picker-dialog__workspace">
+            <section class="gallery-picker-dialog__grid-shell">
+                <div class="gallery-picker-dialog__header">
+                    <div>
+                        <span class="utf-kicker">@T("Components_GalleryImagePicker_ResultsKicker", "Gallery")</span>
+                        <h2>@T("Components_GalleryImagePicker_ResultsTitle", "Choose an image")</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@GetAssetCountLabel()
+                    </span>
+                </div>
+
+                @if (_isLoading && _assets.Count == 0)
+                {
+                    <div class="gallery-picker-dialog__empty">
+                        @T("Components_GalleryImagePicker_Loading", "Loading gallery images...")
+                        <FluentProgress Width="220px"/>
+                    </div>
+                }
+                else if (_assets.Count == 0)
+                {
+                    <div class="gallery-picker-dialog__empty">
+                        @T("Components_GalleryImagePicker_NoResults", "No images match the current search.")
+                    </div>
+                }
+                else
+                {
+                    <div class="gallery-picker-dialog__grid">
+                        @foreach (var asset in _assets)
+                        {
+                            <button class="@GetAssetClass(asset)"
+                                    type="button"
+                                    @key="asset.PrimaryKey"
+                                    @onclick="@(() => SelectAsset(asset))">
+                                <span class="gallery-picker-dialog__asset-image">
+                                    <img src="@BaseUrl.ResolveImageUrl(asset.ImagePath)"
+                                         alt="@GetAssetAlt(asset)"
+                                         loading="lazy"/>
+                                </span>
+                                <span class="gallery-picker-dialog__asset-body">
+                                    <strong>@asset.OriginalFileName</strong>
+                                    <span>@GetAssetMeta(asset)</span>
+                                    <span>@GetUsageLabel(asset)</span>
+                                </span>
+                            </button>
+                        }
+                    </div>
+                }
+
+                @if (_hasMore)
+                {
+                    <div class="gallery-picker-dialog__load-more">
+                        <UtfCommandButton Disabled="@_isLoading"
+                                          OnClick="LoadMoreAsync">
+                            @(_isLoading
+                                ? T("Components_GalleryImagePicker_LoadingMore", "Loading...")
+                                : T("Components_GalleryImagePicker_LoadMore", "Load more"))
+                        </UtfCommandButton>
+                    </div>
+                }
+            </section>
+
+            <aside class="gallery-picker-dialog__selection">
+                <div class="gallery-picker-dialog__header">
+                    <div>
+                        <span class="utf-kicker">@T("Components_GalleryImagePicker_SelectionKicker", "Selection")</span>
+                        <h2>@GetSelectionTitle()</h2>
+                    </div>
+                </div>
+                @if (Content.SelectedAsset is { } selectedAsset)
+                {
+                    <img class="gallery-picker-dialog__selection-image"
+                         src="@BaseUrl.ResolveImageUrl(selectedAsset.ImagePath)"
+                         alt="@GetAssetAlt(selectedAsset)"/>
+                    <dl>
+                        <dt>@T("Components_GalleryImagePicker_FileLabel", "File")</dt>
+                        <dd>@selectedAsset.OriginalFileName</dd>
+                        <dt>@T("Components_GalleryImagePicker_TypeLabel", "Type")</dt>
+                        <dd>@selectedAsset.ContentType</dd>
+                        <dt>@T("Components_GalleryImagePicker_SizeLabel", "Size")</dt>
+                        <dd>@FormatByteCount(selectedAsset.Size)</dd>
+                    </dl>
+                }
+                else
+                {
+                    <div class="gallery-picker-dialog__empty">
+                        @T("Components_GalleryImagePicker_NoSelectionDescription", "Select an image from the gallery.")
+                    </div>
+                }
+            </aside>
+        </div>
+    </div>
+</FluentDialogBody>
+
+@code {
+    private const int PageSize = 48;
+    private const long MaximumImageFileSize = 10 * Constants.File.Megabyte;
+    private const string AcceptedImageMimeTypes = "image/avif,image/bmp,image/gif,image/jpeg,image/png,image/webp";
+
+    private readonly List<MediaAssetInfo> _assets = [];
+    private readonly string _uploaderId = $"gallery-image-picker-upload-{Guid.NewGuid():N}";
+    private string _search = string.Empty;
+    private bool _hasMore;
+    private bool _isLoading;
+    private bool _isUploading;
+    private string? _loadError;
+
+    [Parameter]
+    public Data Content { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _search = Content.InitialFilter.Search ?? string.Empty;
+        await LoadAssetsAsync(reset: true).ConfigureAwait(false);
+    }
+
+    private void OnSearchInput(ChangeEventArgs args)
+        => _search = args.Value?.ToString() ?? string.Empty;
+
+    private Task ApplySearchAsync()
+        => LoadAssetsAsync(reset: true);
+
+    private Task LoadMoreAsync()
+        => LoadAssetsAsync(reset: false);
+
+    private async Task LoadAssetsAsync(bool reset)
+    {
+        if (_isLoading)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        if (reset)
+        {
+            _assets.Clear();
+            _hasMore = false;
+        }
+
+        try
+        {
+            var filter = Content.InitialFilter with
+            {
+                Search = string.IsNullOrWhiteSpace(_search) ? null : _search,
+                Skip   = reset ? 0 : _assets.Count,
+                Take   = PageSize,
+            };
+            var page = await MediaAssetRepository.GetAssetPageAsync(filter)
+                .ConfigureAwait(false);
+            foreach (var asset in page)
+                AppendAsset(asset);
+            _hasMore = page.Count == PageSize;
+            SyncSelectedAssetFromLoadedItems();
+            await EnsureSelectedAssetLoadedAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _loadError = UserFacingError.Message(ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task EnsureSelectedAssetLoadedAsync()
+    {
+        if (Content.SelectedAssetId is not { } selectedAssetId || Content.SelectedAsset is not null)
+            return;
+
+        try
+        {
+            var asset = await MediaAssetRepository.GetAssetAsync(selectedAssetId)
+                .ConfigureAwait(false);
+            if (asset is null)
+                return;
+
+            UpsertAssetAtFront(asset);
+            SelectAsset(asset);
+        }
+        catch
+        {
+            // The picker can still operate with the visible page of assets.
+        }
+    }
+
+    private async Task OnUploadCompletedAsync(IEnumerable<FluentInputFileEventArgs> files)
+    {
+        if (_isUploading)
+            return;
+
+        if (files.SingleOrDefault() is not { } file || file.IsCancelled)
+            return;
+
+        _loadError = null;
+        if (!string.IsNullOrWhiteSpace(file.ErrorMessage))
+        {
+            ShowUploadError(file.ErrorMessage);
+            return;
+        }
+
+        if (file.Size > MaximumImageFileSize)
+        {
+            ShowUploadError(T("Components_GalleryImagePicker_UploadTooLarge", "Image is larger than 10 MB."));
+            return;
+        }
+
+        if (ImageSource.NormalizeMimeType(file.ContentType) is not { } contentType)
+        {
+            ShowUploadError(T("Components_GalleryImagePicker_UploadUnsupported", "Unsupported image type."));
+            return;
+        }
+
+        if (file.Stream is null)
+        {
+            ShowUploadError(T("Components_GalleryImagePicker_UploadReadFailed", "Image could not be read."));
+            return;
+        }
+
+        _isUploading = true;
+        try
+        {
+            await using var stream = file.Stream;
+            var asset = await MediaAssetRepository
+                .UploadAssetAsync(stream, file.Name, contentType, Content.UploadTags)
+                .ConfigureAwait(false);
+            UpsertAssetAtFront(asset);
+            SelectAsset(asset);
+            ToastService.ShowSuccess(T("Components_GalleryImagePicker_UploadSuccess", "Image uploaded and selected."));
+        }
+        catch (Exception ex)
+        {
+            ShowUploadError(UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    private void ShowUploadError(string message)
+    {
+        _loadError = message;
+        ToastService.ShowError(message);
+    }
+
+    private void AppendAsset(MediaAssetInfo asset)
+    {
+        if (_assets.Any(q => q.PrimaryKey == asset.PrimaryKey))
+            return;
+
+        _assets.Add(asset);
+    }
+
+    private void UpsertAssetAtFront(MediaAssetInfo asset)
+    {
+        _assets.RemoveAll(q => q.PrimaryKey == asset.PrimaryKey);
+        _assets.Insert(0, asset);
+    }
+
+    private void SelectAsset(MediaAssetInfo asset)
+    {
+        Content.SelectedAssetId = asset.PrimaryKey;
+        Content.SelectedAsset = asset;
+    }
+
+    private void SyncSelectedAssetFromLoadedItems()
+    {
+        if (Content.SelectedAssetId is not { } selectedAssetId)
+        {
+            Content.SelectedAsset = null;
+            return;
+        }
+
+        Content.SelectedAsset = _assets.FirstOrDefault(q => q.PrimaryKey == selectedAssetId);
+    }
+
+    private string GetAssetClass(MediaAssetInfo asset)
+        => Content.SelectedAssetId == asset.PrimaryKey
+            ? "gallery-picker-dialog__asset gallery-picker-dialog__asset--selected"
+            : "gallery-picker-dialog__asset";
+
+    private string GetAssetAlt(MediaAssetInfo asset)
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            T("Components_GalleryImagePicker_AssetAlt", "Gallery image: {0}"),
+            asset.OriginalFileName
+        );
+
+    private string GetAssetMeta(MediaAssetInfo asset)
+        => $"{asset.ContentType} - {FormatByteCount(asset.Size)}";
+
+    private string GetUsageLabel(MediaAssetInfo asset)
+        => asset.Usages.Length == 0
+            ? T("Components_GalleryImagePicker_Unused", "Unused")
+            : string.Format(
+                CultureInfo.CurrentCulture,
+                T("Components_GalleryImagePicker_UsageCount", "{0} usage(s)"),
+                asset.Usages.Length
+            );
+
+    private string GetAssetCountLabel()
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            T("Components_GalleryImagePicker_VisibleCount", "{0} loaded"),
+            _assets.Count
+        );
+
+    private string GetSelectionTitle()
+        => Content.SelectedAsset is { } asset
+            ? asset.OriginalFileName
+            : T("Components_GalleryImagePicker_NoSelectionTitle", "No image selected");
+
+    private static string FormatByteCount(long byteCount)
+    {
+        if (byteCount < 1024)
+            return $"{byteCount.ToString("N0", CultureInfo.CurrentCulture)} B";
+
+        var kilobytes = byteCount / 1024d;
+        if (kilobytes < 1024)
+            return $"{kilobytes.ToString("N1", CultureInfo.CurrentCulture)} KB";
+
+        var megabytes = kilobytes / 1024d;
+        return $"{megabytes.ToString("N1", CultureInfo.CurrentCulture)} MB";
+    }
+
+    private string T(string key, string fallback)
+    {
+        var value = Localizer[key].Value;
+        return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+    }
+
+    public sealed class Data
+    {
+        public MediaAssetFilterInfo InitialFilter { get; init; } = new();
+
+        public MediaAssetInfo? SelectedAsset { get; set; }
+
+        public Guid? SelectedAssetId { get; set; }
+
+        public string[] UploadTags { get; init; } = [];
+    }
+}

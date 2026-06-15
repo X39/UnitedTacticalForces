@@ -1,0 +1,212 @@
+@using Microsoft.AspNetCore.Components.Sections
+@using X39.UnitedTacticalForces.WebApp.Services
+@inherits LayoutComponentBase
+@inject IStringLocalizer<Language> Localizer
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject CommunityConnectionConfiguration CommunityConnections
+
+<div class="utf-shell utf-community-shell">
+    <header class="utf-community-nav">
+        <NavLink class="utf-community-brand"
+                 href="@BaseUrl.ResolveSelfUrl("")"
+                 Match="NavLinkMatch.All">
+            <img src="@BaseUrl.ResolveResourceUrl("insignia-48px.png")" alt="" />
+            <span class="utf-community-brand__utf">UTF</span>
+            <span class="utf-community-brand__divider"></span>
+            <span class="utf-community-brand__stack">
+                <span>@Localizer[nameof(Language.Shared_CommunityBrand_NamePart1)]</span>
+                <span>@Localizer[nameof(Language.Shared_CommunityBrand_NamePart2)]</span>
+                <span>@Localizer[nameof(Language.Shared_CommunityBrand_NamePart3)]</span>
+            </span>
+        </NavLink>
+
+        <nav class="utf-community-links" aria-label="@(Localizer[nameof(Language.Shared_CommunityNav_Aria)])">
+            <NavLink class="utf-community-link" href="@BaseUrl.ResolveSelfUrl("")" Match="NavLinkMatch.All">
+                @Localizer[nameof(Language.Shared_CommunityNav_Home)]
+            </NavLink>
+            <NavLink class="utf-community-link" href="@BaseUrl.ResolveSelfUrl("events/upcoming")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Operations)]
+            </NavLink>
+            <NavLink class="utf-community-link" href="@BaseUrl.ResolveSelfUrl("unit")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Unit)]
+            </NavLink>
+            <NavLink class="utf-community-link" href="@BaseUrl.ResolveSelfUrl("verein")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Verein)]
+            </NavLink>
+            <NavLink class="utf-community-link" href="@BaseUrl.ResolveSelfUrl("wiki")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Wiki)]
+            </NavLink>
+            <NavLink class="utf-community-link" href="@BaseUrl.ResolveSelfUrl("field-reports")">
+                @Localizer[nameof(Language.Shared_CommunityNav_FieldReports)]
+            </NavLink>
+            <NavLink class="utf-community-link" href="@BaseUrl.ResolveSelfUrl("join")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Join)]
+            </NavLink>
+        </nav>
+
+        <div class="utf-community-actions">
+            @if (CanAccessCommandCenter)
+            {
+                <NavLink class="utf-button utf-button--ghost utf-command-entry"
+                         href="@BaseUrl.ResolveSelfUrl("command")">
+                    @Localizer[nameof(Language.Shared_CommunityNav_CommandCenter)]
+                </NavLink>
+            }
+
+            @if (Me.IsAuthenticated)
+            {
+                <UtfProfileMenu Mode="@EUtfProfileMenuMode.Community"
+                                CanAccessCommandCenter="@CanAccessCommandCenter"
+                                EnableOperationalAttention="true"/>
+            }
+            else
+            {
+                <button class="utf-sign-in-button"
+                        type="button"
+                        @onclick="OpenSignInDialog">
+                    @Localizer[nameof(Language.Shared_CommunityNav_Login)]
+                </button>
+            }
+
+            <button class="utf-mobile-menu-button"
+                    type="button"
+                    aria-label="@(Localizer[nameof(Language.Shared_CommunityNav_ToggleNavigationAria)])"
+                    aria-expanded="@_isMobileMenuOpen"
+                    @onclick="ToggleMobileMenu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    @if (_isMobileMenuOpen)
+    {
+        <div class="utf-community-mobile-menu">
+            <NavLink class="utf-community-mobile-link" href="@BaseUrl.ResolveSelfUrl("")" Match="NavLinkMatch.All">
+                @Localizer[nameof(Language.Shared_CommunityNav_Home)]
+            </NavLink>
+            <NavLink class="utf-community-mobile-link" href="@BaseUrl.ResolveSelfUrl("events/upcoming")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Operations)]
+            </NavLink>
+            <NavLink class="utf-community-mobile-link" href="@BaseUrl.ResolveSelfUrl("unit")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Unit)]
+            </NavLink>
+            <NavLink class="utf-community-mobile-link" href="@BaseUrl.ResolveSelfUrl("verein")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Verein)]
+            </NavLink>
+            <NavLink class="utf-community-mobile-link" href="@BaseUrl.ResolveSelfUrl("wiki")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Wiki)]
+            </NavLink>
+            <NavLink class="utf-community-mobile-link" href="@BaseUrl.ResolveSelfUrl("field-reports")">
+                @Localizer[nameof(Language.Shared_CommunityNav_FieldReports)]
+            </NavLink>
+            <NavLink class="utf-community-mobile-link" href="@BaseUrl.ResolveSelfUrl("join")">
+                @Localizer[nameof(Language.Shared_CommunityNav_Join)]
+            </NavLink>
+            @if (!Me.IsAuthenticated)
+            {
+                <button class="utf-community-mobile-link utf-community-mobile-link--button"
+                        type="button"
+                        @onclick="OpenSignInDialog">
+                    @Localizer[nameof(Language.Shared_CommunityNav_Login)]
+                </button>
+            }
+            @if (CanAccessCommandCenter)
+            {
+                <div class="utf-mobile-menu-section">@Localizer[nameof(Language.Shared_CommunityNav_Management)]</div>
+                <NavLink class="utf-community-mobile-link utf-community-mobile-link--accent"
+                         href="@BaseUrl.ResolveSelfUrl("command")">
+                    @Localizer[nameof(Language.Shared_CommunityNav_CommandCenter)]
+                </NavLink>
+            }
+        </div>
+    }
+
+    @if (_isSignInDialogOpen)
+    {
+        <div class="utf-sign-in-scrim" @onclick="CloseSignInDialog">
+                <section class="utf-sign-in-dialog"
+                     role="dialog"
+                     aria-modal="true"
+                     aria-labelledby="utf-sign-in-title"
+                     @onclick:stopPropagation="true">
+                <div>
+                    <span class="utf-kicker">@Localizer[nameof(Language.Shared_CommunityDialog_AccountAccessKicker)]</span>
+                    <h2 id="utf-sign-in-title">@Localizer[nameof(Language.Shared_CommunityDialog_SignInTitle)]</h2>
+                    <p>@Localizer[nameof(Language.Shared_CommunityDialog_SignInSubtitle)]</p>
+                </div>
+                <AuthenticationProviderOptions
+                    SteamDescription="@(Localizer[nameof(Language.Shared_CommunityDialog_UseSteamIdentity)])"
+                    DiscordDescription="@(Localizer[nameof(Language.Shared_CommunityDialog_UseDiscordIdentity)])"/>
+                <button class="utf-button utf-button--ghost"
+                        type="button"
+                        @onclick="CloseSignInDialog">
+                    @Localizer[nameof(Language.Shared_CommunityDialog_Cancel)]
+                </button>
+            </section>
+        </div>
+    }
+
+    <main class="utf-community-main">
+        @Body
+    </main>
+
+    <footer class="utf-community-footer">
+        <div class="utf-footer-actions">
+            <SectionOutlet SectionName="@MainLayout.FooterSection"/>
+        </div>
+        <nav class="utf-footer-links" aria-label="@(Localizer[nameof(Language.Shared_CommunityFooterLinksAria)])">
+            @if (CommunityConnections.TeamSpeak3Url is not null)
+            {
+                <a href="@CommunityConnections.TeamSpeak3Url" target="_blank" rel="noreferrer">
+                    <FluentIcon Value="@(new Icons.Custom.Size24.TeamSpeak3())"/>
+                    <span>@Localizer[nameof(Language.Shared_NavMenu_TeamSpeak3)]</span>
+                </a>
+            }
+            @if (CommunityConnections.DiscordUrl is not null)
+            {
+                <a href="@CommunityConnections.DiscordUrl" target="_blank" rel="noreferrer">
+                    <FluentIcon Class="utf-brand-icon utf-brand-icon--discord"
+                                Value="@(new Icons.Custom.Size24.Discord())"/>
+                    <span>@Localizer[nameof(Language.Shared_NavMenu_Discord)]</span>
+                </a>
+            }
+            <NavLink href="@BaseUrl.ResolveSelfUrl("gdpr")">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Shield())"/>
+                <span>@Localizer[nameof(Language.Shared_NavMenu_GDPR)]</span>
+            </NavLink>
+        </nav>
+    </footer>
+</div>
+
+<AppProviders/>
+
+@code {
+
+    private bool _isMobileMenuOpen;
+    private bool _isSignInDialogOpen;
+
+    private bool CanAccessCommandCenter
+        => Me.HasClaimOrEventAdmin(Claims.Creation.Events)
+           || Me.CanAccessGameServers()
+           || Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All)
+           || Me.HasBaseClaimOrTerrainAdmin(Claims.Creation.Terrain, Claims.ResourceBased.Terrain.All)
+           || Me.HasBaseClaimOrUserAdmin(Claims.User.All)
+           || Me.HasClaimOrRoleAdmin()
+           || Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All)
+           || Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Documents)
+           || Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Kassenbuch)
+           || Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Members);
+
+    private void ToggleMobileMenu()
+        => _isMobileMenuOpen = !_isMobileMenuOpen;
+
+    private void OpenSignInDialog()
+        => _isSignInDialogOpen = true;
+
+    private void CloseSignInDialog()
+        => _isSignInDialogOpen = false;
+
+}

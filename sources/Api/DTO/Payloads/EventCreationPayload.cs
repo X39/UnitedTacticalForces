@@ -1,0 +1,56 @@
+namespace X39.UnitedTacticalForces.Api.DTO.Payloads;
+
+/// <summary>
+/// Represents the payload used to create a new event within the application.
+/// </summary>
+/// <remarks>
+/// This record encapsulates all details required for event creation, such as
+/// metadata, scheduling information, participation requirements, and media.
+/// </remarks>
+public record EventCreationPayload
+{
+    /// <summary>
+    /// Represents the title of the event.
+    /// </summary>
+    public string Title { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Provides a detailed textual explanation or summary of the event.
+    /// </summary>
+    public string Description { get; init; } = string.Empty;
+
+    /// <summary>
+    /// References the unique identifier of the associated terrain in the system.
+    /// </summary>
+    public long TerrainFk { get; init; }
+
+    /// <summary>
+    /// Represents a reference to the associated mod pack revision.
+    /// </summary>
+    public long ModPackRevisionFk { get; init; }
+
+    /// <summary>
+    /// Gallery media asset used as event cover image.
+    /// </summary>
+    public Guid ImageAssetFk { get; init; }
+
+    /// <summary>
+    /// Indicates the date and time when the event is scheduled to occur.
+    /// </summary>
+    public Instant ScheduledFor { get; init; }
+
+    /// <summary>
+    /// Indicates whether the event is visible to users.
+    /// </summary>
+    public bool IsVisible { get; init; }
+
+    /// <summary>
+    /// Specifies the minimum number of participants required to consider the event as viable.
+    /// </summary>
+    public int MinimumAccepted { get; init; }
+
+    /// <summary>
+    /// Represents the foreign key identifying the user hosting the event.
+    /// </summary>
+    public Guid HostedByFk { get; init; }
+}

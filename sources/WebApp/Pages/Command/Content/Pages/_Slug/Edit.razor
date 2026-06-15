@@ -1,0 +1,633 @@
+@page "/command/content/pages/{Slug}/edit"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.PublicPages
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@using X39.UnitedTacticalForces.WebApp.Services.PublicPageRepository
+@inject IPublicPageRepository PublicPageRepository
+@inject IToastService ToastService
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Content_PageEditTitle)]</PageTitle>
+
+<div class="public-page-editor-page">
+    <UtfCommandPageHeader Title="@GetHeaderTitle()"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Content_PageEditDescription)])">
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content/pages")">
+                @Localizer[nameof(Language.Pages_Command_Content_Pages_BackToList)]
+            </UtfCommandButton>
+            @if (_page is not null)
+            {
+                <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/content/pages/{Slug}")">
+                    @Localizer[nameof(Language.Pages_Command_Content_Pages_OpenDetail)]
+                </UtfCommandButton>
+            }
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl(Slug)">
+                @Localizer[nameof(Language.Pages_Command_Content_Pages_OpenPublic)]
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManagePages)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Content_Pages_AccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Content_Pages_AccessRequiredDescription)]</p>
+        </section>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Pages_Command_Content_Pages_Loading)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning" role="alert">
+            @_loadError
+        </div>
+    }
+    else
+    {
+        <section class="utf-panel public-page-editor-identity"
+                 aria-label='@T("Pages_Command_Content_PageEditorIdentityAria", "Page identity")'>
+            <div class="public-page-editor-identity__copy">
+                <span class="utf-kicker">@T("Pages_Command_Content_PageEditorIdentityKicker", "Page identity")</span>
+                <h2>@GetEditorTitle()</h2>
+                <p>@GetIdentityDescription()</p>
+            </div>
+            <dl class="public-page-editor-identity__facts">
+                <div>
+                    <dt>@Localizer[nameof(Language.Pages_Command_Content_PageSlug)]</dt>
+                    <dd>@Slug</dd>
+                </div>
+                <div>
+                    <dt>@T("Pages_Command_Content_PageEditorSourceRevision", "Source revision")</dt>
+                    <dd>@FormatActiveRevision()</dd>
+                </div>
+                <div>
+                    <dt>@T("Pages_Command_Content_PageEditorWorkingRevision", "Working revision")</dt>
+                    <dd>@FormatNextRevision()</dd>
+                </div>
+                <div>
+                    <dt>@T("Pages_Command_Content_PageEditorUpdated", "Last updated")</dt>
+                    <dd>@FormatPageUpdated()</dd>
+                </div>
+            </dl>
+        </section>
+
+        @if (_formError is not null)
+        {
+            <UtfAlert Intent="MessageIntent.Error">
+                @_formError
+            </UtfAlert>
+        }
+
+        <div class="public-page-editor-status-row" aria-live="polite">
+            <span class="@GetUnsavedStatusClass()">
+                <span class="utf-status__dot"></span>@GetUnsavedStatusText()
+            </span>
+            <span class="@GetPublicationIntentStatusClass()">
+                <span class="utf-status__dot"></span>@GetPublicationIntentText()
+            </span>
+        </div>
+
+        <div class="@GetEditorShellClass()">
+            <section class="utf-panel public-page-editor-form-panel">
+                <div class="public-page-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Content_PageEditorKicker)]</span>
+                        <h2>@T("Pages_Command_Content_PageEditorMetadataTitle", "Page and hero metadata")</h2>
+                        <p>@T("Pages_Command_Content_PageEditorMetadataDescription", "These fields identify the public page and drive the hero area on the published route.")</p>
+                    </div>
+                </div>
+
+                <div class="utf-command-form public-page-editor-form">
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_Content_PageSlug)]</span>
+                        <input class="utf-command-input" type="text" value="@Slug" disabled/>
+                    </label>
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormTitle)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="180"
+                               @bind="_pageTitle"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label class="utf-command-field--wide">
+                        <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormSummary)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="512"
+                               @bind="_pageSummary"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormHeroKicker)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="96"
+                               @bind="_pageHeroKicker"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label>
+                        <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormHeroTitle)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="180"
+                               @bind="_pageHeroTitle"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label class="utf-command-field--wide">
+                        <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormHeroDescription)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="512"
+                               @bind="_pageHeroDescription"
+                               @bind:event="oninput"/>
+                    </label>
+                    <section class="public-page-gallery-picker utf-command-field--wide"
+                             aria-label='@T("Pages_Command_Content_PageGalleryAria", "Reusable image gallery")'>
+                        <div class="public-page-gallery-picker__heading">
+                            <div>
+                                <span class="utf-kicker">@T("Pages_Command_Content_PageGalleryKicker", "Gallery")</span>
+                                <strong>@T("Pages_Command_Content_PageGalleryTitle", "Reuse a gallery image")</strong>
+                            </div>
+                            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content/gallery")">
+                                @T("Pages_Command_Content_PageGalleryOpen", "Open gallery")
+                            </UtfCommandButton>
+                        </div>
+                        <GalleryImagePicker SelectedAssetId="@_pageHeroImageAssetFk"
+                                            SelectedImagePath="@_pageHeroImagePath"
+                                            SelectedFileName="@GetHeroImageFileName()"
+                                            UploadTags="@PublicPageUploadTags"
+                                            AllowClear="true"
+                                            SelectedAssetChanged="OnGalleryAssetSelected"/>
+                    </section>
+                    @if (IsGdprPage)
+                    {
+                        <div class="public-page-template-notice utf-command-field--wide">
+                            <strong>@T("Pages_Command_Content_Gdpr_TemplateNoticeTitle", "Structured GDPR page")</strong>
+                            <p>@T("Pages_Command_Content_Gdpr_TemplateNoticeBody", "Use the GDPR content workspace below for the public body. A readable markdown copy is generated automatically for revision history and generic previews.")</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <label class="utf-command-field--wide">
+                            <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormMarkdown)]</span>
+                            <textarea class="utf-command-input public-page-editor-markdown"
+                                      rows="18"
+                                      @bind="_pageMarkdown"
+                                      @bind:event="oninput"></textarea>
+                        </label>
+                    }
+                </div>
+            </section>
+
+            <aside class="utf-panel public-page-editor-revision-panel">
+                <div class="public-page-panel-header">
+                    <div>
+                        <span class="utf-kicker">@T("Pages_Command_Content_PageEditorPublicationKicker", "Revision")</span>
+                        <h2>@T("Pages_Command_Content_PageEditorPublicationTitle", "Save and publication")</h2>
+                        <p>@T("Pages_Command_Content_PageEditorPublicationDescription", "Add an audit-friendly comment and choose whether this revision goes public immediately.")</p>
+                    </div>
+                </div>
+                <div class="utf-command-form public-page-editor-form public-page-editor-revision-form">
+                    <label class="utf-command-field--wide">
+                        <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormRevisionComment)]</span>
+                        <input class="utf-command-input"
+                               type="text"
+                               maxlength="512"
+                               @bind="_pageComment"
+                               @bind:event="oninput"/>
+                    </label>
+                    <label class="utf-command-check public-page-command-check">
+                        <input class="utf-command-checkbox" type="checkbox" @bind="_pagePublish"/>
+                        <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormPublish)]</span>
+                    </label>
+
+                    <div class="public-page-editor-context utf-command-field--wide">
+                        <span class="@GetUnsavedStatusClass()">
+                            <span class="utf-status__dot"></span>@GetUnsavedStatusText()
+                        </span>
+                        <p>@T("Pages_Command_Content_PageEditorDirtyHelp", "Saving creates a new revision; existing revisions stay available from the page detail view.")</p>
+                    </div>
+
+                    <div class="utf-command-actions">
+                        <UtfCommandButton Variant="primary"
+                                          Disabled="@_isSavingPage"
+                                          OnClick="SaveRevisionAsync">
+                            <Icon>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                            </Icon>
+                            <ChildContent>
+                                @(_isSavingPage
+                                    ? Localizer[nameof(Language.Pages_Command_Content_PageFormSaving)]
+                                    : Localizer[nameof(Language.Pages_Command_Content_PageSaveRevision)])
+                            </ChildContent>
+                        </UtfCommandButton>
+                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/content/pages/{Slug}")"
+                                          Disabled="@_isSavingPage">
+                            @Localizer[nameof(Language.Common_Cancel)]
+                        </UtfCommandButton>
+                    </div>
+                </div>
+            </aside>
+
+            @if (!IsGdprPage)
+            {
+                <aside class="utf-panel public-page-preview-panel">
+                    <div class="public-page-panel-header">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Content_PagePreviewKicker)]</span>
+                            <h2>@Localizer[nameof(Language.Pages_Command_Content_PagePreviewTitle)]</h2>
+                        </div>
+                        <span class="utf-status utf-status--neutral">
+                            <span class="utf-status__dot"></span>@FormatNextRevision()
+                        </span>
+                    </div>
+                    <div class="public-page-editor-preview">
+                        <FluentMarkdown @key="_pageMarkdown" Content="@GetPreviewMarkdown()"/>
+                    </div>
+                </aside>
+            }
+        </div>
+
+        @if (IsGdprPage)
+        {
+            <GdprPageContentEditor Content="@_gdprContent"
+                                   RevisionLabel="@FormatNextRevision()"
+                                   OnContentChanged="HandleGdprContentChanged"/>
+            <div class="utf-panel public-page-editor-bottom-actions" aria-label='@T("Pages_Command_Content_PageEditorActionsAria", "Editor actions")'>
+                <span class="@GetUnsavedStatusClass()">
+                    <span class="utf-status__dot"></span>@GetUnsavedStatusText()
+                </span>
+                <div class="public-page-editor-bottom-actions__buttons">
+                    <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content/pages")"
+                                      Disabled="@_isSavingPage">
+                        @Localizer[nameof(Language.Pages_Command_Content_Pages_BackToList)]
+                    </UtfCommandButton>
+                    <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/content/pages/{Slug}")"
+                                      Disabled="@_isSavingPage">
+                        @Localizer[nameof(Language.Common_Cancel)]
+                    </UtfCommandButton>
+                    <UtfCommandButton Variant="primary"
+                                      Disabled="@_isSavingPage"
+                                      OnClick="SaveRevisionAsync">
+                        <Icon>
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                        </Icon>
+                        <ChildContent>
+                            @(_isSavingPage
+                                ? Localizer[nameof(Language.Pages_Command_Content_PageFormSaving)]
+                                : Localizer[nameof(Language.Pages_Command_Content_PageSaveRevision)])
+                        </ChildContent>
+                    </UtfCommandButton>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private const int MaximumTitleLength = 180;
+    private const int MaximumSummaryLength = 512;
+    private const int MaximumHeroKickerLength = 96;
+    private const int MaximumHeroTitleLength = 180;
+    private const int MaximumHeroDescriptionLength = 512;
+    private const int MaximumCommentLength = 512;
+    private const int MaximumMarkdownLength = 60_000;
+    private const int MaximumContentJsonLength = 120_000;
+    private static readonly string[] PublicPageUploadTags = ["public-page"];
+
+    [Parameter]
+    public string Slug { get; set; } = "gdpr";
+
+    private PublicPageInfo? _page;
+    private bool _isLoading;
+    private bool _isSavingPage;
+    private string? _loadError;
+    private string? _formError;
+
+    private string _pageTitle = string.Empty;
+    private string _pageSummary = string.Empty;
+    private string _pageHeroKicker = string.Empty;
+    private string _pageHeroTitle = string.Empty;
+    private string _pageHeroDescription = string.Empty;
+    private Guid? _pageHeroImageAssetFk;
+    private string _pageHeroImageFileName = string.Empty;
+    private string _pageHeroImagePath = string.Empty;
+    private string _pageMarkdown = string.Empty;
+    private string _pageComment = string.Empty;
+    private bool _pagePublish;
+    private GdprPageContent _gdprContent = GdprPageContentSupport.CreateDefaultContent();
+    private bool _preserveLegacyGdprMarkdown;
+    private EditorSnapshot? _loadedSnapshot;
+
+    private bool CanManagePages
+        => Me.HasClaim(Claims.Administrative.All) || Me.HasBaseClaim(Claims.Content.Pages);
+
+    private bool IsGdprPage
+        => string.Equals(Slug, "gdpr", StringComparison.OrdinalIgnoreCase);
+
+    private bool HasUnsavedChanges
+        => _loadedSnapshot is not null && !_loadedSnapshot.Equals(CreateSnapshot());
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManagePages)
+            await LoadPageAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadPageAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _page = await PublicPageRepository.GetAdminPageAsync(Slug).ConfigureAwait(false);
+            LoadEditor(_page);
+        }
+        catch (Exception ex)
+        {
+            _page = null;
+            _loadError = string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Content_Pages_LoadError)].Value,
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveRevisionAsync()
+    {
+        if (!CanManagePages || _isSavingPage)
+            return;
+
+        _formError = ValidatePage();
+        if (_formError is not null)
+            return;
+
+        _isSavingPage = true;
+        try
+        {
+            var page = await PublicPageRepository
+                .CreateRevisionAsync(Slug, CreatePayload())
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Content_PageToastSaved)].Value);
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/content/pages/{page.Slug}"));
+        }
+        catch (Exception ex)
+        {
+            _formError = UserFacingError.Message(ex);
+            ToastService.ShowError(UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isSavingPage = false;
+        }
+    }
+
+    private void LoadEditor(PublicPageInfo? page)
+    {
+        var revision = page?.Revision ?? page?.Revisions.OrderByDescending(q => q.Version).FirstOrDefault();
+        _pageTitle = revision?.Title ?? GetDefaultTitle();
+        _pageSummary = revision?.Summary ?? Localizer[nameof(Language.Pages_Command_Content_PageDefaultSummary)].Value;
+        _pageHeroKicker = revision?.HeroKicker ?? Localizer[nameof(Language.Pages_Public_GDPR_Hero_Kicker)].Value;
+        _pageHeroTitle = revision?.HeroTitle ?? Localizer[nameof(Language.Pages_Public_GDPR_Hero_Title)].Value;
+        _pageHeroDescription = revision?.HeroDescription ?? Localizer[nameof(Language.Pages_Public_GDPR_Hero_Description)].Value;
+        _pageHeroImageAssetFk = revision?.HeroImageAssetFk == default
+            ? null
+            : revision?.HeroImageAssetFk;
+        _pageHeroImageFileName = string.Empty;
+        _pageHeroImagePath = revision?.HeroImagePath ?? string.Empty;
+        _pageMarkdown = revision?.Markdown ?? GetDefaultMarkdown();
+        _pageComment = string.Empty;
+        _pagePublish = false;
+        GdprPageContent? structuredGdprContent = null;
+        var hasStructuredGdprContent = IsGdprPage
+                                       && revision is not null
+                                       && GdprPageContentSupport.TryDeserialize(revision.ContentJson, out structuredGdprContent);
+        _preserveLegacyGdprMarkdown = IsGdprPage
+                                      && revision is not null
+                                      && !hasStructuredGdprContent
+                                      && !string.IsNullOrWhiteSpace(revision.Markdown);
+        _gdprContent = hasStructuredGdprContent
+            ? structuredGdprContent!
+            : GdprPageContentSupport.CreateDefaultContent();
+        _loadedSnapshot = CreateSnapshot();
+    }
+
+    private void OnGalleryAssetSelected(MediaAssetInfo? asset)
+    {
+        if (asset is null)
+        {
+            _pageHeroImageAssetFk = null;
+            _pageHeroImageFileName = string.Empty;
+            _pageHeroImagePath = string.Empty;
+            return;
+        }
+
+        _pageHeroImageAssetFk = asset.PrimaryKey;
+        _pageHeroImageFileName = asset.OriginalFileName;
+        _pageHeroImagePath = asset.ImagePath;
+        ToastService.ShowSuccess(T("Pages_Command_Content_PageGallerySelectedToast", "Gallery image selected."));
+    }
+
+    private string? ValidatePage()
+    {
+        var revisionMarkdown = GetRevisionMarkdown();
+        var contentJson = GetRevisionContentJson();
+
+        if (string.IsNullOrWhiteSpace(_pageTitle) || _pageTitle.Trim().Length > MaximumTitleLength)
+            return Localizer[nameof(Language.Pages_Command_Content_PageValidationTitle)].Value;
+        if (_pageSummary.Trim().Length > MaximumSummaryLength)
+            return Localizer[nameof(Language.Pages_Command_Content_PageValidationSummary)].Value;
+        if (_pageHeroKicker.Trim().Length > MaximumHeroKickerLength)
+            return Localizer[nameof(Language.Pages_Command_Content_PageValidationHeroKicker)].Value;
+        if (string.IsNullOrWhiteSpace(_pageHeroTitle) || _pageHeroTitle.Trim().Length > MaximumHeroTitleLength)
+            return Localizer[nameof(Language.Pages_Command_Content_PageValidationHeroTitle)].Value;
+        if (_pageHeroDescription.Trim().Length > MaximumHeroDescriptionLength)
+            return Localizer[nameof(Language.Pages_Command_Content_PageValidationHeroDescription)].Value;
+        if (_pageHeroImageAssetFk is null)
+            return Localizer[nameof(Language.Pages_Command_Content_PageValidationHeroImagePath)].Value;
+        if (string.IsNullOrWhiteSpace(revisionMarkdown) || revisionMarkdown.Trim().Length > MaximumMarkdownLength)
+            return Localizer[nameof(Language.Pages_Command_Content_PageValidationMarkdown)].Value;
+        if (IsGdprPage && _preserveLegacyGdprMarkdown)
+            return T(
+                "Pages_Command_Content_Gdpr_LegacyMarkdownSaveBlocked",
+                "This GDPR revision has markdown but no valid structured content. Edit the GDPR template before saving a structured revision."
+            );
+        if (contentJson.Length > MaximumContentJsonLength)
+            return T("Pages_Command_Content_Gdpr_ContentValidationTooLarge", "The structured GDPR content is too large.");
+        if (_pageComment.Trim().Length > MaximumCommentLength)
+            return Localizer[nameof(Language.Pages_Command_Content_PageValidationComment)].Value;
+        return null;
+    }
+
+    private PublicPageRevisionUpsertInfo CreatePayload()
+        => new()
+        {
+            Title           = _pageTitle.Trim(),
+            Summary         = _pageSummary.Trim(),
+            HeroKicker      = _pageHeroKicker.Trim(),
+            HeroTitle       = _pageHeroTitle.Trim(),
+            HeroDescription = _pageHeroDescription.Trim(),
+            HeroImageAssetFk = _pageHeroImageAssetFk.Value,
+            Markdown        = GetRevisionMarkdown().Trim(),
+            ContentJson     = GetRevisionContentJson(),
+            Comment         = _pageComment.Trim(),
+            IsPublished     = _pagePublish,
+        };
+
+    private string GetHeaderTitle()
+        => _page is null
+            ? string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Content_PageEditTitleWithSlug)].Value, Slug)
+            : string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Content_PageEditTitleWithPage)].Value,
+                GetEditorTitle()
+            );
+
+    private string GetEditorTitle()
+        => _page?.Revision?.Title ?? GetDefaultTitle();
+
+    private string GetEditorShellClass()
+        => IsGdprPage
+            ? "public-page-editor-shell public-page-editor-shell--gdpr"
+            : "public-page-editor-shell";
+
+    private string GetPreviewMarkdown()
+        => string.IsNullOrWhiteSpace(_pageMarkdown)
+            ? Localizer[nameof(Language.Pages_Command_Content_PagePreviewEmpty)].Value
+            : _pageMarkdown;
+
+    private string GetRevisionMarkdown()
+        => IsGdprPage
+            ? _preserveLegacyGdprMarkdown
+                ? _pageMarkdown
+                : GdprPageContentMarkdown.ToMarkdown(_gdprContent)
+            : _pageMarkdown;
+
+    private string GetRevisionContentJson()
+        => IsGdprPage
+            ? _preserveLegacyGdprMarkdown
+                ? _page?.Revision?.ContentJson ?? string.Empty
+                : GdprPageContentSupport.Serialize(_gdprContent)
+            : string.Empty;
+
+    private void HandleGdprContentChanged()
+        => _preserveLegacyGdprMarkdown = false;
+
+    private EditorSnapshot CreateSnapshot()
+        => new(
+            _pageTitle,
+            _pageSummary,
+            _pageHeroKicker,
+            _pageHeroTitle,
+            _pageHeroDescription,
+            _pageHeroImageAssetFk,
+            _pageHeroImagePath,
+            GetRevisionMarkdown(),
+            GetRevisionContentJson(),
+            _pageComment,
+            _pagePublish,
+            _preserveLegacyGdprMarkdown
+        );
+
+    private string FormatNextRevision()
+    {
+        var nextVersion = (_page?.Revisions.Select(q => q.Version).DefaultIfEmpty().Max() ?? 0) + 1;
+        return Localizer[nameof(Language.Pages_Command_Content_PageNextRevision), nextVersion].Value;
+    }
+
+    private string FormatActiveRevision()
+    {
+        var revision = _page?.Revision ?? _page?.Revisions.OrderByDescending(q => q.Version).FirstOrDefault();
+        return revision is null
+            ? T("Pages_Command_Content_PageEditorNoSourceRevision", "No saved revision")
+            : Localizer[nameof(Language.Pages_Command_Content_PageRevisionVersion), revision.Version].Value;
+    }
+
+    private string FormatPageUpdated()
+        => _page is null
+            ? T("Pages_Command_Content_PageEditorNeverSaved", "Not saved yet")
+            : _page.TimeStampUpdated.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture);
+
+    private string GetIdentityDescription()
+        => IsGdprPage
+            ? T(
+                "Pages_Command_Content_Gdpr_EditorIdentityDescription",
+                "Manage the public privacy notice shown at /gdpr without changing the content system or backend contract."
+            )
+            : T(
+                "Pages_Command_Content_PageEditorIdentityDescription",
+                "Manage this public page as a new revision while preserving previous publication history."
+            );
+
+    private string GetUnsavedStatusText()
+        => HasUnsavedChanges
+            ? T("Pages_Command_Content_PageEditorDirty", "Unsaved changes")
+            : T("Pages_Command_Content_PageEditorClean", "No unsaved changes");
+
+    private string GetUnsavedStatusClass()
+        => HasUnsavedChanges
+            ? "utf-status utf-status--warning"
+            : "utf-status utf-status--success";
+
+    private string GetPublicationIntentText()
+        => _pagePublish
+            ? T("Pages_Command_Content_PageEditorPublishOnSave", "Publish on save")
+            : T("Pages_Command_Content_PageEditorSaveAsDraft", "Save as draft");
+
+    private string GetPublicationIntentStatusClass()
+        => _pagePublish
+            ? "utf-status utf-status--success"
+            : "utf-status utf-status--neutral";
+
+    private string GetDefaultTitle()
+        => IsGdprPage
+            ? Localizer[nameof(Language.Pages_Public_GDPR_PageTitle)].Value
+            : string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Content_Pages_FallbackTitle)].Value, Slug);
+
+    private string GetDefaultMarkdown()
+        => IsGdprPage
+            ? GdprPageContentMarkdown.ToMarkdown(GdprPageContentSupport.CreateDefaultContent())
+            : "# New public page";
+
+    private string GetHeroImageFileName()
+        => !string.IsNullOrWhiteSpace(_pageHeroImageFileName)
+            ? _pageHeroImageFileName
+            : Path.GetFileName(_pageHeroImagePath);
+
+    private string T(string key, string fallback)
+    {
+        var value = Localizer[key].Value;
+        return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+    }
+
+    private sealed record EditorSnapshot(
+        string Title,
+        string Summary,
+        string HeroKicker,
+        string HeroTitle,
+        string HeroDescription,
+        Guid? HeroImageAssetFk,
+        string HeroImagePath,
+        string Markdown,
+        string ContentJson,
+        string Comment,
+        bool Publish,
+        bool PreserveLegacyGdprMarkdown);
+}

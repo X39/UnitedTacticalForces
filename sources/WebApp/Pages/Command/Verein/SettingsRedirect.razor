@@ -1,0 +1,15 @@
+@page "/command/settings/verein"
+@page "/command/association/settings"
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject NavigationManager NavigationManager
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Verein_SettingsPageTitle)]</PageTitle>
+
+<div class="utf-state-panel">@Localizer["Pages_Command_Verein_SettingsRedirecting"]</div>
+
+@code {
+    protected override void OnInitialized()
+        => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/verein/settings"), replace: true);
+}

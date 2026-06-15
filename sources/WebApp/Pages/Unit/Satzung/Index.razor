@@ -1,0 +1,112 @@
+@page "/unit/satzung"
+@page "/verein/satzung"
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IVereinRepository VereinRepository
+@inject BaseUrl BaseUrl
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Unit_Satzung_Index_PageTitle)]</PageTitle>
+
+<div class="utf-community-page utf-unit-page">
+    <header class="utf-community-page-hero utf-unit-hero" style="@HeroImageStyle">
+        <div class="utf-unit-hero__copy">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Unit_Satzung_Index_Kicker)]</span>
+            <h1>@(_document?.Revision?.Title ?? Localizer[nameof(Language.Pages_Unit_Satzung_Index_DefaultTitle)].Value)</h1>
+            <p>@Localizer[nameof(Language.Pages_Unit_Satzung_Index_Description)]</p>
+            <div class="utf-unit-actions">
+                <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("verein")">
+                    @Localizer[nameof(Language.Pages_Unit_Satzung_Index_BackToUnit)]
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <section class="utf-community-page-section utf-unit-section">
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Unit_Satzung_Index_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+        else if (_document?.Revision is null)
+        {
+            <section class="utf-empty-state">
+                <h2>@Localizer[nameof(Language.Pages_Unit_Satzung_Index_NotFoundTitle)]</h2>
+                <p>@Localizer[nameof(Language.Pages_Unit_Satzung_Index_NotFoundDescription)]</p>
+            </section>
+        }
+        else
+        {
+            <article class="utf-panel utf-unit-document">
+                <div class="utf-unit-document__header">
+                    <span class="utf-kicker">@Localizer[nameof(Language.Pages_Unit_Satzung_Index_VersionPrefix), _document.Revision.Version]</span>
+                    <h2>@_document.Revision.Title</h2>
+                    <p>@_document.Revision.Summary</p>
+                    <span>@Localizer[nameof(Language.Pages_Unit_Satzung_Index_PublishedAt), FormatDate(_document.Revision.TimeStampPublished ?? _document.Revision.TimeStampCreated)]</span>
+                </div>
+                <FluentMarkdown Content="@_document.Revision.Markdown"/>
+            </article>
+        }
+    </section>
+</div>
+
+@code {
+    private VereinDocumentInfo? _document;
+    private bool _isLoading = true;
+    private string? _loadError;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private string HeroImageStyle
+        => $"--utf-hero-image: url('{GetSiteImageUrl("satzung-hero", "media/generated/verein-governance-table-hero.jpg")}');";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var documentTask = VereinRepository.GetPublishedSatzungAsync();
+            var imagesTask = LoadSiteImagesAsync();
+            await Task.WhenAll(documentTask, imagesTask).ConfigureAwait(false);
+            _document = documentTask.Result;
+        }
+        catch (Exception ex)
+        {
+            _loadError = Localizer[nameof(Language.Pages_Unit_Satzung_Index_Error_LoadFailed)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+    private static string FormatDate(DateTimeOffset value)
+        => value.ToLocalTime().ToString("dd.MM.yyyy");
+}

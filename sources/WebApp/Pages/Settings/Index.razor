@@ -1,0 +1,571 @@
+@page "/settings"
+@attribute [Authorize]
+@using System.Globalization
+@using Microsoft.Extensions.Localization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@inject IUserRepository UserRepository
+@inject IToastService ToastService
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject AuthenticationProviderAvailability AuthenticationProviders
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Shared_NavMenu_UserSettings)]</PageTitle>
+
+<div class="settings-page">
+    <header class="settings-header">
+        <div>
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Settings_AccountSettings)]</span>
+            <h1>@Localizer[nameof(Language.Shared_NavMenu_UserSettings)]</h1>
+            <p>@Localizer[nameof(Language.Pages_Settings_HeaderDescription)]</p>
+        </div>
+        <UtfCommandButton Disabled="@_isLoading" OnClick="LoadSettingsAsync">
+            <Icon>
+                <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+            </Icon>
+            <ChildContent>@Localizer[nameof(Language.Common_Refresh)]</ChildContent>
+        </UtfCommandButton>
+    </header>
+
+    @if (_loadError is not null)
+    {
+        <UtfAlert Intent="MessageIntent.Error">@_loadError</UtfAlert>
+    }
+
+    @if (_saveError is not null)
+    {
+        <UtfAlert Intent="MessageIntent.Warning">@_saveError</UtfAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Common_LoadingData)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_settings is not null)
+    {
+        <div class="settings-workspace">
+            <main class="settings-main-column">
+                <section class="utf-panel settings-section settings-profile-panel">
+                    <div class="settings-panel-heading">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Settings_AccountSettings)]</span>
+                            <h2>@Localizer[nameof(Language.Pages_Settings_PublicProfile)]</h2>
+                            <p>@Localizer[nameof(Language.Pages_Settings_PublicProfileDescription)]</p>
+                        </div>
+                        <span class="@VerificationStatusClass">
+                            <span class="utf-status__dot"></span>@VerificationStatusLabel
+                        </span>
+                    </div>
+
+                    <div class="settings-profile-grid">
+                        <div class="settings-avatar-row">
+                            <span class="settings-avatar"
+                                  style="@AvatarStyle"
+                                  aria-hidden="true">
+                                @if (string.IsNullOrWhiteSpace(AvatarStyle))
+                                {
+                                    <span>@Initials</span>
+                                }
+                            </span>
+                            <div class="settings-avatar-copy">
+                                <strong>@DisplayName</strong>
+                                <span class="settings-member-number">@FormatMembershipSummary()</span>
+                                <span>@AvatarFileLabel</span>
+                            </div>
+                            <div class="settings-avatar-upload">
+                                <FluentInputFile Id="@AvatarUploaderId"
+                                                 Mode="InputFileMode.Stream"
+                                                 Multiple="false"
+                                                 MaximumFileCount="1"
+                                                 MaximumFileSize="@(8 * Constants.File.Megabyte)"
+                                                 Accept="image/*"
+                                                 OnCompleted="@OnAvatarCompletedAsync">
+                                    <ChildContent>
+                                        <label class="utf-button utf-button--ghost settings-upload-button"
+                                               for="@AvatarUploaderId">
+                                            <FluentIcon Value="@(new Icons.Regular.Size20.ArrowUpload())"/>
+                                            <span>@Localizer[nameof(Language.Pages_Settings_AccountSettings_SetAvatar)]</span>
+                                        </label>
+                                        <span>@Localizer[nameof(Language.Pages_Settings_AvatarRequirements)]</span>
+                                    </ChildContent>
+                                </FluentInputFile>
+                            </div>
+                        </div>
+
+                        <div class="settings-form settings-form--profile">
+                            <label>
+                                <span>@Localizer[nameof(Language.Pages_Settings_AccountSettings_Nickname)]</span>
+                                <input maxlength="1024"
+                                       required
+                                       @bind="_form.Nickname"
+                                       @bind:event="oninput"/>
+                            </label>
+                            <label>
+                                <span>@Localizer[nameof(Language.Pages_Settings_AccountSettings_EMail)]</span>
+                                <input maxlength="1024"
+                                       type="email"
+                                       @bind="_form.EMail"
+                                       @bind:event="oninput"/>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="utf-panel settings-section settings-member-panel">
+                    <div class="settings-panel-heading">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Settings_Verein)]</span>
+                            <h2>@Localizer[nameof(Language.Pages_Settings_FormalMemberDetails)]</h2>
+                            <p>@Localizer[nameof(Language.Pages_Settings_FormalMemberDescription)]</p>
+                        </div>
+                        <span class="@MembershipStatusClass">
+                            <span class="utf-status__dot"></span>@MembershipStatusLabel
+                        </span>
+                    </div>
+
+                    <div class="settings-form settings-form--member">
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Settings_FirstName)]</span>
+                            <input maxlength="256" @bind="_form.FirstName" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Settings_LastName)]</span>
+                            <input maxlength="256" @bind="_form.LastName" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Settings_DateOfBirth)]</span>
+                            <input type="date" value="@_form.DateOfBirth" @oninput="OnDateOfBirthInput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Settings_Phone)]</span>
+                            <input maxlength="64" @bind="_form.PhoneNumber" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Settings_Country)]</span>
+                            <input maxlength="128" @bind="_form.Country" @bind:event="oninput"/>
+                        </label>
+                        <label class="settings-field--wide">
+                            <span>@Localizer[nameof(Language.Pages_Settings_AddressLine1)]</span>
+                            <input maxlength="512" @bind="_form.AddressLine1" @bind:event="oninput"/>
+                        </label>
+                        <label class="settings-field--wide">
+                            <span>@Localizer[nameof(Language.Pages_Settings_AddressLine2)]</span>
+                            <input maxlength="512" @bind="_form.AddressLine2" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Settings_PostalCode)]</span>
+                            <input maxlength="32" @bind="_form.PostalCode" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Settings_City)]</span>
+                            <input maxlength="256" @bind="_form.City" @bind:event="oninput"/>
+                        </label>
+                    </div>
+                    <div class="settings-note">
+                        @(_settings.IsVereinMember
+                            ? Localizer[nameof(Language.Pages_Settings_VereinVerificationNote)]
+                            : Localizer[nameof(Language.Pages_Settings_VereinApplicantNote)])
+                    </div>
+                </section>
+            </main>
+
+            <aside class="settings-side-column">
+                <section class="utf-panel settings-section settings-linked-panel">
+                    <div class="settings-panel-heading">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Settings_LinkedAccounts)]</span>
+                            <h2>@Localizer[nameof(Language.Pages_Settings_LinkedIdentities)]</h2>
+                            <p>@Localizer[nameof(Language.Pages_Settings_LinkedIdentitiesDescription)]</p>
+                        </div>
+                    </div>
+                    <div class="settings-identity-list">
+                        <div class="settings-identity-row">
+                            <div>
+                                <strong>@Localizer[nameof(Language.Pages_Settings_AccountSettings_SteamId64)]</strong>
+                                <span class="settings-identity-value"
+                                      title="@FormatIdentifier(_settings.SteamId64)">@FormatIdentifier(_settings.SteamId64)</span>
+                            </div>
+                            @if (AuthenticationProviders.Steam)
+                            {
+                                <a class="utf-button utf-button--ghost utf-provider-button"
+                                   href="@BaseUrl.ResolveApiUrlWithReturnUrl("/users/login/steam", "settings")">
+                                    <FluentIcon Class="utf-brand-icon utf-brand-icon--steam"
+                                                Value="@(new Icons.Custom.Size24.Steam())"/>
+                                    @Localizer[nameof(Language.Steam)]
+                                </a>
+                            }
+                        </div>
+                        <div class="settings-identity-row">
+                            <div>
+                                <strong>@Localizer[nameof(Language.Pages_Settings_AccountSettings_Discord)]</strong>
+                                <span class="settings-identity-value"
+                                      title="@FormatDiscord()">@FormatDiscord()</span>
+                            </div>
+                            @if (AuthenticationProviders.Discord)
+                            {
+                                <a class="utf-button utf-button--ghost utf-provider-button"
+                                   href="@BaseUrl.ResolveApiUrlWithReturnUrl("/users/login/discord", "settings")">
+                                    <FluentIcon Class="utf-brand-icon utf-brand-icon--discord"
+                                                Value="@(new Icons.Custom.Size24.Discord())"/>
+                                    @Localizer[nameof(Language.Discord)]
+                                </a>
+                            }
+                        </div>
+                        <div class="settings-identity-row settings-identity-row--quiet">
+                            <div>
+                                <strong>@Localizer[nameof(Language.Pages_Settings_AccountSettings_DiscordId)]</strong>
+                                <span class="settings-identity-value"
+                                      title="@FormatIdentifier(_settings.DiscordId)">@FormatIdentifier(_settings.DiscordId)</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="utf-panel settings-section settings-danger-panel">
+                    <div class="settings-panel-heading">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Settings_DangerZone)]</span>
+                            <h2>@Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount)]</h2>
+                            <p>@Localizer[nameof(Language.Pages_Settings_DangerZoneDescription)]</p>
+                        </div>
+                    </div>
+
+                    <div class="@DeleteAccountBoxClass">
+                        <div>
+                            <strong>@Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount)]</strong>
+                            <span>@DeleteAccountDescription</span>
+                        </div>
+                        <UtfCommandButton Class="settings-delete-button"
+                                          Disabled="@(!_settings.CanDeleteAccount || _isDeleting)"
+                                          OnClick="ConfirmDeleteAccountAsync">
+                            @(_isDeleting ? Localizer[nameof(Language.Pages_Settings_DeleteAccountRedirecting)] : Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount)])
+                        </UtfCommandButton>
+                    </div>
+                </section>
+            </aside>
+        </div>
+
+        <div class="settings-actions">
+            <div class="settings-change-state">
+                <strong>@(HasUnsavedChanges ? Localizer[nameof(Language.Pages_Settings_UnsavedChanges)] : Localizer[nameof(Language.Pages_Settings_NoUnsavedChanges)])</strong>
+                <span>@(HasUnsavedChanges ? Localizer[nameof(Language.Pages_Settings_UnsavedChangesDescription)] : Localizer[nameof(Language.Pages_Settings_NoUnsavedChangesDescription)])</span>
+            </div>
+            <div class="settings-action-buttons">
+                <UtfCommandButton Disabled="@_isSaving" OnClick="ResetForm">
+                    @Localizer[nameof(Language.Common_Reset)]
+                </UtfCommandButton>
+                <UtfCommandButton Variant="primary"
+                                  Disabled="@_isSaving"
+                                  OnClick="SaveSettingsAsync">
+                    <Icon>
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                    </Icon>
+                    <ChildContent>@(_isSaving ? Localizer[nameof(Language.Common_Saving)] : Localizer[nameof(Language.Pages_Settings_SaveSettings)])</ChildContent>
+                </UtfCommandButton>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private const string AvatarUploaderId = "profile-settings-avatar-uploader";
+
+    private ProfileSettingsInfo? _settings;
+    private ProfileSettingsForm _form = new();
+    private byte[]? _avatar;
+    private string? _avatarMimeType;
+    private string? _avatarFileName;
+    private bool _avatarChanged;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isDeleting;
+    private string? _loadError;
+    private string? _saveError;
+
+    private string DisplayName
+        => string.IsNullOrWhiteSpace(_form.Nickname) ? Localizer[nameof(Language.Pages_Settings_DefaultDisplayName)].Value : _form.Nickname.Trim();
+
+    private string Initials
+        => string.IsNullOrWhiteSpace(DisplayName) ? "U" : DisplayName[..1].ToUpperInvariant();
+
+    private string AvatarFileLabel
+        => string.IsNullOrWhiteSpace(_avatarFileName) ? Localizer[nameof(Language.Pages_Settings_SelectProfileImage)].Value : _avatarFileName;
+
+    private string AvatarStyle
+        => ImageSource.Create(
+            _avatarChanged ? _avatarMimeType : _settings?.AvatarMimeType,
+            _avatarChanged ? _avatar : _settings?.Avatar
+        ) is { } source
+            ? $"background-image: linear-gradient(180deg, rgba(7, 11, 15, 0), rgba(7, 11, 15, 0.42)), url('{source}');"
+            : string.Empty;
+
+    private string VerificationStatusClass
+        => _settings?.IsVerified is true ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+
+    private string VerificationStatusLabel
+        => _settings?.IsVerified is true
+            ? Localizer[nameof(Language.Pages_Settings_Verified)].Value
+            : Localizer[nameof(Language.Pages_Settings_Unverified)].Value;
+
+    private string MembershipStatusClass
+        => _settings?.IsVereinMember is true
+            ? "utf-status utf-status--success settings-member-status"
+            : "utf-status utf-status--neutral settings-member-status";
+
+    private string MembershipStatusLabel
+        => _settings?.IsVereinMember is true
+            ? string.IsNullOrWhiteSpace(_settings.VereinMemberNumber)
+                ? Localizer[nameof(Language.Pages_Settings_ActiveMember)].Value
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    Localizer[nameof(Language.Pages_Settings_MemberNumber)].Value,
+                    _settings.VereinMemberNumber)
+            : Localizer[nameof(Language.Pages_Settings_NotActive)].Value;
+
+    private bool HasUnsavedChanges
+        => _settings is not null
+           && (_avatarChanged
+               || !string.Equals(_form.Nickname, _settings.Nickname, StringComparison.Ordinal)
+               || !string.Equals(_form.EMail, _settings.EMail, StringComparison.Ordinal)
+               || !string.Equals(_form.FirstName, _settings.FirstName, StringComparison.Ordinal)
+               || !string.Equals(_form.LastName, _settings.LastName, StringComparison.Ordinal)
+               || !string.Equals(_form.DateOfBirth, FormatDateInput(_settings.DateOfBirth), StringComparison.Ordinal)
+               || !string.Equals(_form.PhoneNumber, _settings.PhoneNumber, StringComparison.Ordinal)
+               || !string.Equals(_form.AddressLine1, _settings.AddressLine1, StringComparison.Ordinal)
+               || !string.Equals(_form.AddressLine2, _settings.AddressLine2, StringComparison.Ordinal)
+               || !string.Equals(_form.PostalCode, _settings.PostalCode, StringComparison.Ordinal)
+               || !string.Equals(_form.City, _settings.City, StringComparison.Ordinal)
+               || !string.Equals(_form.Country, _settings.Country, StringComparison.Ordinal));
+
+    private string DeleteAccountBoxClass
+        => _settings?.CanDeleteAccount is true
+            ? "settings-delete-box settings-delete-box--enabled"
+            : "settings-delete-box settings-delete-box--blocked";
+
+    private string DeleteAccountDescription
+        => _settings?.CanDeleteAccount is true
+            ? Localizer[nameof(Language.Pages_Settings_DeleteAccountAvailableDescription)].Value
+            : Localizer[nameof(Language.Pages_Settings_DeleteAccountBlockedFormalMember)].Value;
+
+    private string DeleteAccountEndpoint
+        => BaseUrl.ResolveApiUrlWithReturnUrl("/users/me/delete", "settings");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettingsAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        _saveError = null;
+        try
+        {
+            _settings = await UserRepository.GetProfileSettingsAsync().ConfigureAwait(false);
+            LoadForm(_settings);
+        }
+        catch (Exception ex)
+        {
+            _settings = null;
+            _loadError = UserFacingError.Message(ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        if (_settings is null || _isSaving)
+            return;
+
+        var nickname = _form.Nickname.Trim();
+        if (string.IsNullOrWhiteSpace(nickname))
+        {
+            _saveError = Localizer[nameof(Language.Pages_Settings_NicknameRequired)];
+            return;
+        }
+
+        _isSaving = true;
+        _saveError = null;
+        try
+        {
+            var payload = new ProfileSettingsUpdateInfo
+            {
+                Avatar = _avatarChanged ? _avatar : null,
+                AvatarMimeType = _avatarChanged ? ImageSource.NormalizeMimeTypeOrDefault(_avatarMimeType) : null,
+                Nickname = nickname,
+                EMail = _form.EMail,
+                FirstName = _form.FirstName,
+                LastName = _form.LastName,
+                DateOfBirth = TryParseDateOfBirth(_form.DateOfBirth),
+                PhoneNumber = _form.PhoneNumber,
+                AddressLine1 = _form.AddressLine1,
+                AddressLine2 = _form.AddressLine2,
+                PostalCode = _form.PostalCode,
+                City = _form.City,
+                Country = _form.Country,
+            };
+
+            _settings = await UserRepository.UpdateProfileSettingsAsync(payload).ConfigureAwait(false);
+            LoadForm(_settings);
+            await Me.RefreshAsync().ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Settings_SaveSuccess)]);
+        }
+        catch (Exception ex)
+        {
+            _saveError = UserFacingError.Message(ex);
+            ToastService.ShowError(UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        if (_settings is not null)
+            LoadForm(_settings);
+    }
+
+    private async Task ConfirmDeleteAccountAsync()
+    {
+        if (_settings is null || !_settings.CanDeleteAccount || _isDeleting)
+            return;
+
+        var dialogReference = await DialogService.ShowConfirmationAsync(
+            Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_Message)].Value,
+            Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_YesIamSureIWantToDeleteMyAccount)].Value,
+            Localizer[nameof(Language.Common_Cancel)].Value,
+            Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_Title)].Value
+        ).ConfigureAwait(false);
+        var result = await dialogReference.Result.ConfigureAwait(false);
+        if (result.Cancelled)
+            return;
+
+        _isDeleting = true;
+        _saveError = null;
+        try
+        {
+            await SubmitDeleteAccountFormAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _isDeleting = false;
+            _saveError = UserFacingError.Message(ex);
+            ToastService.ShowError(Localizer[nameof(Language.Pages_Settings_DeleteAccountFailed)]);
+        }
+    }
+
+    private async Task SubmitDeleteAccountFormAsync()
+    {
+        var endpoint = System.Text.Json.JsonSerializer.Serialize(DeleteAccountEndpoint);
+        var script = "(() => {"
+                     + "const form = document.createElement(\"form\");"
+                     + "form.method = \"post\";"
+                     + $"form.action = {endpoint};"
+                     + "form.style.display = \"none\";"
+                     + "document.body.appendChild(form);"
+                     + "form.submit();"
+                     + "})();";
+        await JSRuntime.InvokeVoidAsync("eval", script).ConfigureAwait(false);
+    }
+
+    private async Task OnAvatarCompletedAsync(IEnumerable<FluentInputFileEventArgs> files)
+    {
+        if (files.SingleOrDefault() is not { Stream: not null } file)
+            return;
+
+        await using var stream = file.Stream;
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream).ConfigureAwait(false);
+        _avatar = memoryStream.ToArray();
+        _avatarMimeType = ImageSource.NormalizeMimeTypeOrDefault(file.ContentType);
+        _avatarFileName = file.Name;
+        _avatarChanged = true;
+    }
+
+    private void LoadForm(ProfileSettingsInfo settings)
+    {
+        _form = new ProfileSettingsForm
+        {
+            Nickname = settings.Nickname,
+            EMail = settings.EMail,
+            FirstName = settings.FirstName,
+            LastName = settings.LastName,
+            DateOfBirth = FormatDateInput(settings.DateOfBirth),
+            PhoneNumber = settings.PhoneNumber,
+            AddressLine1 = settings.AddressLine1,
+            AddressLine2 = settings.AddressLine2,
+            PostalCode = settings.PostalCode,
+            City = settings.City,
+            Country = settings.Country,
+        };
+        _avatar = null;
+        _avatarMimeType = null;
+        _avatarFileName = null;
+        _avatarChanged = false;
+    }
+
+    private string FormatMembershipSummary()
+    {
+        if (_settings is null)
+            return string.Empty;
+        if (_settings.IsVereinMember)
+            return string.IsNullOrWhiteSpace(_settings.VereinMemberNumber)
+                ? Localizer[nameof(Language.Pages_Settings_ActiveVereinMember)].Value
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    Localizer[nameof(Language.Pages_Settings_ActiveVereinMemberNumber)].Value,
+                    _settings.VereinMemberNumber);
+        return Localizer[nameof(Language.Pages_Settings_CommunityAccount)].Value;
+    }
+
+    private string FormatIdentifier(string? value)
+        => string.IsNullOrWhiteSpace(value) || value is "0" ? Localizer[nameof(Language.Pages_Settings_NotLinked)].Value : value;
+
+    private string FormatDiscord()
+        => !string.IsNullOrWhiteSpace(_settings?.DiscordUsername)
+            ? _settings.DiscordUsername
+            : FormatIdentifier(_settings?.DiscordId);
+
+    private void OnDateOfBirthInput(ChangeEventArgs args)
+        => _form.DateOfBirth = args.Value?.ToString() ?? string.Empty;
+
+    private static string FormatDateInput(DateOnly? value)
+        => value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty;
+
+    private static DateOnly? TryParseDateOfBirth(string value)
+        => DateOnly.TryParseExact(
+            value,
+            "yyyy-MM-dd",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var dateOfBirth)
+            ? dateOfBirth
+            : null;
+
+    private sealed class ProfileSettingsForm
+    {
+        public string Nickname { get; set; } = string.Empty;
+        public string? EMail { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string DateOfBirth { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; }
+        public string? AddressLine1 { get; set; }
+        public string? AddressLine2 { get; set; }
+        public string? PostalCode { get; set; }
+        public string? City { get; set; }
+        public string? Country { get; set; }
+    }
+}

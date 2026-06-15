@@ -1,0 +1,196 @@
+@page "/unit/kassenbuch"
+@page "/verein/kassenbuch"
+@using X39.UnitedTacticalForces.Common.Verein
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IVereinRepository VereinRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_PageTitle)]</PageTitle>
+
+<div class="utf-community-page utf-unit-page">
+    <header class="utf-community-page-hero utf-unit-hero" style="@HeroImageStyle">
+        <div class="utf-unit-hero__copy">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_Kicker)]</span>
+            <h1>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_Title)]</h1>
+            <p>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_Intro)]</p>
+            <div class="utf-unit-actions">
+                <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("verein")">
+                    @Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_BackToUnit)]
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <section class="utf-community-page-section utf-unit-section">
+        @if (!Me.IsAuthenticated)
+        {
+            <section class="utf-empty-state">
+                <h2>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_SignInRequiredTitle)]</h2>
+                <p>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_SignInRequiredDescription)]</p>
+                <a class="utf-button utf-button--primary"
+                   href="@GetLoginUrl("verein/kassenbuch")">
+                    @Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_SignIn)]
+                </a>
+            </section>
+        }
+        else if (!CanReadKassenbuch)
+        {
+            <section class="utf-empty-state">
+                <h2>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_MembershipRequiredTitle)]</h2>
+                <p>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_MembershipRequiredDescription)]</p>
+            </section>
+        }
+        else if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+        else
+        {
+            <section class="utf-command-metrics" aria-label="@(Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_TotalsAria)])">
+                <UtfCommandMetric Description="@string.Format(Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_BookingsDescription)], _page.TotalCount)"
+                                  Status="@(Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_Income)].Value)"
+                                  StatusIntent="success"
+                                  Value="@FormatMoney(_page.IncomeTotal, _page.Currency)"/>
+                <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_ExpensesDescription)])"
+                                  Status="@(Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_Expense)].Value)"
+                                  StatusIntent="danger"
+                                  Value="@FormatMoney(_page.ExpenseTotal, _page.Currency)"/>
+                <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_BalanceDescription)])"
+                                  Status="@(Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_Balance)].Value)"
+                                  StatusIntent="@(_page.Balance >= 0 ? "success" : "warning")"
+                                  Value="@FormatMoney(_page.Balance, _page.Currency)"/>
+            </section>
+
+            @if (_page.Entries.Length is 0)
+            {
+                <section class="utf-empty-state">
+                    <h2>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_NoEntriesTitle)]</h2>
+                    <p>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_NoEntriesDescription)]</p>
+                </section>
+            }
+            else
+            {
+                <section class="utf-panel utf-command-ledger">
+                <div class="utf-command-ledger__header">
+                    <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_LedgerKicker)]</span>
+                            <h2>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_LedgerTitle)]</h2>
+                    </div>
+                </div>
+                    <div class="utf-command-table-scroll">
+                        <table class="utf-command-table">
+                            <thead>
+                            <tr>
+                                <th>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_TableDate)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_TableCategory)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_TableDescription)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_TableReference)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_TableAmount)]</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var entry in _page.Entries)
+                            {
+                                <tr @key="entry.PrimaryKey">
+                                    <td>@FormatDate(entry.TimeStampBooked)</td>
+                                    <td>@entry.Category</td>
+                                    <td>@entry.Description</td>
+                                    <td>@(entry.DocumentNumber ?? entry.Reference ?? "-")</td>
+                                    <td>@FormatSignedMoney(entry)</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            }
+        }
+    </section>
+</div>
+
+@code {
+    private KassenbuchPageInfo _page = new();
+    private bool _isLoading = true;
+    private string? _loadError;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private bool CanReadKassenbuch
+        => Me.IsVereinMember || Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Kassenbuch);
+
+    private string HeroImageStyle
+        => $"--utf-hero-image: url('{GetSiteImageUrl("kassenbuch-hero", "media/generated/verein-finance-ledger-hero.jpg")}');";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSiteImagesAsync().ConfigureAwait(false);
+
+        if (!CanReadKassenbuch)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            _page = await VereinRepository.GetKassenbuchAsync(take: 100).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _loadError = Localizer[nameof(Language.Pages_Unit_Kassenbuch_Index_Error_LoadFailed)].Value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+    private string GetLoginUrl(string returnPath)
+        => BaseUrl.ResolveSelfUrl(
+            $"authentication/login?returnUrl={Uri.EscapeDataString(BaseUrl.ResolveSelfUrl(returnPath))}"
+        );
+
+    private static string FormatDate(DateTimeOffset value)
+        => value.ToLocalTime().ToString("dd.MM.yyyy");
+
+    private static string FormatMoney(decimal amount, string currency)
+        => $"{amount:N2} {currency}";
+
+    private static string FormatSignedMoney(KassenbuchEntryInfo entry)
+    {
+        var prefix = entry.Direction == EKassenbuchEntryDirection.Expense ? "-" : "+";
+        return $"{prefix}{entry.Amount:N2} {entry.Currency}";
+    }
+}

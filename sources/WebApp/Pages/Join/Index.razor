@@ -1,0 +1,581 @@
+@page "/join"
+@using System.Globalization
+@using Microsoft.Extensions.Configuration
+@using X39.UnitedTacticalForces.Common.Verein
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IConfiguration Configuration
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject IUserRepository UserRepository
+@inject IVereinRepository VereinRepository
+@inject IToastService ToastService
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Public_Join_PageTitle)]</PageTitle>
+
+<div class="utf-community-page utf-unit-page utf-join-page">
+    <header class="utf-community-page-hero utf-unit-hero" style="@HeroImageStyle">
+        <div class="utf-unit-hero__copy">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Public_Join_Kicker)]</span>
+            <h1>@Localizer[nameof(Language.Pages_Public_Join_Title)]</h1>
+            <p>@Localizer[nameof(Language.Pages_Public_Join_Subtitle)]</p>
+            <div class="utf-unit-actions">
+                <a class="utf-button utf-button--primary" href="@BaseUrl.ResolveSelfUrl("events/upcoming")">
+                    @Localizer[nameof(Language.Pages_Public_Join_ViewOperations)]
+                </a>
+                <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("verein")">
+                    @Localizer[nameof(Language.Pages_Public_Join_OpenVerein)]
+                </a>
+            </div>
+        </div>
+
+        <aside class="utf-unit-hero-panel" aria-label="@(Localizer[nameof(Language.Pages_Public_Join_ProcessAria)])">
+            <div class="utf-unit-panel-heading">
+                <FluentIcon Value="@(new Icons.Regular.Size24.FlowchartCircle())"/>
+                <div>
+                    <span>@Localizer[nameof(Language.Pages_Public_Join_ProcessKicker)]</span>
+                    <strong>@Localizer[nameof(Language.Pages_Public_Join_ProcessTitle)]</strong>
+                </div>
+            </div>
+            <ol class="utf-join-mini-steps">
+                <li>@Localizer[nameof(Language.Pages_Public_Join_MiniStep1)]</li>
+                <li>@Localizer[nameof(Language.Pages_Public_Join_MiniStep2)]</li>
+                <li>@Localizer[nameof(Language.Pages_Public_Join_MiniStep3)]</li>
+            </ol>
+        </aside>
+    </header>
+
+    <section class="utf-community-page-section utf-unit-section">
+        <div class="utf-section-heading">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Public_Join_StepperKicker)]</span>
+            <h2>@Localizer[nameof(Language.Pages_Public_Join_StepperTitle)]</h2>
+        </div>
+
+        <div class="utf-join-paths">
+            <article class="utf-join-path utf-join-path--community">
+                <div class="utf-unit-feature-card__top">
+                    <span class="utf-unit-feature-icon">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.PeopleTeam())"/>
+                    </span>
+                    <span class="utf-unit-state utf-unit-state--active">@Localizer[nameof(Language.Pages_Public_Join_GuestPathState)]</span>
+                </div>
+                <h3>@Localizer[nameof(Language.Pages_Public_Join_GuestPathTitle)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Public_Join_GuestPathBody)]</p>
+                <ol class="utf-join-stepper utf-join-stepper--community">
+                    <li>
+                        <strong>@Localizer[nameof(Language.Pages_Public_Join_GuestStep1)]</strong>
+                        <span>@Localizer[nameof(Language.Pages_Public_Join_GuestStep1Body)]</span>
+                    </li>
+                    <li>
+                        <strong>@Localizer[nameof(Language.Pages_Public_Join_GuestStep2)]</strong>
+                        <span>@Localizer[nameof(Language.Pages_Public_Join_GuestStep2Body)]</span>
+                    </li>
+                    <li>
+                        <strong>@Localizer[nameof(Language.Pages_Public_Join_GuestStep3)]</strong>
+                        <span>@Localizer[nameof(Language.Pages_Public_Join_GuestStep3Body)]</span>
+                    </li>
+                </ol>
+            </article>
+
+            <article class="utf-join-path utf-join-path--formal">
+                <div class="utf-unit-feature-card__top">
+                    <span class="utf-unit-feature-icon">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                    </span>
+                    <span class="utf-unit-state utf-unit-state--restricted">@Localizer[nameof(Language.Pages_Public_Join_VereinPathState)]</span>
+                </div>
+                <h3>@Localizer[nameof(Language.Pages_Public_Join_VereinPathTitle)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Public_Join_VereinPathBody)]</p>
+                <ol class="utf-join-stepper utf-join-stepper--formal">
+                    <li>
+                        <strong>@Localizer[nameof(Language.Pages_Public_Join_VereinStep1)]</strong>
+                        <span>@Localizer[nameof(Language.Pages_Public_Join_VereinStep1Body)]</span>
+                    </li>
+                    <li>
+                        <strong>@Localizer[nameof(Language.Pages_Public_Join_VereinStep2)]</strong>
+                        <span>@Localizer[nameof(Language.Pages_Public_Join_VereinStep2Body)]</span>
+                    </li>
+                    <li>
+                        <strong>@Localizer[nameof(Language.Pages_Public_Join_VereinStep3)]</strong>
+                        <span>@Localizer[nameof(Language.Pages_Public_Join_VereinStep3Body)]</span>
+                    </li>
+                    <li>
+                        <strong>@Localizer[nameof(Language.Pages_Public_Join_VereinStep4)]</strong>
+                        <span>@Localizer[nameof(Language.Pages_Public_Join_VereinStep4Body)]</span>
+                    </li>
+                    <li>
+                        <strong>@Localizer[nameof(Language.Pages_Public_Join_VereinStep5)]</strong>
+                        <span>@Localizer[nameof(Language.Pages_Public_Join_VereinStep5Body)]</span>
+                    </li>
+                </ol>
+            </article>
+        </div>
+    </section>
+
+    <section class="utf-community-page-section utf-unit-section">
+        <div class="utf-section-heading">
+            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Public_Join_RequestKicker)]</span>
+            <h2>@Localizer[nameof(Language.Pages_Public_Join_RequestTitle)]</h2>
+        </div>
+
+        <section class="utf-join-request-panel utf-join-contribution-panel">
+            <div class="utf-join-request-intro">
+                <span class="@ContributionStatusClass">
+                    <span class="utf-status__dot"></span>@ContributionAmountLabel
+                </span>
+                <h3>@Localizer[nameof(Language.Pages_Public_Join_ContributionTitle)]</h3>
+                <p>@ContributionText</p>
+            </div>
+        </section>
+
+        @if (!Me.IsAuthenticated)
+        {
+            <section class="utf-join-request-panel utf-join-request-panel--split">
+                <div>
+                    <h3>@Localizer[nameof(Language.Pages_Public_Join_LoginRequiredTitle)]</h3>
+                    <p>@Localizer[nameof(Language.Pages_Public_Join_LoginHint)]</p>
+                </div>
+                <AuthenticationProviderOptions
+                    CssClass="utf-sign-in-options utf-sign-in-options--inline"
+                    ReturnUrl="join"
+                    SteamDescription="@(Localizer[nameof(Language.Pages_Public_Join_UseSteamIdentity)])"
+                    DiscordDescription="@(Localizer[nameof(Language.Pages_Public_Join_UseDiscordIdentity)])"/>
+            </section>
+        }
+        else if (Me.IsVereinMember)
+        {
+            <section class="utf-join-request-panel">
+                <span class="utf-status utf-status--success"><span class="utf-status__dot"></span>@Localizer[nameof(Language.Pages_Public_Join_ActiveMemberStatus)]</span>
+                <h3>@Localizer[nameof(Language.Pages_Public_Join_ActiveMemberTitle)]</h3>
+                <p>@Localizer[nameof(Language.Pages_Public_Join_ActiveMemberBody)]</p>
+                <div class="utf-inline-actions">
+                    <a class="utf-button utf-button--primary" href="@BaseUrl.ResolveSelfUrl("verein")">
+                        @Localizer[nameof(Language.Pages_Public_Join_OpenVerein)]
+                    </a>
+                    <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("settings")">
+                        @Localizer[nameof(Language.Pages_Public_Join_OpenSettings)]
+                    </a>
+                </div>
+            </section>
+        }
+        else if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Public_Join_LoadingRequest)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            @if (_loadError is not null)
+            {
+                <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                    @_loadError
+                </div>
+            }
+
+            @if (_request is not null)
+            {
+                <section class="utf-join-request-panel">
+                    <span class="@GetRequestStatusClass(_request.Status)">
+                        <span class="utf-status__dot"></span>@GetRequestStatusLabel(_request.Status)
+                    </span>
+                    <h3>@Localizer[nameof(Language.Pages_Public_Join_CurrentRequestTitle)]</h3>
+                    <dl class="utf-join-request-meta">
+                        <div>
+                            <dt>@Localizer[nameof(Language.Pages_Public_Join_RequestSubmitted)]</dt>
+                            <dd>@FormatDate(_request.TimeStampCreated)</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer[nameof(Language.Pages_Public_Join_RequestUpdated)]</dt>
+                            <dd>@FormatDate(_request.TimeStampUpdated)</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer[nameof(Language.Pages_Public_Join_RequestApplicant)]</dt>
+                            <dd>@_request.FirstName @_request.LastName</dd>
+                        </div>
+                    </dl>
+                    @if (!string.IsNullOrWhiteSpace(_request.DecisionReason))
+                    {
+                        <p>@_request.DecisionReason</p>
+                    }
+                    <div class="utf-inline-actions">
+                        <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("verein")">
+                            @Localizer[nameof(Language.Pages_Public_Join_OpenVerein)]
+                        </a>
+                        @if (IsOpenRequest(_request))
+                        {
+                            <button class="utf-button utf-button--ghost"
+                                    type="button"
+                                    disabled="@_isSubmitting"
+                                    @onclick="WithdrawRequestAsync">
+                                @Localizer[nameof(Language.Pages_Public_Join_WithdrawRequest)]
+                            </button>
+                        }
+                    </div>
+                </section>
+            }
+
+            @if (_request is null || !IsOpenRequest(_request))
+            {
+                <section class="utf-join-request-panel">
+                    <div class="utf-join-request-intro">
+                        <span class="utf-status utf-status--info"><span class="utf-status__dot"></span>@Localizer[nameof(Language.Pages_Public_Join_FormStatus)]</span>
+                        <h3>@Localizer[nameof(Language.Pages_Public_Join_FormTitle)]</h3>
+                        <p>@Localizer[nameof(Language.Pages_Public_Join_FormBody)]</p>
+                    </div>
+
+                    <div class="utf-command-form utf-join-form">
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormFirstName)]</span>
+                            <input class="utf-command-input" maxlength="256" @bind="_form.FirstName" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormLastName)]</span>
+                            <input class="utf-command-input" maxlength="256" @bind="_form.LastName" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormDateOfBirth)]</span>
+                            <input class="utf-command-input" type="date" value="@_form.DateOfBirth" @oninput="OnDateOfBirthInput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormEmail)]</span>
+                            <input class="utf-command-input" type="email" maxlength="1024" @bind="_form.Email" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormPhone)]</span>
+                            <input class="utf-command-input" maxlength="64" @bind="_form.PhoneNumber" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormAddressLine1)]</span>
+                            <input class="utf-command-input" maxlength="512" @bind="_form.AddressLine1" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormAddressLine2)]</span>
+                            <input class="utf-command-input" maxlength="512" @bind="_form.AddressLine2" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormPostalCode)]</span>
+                            <input class="utf-command-input" maxlength="32" @bind="_form.PostalCode" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormCity)]</span>
+                            <input class="utf-command-input" maxlength="256" @bind="_form.City" @bind:event="oninput"/>
+                        </label>
+                        <label>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormCountry)]</span>
+                            <input class="utf-command-input" maxlength="128" @bind="_form.Country" @bind:event="oninput"/>
+                        </label>
+                        <label class="utf-command-field--wide">
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormMotivation)]</span>
+                            <textarea class="utf-command-input" rows="5" maxlength="4096" @bind="_form.Motivation" @bind:event="oninput"></textarea>
+                        </label>
+                        <label class="utf-command-check utf-join-check utf-command-field--wide">
+                            <input class="utf-command-checkbox" type="checkbox" @bind="_form.AcknowledgesMembershipSeparation"/>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormAckSeparation)]</span>
+                        </label>
+                        <label class="utf-command-check utf-join-check utf-command-field--wide">
+                            <input class="utf-command-checkbox" type="checkbox" @bind="_form.AcknowledgesDataProcessing"/>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormAckData)]</span>
+                        </label>
+                        <label class="utf-command-check utf-join-check utf-command-field--wide">
+                            <input class="utf-command-checkbox" type="checkbox" @bind="_form.AcknowledgesSatzung"/>
+                            <span>@Localizer[nameof(Language.Pages_Public_Join_FormAckSatzung)]</span>
+                        </label>
+                    </div>
+
+                    @if (_formError is not null)
+                    {
+                        <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                            @_formError
+                        </div>
+                    }
+
+                    <div class="utf-command-actions">
+                        <UtfCommandButton Variant="primary"
+                                          Disabled="@_isSubmitting"
+                                          OnClick="SubmitRequestAsync">
+                            <Icon>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Send())"/>
+                            </Icon>
+                            <ChildContent>
+                                @(_isSubmitting ? Localizer[nameof(Language.Pages_Public_Join_FormSubmitting)] : Localizer[nameof(Language.Pages_Public_Join_FormSubmit)])
+                            </ChildContent>
+                        </UtfCommandButton>
+                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("verein/satzung")">
+                            @Localizer[nameof(Language.Pages_Public_Join_ReadSatzung)]
+                        </UtfCommandButton>
+                    </div>
+                </section>
+            }
+        }
+    </section>
+</div>
+
+@code {
+    private VereinMembershipRequestInfo? _request;
+    private VereinSettingsInfo _vereinSettings = new();
+    private MembershipRequestForm _form = new();
+    private bool _isLoading;
+    private bool _isSubmitting;
+    private string? _loadError;
+    private string? _formError;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private string HeroImageStyle
+        => $"--utf-hero-image: url('{GetSiteImageUrl("join-hero", "media/generated/join-recruitment-staging-hero.jpg")}');";
+
+    private string ContributionStatusClass
+        => _vereinSettings.MembershipContributionMonthlyAmount is null
+           || _vereinSettings.MembershipContributionAnnualAmount is null
+            ? "utf-status utf-status--warning"
+            : "utf-status utf-status--info";
+
+    private string ContributionAmountLabel
+        => _vereinSettings.MembershipContributionMonthlyAmount is null
+           || _vereinSettings.MembershipContributionAnnualAmount is null
+            ? Localizer[nameof(Language.Pages_Public_Join_ContributionAmountPending)].Value
+            : string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Public_Join_ContributionAmountsFormat)].Value,
+                _vereinSettings.MembershipContributionMonthlyAmount.Value,
+                _vereinSettings.MembershipContributionAnnualAmount.Value,
+                _vereinSettings.MembershipContributionCurrency);
+
+    private string ContributionText
+        => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("de", StringComparison.OrdinalIgnoreCase)
+            ? _vereinSettings.MembershipContributionPublicTextDe
+            : _vereinSettings.MembershipContributionPublicTextEn;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+        await Task.WhenAll(LoadVereinSettingsAsync(), LoadSiteImagesAsync()).ConfigureAwait(false);
+        if (Me.IsAuthenticated)
+        {
+            await LoadProfileSettingsAsync().ConfigureAwait(false);
+            if (!Me.IsVereinMember)
+                await LoadMembershipRequestAsync().ConfigureAwait(false);
+        }
+        _isLoading = false;
+    }
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+    private async Task SubmitRequestAsync()
+    {
+        if (!TryBuildPayload(out var payload, out var error))
+        {
+            _formError = error;
+            return;
+        }
+
+        _isSubmitting = true;
+        _formError = null;
+        try
+        {
+            _request = await VereinRepository.CreateMembershipRequestAsync(payload).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Public_Join_FormSubmittedToast)].Value);
+        }
+        catch (Exception ex)
+        {
+            _formError = string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Public_Join_SubmitError)].Value, UserFacingError.Message(ex));
+            ToastService.ShowError(_formError);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task WithdrawRequestAsync()
+    {
+        if (_request is null || !IsOpenRequest(_request))
+            return;
+
+        _isSubmitting = true;
+        _formError = null;
+        try
+        {
+            _request = await VereinRepository.WithdrawMembershipRequestAsync(_request.PrimaryKey).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Public_Join_RequestWithdrawnToast)].Value);
+        }
+        catch (Exception ex)
+        {
+            _formError = string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Public_Join_SubmitError)].Value, UserFacingError.Message(ex));
+            ToastService.ShowError(_formError);
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private bool TryBuildPayload(out VereinMembershipRequestCreateInfo payload, out string error)
+    {
+        payload = new VereinMembershipRequestCreateInfo();
+        if (!DateOnly.TryParseExact(_form.DateOfBirth, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOfBirth))
+        {
+            error = Localizer[nameof(Language.Pages_Public_Join_ValidationDateOfBirth)].Value;
+            return false;
+        }
+
+        payload = new VereinMembershipRequestCreateInfo
+        {
+            FirstName                            = _form.FirstName,
+            LastName                             = _form.LastName,
+            DateOfBirth                          = dateOfBirth,
+            Email                                = _form.Email,
+            PhoneNumber                          = _form.PhoneNumber,
+            AddressLine1                         = _form.AddressLine1,
+            AddressLine2                         = _form.AddressLine2,
+            PostalCode                           = _form.PostalCode,
+            City                                 = _form.City,
+            Country                              = _form.Country,
+            Motivation                           = _form.Motivation,
+            AcknowledgesMembershipSeparation     = _form.AcknowledgesMembershipSeparation,
+            AcknowledgesDataProcessing           = _form.AcknowledgesDataProcessing,
+            AcknowledgesSatzung                  = _form.AcknowledgesSatzung,
+        };
+        error = string.Empty;
+        return true;
+    }
+
+    private void OnDateOfBirthInput(ChangeEventArgs args)
+        => _form.DateOfBirth = args.Value?.ToString() ?? string.Empty;
+
+    private async Task LoadVereinSettingsAsync()
+    {
+        try
+        {
+            _vereinSettings = await VereinRepository.GetSettingsAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            AppendLoadError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Public_Join_SettingsLoadError)].Value, UserFacingError.Message(ex)));
+        }
+    }
+
+    private async Task LoadProfileSettingsAsync()
+    {
+        try
+        {
+            var settings = await UserRepository.GetProfileSettingsAsync().ConfigureAwait(false);
+            _form = new MembershipRequestForm
+            {
+                FirstName    = settings.FirstName ?? string.Empty,
+                LastName     = settings.LastName ?? string.Empty,
+                DateOfBirth  = settings.DateOfBirth?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+                Email        = settings.EMail ?? string.Empty,
+                PhoneNumber  = settings.PhoneNumber ?? string.Empty,
+                AddressLine1 = settings.AddressLine1 ?? string.Empty,
+                AddressLine2 = settings.AddressLine2 ?? string.Empty,
+                PostalCode   = settings.PostalCode ?? string.Empty,
+                City         = settings.City ?? string.Empty,
+                Country      = settings.Country ?? string.Empty,
+            };
+        }
+        catch (Exception ex)
+        {
+            AppendLoadError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Public_Join_ProfileLoadError)].Value, UserFacingError.Message(ex)));
+        }
+    }
+
+    private async Task LoadMembershipRequestAsync()
+    {
+        try
+        {
+            _request = await VereinRepository.GetMyMembershipRequestAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            AppendLoadError(string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Public_Join_LoadError)].Value, UserFacingError.Message(ex)));
+        }
+    }
+
+    private void AppendLoadError(string message)
+        => _loadError = string.IsNullOrWhiteSpace(_loadError)
+            ? message
+            : $"{_loadError} {message}";
+
+    private string GetRequestStatusClass(EVereinMembershipRequestStatus status)
+        => status switch
+        {
+            EVereinMembershipRequestStatus.Submitted          => "utf-status utf-status--warning",
+            EVereinMembershipRequestStatus.AcceptedForContact => "utf-status utf-status--info",
+            EVereinMembershipRequestStatus.Approved           => "utf-status utf-status--success",
+            EVereinMembershipRequestStatus.Rejected           => "utf-status utf-status--danger",
+            EVereinMembershipRequestStatus.Withdrawn          => "utf-status utf-status--neutral",
+            _                                                 => "utf-status utf-status--neutral",
+        };
+
+    private string GetRequestStatusLabel(EVereinMembershipRequestStatus status)
+        => status switch
+        {
+            EVereinMembershipRequestStatus.Submitted          => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_Submitted)].Value,
+            EVereinMembershipRequestStatus.AcceptedForContact => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_AcceptedForContact)].Value,
+            EVereinMembershipRequestStatus.Approved           => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_Approved)].Value,
+            EVereinMembershipRequestStatus.Rejected           => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_Rejected)].Value,
+            EVereinMembershipRequestStatus.Withdrawn          => Localizer[nameof(Language.Pages_Public_Join_RequestStatus_Withdrawn)].Value,
+            _                                                 => throw new ArgumentOutOfRangeException(nameof(status), status, null),
+        };
+
+    private static bool IsOpenRequest(VereinMembershipRequestInfo request)
+        => request.Status is EVereinMembershipRequestStatus.Submitted
+            or EVereinMembershipRequestStatus.AcceptedForContact;
+
+    private static string FormatDate(DateTimeOffset value)
+        => value.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.CurrentCulture);
+
+    private sealed class MembershipRequestForm
+    {
+        public string FirstName { get; set; } = string.Empty;
+
+        public string LastName { get; set; } = string.Empty;
+
+        public string DateOfBirth { get; set; } = string.Empty;
+
+        public string Email { get; set; } = string.Empty;
+
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        public string AddressLine1 { get; set; } = string.Empty;
+
+        public string AddressLine2 { get; set; } = string.Empty;
+
+        public string PostalCode { get; set; } = string.Empty;
+
+        public string City { get; set; } = string.Empty;
+
+        public string Country { get; set; } = string.Empty;
+
+        public string Motivation { get; set; } = string.Empty;
+
+        public bool AcknowledgesMembershipSeparation { get; set; }
+
+        public bool AcknowledgesDataProcessing { get; set; }
+
+        public bool AcknowledgesSatzung { get; set; }
+    }
+}

@@ -1,0 +1,166 @@
+@page "/gdpr"
+@using X39.UnitedTacticalForces.Common.PublicPages
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.PublicPageRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+@inject IPublicPageRepository PublicPages
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+
+<PageTitle>@PageTitle</PageTitle>
+
+<div class="utf-gdpr-page">
+    <header class="utf-community-page-hero utf-gdpr-hero" style="@HeroImageStyle">
+        <div>
+            <span class="utf-kicker">@HeroKicker</span>
+            <h1>@HeroTitle</h1>
+            <p>@HeroDescription</p>
+        </div>
+        <a class="utf-button utf-button--ghost"
+           href="https://github.com/X39/UnitedTacticalForces"
+           target="_blank"
+           rel="noreferrer">
+            @Localizer[nameof(Language.Pages_Public_GDPR_Hero_SourceCode)]
+        </a>
+    </header>
+
+    <main class="utf-gdpr-main">
+        @if (_gdprContent is not null)
+        {
+            <GdprPageContentView Content="@_gdprContent"/>
+        }
+        else if (HasPublishedMarkdown)
+        {
+            <section class="utf-gdpr-section utf-gdpr-markdown">
+                <FluentMarkdown @key="PublishedRevision?.PrimaryKey" Content="@PublishedMarkdown"/>
+            </section>
+        }
+        else
+        {
+            <section class="utf-gdpr-section utf-gdpr-unavailable" role="status">
+                <span class="utf-kicker">Privacy</span>
+                <h2>Privacy notice unavailable</h2>
+                <p>The GDPR page has not been published from the command center yet.</p>
+            </section>
+        }
+    </main>
+</div>
+
+@code {
+    private const string DefaultHeroImagePath = "gdpr-privacy-hero.png";
+    private static readonly char[] UnsafeHeroImagePathCharacters = ['"', '\'', '(', ')', '\\'];
+
+    private PublicPageInfo? _publishedPage;
+    private GdprPageContent? _gdprContent;
+    private IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+
+    private PublicPageRevisionInfo? PublishedRevision => _publishedPage?.Revision;
+
+    private bool HasPublishedMarkdown
+        => !string.IsNullOrWhiteSpace(PublishedMarkdown);
+
+    private string PublishedMarkdown
+        => PublishedRevision?.Markdown ?? string.Empty;
+
+    private string PageTitle
+        => PublishedRevision?.Title ?? Localizer[nameof(Language.Pages_Public_GDPR_PageTitle)].Value;
+
+    private string HeroKicker
+        => string.IsNullOrWhiteSpace(PublishedRevision?.HeroKicker)
+            ? Localizer[nameof(Language.Pages_Public_GDPR_Hero_Kicker)].Value
+            : PublishedRevision.HeroKicker;
+
+    private string HeroTitle
+        => string.IsNullOrWhiteSpace(PublishedRevision?.HeroTitle)
+            ? Localizer[nameof(Language.Pages_Public_GDPR_Hero_Title)].Value
+            : PublishedRevision.HeroTitle;
+
+    private string HeroDescription
+        => string.IsNullOrWhiteSpace(PublishedRevision?.HeroDescription)
+            ? Localizer[nameof(Language.Pages_Public_GDPR_Hero_Description)].Value
+            : PublishedRevision.HeroDescription;
+
+    private string HeroImagePath
+        => string.IsNullOrWhiteSpace(PublishedRevision?.HeroImagePath)
+            ? GetSiteImagePath("gdpr-hero", DefaultHeroImagePath)
+            : PublishedRevision.HeroImagePath;
+
+    private string SafeHeroImagePath
+        => IsSafeHeroImagePath(HeroImagePath)
+            ? HeroImagePath
+            : DefaultHeroImagePath;
+
+    private string HeroImageStyle
+        => $"--utf-hero-image: url(\"{EscapeCssUrl(BaseUrl.ResolveImageUrl(SafeHeroImagePath))}\");";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadPublishedPageAsync(), LoadSiteImagesAsync()).ConfigureAwait(false);
+
+        LoadGdprContent();
+    }
+
+    private async Task LoadPublishedPageAsync()
+    {
+        try
+        {
+            _publishedPage = await PublicPages.GetPublishedPageAsync("gdpr").ConfigureAwait(false);
+        }
+        catch
+        {
+            _publishedPage = null;
+        }
+    }
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private string GetSiteImagePath(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? setting.ImagePath
+            : fallbackResourcePath;
+
+    private void LoadGdprContent()
+    {
+        if (PublishedRevision is null)
+        {
+            _gdprContent = null;
+            return;
+        }
+
+        _gdprContent = GdprPageContentSupport.TryDeserialize(PublishedRevision.ContentJson, out var content)
+            ? content
+            : null;
+    }
+
+    private static bool IsSafeHeroImagePath(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+        if (value.StartsWith("//", StringComparison.Ordinal))
+            return false;
+        if (value.IndexOfAny(UnsafeHeroImagePathCharacters) >= 0)
+            return false;
+        if (value.Any(char.IsControl))
+            return false;
+        if (!Uri.TryCreate(value, UriKind.RelativeOrAbsolute, out var uri))
+            return false;
+        return !uri.IsAbsoluteUri || uri.Scheme is "http" or "https";
+    }
+
+    private static string EscapeCssUrl(string url)
+        => url.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "%22", StringComparison.Ordinal);
+}

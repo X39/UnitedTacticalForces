@@ -1,0 +1,31 @@
+﻿@inherits FluentComponentBase
+@using JetBrains.Annotations
+@using Microsoft.FluentUI.AspNetCore.Components.Utilities
+<img id="@Id" src="@Source" alt="@Alt" style="@GetStyle()" class="@Class">
+
+@code {
+
+    [EditorRequired, Parameter, UriString]
+    public string Source { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Alt { get; set; } = string.Empty;
+
+    [Parameter, LanguageInjection(InjectedLanguage.CSS, Prefix = ".s { width:", Suffix = "; }")]
+    public string? Width { get; set; }
+
+    [Parameter, LanguageInjection(InjectedLanguage.CSS, Prefix = ".s { width:", Suffix = "; }")]
+    public string? Height { get; set; }
+
+    private string GetStyle()
+    {
+        var builder = new StyleBuilder();
+        builder.AddStyle(Style);
+        if (Width is not null)
+            builder.AddStyle("width", Width);
+        if (Height is not null)
+            builder.AddStyle("height", Height);
+        return builder.Build() ?? string.Empty;
+    }
+
+}

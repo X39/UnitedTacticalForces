@@ -1,0 +1,47 @@
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<article class="@CssClass">
+    <a class="server-notification__body"
+       href="@BaseUrl.ResolveSelfUrl($"command/servers/{Notification.ServerId}")">
+        <span class="server-notification__title">@Notification.Title</span>
+        <span class="server-notification__status">@Notification.StatusLabel</span>
+        @if (Notification.PossibleCost)
+        {
+            <span class="server-notification__cost">
+                @Localizer["Hosting_Notification_PossibleCost"]
+            </span>
+        }
+    </a>
+
+    @if (Notification.CostStopAction is { } action)
+    {
+        <button class="server-notification__action"
+                type="button"
+                disabled="@(IsBusy || action.Pending || !action.Enabled)"
+                title="@action.UnavailableReason"
+                @onclick="RequestActionAsync">
+            @(action.Pending ? Localizer["Hosting_Notification_ActionPending"] : action.Label)
+        </button>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public GameServerNotificationInfo Notification { get; set; } = new();
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public EventCallback<GameServerNotificationInfo> OnActionRequested { get; set; }
+
+    private string CssClass
+        => Notification.PossibleCost
+            ? "server-notification server-notification--attention"
+            : "server-notification";
+
+    private Task RequestActionAsync()
+        => OnActionRequested.InvokeAsync(Notification);
+}

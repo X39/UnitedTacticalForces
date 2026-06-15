@@ -1,0 +1,1355 @@
+@page "/events/{EventId:guid}"
+@using System.Collections.Immutable
+@using System.Globalization
+@using System.Text.RegularExpressions
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Data
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
+@using X39.UnitedTacticalForces.WebApp.Services.SlotRepository
+@using X39.UnitedTacticalForces.WebApp.Services.UserRepository
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@inject IEventRepository EventRepository
+@inject ISiteImageSettingsRepository SiteImageSettingsRepository
+@inject ISlotRepository SlotRepository
+@inject IUserRepository UserRepository
+@inject NavigationManager NavigationManager
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+@inject MeService Me
+
+<PageTitle>@(_event?.Title ?? Localizer[nameof(Language.Pages_Events_Detail_PageTitleFallback)].Value)</PageTitle>
+
+<div class="utf-event-detail">
+    @if (_isLoading)
+    {
+        <section class="utf-event-detail-skeleton" aria-label="@(Localizer[nameof(Language.Auto_OperationLoading_7d19a411)])" aria-busy="true">
+            <span class="utf-sr-only">@Localizer[nameof(Language.Auto_OperationIsLoading_e4663d01)]</span>
+
+            <div class="utf-mission-banner utf-mission-banner--skeleton" aria-hidden="true">
+                <div class="utf-mission-banner__content">
+                    <span class="utf-skeleton utf-event-skeleton__back"></span>
+                    <span class="utf-skeleton utf-event-skeleton__tag"></span>
+                    <span class="utf-skeleton utf-event-skeleton__title"></span>
+
+                    <div class="utf-mission-meta utf-mission-meta--skeleton">
+                        @for (var index = 0; index < MissionMetaSkeletonItemCount; index++)
+                        {
+                            <div class="utf-mission-meta__item">
+                                <span class="utf-skeleton utf-event-skeleton__icon"></span>
+                                <div>
+                                    <span class="utf-skeleton utf-event-skeleton__label"></span>
+                                    <span class="utf-skeleton utf-event-skeleton__strong"></span>
+                                    <span class="utf-skeleton utf-event-skeleton__small"></span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="utf-event-detail__grid utf-event-detail__grid--skeleton" aria-hidden="true">
+                <main class="utf-event-detail__main">
+                    <section class="utf-briefing-panel utf-briefing-panel--skeleton">
+                        <header class="utf-panel-title">
+                            <span class="utf-skeleton utf-event-skeleton__panel-icon"></span>
+                            <span class="utf-skeleton utf-event-skeleton__panel-title"></span>
+                        </header>
+
+                        <div class="utf-briefing-skeleton__objectives">
+                            @for (var index = 0; index < BriefingObjectiveSkeletonItemCount; index++)
+                            {
+                                <div class="utf-briefing-skeleton__objective">
+                                    <span class="utf-skeleton utf-event-skeleton__objective-icon"></span>
+                                    <span class="utf-skeleton utf-event-skeleton__objective-line"></span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="utf-briefing-notes utf-briefing-notes--skeleton">
+                            <span class="utf-skeleton utf-event-skeleton__kicker"></span>
+                            <span class="utf-skeleton utf-event-skeleton__section-title"></span>
+                            <span class="utf-skeleton utf-event-skeleton__briefing-line"></span>
+                            <span class="utf-skeleton utf-event-skeleton__briefing-line"></span>
+                            <span class="utf-skeleton utf-event-skeleton__briefing-line utf-event-skeleton__briefing-line--short"></span>
+                        </div>
+                    </section>
+
+                    <section class="utf-roster-panel utf-roster-panel--skeleton">
+                        <header class="utf-roster-panel__header">
+                            <div class="utf-panel-title">
+                                <span class="utf-skeleton utf-event-skeleton__panel-icon"></span>
+                                <span class="utf-skeleton utf-event-skeleton__panel-title"></span>
+                            </div>
+                            <span class="utf-skeleton utf-event-skeleton__roster-count"></span>
+                        </header>
+
+                        <div class="utf-slot-register" role="presentation">
+                            <div class="utf-slot-register__head">
+                                <span class="utf-skeleton utf-event-skeleton__head-cell"></span>
+                                <span class="utf-skeleton utf-event-skeleton__head-cell"></span>
+                                <span class="utf-skeleton utf-event-skeleton__head-cell"></span>
+                                <span></span>
+                            </div>
+
+                            @for (var groupIndex = 0; groupIndex < SlotGroupSkeletonCount; groupIndex++)
+                            {
+                                <section class="utf-roster-group utf-roster-group--skeleton">
+                                    <header class="utf-roster-group__header">
+                                        <div>
+                                            <span class="utf-skeleton utf-event-skeleton__group-icon"></span>
+                                            <span class="utf-skeleton utf-event-skeleton__group-title"></span>
+                                        </div>
+                                        <span class="utf-skeleton utf-event-skeleton__group-count"></span>
+                                    </header>
+
+                                    @for (var rowIndex = 0; rowIndex < SlotRowSkeletonCount; rowIndex++)
+                                    {
+                                        <article class="utf-slot-row utf-slot-row--skeleton">
+                                            <div class="utf-slot-role-cell">
+                                                <span class="utf-skeleton utf-event-skeleton__role-icon"></span>
+                                                <div>
+                                                    <span class="utf-skeleton utf-event-skeleton__side-pill"></span>
+                                                    <span class="utf-skeleton utf-event-skeleton__slot-title"></span>
+                                                    <span class="utf-skeleton utf-event-skeleton__slot-small"></span>
+                                                </div>
+                                            </div>
+
+                                            <div class="utf-slot-assignee">
+                                                <div class="utf-slot-user-stack">
+                                                    <span class="utf-skeleton utf-event-skeleton__avatar"></span>
+                                                    <div>
+                                                        <span class="utf-skeleton utf-event-skeleton__assignee"></span>
+                                                        <span class="utf-skeleton utf-event-skeleton__assignee-subtitle"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="utf-slot-status">
+                                                <span class="utf-skeleton utf-event-skeleton__status-pill"></span>
+                                            </div>
+
+                                            <div class="utf-slot-row-actions">
+                                                <span class="utf-skeleton utf-event-skeleton__slot-button"></span>
+                                                <span class="utf-skeleton utf-event-skeleton__slot-menu"></span>
+                                            </div>
+                                        </article>
+                                    }
+                                </section>
+                            }
+                        </div>
+                    </section>
+                </main>
+
+                <aside class="utf-attendance-panel utf-attendance-panel--skeleton">
+                    @for (var cardIndex = 0; cardIndex < SideCardSkeletonCount; cardIndex++)
+                    {
+                        <section class="utf-side-card utf-side-card--skeleton">
+                            <header class="utf-side-card__header">
+                                <span class="utf-skeleton utf-event-skeleton__panel-icon"></span>
+                                <span class="utf-skeleton utf-event-skeleton__side-title"></span>
+                            </header>
+                            <span class="utf-skeleton utf-event-skeleton__side-line"></span>
+                            <span class="utf-skeleton utf-event-skeleton__side-line utf-event-skeleton__side-line--short"></span>
+                            <span class="utf-skeleton utf-event-skeleton__side-button"></span>
+                        </section>
+                    }
+                </aside>
+            </div>
+        </section>
+    }
+    else if (_loadError is not null)
+    {
+        <section class="utf-state-panel utf-state-panel--warning">
+            <strong>@Localizer[nameof(Language.Auto_OperationUnavailable_9b70eeab)]</strong>
+            <p>@_loadError</p>
+            <a class="utf-button utf-button--ghost" href="@BaseUrl.ResolveSelfUrl("events/upcoming")">
+                @Localizer[nameof(Language.Auto_BackToOperations_3057840c)]
+            </a>
+        </section>
+    }
+    else if (_event is not null)
+    {
+        <section class="utf-mission-banner" style="@GetMissionBannerStyle()">
+            <div class="utf-mission-banner__content">
+                <a class="utf-event-back-link" href="@BaseUrl.ResolveSelfUrl("events/upcoming")">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/>
+                    @Localizer[nameof(Language.Auto_BackToEvents_6f92c820)]
+                </a>
+                <span class="utf-operation-tag">@Localizer[nameof(Language.Operation)]</span>
+                <h1>@(_event.Title ?? Localizer[nameof(Language.Pages_Events_Detail_UntitledOperation)].Value)</h1>
+
+                <div class="utf-mission-meta" aria-label="@(Localizer[nameof(Language.Auto_MissionMetadata_384bdc08)])">
+                    <div class="utf-mission-meta__item">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.CalendarLtr())"/>
+                        <div>
+                            <span>@Localizer[nameof(Language.Date)]</span>
+                            <strong>@FormatDate(_event.ScheduledFor)</strong>
+                            <small>@FormatDay(_event.ScheduledFor)</small>
+                        </div>
+                    </div>
+                    <div class="utf-mission-meta__item">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Clock())"/>
+                        <div>
+                            <span>@Localizer[nameof(Language.Time)]</span>
+                            <strong>@FormatUtcTime(_event.ScheduledFor)</strong>
+                            <small>@FormatLocalTime(_event.ScheduledFor)</small>
+                        </div>
+                    </div>
+                    <div class="utf-mission-meta__item">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Map())"/>
+                        <div>
+                            <span>@Localizer[nameof(Language.Terrain)]</span>
+                            <strong>@(_event.TerrainTitle ?? Localizer[nameof(Language.Pages_Events_Detail_Status_TerrainPending)].Value)</strong>
+                            <small>@Localizer[nameof(Language.Auto_MissionArea_783638f1)]</small>
+                        </div>
+                    </div>
+                    <div class="utf-mission-meta__item">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Cube())"/>
+                        <div>
+                            <span>@Localizer[nameof(Language.Modpack)]</span>
+                            <strong>@(_event.ModPackDefinitionTitle ?? Localizer[nameof(Language.Pages_Events_Detail_Status_ModPackPending)].Value)</strong>
+                            <small>@GetModPackRevisionLabel(_event)</small>
+                        </div>
+                    </div>
+                    <div class="utf-mission-meta__item">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Person())"/>
+                        <div>
+                            <span>@Localizer[nameof(Language.Host)]</span>
+                            <strong>@(_event.HostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Events_Detail_Status_HostPending)].Value)</strong>
+                            <small>@Localizer[nameof(Language.Auto_OperationLead_56551686)]</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="utf-event-detail__grid">
+            <main class="utf-event-detail__main">
+                <section class="utf-briefing-panel">
+                    <header class="utf-panel-title">
+                        <span class="utf-panel-title__icon">
+                            <span class="utf-md-icon utf-md-icon--document" aria-hidden="true"></span>
+                        </span>
+                        <h2>@Localizer[nameof(Language.Auto_OperationBrief_b34e36ec)]</h2>
+                    </header>
+
+                    @{
+                        var briefingObjectives = GetBriefingObjectives();
+                    }
+                    @if (briefingObjectives.Count > 0)
+                    {
+                        <ul class="utf-briefing-objectives">
+                            @foreach (var objective in briefingObjectives)
+                            {
+                                <li @key="objective.Text">
+                                    <span class="@GetBriefingIconClass(objective.Icon)" aria-hidden="true"></span>
+                                    <span>@objective.Text</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    @if (_event.Description.IsNotNullOrWhiteSpace())
+                    {
+                        <div class="utf-briefing-notes">
+                            <div class="utf-section-heading">
+                                <span class="utf-kicker">@Localizer[nameof(Language.Auto_FullBriefing_8df6347a)]</span>
+                                <h3>@Localizer[nameof(Language.Auto_CommanderSNotes_99b2f4e5)]</h3>
+                            </div>
+                            <FluentMarkdown Content="@_event.Description"/>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="utf-muted">@Localizer[nameof(Language.Auto_NoFullBriefingHasBeenPostedForThisOperation_574adb11)]</p>
+                    }
+                </section>
+
+                <section class="utf-roster-panel">
+                    <header class="utf-roster-panel__header">
+                        <div class="utf-panel-title">
+                            <span class="utf-panel-title__icon">
+                                <span class="utf-md-icon utf-md-icon--slot" aria-hidden="true"></span>
+                            </span>
+                            <h2>@Localizer[nameof(Language.Auto_SlotRegister_20eeba00)]</h2>
+                        </div>
+                        <span>@OpenSlotCount open / @TotalSlotCount total</span>
+                    </header>
+
+                    @if (SlotRegisterGroups.Count is 0)
+                    {
+                        <div class="utf-state-panel">@Localizer[nameof(Language.Auto_NoSlotsConfigured_d0093e9c)]</div>
+                    }
+                    else
+                    {
+                        <div class="utf-slot-register" role="table" aria-label="@(Localizer[nameof(Language.Auto_SlotRegister_20eeba00)])">
+                            <div class="utf-slot-register__head" aria-hidden="true">
+                                <span>@Localizer[nameof(Language.Role)]</span>
+                                <span>@Localizer[nameof(Language.Assigned)]</span>
+                                <span>@Localizer[nameof(Language.Status)]</span>
+                                <span></span>
+                            </div>
+                            @foreach (var slotGroup in SlotRegisterGroups)
+                            {
+                                <section class="utf-roster-group" @key="slotGroup.Name">
+                                    <header class="utf-roster-group__header">
+                                        <div>
+                                            <span class="utf-roster-group__icon" aria-hidden="true"></span>
+                                            <h3>@slotGroup.Name</h3>
+                                        </div>
+                                        <span>@GetSlotGroupAssignmentLabel(slotGroup)</span>
+                                    </header>
+
+                                    @foreach (var row in slotGroup.Rows)
+                                    {
+                                        var assignedUsers = GetAssignedUsers(row);
+                                        var assignedSlots = GetAssignedSlots(row);
+                                        var firstAssignableSlot = GetFirstAssignableSlot(row);
+
+                                        <article class="@GetSlotRowClass(row)" @key="GetSlotRowKey(row)">
+                                            <div class="utf-slot-role-cell">
+                                                <span class="@GetSlotRoleIconClass(row)" aria-hidden="true"></span>
+                                                <div>
+                                                    <span class="@GetSideClass(row)">@row.SideLabel</span>
+                                                    <h4>@GetSlotRegisterTitle(row)</h4>
+                                                    <small>@FormatSlotNumbers(row)</small>
+                                                </div>
+                                            </div>
+
+                                            <div class="utf-slot-assignee">
+                                                @if (assignedUsers.Count > 0)
+                                                {
+                                                    <div class="utf-slot-user-stack">
+                                                        <div class="utf-slot-avatars" aria-hidden="true">
+                                                            @foreach (var assignedUser in assignedUsers.Take(3))
+                                                            {
+                                                                @if (assignedUser.ToImageSource() is { } avatar)
+                                                                {
+                                                                    <img src="@avatar" alt=""/>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="utf-slot-user__fallback"></span>
+                                                                }
+                                                            }
+                                                        </div>
+                                                        <div>
+                                                            <strong>@FormatAssignedUsers(assignedUsers)</strong>
+                                                            <small>@GetAssignedSubtitle(row, assignedUsers.Count)</small>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else if (assignedSlots.Count > 0)
+                                                {
+                                                    <div class="utf-slot-user-stack">
+                                                        <div class="utf-slot-avatars" aria-hidden="true">
+                                                            <span class="utf-slot-user__fallback"></span>
+                                                        </div>
+                                                        <div>
+                                                            <strong>@GetProtectedAssignedLabel(assignedSlots.Count)</strong>
+                                                            <small>@GetAssignedSubtitle(row, assignedSlots.Count)</small>
+                                                        </div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="utf-slot-open">@Localizer[nameof(Language.Auto_OpenSlot_00336ce6)]</span>
+                                                }
+                                            </div>
+
+                                            <div class="utf-slot-status">
+                                                <span class="@GetSlotStatusClass(row)">
+                                                    <span class="utf-status__dot"></span>
+                                                    @GetSlotStatusText(row)
+                                                </span>
+                                            </div>
+
+                                            <div class="utf-slot-row-actions">
+                                                <button class="@GetSlotActionClass(row)"
+                                                        type="button"
+                                                        disabled="@(firstAssignableSlot is null)"
+                                                        @onclick="@(() => AssignSlotRegisterRowAsync(row))">
+                                                    <FluentIcon Value="@(new Icons.Regular.Size20.PersonAvailable())"/>
+                                                    <span>@GetSlotActionText(row)</span>
+                                                </button>
+                                                <button class="utf-slot-menu-button"
+                                                        type="button"
+                                                        title="@(Localizer[nameof(Language.Auto_ManageEvent_0a863949)])"
+                                                        disabled="@(!CanManageEvent)"
+                                                        @onclick="NavigateToEventManagement">
+                                                    <span class="utf-slot-menu-dots" aria-hidden="true"></span>
+                                                    <span class="utf-sr-only">@Localizer[nameof(Language.Auto_ManageEvent_0a863949)]</span>
+                                                </button>
+                                            </div>
+                                        </article>
+                                    }
+                                </section>
+                            }
+                        </div>
+                    }
+                </section>
+            </main>
+
+            <aside class="utf-attendance-panel" aria-label="@(Localizer[nameof(Language.Attendance)])">
+                @if (CanManageEvent)
+                {
+                    <section class="utf-side-card utf-event-control-card">
+                        <header class="utf-side-card__header">
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Edit())"/>
+                            <h2>@Localizer[nameof(Language.Auto_EventControls_ad2e84e1)]</h2>
+                        </header>
+                        <p class="utf-muted">@Localizer[nameof(Language.Auto_OpenThisOperationInCommandManagement_604a555e)]</p>
+                        <button class="utf-command-nav-button"
+                                type="button"
+                                @onclick="NavigateToEventManagement">
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Edit())"/>
+                            <span>@Localizer[nameof(Language.Auto_ManageEvent_0a863949)]</span>
+                        </button>
+                    </section>
+                }
+
+                <section class="utf-side-card">
+                    <header class="utf-side-card__header">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Person())"/>
+                        <h2>@Localizer[nameof(Language.Auto_YourAttendance_71dff290)]</h2>
+                    </header>
+
+                    <div class="utf-attendance-actions">
+                        <button class="@GetAttendanceChoiceClass(Common.Event.EEventAcceptance.Accepted)"
+                                type="button"
+                                disabled="@(!CanSetAttendance)"
+                                @onclick="@(() => SetAttendanceAsync(Common.Event.EEventAcceptance.Accepted))">
+                            <span class="utf-attendance-choice__mark"></span>
+                            <strong>@GetAttendanceChoiceLabel(Common.Event.EEventAcceptance.Accepted)</strong>
+                            <span>@(_event.AcceptedCount ?? 0)</span>
+                        </button>
+                        <button class="@GetAttendanceChoiceClass(Common.Event.EEventAcceptance.Maybe)"
+                                type="button"
+                                disabled="@(!CanSetAttendance)"
+                                @onclick="@(() => SetAttendanceAsync(Common.Event.EEventAcceptance.Maybe))">
+                            <span class="utf-attendance-choice__mark"></span>
+                            <strong>@GetAttendanceChoiceLabel(Common.Event.EEventAcceptance.Maybe)</strong>
+                            <span>@(_event.MaybeCount ?? 0)</span>
+                        </button>
+                        <button class="@GetAttendanceChoiceClass(Common.Event.EEventAcceptance.Rejected)"
+                                type="button"
+                                disabled="@(!CanSetAttendance)"
+                                @onclick="@(() => SetAttendanceAsync(Common.Event.EEventAcceptance.Rejected))">
+                            <span class="utf-attendance-choice__mark"></span>
+                            <strong>@GetAttendanceChoiceLabel(Common.Event.EEventAcceptance.Rejected)</strong>
+                            <span>@(_event.RejectedCount ?? 0)</span>
+                        </button>
+                    </div>
+
+                    <button class="utf-assign-slot-button"
+                            type="button"
+                            disabled="@(!CanAssignAnySlot)"
+                            @onclick="AssignFirstAvailableSlotAsync">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.PersonAvailable())"/>
+                        <span>@GetPrimarySlotActionLabel()</span>
+                    </button>
+
+                    @if (!Me.IsAuthenticated)
+                    {
+                        <p class="utf-muted">@Localizer[nameof(Language.Auto_SignInToManageAttendanceAndClaimOpenSlots_9bd2cdf2)]</p>
+                    }
+                    else if (IsEventClosed)
+                    {
+                        <p class="utf-muted">@Localizer[nameof(Language.Auto_ThisOperationHasAlreadyStarted_d6da2397)]</p>
+                    }
+
+                    @if (_actionError is not null)
+                    {
+                        <div class="utf-state-panel utf-state-panel--warning">@_actionError</div>
+                    }
+                </section>
+
+                <section class="utf-side-card">
+                    <div class="utf-attendance-progress">
+                        <div>
+                            <span>@FormatSlotSummary(_event)</span>
+                            <small>@GetViabilityText(_event)</small>
+                        </div>
+                        <div class="utf-slot-meter" aria-label="@FormatSlotSummary(_event)">
+                            <span style="@GetSlotMeterStyle(_event)"></span>
+                        </div>
+                    </div>
+
+                    <div class="utf-roster-stats">
+                        <div>
+                            <span class="utf-md-icon utf-md-icon--slot" aria-hidden="true"></span>
+                            <span>@Localizer[nameof(Language.Auto_OpenSlots_183c44b6)]</span>
+                            <strong>@OpenSlotCount</strong>
+                        </div>
+                        <div>
+                            <span class="utf-md-icon utf-md-icon--support" aria-hidden="true"></span>
+                            <span>@Localizer[nameof(Language.Auto_TotalSlots_7dea1c50)]</span>
+                            <strong>@TotalSlotCount</strong>
+                        </div>
+                        <div>
+                            <span class="utf-md-icon utf-md-icon--host" aria-hidden="true"></span>
+                            <span>@Localizer[nameof(Language.Auto_YourSlots_ee1b12de)]</span>
+                            <strong>@CurrentUserSlotCount</strong>
+                        </div>
+                        <div>
+                            <span class="utf-md-icon utf-md-icon--time" aria-hidden="true"></span>
+                            <span>@Localizer[nameof(Language.Auto_TimeRemaining_864927fe)]</span>
+                            <strong>@FormatTimeRemaining(_event.ScheduledFor)</strong>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="utf-side-card">
+                    <header class="utf-side-card__header">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Cube())"/>
+                        <h2>@Localizer[nameof(Language.Auto_MissionPackage_3ff65611)]</h2>
+                    </header>
+                    <dl class="utf-package-list">
+                        <div>
+                            <dt>@Localizer[nameof(Language.Modpack)]</dt>
+                            <dd>@(_event.ModPackDefinitionTitle ?? Localizer[nameof(Language.Pages_Events_Detail_Status_Pending)].Value)</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer[nameof(Language.Terrain)]</dt>
+                            <dd>@(_event.TerrainTitle ?? Localizer[nameof(Language.Pages_Events_Detail_Status_Pending)].Value)</dd>
+                        </div>
+                        <div>
+                            <dt>@Localizer[nameof(Language.Host)]</dt>
+                            <dd>@(_event.HostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Events_Detail_Status_Pending)].Value)</dd>
+                        </div>
+                    </dl>
+                    <FluentButton IconStart="@(new Icons.Regular.Size24.ArrowDownload())"
+                                  Disabled="@(!CanDownloadModPack)"
+                                  OnClick="DownloadModPack">
+                        @Localizer[nameof(Language.Common_DownloadModpack)]
+                    </FluentButton>
+                </section>
+            </aside>
+        </div>
+    }
+</div>
+
+@code {
+    private const string DefaultMissionBannerImagePath = "media/generated/mission-overwatch-banner.jpg";
+    private const int MissionMetaSkeletonItemCount       = 5;
+    private const int BriefingObjectiveSkeletonItemCount = 3;
+    private const int SlotGroupSkeletonCount             = 2;
+    private const int SlotRowSkeletonCount               = 3;
+    private const int SideCardSkeletonCount              = 3;
+
+    private          FullEventDto?                    _event;
+    private          ImmutableArray<SlotGroup>        _slotGroups    = [];
+    private readonly Dictionary<Guid, UserDto>        _assignedUsers = new();
+    private          int?                             _assigningSlotNumber;
+    private          bool                             _isLoading = true;
+    private          bool                             _attendanceUpdating;
+    private          Common.Event.EEventAcceptance? _pendingAcceptance;
+    private          string?                          _loadError;
+    private          string?                          _actionError;
+    private          IReadOnlyDictionary<string, SiteImageSettingInfo> _siteImages =
+        new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+    private static readonly Regex BriefingIconPrefixRegex =
+        new(@"^:(?<icon>[a-z0-9-]+):\s*", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownIconShortcodeRegex =
+        new(@":(?<icon>[a-z0-9-]+):", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownListPrefixRegex =
+        new(@"^\s*(?:[-*+]\s+|\d+[.)]\s+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownImageRegex =
+        new(@"!\[(?<text>[^\]]*)\]\([^\)]*\)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownLinkRegex =
+        new(@"\[(?<text>[^\]]+)\]\([^\)]*\)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownInlineCodeRegex =
+        new(@"`(?<text>[^`]+)`", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownFormattingRegex =
+        new(@"[*_~>#]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MarkdownWhitespaceRegex =
+        new(@"\s+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex SentenceSplitRegex =
+        new(@"(?<=[.!?])\s+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly HashSet<string> SupportedBriefingIcons = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "document",
+        "extract",
+        "host",
+        "intel",
+        "map",
+        "medical",
+        "modpack",
+        "objective",
+        "rally",
+        "radio",
+        "slot",
+        "stealth",
+        "support",
+        "time",
+        "warning",
+    };
+    private static readonly string[] ObjectiveFallbackIcons =
+    [
+        "objective",
+        "warning",
+        "radio",
+    ];
+
+    private bool IsEventClosed => _event?.ScheduledFor is { } scheduledFor && scheduledFor < DateTimeOffset.Now;
+    private bool CanDownloadModPack => _event?.ModPackDefinitionPrimaryKey is not null;
+    private IEnumerable<PlainEventSlotDto> AllSlots => _slotGroups.SelectMany((slotGroup) => slotGroup);
+    private int TotalSlotCount => AllSlots.Count();
+    private int OpenSlotCount
+        => AllSlots.Count((slot) => slot.AssignedToFk is null && (slot.IsVisible ?? true));
+    private int CurrentUserSlotCount
+        => Me.IsAuthenticated ? AllSlots.Count((slot) => slot.AssignedToFk == Me.User.PrimaryKey) : 0;
+    private PlainEventSlotDto? FirstAssignableSlot => AllSlots.FirstOrDefault(CanSelfAssign);
+    private bool CanAssignAnySlot => FirstAssignableSlot is not null;
+    private bool CanManageEvent => Me.HasClaimOrEventAdmin();
+    private IReadOnlyList<SlotRegisterGroup> SlotRegisterGroups => CreateSlotRegisterGroups();
+
+    private bool CanSetAttendance
+        => Me.IsAuthenticated
+           && !IsEventClosed
+           && _event?.PrimaryKey is not null
+           && !_attendanceUpdating;
+
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(ReloadAsync(), LoadSiteImagesAsync()).ConfigureAwait(false);
+    }
+
+    private async Task LoadSiteImagesAsync()
+    {
+        try
+        {
+            _siteImages = (await SiteImageSettingsRepository.GetSettingsAsync().ConfigureAwait(false))
+                .ToDictionary(q => q.Key, StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _siteImages = new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private async Task ReloadAsync(CancellationToken cancellationToken = default)
+    {
+        _isLoading = true;
+        _loadError = null;
+        _actionError = null;
+        _event = null;
+
+        try
+        {
+            var eventId = EventId;
+            var tmp = await EventRepository.GetEventAsync(eventId, cancellationToken)
+                .ConfigureAwait(false);
+            if (tmp is null)
+            {
+                _loadError = "The requested operation could not be found.";
+                return;
+            }
+
+            var slots = await SlotRepository.AllSlotsAsync(eventId, cancellationToken)
+                .ConfigureAwait(false);
+            await LoadAssignedUsersAsync(slots, cancellationToken)
+                .ConfigureAwait(false);
+            _slotGroups =
+            [
+                ..slots.GroupBy((q) => q.Group)
+                    .Select((q) => new SlotGroup(q.Key ?? string.Empty, q))
+                    .OrderBy((q) => q.Name),
+            ];
+            _event = tmp;
+        }
+        catch
+        {
+            _slotGroups = [];
+            _loadError = "Operation details could not be loaded. Check the API connection and try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadAssignedUsersAsync(
+        IEnumerable<PlainEventSlotDto> slots,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!Me.IsAuthenticated)
+            return;
+
+        var assignedUserIds = slots
+            .Select((slot) => slot.AssignedToFk)
+            .Where((assignedToFk) => assignedToFk is not null)
+            .Select((assignedToFk) => assignedToFk!.Value)
+            .Distinct()
+            .Where((assignedToFk) => !_assignedUsers.ContainsKey(assignedToFk));
+
+        foreach (var assignedUserId in assignedUserIds)
+        {
+            try
+            {
+                var user = await UserRepository.GetUserAsync(assignedUserId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (user is not null)
+                    _assignedUsers[assignedUserId] = user;
+            }
+            catch
+            {
+                // Public event details should still render when assignee profile details are protected.
+            }
+        }
+    }
+
+    private void DownloadModPack()
+    {
+        if (_event?.ModPackDefinitionPrimaryKey is not { } modPackDefinitionPrimaryKey)
+            return;
+
+        var path = _event.ModPackRevisionPrimaryKey is { } modPackRevisionPrimaryKey
+            ? $"mod-packs/{modPackDefinitionPrimaryKey}/download/{modPackRevisionPrimaryKey}"
+            : $"mod-packs/{modPackDefinitionPrimaryKey}/download/latest";
+        NavigationManager.NavigateTo(BaseUrl.ResolveApiUrl(path), forceLoad: true);
+    }
+
+    private async Task SetAttendanceAsync(Common.Event.EEventAcceptance acceptance)
+    {
+        if (!CanSetAttendance || _event?.PrimaryKey is not { } eventId)
+            return;
+
+        _attendanceUpdating = true;
+        _pendingAcceptance = acceptance;
+        _actionError = null;
+        try
+        {
+            await EventRepository.SetMeAcceptanceAsync(eventId, acceptance)
+                .ConfigureAwait(false);
+            await ReloadAsync()
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            _actionError = "Attendance could not be updated. Check the API connection and try again.";
+        }
+        finally
+        {
+            _attendanceUpdating = false;
+            _pendingAcceptance = null;
+        }
+    }
+
+    private async Task AssignToSelfAsync(PlainEventSlotDto slot)
+    {
+        if (!CanSelfAssign(slot) || slot.SlotNumber is not { } slotNumber)
+            return;
+
+        _assigningSlotNumber = slotNumber;
+        _actionError = null;
+        try
+        {
+            await SlotRepository.SelfAssignSlotAsync(EventId, slotNumber)
+                .ConfigureAwait(false);
+            await ReloadAsync()
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            _actionError = "The slot could not be assigned. Check the API connection and try again.";
+        }
+        finally
+        {
+            _assigningSlotNumber = null;
+        }
+    }
+
+    private async Task AssignFirstAvailableSlotAsync()
+    {
+        if (FirstAssignableSlot is not { } slot)
+            return;
+
+        await AssignToSelfAsync(slot)
+            .ConfigureAwait(false);
+    }
+
+    private async Task AssignSlotRegisterRowAsync(SlotRegisterRow row)
+    {
+        if (GetFirstAssignableSlot(row) is not { } slot)
+            return;
+
+        await AssignToSelfAsync(slot)
+            .ConfigureAwait(false);
+    }
+
+    private void NavigateToEventManagement()
+    {
+        NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/events/{EventId}"));
+    }
+
+    private bool CanSelfAssign(PlainEventSlotDto slot)
+        => Me.IsAuthenticated
+           && !IsEventClosed
+           && _assigningSlotNumber is null
+           && slot.SlotNumber is not null
+           && slot.AssignedToFk is null
+           && (slot.IsSelfAssignable ?? true)
+           && (slot.IsVisible ?? true);
+
+    private UserDto? GetAssignedUser(PlainEventSlotDto slot)
+        => slot.AssignedToFk is { } assignedToFk && _assignedUsers.TryGetValue(assignedToFk, out var user)
+            ? user
+            : null;
+
+    private bool IsAssignedToCurrentUser(PlainEventSlotDto slot)
+        => Me.IsAuthenticated && slot.AssignedToFk == Me.User.PrimaryKey;
+
+    private bool IsAssignedToCurrentUser(SlotRegisterRow row)
+        => row.Slots.Any(IsAssignedToCurrentUser);
+
+    private IReadOnlyList<SlotRegisterGroup> CreateSlotRegisterGroups()
+        =>
+        [
+            ..AllSlots
+                .GroupBy((slot) => NormalizeSlotGroup(slot.Group))
+                .Select((slotGroup) => new SlotRegisterGroup(
+                    slotGroup.Key,
+                    [
+                        ..slotGroup
+                            .GroupBy(CreateSlotRegisterKey)
+                            .Select(CreateSlotRegisterRow)
+                            .OrderBy((row) => row.SideSort)
+                            .ThenBy((row) => row.FirstSlotNumber)
+                            .ThenBy((row) => row.Title, StringComparer.CurrentCultureIgnoreCase),
+                    ]
+                ))
+                .OrderBy((slotGroup) => slotGroup.Name, StringComparer.CurrentCultureIgnoreCase),
+        ];
+
+    private SlotRegisterKey CreateSlotRegisterKey(PlainEventSlotDto slot)
+        => new(
+            NormalizeSlotGroup(slot.Group),
+            NormalizeSlotTitle(slot.Title),
+            GetSideKey(slot),
+            GetSideLabel(slot)
+        );
+
+    private static SlotRegisterRow CreateSlotRegisterRow(IGrouping<SlotRegisterKey, PlainEventSlotDto> slots)
+        => new(
+            slots.Key.Group,
+            slots.Key.Title,
+            slots.Key.SideKey,
+            slots.Key.SideLabel,
+            [..slots.OrderBy((slot) => slot.SlotNumber ?? int.MaxValue).ThenBy((slot) => slot.Title)]
+        );
+
+    private string NormalizeSlotGroup(string? group)
+        => string.IsNullOrWhiteSpace(group) ? Localizer[nameof(Language.Pages_Events_Detail_Status_Ungrouped)].Value : group.Trim();
+
+    private string NormalizeSlotTitle(string? title)
+        => string.IsNullOrWhiteSpace(title) ? Localizer[nameof(Language.Pages_Events_Detail_Status_UnassignedRole)].Value : title.Trim();
+
+    private string GetSlotGroupAssignmentLabel(SlotRegisterGroup slotGroup)
+        => Localizer[nameof(Language.Pages_Events_Detail_Count_GroupAssigned), slotGroup.AssignedCount, slotGroup.TotalCount].Value;
+
+    private static string GetSlotRowKey(SlotRegisterRow row)
+        => $"{row.Group}|{row.SideKey}|{row.Title}";
+
+    private static string GetSlotRegisterTitle(SlotRegisterRow row)
+        => row.Capacity > 1
+            ? $"{row.Title} (x{row.Capacity.ToString(CultureInfo.CurrentCulture)})"
+            : row.Title;
+
+    private string FormatSlotNumbers(SlotRegisterRow row)
+    {
+        var slotNumbers = row.Slots
+            .Select((slot) => slot.SlotNumber)
+            .Where((slotNumber) => slotNumber is not null)
+            .Select((slotNumber) => slotNumber!.Value)
+            .Order()
+            .ToArray();
+
+        if (slotNumbers.Length is 0)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_SlotsPending)].Value;
+
+        if (slotNumbers.Length is 1)
+            return Localizer[nameof(Language.Pages_Events_Detail_Count_SlotNumber), slotNumbers[0]].Value;
+
+        var formattedSlotNumbers = string.Join(", ", slotNumbers.Select((slotNumber) => slotNumber.ToString(CultureInfo.CurrentCulture)));
+        return Localizer[nameof(Language.Pages_Events_Detail_Count_SlotNumbers), formattedSlotNumbers].Value;
+    }
+
+    private IReadOnlyList<PlainEventSlotDto> GetAssignedSlots(SlotRegisterRow row)
+        => [..row.Slots.Where((slot) => slot.AssignedToFk is not null)];
+
+    private IReadOnlyList<UserDto> GetAssignedUsers(SlotRegisterRow row)
+        =>
+        [
+            ..row.Slots
+                .Select(GetAssignedUser)
+                .Where((user) => user is not null)
+                .Select((user) => user!)
+                .DistinctBy((user) => user.PrimaryKey),
+        ];
+
+    private PlainEventSlotDto? GetFirstAssignableSlot(SlotRegisterRow row)
+        => row.Slots.FirstOrDefault(CanSelfAssign);
+
+    private static int GetOpenSlotCount(SlotRegisterRow row)
+        => row.Slots.Count((slot) => slot.AssignedToFk is null && (slot.IsVisible ?? true));
+
+    private string GetAssignedSubtitle(SlotRegisterRow row, int assignedCount)
+    {
+        if (IsAssignedToCurrentUser(row))
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_YourSlot)].Value;
+
+        return Localizer[assignedCount > 1
+            ? nameof(Language.Pages_Events_Detail_Status_ConfirmedTeam)
+            : nameof(Language.Pages_Events_Detail_Status_ConfirmedMember)].Value;
+    }
+
+    private string FormatAssignedUsers(IReadOnlyList<UserDto> assignedUsers)
+    {
+        if (assignedUsers.Count is 0)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_AssignedMember)].Value;
+
+        var firstName = GetUserName(assignedUsers[0]);
+        return assignedUsers.Count is 1
+            ? firstName
+            : $"{firstName} + {(assignedUsers.Count - 1).ToString(CultureInfo.CurrentCulture)}";
+    }
+
+    private string GetProtectedAssignedLabel(int assignedCount)
+        => assignedCount > 1
+            ? Localizer[nameof(Language.Pages_Events_Detail_Count_AssignedMembers), assignedCount].Value
+            : Localizer[nameof(Language.Pages_Events_Detail_Status_AssignedMember)].Value;
+
+    private string GetMissionBannerStyle()
+    {
+        var imageSource = GetMissionImageSource()
+                          ?? GetSiteImageUrl("home-operation-card", DefaultMissionBannerImagePath);
+        return $"--utf-event-image: url(\"{EscapeCssUrl(imageSource)}\");";
+    }
+
+    private string GetSiteImageUrl(string key, string fallbackResourcePath)
+        => _siteImages.TryGetValue(key, out var setting) && !string.IsNullOrWhiteSpace(setting.ImagePath)
+            ? BaseUrl.ResolveImageUrl(setting.ImagePath)
+            : BaseUrl.ResolveResourceUrl(fallbackResourcePath);
+
+    private string? GetMissionImageSource()
+    {
+        if (!string.IsNullOrWhiteSpace(_event?.ImagePath))
+            return BaseUrl.ResolveImageUrl(_event.ImagePath);
+        return !string.IsNullOrWhiteSpace(_event?.TerrainImagePath)
+            ? BaseUrl.ResolveImageUrl(_event.TerrainImagePath)
+            : null;
+    }
+
+    private static string EscapeCssUrl(string url)
+        => url.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "%22", StringComparison.Ordinal);
+
+    private string FormatDate(DateTimeOffset? scheduledFor)
+        => scheduledFor?.ToLocalTime().ToString("dd MMM yyyy", CultureInfo.CurrentCulture)
+           ?? Localizer[nameof(Language.Pages_Events_Detail_Status_DatePending)].Value;
+
+    private string FormatDay(DateTimeOffset? scheduledFor)
+        => scheduledFor?.ToLocalTime().ToString("dddd", CultureInfo.CurrentCulture)
+           ?? Localizer[nameof(Language.Pages_Events_Detail_Status_SchedulePending)].Value;
+
+    private string FormatUtcTime(DateTimeOffset? scheduledFor)
+        => scheduledFor is null
+            ? Localizer[nameof(Language.Pages_Events_Detail_Status_TimePending)].Value
+            : $"{scheduledFor.Value.UtcDateTime.ToString("HH:mm", CultureInfo.InvariantCulture)} UTC";
+
+    private string FormatLocalTime(DateTimeOffset? scheduledFor)
+        => scheduledFor is null
+            ? Localizer[nameof(Language.Pages_Events_Detail_Status_LocalTimePending)].Value
+            : Localizer[nameof(Language.Pages_Events_Detail_Format_LocalTime), scheduledFor.Value.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)].Value;
+
+    private string FormatTimeRemaining(DateTimeOffset? scheduledFor)
+    {
+        if (scheduledFor is null)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_ToBeDetermined)].Value;
+
+        var remaining = scheduledFor.Value - DateTimeOffset.Now;
+        if (remaining <= TimeSpan.Zero)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_Started)].Value;
+
+        if (remaining.TotalDays >= 1)
+            return $"{remaining.Days}d {remaining.Hours}h";
+
+        if (remaining.TotalHours >= 1)
+            return $"{remaining.Hours}h {remaining.Minutes}m";
+
+        return $"{Math.Max(1, remaining.Minutes)}m";
+    }
+
+    private string GetModPackRevisionLabel(FullEventDto operation)
+        => operation.ModPackRevisionPrimaryKey is { } revision
+            ? Localizer[nameof(Language.Pages_Events_Detail_Count_Revision), revision].Value
+            : Localizer[nameof(Language.Pages_Events_Detail_Status_LatestRevision)].Value;
+
+    private string FormatSlotSummary(FullEventDto operation)
+    {
+        var accepted = operation.AcceptedCount ?? 0;
+        var minimum = operation.MinimumAccepted ?? 0;
+        return minimum > 0
+            ? Localizer[nameof(Language.Pages_Events_Detail_Count_AcceptedMinimum), accepted, minimum].Value
+            : Localizer[nameof(Language.Pages_Events_Detail_Count_Accepted), accepted].Value;
+    }
+
+    private string GetViabilityText(FullEventDto operation)
+        => IsUnderMinimum(operation)
+            ? Localizer[nameof(Language.Pages_Events_Detail_Status_NeedsMoreSignups)].Value
+            : Localizer[nameof(Language.Pages_Events_Detail_Status_MinimumMet)].Value;
+
+    private static string GetSlotMeterStyle(FullEventDto operation)
+        => $"width: {GetSlotProgress(operation).ToString(CultureInfo.InvariantCulture)}%;";
+
+    private static double GetSlotProgress(FullEventDto operation)
+    {
+        var minimum = operation.MinimumAccepted ?? 0;
+        if (minimum <= 0)
+            return operation.AcceptedCount > 0 ? 100 : 0;
+
+        return Math.Clamp((operation.AcceptedCount ?? 0) * 100.0 / minimum, 0, 100);
+    }
+
+    private static bool IsUnderMinimum(FullEventDto operation)
+        => (operation.MinimumAccepted ?? 0) > 0 && (operation.AcceptedCount ?? 0) < operation.MinimumAccepted;
+
+    private IReadOnlyList<BriefingObjective> GetBriefingObjectives()
+        => ExtractBriefingObjectives(_event?.Description);
+
+    private static IReadOnlyList<BriefingObjective> ExtractBriefingObjectives(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return [];
+
+        var objectives = new List<BriefingObjective>();
+        var fallbackIconIndex = 0;
+        var normalizedDescription = description.Replace("\r\n", "\n", StringComparison.Ordinal);
+        foreach (var rawLine in normalizedDescription.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (line.Length is 0
+                || line.StartsWith("#", StringComparison.Ordinal)
+                || line.StartsWith("```", StringComparison.Ordinal)
+                || line.StartsWith("|", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            line = MarkdownListPrefixRegex.Replace(line, string.Empty);
+            var explicitIcon = TryTakeBriefingIcon(ref line);
+            if (explicitIcon is null && IsBriefingHeadingLine(line))
+                continue;
+
+            var icon = explicitIcon ?? ObjectiveFallbackIcons[fallbackIconIndex++ % ObjectiveFallbackIcons.Length];
+            var text = TruncateBriefingObjective(NormalizeBriefingText(line));
+            if (text.Length is 0)
+                continue;
+
+            objectives.Add(new BriefingObjective(icon, text));
+            if (objectives.Count is 3)
+                return objectives;
+        }
+
+        if (objectives.Count > 0)
+            return objectives;
+
+        var plainText = NormalizeBriefingText(description);
+        foreach (var sentence in SentenceSplitRegex.Split(plainText))
+        {
+            var text = TruncateBriefingObjective(sentence.Trim());
+            if (text.Length is 0)
+                continue;
+
+            objectives.Add(new BriefingObjective(
+                ObjectiveFallbackIcons[fallbackIconIndex++ % ObjectiveFallbackIcons.Length],
+                text
+            ));
+            if (objectives.Count is 3)
+                break;
+        }
+
+        return objectives;
+    }
+
+    private static string? TryTakeBriefingIcon(ref string line)
+    {
+        var match = BriefingIconPrefixRegex.Match(line);
+        if (!match.Success)
+            return null;
+
+        var icon = match.Groups["icon"].Value;
+        if (!SupportedBriefingIcons.Contains(icon))
+            return null;
+
+        line = line[match.Length..].TrimStart();
+        return icon.ToLowerInvariant();
+    }
+
+    private static bool IsBriefingHeadingLine(string line)
+    {
+        var text = NormalizeBriefingText(line);
+        if (text.Length is 0 || text.Length > 42)
+            return false;
+
+        if (text.Contains(':', StringComparison.Ordinal)
+            || text.Contains('.', StringComparison.Ordinal)
+            || text.Contains(',', StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 4;
+    }
+
+    private static string NormalizeBriefingText(string value)
+    {
+        var text = MarkdownImageRegex.Replace(value, "${text}");
+        text = MarkdownLinkRegex.Replace(text, "${text}");
+        text = MarkdownInlineCodeRegex.Replace(text, "${text}");
+        text = MarkdownIconShortcodeRegex.Replace(text, string.Empty);
+        text = MarkdownFormattingRegex.Replace(text, string.Empty);
+        return MarkdownWhitespaceRegex.Replace(text, " ").Trim();
+    }
+
+    private static string TruncateBriefingObjective(string value)
+        =>value.Length<= 150 ? value : $"{value[..147].TrimEnd()}...";
+
+    private static string GetBriefingIconClass(string icon)
+        => SupportedBriefingIcons.Contains(icon)
+            ? $"utf-md-icon utf-md-icon--{icon.ToLowerInvariant()}"
+            : "utf-md-icon utf-md-icon--objective";
+
+    private string GetUserName(UserDto user)
+        => string.IsNullOrWhiteSpace(user.Nickname)
+            ? user.PrimaryKey?.ToString() ?? Localizer[nameof(Language.Pages_Events_Detail_Status_AssignedUser)].Value
+            : user.Nickname;
+
+    private string GetSlotRowClass(SlotRegisterRow row)
+    {
+        var classes = "utf-slot-row";
+        if (row.AssignedCount > 0)
+            classes += " assigned";
+        else
+            classes += " open";
+        if (IsAssignedToCurrentUser(row))
+            classes += " mine";
+        if (row.IsHidden)
+            classes += " hidden";
+
+        return classes;
+    }
+
+    private string GetSlotStatusClass(SlotRegisterRow row)
+    {
+        var classes = "utf-status ";
+        if (row.IsHidden)
+            return classes + "utf-status--neutral";
+        if (IsAssignedToCurrentUser(row))
+            return classes + "utf-status--info";
+        if (row.OpenCount is 0 && row.AssignedCount > 0)
+            return classes + "utf-status--success";
+        if (row.IsLocked)
+            return classes + "utf-status--warning";
+        if (row.AssignedCount > 0)
+            return classes + "utf-status--brand";
+        return classes + "utf-status--brand";
+    }
+
+    private string GetSlotStatusText(SlotRegisterRow row)
+    {
+        if (row.IsHidden)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_Hidden)].Value;
+        if (IsAssignedToCurrentUser(row))
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_YourSlot)].Value;
+        if (row.OpenCount is 0 && row.AssignedCount > 0)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_Confirmed)].Value;
+        if (row.AssignedCount > 0)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_PartiallyFilled)].Value;
+        if (row.IsLocked)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_Locked)].Value;
+        return Localizer[nameof(Language.Pages_Events_Detail_Status_Available)].Value;
+    }
+
+    private string GetSlotActionClass(SlotRegisterRow row)
+        => IsAssignedToCurrentUser(row)
+            ? "utf-slot-assign-button mine"
+            : "utf-slot-assign-button";
+
+    private string GetSlotActionText(SlotRegisterRow row)
+    {
+        if (row.Slots.Any((slot) => _assigningSlotNumber == slot.SlotNumber))
+            return Localizer[nameof(Language.Pages_Events_Detail_ActionAssigning)].Value;
+        if (IsAssignedToCurrentUser(row))
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_YourSlot)].Value;
+        if (row.IsHidden)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_Hidden)].Value;
+        if (row.IsLocked)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_Locked)].Value;
+        if (IsEventClosed)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_Closed)].Value;
+        if (!Me.IsAuthenticated)
+            return Localizer[nameof(Language.Pages_Events_Detail_ActionSignIn)].Value;
+        if (GetOpenSlotCount(row) is 0)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_Assigned)].Value;
+        return row.Capacity > 1 ? Localizer[nameof(Language.Pages_Events_Detail_ActionClaimRole)].Value : Localizer[nameof(Language.Pages_EventView_AssignToSelf)];
+    }
+
+    private static string GetSlotRoleIconClass(SlotRegisterRow row)
+    {
+        var title = row.Title.ToLowerInvariant();
+        var icon = title switch
+        {
+            var value when value.Contains("medic", StringComparison.Ordinal)
+                           || value.Contains("medical", StringComparison.Ordinal)
+                           || value.Contains("corpsman", StringComparison.Ordinal) => "medical",
+            var value when value.Contains("radio", StringComparison.Ordinal)
+                           || value.Contains("rto", StringComparison.Ordinal)
+                           || value.Contains("jtac", StringComparison.Ordinal)
+                           || value.Contains("fac", StringComparison.Ordinal) => "radio",
+            var value when value.Contains("lead", StringComparison.Ordinal)
+                           || value.Contains("command", StringComparison.Ordinal)
+                           || value.Contains("officer", StringComparison.Ordinal) => "host",
+            var value when value.Contains("pilot", StringComparison.Ordinal)
+                           || value.Contains("transport", StringComparison.Ordinal)
+                           || value.Contains("driver", StringComparison.Ordinal)
+                           || value.Contains("crew", StringComparison.Ordinal) => "extract",
+            var value when value.Contains("marksman", StringComparison.Ordinal)
+                           || value.Contains("sniper", StringComparison.Ordinal)
+                           || value.Contains("scout", StringComparison.Ordinal)
+                           || value.Contains("recon", StringComparison.Ordinal) => "stealth",
+            var value when value.Contains("support", StringComparison.Ordinal)
+                           || value.Contains("engineer", StringComparison.Ordinal)
+                           || value.Contains("gunner", StringComparison.Ordinal)
+                           || value.Contains("autorifleman", StringComparison.Ordinal) => "support",
+            _ => "slot",
+        };
+
+        return $"utf-md-icon utf-md-icon--{icon} utf-slot-role-icon";
+    }
+
+    private string GetPrimarySlotActionLabel()
+    {
+        if (_assigningSlotNumber is not null)
+            return Localizer[nameof(Language.Pages_Events_Detail_ActionAssigningSlot)].Value;
+        if (!Me.IsAuthenticated)
+            return Localizer[nameof(Language.Pages_Events_Detail_ActionSignInToAssign)].Value;
+        if (IsEventClosed)
+            return Localizer[nameof(Language.Pages_Events_Detail_Status_OperationStarted)].Value;
+        return CanAssignAnySlot
+            ? Localizer[nameof(Language.Pages_Events_Detail_ActionAssignSlot)].Value
+            : Localizer[nameof(Language.Pages_Events_Detail_Status_NoOpenSlots)].Value;
+    }
+
+    private string GetAttendanceChoiceClass(Common.Event.EEventAcceptance acceptance)
+    {
+        var classes = acceptance switch
+        {
+            Common.Event.EEventAcceptance.Accepted => "utf-attendance-choice utf-attendance-choice--confirmed",
+            Common.Event.EEventAcceptance.Maybe    => "utf-attendance-choice utf-attendance-choice--pending",
+            Common.Event.EEventAcceptance.Rejected => "utf-attendance-choice utf-attendance-choice--unavailable",
+            _                                        => "utf-attendance-choice",
+        };
+
+        return _attendanceUpdating && _pendingAcceptance == acceptance ? $"{classes} updating" : classes;
+    }
+
+    private string GetAttendanceChoiceLabel(Common.Event.EEventAcceptance acceptance)
+        => acceptance switch
+        {
+            Common.Event.EEventAcceptance.Accepted => Localizer[nameof(Language.Pages_Events_Detail_Status_Confirmed)].Value,
+            Common.Event.EEventAcceptance.Maybe    => Localizer[nameof(Language.Pages_Events_Detail_Status_Pending)].Value,
+            Common.Event.EEventAcceptance.Rejected => Localizer[nameof(Language.Pages_Events_Detail_Status_Unavailable)].Value,
+            _                                        => Localizer[nameof(Language.Pages_Events_Detail_Status_Unknown)].Value,
+        };
+
+    private static string GetSideClass(SlotRegisterRow row)
+        => $"utf-side-pill utf-side-pill--{row.SideKey}";
+
+    private static string GetSideClass(PlainEventSlotDto slot)
+        => $"utf-side-pill utf-side-pill--{GetSideKey(slot)}";
+
+    private static string GetSideKey(PlainEventSlotDto slot)
+        => slot.Side switch
+        {
+            EArmaSide.East       => "east",
+            EArmaSide.West       => "west",
+            EArmaSide.Resistance => "resistance",
+            EArmaSide.Civilian   => "civilian",
+            EArmaSide.AmbientLife => "ambient",
+            EArmaSide.Logic      => "logic",
+            _ => "empty",
+        };
+
+    private string GetSideLabel(PlainEventSlotDto slot)
+        => slot.Side switch
+        {
+            EArmaSide.East       => Localizer[nameof(Language.East)].Value,
+            EArmaSide.West       => Localizer[nameof(Language.West)].Value,
+            EArmaSide.Resistance => Localizer[nameof(Language.Resistance)].Value,
+            EArmaSide.Civilian   => Localizer[nameof(Language.Civilian)].Value,
+            EArmaSide.AmbientLife => Localizer[nameof(Language.Ambient)].Value,
+            EArmaSide.Logic      => Localizer[nameof(Language.Logic)].Value,
+            _ => Localizer[nameof(Language.Pages_Events_Detail_Status_SidePending)].Value,
+        };
+
+    private sealed record SlotRegisterKey(
+        string Group,
+        string Title,
+        string SideKey,
+        string SideLabel
+    );
+
+    private sealed record SlotRegisterGroup(
+        string Name,
+        IReadOnlyList<SlotRegisterRow> Rows
+    )
+    {
+        public int TotalCount => Rows.Sum((row) => row.Capacity);
+
+        public int AssignedCount => Rows.Sum((row) => row.AssignedCount);
+    }
+
+    private sealed record SlotRegisterRow(
+        string Group,
+        string Title,
+        string SideKey,
+        string SideLabel,
+        IReadOnlyList<PlainEventSlotDto> Slots
+    )
+    {
+        public int Capacity => Slots.Count;
+
+        public int AssignedCount => Slots.Count((slot) => slot.AssignedToFk is not null);
+
+        public int OpenCount => Slots.Count((slot) => slot.AssignedToFk is null && (slot.IsVisible ?? true));
+
+        public bool IsHidden => Slots.All((slot) => !(slot.IsVisible ?? true));
+
+        public bool IsLocked => Slots.All((slot) => !(slot.IsSelfAssignable ?? true) || !(slot.IsVisible ?? true));
+
+        public int FirstSlotNumber
+            => Slots.Select((slot) => slot.SlotNumber ?? int.MaxValue).DefaultIfEmpty(int.MaxValue).Min();
+
+        public int SideSort
+            => SideKey switch
+            {
+                "west"       => 0,
+                "east"       => 1,
+                "resistance" => 2,
+                "civilian"   => 3,
+                "ambient"    => 4,
+                "logic"      => 5,
+                _            => 6,
+            };
+    }
+
+    private sealed record BriefingObjective(string Icon, string Text);
+}

@@ -1,0 +1,557 @@
+@page "/data/mod-packs/create"
+@page "/command/mod-packs/create"
+@layout CommandCenterLayout
+@using System.Globalization
+@using Microsoft.FluentUI.AspNetCore.Components
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@inject IModPackRepository ModPackRepository
+@inject NavigationManager NavigationManager
+@inject ModPackAutoCompleteService ModPackAutoCompleteService
+@inject BaseUrl BaseUrl
+@inject MeService Me
+
+@inject IStringLocalizer<Language> Localizer
+<PageTitle>@Localizer[nameof(Language.Auto_CreateModPack_04e0630f)]</PageTitle>
+
+<div class="modpack-create-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Auto_CreateModPack_04e0630f)])"
+                          Description="@(Localizer[nameof(Language.Auto_CreateAStandaloneHTMLModPackOrAComposition_fc31ae64)])">
+        <Actions>
+            <UtfCommandButton OnClick="@(() => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/mod-packs")))">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Auto_BackToModPacks_9037ecf6)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanCreateModPacks)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Auto_ModPackAdministratorAccessRequired_95eb8250)]</h2>
+            <p>@Localizer[nameof(Language.Auto_ModPackCreationIsVisibleOnlyToAuthorizedAsset_24514d7e)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_submitError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_submitError
+            </div>
+        }
+
+        <section class="utf-panel modpack-create-flow">
+            <ol class="modpack-create-stepper" aria-label="@(Localizer[nameof(Language.Auto_CreateModPackSteps_cf46b9fc)])">
+                @foreach (var step in Steps)
+                {
+                    <li class="@GetStepClass(step.Index)" @key="step.Index">
+                        <button type="button" @onclick="@(() => SetStep(step.Index))">
+                            <span>@step.Index.ToString(CultureInfo.CurrentCulture)</span>
+                            <strong>@GetStepLabel(step.Index)</strong>
+                            <small>@GetStepDescription(step.Index)</small>
+                        </button>
+                    </li>
+                }
+            </ol>
+
+            <main class="modpack-create-step">
+                @switch (_step)
+                {
+                    case 2:
+                        <section class="modpack-create-section">
+                            <div class="modpack-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@(_kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Composition)] : Localizer[nameof(Language.Standalone)])</span>
+                                    <h2>@(_kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Auto_SelectMemberRevisions_686f0cd0)] : Localizer[nameof(Language.Auto_UploadHTMLArtifact_d37a21b4)])</h2>
+                                </div>
+                                <span>@GetArtifactStatusLabel()</span>
+                            </div>
+
+                            @if (_kind is ModPackCreationKind.Composition)
+                            {
+                                <div class="modpack-create-composition">
+                                    <FluentAutocomplete Multiple="true"
+                                                        MaximumSelectedOptions="100"
+                                                        Required="true"
+                                                        TOption="UtfApi.Models.FullModPackDefinitionDto"
+                                                        @bind-SelectedOptions="_selectedModPacks"
+                                                        OnOptionsSearch="OnStandaloneOptionsSearch"
+                                                        OptionText="ModPackAutoCompleteService.FullModPackDefinitionDto.OptionText"
+                                                        Label="@(Localizer[nameof(Language.Auto_StandaloneModPacks_34afa7f0)])"
+                                                        Placeholder="@(Localizer[nameof(Language.Auto_SearchStandaloneModPacks_888f2c1f)])"/>
+                                    <span>@SelectedModPacksLabel</span>
+                                </div>
+                                @if (_selectedModPacks.Any())
+                                {
+                                    <div class="utf-command-table-scroll modpack-create-selection-scroll">
+                                        <table class="utf-command-table modpack-create-selection-table">
+                                            <thead>
+                                            <tr>
+                                                <th>@Localizer[nameof(Language.Package)]</th>
+                                                <th>@Localizer[nameof(Language.Auto_LatestRevision_305ad7b9)]</th>
+                                                <th>@Localizer[nameof(Language.Created)]</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            @foreach (var modPack in _selectedModPacks)
+                                            {
+                                                var revision = GetLatestActiveRevision(modPack);
+                                                <tr @key="modPack.PrimaryKey">
+                                                    <td>
+                                                        <strong>@FormatTitle(modPack.Title)</strong>
+                                                        <span>@FormatKey(modPack.PrimaryKey)</span>
+                                                    </td>
+                                                    <td>@FormatKey(revision?.PrimaryKey)</td>
+                                                    <td>@FormatDate(revision?.TimeStampCreated)</td>
+                                                </tr>
+                                            }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="modpack-create-file">
+                                    <FluentInputFile Id="modpack-create-html-file-uploader"
+                                                     Mode="InputFileMode.Stream"
+                                                     Multiple="false"
+                                                     MaximumFileCount="1"
+                                                     MaximumFileSize="@(10 * Constants.File.Megabyte)"
+                                                     Accept=".html,.htm,text/html"
+                                                     OnCompleted="@OnHtmlCompletedAsync">
+                                        <ChildContent>
+                                            <label for="modpack-create-html-file-uploader">
+                                                <FluentIcon Value="@(new Icons.Regular.Size32.ArrowUpload())"/>
+                                            </label>
+                                            <div>@Localizer[nameof(Language.Auto_DropHTMLHereOrBrowse_7f1c5302)]</div>
+                                            <div>@Localizer[nameof(Language.Auto_HTMLOrHTMUpTo10MB_cfe507a7)]</div>
+                                        </ChildContent>
+                                    </FluentInputFile>
+                                    <span>@HtmlFileLabel</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(_html))
+                                {
+                                    <section class="modpack-create-preview">
+                                        <span class="utf-kicker">@Localizer[nameof(Language.Auto_ArtifactPreview_473d17d7)]</span>
+                                        <iframe title="@(Localizer[nameof(Language.Auto_UploadedModPackHTMLPreview_43533584)])"
+                                                sandbox=""
+                                                srcdoc="@_html"></iframe>
+                                    </section>
+                                }
+                            }
+                        </section>
+                        break;
+                    case 3:
+                        <section class="modpack-create-section">
+                            <div class="modpack-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Review)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_ConfirmPackage_c66a3a8e)]</h2>
+                                </div>
+                                <span class="@GetReviewStatusClass()">
+                                    <span class="utf-status__dot"></span>@GetReviewStatusLabel()
+                                </span>
+                            </div>
+                            <div class="modpack-create-review-grid">
+                                <article class="modpack-create-review-panel">
+                                    <header>
+                                        <strong>@Localizer[nameof(Language.Definition)]</strong>
+                                        <button type="button" @onclick="@(() => SetStep(1))">@Localizer[nameof(Language.Edit)]</button>
+                                    </header>
+                                    <dl>
+                                        <dt>@Localizer[nameof(Language.Title)]</dt>
+                                        <dd>@GetTitleLabel()</dd>
+                                        <dt>@Localizer[nameof(Language.Type)]</dt>
+                                        <dd>@GetKindLabel()</dd>
+                                        <dt>@Localizer[nameof(Language.Owner)]</dt>
+                                        <dd>@(Me.IsAuthenticated ? Me.User.Nickname ?? Localizer[nameof(Language.Auto_CurrentUser_1572da5f)].Value : Localizer[nameof(Language.Auto_CurrentUser_1572da5f)].Value)</dd>
+                                    </dl>
+                                </article>
+                                <article class="modpack-create-review-panel">
+                                    <header>
+                                        <strong>@(_kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Members)] : Localizer[nameof(Language.Artifact)])</strong>
+                                        <button type="button" @onclick="@(() => SetStep(2))">@Localizer[nameof(Language.Edit)]</button>
+                                    </header>
+                                    <dl>
+                                        @if (_kind is ModPackCreationKind.Composition)
+                                        {
+                                            <dt>@Localizer[nameof(Language.Selected)]</dt>
+                                            <dd>@SelectedModPacksLabel</dd>
+                                            <dt>@Localizer[nameof(Language.Auto_RevisionIDs_ba9f5fcc)]</dt>
+                                            <dd>@GetSelectedRevisionSummary()</dd>
+                                        }
+                                        else
+                                        {
+                                            <dt>@Localizer[nameof(Language.File)]</dt>
+                                            <dd>@HtmlFileLabel</dd>
+                                            <dt>@Localizer[nameof(Language.Size)]</dt>
+                                            <dd>@GetHtmlSizeLabel()</dd>
+                                        }
+                                    </dl>
+                                </article>
+                            </div>
+                            <section class="modpack-create-final-checklist">
+                                @foreach (var item in GetReadinessRows())
+                                {
+                                    <div class="@GetChecklistRowClass(item.IsComplete)" @key="item.Label">
+                                        <span class="utf-status__dot"></span>
+                                        <strong>@item.Label</strong>
+                                        <span>@(item.IsComplete ? Localizer[nameof(Language.Complete)] : Localizer[nameof(Language.Auto_NeedsAttention_c1ebc781)])</span>
+                                    </div>
+                                }
+                            </section>
+                        </section>
+                        break;
+                    default:
+                        <section class="modpack-create-section">
+                            <div class="modpack-create-section__heading">
+                                <div>
+                                    <span class="utf-kicker">@Localizer[nameof(Language.Definition)]</span>
+                                    <h2>@Localizer[nameof(Language.Auto_PackageIdentity_1284e9ed)]</h2>
+                                </div>
+                                <span>@GetDefinitionStatusLabel()</span>
+                            </div>
+                            <div class="modpack-create-kind-grid" role="radiogroup" aria-label="@(Localizer[nameof(Language.Auto_ModPackType_4d91d271)])">
+                                <button class="@GetKindButtonClass(ModPackCreationKind.Standalone)"
+                                        type="button"
+                                        @onclick="@(() => SetKind(ModPackCreationKind.Standalone))">
+                                    <span class="utf-status utf-status--neutral">
+                                        <span class="utf-status__dot"></span>@Localizer[nameof(Language.Standalone)]
+                                    </span>
+                                    <strong>@Localizer[nameof(Language.Auto_HTMLPackage_56c8e9c6)]</strong>
+                                    <small>@Localizer[nameof(Language.Auto_CreatesAnOwnedModPackDefinitionWithAnInitial_61cd85d0)]</small>
+                                </button>
+                                <button class="@GetKindButtonClass(ModPackCreationKind.Composition)"
+                                        type="button"
+                                        @onclick="@(() => SetKind(ModPackCreationKind.Composition))">
+                                    <span class="utf-status utf-status--info">
+                                        <span class="utf-status__dot"></span>@Localizer[nameof(Language.Composition)]
+                                    </span>
+                                    <strong>@Localizer[nameof(Language.Auto_RevisionBundle_8f3de2a4)]</strong>
+                                    <small>@Localizer[nameof(Language.Auto_CreatesAPackageFromLatestActiveRevisionsOfExisting_80b2a4d8)]</small>
+                                </button>
+                            </div>
+                            <label class="modpack-create-field modpack-create-field--wide">
+                                <span>@Localizer[nameof(Language.Title)]</span>
+                                <input class="utf-command-input" maxlength="1024" @bind="_title"/>
+                            </label>
+                        </section>
+                        break;
+                }
+            </main>
+
+            <footer class="modpack-create-command-bar">
+                <div>
+                    <span>@GetCurrentStepLabel()</span>
+                    <strong>@GetReviewStatusLabel()</strong>
+                </div>
+                <div>
+                    <button class="utf-button utf-button--ghost"
+                            type="button"
+                            disabled="@(_step <= 1 || _isSubmitting)"
+                            @onclick="PreviousStep">
+                        @Localizer[nameof(Language.Previous)]
+                    </button>
+                    @if (_step < FinalStep)
+                    {
+                        <button class="utf-button utf-button--primary"
+                                type="button"
+                                @onclick="NextStep">
+                            @Localizer[nameof(Language.Next)]
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="utf-button utf-button--primary"
+                                type="button"
+                                disabled="@(!CanCreate)"
+                                @onclick="CreateModPackAsync">
+                            @(_isSubmitting ? Localizer[nameof(Language.Pages_Data_ModPacks_Create_ActionCreating)] : Localizer[nameof(Language.Pages_Data_ModPacks_Create_ActionCreate)])
+                        </button>
+                    }
+                </div>
+            </footer>
+        </section>
+    }
+</div>
+
+@code {
+    private const int FinalStep = 3;
+    private const string MissingValue = "n/a";
+
+    private string                                              _title            = string.Empty;
+    private string                                              _html             = string.Empty;
+    private string                                              _htmlFileName     = string.Empty;
+    private IEnumerable<UtfApi.Models.FullModPackDefinitionDto> _selectedModPacks = [];
+    private ModPackCreationKind                                 _kind             = ModPackCreationKind.Standalone;
+    private int                                                 _step             = 1;
+    private bool                                                _isSubmitting;
+    private string?                                             _submitError;
+    private string?                                             _appliedKind;
+
+    [SupplyParameterFromQuery(Name = "kind")]
+    public string? Kind { get; set; }
+
+    private static readonly IReadOnlyList<StepItem> Steps =
+    [
+        new(1),
+        new(2),
+        new(3),
+    ];
+
+    private bool CanCreateModPacks
+        => Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All);
+
+    private bool CanCreate
+        => !_isSubmitting
+           && !string.IsNullOrWhiteSpace(_title)
+           && (_kind is ModPackCreationKind.Composition
+               ? _selectedModPacks.Any() && _selectedModPacks.All((modPack) => GetLatestActiveRevision(modPack)?.PrimaryKey is not null)
+               : !string.IsNullOrWhiteSpace(_html));
+
+    private string HtmlFileLabel
+        => string.IsNullOrWhiteSpace(_htmlFileName) ? Localizer[nameof(Language.Auto_HTMLArtifactRequired_aa5544da)].Value : _htmlFileName;
+
+    private string SelectedModPacksLabel
+    {
+        get
+        {
+            var count = _selectedModPacks.Count();
+            return count == 1
+                ? Localizer[nameof(Language.Auto_1StandalonePackSelected_d8f0dc9c)].Value
+                : Localizer[nameof(Language.Auto_StandalonePacksSelected_e437ccf0), count].Value;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (string.Equals(_appliedKind, Kind, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _kind = ParseKind(Kind);
+        _appliedKind = Kind;
+    }
+
+    private void SetStep(int step)
+        => _step = Math.Clamp(step, 1, FinalStep);
+
+    private void PreviousStep()
+        => SetStep(_step - 1);
+
+    private void NextStep()
+        => SetStep(_step + 1);
+
+    private void SetKind(ModPackCreationKind kind)
+    {
+        if (_kind == kind)
+            return;
+
+        _kind = kind;
+        _submitError = null;
+    }
+
+    private async Task CreateModPackAsync()
+    {
+        if (!CanCreate)
+            return;
+
+        _isSubmitting = true;
+        _submitError = null;
+
+        try
+        {
+            PlainModPackDefinitionDto createdModPack;
+            if (_kind is ModPackCreationKind.Composition)
+            {
+                createdModPack = await ModPackRepository.CreateModPackAsync(
+                        new UtfApi.Models.ModPackCompositionCreationPayload
+                        {
+                            Title = _title.Trim(),
+                            RevisionIds = GetLatestRevisionIds()
+                                .Cast<long?>()
+                                .ToList(),
+                        }
+                    )
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                createdModPack = await ModPackRepository.CreateModPackAsync(
+                        new UtfApi.Models.ModPackCreationPayload
+                        {
+                            Title = _title.Trim(),
+                            Html  = _html,
+                        }
+                    )
+                    .ConfigureAwait(false);
+            }
+
+            var route = createdModPack.PrimaryKey is { } primaryKey
+                ? $"command/mod-packs/{primaryKey}"
+                : "command/mod-packs";
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl(route));
+        }
+        catch
+        {
+            _submitError = Localizer[nameof(Language.Auto_ModPackCouldNotBeCreatedCheckThePackage_cd6c5632)].Value;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task OnHtmlCompletedAsync(IEnumerable<FluentInputFileEventArgs> files)
+    {
+        if (files.SingleOrDefault() is not { Stream: not null } file)
+            return;
+
+        using var reader = new StreamReader(file.Stream);
+        _html = await reader.ReadToEndAsync();
+        _htmlFileName = file.Name;
+    }
+
+    private async Task OnStandaloneOptionsSearch(OptionsSearchEventArgs<UtfApi.Models.FullModPackDefinitionDto> arg)
+    {
+        await ModPackAutoCompleteService.FullModPackDefinitionDto.OnOptionsSearch(arg);
+        arg.Items = arg.Items?
+            .Where(IsSelectableStandalone)
+            .ToArray() ?? [];
+    }
+
+    private string GetStepClass(int step)
+    {
+        if (_step == step)
+            return "active";
+        return IsStepComplete(step) ? "complete" : string.Empty;
+    }
+
+    private bool IsStepComplete(int step)
+        => step switch
+        {
+            1 => !string.IsNullOrWhiteSpace(_title),
+            2 => _kind is ModPackCreationKind.Composition
+                ? _selectedModPacks.Any() && _selectedModPacks.All((modPack) => GetLatestActiveRevision(modPack)?.PrimaryKey is not null)
+                : !string.IsNullOrWhiteSpace(_html),
+            3 => CanCreate,
+            _ => false,
+        };
+
+    private string GetCurrentStepLabel()
+        => GetStepLabel(_step);
+
+    private string GetStepLabel(int step)
+        => step switch
+        {
+            1 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Definition_Label)].Value,
+            2 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Artifact_Label)].Value,
+            3 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Review_Label)].Value,
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, null),
+        };
+
+    private string GetStepDescription(int step)
+        => step switch
+        {
+            1 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Definition_Description)].Value,
+            2 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Artifact_Description)].Value,
+            3 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Review_Description)].Value,
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, null),
+        };
+
+    private string GetDefinitionStatusLabel()
+        => IsStepComplete(1) ? Localizer[nameof(Language.Auto_DefinitionReady_5e834525)].Value : Localizer[nameof(Language.Auto_TitleRequired_c9a0236c)].Value;
+
+    private string GetArtifactStatusLabel()
+        => IsStepComplete(2)
+            ? _kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Auto_MembersReady_55b06fbf)].Value : Localizer[nameof(Language.Auto_ArtifactReady_6be01f39)].Value
+            : _kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Auto_SelectAtLeastOneModPack_0ef5008a)].Value : Localizer[nameof(Language.Auto_HTMLArtifactRequired_aa5544da)].Value;
+
+    private string GetReviewStatusLabel()
+        => CanCreate ? Localizer[nameof(Language.Auto_ReadyToCreate_ff2d530f)].Value : Localizer[nameof(Language.Auto_NeedsAttention_c1ebc781)].Value;
+
+    private string GetReviewStatusClass()
+        => CanCreate ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+
+    private string GetKindLabel()
+        => _kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Composition)].Value : Localizer[nameof(Language.Standalone)].Value;
+
+    private string GetTitleLabel()
+        => string.IsNullOrWhiteSpace(_title) ? Localizer[nameof(Language.Auto_UntitledModPack_68e62d9a)].Value : _title;
+
+    private string GetKindButtonClass(ModPackCreationKind kind)
+        => _kind == kind ? "modpack-create-kind active" : "modpack-create-kind";
+
+    private string GetHtmlSizeLabel()
+        => string.IsNullOrWhiteSpace(_html)
+            ? MissingValue
+            : Localizer["Pages_Data_ModPacks_Create_SizeCharacters", _html.Length].Value;
+
+    private string GetSelectedRevisionSummary()
+    {
+        var revisionIds = GetLatestRevisionIds();
+        return revisionIds.Length is 0
+            ? MissingValue
+            : string.Join(", ", revisionIds.Select((revisionId) => revisionId.ToString(CultureInfo.InvariantCulture)));
+    }
+
+    private IReadOnlyList<ReadinessRow> GetReadinessRows()
+        =>
+        [
+            new(Localizer[nameof(Language.Auto_TitleDefined_288586ef)].Value, !string.IsNullOrWhiteSpace(_title)),
+            new(Localizer[nameof(Language.Auto_TypeSelected_875c9448)].Value, true),
+            new(
+                _kind is ModPackCreationKind.Composition
+                    ? Localizer[nameof(Language.Auto_MemberRevisionsSelected_e6bb4b51)].Value
+                    : Localizer[nameof(Language.Auto_HTMLArtifactUploaded_f3a32db4)].Value,
+                IsStepComplete(2)
+            ),
+        ];
+
+    private long[] GetLatestRevisionIds()
+        => _selectedModPacks
+            .Select((definitionDto) => GetLatestActiveRevision(definitionDto)?.PrimaryKey)
+            .Where((revisionId) => revisionId is not null)
+            .Select((revisionId) => revisionId!.Value)
+            .ToArray();
+
+    private static string GetChecklistRowClass(bool isComplete)
+        => isComplete ? "modpack-create-checklist-row complete" : "modpack-create-checklist-row";
+
+    private static ModPackCreationKind ParseKind(string? value)
+        => string.Equals(value, "composition", StringComparison.OrdinalIgnoreCase)
+            ? ModPackCreationKind.Composition
+            : ModPackCreationKind.Standalone;
+
+    private static bool IsSelectableStandalone(UtfApi.Models.FullModPackDefinitionDto definitionDto)
+        => !(definitionDto.IsComposition ?? false) && GetLatestActiveRevision(definitionDto)?.PrimaryKey is not null;
+
+    private static UtfApi.Models.PlainModPackRevisionDto? GetLatestActiveRevision(UtfApi.Models.FullModPackDefinitionDto definitionDto)
+        => definitionDto.ModPackRevisions
+            ?.Where((revisionDto) => revisionDto.IsActive ?? true)
+            .OrderByDescending((revisionDto) => revisionDto.TimeStampCreated)
+            .FirstOrDefault();
+
+    private static string FormatDate(DateTimeOffset? value)
+        => value?.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture) ?? MissingValue;
+
+    private string FormatTitle(string? title)
+        => string.IsNullOrWhiteSpace(title) ? Localizer[nameof(Language.Auto_UntitledModPack_68e62d9a)].Value : title;
+
+    private static string FormatKey(long? value)
+        => value?.ToString(CultureInfo.InvariantCulture) ?? MissingValue;
+
+    private enum ModPackCreationKind
+    {
+        Standalone,
+        Composition,
+    }
+
+    private sealed record StepItem(int Index);
+
+    private sealed record ReadinessRow(string Label, bool IsComplete);
+}

@@ -1,0 +1,45 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<div class="@AlertClass" role="@EffectiveRole">
+    <span class="utf-alert__marker" aria-hidden="true"></span>
+    <div class="utf-alert__body">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public MessageIntent Intent { get; set; } = MessageIntent.Info;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public string? Role { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string EffectiveRole
+        => Role ?? (Intent is MessageIntent.Error or MessageIntent.Warning ? "alert" : "status");
+
+    private string AlertClass
+    {
+        get
+        {
+            var baseClass = $"utf-alert {GetIntentClass()}";
+            return string.IsNullOrWhiteSpace(Class) ? baseClass : $"{baseClass} {Class}";
+        }
+    }
+
+    private string GetIntentClass()
+        => Intent switch
+        {
+            MessageIntent.Error   => "utf-alert--danger",
+            MessageIntent.Success => "utf-alert--success",
+            MessageIntent.Warning => "utf-alert--warning",
+            _                     => "utf-alert--info",
+        };
+
+}

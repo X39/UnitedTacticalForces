@@ -1,0 +1,241 @@
+@page "/command/content/pages"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.PublicPageRepository
+@inject IPublicPageRepository PublicPageRepository
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Content_Pages_PageTitle)]</PageTitle>
+
+<div class="public-pages-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Content_Pages_PageTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Content_Pages_PageDescription)])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Common_Refresh)]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("gdpr")">
+                @Localizer[nameof(Language.Pages_Command_Content_Pages_PublicGdprLink)]
+            </UtfCommandButton>
+            <UtfCommandButton Variant="primary" Href="@BaseUrl.ResolveSelfUrl("command/content/pages/gdpr/edit")">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Edit())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Content_Pages_EditGdpr)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManagePages)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Content_Pages_AccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Content_Pages_AccessRequiredDescription)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics public-pages-metrics"
+                 aria-label="@(Localizer[nameof(Language.Pages_Command_Content_Pages_MetricsAria)])">
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Command_Content_Pages_TotalMetricDescription)])"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Content_Pages_TotalMetricStatus)])"
+                              StatusIntent="neutral"
+                              Value="@FormatCount(_pages.Length, Localizer[nameof(Language.Pages_Command_Content_Pages_Count_Singular)].Value, Localizer[nameof(Language.Pages_Command_Content_Pages_Count_Plural)].Value)"/>
+            <UtfCommandMetric Description="@(Localizer[nameof(Language.Pages_Command_Content_Pages_PublishedMetricDescription)])"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Content_Pages_PublishedMetricStatus)])"
+                              StatusIntent="success"
+                              Value="@FormatCount(PublishedPageCount, Localizer[nameof(Language.Pages_Command_Content_Pages_Count_Singular)].Value, Localizer[nameof(Language.Pages_Command_Content_Pages_Count_Plural)].Value)"/>
+        </section>
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Command_Content_Pages_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <section class="utf-panel utf-command-ledger public-pages-list">
+                <div class="utf-command-ledger__header public-pages-list__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Content_Pages_ListKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Content_Pages_ListTitle)]</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@FormatCount(_pages.Length, Localizer[nameof(Language.Pages_Command_Content_Pages_Count_Singular)].Value, Localizer[nameof(Language.Pages_Command_Content_Pages_Count_Plural)].Value)
+                    </span>
+                </div>
+
+                @if (_pages.Length is 0)
+                {
+                    <div class="public-pages-empty">@Localizer[nameof(Language.Pages_Command_Content_Pages_NoRows)]</div>
+                }
+                else
+                {
+                    <div class="utf-command-table-scroll">
+                        <table class="utf-command-table public-pages-table">
+                            <thead>
+                            <tr>
+                                <th>@Localizer[nameof(Language.Pages_Command_Content_Pages_HeaderPage)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Content_Pages_HeaderPublished)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Content_Pages_HeaderRevisions)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Content_Pages_HeaderUpdated)]</th>
+                                <th>@Localizer[nameof(Language.Pages_Command_Content_Pages_HeaderActions)]</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var page in _pages.OrderBy(q => q.Slug))
+                            {
+                                <tr class="utf-command-row--interactive"
+                                    @key="page.PrimaryKey"
+                                    tabindex="0"
+                                    aria-label="@GetPageOpenLabel(page)"
+                                    @onclick="@(() => OpenPageDetail(page))"
+                                    @onkeydown="@((args) => HandlePageRowKeyDown(args, page))">
+                                    <td>
+                                        <strong @onclick:stopPropagation="true"
+                                                @onkeydown:stopPropagation="true">
+                                            <NavLink href="@BaseUrl.ResolveSelfUrl($"command/content/pages/{page.Slug}")">
+                                                @GetPageTitle(page)
+                                            </NavLink>
+                                        </strong>
+                                        <span>@GetPageSummary(page)</span>
+                                    </td>
+                                    <td>
+                                        <span class="@GetPagePublishedStatusClass(page)">
+                                            <span class="utf-status__dot"></span>@GetPagePublishedLabel(page)
+                                        </span>
+                                    </td>
+                                    <td>@(page.Revisions.Length)</td>
+                                    <td>@FormatDateTime(page.TimeStampUpdated)</td>
+                                    <td @onclick:stopPropagation="true"
+                                        @onkeydown:stopPropagation="true">
+                                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/content/pages/{page.Slug}")">
+                                            @Localizer[nameof(Language.Pages_Command_Content_Pages_OpenDetail)]
+                                        </UtfCommandButton>
+                                        <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/content/pages/{page.Slug}/edit")">
+                                            @Localizer[nameof(Language.Pages_Command_Content_Pages_OpenEdit)]
+                                        </UtfCommandButton>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private PublicPageInfo[] _pages = [];
+    private bool _isLoading;
+    private string? _loadError;
+
+    private bool CanManagePages
+        => Me.HasClaim(Claims.Administrative.All) || Me.HasBaseClaim(Claims.Content.Pages);
+
+    private int PublishedPageCount
+        => _pages.Count(q => GetLatestPublishedRevision(q) is not null);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManagePages)
+            await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!CanManagePages)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _pages = (await PublicPageRepository.GetAdminPagesAsync().ConfigureAwait(false)).ToArray();
+        }
+        catch (Exception ex)
+        {
+            _pages = [];
+            _loadError = string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Content_Pages_LoadError)].Value,
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenPageDetail(PublicPageInfo page)
+        => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/content/pages/{page.Slug}"));
+
+    private void HandlePageRowKeyDown(KeyboardEventArgs args, PublicPageInfo page)
+    {
+        if (UtfCommandRowInteraction.IsOpenKey(args))
+            OpenPageDetail(page);
+    }
+
+    private string GetPageTitle(PublicPageInfo page)
+        => page.Revision?.Title
+           ?? string.Format(
+               CultureInfo.CurrentCulture,
+               Localizer[nameof(Language.Pages_Command_Content_Pages_FallbackTitle)].Value,
+               page.Slug
+           );
+
+    private string GetPageSummary(PublicPageInfo page)
+        => string.IsNullOrWhiteSpace(page.Revision?.Summary)
+            ? Localizer[nameof(Language.Pages_Command_Content_Pages_NoSummary)].Value
+            : page.Revision.Summary;
+
+    private string GetPageOpenLabel(PublicPageInfo page)
+        => $"{Localizer[nameof(Language.Pages_Command_Content_Pages_OpenDetail)].Value}: {GetPageTitle(page)}";
+
+    private string GetPagePublishedStatusClass(PublicPageInfo page)
+        => GetLatestPublishedRevision(page) is null
+            ? "utf-status utf-status--warning"
+            : "utf-status utf-status--success";
+
+    private string GetPagePublishedLabel(PublicPageInfo page)
+    {
+        var revision = GetLatestPublishedRevision(page);
+        return revision is null
+            ? Localizer[nameof(Language.Pages_Command_Content_Pages_DraftOnly)].Value
+            : Localizer[nameof(Language.Pages_Command_Content_Pages_PublishedVersion), revision.Version].Value;
+    }
+
+    private static PublicPageRevisionInfo? GetLatestPublishedRevision(PublicPageInfo page)
+        => page.Revisions
+            .Where(q => q.IsPublished)
+            .OrderByDescending(q => q.TimeStampPublished)
+            .ThenByDescending(q => q.Version)
+            .FirstOrDefault();
+
+    private static string FormatDateTime(DateTimeOffset value)
+        => value.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture);
+
+    private static string FormatCount(int count, string singularTemplate, string pluralTemplate)
+        => count is 1
+            ? string.Format(CultureInfo.CurrentCulture, singularTemplate, count)
+            : string.Format(CultureInfo.CurrentCulture, pluralTemplate, count);
+}

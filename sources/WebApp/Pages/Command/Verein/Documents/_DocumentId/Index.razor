@@ -1,0 +1,298 @@
+@page "/command/verein/documents/{DocumentId:long}"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.Verein
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.VereinRepository
+@inject IVereinRepository VereinRepository
+@inject IToastService ToastService
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@GetPageTitle()</PageTitle>
+
+<div class="verein-document-detail-page">
+    <UtfCommandPageHeader Title="@GetHeaderTitle()"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsDetailPageDescription)])">
+        <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/verein/documents")">
+                @Localizer[nameof(Language.Pages_Command_Verein_DocumentsBackToList)]
+            </UtfCommandButton>
+            @if (_document is not null)
+            {
+                <UtfCommandButton Variant="primary"
+                                  Href="@BaseUrl.ResolveSelfUrl($"command/verein/documents/{DocumentId}/edit")">
+                    @Localizer[nameof(Language.Pages_Command_Verein_DocumentsOpenEdit)]
+                </UtfCommandButton>
+            }
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageDocuments)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsAccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsAccessRequiredDescription)]</p>
+        </section>
+    }
+    else if (_isLoading)
+    {
+        <div class="utf-state-panel">
+            @Localizer[nameof(Language.Pages_Command_Verein_Loading)]
+            <FluentProgress Width="240px"/>
+        </div>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning" role="alert">
+            @_loadError
+        </div>
+    }
+    else if (_document is null)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Verein_DocumentNotFoundTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Verein_DocumentNotFoundDescription)]</p>
+        </section>
+    }
+    else
+    {
+        <div class="verein-document-detail-shell">
+            <section class="utf-panel verein-document-preview-panel">
+                <div class="verein-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_DocumentPreviewKicker)]</span>
+                        <h2>@GetDocumentTitle(_document)</h2>
+                    </div>
+                    <span class="@GetDocumentPublishedStatusClass(_document)">
+                        <span class="utf-status__dot"></span>@GetDocumentPublishedLabel(_document)
+                    </span>
+                </div>
+                <div class="verein-document-preview">
+                    <FluentMarkdown @key="ActiveRevision?.PrimaryKey" Content="@GetPreviewMarkdown()"/>
+                </div>
+            </section>
+
+            <aside class="utf-panel verein-document-meta-panel">
+                <div class="verein-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_DocumentMetadataKicker)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Verein_DocumentMetadataTitle)]</h2>
+                    </div>
+                </div>
+                <dl class="verein-facts">
+                    <div>
+                        <dt>@Localizer[nameof(Language.Pages_Command_Verein_DocumentFormKind)]</dt>
+                        <dd>@FormatDocumentKind(_document.Kind)</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer[nameof(Language.Pages_Command_Verein_DocumentMetadataLatestRevision)]</dt>
+                        <dd>@FormatRevisionVersion(ActiveRevision)</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer[nameof(Language.Pages_Command_Verein_DocumentMetadataLatestPublic)]</dt>
+                        <dd>@FormatRevisionVersion(GetLatestPublishedRevision(_document))</dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer[nameof(Language.Pages_Command_Verein_DocumentsHeaderUpdated)]</dt>
+                        <dd>@FormatDateTime(_document.TimeStampUpdated)</dd>
+                    </div>
+                </dl>
+                @if (!string.IsNullOrWhiteSpace(ActiveRevision?.Summary))
+                {
+                    <div class="verein-summary">
+                        <strong>@Localizer[nameof(Language.Pages_Command_Verein_DocumentFormSummary)]</strong>
+                        <p>@ActiveRevision.Summary</p>
+                    </div>
+                }
+            </aside>
+
+            <section class="utf-panel verein-revision-panel">
+                <div class="verein-panel-header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Verein_RevisionsAria)]</span>
+                        <h2>@Localizer[nameof(Language.Pages_Command_Verein_RevisionsTitle)]</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">
+                        <span class="utf-status__dot"></span>@FormatCount(_document.Revisions.Length, Localizer[nameof(Language.Pages_Command_Verein_Count_Singular_Revision)].Value, Localizer[nameof(Language.Pages_Command_Verein_Count_Plural_Revision)].Value)
+                    </span>
+                </div>
+                <div class="verein-revision-stack">
+                    @foreach (var revision in _document.Revisions.OrderByDescending(q => q.Version))
+                    {
+                        <article class="verein-revision-row" @key="revision.PrimaryKey">
+                            <div>
+                                <strong>@Localizer[nameof(Language.Pages_Command_Verein_RevisionVersion), revision.Version]</strong>
+                                <span>@FormatRevisionMeta(revision)</span>
+                            </div>
+                            <span class="@GetRevisionStatusClass(revision)">
+                                <span class="utf-status__dot"></span>@GetRevisionStatusLabel(revision)
+                            </span>
+                            <UtfCommandButton Disabled="@_isSavingPublication"
+                                              OnClick="@(() => ToggleRevisionAsync(revision))">
+                                @(revision.IsPublished
+                                    ? Localizer[nameof(Language.Pages_Command_Verein_DocumentActionUnpublishLatest)]
+                                    : Localizer[nameof(Language.Pages_Command_Verein_DocumentActionPublishLatest)])
+                            </UtfCommandButton>
+                        </article>
+                    }
+                </div>
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public long DocumentId { get; set; }
+
+    private VereinDocumentInfo? _document;
+    private bool _isLoading;
+    private bool _isSavingPublication;
+    private string? _loadError;
+
+    private bool CanManageDocuments
+        => Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Documents);
+
+    private VereinDocumentRevisionInfo? ActiveRevision
+        => _document?.Revision ?? _document?.Revisions.OrderByDescending(q => q.Version).FirstOrDefault();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageDocuments)
+            await LoadDocumentAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadDocumentAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _document = (await VereinRepository.GetAdminDocumentsAsync().ConfigureAwait(false))
+                .FirstOrDefault(q => q.PrimaryKey == DocumentId);
+        }
+        catch (Exception ex)
+        {
+            _document = null;
+            _loadError = string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Verein_LoadError)].Value,
+                UserFacingError.Message(ex)
+            );
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ToggleRevisionAsync(VereinDocumentRevisionInfo revision)
+    {
+        if (_isSavingPublication)
+            return;
+
+        _isSavingPublication = true;
+        try
+        {
+            _document = revision.IsPublished
+                ? await VereinRepository.UnpublishRevisionAsync(revision.PrimaryKey).ConfigureAwait(false)
+                : await VereinRepository.PublishRevisionAsync(revision.PrimaryKey).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer[nameof(Language.Pages_Command_Verein_DocumentToastPublicationUpdated)].Value);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(UserFacingError.Message(ex));
+        }
+        finally
+        {
+            _isSavingPublication = false;
+        }
+    }
+
+    private string GetPageTitle()
+        => _document is null
+            ? Localizer[nameof(Language.Pages_Command_Verein_DocumentsDetailPageTitle)].Value
+            : string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer[nameof(Language.Pages_Command_Verein_DocumentsDetailPageTitleWithDocument)].Value,
+                GetDocumentTitle(_document)
+            );
+
+    private string GetHeaderTitle()
+        => _document is null
+            ? Localizer[nameof(Language.Pages_Command_Verein_DocumentsDetailPageTitle)].Value
+            : GetDocumentTitle(_document);
+
+    private string GetPreviewMarkdown()
+        => string.IsNullOrWhiteSpace(ActiveRevision?.Markdown)
+            ? Localizer[nameof(Language.Pages_Command_Verein_DocumentPreviewEmpty)].Value
+            : ActiveRevision.Markdown;
+
+    private string GetDocumentTitle(VereinDocumentInfo document)
+        => document.Revision?.Title
+           ?? string.Format(
+               CultureInfo.CurrentCulture,
+               Localizer[nameof(Language.Pages_Command_Verein_DocumentFallbackTitle)].Value,
+               document.PrimaryKey
+           );
+
+    private string FormatDocumentKind(EVereinDocumentKind kind)
+        => kind switch
+        {
+            EVereinDocumentKind.Satzung => Localizer[nameof(Language.Satzung)].Value,
+            EVereinDocumentKind.Minutes => Localizer[nameof(Language.Auto_BeschlussMinutes_6fa4d247)].Value,
+            _ => kind.ToString(),
+        };
+
+    private string GetDocumentPublishedStatusClass(VereinDocumentInfo document)
+        => GetLatestPublishedRevision(document) is null
+            ? "utf-status utf-status--warning"
+            : "utf-status utf-status--success";
+
+    private string GetDocumentPublishedLabel(VereinDocumentInfo document)
+    {
+        var revision = GetLatestPublishedRevision(document);
+        return revision is null
+            ? Localizer[nameof(Language.Pages_Command_Verein_DocumentsDraftOnly)].Value
+            : Localizer[nameof(Language.Pages_Command_Verein_DocumentsPublishedVersion), revision.Version].Value;
+    }
+
+    private string GetRevisionStatusClass(VereinDocumentRevisionInfo revision)
+        => revision.IsPublished ? "utf-status utf-status--success" : "utf-status utf-status--warning";
+
+    private string GetRevisionStatusLabel(VereinDocumentRevisionInfo revision)
+        => revision.IsPublished
+            ? Localizer[nameof(Language.Pages_Command_Verein_DocumentsPublished)].Value
+            : Localizer[nameof(Language.Pages_Command_Verein_DocumentsDraftOnly)].Value;
+
+    private string FormatRevisionMeta(VereinDocumentRevisionInfo revision)
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            Localizer[nameof(Language.Pages_Command_Verein_RevisionMeta)].Value,
+            revision.IsPublished ? Localizer[nameof(Language.Pages_Command_Verein_DocumentsPublished)].Value : Localizer[nameof(Language.Pages_Command_Verein_DocumentsDraftOnly)].Value,
+            revision.AuthorName ?? Localizer[nameof(Language.Pages_Command_Verein_UnknownAuthor)].Value,
+            FormatDateTime(revision.TimeStampCreated)
+        );
+
+    private string FormatRevisionVersion(VereinDocumentRevisionInfo? revision)
+        => revision is null
+            ? Localizer[nameof(Language.Pages_Command_Verein_DocumentsNoPublicRevision)].Value
+            : Localizer[nameof(Language.Pages_Command_Verein_RevisionVersion), revision.Version].Value;
+
+    private static VereinDocumentRevisionInfo? GetLatestPublishedRevision(VereinDocumentInfo document)
+        => document.Revisions
+            .Where(q => q.IsPublished)
+            .OrderByDescending(q => q.TimeStampPublished)
+            .ThenByDescending(q => q.Version)
+            .FirstOrDefault();
+
+    private static string FormatDateTime(DateTimeOffset value)
+        => value.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture);
+
+    private static string FormatCount(int count, string singularTemplate, string pluralTemplate)
+        => count is 1
+            ? string.Format(CultureInfo.CurrentCulture, singularTemplate, count)
+            : string.Format(CultureInfo.CurrentCulture, pluralTemplate, count);
+}

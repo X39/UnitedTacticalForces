@@ -1,0 +1,475 @@
+@page "/command/roles"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.CommandCenterRepository
+@using X39.UnitedTacticalForces.WebApp.Services.RoleRepository
+@inject ICommandCenterRepository CommandCenterRepository
+@inject IRoleRepository RoleRepository
+@inject IToastService ToastService
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject NavigationManager NavigationManager
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@Localizer[nameof(Language.Pages_Command_Roles_PageTitle)]</PageTitle>
+
+<div class="authority-page">
+    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Roles_HeaderTitle)])"
+                          Description="@(Localizer[nameof(Language.Pages_Command_Roles_HeaderDescription)])">
+        <Actions>
+            <UtfCommandButton Variant="primary"
+                              Disabled="@(!CanCreateRoles || _isLoading || _isSavingRole)"
+                              OnClick="ToggleCreateRole">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Add())"/>
+                </Icon>
+                <ChildContent>@Localizer[CreateRoleKey]</ChildContent>
+            </UtfCommandButton>
+            <UtfCommandButton Disabled="@(!CanManageAuthority || _isLoading)" OnClick="RefreshAsync">
+                <Icon>
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>
+                </Icon>
+                <ChildContent>@Localizer[nameof(Language.Pages_Command_Roles_ActionRefresh)]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
+
+    @if (!CanManageAuthority)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer[nameof(Language.Pages_Command_Roles_AccessRequiredTitle)]</h2>
+            <p>@Localizer[nameof(Language.Pages_Command_Roles_AccessRequiredDescription)]</p>
+        </section>
+    }
+    else
+    {
+        @if (_loadError is not null)
+        {
+            <div class="utf-state-panel utf-state-panel--warning" role="alert">
+                @_loadError
+            </div>
+        }
+
+        <section class="utf-command-metrics authority-attention" aria-label="@(Localizer[nameof(Language.Pages_Command_Roles_MetricsAriaLabel)])">
+            <UtfCommandMetric Active="@(_activeView is RoleView.All)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Roles_Metric_AllDescription)].Value, _roles.Count)"
+                              OnClick="@(() => SetView(RoleView.All))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Roles_MetricAllStatus)])"
+                              StatusIntent="info"
+                              Value="@FormatCount(_snapshot.RoleCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Role)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Role)].Value)"/>
+            <UtfCommandMetric Active="@(_activeView is RoleView.Assigned)"
+                              Description="@string.Format(CultureInfo.CurrentCulture, Localizer[nameof(Language.Pages_Command_Roles_Metric_AssignedDescription)].Value, LoadedClaimAttachmentCount)"
+                              OnClick="@(() => SetView(RoleView.Assigned))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Roles_MetricAssignedStatus)])"
+                              StatusClass="@GetAssignedStatusClass()"
+                              Value="@FormatCount(LoadedRoleAssignmentCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_MemberAssignment)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_MemberAssignment)].Value)"/>
+            <UtfCommandMetric Active="@(_activeView is RoleView.Empty)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Roles_Metric_EmptyDescription)])"
+                              OnClick="@(() => SetView(RoleView.Empty))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Roles_MetricEmptyStatus)])"
+                              StatusClass="@GetEmptyRoleStatusClass()"
+                              Value="@FormatCount(LoadedEmptyRoleCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Role)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Role)].Value)"/>
+            <UtfCommandMetric Active="@(_activeView is RoleView.HighImpact)"
+                              Description="@(Localizer[nameof(Language.Pages_Command_Roles_Metric_HighImpactDescription)])"
+                              OnClick="@(() => SetView(RoleView.HighImpact))"
+                              Status="@(Localizer[nameof(Language.Pages_Command_Roles_MetricHighImpactStatus)])"
+                              StatusIntent="warning"
+                              Value="@FormatCount(LoadedHighImpactRoleCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Role)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Role)].Value)"/>
+        </section>
+
+        <section class="utf-command-toolbar" aria-label="@(Localizer[nameof(Language.Pages_Command_Roles_ToolbarAriaLabel)])">
+            <UtfCommandSearch Placeholder="@(Localizer[nameof(Language.Pages_Command_Roles_SearchPlaceholder)])"
+                              Value="@_search"
+                              ValueChanged="OnSearchChanged"/>
+            <UtfCommandButton Disabled="@_isLoading"
+                              OnClick="RefreshAsync">
+                @Localizer[nameof(Language.Pages_Command_Roles_ActionSearch)]
+            </UtfCommandButton>
+            <UtfCommandFilter Active="@(_activeView is RoleView.All)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Roles_FilterAll)])"
+                              OnClick="@(() => SetView(RoleView.All))"/>
+            <UtfCommandFilter Active="@(_activeView is RoleView.Assigned)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Roles_FilterAssigned)])"
+                              OnClick="@(() => SetView(RoleView.Assigned))"/>
+            <UtfCommandFilter Active="@(_activeView is RoleView.Empty)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Roles_FilterEmpty)])"
+                              OnClick="@(() => SetView(RoleView.Empty))"/>
+            <UtfCommandFilter Active="@(_activeView is RoleView.HighImpact)"
+                              Label="@(Localizer[nameof(Language.Pages_Command_Roles_FilterHighImpact)])"
+                              OnClick="@(() => SetView(RoleView.HighImpact))"/>
+        </section>
+
+        @if (_isCreatingRole)
+        {
+            <section class="utf-panel authority-create-panel">
+                <div class="authority-role-members__header">
+                    <div>
+                        <span class="utf-kicker">@Localizer[CreateRoleKickerKey]</span>
+                        <h2>@Localizer[CreateRoleKey]</h2>
+                    </div>
+                    <span class="utf-status utf-status--info">
+                        <span class="utf-status__dot"></span>@Localizer[DraftKey]
+                    </span>
+                </div>
+                <div class="member-management-form authority-role-form">
+                    <label class="member-management-field member-management-field--wide">
+                        <span>@Localizer[TitleKey]</span>
+                        <input class="utf-command-input member-management-control"
+                               type="text"
+                               maxlength="1024"
+                               disabled="@_isSavingRole"
+                               @bind="_roleTitle"/>
+                    </label>
+                    <label class="member-management-field member-management-field--wide">
+                        <span>@Localizer[DescriptionKey]</span>
+                        <textarea class="utf-command-input member-management-control"
+                                  rows="3"
+                                  maxlength="1024"
+                                  disabled="@_isSavingRole"
+                                  @bind="_roleDescription"></textarea>
+                    </label>
+                    <div class="member-management-actions">
+                        <UtfCommandButton Variant="primary"
+                                          Disabled="@(!CanSaveRole)"
+                                          OnClick="CreateRoleAsync">
+                            <Icon>
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Save())"/>
+                            </Icon>
+                            <ChildContent>@Localizer[CreateRoleKey]</ChildContent>
+                        </UtfCommandButton>
+                        <UtfCommandButton Disabled="@_isSavingRole" OnClick="CancelCreateRole">
+                            @Localizer[CancelKey]
+                        </UtfCommandButton>
+                    </div>
+                </div>
+            </section>
+        }
+
+        @if (_isLoading)
+        {
+            <div class="utf-state-panel">
+                @Localizer[nameof(Language.Pages_Command_Roles_Loading)]
+                <FluentProgress Width="240px"/>
+            </div>
+        }
+        else
+        {
+            <div class="utf-command-workspace authority-overview-workspace">
+                <section class="utf-panel utf-command-ledger authority-list-panel">
+                    <div class="utf-command-ledger__header authority-panel__header">
+                        <div>
+                            <span class="utf-kicker">@Localizer[nameof(Language.Pages_Command_Roles_RoleLedgerKicker)]</span>
+                            <h2>@GetListTitle()</h2>
+                        </div>
+                        <span class="utf-status utf-status--neutral">
+                            <span class="utf-status__dot"></span>@FormatCount(VisibleRoleCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Row)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Row)].Value)
+                        </span>
+                    </div>
+
+                    @if (!VisibleRoles.Any())
+                    {
+                        <div class="authority-empty">@Localizer[nameof(Language.Pages_Command_Roles_NoRolesMatch)]</div>
+                    }
+                    else
+                    {
+                        <div class="utf-command-table-scroll authority-table-scroll">
+                            <table class="utf-command-table authority-table">
+                                <thead>
+                                <tr>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Roles_HeaderRole)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Roles_HeaderStatus)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Roles_HeaderMembers)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Roles_HeaderClaims)]</th>
+                                    <th>@Localizer[nameof(Language.Pages_Command_Roles_HeaderCoverage)]</th>
+                                    <th>@Localizer[ActionKey]</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var role in VisibleRoles)
+                                {
+                                    <tr class="@GetRoleRowClass(role)"
+                                        @key="role.Role.PrimaryKey"
+                                        tabindex="@GetRoleRowTabIndex(role)"
+                                        aria-label="@GetRoleOpenLabel(role)"
+                                        @onclick="@(() => OpenRole(role))"
+                                        @onkeydown="@((args) => HandleRoleRowKeyDown(args, role))">
+                                        <td>
+                                            <strong>@GetRoleTitle(role)</strong>
+                                            <span>@FormatRoleDescription(role)</span>
+                                        </td>
+                                        <td>
+                                            <span class="@GetRoleStatusClass(role)">
+                                                <span class="utf-status__dot"></span>@GetRoleStatusLabel(role)
+                                            </span>
+                                        </td>
+                                        <td>@FormatCount(role.MemberCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Member)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Member)].Value)</td>
+                                        <td>@FormatCount(role.Claims.Length, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Claim)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Claim)].Value)</td>
+                                        <td>@FormatRoleCoverage(role)</td>
+                                        <td class="authority-member-actions-cell"
+                                            @onclick:stopPropagation="true"
+                                            @onkeydown:stopPropagation="true">
+                                            @if (role.Role.PrimaryKey is { } roleId)
+                                            {
+                                                <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/roles/{roleId}")">
+                                                    <Icon>
+                                                        <FluentIcon Value="@(new Icons.Regular.Size20.Open())"/>
+                                                    </Icon>
+                                                    <ChildContent>@Localizer[OpenDetailsKey]</ChildContent>
+                                                </UtfCommandButton>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private const string ActionKey = "Pages_Command_Roles_Action";
+    private const string CancelKey = "Common_Cancel";
+    private const string CreateRoleKey = "Pages_Command_Roles_CreateRole";
+    private const string CreateRoleKickerKey = "Pages_Command_Roles_CreateRoleKicker";
+    private const string DescriptionKey = "Pages_Command_Roles_FieldDescription";
+    private const string DraftKey = "Pages_Command_Roles_Status_Draft";
+    private const string OpenDetailsKey = "Pages_Command_Roles_OpenDetails";
+    private const string TitleKey = "Pages_Command_Roles_FieldTitle";
+
+    private CommandCenterAuthoritySnapshotInfo _snapshot = new();
+    private IReadOnlyList<CommandCenterAuthorityRoleInfo> _roles = [];
+    private RoleView _activeView = RoleView.All;
+    private string _search = string.Empty;
+    private string _roleTitle = string.Empty;
+    private string _roleDescription = string.Empty;
+    private bool _isCreatingRole;
+    private bool _isLoading;
+    private bool _isSavingRole;
+    private string? _loadError;
+
+    private bool CanManageAuthority
+        => Me.HasClaimOrRoleAdmin();
+
+    private bool CanCreateRoles
+        => Me.HasClaimOrRoleAdmin(Claims.Creation.Role);
+
+    private bool CanSaveRole
+        => CanCreateRoles && !_isSavingRole && !string.IsNullOrWhiteSpace(_roleTitle);
+
+    private IEnumerable<CommandCenterAuthorityRoleInfo> VisibleRoles
+        => _roles
+            .Where(MatchesActiveView)
+            .OrderByDescending(role => role.MemberCount)
+            .ThenByDescending(role => role.Claims.Length)
+            .ThenBy(role => GetRoleTitle(role));
+
+    private int VisibleRoleCount
+        => VisibleRoles.Count();
+
+    private int LoadedRoleAssignmentCount
+        => _roles.Sum(role => role.MemberCount);
+
+    private int LoadedClaimAttachmentCount
+        => _roles.Sum(role => role.Claims.Length);
+
+    private int LoadedEmptyRoleCount
+        => _roles.Count(role => role.MemberCount is 0 || role.Claims.Length is 0);
+
+    private int LoadedHighImpactRoleCount
+        => _roles.Count(IsHighImpactRole);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanManageAuthority)
+            await RefreshAsync().ConfigureAwait(false);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!CanManageAuthority)
+            return;
+
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _snapshot = await CommandCenterRepository
+                .GetAuthoritySnapshotAsync(take: 160, search: _search)
+                .ConfigureAwait(false);
+            _roles = _snapshot.Roles;
+        }
+        catch (Exception ex)
+        {
+            _snapshot  = new CommandCenterAuthoritySnapshotInfo();
+            _roles     = [];
+            _loadError = UserFacingError.Message(ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnSearchChanged(string value)
+        => _search = value;
+
+    private void SetView(RoleView view)
+        => _activeView = view;
+
+    private void OpenRole(CommandCenterAuthorityRoleInfo role)
+    {
+        if (role.Role.PrimaryKey is not { } roleId)
+            return;
+
+        NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/roles/{roleId}"));
+    }
+
+    private void HandleRoleRowKeyDown(KeyboardEventArgs args, CommandCenterAuthorityRoleInfo role)
+    {
+        if (UtfCommandRowInteraction.IsOpenKey(args))
+            OpenRole(role);
+    }
+
+    private void ToggleCreateRole()
+    {
+        _isCreatingRole = !_isCreatingRole;
+        if (_isCreatingRole)
+        {
+            _roleTitle = string.Empty;
+            _roleDescription = string.Empty;
+        }
+    }
+
+    private void CancelCreateRole()
+    {
+        _isCreatingRole = false;
+        _roleTitle = string.Empty;
+        _roleDescription = string.Empty;
+    }
+
+    private async Task CreateRoleAsync()
+    {
+        if (!CanSaveRole)
+            return;
+
+        var title = _roleTitle.Trim();
+        var description = _roleDescription.Trim();
+        _isSavingRole = true;
+        try
+        {
+            await RoleRepository.CreateRoleAsync(title, description).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["Pages_Command_Roles_CreateSuccess"].Value);
+            _isCreatingRole = false;
+            _roleTitle = string.Empty;
+            _roleDescription = string.Empty;
+            await RefreshAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError(string.Format(CultureInfo.CurrentCulture, Localizer["Pages_Command_Roles_SaveError"].Value, UserFacingError.Message(ex)));
+        }
+        finally
+        {
+            _isSavingRole = false;
+        }
+    }
+
+    private bool MatchesActiveView(CommandCenterAuthorityRoleInfo role)
+        => _activeView switch
+        {
+            RoleView.All        => true,
+            RoleView.Assigned   => role.MemberCount > 0 || role.Claims.Length > 0,
+            RoleView.Empty      => role.MemberCount is 0 || role.Claims.Length is 0,
+            RoleView.HighImpact => IsHighImpactRole(role),
+            _                   => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private string GetListTitle()
+        => _activeView switch
+        {
+            RoleView.All        => Localizer[nameof(Language.Pages_Command_Roles_ListTitle_All)].Value,
+            RoleView.Assigned   => Localizer[nameof(Language.Pages_Command_Roles_ListTitle_Assigned)].Value,
+            RoleView.Empty      => Localizer[nameof(Language.Pages_Command_Roles_ListTitle_Empty)].Value,
+            RoleView.HighImpact => Localizer[nameof(Language.Pages_Command_Roles_ListTitle_HighImpact)].Value,
+            _                   => throw new ArgumentOutOfRangeException(nameof(_activeView)),
+        };
+
+    private static string GetRoleRowClass(CommandCenterAuthorityRoleInfo role)
+        => role.Role.PrimaryKey is null
+            ? "authority-table-row"
+            : "authority-table-row utf-command-row--interactive";
+
+    private static string? GetRoleRowTabIndex(CommandCenterAuthorityRoleInfo role)
+        => role.Role.PrimaryKey is null ? null : "0";
+
+    private string? GetRoleOpenLabel(CommandCenterAuthorityRoleInfo role)
+        => role.Role.PrimaryKey is null
+            ? null
+            : $"{Localizer[OpenDetailsKey].Value}: {GetRoleTitle(role)}";
+
+    private string GetAssignedStatusClass()
+        => LoadedRoleAssignmentCount > 0 ? "utf-status utf-status--success" : "utf-status utf-status--neutral";
+
+    private string GetEmptyRoleStatusClass()
+        => LoadedEmptyRoleCount > 0 ? "utf-status utf-status--warning" : "utf-status utf-status--success";
+
+    private static bool IsHighImpactRole(CommandCenterAuthorityRoleInfo role)
+        => role.MemberCount >= 5 || role.Claims.Length >= 6;
+
+    private static string GetRoleStatusClass(CommandCenterAuthorityRoleInfo role)
+    {
+        if (role.MemberCount is 0 || role.Claims.Length is 0)
+            return "utf-status utf-status--warning";
+        return IsHighImpactRole(role) ? "utf-status utf-status--danger" : "utf-status utf-status--success";
+    }
+
+    private string GetRoleStatusLabel(CommandCenterAuthorityRoleInfo role)
+    {
+        if (role.MemberCount is 0 && role.Claims.Length is 0)
+            return Localizer[nameof(Language.Pages_Command_Roles_Status_Empty)].Value;
+        if (role.Claims.Length is 0)
+            return Localizer[nameof(Language.Pages_Command_Roles_Status_NoClaims)].Value;
+        if (role.MemberCount is 0)
+            return Localizer[nameof(Language.Pages_Command_Roles_Status_NoMembers)].Value;
+        return IsHighImpactRole(role)
+            ? Localizer[nameof(Language.Pages_Command_Roles_Status_HighImpact)].Value
+            : Localizer[nameof(Language.Pages_Command_Roles_Status_Assigned)].Value;
+    }
+
+    private string GetRoleTitle(CommandCenterAuthorityRoleInfo role)
+        => FormatNullable(
+            role.Role.Title,
+            Localizer[nameof(Language.Pages_Command_Roles_RolePrefix), FormatRoleId(role.Role)].Value
+        );
+
+    private string FormatRoleDescription(CommandCenterAuthorityRoleInfo role)
+        => FormatNullable(role.Role.Description, Localizer[nameof(Language.Pages_Command_Roles_NoDescription)].Value);
+
+    private string FormatRoleCoverage(CommandCenterAuthorityRoleInfo role)
+        => $"{FormatCount(role.MemberCount, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Member)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Member)].Value)} / {FormatCount(role.Claims.Length, Localizer[nameof(Language.Pages_Command_Roles_Count_Singular_Claim)].Value, Localizer[nameof(Language.Pages_Command_Roles_Count_Plural_Claim)].Value)}";
+
+    private string FormatRoleId(PlainRoleDto role)
+        => role.PrimaryKey?.ToString(CultureInfo.InvariantCulture) ?? Localizer[nameof(Language.Pages_Command_Roles_UnknownRoleId)].Value;
+
+    private static string FormatNullable(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+    private static string FormatCount(long value, string singularText, string pluralText)
+        => value is 1
+            ? $"{value:N0} {singularText}"
+            : $"{value:N0} {pluralText}";
+
+    private enum RoleView
+    {
+        All,
+        Assigned,
+        Empty,
+        HighImpact,
+    }
+}

@@ -1,0 +1,72 @@
+name: united-tactical-forces
+
+services:
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-utf}
+      POSTGRES_USER: ${POSTGRES_USER:-utf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ConnectionStrings__database: Host=database;Port=5432;Database=${POSTGRES_DB:-utf};Username=${POSTGRES_USER:-utf};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      General__BasePath: /api
+      General__ApiBaseUrl: ${PUBLIC_URL:-http://localhost:8080}/api/
+      General__ClientBaseUrl: ${PUBLIC_URL:-http://localhost:8080}/
+      General__AutoVerifyNewUsers: ${AUTO_VERIFY_NEW_USERS:-false}
+      Steam__Enabled: ${STEAM_ENABLED:-false}
+      Steam__ApiKey: ${STEAM_API_KEY:-}
+      Discord__Enabled: ${DISCORD_ENABLED:-false}
+      Discord__OAuth__ClientId: ${DISCORD_CLIENT_ID:-}
+      Discord__OAuth__ClientSecret: ${DISCORD_CLIENT_SECRET:-}
+      Discord__Bot__ApplicationId: ${DISCORD_APPLICATION_ID:-}
+      Discord__Bot__PublicKey: ${DISCORD_PUBLIC_KEY:-}
+      Discord__Bot__BotToken: ${DISCORD_BOT_TOKEN:-}
+      Hosting__Providers__Hetzner__Token: ${HETZNER_TOKEN:-}
+      Hosting__WorkerProvisioning__ContainerImage: ${CLOUD_WORKER_IMAGE:-}
+      Hosting__PersistentStorage__BasePath: /var/lib/united-tactical-forces/hosting
+    volumes:
+      - api_media:/app/App_Data
+      - api_hosting:/var/lib/united-tactical-forces/hosting
+      - api_keys:/home/app/.aspnet/DataProtection-Keys
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+volumes:
+  postgres_data:
+    name: united-tactical-forces-postgres
+  api_media:
+    name: united-tactical-forces-media
+  api_hosting:
+    name: united-tactical-forces-hosting
+  api_keys:
+    name: united-tactical-forces-keys

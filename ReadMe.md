@@ -1,3 +1,7 @@
+# Container deployment
+
+For a Docker or Podman deployment with a configurable public port and persistent PostgreSQL/application data, see [docs/container-deployment.md](docs/container-deployment.md).
+
 # How to develop?
 
 For development, use the IDE that matches your taste (personally, i highly
@@ -55,7 +59,7 @@ Hence, follow both steps carefully:
    ```json
    {
      "ConnectionStrings": {
-       "ApiDbContext": "YOUR_POSTGRES_CONNECTION_STRING"
+       "database": "YOUR_POSTGRES_CONNECTION_STRING"
      },
      "Steam": {
        // https://steamcommunity.com/dev/apikey

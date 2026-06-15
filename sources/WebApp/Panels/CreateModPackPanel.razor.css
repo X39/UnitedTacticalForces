@@ -1,0 +1,98 @@
+.modpack-editor {
+    color: var(--utf-text);
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.modpack-editor__summary {
+    align-items: flex-start;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+    padding: 0.85rem;
+}
+
+.modpack-editor__summary strong {
+    color: var(--utf-text);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.modpack-editor__form.utf-command-form {
+    border-top: 0;
+    grid-template-columns: 1fr;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.modpack-editor__composition,
+.modpack-editor__file {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.modpack-editor__label {
+    color: var(--utf-text-subtle);
+    font-size: 0.74rem;
+    font-weight: 850;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.modpack-editor__hint {
+    color: var(--utf-text-muted);
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.modpack-editor__file ::deep fluent-input-file {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)),
+        var(--utf-surface);
+    border: 1px dashed var(--utf-stroke-strong);
+    border-radius: var(--utf-radius-sm);
+    color: var(--utf-text);
+    min-height: 14rem;
+    width: 100%;
+}
+
+.modpack-editor__file ::deep fluent-input-file:hover {
+    border-color: var(--utf-gold);
+}
+
+.modpack-editor__file ::deep fluent-icon {
+    color: var(--utf-gold-strong);
+}
+
+.modpack-editor__file ::deep fluent-text,
+.modpack-editor__file ::deep label,
+.modpack-editor__file ::deep div {
+    color: var(--utf-text);
+}
+
+.modpack-editor__file ::deep label {
+    cursor: pointer;
+}
+
+.modpack-editor__composition ::deep fluent-autocomplete {
+    width: 100%;
+}
+
+.modpack-editor__composition ::deep fluent-autocomplete::part(control),
+.modpack-editor__composition ::deep fluent-autocomplete::part(listbox) {
+    background: rgba(255, 255, 255, 0.035);
+    border-color: var(--utf-stroke-strong);
+    color: var(--utf-text);
+}
+
+@media (max-width: 640px) {
+    .modpack-editor__summary {
+        display: grid;
+    }
+}

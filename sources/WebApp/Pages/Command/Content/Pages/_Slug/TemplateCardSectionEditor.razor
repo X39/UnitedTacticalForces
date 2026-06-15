@@ -1,0 +1,70 @@
+@using System.Globalization
+@using X39.UnitedTacticalForces.Common.PublicPages
+@inject IStringLocalizer<Language> Localizer
+
+<section id="@SectionId" class="utf-panel gdpr-template-section">
+    <header class="gdpr-template-section-header">
+        <div>
+            <span class="utf-kicker">@Kicker</span>
+            <h3>@Title</h3>
+            @if (!string.IsNullOrWhiteSpace(Description))
+            {
+                <p>@Description</p>
+            }
+        </div>
+    </header>
+    <div class="gdpr-template-grid gdpr-template-section-fields">
+        <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Kicker", "Kicker")' @bind-Value="Section.Kicker"/>
+        <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Title", "Title")' @bind-Value="Section.Title"/>
+    </div>
+    <div class="gdpr-template-repeater">
+        @for (var cardIndex = 0; cardIndex < Section.Cards.Count; cardIndex++)
+        {
+            var card = Section.Cards[cardIndex];
+            <article class="gdpr-template-item" @key="card">
+                <header>
+                    <span>@FormatCardNumber(cardIndex)</span>
+                    <h4>@FormatCardLabel(cardIndex)</h4>
+                </header>
+                <div class="gdpr-template-grid">
+                    <TemplateInput Label='@L("Pages_Command_Content_Gdpr_Title", "Title")' @bind-Value="card.Title"/>
+                    <TemplateTextarea Label='@L("Pages_Command_Content_Gdpr_Body", "Body")' @bind-Value="card.Body"/>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter]
+    public string Description { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Kicker { get; set; } = string.Empty;
+
+    [Parameter]
+    public string SectionId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public GdprCardSection Section { get; set; } = new();
+
+    private string L(string key, string fallback)
+    {
+        var value = Localizer[key].Value;
+        return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+    }
+
+    private string FormatCardLabel(int index)
+        => string.Format(
+            CultureInfo.CurrentCulture,
+            L("Pages_Command_Content_Gdpr_CardNumber", "Card {0}"),
+            index + 1
+        );
+
+    private static string FormatCardNumber(int index)
+        => (index + 1).ToString("00", CultureInfo.InvariantCulture);
+}
+
