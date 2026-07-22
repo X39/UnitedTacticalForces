@@ -381,14 +381,14 @@
         if (!CanDelete || _terrain?.PrimaryKey is not { } primaryKey)
             return;
 
-        var dialogReference = await DialogService.ShowConfirmationAsync(
-            Localizer[nameof(Language.Pages_Data_Terrains_All_ConfirmDeleteTerrain_Body)],
-            Localizer[nameof(Language.Common_Delete)],
-            Localizer[nameof(Language.Common_Cancel)],
-            Localizer[nameof(Language.Pages_Data_Terrains_All_ConfirmDeleteTerrain_Title)]
+        var confirmed = await DialogService.ShowUtfConfirmationAsync(
+            Localizer[nameof(Language.Pages_Data_Terrains_All_ConfirmDeleteTerrain_Title)].Value,
+            Localizer[nameof(Language.Pages_Data_Terrains_All_ConfirmDeleteTerrain_Body)].Value,
+            Localizer[nameof(Language.Common_Delete)].Value,
+            Localizer[nameof(Language.Common_Cancel)].Value,
+            destructive: true
         );
-        var result = await dialogReference.Result;
-        if (result.Cancelled)
+        if (!confirmed)
             return;
 
         _isSaving = true;

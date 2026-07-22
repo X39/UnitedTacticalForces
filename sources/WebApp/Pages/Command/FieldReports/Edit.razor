@@ -436,14 +436,14 @@
         if (_editor?.PrimaryKey is not { } reportId || _isSaving)
             return;
 
-        var dialogReference = await DialogService.ShowConfirmationAsync(
+        var confirmed = await DialogService.ShowUtfConfirmationAsync(
+            Localizer[nameof(Language.Pages_Command_FieldReports_Edit_DeleteTitle)].Value,
             Localizer[nameof(Language.Pages_Command_FieldReports_Edit_DeleteConfirm)].Value,
             Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonDelete)].Value,
             Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonCancel)].Value,
-            Localizer[nameof(Language.Pages_Command_FieldReports_Edit_DeleteTitle)].Value
+            destructive: true
         );
-        var result = await dialogReference.Result;
-        if (result.Cancelled)
+        if (!confirmed)
             return;
 
         _isSaving = true;

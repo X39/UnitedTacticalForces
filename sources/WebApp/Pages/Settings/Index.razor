@@ -442,14 +442,14 @@
         if (_settings is null || !_settings.CanDeleteAccount || _isDeleting)
             return;
 
-        var dialogReference = await DialogService.ShowConfirmationAsync(
+        var confirmed = await DialogService.ShowUtfConfirmationAsync(
+            Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_Title)].Value,
             Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_Message)].Value,
             Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_YesIamSureIWantToDeleteMyAccount)].Value,
             Localizer[nameof(Language.Common_Cancel)].Value,
-            Localizer[nameof(Language.Pages_Settings_AccountSettings_DeleteAccount_Confirm_Title)].Value
+            destructive: true
         ).ConfigureAwait(false);
-        var result = await dialogReference.Result.ConfigureAwait(false);
-        if (result.Cancelled)
+        if (!confirmed)
             return;
 
         _isDeleting = true;
