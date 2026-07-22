@@ -6,7 +6,7 @@
 @using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
 @inject IGameServerRepository GameServerRepository
 @inject BaseUrl BaseUrl
-@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 @inject IStringLocalizer<Language> Localizer
 
@@ -44,7 +44,7 @@
                 </UtfCommandButton>
                 @if (!_server.IsArchived && _server.CanModify)
                 {
-                    <UtfCommandButton Class="hosting-danger-button"
+                    <UtfCommandButton Variant="danger"
                                       Disabled="@(!CanDeleteServer || _deletingServer)"
                                       Title="@(CanDeleteServer ? null : Localizer["Hosting_Detail_DeleteUnavailable"].Value)"
                                       OnClick="DeleteServerAsync">
@@ -680,7 +680,14 @@
 
         if (!string.IsNullOrWhiteSpace(action.ConfirmationText))
         {
-            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", action.ConfirmationText);
+            var confirmed = await DialogService.ShowUtfConfirmationAsync(
+                action.Label,
+                action.ConfirmationText,
+                action.Label,
+                Localizer["Hosting_Common_Cancel"].Value,
+                destructive: action.Dangerous,
+                kicker: Localizer["Hosting_Detail_ConfirmationKicker"].Value
+            );
             if (!confirmed)
                 return;
         }
@@ -728,9 +735,13 @@
     {
         if (!CanDeleteServer || _server is null)
             return;
-        var confirmed = await JSRuntime.InvokeAsync<bool>(
-            "confirm",
-            Localizer["Hosting_Detail_DeleteServerConfirm", _server.Title].Value
+        var confirmed = await DialogService.ShowUtfConfirmationAsync(
+            Localizer["Hosting_Detail_DeleteServer"].Value,
+            Localizer["Hosting_Detail_DeleteServerConfirm", _server.Title].Value,
+            Localizer["Hosting_Detail_DeleteServer"].Value,
+            Localizer["Hosting_Common_Cancel"].Value,
+            destructive: true,
+            kicker: Localizer["Hosting_Detail_ConfirmationKicker"].Value
         );
         if (!confirmed)
             return;
@@ -904,9 +915,13 @@
     {
         if (!entry.CanModify)
             return;
-        var confirmed = await JSRuntime.InvokeAsync<bool>(
-            "confirm",
-            Localizer["Hosting_Detail_DeleteFileConfirm", entry.Path].Value
+        var confirmed = await DialogService.ShowUtfConfirmationAsync(
+            Localizer["Hosting_Detail_Delete"].Value,
+            Localizer["Hosting_Detail_DeleteFileConfirm", entry.Path].Value,
+            Localizer["Hosting_Detail_Delete"].Value,
+            Localizer["Hosting_Common_Cancel"].Value,
+            destructive: true,
+            kicker: Localizer["Hosting_Detail_ConfirmationKicker"].Value
         );
         if (!confirmed)
             return;

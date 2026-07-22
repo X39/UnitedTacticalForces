@@ -7,7 +7,7 @@
 @inject BaseUrl BaseUrl
 @inject MeService Me
 @inject IGameServerRepository GameServerRepository
-@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 
 <div class="@RootClass" @onkeydown="HandleKeyDown">
@@ -388,7 +388,14 @@
 
         if (!string.IsNullOrWhiteSpace(action.ConfirmationText))
         {
-            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", action.ConfirmationText);
+            var confirmed = await DialogService.ShowUtfConfirmationAsync(
+                action.Label,
+                action.ConfirmationText,
+                action.Label,
+                Localizer["Hosting_Common_Cancel"].Value,
+                destructive: action.Dangerous,
+                kicker: Localizer["Hosting_Detail_ConfirmationKicker"].Value
+            );
             if (!confirmed)
                 return;
         }
