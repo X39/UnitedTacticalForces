@@ -1,0 +1,46 @@
+.utf-confirmation-dialog-body {
+    background:
+        radial-gradient(circle at top left, rgba(186, 160, 90, 0.1), transparent 20rem),
+        var(--utf-bg-elevated);
+    color: var(--utf-text);
+    padding: 0;
+}
+
+.utf-confirmation-dialog {
+    align-items: flex-start;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 1.15rem;
+}
+
+.utf-confirmation-dialog__icon {
+    align-items: center;
+    background: var(--utf-gold-muted);
+    border: 1px solid var(--utf-gold);
+    border-radius: 999px;
+    color: var(--utf-gold-strong);
+    display: inline-flex;
+    justify-content: center;
+    padding: 0.65rem;
+}
+
+.utf-confirmation-dialog--danger .utf-confirmation-dialog__icon {
+    background: var(--utf-danger-bg);
+    border-color: var(--utf-danger);
+    color: var(--utf-danger);
+}
+
+.utf-confirmation-dialog p {
+    color: var(--utf-text-muted);
+    line-height: 1.55;
+    margin: 0.45rem 0 0;
+    overflow-wrap: anywhere;
+}
+
+.utf-confirmation-dialog-footer {
+    background: var(--utf-surface);
+    border-top: 1px solid var(--utf-stroke);
+    gap: 0.65rem;
+    padding: 0.85rem 1.15rem;
+}

@@ -138,6 +138,17 @@ a {
     color: #101014;
 }
 
+.utf-button--danger {
+    background: var(--utf-danger);
+    border: 1px solid var(--utf-danger);
+    color: #fff;
+}
+
+.utf-button--danger:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
 .utf-button--ghost {
     background: transparent;
     border: 1px solid var(--utf-stroke-strong);
@@ -179,6 +190,11 @@ a {
 .utf-button--primary .utf-button__icon,
 .utf-button--primary fluent-icon {
     color: #101014;
+}
+
+.utf-button--danger .utf-button__icon,
+.utf-button--danger fluent-icon {
+    color: #fff;
 }
 
 .utf-command-button {

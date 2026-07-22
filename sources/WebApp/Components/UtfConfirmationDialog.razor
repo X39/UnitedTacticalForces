@@ -1,0 +1,53 @@
+@implements IDialogContentComponent<X39.UnitedTacticalForces.WebApp.Components.UtfConfirmationDialog.Data>
+
+<FluentDialogBody Class="utf-confirmation-dialog-body">
+    <div class="utf-confirmation-dialog @(Content.Destructive ? "utf-confirmation-dialog--danger" : string.Empty)">
+        <span class="utf-confirmation-dialog__icon" aria-hidden="true">
+            @if (Content.Destructive)
+            {
+                <FluentIcon Value="@(new Icons.Regular.Size24.Warning())"/>
+            }
+            else
+            {
+                <FluentIcon Value="@(new Icons.Regular.Size24.QuestionCircle())"/>
+            }
+        </span>
+        <div>
+            <span class="utf-kicker">@Content.Kicker</span>
+            <p>@Content.Message</p>
+        </div>
+    </div>
+</FluentDialogBody>
+
+<FluentDialogFooter Class="utf-confirmation-dialog-footer">
+    <UtfCommandButton OnClick="CancelAsync">
+        @Content.CancelLabel
+    </UtfCommandButton>
+    <UtfCommandButton Variant="@(Content.Destructive ? "danger" : "primary")"
+                      OnClick="ConfirmAsync">
+        @Content.ConfirmLabel
+    </UtfCommandButton>
+</FluentDialogFooter>
+
+@code {
+    [CascadingParameter]
+    public FluentDialog Dialog { get; set; } = default!;
+
+    [Parameter]
+    public Data Content { get; set; } = default!;
+
+    private Task CancelAsync()
+        => Dialog.CancelAsync();
+
+    private Task ConfirmAsync()
+        => Dialog.CloseAsync(Content);
+
+    public sealed record Data
+    {
+        public string Kicker { get; init; } = string.Empty;
+        public string Message { get; init; } = string.Empty;
+        public string ConfirmLabel { get; init; } = string.Empty;
+        public string CancelLabel { get; init; } = string.Empty;
+        public bool Destructive { get; init; }
+    }
+}
