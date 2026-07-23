@@ -14638,6 +14638,27 @@
   <data name="Hosting_Detail_QueueTitle" xml:space="preserve">
     <value>Job and command queue</value>
   </data>
+  <data name="Hosting_Detail_OperationsKicker" xml:space="preserve">
+    <value>What happened</value>
+  </data>
+  <data name="Hosting_Detail_OperationsTitle" xml:space="preserve">
+    <value>Operational activity</value>
+  </data>
+  <data name="Hosting_Detail_OperationsDescription" xml:space="preserve">
+    <value>Durable provider, resource, worker, and lifecycle transitions. Request-level diagnostics remain in OpenTelemetry.</value>
+  </data>
+  <data name="Hosting_Detail_OperationsEmpty" xml:space="preserve">
+    <value>No operational activity has been recorded for this server.</value>
+  </data>
+  <data name="Hosting_Detail_OperationsShowAll" xml:space="preserve">
+    <value>Show all</value>
+  </data>
+  <data name="Hosting_Detail_OperationsShowRecent" xml:space="preserve">
+    <value>Show recent</value>
+  </data>
+  <data name="Hosting_Detail_OperationsTrace" xml:space="preserve">
+    <value>Telemetry trace</value>
+  </data>
   <data name="Hosting_Detail_RecordKicker" xml:space="preserve">
     <value>Durable identity</value>
   </data>

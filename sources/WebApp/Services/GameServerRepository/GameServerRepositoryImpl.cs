@@ -83,6 +83,19 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
         return jobs ?? [];
     }
 
+    public async Task<IReadOnlyList<HostingOperationInfo>> GetOperationsAsync(
+        Guid serverId,
+        int take = 80,
+        CancellationToken cancellationToken = default)
+    {
+        var operations = await GetFromJsonAsync<HostingOperationInfo[]>(
+                $"game-servers/{serverId}/operations?take={take}",
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        return operations ?? [];
+    }
+
     public async Task<LifecycleJobInfo> ExecuteActionAsync(
         Guid serverId,
         string actionId,

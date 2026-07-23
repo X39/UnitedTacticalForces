@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Database;
@@ -51,44 +52,66 @@ internal sealed class LifecycleJobExecutor(
                      ?? throw new LifecycleExecutionException("The lifecycle job has no server record.");
         var deployment = job.Deployment
                          ?? throw new LifecycleExecutionException("The lifecycle job has no deployment record.");
+        using var activity = HostingTelemetry.StartRuntimeOperation(
+            server.RuntimeProviderIdentifier,
+            $"lifecycle.{job.ActionIdentifier}",
+            server.PrimaryKey,
+            deployment.PrimaryKey);
+        activity?.SetTag("utf.hosting.lifecycle.job.id", job.PrimaryKey);
+        activity?.SetTag("utf.hosting.lifecycle.job.kind", job.Kind.ToString());
 
-        if (deployment.Status is EDeploymentStatus.TerminatingDueToFault
-            && job.Kind is not ELifecycleJobKind.Terminate)
+        try
         {
-            await CancelNormalCommandsAsync(deployment.PrimaryKey, null, cancellationToken).ConfigureAwait(false);
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            var activeWorker = deployment.Workers.SingleOrDefault(q => q.TimeStampStopped == null);
-            if (activeWorker is not null)
+            if (deployment.Status is EDeploymentStatus.TerminatingDueToFault
+                && job.Kind is not ELifecycleJobKind.Terminate)
             {
-                await CollectBoundedFaultEvidenceAsync(job, server, deployment, activeWorker, cancellationToken)
+                await CancelNormalCommandsAsync(deployment.PrimaryKey, null, cancellationToken).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                var activeWorker = deployment.Workers.SingleOrDefault(q => q.TimeStampStopped == null);
+                if (activeWorker is not null)
+                {
+                    await CollectBoundedFaultEvidenceAsync(job, server, deployment, activeWorker, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                await ReleaseDeploymentAsync(
+                        job,
+                        server,
+                        deployment,
+                        terminate: true,
+                        faultTriggered: true,
+                        cancellationToken)
                     .ConfigureAwait(false);
+                throw new PermanentLifecycleExecutionException(
+                    deployment.FaultMessage ?? "The deployment was terminated after a confirmed fault.");
             }
-            await ReleaseDeploymentAsync(job, server, deployment, terminate: true, faultTriggered: true, cancellationToken)
-                .ConfigureAwait(false);
-            throw new PermanentLifecycleExecutionException(
-                deployment.FaultMessage ?? "The deployment was terminated after a confirmed fault.");
-        }
 
-        switch (job.Kind)
+            switch (job.Kind)
+            {
+                case ELifecycleJobKind.Start:
+                    await ExecuteStartAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
+                    break;
+                case ELifecycleJobKind.Stop:
+                    await ExecuteStopAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
+                    break;
+                case ELifecycleJobKind.Terminate:
+                    await ExecuteTerminateAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
+                    break;
+                case ELifecycleJobKind.Restart:
+                case ELifecycleJobKind.Install:
+                case ELifecycleJobKind.Update:
+                case ELifecycleJobKind.CollectLogs:
+                case ELifecycleJobKind.Custom:
+                    await ExecuteRuntimeActionAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(job.Kind), job.Kind, "Unknown lifecycle job kind.");
+            }
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            case ELifecycleJobKind.Start:
-                await ExecuteStartAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
-                break;
-            case ELifecycleJobKind.Stop:
-                await ExecuteStopAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
-                break;
-            case ELifecycleJobKind.Terminate:
-                await ExecuteTerminateAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
-                break;
-            case ELifecycleJobKind.Restart:
-            case ELifecycleJobKind.Install:
-            case ELifecycleJobKind.Update:
-            case ELifecycleJobKind.CollectLogs:
-            case ELifecycleJobKind.Custom:
-                await ExecuteRuntimeActionAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(job.Kind), job.Kind, "Unknown lifecycle job kind.");
+            HostingTelemetry.RecordException(activity, ex, HostingFailureSanitizer.Sanitize(ex));
+            throw;
         }
     }
 
@@ -272,6 +295,18 @@ internal sealed class LifecycleJobExecutor(
             intent.Resource.TimeStampProvisioningResolved = null;
             intent.Resource.TimeStampUpdated = provisioningRequestedAt;
             job.MaxAttempts = int.MaxValue;
+            auditWriter.Add(
+                dbContext,
+                EHostingAuditEventKind.DeploymentResourceProvisioningRequested,
+                "Provider resource provisioning requested.",
+                serverId: server.PrimaryKey,
+                deploymentId: deployment.PrimaryKey,
+                lifecycleJobId: job.PrimaryKey,
+                workerId: intent.Worker.PrimaryKey,
+                costOwnerId: deployment.CostOwnerFk,
+                details: $"Provider={provider.ProviderIdentifier}; Kind={intent.Resource.Kind}; "
+                         + $"Intent={intent.Resource.ProvisioningIntentIdentifier}",
+                costImpact: ECostImpact.StartsCost);
 
             // The one-way bootstrap hash and provider-queryable intent are committed before the create call.
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -321,6 +356,20 @@ internal sealed class LifecycleJobExecutor(
                 deployment.PossibleCost |= intent.Resource.PossibleCost;
                 deployment.Stage = provision.Stage;
                 deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                auditWriter.Add(
+                    dbContext,
+                    EHostingAuditEventKind.DeploymentResourceProvisioningFailed,
+                    "Provider resource provisioning did not complete.",
+                    serverId: server.PrimaryKey,
+                    deploymentId: deployment.PrimaryKey,
+                    lifecycleJobId: job.PrimaryKey,
+                    workerId: intent.Worker.PrimaryKey,
+                    costOwnerId: deployment.CostOwnerFk,
+                    details: $"Provider={provider.ProviderIdentifier}; Kind={intent.Resource.Kind}; "
+                             + $"Stage={provision.Stage}; Failure={provision.Error}",
+                    costImpact: intent.Resource.PossibleCost
+                        ? ECostImpact.KeepsCostRunning
+                        : ECostImpact.Unknown);
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 if (provision.Outcome is ERuntimeProviderOutcome.PermanentFailure
                     && provision.ProvisionedResources.Count > 0)
@@ -1283,6 +1332,17 @@ internal sealed class LifecycleJobExecutor(
             var intentId = ParseIntent(resource);
             resource.State = EDeploymentResourceState.Releasing;
             resource.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+            auditWriter.Add(
+                dbContext,
+                EHostingAuditEventKind.DeploymentResourceReleaseRequested,
+                "Provider resource release requested.",
+                serverId: server.PrimaryKey,
+                deploymentId: deployment.PrimaryKey,
+                lifecycleJobId: job.PrimaryKey,
+                workerId: worker?.PrimaryKey,
+                costOwnerId: deployment.CostOwnerFk,
+                details: $"Provider={resource.ProviderIdentifier}; Kind={resource.Kind}; Identity={identifier}",
+                costImpact: resource.PossibleCost ? ECostImpact.KeepsCostRunning : ECostImpact.NoCostImpact);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var release = await provider.ReleaseAsync(
                     new RuntimeReleaseRequest(
@@ -1303,6 +1363,18 @@ internal sealed class LifecycleJobExecutor(
                 deployment.PossibleCost = true;
                 deployment.Stage = release.Stage;
                 deployment.TimeStampUpdated = resource.TimeStampUpdated;
+                auditWriter.Add(
+                    dbContext,
+                    EHostingAuditEventKind.DeploymentResourceReleaseFailed,
+                    "Provider resource release could not be verified.",
+                    serverId: server.PrimaryKey,
+                    deploymentId: deployment.PrimaryKey,
+                    lifecycleJobId: job.PrimaryKey,
+                    workerId: worker?.PrimaryKey,
+                    costOwnerId: deployment.CostOwnerFk,
+                    details: $"Provider={resource.ProviderIdentifier}; Kind={resource.Kind}; Identity={identifier}; "
+                             + $"Stage={release.Stage}; Failure={release.Error}",
+                    costImpact: ECostImpact.KeepsCostRunning);
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 throw new LifecycleExecutionException(
                     release.Error ?? "Provider resource release is not yet verified non-billable.");
@@ -1403,6 +1475,7 @@ internal sealed class LifecycleJobExecutor(
                     q.ProviderResourceIdentifier,
                     observed.ResourceIdentifier,
                     StringComparison.Ordinal));
+            var resolvedPlaceholder = false;
             if (existing is null
                 && placeholder is not null
                 && placeholder.ProviderResourceIdentifier is null
@@ -1410,7 +1483,9 @@ internal sealed class LifecycleJobExecutor(
             {
                 existing = placeholder;
                 placeholder = null;
+                resolvedPlaceholder = true;
             }
+            var newlyDiscovered = existing is null;
             if (existing is null)
             {
                 var observedIntent = observed.Attribution?.ProvisioningIntentId
@@ -1443,6 +1518,22 @@ internal sealed class LifecycleJobExecutor(
             else
                 existing.TimeStampReleased ??= existing.TimeStampObserved;
             deployment.PossibleCost |= observed.IsPotentiallyCostGenerating;
+            if (newlyDiscovered && !resolvedPlaceholder)
+            {
+                auditWriter.Add(
+                    dbContext,
+                    EHostingAuditEventKind.DeploymentResourceObserved,
+                    "Provider resource discovered and attributed to the deployment.",
+                    serverId: deployment.GameServerFk,
+                    deploymentId: deployment.PrimaryKey,
+                    workerId: observed.Attribution?.WorkerId,
+                    costOwnerId: deployment.CostOwnerFk,
+                    details: $"Provider={provider.ProviderIdentifier}; Kind={observed.ResourceType}; "
+                             + $"Identity={observed.ResourceIdentifier}; State={observed.ProviderState ?? "unknown"}",
+                    costImpact: observed.IsPotentiallyCostGenerating
+                        ? ECostImpact.StartsCost
+                        : ECostImpact.NoCostImpact);
+            }
         }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

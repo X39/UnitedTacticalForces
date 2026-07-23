@@ -225,4 +225,52 @@ public sealed class GameServerProjectionServiceTests
 
         Assert.Empty(notifications);
     }
+
+    [Fact]
+    public async Task Operations_ReturnOnlyOperationalEvidenceWithResourceAndTraceContext()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        store.DbContext.HostingAuditRecords.AddRange(
+            new HostingAuditRecord
+            {
+                PrimaryKey = Guid.NewGuid(),
+                Kind = EHostingAuditEventKind.DeploymentResourceProvisioningFailed,
+                GameServerFk = seed.Server.PrimaryKey,
+                Summary = "Provider resource provisioning did not complete.",
+                Details = """{"detail":"Provider=hetzner; Kind=primary-ip; Identity=primary-ip:91; Stage=create; Failure=rate-limited"}""",
+                TraceId = "0123456789abcdef0123456789abcdef",
+                SpanId = "0123456789abcdef",
+                TimeStampCreated = now,
+            },
+            new HostingAuditRecord
+            {
+                PrimaryKey = Guid.NewGuid(),
+                Kind = EHostingAuditEventKind.AccessGranted,
+                GameServerFk = seed.Server.PrimaryKey,
+                Summary = "Access granted.",
+                TimeStampCreated = now + Duration.FromSeconds(1),
+            });
+        await store.DbContext.SaveChangesAsync();
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(
+            seed.User,
+            seed.Server,
+            Claims.ResourceBased.Server.View);
+
+        var operations = await projection.GetOperationsAsync(seed.Server.PrimaryKey, viewer);
+        var hidden = await projection.GetOperationsAsync(
+            seed.Server.PrimaryKey,
+            HostingTestData.Principal(seed.User));
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("failed", operation.Status);
+        Assert.Equal("hetzner", operation.ProviderIdentifier);
+        Assert.Equal("primary-ip", operation.ResourceKind);
+        Assert.Equal("primary-ip:91", operation.ResourceIdentifier);
+        Assert.Equal("create", operation.ProviderState);
+        Assert.Equal("0123456789abcdef0123456789abcdef", operation.TraceId);
+        Assert.Empty(hidden);
+    }
 }

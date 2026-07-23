@@ -174,6 +174,82 @@
             </article>
         </section>
 
+        <section class="utf-panel hosting-operations-panel">
+            <div class="hosting-section-heading hosting-section-heading--row">
+                <div>
+                    <span class="utf-kicker">@Localizer["Hosting_Detail_OperationsKicker"]</span>
+                    <h2>@Localizer["Hosting_Detail_OperationsTitle"]</h2>
+                    <p>@Localizer["Hosting_Detail_OperationsDescription"]</p>
+                </div>
+                @if (_operations.Count > 8)
+                {
+                    <button class="utf-button utf-button--ghost"
+                            type="button"
+                            @onclick="@(() => _showAllOperations = !_showAllOperations)">
+                        @(_showAllOperations
+                            ? Localizer["Hosting_Detail_OperationsShowRecent"]
+                            : Localizer["Hosting_Detail_OperationsShowAll"])
+                    </button>
+                }
+            </div>
+
+            @if (_operations.Count is 0)
+            {
+                <p class="hosting-muted">@Localizer["Hosting_Detail_OperationsEmpty"]</p>
+            }
+            else
+            {
+                <ol class="hosting-operation-list">
+                    @foreach (var operation in VisibleOperations)
+                    {
+                        <li class="hosting-operation" @key="operation.PrimaryKey">
+                            <span class="@GetOperationIconClass(operation)">
+                                @GetOperationIcon(operation)
+                            </span>
+                            <div class="hosting-operation-copy">
+                                <div class="hosting-operation-title">
+                                    <strong>@operation.Summary</strong>
+                                    <time datetime="@operation.TimeStampCreated.ToString("O")">
+                                        @FormatDate(operation.TimeStampCreated)
+                                    </time>
+                                </div>
+                                <div class="hosting-operation-meta">
+                                    <UtfStatusBadge Intent="@GetOperationIntent(operation)">
+                                        @operation.Status
+                                    </UtfStatusBadge>
+                                    <span>@operation.ProviderIdentifier</span>
+                                    @if (!string.IsNullOrWhiteSpace(operation.ResourceKind))
+                                    {
+                                        <span>@operation.ResourceKind</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(operation.ProviderState))
+                                    {
+                                        <span>@operation.ProviderState</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(operation.ResourceIdentifier))
+                                {
+                                    <code>@operation.ResourceIdentifier</code>
+                                }
+                                @if ((operation.Status is "failed" or "warning")
+                                     && !string.IsNullOrWhiteSpace(operation.Detail))
+                                {
+                                    <p class="hosting-operation-error">@operation.Detail</p>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(operation.TraceId))
+                                {
+                                    <small>
+                                        @Localizer["Hosting_Detail_OperationsTrace"]:
+                                        <code>@operation.TraceId</code>
+                                    </small>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ol>
+            }
+        </section>
+
         <section class="utf-panel hosting-actions-panel">
             <div class="hosting-section-heading">
                 <span class="utf-kicker">@Localizer["Hosting_Detail_ActionsKicker"]</span>
@@ -566,6 +642,7 @@
 
     private GameServerInfo? _server;
     private IReadOnlyList<LifecycleJobInfo> _jobs = [];
+    private IReadOnlyList<HostingOperationInfo> _operations = [];
     private IReadOnlyList<HostingFileInfo> _files = [];
     private IReadOnlyList<PreservationSelectionInfo> _selections = [];
     private Task? _pollTask;
@@ -577,6 +654,7 @@
     private bool _fileMutationInProgress;
     private bool _selectionMutationInProgress;
     private bool _deletingServer;
+    private bool _showAllOperations;
     private string? _loadError;
     private string? _operationError;
     private string? _fileError;
@@ -596,6 +674,9 @@
     private bool CanDeleteServer
         => _server is { IsArchived: false, CanModify: true, Deployment: null, PendingJobCount: 0 }
            && _jobs.All(q => !q.CanRetry && !q.CanSkip);
+
+    private IEnumerable<HostingOperationInfo> VisibleOperations
+        => _showAllOperations ? _operations : _operations.Take(8);
 
     private IEnumerable<IGrouping<string, GameServerActionInfo>> OrderedActionGroups
         => _server is null
@@ -634,9 +715,13 @@
         {
             var serverTask = GameServerRepository.GetServerAsync(ServerId, cancellationToken);
             var jobsTask = GameServerRepository.GetJobsAsync(ServerId, cancellationToken);
-            await Task.WhenAll(serverTask, jobsTask);
+            var operationsTask = GameServerRepository.GetOperationsAsync(
+                ServerId,
+                cancellationToken: cancellationToken);
+            await Task.WhenAll(serverTask, jobsTask, operationsTask);
             _server = await serverTask;
             _jobs = await jobsTask;
+            _operations = await operationsTask;
             _loadError = null;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -652,6 +737,28 @@
             _isLoading = false;
         }
     }
+
+    private static string GetOperationIntent(HostingOperationInfo operation)
+        => operation.Status switch
+        {
+            "failed" => "danger",
+            "warning" => "warning",
+            "pending" => "info",
+            _ => "success",
+        };
+
+    private static string GetOperationIconClass(HostingOperationInfo operation)
+        => $"hosting-operation-icon hosting-operation-icon--{operation.Status}";
+
+    private static string GetOperationIcon(HostingOperationInfo operation)
+        => operation.ResourceKind switch
+        {
+            "primary-ip" => "IP",
+            "firewall" => "FW",
+            "server" => "SRV",
+            _ when operation.Kind.Contains("Worker", StringComparison.OrdinalIgnoreCase) => "W",
+            _ => "OP",
+        };
 
     private async Task PollAsync(CancellationToken cancellationToken)
     {

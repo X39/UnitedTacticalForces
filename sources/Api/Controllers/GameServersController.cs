@@ -112,6 +112,21 @@ public sealed class GameServersController(
         CancellationToken cancellationToken)
         => Ok(await projectionService.GetJobsAsync(gameServerId, User, cancellationToken).ConfigureAwait(false));
 
+    [HttpGet("{gameServerId:guid}/operations")]
+    [Authorize(Claims.ResourceBased.Server.View)]
+    [ProducesResponseType<IReadOnlyCollection<HostingOperationDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetOperationsAsync(
+        [FromRoute] Guid gameServerId,
+        [FromQuery] int take = 80,
+        CancellationToken cancellationToken = default)
+    {
+        if (take is < 1 or > 200)
+            return BadRequest(new { error = "Take must be between 1 and 200." });
+        return Ok(await projectionService
+            .GetOperationsAsync(gameServerId, User, take, cancellationToken)
+            .ConfigureAwait(false));
+    }
+
     [HttpPut("{gameServerId:guid}/cost-owner")]
     [Authorize(Claims.ResourceBased.Server.Modify)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

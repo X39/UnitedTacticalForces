@@ -14467,6 +14467,27 @@
   <data name="Hosting_Detail_QueueTitle" xml:space="preserve">
     <value>Auftrags- und Befehlswarteschlange</value>
   </data>
+  <data name="Hosting_Detail_OperationsKicker" xml:space="preserve">
+    <value>Was ist passiert?</value>
+  </data>
+  <data name="Hosting_Detail_OperationsTitle" xml:space="preserve">
+    <value>Betriebsaktivitäten</value>
+  </data>
+  <data name="Hosting_Detail_OperationsDescription" xml:space="preserve">
+    <value>Dauerhafte Provider-, Ressourcen-, Worker- und Lifecycle-Übergänge. Diagnosen einzelner Anfragen verbleiben in OpenTelemetry.</value>
+  </data>
+  <data name="Hosting_Detail_OperationsEmpty" xml:space="preserve">
+    <value>Für diesen Server wurden noch keine Betriebsaktivitäten aufgezeichnet.</value>
+  </data>
+  <data name="Hosting_Detail_OperationsShowAll" xml:space="preserve">
+    <value>Alle anzeigen</value>
+  </data>
+  <data name="Hosting_Detail_OperationsShowRecent" xml:space="preserve">
+    <value>Nur aktuelle anzeigen</value>
+  </data>
+  <data name="Hosting_Detail_OperationsTrace" xml:space="preserve">
+    <value>Telemetrie-Trace</value>
+  </data>
   <data name="Hosting_Detail_RecordTitle" xml:space="preserve">
     <value>Serverdaten</value>
   </data>

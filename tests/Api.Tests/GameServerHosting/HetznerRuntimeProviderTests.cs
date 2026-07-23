@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -9,6 +10,48 @@ namespace Api.Tests.GameServerHosting;
 
 public sealed class HetznerRuntimeProviderTests
 {
+    [Fact]
+    public async Task Provision_EmitsOneProviderSpanPerHttpCallUnderRuntimeOperation()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.Created, FirewallResponseJson(19, request))
+            .Respond(HttpStatusCode.Created, PrimaryIpResponseJson(91, request))
+            .Respond(HttpStatusCode.Created, ServerResponseJson(42, request))
+            .Respond(HttpStatusCode.OK, PrimaryIpResponseJson(91, request, assigneeId: 42))
+            .Respond(HttpStatusCode.OK, FirewallResponseJson(19, request, 42));
+        var stopped = new List<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == HostingTelemetry.SourceName,
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = stopped.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.True(result.Succeeded, result.Error);
+        var requests = stopped.Where(q => q.GetTagItem("http.request.method") is not null).ToArray();
+        Assert.Equal(handler.Requests.Count, requests.Length);
+        Assert.All(requests, activity =>
+        {
+            Assert.Equal("hetzner", activity.GetTagItem("utf.hosting.provider"));
+            Assert.Equal("Succeeded", activity.GetTagItem("utf.hosting.outcome"));
+            Assert.NotNull(activity.ParentId);
+            Assert.DoesNotContain(TestToken, activity.TagObjects.Select(q => q.Value?.ToString()));
+            Assert.DoesNotContain(request.CloudInit, activity.TagObjects.Select(q => q.Value?.ToString()));
+        });
+        var provision = Assert.Single(stopped, q => q.OperationName == "runtime.provision");
+        Assert.Equal(ActivityStatusCode.Unset, provision.Status);
+        Assert.Equal("Succeeded", provision.GetTagItem("utf.hosting.outcome"));
+        Assert.All(requests, activity => Assert.Equal(provision.TraceId, activity.TraceId));
+    }
+
     [Fact]
     public async Task Provision_CreatesAndReturnsCompleteAttributedResourceGraph()
     {

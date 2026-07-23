@@ -70,4 +70,8 @@ public enum EHostingAuditEventKind
     ExternalRefundRecorded = 62,
     DeploymentCostOwnerCorrected = 63,
     HostingLedgerEntryReversed = 64,
+    DeploymentResourceProvisioningRequested = 65,
+    DeploymentResourceProvisioningFailed = 66,
+    DeploymentResourceReleaseRequested = 67,
+    DeploymentResourceReleaseFailed = 68,
 }

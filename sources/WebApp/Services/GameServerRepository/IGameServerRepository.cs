@@ -22,6 +22,11 @@ public interface IGameServerRepository
         Guid serverId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<HostingOperationInfo>> GetOperationsAsync(
+        Guid serverId,
+        int take = 80,
+        CancellationToken cancellationToken = default);
+
     Task<LifecycleJobInfo> ExecuteActionAsync(
         Guid serverId,
         string actionId,

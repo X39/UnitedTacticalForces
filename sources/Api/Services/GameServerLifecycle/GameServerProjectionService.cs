@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
@@ -143,6 +144,69 @@ internal sealed class GameServerProjectionService(
         return jobs.Select(q => ProjectJob(q, principal)).ToArray();
     }
 
+    public async Task<IReadOnlyCollection<HostingOperationDto>> GetOperationsAsync(
+        Guid gameServerId,
+        ClaimsPrincipal principal,
+        int take = 80,
+        CancellationToken cancellationToken = default)
+    {
+        if (take is < 1 or > 200)
+            throw new ArgumentOutOfRangeException(nameof(take));
+        if (!authorizationService.HasServerPermission(
+                principal,
+                gameServerId,
+                Claims.ResourceBased.Server.View))
+            return [];
+
+        var providerIdentifier = await dbContext.GameServers
+            .AsNoTracking()
+            .Where(q => q.PrimaryKey == gameServerId)
+            .Select(q => q.RuntimeProviderIdentifier)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (providerIdentifier is null)
+            return [];
+
+        var operationalKinds = new[]
+        {
+            EHostingAuditEventKind.DeploymentCreated,
+            EHostingAuditEventKind.DeploymentResourceProvisioningRequested,
+            EHostingAuditEventKind.DeploymentResourceProvisioningFailed,
+            EHostingAuditEventKind.DeploymentResourceObserved,
+            EHostingAuditEventKind.DeploymentResourceAdopted,
+            EHostingAuditEventKind.DeploymentResourceReleaseRequested,
+            EHostingAuditEventKind.DeploymentResourceReleaseFailed,
+            EHostingAuditEventKind.DeploymentResourceReleased,
+            EHostingAuditEventKind.DeploymentStopped,
+            EHostingAuditEventKind.DeploymentTerminated,
+            EHostingAuditEventKind.LifecycleJobQueued,
+            EHostingAuditEventKind.LifecycleJobClaimed,
+            EHostingAuditEventKind.LifecycleJobRetryPending,
+            EHostingAuditEventKind.LifecycleJobFailed,
+            EHostingAuditEventKind.LifecycleJobSucceeded,
+            EHostingAuditEventKind.LifecycleFailed,
+            EHostingAuditEventKind.WorkerProvisioned,
+            EHostingAuditEventKind.WorkerRegistered,
+            EHostingAuditEventKind.WorkerDegraded,
+            EHostingAuditEventKind.WorkerRecovered,
+            EHostingAuditEventKind.WorkerStopped,
+            EHostingAuditEventKind.WorkerCommandQueued,
+            EHostingAuditEventKind.WorkerCommandFailed,
+            EHostingAuditEventKind.WorkerCommandSucceeded,
+            EHostingAuditEventKind.ProviderReconciliationDegraded,
+            EHostingAuditEventKind.Recovery,
+        };
+        var records = await dbContext.HostingAuditRecords
+            .AsNoTracking()
+            .Where(q => q.GameServerFk == gameServerId && operationalKinds.Contains(q.Kind))
+            .OrderByDescending(q => q.TimeStampCreated)
+            .ThenByDescending(q => q.PrimaryKey)
+            .Take(take)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return records.Select(q => ProjectOperation(q, providerIdentifier)).ToArray();
+    }
+
     public LifecycleJobDto ProjectJob(LifecycleJob lifecycleJob, ClaimsPrincipal principal)
         => new()
         {
@@ -205,6 +269,82 @@ internal sealed class GameServerProjectionService(
             .ThenInclude(q => q.Resources)
             .Include(q => q.LifecycleJobs)
             .ThenInclude(q => q.WorkerCommands);
+
+    private static HostingOperationDto ProjectOperation(
+        HostingAuditRecord record,
+        string defaultProviderIdentifier)
+    {
+        var detail = ExtractDetail(record.Details);
+        var fields = ParseDetailFields(detail);
+        return new HostingOperationDto
+        {
+            PrimaryKey = record.PrimaryKey,
+            Kind = record.Kind,
+            Status = OperationStatus(record.Kind),
+            Summary = record.Summary,
+            Detail = detail,
+            ProviderIdentifier = fields.GetValueOrDefault("Provider") ?? defaultProviderIdentifier,
+            ResourceKind = fields.GetValueOrDefault("Kind"),
+            ResourceIdentifier = fields.GetValueOrDefault("Identity"),
+            ProviderState = fields.GetValueOrDefault("State") ?? fields.GetValueOrDefault("Stage"),
+            DeploymentId = record.DeploymentFk,
+            LifecycleJobId = record.LifecycleJobFk,
+            WorkerId = record.WorkerFk,
+            TraceId = record.TraceId,
+            SpanId = record.SpanId,
+            TimeStampCreated = record.TimeStampCreated,
+        };
+    }
+
+    private static string OperationStatus(EHostingAuditEventKind kind)
+        => kind switch
+        {
+            EHostingAuditEventKind.DeploymentResourceProvisioningRequested
+                or EHostingAuditEventKind.DeploymentResourceReleaseRequested
+                or EHostingAuditEventKind.DeploymentCreated
+                or EHostingAuditEventKind.LifecycleJobQueued
+                or EHostingAuditEventKind.LifecycleJobClaimed
+                or EHostingAuditEventKind.WorkerProvisioned
+                or EHostingAuditEventKind.WorkerCommandQueued => "pending",
+            EHostingAuditEventKind.DeploymentResourceProvisioningFailed
+                or EHostingAuditEventKind.DeploymentResourceReleaseFailed
+                or EHostingAuditEventKind.LifecycleJobFailed
+                or EHostingAuditEventKind.LifecycleFailed
+                or EHostingAuditEventKind.WorkerCommandFailed => "failed",
+            EHostingAuditEventKind.ProviderReconciliationDegraded
+                or EHostingAuditEventKind.WorkerDegraded
+                or EHostingAuditEventKind.LifecycleJobRetryPending
+                or EHostingAuditEventKind.Recovery => "warning",
+            _ => "succeeded",
+        };
+
+    private static string? ExtractDetail(string details)
+    {
+        if (string.IsNullOrWhiteSpace(details) || details == "{}")
+            return null;
+        try
+        {
+            using var document = JsonDocument.Parse(details);
+            return document.RootElement.TryGetProperty("detail", out var detail)
+                ? detail.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static IReadOnlyDictionary<string, string> ParseDetailFields(string? detail)
+    {
+        if (string.IsNullOrWhiteSpace(detail))
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        return detail.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(q => q.Split('=', 2, StringSplitOptions.TrimEntries))
+            .Where(q => q.Length == 2 && q[0].Length > 0)
+            .GroupBy(q => q[0], StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(q => q.Key, q => q.Last()[1], StringComparer.OrdinalIgnoreCase);
+    }
 
     private async Task<GameServerDto> ProjectServerAsync(
         GameServer server,

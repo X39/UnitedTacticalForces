@@ -69,5 +69,11 @@ public class HostingAuditRecord : IPrimaryKey<Guid>, ITimeStampCreated
     [Column(TypeName = "jsonb")]
     public string Details { get; set; } = "{}";
 
+    [MaxLength(32)]
+    public string? TraceId { get; set; }
+
+    [MaxLength(16)]
+    public string? SpanId { get; set; }
+
     public Instant TimeStampCreated { get; set; }
 }

@@ -1429,6 +1429,10 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Guid?>("LifecycleJobFk")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("SpanId")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<string>("Summary")
                         .IsRequired()
                         .HasMaxLength(512)
@@ -1436,6 +1440,10 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.Property<Instant>("TimeStampCreated")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TraceId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<Guid?>("WorkerCommandFk")
                         .HasColumnType("uuid");

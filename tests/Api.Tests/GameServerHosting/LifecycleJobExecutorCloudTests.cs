@@ -271,6 +271,11 @@ public sealed class LifecycleJobExecutorCloudTests
         Assert.Equal(1, cost.ReserveCalls);
         Assert.Equal(0, cost.CommitCalls);
         Assert.Equal(1, cost.ReleaseCalls);
+        var operationKinds = await store.DbContext.HostingAuditRecords
+            .Select(q => q.Kind)
+            .ToArrayAsync();
+        Assert.Contains(EHostingAuditEventKind.DeploymentResourceProvisioningRequested, operationKinds);
+        Assert.Contains(EHostingAuditEventKind.DeploymentResourceProvisioningFailed, operationKinds);
     }
 
     [Fact]

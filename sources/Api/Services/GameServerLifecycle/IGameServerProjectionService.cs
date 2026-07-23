@@ -26,5 +26,11 @@ public interface IGameServerProjectionService
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<HostingOperationDto>> GetOperationsAsync(
+        Guid gameServerId,
+        ClaimsPrincipal principal,
+        int take = 80,
+        CancellationToken cancellationToken = default);
+
     LifecycleJobDto ProjectJob(LifecycleJob lifecycleJob, ClaimsPrincipal principal);
 }

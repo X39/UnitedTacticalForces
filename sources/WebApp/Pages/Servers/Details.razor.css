@@ -265,6 +265,113 @@
     padding: 0.85rem;
 }
 
+.hosting-operation-list {
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-md);
+    list-style: none;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+.hosting-operation {
+    align-items: start;
+    background: rgba(255, 255, 255, 0.018);
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: 2.6rem minmax(0, 1fr);
+    padding: 0.85rem;
+}
+
+.hosting-operation:nth-child(even) {
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.hosting-operation + .hosting-operation {
+    border-top: 1px solid var(--utf-stroke);
+}
+
+.hosting-operation-icon {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--utf-stroke);
+    border-radius: 50%;
+    display: flex;
+    font-size: 0.62rem;
+    font-weight: 900;
+    height: 2.6rem;
+    justify-content: center;
+    letter-spacing: 0.03em;
+    position: relative;
+    width: 2.6rem;
+}
+
+.hosting-operation-icon::after {
+    background: var(--utf-success, #5fbf8f);
+    border: 2px solid var(--utf-surface, #151515);
+    border-radius: 50%;
+    bottom: -0.05rem;
+    content: "";
+    height: 0.65rem;
+    position: absolute;
+    right: -0.05rem;
+    width: 0.65rem;
+}
+
+.hosting-operation-icon--pending::after {
+    background: var(--utf-info, #6ea8fe);
+}
+
+.hosting-operation-icon--warning::after {
+    background: var(--utf-warning, #d6a84b);
+}
+
+.hosting-operation-icon--failed::after {
+    background: var(--utf-danger, #dc6b6b);
+}
+
+.hosting-operation-copy {
+    display: grid;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.hosting-operation-title,
+.hosting-operation-meta {
+    align-items: center;
+    display: flex;
+    gap: 0.55rem;
+}
+
+.hosting-operation-title {
+    justify-content: space-between;
+}
+
+.hosting-operation-title time,
+.hosting-operation-meta,
+.hosting-operation-copy small {
+    color: var(--utf-text-muted);
+    font-size: 0.74rem;
+}
+
+.hosting-operation-meta {
+    flex-wrap: wrap;
+}
+
+.hosting-operation-copy > code,
+.hosting-operation-copy small code {
+    color: var(--utf-text-muted);
+    font-size: 0.7rem;
+    overflow-wrap: anywhere;
+}
+
+.hosting-operation-error {
+    color: var(--utf-danger, #dc6b6b);
+    font-size: 0.78rem;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
 .hosting-job header,
 .hosting-job header > div {
     display: flex;

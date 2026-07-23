@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Diagnostics;
 using System.Text.Json;
 using X39.Util.DependencyInjection.Attributes;
 
@@ -336,6 +337,20 @@ public sealed class HetznerCloudClient(
         CancellationToken cancellationToken)
     {
         var options = optionsProvider.Value;
+        var (operation, routeTemplate, resourceType, resourceId) = DescribeRequest(method, relativePath);
+        using var activity = HostingTelemetry.StartProviderRequest(
+            HetznerRuntimeProvider.Identifier,
+            operation,
+            method.Method,
+            routeTemplate,
+            resourceType,
+            resourceId,
+            ambiguousMutation);
+        var stopwatch = Stopwatch.StartNew();
+        HetznerHttpResult? result = null;
+        int? statusCode = null;
+        string? requestId = null;
+        string? errorType = null;
         try
         {
             using var request = new HttpRequestMessage(method, new Uri(options.GetBaseUri(), relativePath));
@@ -348,10 +363,16 @@ public sealed class HetznerCloudClient(
             var response = await client
                 .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                 .ConfigureAwait(false);
+            statusCode = (int) response.StatusCode;
+            requestId = TryGetRequestId(response);
             if (response.IsSuccessStatusCode)
-                return HetznerHttpResult.Success(response);
+            {
+                result = HetznerHttpResult.Success(response);
+                return result;
+            }
 
             var outcome = MapFailure(response.StatusCode, ambiguousMutation);
+            errorType = $"http.{statusCode}";
             var sensitiveRequestValue = requestBody is HetznerServerCreateRequest serverRequest
                 ? serverRequest.UserData
                 : null;
@@ -362,32 +383,90 @@ public sealed class HetznerCloudClient(
                     cancellationToken)
                 .ConfigureAwait(false);
             response.Dispose();
-            return HetznerHttpResult.Failure(outcome, error);
+            result = HetznerHttpResult.Failure(outcome, error);
+            return result;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            errorType = "canceled";
+            throw;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return HetznerHttpResult.Failure(
+            errorType = typeof(TimeoutException).FullName;
+            result = HetznerHttpResult.Failure(
                 ambiguousMutation ? ERuntimeProviderOutcome.Unknown : ERuntimeProviderOutcome.TransientFailure,
                 "Hetzner Cloud did not respond before the request timed out.");
+            return result;
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
-            return HetznerHttpResult.Failure(
+            errorType = ex.GetType().FullName;
+            result = HetznerHttpResult.Failure(
                 ambiguousMutation ? ERuntimeProviderOutcome.Unknown : ERuntimeProviderOutcome.TransientFailure,
                 "Hetzner Cloud could not be reached.");
+            return result;
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
-            return HetznerHttpResult.Failure(
+            errorType = ex.GetType().FullName;
+            result = HetznerHttpResult.Failure(
                 ERuntimeProviderOutcome.PermanentFailure,
                 "The Hetzner Cloud client is not configured correctly.");
+            return result;
         }
-        catch (UriFormatException)
+        catch (UriFormatException ex)
         {
-            return HetznerHttpResult.Failure(
+            errorType = ex.GetType().FullName;
+            result = HetznerHttpResult.Failure(
                 ERuntimeProviderOutcome.PermanentFailure,
                 "The Hetzner Cloud client is not configured correctly.");
+            return result;
         }
+        finally
+        {
+            stopwatch.Stop();
+            HostingTelemetry.CompleteProviderRequest(
+                activity,
+                HetznerRuntimeProvider.Identifier,
+                operation,
+                result?.Outcome
+                ?? (cancellationToken.IsCancellationRequested
+                    ? ERuntimeProviderOutcome.TransientFailure
+                    : ERuntimeProviderOutcome.Unknown),
+                stopwatch.Elapsed.TotalMilliseconds,
+                statusCode,
+                requestId,
+                errorType,
+                result?.Error);
+        }
+    }
+
+    private static (string operation, string routeTemplate, string? resourceType, string? resourceId)
+        DescribeRequest(HttpMethod method, string relativePath)
+    {
+        var path = relativePath.Split('?', 2)[0].Trim('/');
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var resourceType = segments.FirstOrDefault() switch
+        {
+            "primary_ips" => "primary-ip",
+            { Length: > 0 } value => value.TrimEnd('s'),
+            _ => null,
+        };
+        var resourceId = segments.Length > 1 && long.TryParse(segments[1], out _)
+            ? segments[1]
+            : null;
+        var operation = segments.Length > 3 && string.Equals(segments[2], "actions", StringComparison.Ordinal)
+            ? segments[3]
+            : method == HttpMethod.Post
+                ? "create"
+                : method == HttpMethod.Delete
+                    ? "delete"
+                    : resourceId is null ? "list" : "get";
+        var routeTemplate = string.Join(
+            '/',
+            segments.Select(q => long.TryParse(q, out _) ? "{id}" : q));
+        return (operation, routeTemplate, resourceType, resourceId);
     }
 
     private static string ListPath(

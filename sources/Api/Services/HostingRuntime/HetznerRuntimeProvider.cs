@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.Api.Services.HostingRuntime;
@@ -55,14 +56,25 @@ public sealed class HetznerRuntimeProvider(
         RuntimeProvisionRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = HostingTelemetry.StartRuntimeOperation(
+            Identifier,
+            "provision",
+            request.ServerId,
+            request.DeploymentId);
         var validationFailure = ValidateProvisionRequest(request);
         if (validationFailure is not null)
         {
-            return new RuntimeProvisionResult(
+            var validationResult = new RuntimeProvisionResult(
                 ERuntimeProviderOutcome.PermanentFailure,
                 "provision-validation",
                 validationFailure,
                 null);
+            HostingTelemetry.CompleteRuntimeOperation(
+                activity,
+                validationResult.Outcome,
+                validationResult.Stage,
+                validationResult.Error);
+            return validationResult;
         }
 
         var gate = _provisioningLocks.GetOrAdd(request.ProvisioningIntentId, static _ => new SemaphoreSlim(1, 1));
@@ -85,10 +97,15 @@ public sealed class HetznerRuntimeProvider(
                         result.Stage,
                         HostingFailureSanitizer.Sanitize(result.Error, optionsProvider.Value.Token));
                 }
+                HostingTelemetry.CompleteRuntimeOperation(activity, result.Outcome, result.Stage, result.Error);
                 return result;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                HostingTelemetry.RecordException(
+                    activity,
+                    ex,
+                    HostingFailureSanitizer.Sanitize(ex.Message, optionsProvider.Value.Token, request.CloudInit));
                 logger.LogError(
                     "Unexpected Hetzner provisioning failure for server {ServerId}, deployment {DeploymentId}, "
                     + "worker {WorkerId}, and intent {IntentId}. ExceptionType={ExceptionType}; Failure={Failure}; "
@@ -357,18 +374,42 @@ public sealed class HetznerRuntimeProvider(
         RuntimeObservationRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = HostingTelemetry.StartRuntimeOperation(
+            Identifier,
+            "observe",
+            request.ServerId,
+            request.DeploymentId,
+            resourceId: request.ResourceIdentifier);
         var configurationFailure = optionsProvider.Value.ValidateConnection();
         if (configurationFailure is not null)
-            return ObservationFailure(ERuntimeProviderOutcome.PermanentFailure, "observe-configuration", configurationFailure);
+        {
+            var configurationResult = ObservationFailure(
+                ERuntimeProviderOutcome.PermanentFailure,
+                "observe-configuration",
+                configurationFailure);
+            HostingTelemetry.CompleteRuntimeOperation(
+                activity,
+                configurationResult.Outcome,
+                configurationResult.Stage,
+                configurationResult.Error);
+            return configurationResult;
+        }
         if (!TryParseResourceIdentifier(request.ResourceIdentifier, out var kind, out var providerResourceId))
         {
-            return ObservationFailure(
+            var validationResult = ObservationFailure(
                 ERuntimeProviderOutcome.PermanentFailure,
                 "observe-validation",
                 "The Hetzner resource identity is invalid.");
+            HostingTelemetry.CompleteRuntimeOperation(
+                activity,
+                validationResult.Outcome,
+                validationResult.Stage,
+                validationResult.Error);
+            return validationResult;
         }
 
-        return kind switch
+        activity?.SetTag("utf.hosting.resource.type", ResourceType(kind));
+        var result = kind switch
         {
             EHetznerResourceKind.Server => await ObserveServerAsync(request, providerResourceId, cancellationToken)
                 .ConfigureAwait(false),
@@ -378,24 +419,50 @@ public sealed class HetznerRuntimeProvider(
                 .ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
+        HostingTelemetry.CompleteRuntimeOperation(activity, result.Outcome, result.Stage, result.Error);
+        return result;
     }
 
     public async Task<RuntimeReleaseResult> ReleaseAsync(
         RuntimeReleaseRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = HostingTelemetry.StartRuntimeOperation(
+            Identifier,
+            "release",
+            request.ServerId,
+            request.DeploymentId,
+            resourceId: request.ResourceIdentifier);
         var configurationFailure = optionsProvider.Value.ValidateConnection();
         if (configurationFailure is not null)
-            return ReleaseFailure(ERuntimeProviderOutcome.PermanentFailure, "release-configuration", configurationFailure);
+        {
+            var configurationResult = ReleaseFailure(
+                ERuntimeProviderOutcome.PermanentFailure,
+                "release-configuration",
+                configurationFailure);
+            HostingTelemetry.CompleteRuntimeOperation(
+                activity,
+                configurationResult.Outcome,
+                configurationResult.Stage,
+                configurationResult.Error);
+            return configurationResult;
+        }
         if (!TryParseResourceIdentifier(request.ResourceIdentifier, out var kind, out var providerResourceId))
         {
-            return ReleaseFailure(
+            var validationResult = ReleaseFailure(
                 ERuntimeProviderOutcome.PermanentFailure,
                 "release-validation",
                 "The Hetzner resource identity is invalid.");
+            HostingTelemetry.CompleteRuntimeOperation(
+                activity,
+                validationResult.Outcome,
+                validationResult.Stage,
+                validationResult.Error);
+            return validationResult;
         }
 
-        return kind switch
+        activity?.SetTag("utf.hosting.resource.type", ResourceType(kind));
+        var result = kind switch
         {
             EHetznerResourceKind.Server => await ReleaseServerAsync(
                     providerResourceId,
@@ -419,11 +486,37 @@ public sealed class HetznerRuntimeProvider(
                 .ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
+        HostingTelemetry.CompleteRuntimeOperation(activity, result.Outcome, result.Stage, result.Error);
+        return result;
     }
 
     public async Task<RuntimeReleaseResult> ReleaseDanglingAsync(
         RuntimeDanglingReleaseRequest request,
         CancellationToken cancellationToken = default)
+    {
+        using var activity = HostingTelemetry.StartRuntimeOperation(
+            Identifier,
+            "release-dangling",
+            serverId: null,
+            deploymentId: null,
+            resourceType: request.ResourceType,
+            resourceId: request.ResourceIdentifier);
+        try
+        {
+            var result = await ReleaseDanglingCoreAsync(request, cancellationToken).ConfigureAwait(false);
+            HostingTelemetry.CompleteRuntimeOperation(activity, result.Outcome, result.Stage, result.Error);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            HostingTelemetry.RecordException(activity, ex);
+            throw;
+        }
+    }
+
+    private async Task<RuntimeReleaseResult> ReleaseDanglingCoreAsync(
+        RuntimeDanglingReleaseRequest request,
+        CancellationToken cancellationToken)
     {
         var configurationFailure = optionsProvider.Value.ValidateConnection();
         if (configurationFailure is not null)
@@ -461,6 +554,22 @@ public sealed class HetznerRuntimeProvider(
     }
 
     public async Task<RuntimeDiscoveryResult> DiscoverAsync(CancellationToken cancellationToken = default)
+    {
+        using var activity = HostingTelemetry.StartRuntimeOperation(Identifier, "discover");
+        try
+        {
+            var result = await DiscoverCoreAsync(cancellationToken).ConfigureAwait(false);
+            HostingTelemetry.CompleteRuntimeOperation(activity, result.Outcome, result.Stage, result.Error);
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            HostingTelemetry.RecordException(activity, ex);
+            throw;
+        }
+    }
+
+    private async Task<RuntimeDiscoveryResult> DiscoverCoreAsync(CancellationToken cancellationToken)
     {
         var configurationFailure = optionsProvider.Value.ValidateConnection();
         if (configurationFailure is not null)

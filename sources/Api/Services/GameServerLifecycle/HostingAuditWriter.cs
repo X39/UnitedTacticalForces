@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Diagnostics;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Hosting.Contracts;
@@ -23,6 +24,7 @@ internal sealed class HostingAuditWriter : IHostingAuditWriter
         Guid? workerCommandId = null,
         ECostImpact costImpact = ECostImpact.NoCostImpact)
     {
+        var activity = Activity.Current;
         dbContext.HostingAuditRecords.Add(new HostingAuditRecord
         {
             PrimaryKey     = Guid.NewGuid(),
@@ -40,6 +42,8 @@ internal sealed class HostingAuditWriter : IHostingAuditWriter
             Details        = details is null
                 ? "{}"
                 : JsonSerializer.Serialize(new { detail = HostingFailureSanitizer.Sanitize(details, 2048) }),
+            TraceId        = activity is null ? null : activity.TraceId.ToString(),
+            SpanId         = activity is null ? null : activity.SpanId.ToString(),
         });
     }
 }

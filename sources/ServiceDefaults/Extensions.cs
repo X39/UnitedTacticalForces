@@ -57,14 +57,17 @@ public static class Extensions
             .AddOpenTelemetry()
             .WithMetrics(metrics =>
                 {
-                    metrics.AddAspNetCoreInstrumentation()
+                    metrics.AddMeter("X39.UnitedTacticalForces.Hosting")
+                        .AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
                         .AddRuntimeInstrumentation();
                 }
             )
             .WithTracing(tracing =>
                 {
-                    tracing.AddSource(builder.Environment.ApplicationName)
+                    tracing.AddSource(
+                            builder.Environment.ApplicationName,
+                            "X39.UnitedTacticalForces.Hosting")
                         .AddAspNetCoreInstrumentation()
                         // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                         //.AddGrpcClientInstrumentation()
