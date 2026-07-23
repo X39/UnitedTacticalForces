@@ -155,15 +155,20 @@ internal sealed class GameServerProjectionService(
             Stage = lifecycleJob.Stage,
             ProgressPercent = lifecycleJob.Progress,
             AttemptCount = lifecycleJob.Attempt,
+            FailureCode = lifecycleJob.FailureCode,
             FailureReason = lifecycleJob.FailureMessage,
             CanRetry = lifecycleJob.Status is ELifecycleJobStatus.Failed
-                       && lifecycleJob.FailureCode != "permanent-execution-failed"
+                       && !(lifecycleJob.FailureCode?.StartsWith(
+                           "permanent-",
+                           StringComparison.OrdinalIgnoreCase) ?? false)
                        && authorizationService.HasServerPermission(
                            principal,
                            lifecycleJob.GameServerFk,
                            Claims.ResourceBased.Server.Operate),
             CanSkip = lifecycleJob.Status is ELifecycleJobStatus.Failed
-                      && lifecycleJob.FailureCode != "permanent-execution-failed"
+                      && !(lifecycleJob.FailureCode?.StartsWith(
+                          "permanent-",
+                          StringComparison.OrdinalIgnoreCase) ?? false)
                       && authorizationService.HasServerPermission(
                           principal,
                           lifecycleJob.GameServerFk,

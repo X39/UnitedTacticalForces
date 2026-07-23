@@ -302,6 +302,13 @@
                             @if (!string.IsNullOrWhiteSpace(job.FailureReason))
                             {
                                 <p class="hosting-fault">@job.FailureReason</p>
+                                <small class="hosting-muted">
+                                    Diagnostic reference: @job.PrimaryKey
+                                    @if (!string.IsNullOrWhiteSpace(job.FailureCode))
+                                    {
+                                        <text> · @job.FailureCode</text>
+                                    }
+                                </small>
                             }
                             @if (job.CanRetry || job.CanSkip)
                             {

@@ -16,6 +16,7 @@ public sealed record LifecycleJobInfo
     public int AttemptCount { get; init; }
     public bool CanRetry { get; init; }
     public bool CanSkip { get; init; }
+    public string? FailureCode { get; init; }
     public string? FailureReason { get; init; }
     public DateTimeOffset TimeStampCreated { get; init; }
     public DateTimeOffset TimeStampUpdated { get; init; }

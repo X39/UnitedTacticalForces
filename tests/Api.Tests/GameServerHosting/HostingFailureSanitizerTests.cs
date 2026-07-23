@@ -8,6 +8,7 @@ public sealed class HostingFailureSanitizerTests
     [Theory]
     [InlineData("password=hunter2")]
     [InlineData("token: abc.def.ghi")]
+    [InlineData("{\"bootstrapCredential\":\"json-secret-value\"}")]
     [InlineData("Authorization Bearer-secret-value")]
     [InlineData("https://worker:credential@example.invalid/path")]
     public void Sanitize_RemovesCredentialShapedValues(string value)
@@ -18,6 +19,7 @@ public sealed class HostingFailureSanitizerTests
         Assert.DoesNotContain("abc.def.ghi", result, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Bearer-secret-value", result, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("credential@example", result, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("json-secret-value", result, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

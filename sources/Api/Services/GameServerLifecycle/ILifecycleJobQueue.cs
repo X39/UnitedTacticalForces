@@ -27,5 +27,6 @@ public interface ILifecycleJobQueue
         string failureReason,
         TimeSpan retryDelay,
         bool retryAllowed = true,
+        string? failureCode = null,
         CancellationToken cancellationToken = default);
 }

@@ -366,7 +366,8 @@ internal sealed class LifecycleJobExecutor(
                         .ConfigureAwait(false);
                 }
                 throw new LifecycleExecutionException(
-                    provision.Error ?? "Provider provisioning is waiting for safe reconciliation.");
+                    provision.Error ?? "Provider provisioning is waiting for safe reconciliation.",
+                    provision.Stage);
             }
             observedResource = provision.Resource;
         }
@@ -1570,7 +1571,7 @@ internal sealed class LifecycleJobExecutor(
             details: deployment.FaultMessage,
             costImpact: ECostImpact.NoCostImpact);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        throw new PermanentLifecycleExecutionException(deployment.FaultMessage);
+        throw new PermanentLifecycleExecutionException(deployment.FaultMessage, deployment.FaultCode);
     }
 
     private async Task ThrowIfProvisioningBlockedAsync(Guid deploymentId, CancellationToken cancellationToken)

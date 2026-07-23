@@ -60,8 +60,11 @@ internal sealed class GameServerControlPlaneWorker(
             catch (Exception ex)
             {
                 logger.LogError(
-                    "The lifecycle control-plane loop failed and will retry: {Failure}",
-                    HostingFailureSanitizer.Sanitize(ex.Message));
+                    "The lifecycle control-plane loop failed and will retry. ExceptionType={ExceptionType}; "
+                    + "Failure={Failure}; StackTrace={StackTrace}",
+                    ex.GetType().FullName,
+                    HostingFailureSanitizer.Sanitize(ex.Message),
+                    ex.StackTrace);
                 await DelayAfterFailureAsync(_options.IdlePollInterval, stoppingToken).ConfigureAwait(false);
             }
         }
@@ -111,9 +114,12 @@ internal sealed class GameServerControlPlaneWorker(
         catch (Exception ex)
         {
             logger.LogError(
-                "Lifecycle job {LifecycleJobId} coordination failed and will recover from its lease: {Failure}",
+                "Lifecycle job {LifecycleJobId} coordination failed and will recover from its lease. "
+                + "ExceptionType={ExceptionType}; Failure={Failure}; StackTrace={StackTrace}",
                 job.PrimaryKey,
-                HostingFailureSanitizer.Sanitize(ex.Message));
+                ex.GetType().FullName,
+                HostingFailureSanitizer.Sanitize(ex.Message),
+                ex.StackTrace);
         }
         finally
         {
@@ -186,9 +192,13 @@ internal sealed class GameServerControlPlaneWorker(
 
         var failure = HostingFailureSanitizer.Sanitize(executionFailure.Message);
         logger.LogError(
-            "Lifecycle job {LifecycleJobId} failed in the control plane: {Failure}",
+            "Lifecycle job {LifecycleJobId} failed in the control plane. ExceptionType={ExceptionType}; "
+            + "Failure={Failure}; StackTrace={StackTrace}",
             job.PrimaryKey,
-            failure);
+            executionFailure.GetType().FullName,
+            failure,
+            executionFailure.StackTrace);
+        var lifecycleFailure = executionFailure as LifecycleExecutionException;
         await queue
             .FailAsync(
                 job.PrimaryKey,
@@ -196,6 +206,7 @@ internal sealed class GameServerControlPlaneWorker(
                 failure,
                 _options.RetryDelay,
                 executionFailure is not PermanentLifecycleExecutionException,
+                lifecycleFailure?.FailureCode,
                 stoppingToken)
             .ConfigureAwait(false);
     }

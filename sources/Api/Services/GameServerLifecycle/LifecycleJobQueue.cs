@@ -288,6 +288,7 @@ internal sealed class LifecycleJobQueue(
         string failureReason,
         TimeSpan retryDelay,
         bool retryAllowed = true,
+        string? failureCode = null,
         CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken)
@@ -315,7 +316,12 @@ internal sealed class LifecycleJobQueue(
         job.TimeStampNextAttempt = retry ? now + Duration.FromTimeSpan(retryDelay) : null;
         job.TimeStampUpdated = now;
         job.TimeStampCompleted = retry ? null : now;
-        job.FailureCode = retryAllowed ? "execution-failed" : "permanent-execution-failed";
+        var sanitizedCode = string.IsNullOrWhiteSpace(failureCode)
+            ? null
+            : HostingFailureSanitizer.Sanitize(failureCode, 96);
+        job.FailureCode = sanitizedCode is null
+            ? retryAllowed ? "execution-failed" : "permanent-execution-failed"
+            : retryAllowed ? sanitizedCode : $"permanent-{sanitizedCode}";
         job.FailureMessage = sanitized;
         var attempt = await dbContext.LifecycleJobAttempts
             .SingleAsync(

@@ -26,8 +26,8 @@ public static partial class HostingFailureSanitizer
         return sanitized.Length <= MaximumLength ? sanitized : sanitized[..MaximumLength];
     }
 
-    [GeneratedRegex("(?i)\\b(password|passwd|pwd|secret|token|api[-_]?key|client[-_]?secret|"
-                    + "rcon[-_]?password)\\s*[:=]\\s*([^\\s;,]+)")]
+    [GeneratedRegex("(?i)\\b(password|passwd|pwd|secret|token|credential|api[-_]?key|client[-_]?secret|"
+                    + "rcon[-_]?password)[\"']?\\s*[:=]\\s*[\"']?([^\\s;,\"'}]+)")]
     private static partial Regex CredentialAssignmentRegex();
 
     [GeneratedRegex("(?i)\\b(bearer|authorization)\\s+[^\\s;,]+")]

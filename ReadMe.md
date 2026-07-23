@@ -151,3 +151,17 @@ Hence, follow both steps carefully:
    ```
 5. Create a link using `ln /etc/nginx/sites-enabled/utf-webapp /etc/nginx/sites-available/utf.webapp`
 6. Reload your nginx server by using `service nginx reload`
+## Provisioning observability
+
+Cloud provisioning failures are persisted with lifecycle job status, stage, failure code, sanitized failure message,
+timestamps, and attempts. Authorized server viewers can copy the lifecycle job identifier and failure code from the
+server details page after an API restart. Hetzner failures retain the HTTP status plus the provider's allow-listed
+`error.code`, `error.message`, and request identifier when supplied. Provider tokens, authorization headers, request
+bodies, cloud-init, bootstrap credentials, and arbitrary response fields are excluded or redacted.
+
+Remote logs correlate `LifecycleJobId`, `ServerId`, `DeploymentId`, `WorkerId`, and provisioning `IntentId`, together
+with outcome, stage, sanitized failure, exception type, and stack trace. A non-local deployment must retain API
+stdout/stderr through systemd, Docker, or another host collector. Centralized OpenTelemetry export is enabled when
+`OTEL_EXPORTER_OTLP_ENDPOINT` is configured. Remote observability is operational only when either host console logs
+are retained or an OTLP endpoint is configured; the bounded durable database/UI record does not replace stack traces
+and centralized retention.

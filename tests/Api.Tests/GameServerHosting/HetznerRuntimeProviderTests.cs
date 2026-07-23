@@ -158,6 +158,41 @@ public sealed class HetznerRuntimeProviderTests
     }
 
     [Fact]
+    public async Task Provision_PersistsSanitizedProviderErrorAndRequestReference()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(
+                HttpStatusCode.UnprocessableEntity,
+                JsonSerializer.Serialize(new
+                {
+                    error = new
+                    {
+                        code = "invalid_input",
+                        message = $"Unsupported location; token={TestToken}",
+                        details = new
+                        {
+                            user_data = request.CloudInit,
+                        },
+                    },
+                }),
+                requestId: "provider-request-123");
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.PermanentFailure, result.Outcome);
+        Assert.Equal("firewall-create-failed", result.Stage);
+        Assert.Contains("invalid_input", result.Error, StringComparison.Ordinal);
+        Assert.Contains("Unsupported location", result.Error, StringComparison.Ordinal);
+        Assert.Contains("provider-request-123", result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain(TestToken, result.Error ?? string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain(request.CloudInit!, result.Error ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Provision_RetryWithOnlyFirewallVisibleNeverPostsSecondPrimaryIp()
     {
         var request = CreateProvisionRequest();
@@ -700,11 +735,20 @@ public sealed class HetznerRuntimeProviderTests
 
         public List<ObservedRequest> Requests { get; } = [];
 
-        public SequencedHttpMessageHandler Respond(HttpStatusCode statusCode, string json)
+        public SequencedHttpMessageHandler Respond(
+            HttpStatusCode statusCode,
+            string json,
+            string? requestId = null)
         {
-            _responses.Enqueue(() => new HttpResponseMessage(statusCode)
+            _responses.Enqueue(() =>
             {
-                Content = new StringContent(json, Encoding.UTF8, "application/json"),
+                var response = new HttpResponseMessage(statusCode)
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json"),
+                };
+                if (requestId is not null)
+                    response.Headers.Add("x-request-id", requestId);
+                return response;
             });
             return this;
         }

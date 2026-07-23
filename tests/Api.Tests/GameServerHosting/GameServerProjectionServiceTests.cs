@@ -178,8 +178,9 @@ public sealed class GameServerProjectionServiceTests
         Assert.False(viewerJob.CanRetry);
         Assert.False(viewerJob.CanSkip);
 
-        job.FailureCode = "permanent-execution-failed";
+        job.FailureCode = "permanent-firewall-create-failed";
         var permanentJob = projection.ProjectJob(job, operatorPrincipal);
+        Assert.Equal("permanent-firewall-create-failed", permanentJob.FailureCode);
         Assert.False(permanentJob.CanRetry);
         Assert.False(permanentJob.CanSkip);
     }

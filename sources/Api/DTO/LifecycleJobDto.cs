@@ -16,6 +16,7 @@ public sealed record LifecycleJobDto
     public string Stage { get; init; } = string.Empty;
     public int ProgressPercent { get; init; }
     public int AttemptCount { get; init; }
+    public string? FailureCode { get; init; }
     public string? FailureReason { get; init; }
     public bool CanRetry { get; init; }
     public bool CanSkip { get; init; }

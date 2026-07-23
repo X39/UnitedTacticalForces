@@ -335,20 +335,21 @@ public sealed class LifecycleJobQueueTests
             "processor-a",
             "request is no longer authorized",
             TimeSpan.Zero,
-            retryAllowed: false);
+            retryAllowed: false,
+            failureCode: "provider-provisioning-invalid");
 
         await using var verification = CreateDbContext(store.Connection);
         var persisted = await verification.LifecycleJobs.SingleAsync(q => q.PrimaryKey == job.PrimaryKey);
         Assert.Equal(ELifecycleJobStatus.Failed, persisted.Status);
         Assert.Equal("failed", persisted.Stage);
-        Assert.Equal("permanent-execution-failed", persisted.FailureCode);
+        Assert.Equal("permanent-provider-provisioning-invalid", persisted.FailureCode);
         Assert.Equal(1, persisted.Attempt);
         Assert.Null(persisted.TimeStampNextAttempt);
         Assert.NotNull(persisted.TimeStampCompleted);
         var attempt = await verification.LifecycleJobAttempts
             .SingleAsync(q => q.LifecycleJobFk == job.PrimaryKey && q.AttemptNumber == 1);
         Assert.Equal(ELifecycleJobStatus.Failed, attempt.Status);
-        Assert.Equal("permanent-execution-failed", attempt.FailureCode);
+        Assert.Equal("permanent-provider-provisioning-invalid", attempt.FailureCode);
         Assert.NotNull(attempt.TimeStampCompleted);
     }
 

@@ -69,7 +69,39 @@ public sealed class HetznerRuntimeProvider(
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            return await ProvisionCoreAsync(request, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var result = await ProvisionCoreAsync(request, cancellationToken).ConfigureAwait(false);
+                if (!result.Succeeded)
+                {
+                    logger.LogWarning(
+                        "Hetzner provisioning did not complete for server {ServerId}, deployment {DeploymentId}, "
+                        + "worker {WorkerId}, and intent {IntentId}. Outcome={Outcome}; Stage={Stage}; Failure={Failure}",
+                        request.ServerId,
+                        request.DeploymentId,
+                        request.WorkerId,
+                        request.ProvisioningIntentId,
+                        result.Outcome,
+                        result.Stage,
+                        HostingFailureSanitizer.Sanitize(result.Error, optionsProvider.Value.Token));
+                }
+                return result;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(
+                    "Unexpected Hetzner provisioning failure for server {ServerId}, deployment {DeploymentId}, "
+                    + "worker {WorkerId}, and intent {IntentId}. ExceptionType={ExceptionType}; Failure={Failure}; "
+                    + "StackTrace={StackTrace}",
+                    request.ServerId,
+                    request.DeploymentId,
+                    request.WorkerId,
+                    request.ProvisioningIntentId,
+                    ex.GetType().FullName,
+                    HostingFailureSanitizer.Sanitize(ex.Message, optionsProvider.Value.Token, request.CloudInit),
+                    ex.StackTrace);
+                throw;
+            }
         }
         finally
         {

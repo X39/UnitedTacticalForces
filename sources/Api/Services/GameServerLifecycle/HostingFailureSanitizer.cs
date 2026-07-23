@@ -28,7 +28,8 @@ internal static partial class HostingFailureSanitizer
             : sanitized[..maximumLength];
     }
 
-    [GeneratedRegex("(?i)(password|passwd|pwd|token|secret|credential|api[-_]?key)\\s*[:=]\\s*([^\\s;,]+)")]
+    [GeneratedRegex(
+        "(?i)(password|passwd|pwd|token|secret|credential|api[-_]?key)[\"']?\\s*[:=]\\s*[\"']?([^\\s;,\"'}]+)")]
     private static partial Regex CredentialAssignmentRegex();
 
     [GeneratedRegex("(?i)(authorization\\s*[:=]?\\s*(?:bearer)?[-\\s]+)[^\\s;,]+")]

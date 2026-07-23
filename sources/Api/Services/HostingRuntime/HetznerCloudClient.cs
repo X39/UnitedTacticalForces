@@ -8,7 +8,8 @@ namespace X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 
 /// <summary>
 /// Narrow Hetzner Cloud API client for the dedicated server, Primary IPv4, and firewall resource graph.
-/// Provider response bodies are deliberately excluded from failures because they can contain user data.
+/// Only the documented provider error code and message are retained from failure bodies. Request bodies and
+/// successful response bodies are never included in diagnostics because they can contain bootstrap credentials.
 /// </summary>
 [Singleton<HetznerCloudClient>]
 public sealed class HetznerCloudClient(
@@ -351,7 +352,15 @@ public sealed class HetznerCloudClient(
                 return HetznerHttpResult.Success(response);
 
             var outcome = MapFailure(response.StatusCode, ambiguousMutation);
-            var error = BuildFailureMessage(response.StatusCode);
+            var sensitiveRequestValue = requestBody is HetznerServerCreateRequest serverRequest
+                ? serverRequest.UserData
+                : null;
+            var error = await BuildFailureMessageAsync(
+                    response,
+                    options.Token,
+                    sensitiveRequestValue,
+                    cancellationToken)
+                .ConfigureAwait(false);
             response.Dispose();
             return HetznerHttpResult.Failure(outcome, error);
         }
@@ -405,16 +414,70 @@ public sealed class HetznerCloudClient(
         return ERuntimeProviderOutcome.PermanentFailure;
     }
 
-    private static string BuildFailureMessage(HttpStatusCode statusCode)
-        => statusCode switch
+    private static async Task<string> BuildFailureMessageAsync(
+        HttpResponseMessage response,
+        string token,
+        string? sensitiveRequestValue,
+        CancellationToken cancellationToken)
+    {
+        var summary = response.StatusCode switch
         {
             HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
                 => "Hetzner Cloud rejected the configured credentials.",
             HttpStatusCode.NotFound => "The Hetzner Cloud resource was not found.",
             HttpStatusCode.TooManyRequests => "Hetzner Cloud rate-limited the request.",
-            _ when (int)statusCode >= 500 => "Hetzner Cloud is temporarily unavailable.",
-            _ => $"Hetzner Cloud rejected the request with HTTP status {(int)statusCode}.",
+            _ when (int)response.StatusCode >= 500 => "Hetzner Cloud is temporarily unavailable.",
+            _ => $"Hetzner Cloud rejected the request with HTTP status {(int)response.StatusCode}.",
         };
+        string? providerCode = null;
+        string? providerMessage = null;
+        try
+        {
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            using var document = await JsonDocument
+                .ParseAsync(stream, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            if (document.RootElement.TryGetProperty("error", out var error)
+                && error.ValueKind is JsonValueKind.Object)
+            {
+                if (error.TryGetProperty("code", out var code) && code.ValueKind is JsonValueKind.String)
+                    providerCode = code.GetString();
+                if (error.TryGetProperty("message", out var message) && message.ValueKind is JsonValueKind.String)
+                    providerMessage = message.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+            // The status remains actionable even when a proxy or provider returns a non-JSON failure body.
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A broken error body must not hide the status code that triggered this diagnostic.
+        }
+
+        var requestId = TryGetRequestId(response);
+        var detail = (providerCode, providerMessage) switch
+        {
+            ({ Length: > 0 }, { Length: > 0 }) => $" Provider error {providerCode}: {providerMessage}.",
+            ({ Length: > 0 }, _) => $" Provider error: {providerCode}.",
+            (_, { Length: > 0 }) => $" Provider message: {providerMessage}.",
+            _ => string.Empty,
+        };
+        var reference = string.IsNullOrWhiteSpace(requestId)
+            ? string.Empty
+            : $" Provider request: {requestId}.";
+        return HostingFailureSanitizer.Sanitize(summary + detail + reference, token, sensitiveRequestValue);
+    }
+
+    private static string? TryGetRequestId(HttpResponseMessage response)
+    {
+        foreach (var name in new[] { "x-request-id", "request-id" })
+        {
+            if (response.Headers.TryGetValues(name, out var values))
+                return values.FirstOrDefault();
+        }
+        return null;
+    }
 
     private static HetznerServer MapServer(HetznerServerDto value)
         => new(
