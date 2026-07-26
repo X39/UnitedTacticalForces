@@ -7,4 +7,5 @@ public sealed record RuntimeProvisionRequest(
     string GameIdentifier,
     Guid ProvisioningIntentId = default,
     string? CloudInit = null,
-    IReadOnlyList<RuntimeInboundNetworkRequirement>? InboundNetworkRequirements = null);
+    IReadOnlyList<RuntimeInboundNetworkRequirement>? InboundNetworkRequirements = null,
+    string RuntimeProfileIdentifier = "");

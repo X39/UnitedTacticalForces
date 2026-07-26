@@ -11,6 +11,64 @@ namespace Api.Tests.GameServerHosting;
 public sealed class HetznerRuntimeProviderTests
 {
     [Fact]
+    public async Task Profiles_ReturnAvailableX86SizesAndProviderPricesForConfiguredLocation()
+    {
+        var handler = new SequencedHttpMessageHandler().Respond(
+            HttpStatusCode.OK,
+            JsonSerializer.Serialize(new
+            {
+                server_types = new object[]
+                {
+                    new
+                    {
+                        name = "ccx13",
+                        description = "Dedicated AMD",
+                        cores = 2,
+                        memory = 8,
+                        disk = 80,
+                        cpu_type = "dedicated",
+                        architecture = "x86",
+                        deprecation = (object?)null,
+                        locations = new[] { new { location = new { name = "fsn1" }, available = true } },
+                        prices = new[]
+                        {
+                            new
+                            {
+                                location = "fsn1",
+                                price_hourly = new { gross = "0.0800" },
+                                price_monthly = new { gross = "50.00" },
+                            },
+                        },
+                    },
+                    new
+                    {
+                        name = "cax11",
+                        description = "Arm",
+                        cores = 2,
+                        memory = 4,
+                        disk = 40,
+                        cpu_type = "shared",
+                        architecture = "arm",
+                        deprecation = (object?)null,
+                        locations = new[] { new { location = new { name = "fsn1" }, available = true } },
+                        prices = Array.Empty<object>(),
+                    },
+                },
+                meta = new { pagination = new { next_page = (int?)null } },
+            }));
+
+        var profiles = await CreateProvider(handler, estimatedHourlyCostEur: 0.10m).GetProfilesAsync();
+
+        var profile = Assert.Single(profiles);
+        Assert.Equal("ccx13", profile.Identifier);
+        Assert.Equal(2, profile.VirtualCpuCount);
+        Assert.Equal(8m, profile.MemoryGiB);
+        Assert.Equal(0.10m, profile.EstimatedHourlyCostEur);
+        Assert.Equal(64.60m, profile.EstimatedMonthlyCostEur);
+        Assert.Equal("/v1/server_types", Assert.Single(handler.Requests).Path);
+    }
+
+    [Fact]
     public async Task Provision_EmitsOneProviderSpanPerHttpCallUnderRuntimeOperation()
     {
         var request = CreateProvisionRequest();

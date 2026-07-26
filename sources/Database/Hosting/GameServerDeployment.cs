@@ -31,6 +31,12 @@ public class GameServerDeployment : IPrimaryKey<Guid>, ITimeStampCreated
 
     public Guid CostOwnerFk { get; init; }
 
+    [MaxLength(128)]
+    public string RuntimeProfileIdentifier { get; init; } = string.Empty;
+
+    [MaxLength(256)]
+    public string RuntimeProfileDisplayName { get; init; } = string.Empty;
+
     public EDeploymentStatus Status { get; set; }
 
     [MaxLength(128)]

@@ -809,6 +809,11 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PrimaryKey"));
 
+                    b.Property<string>("GameIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -827,6 +832,8 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasColumnType("character varying(1024)");
 
                     b.HasKey("PrimaryKey");
+
+                    b.HasIndex("GameIdentifier");
 
                     b.HasIndex("OwnerFk");
 
@@ -874,6 +881,11 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PrimaryKey"));
 
+                    b.Property<string>("GameIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<Guid>("ImageAssetFk")
                         .HasColumnType("uuid");
 
@@ -886,6 +898,8 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasColumnType("character varying(1024)");
 
                     b.HasKey("PrimaryKey");
+
+                    b.HasIndex("GameIdentifier");
 
                     b.HasIndex("ImageAssetFk");
 
@@ -1210,6 +1224,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Guid>("CurrentCostOwnerFk")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("EstimatedHourlyCostEur")
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("EstimatedMonthlyCostEur")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("GameIdentifier")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -1230,6 +1250,16 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<string>("LaunchDisabledReason")
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("RuntimeProfileDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("RuntimeProfileIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("RuntimeProviderIdentifier")
                         .IsRequired()
@@ -1355,6 +1385,16 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.Property<decimal?>("ReservedProviderCostEur")
                         .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("RuntimeProfileDisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("RuntimeProfileIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Stage")
                         .IsRequired()

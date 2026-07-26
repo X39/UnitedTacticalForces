@@ -321,7 +321,8 @@ internal sealed class LifecycleJobExecutor(
                         server.GameIdentifier,
                         intent.IntentId,
                         bootstrapPayload.CloudInit,
-                        gameDefinition.InboundNetworkRequirements),
+                        gameDefinition.InboundNetworkRequirements,
+                        deployment.RuntimeProfileIdentifier),
                     cancellationToken)
                 .ConfigureAwait(false);
             if (provision.ProvisionedResources.Count > 0)

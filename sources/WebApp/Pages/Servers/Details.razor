@@ -87,6 +87,17 @@
                         <dd>@(_server.IsLaunchDisabled ? Localizer["Hosting_Detail_LaunchDisabled"] : Localizer["Hosting_Detail_LaunchEnabled"])</dd>
                     </div>
                     <div>
+                        <dt>@Localizer["Hosting_Detail_CloudProfile"]</dt>
+                        <dd>
+                            <strong>@_server.RuntimeProfileDisplayName</strong>
+                            <small><code>@_server.RuntimeProfileIdentifier</code></small>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>@Localizer["Hosting_Detail_EstimatedCost"]</dt>
+                        <dd>@FormatProfileCost(_server.EstimatedHourlyCostEur, _server.EstimatedMonthlyCostEur)</dd>
+                    </div>
+                    <div>
                         <dt>@Localizer["Hosting_Detail_Archived"]</dt>
                         <dd>@(_server.IsArchived ? Localizer["Hosting_Common_Yes"] : Localizer["Hosting_Common_No"])</dd>
                     </div>
@@ -95,6 +106,26 @@
                         <dd>@FormatDate(_server.TimeStampUpdated)</dd>
                     </div>
                 </dl>
+                @if (_server.CanModify && _server.Deployment is null && _availableProfiles.Count > 0)
+                {
+                    <div class="hosting-profile-editor">
+                        <label class="hosting-field">
+                            <span>@Localizer["Hosting_Detail_ChangeCloudProfile"]</span>
+                            <select value="@_selectedRuntimeProfileIdentifier" @onchange="SelectRuntimeProfile">
+                                @foreach (var profile in _availableProfiles)
+                                {
+                                    <option value="@profile.Identifier">@ProfileOption(profile)</option>
+                                }
+                            </select>
+                        </label>
+                        <button class="utf-button utf-button--primary"
+                                type="button"
+                                disabled="@(!_profileChanged || _profileMutationInProgress)"
+                                @onclick="SaveRuntimeProfileAsync">
+                            @Localizer["Hosting_Detail_SaveCloudProfile"]
+                        </button>
+                    </div>
+                }
             </article>
 
             <article class="utf-panel hosting-fact-panel">
@@ -281,6 +312,14 @@
                                                 <strong>@action.Label</strong>
                                             </div>
                                             <p>@action.Description</p>
+                                            @if (string.Equals(action.Id, "start", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <p class="hosting-cost-warning">
+                                                    @Localizer["Hosting_Detail_StartProfileSummary",
+                                                        _server.RuntimeProfileDisplayName,
+                                                        FormatProfileCost(_server.EstimatedHourlyCostEur, _server.EstimatedMonthlyCostEur)]
+                                                </p>
+                                            }
                                             <div class="hosting-action-meta">
                                                 <span>@action.CostImpact</span>
                                                 @if (action.ExpectedDurationSeconds is { } durationSeconds)
@@ -645,6 +684,7 @@
     private IReadOnlyList<HostingOperationInfo> _operations = [];
     private IReadOnlyList<HostingFileInfo> _files = [];
     private IReadOnlyList<PreservationSelectionInfo> _selections = [];
+    private IReadOnlyList<RuntimeProfileInfo> _availableProfiles = [];
     private Task? _pollTask;
     private bool _isLoading = true;
     private bool _isRefreshing;
@@ -654,6 +694,8 @@
     private bool _fileMutationInProgress;
     private bool _selectionMutationInProgress;
     private bool _deletingServer;
+    private bool _profileMutationInProgress;
+    private bool _profileSelectionDirty;
     private bool _showAllOperations;
     private string? _loadError;
     private string? _operationError;
@@ -670,6 +712,14 @@
     private string _selectionPath = string.Empty;
     private string _selectionScope = "File";
     private string _selectionMode = "CreateOrUpdate";
+    private string _selectedRuntimeProfileIdentifier = string.Empty;
+
+    private bool _profileChanged
+        => _server is not null
+           && !string.Equals(
+               _selectedRuntimeProfileIdentifier,
+               _server.RuntimeProfileIdentifier,
+               StringComparison.OrdinalIgnoreCase);
 
     private bool CanDeleteServer
         => _server is { IsArchived: false, CanModify: true, Deployment: null, PendingJobCount: 0 }
@@ -722,6 +772,18 @@
             _server = await serverTask;
             _jobs = await jobsTask;
             _operations = await operationsTask;
+            if (_server is not null && _availableProfiles.Count is 0)
+            {
+                var capabilities = await GameServerRepository.GetCapabilitiesAsync(cancellationToken);
+                _availableProfiles = capabilities
+                    .FirstOrDefault(q => q.GameIdentifier == _server.GameIdentifier)?
+                    .RuntimeProviderProfiles
+                    .FirstOrDefault(q => q.Identifier == _server.RuntimeProviderIdentifier)?
+                    .Profiles
+                    .ToArray() ?? [];
+            }
+            if (!_profileSelectionDirty && _server is not null)
+                _selectedRuntimeProfileIdentifier = _server.RuntimeProfileIdentifier;
             _loadError = null;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -842,6 +904,38 @@
         finally
         {
             _actionInProgress = false;
+        }
+    }
+
+    private void SelectRuntimeProfile(ChangeEventArgs args)
+    {
+        _selectedRuntimeProfileIdentifier = args.Value?.ToString() ?? string.Empty;
+        _profileSelectionDirty = true;
+    }
+
+    private async Task SaveRuntimeProfileAsync()
+    {
+        if (!_profileChanged || _server is null)
+            return;
+
+        _profileMutationInProgress = true;
+        _operationError = null;
+        try
+        {
+            await GameServerRepository.ChangeRuntimeProfileAsync(
+                ServerId,
+                _selectedRuntimeProfileIdentifier,
+                _cancellationTokenSource.Token);
+            _profileSelectionDirty = false;
+            await RefreshRuntimeAsync(showLoading: false, _cancellationTokenSource.Token);
+        }
+        catch (Exception exception)
+        {
+            _operationError = UserFacingError.Message(exception, Localizer["Hosting_Detail_ProfileError"].Value);
+        }
+        finally
+        {
+            _profileMutationInProgress = false;
         }
     }
 
@@ -1209,6 +1303,18 @@
                 ? $"{duration.TotalMinutes:0.#} min"
                 : $"{Math.Max(0, seconds)} s";
     }
+
+    private static string ProfileOption(RuntimeProfileInfo profile)
+        => profile.EstimatedHourlyCostEur is { } hourly
+            ? $"{profile.DisplayName} · {profile.Description} · €{hourly:0.0000}/h"
+            : $"{profile.DisplayName} · {profile.Description}";
+
+    private static string FormatProfileCost(decimal? hourly, decimal? monthly)
+        => hourly is null
+            ? "Price unavailable"
+            : monthly is { } monthlyCost
+                ? $"€{hourly:0.0000}/hour · up to €{monthlyCost:0.00}/month, plus traffic and optional services"
+                : $"€{hourly:0.0000}/hour, plus traffic and optional services";
 
     public async ValueTask DisposeAsync()
     {

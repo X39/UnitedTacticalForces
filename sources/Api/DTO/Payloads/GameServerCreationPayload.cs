@@ -26,6 +26,12 @@ public sealed record GameServerCreationPayload
     public string RuntimeProviderIdentifier { get; init; } = "hetzner";
 
     /// <summary>
+    /// Provider-owned compute profile, such as a Hetzner server type.
+    /// </summary>
+    [Required, MaxLength(128)]
+    public string RuntimeProfileIdentifier { get; init; } = string.Empty;
+
+    /// <summary>
     /// Optional selected payer. When omitted, the caller's personal cost owner is used.
     /// </summary>
     public Guid? CostOwnerId { get; init; }

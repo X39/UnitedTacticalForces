@@ -23,6 +23,34 @@ public sealed class HetznerCloudClient(
         PropertyNameCaseInsensitive = true,
     };
 
+    internal async Task<HetznerClientResult<IReadOnlyList<HetznerServerTypeDto>>> GetServerTypesAsync(
+        CancellationToken cancellationToken)
+    {
+        var values = new List<HetznerServerTypeDto>();
+        int? page = 1;
+        while (page.HasValue)
+        {
+            var response = await SendJsonAsync<HetznerServerTypesResponse>(
+                    HttpMethod.Get,
+                    $"server_types?page={page.Value}&per_page={PageSize}",
+                    requestBody: null,
+                    ambiguousMutation: false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (response.Outcome is not ERuntimeProviderOutcome.Succeeded || response.Value is null)
+            {
+                return HetznerClientResult<IReadOnlyList<HetznerServerTypeDto>>.Failure(
+                    response.Outcome,
+                    response.Error);
+            }
+
+            values.AddRange(response.Value.ServerTypes ?? []);
+            page = response.Value.Meta?.Pagination?.NextPage;
+        }
+
+        return HetznerClientResult<IReadOnlyList<HetznerServerTypeDto>>.Success(values);
+    }
+
     internal async Task<HetznerClientResult<IReadOnlyList<HetznerServer>>> GetServersAsync(
         IReadOnlyDictionary<string, string> requiredLabels,
         CancellationToken cancellationToken)

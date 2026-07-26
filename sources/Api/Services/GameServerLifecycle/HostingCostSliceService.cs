@@ -47,7 +47,9 @@ internal sealed class HostingCostSliceService(
             return;
         }
 
-        var rate = _options.GetHourlyRate(providerIdentifier);
+        var rate = deployment.EstimatedHourlyCostEur is > 0m and { } selectedRate
+            ? selectedRate
+            : _options.GetHourlyRate(providerIdentifier);
         var sliceStartsAt = now;
         var sliceEndsAt = now + Duration.FromTimeSpan(_options.ReservationSlice);
         var amount = CalculateAmount(rate, sliceStartsAt, sliceEndsAt);
@@ -100,7 +102,9 @@ internal sealed class HostingCostSliceService(
 
             // Recovery from an older/incomplete control-plane attempt must never leave an observed billable resource
             // unaccounted merely because its pre-create reservation record is missing.
-            var rate = _options.GetHourlyRate(providerIdentifier);
+            var rate = deployment.EstimatedHourlyCostEur is > 0m and { } selectedRate
+                ? selectedRate
+                : _options.GetHourlyRate(providerIdentifier);
             var now = NodaSystemClock.Instance.GetCurrentInstant();
             var sliceEndsAt = now + Duration.FromTimeSpan(_options.ReservationSlice);
             ChargeSlice(
@@ -176,7 +180,9 @@ internal sealed class HostingCostSliceService(
         if (owner.IsFrozen && enforceAffordability)
             throw new HostingAffordabilityException("The deployment cost owner is frozen.");
 
-        var rate = _options.GetHourlyRate(providerIdentifier);
+        var rate = deployment.EstimatedHourlyCostEur is > 0m and { } selectedRate
+            ? selectedRate
+            : _options.GetHourlyRate(providerIdentifier);
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         if (deployment.CostAuthorizationExpiresAt is { } alreadyAuthorized
             && alreadyAuthorized > now + Duration.FromTimeSpan(_options.ReconciliationInterval))

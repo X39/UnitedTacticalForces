@@ -18,6 +18,11 @@ public interface IGameServerRepository
 
     Task DeleteServerAsync(Guid serverId, CancellationToken cancellationToken = default);
 
+    Task ChangeRuntimeProfileAsync(
+        Guid serverId,
+        string runtimeProfileIdentifier,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<LifecycleJobInfo>> GetJobsAsync(
         Guid serverId,
         CancellationToken cancellationToken = default);

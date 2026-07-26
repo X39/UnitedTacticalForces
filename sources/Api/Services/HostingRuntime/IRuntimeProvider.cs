@@ -9,6 +9,17 @@ public interface IRuntimeProvider
 
     RuntimeProviderCapabilities Capabilities { get; }
 
+    Task<IReadOnlyCollection<RuntimeProfile>> GetProfilesAsync(
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyCollection<RuntimeProfile>>(
+        [
+            new(
+                "default",
+                "Default",
+                "Provider default compute profile.",
+                EstimatedHourlyCostEur: Capabilities.EstimatedHourlyCostEur),
+        ]);
+
     Task<RuntimeProvisionResult> ProvisionAsync(
         RuntimeProvisionRequest request,
         CancellationToken cancellationToken = default);

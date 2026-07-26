@@ -45,6 +45,16 @@ internal sealed class GameServerLifecycleService(
             StringComparison.OrdinalIgnoreCase));
         if (provider is null)
             throw new HostingValidationException("The selected cloud runtime provider is unavailable.");
+        var profiles = await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+        var requestedProfile = payload.RuntimeProfileIdentifier.Trim();
+        var profile = profiles.SingleOrDefault(q => string.Equals(
+                          q.Identifier,
+                          requestedProfile,
+                          StringComparison.OrdinalIgnoreCase))
+                      ?? (string.IsNullOrWhiteSpace(requestedProfile) && profiles.Count is 1
+                          ? profiles.Single()
+                          : null)
+                      ?? throw new HostingValidationException("The selected cloud profile is unavailable.");
 
         var actor = await dbContext.Users
             .Include(q => q.Claims)
@@ -88,6 +98,10 @@ internal sealed class GameServerLifecycleService(
             Title                    = title,
             GameIdentifier           = capability.GameIdentifier,
             RuntimeProviderIdentifier = provider.ProviderIdentifier,
+            RuntimeProfileIdentifier  = profile.Identifier,
+            RuntimeProfileDisplayName = profile.DisplayName,
+            EstimatedHourlyCostEur    = profile.EstimatedHourlyCostEur,
+            EstimatedMonthlyCostEur   = profile.EstimatedMonthlyCostEur,
             CreatedByFk              = actorId,
             CurrentCostOwner         = costOwner,
             CurrentCostOwnerFk       = costOwner.PrimaryKey,
@@ -140,7 +154,8 @@ internal sealed class GameServerLifecycleService(
             actorId,
             server.PrimaryKey,
             costOwnerId: costOwner.PrimaryKey,
-            details: $"Game={server.GameIdentifier}; Provider={server.RuntimeProviderIdentifier}");
+            details: $"Game={server.GameIdentifier}; Provider={server.RuntimeProviderIdentifier}; "
+                     + $"Profile={server.RuntimeProfileIdentifier}; HourlyEur={server.EstimatedHourlyCostEur:F6}");
         auditWriter.Add(
             dbContext,
             EHostingAuditEventKind.AccessGranted,
@@ -221,11 +236,45 @@ internal sealed class GameServerLifecycleService(
                     "A previous deployment still has unresolved provider resources.");
             }
 
+            var runtimeProvider = runtimeProviders.SingleOrDefault(q => string.Equals(
+                                      q.ProviderIdentifier,
+                                      server.RuntimeProviderIdentifier,
+                                      StringComparison.OrdinalIgnoreCase))
+                                  ?? throw new HostingConflictException(
+                                      "The server's cloud runtime provider is unavailable.");
+            IReadOnlyCollection<RuntimeProfile> currentProfiles;
+            try
+            {
+                currentProfiles = await runtimeProvider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                throw new HostingConflictException(
+                    "The cloud profile catalog could not be refreshed; Start did not create any provider cost.");
+            }
+            var currentProfile = currentProfiles.SingleOrDefault(q => string.Equals(
+                                     q.Identifier,
+                                     server.RuntimeProfileIdentifier,
+                                     StringComparison.OrdinalIgnoreCase))
+                                 ?? (string.IsNullOrWhiteSpace(server.RuntimeProfileIdentifier)
+                                     && currentProfiles.Count is 1
+                                     ? currentProfiles.Single()
+                                     : null)
+                                 ?? throw new HostingConflictException(
+                                     "The selected cloud profile is no longer available. Select another profile before Start.");
+            server.RuntimeProfileIdentifier = currentProfile.Identifier;
+            server.RuntimeProfileDisplayName = currentProfile.DisplayName;
+            server.EstimatedHourlyCostEur = currentProfile.EstimatedHourlyCostEur;
+            server.EstimatedMonthlyCostEur = currentProfile.EstimatedMonthlyCostEur;
+
             deployment = new GameServerDeployment
             {
                 PrimaryKey      = Guid.NewGuid(),
                 GameServerFk    = server.PrimaryKey,
                 CostOwnerFk     = server.CurrentCostOwnerFk,
+                RuntimeProfileIdentifier = server.RuntimeProfileIdentifier,
+                RuntimeProfileDisplayName = server.RuntimeProfileDisplayName,
+                EstimatedHourlyCostEur = server.EstimatedHourlyCostEur,
                 Status          = EDeploymentStatus.Provisioning,
                 Stage           = "queued",
                 TimeStampCreated = now,
@@ -529,6 +578,57 @@ internal sealed class GameServerLifecycleService(
             details: $"PreviousCostOwner={priorAssignment.CostOwnerFk}");
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ChangeRuntimeProfileAsync(
+        Guid gameServerId,
+        string runtimeProfileIdentifier,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        if (!principal.TryGetUserId(out var actorId)
+            || !authorizationService.HasServerPermission(principal, gameServerId, Claims.ResourceBased.Server.Modify))
+            throw new HostingForbiddenException("Server Modify permission is required.");
+
+        var server = await dbContext.GameServers
+            .SingleOrDefaultAsync(q => q.PrimaryKey == gameServerId && !q.IsArchived, cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new HostingNotFoundException($"Game server {gameServerId} does not exist.");
+        if (await dbContext.GameServerDeployments.AnyAsync(
+                q => q.GameServerFk == gameServerId && q.TimeStampResolved == null,
+                cancellationToken).ConfigureAwait(false))
+            throw new HostingConflictException("The cloud profile cannot change while a deployment is unresolved.");
+
+        var provider = runtimeProviders.SingleOrDefault(q => string.Equals(
+                           q.ProviderIdentifier,
+                           server.RuntimeProviderIdentifier,
+                           StringComparison.OrdinalIgnoreCase))
+                       ?? throw new HostingValidationException("The server's cloud runtime provider is unavailable.");
+        var profiles = await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+        var profile = profiles.SingleOrDefault(q => string.Equals(
+                          q.Identifier,
+                          runtimeProfileIdentifier.Trim(),
+                          StringComparison.OrdinalIgnoreCase))
+                      ?? throw new HostingValidationException("The selected cloud profile is unavailable.");
+        if (string.Equals(server.RuntimeProfileIdentifier, profile.Identifier, StringComparison.OrdinalIgnoreCase)
+            && server.EstimatedHourlyCostEur == profile.EstimatedHourlyCostEur)
+            return;
+
+        var previous = server.RuntimeProfileIdentifier;
+        server.RuntimeProfileIdentifier = profile.Identifier;
+        server.RuntimeProfileDisplayName = profile.DisplayName;
+        server.EstimatedHourlyCostEur = profile.EstimatedHourlyCostEur;
+        server.EstimatedMonthlyCostEur = profile.EstimatedMonthlyCostEur;
+        server.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+        auditWriter.Add(
+            dbContext,
+            EHostingAuditEventKind.ServerUpdated,
+            "Server cloud profile changed.",
+            actorId,
+            server.PrimaryKey,
+            details: $"PreviousProfile={previous}; Profile={profile.Identifier}; "
+                     + $"HourlyEur={profile.EstimatedHourlyCostEur:F6}");
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task ArchiveAsync(

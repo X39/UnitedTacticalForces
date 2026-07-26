@@ -20,7 +20,8 @@ public sealed class GameServersController(
 {
     [HttpGet("capabilities")]
     [ProducesResponseType<IReadOnlyCollection<GameServerCapabilityDto>>(StatusCodes.Status200OK)]
-    public IActionResult GetCapabilities() => Ok(projectionService.GetCapabilities(User));
+    public async Task<IActionResult> GetCapabilitiesAsync(CancellationToken cancellationToken)
+        => Ok(await projectionService.GetCapabilitiesAsync(User, cancellationToken).ConfigureAwait(false));
 
     [HttpGet]
     [ProducesResponseType<IReadOnlyCollection<GameServerDto>>(StatusCodes.Status200OK)]
@@ -139,6 +140,27 @@ public sealed class GameServersController(
         {
             await lifecycleService
                 .ChangeCostOwnerAsync(gameServerId, payload.CostOwnerId, User, cancellationToken)
+                .ConfigureAwait(false);
+            return NoContent();
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
+    }
+
+    [HttpPut("{gameServerId:guid}/runtime-profile")]
+    [Authorize(Claims.ResourceBased.Server.Modify)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ChangeRuntimeProfileAsync(
+        [FromRoute] Guid gameServerId,
+        [FromBody] GameServerRuntimeProfileUpdatePayload payload,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await lifecycleService
+                .ChangeRuntimeProfileAsync(gameServerId, payload.RuntimeProfileIdentifier, User, cancellationToken)
                 .ConfigureAwait(false);
             return NoContent();
         }

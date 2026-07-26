@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text.Json;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.Api.Services.HostingRuntime;
@@ -50,6 +52,57 @@ public sealed class HetznerRuntimeProvider(
                     FirewallResourceType,
                 ]);
         }
+    }
+
+    public async Task<IReadOnlyCollection<RuntimeProfile>> GetProfilesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (optionsProvider.Value.ValidateProvisioning() is { } failure)
+            throw new InvalidOperationException(failure);
+
+        var result = await client.GetServerTypesAsync(cancellationToken).ConfigureAwait(false);
+        if (result.Outcome is not ERuntimeProviderOutcome.Succeeded || result.Value is null)
+            throw new InvalidOperationException(result.Error ?? "Hetzner server types could not be loaded.");
+
+        var options = optionsProvider.Value;
+        var location = options.Location.Trim();
+        var profiles = result.Value
+            .Where(q => !string.IsNullOrWhiteSpace(q.Name)
+                        && string.Equals(q.Architecture, "x86", StringComparison.OrdinalIgnoreCase)
+                        && q.Deprecation.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+                        && (q.Locations is null || q.Locations.Any(l => l.Available
+                            && string.Equals(l.Location?.Name, location, StringComparison.OrdinalIgnoreCase))))
+            .Select(q =>
+            {
+                var price = q.Prices?.FirstOrDefault(p =>
+                    string.Equals(p.Location, location, StringComparison.OrdinalIgnoreCase));
+                return new RuntimeProfile(
+                    q.Name!.Trim(),
+                    string.IsNullOrWhiteSpace(q.Description) ? q.Name.Trim() : q.Description.Trim(),
+                    $"{q.Cores} vCPU · {q.Memory:0.##} GiB RAM · {q.Disk} GiB disk",
+                    q.Cores,
+                    q.Memory,
+                    q.Disk,
+                    ParsePrice(price?.PriceHourly?.Gross),
+                    ParsePrice(price?.PriceMonthly?.Gross));
+            })
+            .ToArray();
+        var configuredDefaultHourly = profiles.FirstOrDefault(q => string.Equals(
+            q.Identifier,
+            options.ServerType,
+            StringComparison.OrdinalIgnoreCase))?.EstimatedHourlyCostEur;
+        var fixedResourceOverhead = configuredDefaultHourly is > 0m and { } defaultHourly
+            ? Math.Max(0m, options.EstimatedHourlyCostEur - defaultHourly)
+            : 0m;
+        return profiles
+            .Select(q => q with
+            {
+                EstimatedHourlyCostEur = q.EstimatedHourlyCostEur + fixedResourceOverhead,
+                EstimatedMonthlyCostEur = q.EstimatedMonthlyCostEur + fixedResourceOverhead * 730m,
+            })
+            .OrderBy(q => q.EstimatedHourlyCostEur ?? decimal.MaxValue)
+            .ThenBy(q => q.Identifier, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     public async Task<RuntimeProvisionResult> ProvisionAsync(
@@ -255,7 +308,9 @@ public sealed class HetznerRuntimeProvider(
             var result = await client.CreateServerAsync(
                     new HetznerServerCreateRequest(
                         $"utf-{request.DeploymentId:N}",
-                        options.ServerType.Trim(),
+                        string.IsNullOrWhiteSpace(request.RuntimeProfileIdentifier)
+                            ? options.ServerType.Trim()
+                            : request.RuntimeProfileIdentifier.Trim(),
                         options.Image.Trim(),
                         options.Location.Trim(),
                         StartAfterCreate: true,
@@ -369,6 +424,11 @@ public sealed class HetznerRuntimeProvider(
             resources[0],
             resources);
     }
+
+    private static decimal? ParsePrice(string? value)
+        => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
 
     public async Task<RuntimeObservationResult> ObserveAsync(
         RuntimeObservationRequest request,

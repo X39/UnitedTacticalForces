@@ -71,6 +71,19 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task ChangeRuntimeProfileAsync(
+        Guid serverId,
+        string runtimeProfileIdentifier,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PutAsJsonAsync(
+                $"game-servers/{serverId}/runtime-profile",
+                new { RuntimeProfileIdentifier = runtimeProfileIdentifier },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<IReadOnlyList<LifecycleJobInfo>> GetJobsAsync(
         Guid serverId,
         CancellationToken cancellationToken = default)

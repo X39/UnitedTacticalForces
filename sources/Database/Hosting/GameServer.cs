@@ -25,6 +25,18 @@ public class GameServer : IPrimaryKey<Guid>, ITimeStampCreated
     [MaxLength(128)]
     public string RuntimeProviderIdentifier { get; set; } = string.Empty;
 
+    [MaxLength(128)]
+    public string RuntimeProfileIdentifier { get; set; } = string.Empty;
+
+    [MaxLength(256)]
+    public string RuntimeProfileDisplayName { get; set; } = string.Empty;
+
+    [Column(TypeName = "numeric(18,6)")]
+    public decimal? EstimatedHourlyCostEur { get; set; }
+
+    [Column(TypeName = "numeric(18,2)")]
+    public decimal? EstimatedMonthlyCostEur { get; set; }
+
     [ForeignKey(nameof(CreatedByFk))]
     [DeleteBehavior(DeleteBehavior.Restrict)]
     public User? CreatedBy { get; set; }

@@ -77,13 +77,28 @@
 
                 <label class="hosting-field">
                     <span>@Localizer["Hosting_Create_Runtime"]</span>
-                    <select @bind="_runtimeProviderIdentifier">
+                    <select value="@_runtimeProviderIdentifier" @onchange="ChangeRuntimeProvider">
                         @foreach (var provider in SelectedCapability?.RuntimeProviders ?? [])
                         {
                             <option value="@provider">@provider</option>
                         }
                     </select>
                     <small>@Localizer["Hosting_Create_RuntimeHint"]</small>
+                </label>
+
+                <label class="hosting-field">
+                    <span>@Localizer["Hosting_Create_Profile"]</span>
+                    <select @bind="_runtimeProfileIdentifier">
+                        @foreach (var profile in SelectedProvider?.Profiles ?? [])
+                        {
+                            <option value="@profile.Identifier">@ProfileOption(profile)</option>
+                        }
+                    </select>
+                    @if (SelectedProfile is { } selectedProfile)
+                    {
+                        <small>@selectedProfile.Description</small>
+                        <small>@ProfileCost(selectedProfile)</small>
+                    }
                 </label>
 
                 <label class="hosting-check-field">
@@ -147,6 +162,7 @@
     private string _title = string.Empty;
     private string _gameIdentifier = string.Empty;
     private string _runtimeProviderIdentifier = string.Empty;
+    private string _runtimeProfileIdentifier = string.Empty;
     private bool _isLaunchDisabled;
     private bool _isLoading = true;
     private bool _isSaving;
@@ -159,10 +175,18 @@
     private GameServerCapabilityInfo? SelectedCapability
         => _capabilities.FirstOrDefault((capability) => capability.GameIdentifier == _gameIdentifier);
 
+    private RuntimeProviderInfo? SelectedProvider
+        => SelectedCapability?.RuntimeProviderProfiles.FirstOrDefault(provider =>
+            provider.Identifier == _runtimeProviderIdentifier);
+
+    private RuntimeProfileInfo? SelectedProfile
+        => SelectedProvider?.Profiles.FirstOrDefault(profile => profile.Identifier == _runtimeProfileIdentifier);
+
     private bool CanSubmit
         => !string.IsNullOrWhiteSpace(_title)
            && SelectedCapability is not null
-           && SelectedCapability.RuntimeProviders.Contains(_runtimeProviderIdentifier, StringComparer.Ordinal);
+           && SelectedCapability.RuntimeProviders.Contains(_runtimeProviderIdentifier, StringComparer.Ordinal)
+           && SelectedProfile is not null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -179,6 +203,7 @@
             {
                 _gameIdentifier = capability.GameIdentifier;
                 _runtimeProviderIdentifier = capability.RuntimeProviders.FirstOrDefault() ?? string.Empty;
+                _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
             }
         }
         catch (Exception exception)
@@ -195,6 +220,13 @@
     {
         _gameIdentifier = args.Value?.ToString() ?? string.Empty;
         _runtimeProviderIdentifier = SelectedCapability?.RuntimeProviders.FirstOrDefault() ?? string.Empty;
+        _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
+    }
+
+    private void ChangeRuntimeProvider(ChangeEventArgs args)
+    {
+        _runtimeProviderIdentifier = args.Value?.ToString() ?? string.Empty;
+        _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
     }
 
     private async Task CreateServerAsync()
@@ -211,6 +243,7 @@
                 Title = _title.Trim(),
                 GameIdentifier = _gameIdentifier,
                 RuntimeProviderIdentifier = _runtimeProviderIdentifier,
+                RuntimeProfileIdentifier = _runtimeProfileIdentifier,
                 IsLaunchDisabled = _isLaunchDisabled,
             });
             NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/servers/{server.PrimaryKey}"));
@@ -224,4 +257,14 @@
             _isSaving = false;
         }
     }
+
+    private static string ProfileOption(RuntimeProfileInfo profile)
+        => profile.EstimatedHourlyCostEur is { } hourly
+            ? $"{profile.DisplayName} · €{hourly:0.0000}/h"
+            : profile.DisplayName;
+
+    private static string ProfileCost(RuntimeProfileInfo profile)
+        => profile.EstimatedMonthlyCostEur is { } monthly
+            ? $"Estimated fixed provider cost: €{profile.EstimatedHourlyCostEur:0.0000}/hour, capped at €{monthly:0.00}/month. Traffic and optional services may cost extra."
+            : "The provider did not return a price for this profile.";
 }

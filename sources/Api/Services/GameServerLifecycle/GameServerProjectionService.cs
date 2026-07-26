@@ -19,21 +19,42 @@ internal sealed class GameServerProjectionService(
     IEnumerable<IRuntimeProvider> runtimeProviders,
     IHostingAuthorizationService authorizationService) : IGameServerProjectionService
 {
-    public IReadOnlyCollection<GameServerCapabilityDto> GetCapabilities(ClaimsPrincipal principal)
+    public async Task<IReadOnlyCollection<GameServerCapabilityDto>> GetCapabilitiesAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
-        var providers = runtimeProviders
-            .Where(q => q.Capabilities.IsReady)
-            .Select(q => q.ProviderIdentifier)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(q => q, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var providers = new List<RuntimeProviderDto>();
+        foreach (var provider in runtimeProviders
+                     .Where(q => q.Capabilities.IsReady)
+                     .OrderBy(q => q.ProviderIdentifier, StringComparer.OrdinalIgnoreCase))
+        {
+            var profiles = await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+            if (profiles.Count is 0)
+                continue;
+            providers.Add(new RuntimeProviderDto
+            {
+                Identifier = provider.ProviderIdentifier,
+                Profiles = profiles.Select(q => new RuntimeProfileDto
+                {
+                    Identifier = q.Identifier,
+                    DisplayName = q.DisplayName,
+                    Description = q.Description,
+                    VirtualCpuCount = q.VirtualCpuCount,
+                    MemoryGiB = q.MemoryGiB,
+                    DiskGiB = q.DiskGiB,
+                    EstimatedHourlyCostEur = q.EstimatedHourlyCostEur,
+                    EstimatedMonthlyCostEur = q.EstimatedMonthlyCostEur,
+                }).ToArray(),
+            });
+        }
         return gameDefinitions.GetDefinitions()
             .Select(capability => new GameServerCapabilityDto
             {
                 GameIdentifier = capability.GameIdentifier,
                 DisplayName = capability.DisplayName,
                 Description = $"Durable {capability.DisplayName} hosting through a dedicated cloud worker.",
-                RuntimeProviders = providers,
+                RuntimeProviders = providers.Select(q => q.Identifier).ToArray(),
+                RuntimeProviderProfiles = providers,
                 Actions = capability.Actions
                     .OrderBy(q => q.Order)
                     .Select(q => ProjectStaticAction(q))
@@ -386,6 +407,10 @@ internal sealed class GameServerProjectionService(
             Title = server.Title,
             GameIdentifier = server.GameIdentifier,
             RuntimeProviderIdentifier = server.RuntimeProviderIdentifier,
+            RuntimeProfileIdentifier = server.RuntimeProfileIdentifier,
+            RuntimeProfileDisplayName = server.RuntimeProfileDisplayName,
+            EstimatedHourlyCostEur = server.EstimatedHourlyCostEur,
+            EstimatedMonthlyCostEur = server.EstimatedMonthlyCostEur,
             CreatedById = server.CreatedByFk,
             CostOwnerId = server.CurrentCostOwnerFk,
             CostOwnerName = canSeeOwner

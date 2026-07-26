@@ -9,6 +9,10 @@ public sealed record GameServerInfo
     public string Title { get; init; } = string.Empty;
     public string GameIdentifier { get; init; } = string.Empty;
     public string RuntimeProviderIdentifier { get; init; } = string.Empty;
+    public string RuntimeProfileIdentifier { get; init; } = string.Empty;
+    public string RuntimeProfileDisplayName { get; init; } = string.Empty;
+    public decimal? EstimatedHourlyCostEur { get; init; }
+    public decimal? EstimatedMonthlyCostEur { get; init; }
     public Guid CreatedById { get; init; }
     public Guid CostOwnerId { get; init; }
     public string CostOwnerName { get; init; } = string.Empty;

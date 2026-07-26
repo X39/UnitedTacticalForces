@@ -14794,4 +14794,25 @@
   <data name="Hosting_Detail_ProviderResources" xml:space="preserve">
     <value>Provider resources ({0})</value>
   </data>
+  <data name="Hosting_Create_Profile" xml:space="preserve">
+    <value>Cloud profile</value>
+  </data>
+  <data name="Hosting_Detail_CloudProfile" xml:space="preserve">
+    <value>Cloud profile</value>
+  </data>
+  <data name="Hosting_Detail_EstimatedCost" xml:space="preserve">
+    <value>Estimated provider cost</value>
+  </data>
+  <data name="Hosting_Detail_ChangeCloudProfile" xml:space="preserve">
+    <value>Change cloud profile</value>
+  </data>
+  <data name="Hosting_Detail_SaveCloudProfile" xml:space="preserve">
+    <value>Save profile</value>
+  </data>
+  <data name="Hosting_Detail_ProfileError" xml:space="preserve">
+    <value>The cloud profile could not be changed.</value>
+  </data>
+  <data name="Hosting_Detail_StartProfileSummary" xml:space="preserve">
+    <value>Start will provision {0}. Estimated provider cost: {1}.</value>
+  </data>
 </root>

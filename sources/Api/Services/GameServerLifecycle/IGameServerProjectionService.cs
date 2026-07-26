@@ -6,7 +6,9 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 
 public interface IGameServerProjectionService
 {
-    IReadOnlyCollection<GameServerCapabilityDto> GetCapabilities(ClaimsPrincipal principal);
+    Task<IReadOnlyCollection<GameServerCapabilityDto>> GetCapabilitiesAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<GameServerDto>> GetServersAsync(
         ClaimsPrincipal principal,

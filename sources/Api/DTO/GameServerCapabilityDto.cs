@@ -9,5 +9,6 @@ public sealed record GameServerCapabilityDto
     public string DisplayName { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public IReadOnlyCollection<string> RuntimeProviders { get; init; } = [];
+    public IReadOnlyCollection<RuntimeProviderDto> RuntimeProviderProfiles { get; init; } = [];
     public IReadOnlyCollection<GameServerActionDto> Actions { get; init; } = [];
 }

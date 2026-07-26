@@ -36,6 +36,12 @@ public interface IGameServerLifecycleService
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);
 
+    Task ChangeRuntimeProfileAsync(
+        Guid gameServerId,
+        string runtimeProfileIdentifier,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
+
     Task ArchiveAsync(
         Guid gameServerId,
         ClaimsPrincipal principal,
