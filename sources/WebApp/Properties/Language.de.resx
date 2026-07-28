@@ -15071,4 +15071,36 @@
   <data name="Hosting_Detail_LiveFilesUnavailable" xml:space="preserve">
     <value>Das Durchsuchen der Live-Worker-Dateien ist noch nicht verfügbar. Persistente Solldateien und vom Spiel vorgegebene Sicherungspfade bleiben hier verfügbar.</value>
   </data>
+  <data name="Hosting_Profile_Specifications" xml:space="preserve"><value>Profildaten</value></data>
+  <data name="Hosting_Profile_VirtualCpu" xml:space="preserve"><value>Virtuelle CPU</value></data>
+  <data name="Hosting_Profile_Memory" xml:space="preserve"><value>Arbeitsspeicher</value></data>
+  <data name="Hosting_Profile_Disk" xml:space="preserve"><value>Lokaler Speicher</value></data>
+  <data name="Hosting_Profile_HourlyEstimate" xml:space="preserve"><value>Schätzung pro Stunde</value></data>
+  <data name="Hosting_Profile_MonthlyEstimate" xml:space="preserve"><value>Schätzung pro Monat</value></data>
+  <data name="Hosting_Profile_NotReported" xml:space="preserve"><value>Nicht angegeben</value></data>
+  <data name="Hosting_Profile_GiB" xml:space="preserve"><value>{0:0.#} GiB</value></data>
+  <data name="Hosting_Profile_PerHour" xml:space="preserve"><value>{0:0.0000} € / Stunde</value></data>
+  <data name="Hosting_Profile_PerMonth" xml:space="preserve"><value>{0:0.00} € / Monat</value></data>
+  <data name="Hosting_ProfileCatalog_Loading" xml:space="preserve"><value>Cloud-Profile werden geladen…</value></data>
+  <data name="Hosting_ProfileCatalog_Retry" xml:space="preserve"><value>Profilkatalog erneut laden</value></data>
+  <data name="Hosting_ProfileCatalog_ConfigurationRequiredTitle" xml:space="preserve"><value>Cloud-Anbieter muss konfiguriert werden</value></data>
+  <data name="Hosting_ProfileCatalog_ConfigurationRequiredDescription" xml:space="preserve"><value>{0} ist registriert, aber die Anbieter-Zugangsdaten oder Bereitstellungseinstellungen sind unvollständig. Konfiguriere den Anbieter, bevor ein Profil gewählt wird.</value></data>
+  <data name="Hosting_ProfileCatalog_UnavailableTitle" xml:space="preserve"><value>Profilkatalog vorübergehend nicht verfügbar</value></data>
+  <data name="Hosting_ProfileCatalog_UnavailableDescription" xml:space="preserve"><value>{0} konnte keine Cloud-Profile liefern. Die vorhandene Auswahl bleibt unverändert; versuche es erneut, sobald der Anbieter erreichbar ist.</value></data>
+  <data name="Hosting_ProfileCatalog_EmptyTitle" xml:space="preserve"><value>Keine Cloud-Profile verfügbar</value></data>
+  <data name="Hosting_ProfileCatalog_EmptyDescription" xml:space="preserve"><value>{0} hat für den konfigurierten Standort keine auswählbaren Profile geliefert.</value></data>
+  <data name="Hosting_ProfileCatalog_MissingTitle" xml:space="preserve"><value>Cloud-Anbieter nicht registriert</value></data>
+  <data name="Hosting_ProfileCatalog_MissingDescription" xml:space="preserve"><value>Der Server verweist auf {0}, aber dieser Anbieter ist in dieser API-Instanz nicht registriert.</value></data>
+  <data name="Hosting_ProfileCatalog_ReadOnlyTitle" xml:space="preserve"><value>Profil ist schreibgeschützt</value></data>
+  <data name="Hosting_ProfileCatalog_ReadOnlyDescription" xml:space="preserve"><value>Du kannst dieses Profil einsehen. Zum Ändern ist jedoch die Berechtigung „Server ändern“ erforderlich.</value></data>
+  <data name="Hosting_ProfileCatalog_CurrentMissing" xml:space="preserve"><value>Das gespeicherte Profil ({0}) ist im aktuellen Anbieterkatalog nicht mehr vorhanden. Wähle vor der nächsten Bereitstellung einen Ersatz.</value></data>
+  <data name="Hosting_ProfileCatalog_SelectHint" xml:space="preserve"><value>Vergleiche unten CPU, Arbeitsspeicher, Speicherplatz und Preis der Auswahl. Das Speichern ändert das Sollprofil; eine laufende Bereitstellung wird nie skaliert.</value></data>
+  <data name="Hosting_ProfileCatalog_LoadFailed" xml:space="preserve"><value>Der Cloud-Profilkatalog konnte nicht geladen werden.</value></data>
+  <data name="Hosting_ProfileCatalog_NoSelectableProvider" xml:space="preserve"><value>Kein konfigurierter Cloud-Anbieter hat derzeit auswählbare Profile.</value></data>
+  <data name="Hosting_Common_Saving" xml:space="preserve"><value>Wird gespeichert…</value></data>
+  <data name="Hosting_Detail_DesiredProfile" xml:space="preserve"><value>Sollprofil (nächste Bereitstellung)</value></data>
+  <data name="Hosting_Detail_ActiveProfile" xml:space="preserve"><value>Profil der aktiven Bereitstellung</value></data>
+  <data name="Hosting_Detail_ActiveProfileCost" xml:space="preserve"><value>Aktive Stundenschätzung</value></data>
+  <data name="Hosting_ProfileCatalog_ArchivedDescription" xml:space="preserve"><value>Archivierte Server sind schreibgeschützt. Stelle den Server wieder her oder lege ihn neu an, bevor du sein Profil änderst.</value></data>
+  <data name="Hosting_Create_ProviderAvailability" xml:space="preserve"><value>Nicht verfügbare Cloud-Anbieter</value></data>
 </root>

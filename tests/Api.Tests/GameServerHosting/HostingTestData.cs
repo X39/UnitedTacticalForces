@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.Extensions.Logging.Abstractions;
 using X39.UnitedTacticalForces.Api;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Authority;
@@ -120,5 +121,6 @@ internal static class HostingTestData
             dbContext,
             new TestGameServerDefinitionCatalog(),
             [new TestRuntimeProvider()],
-            new HostingAuthorizationService(dbContext));
+            new HostingAuthorizationService(dbContext),
+            NullLogger<GameServerProjectionService>.Instance);
 }

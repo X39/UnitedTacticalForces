@@ -15098,4 +15098,36 @@
   <data name="Hosting_Detail_LiveFilesUnavailable" xml:space="preserve">
     <value>Live-worker browsing is not available yet. Persistent desired files and game-seeded preservation paths remain available here.</value>
   </data>
+  <data name="Hosting_Profile_Specifications" xml:space="preserve"><value>Profile specifications</value></data>
+  <data name="Hosting_Profile_VirtualCpu" xml:space="preserve"><value>Virtual CPU</value></data>
+  <data name="Hosting_Profile_Memory" xml:space="preserve"><value>Memory</value></data>
+  <data name="Hosting_Profile_Disk" xml:space="preserve"><value>Local disk</value></data>
+  <data name="Hosting_Profile_HourlyEstimate" xml:space="preserve"><value>Hourly estimate</value></data>
+  <data name="Hosting_Profile_MonthlyEstimate" xml:space="preserve"><value>Monthly estimate</value></data>
+  <data name="Hosting_Profile_NotReported" xml:space="preserve"><value>Not reported</value></data>
+  <data name="Hosting_Profile_GiB" xml:space="preserve"><value>{0:0.#} GiB</value></data>
+  <data name="Hosting_Profile_PerHour" xml:space="preserve"><value>€{0:0.0000} / hour</value></data>
+  <data name="Hosting_Profile_PerMonth" xml:space="preserve"><value>€{0:0.00} / month</value></data>
+  <data name="Hosting_ProfileCatalog_Loading" xml:space="preserve"><value>Loading cloud profiles…</value></data>
+  <data name="Hosting_ProfileCatalog_Retry" xml:space="preserve"><value>Retry profile catalog</value></data>
+  <data name="Hosting_ProfileCatalog_ConfigurationRequiredTitle" xml:space="preserve"><value>Cloud provider configuration required</value></data>
+  <data name="Hosting_ProfileCatalog_ConfigurationRequiredDescription" xml:space="preserve"><value>{0} is registered, but its provider credentials or provisioning settings are incomplete. Configure the provider before selecting a profile.</value></data>
+  <data name="Hosting_ProfileCatalog_UnavailableTitle" xml:space="preserve"><value>Profile catalog temporarily unavailable</value></data>
+  <data name="Hosting_ProfileCatalog_UnavailableDescription" xml:space="preserve"><value>{0} could not return its cloud profiles. The existing selection is unchanged; retry when the provider is reachable.</value></data>
+  <data name="Hosting_ProfileCatalog_EmptyTitle" xml:space="preserve"><value>No cloud profiles available</value></data>
+  <data name="Hosting_ProfileCatalog_EmptyDescription" xml:space="preserve"><value>{0} returned no selectable profiles for the configured location.</value></data>
+  <data name="Hosting_ProfileCatalog_MissingTitle" xml:space="preserve"><value>Cloud provider not registered</value></data>
+  <data name="Hosting_ProfileCatalog_MissingDescription" xml:space="preserve"><value>The server references {0}, but that provider is not registered in this API instance.</value></data>
+  <data name="Hosting_ProfileCatalog_ReadOnlyTitle" xml:space="preserve"><value>Profile is read-only</value></data>
+  <data name="Hosting_ProfileCatalog_ReadOnlyDescription" xml:space="preserve"><value>You can inspect this profile, but changing it requires Server Modify permission.</value></data>
+  <data name="Hosting_ProfileCatalog_CurrentMissing" xml:space="preserve"><value>The saved profile ({0}) is no longer present in the current provider catalog. Choose a replacement before the next deployment.</value></data>
+  <data name="Hosting_ProfileCatalog_SelectHint" xml:space="preserve"><value>Compare the selected CPU, memory, disk, and price below. Saving changes the desired profile; it never resizes a running deployment.</value></data>
+  <data name="Hosting_ProfileCatalog_LoadFailed" xml:space="preserve"><value>The cloud profile catalog could not be loaded.</value></data>
+  <data name="Hosting_ProfileCatalog_NoSelectableProvider" xml:space="preserve"><value>No configured cloud provider currently has selectable profiles.</value></data>
+  <data name="Hosting_Common_Saving" xml:space="preserve"><value>Saving…</value></data>
+  <data name="Hosting_Detail_DesiredProfile" xml:space="preserve"><value>Desired profile (next deployment)</value></data>
+  <data name="Hosting_Detail_ActiveProfile" xml:space="preserve"><value>Active deployment profile</value></data>
+  <data name="Hosting_Detail_ActiveProfileCost" xml:space="preserve"><value>Active hourly estimate</value></data>
+  <data name="Hosting_ProfileCatalog_ArchivedDescription" xml:space="preserve"><value>Archived servers are read-only. Restore or recreate the server before changing its profile.</value></data>
+  <data name="Hosting_Create_ProviderAvailability" xml:space="preserve"><value>Unavailable cloud providers</value></data>
 </root>

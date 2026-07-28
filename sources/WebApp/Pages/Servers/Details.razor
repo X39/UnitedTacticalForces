@@ -36,7 +36,7 @@
         <UtfCommandPageHeader Title="@_server.Title"
                               Description="@(Localizer["Hosting_Detail_Description"])" >
             <Actions>
-                <UtfCommandButton Disabled="@_isRefreshing" OnClick="@(() => RefreshRuntimeAsync(showLoading: false))">
+                <UtfCommandButton Disabled="@(_isRefreshing || _profilesLoading)" OnClick="RefreshAllAsync">
                     <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/></Icon>
                     <ChildContent>@Localizer["Hosting_Common_Refresh"]</ChildContent>
                 </UtfCommandButton>
@@ -216,26 +216,20 @@
                         <dd>@FormatDate(_server.TimeStampUpdated)</dd>
                     </div>
                 </dl>
-                @if (_server.CanModify && _server.Deployment is null && _availableProfiles.Count > 0)
-                {
-                    <div class="hosting-profile-editor">
-                        <label class="hosting-field">
-                            <span>@Localizer["Hosting_Detail_ChangeCloudProfile"]</span>
-                            <select value="@_selectedRuntimeProfileIdentifier" @onchange="SelectRuntimeProfile">
-                                @foreach (var profile in _availableProfiles)
-                                {
-                                    <option value="@profile.Identifier">@ProfileOption(profile)</option>
-                                }
-                            </select>
-                        </label>
-                        <button class="utf-button utf-button--primary"
-                                type="button"
-                                disabled="@(!_profileChanged || _profileMutationInProgress)"
-                                @onclick="SaveRuntimeProfileAsync">
-                            @Localizer["Hosting_Detail_SaveCloudProfile"]
-                        </button>
-                    </div>
-                }
+                <RuntimeProfileEditor Provider="_runtimeProvider"
+                                      ProviderIdentifier="@_server.RuntimeProviderIdentifier"
+                                      CurrentIdentifier="@_server.RuntimeProfileIdentifier"
+                                      SelectedIdentifier="@_selectedRuntimeProfileIdentifier"
+                                      SelectedIdentifierChanged="SelectRuntimeProfile"
+                                      OnSave="SaveRuntimeProfileAsync"
+                                      OnRetry="ReloadRuntimeProfilesAsync"
+                                      IsLoading="@_profilesLoading"
+                                      LoadError="@_profileCatalogError"
+                                      CanModify="@(_server.CanModify && !_server.IsArchived)"
+                                      CanSave="@_profileChanged"
+                                      IsSaving="@_profileMutationInProgress"
+                                      HasActiveDeployment="@(_server.Deployment is not null)"
+                                      ReadOnlyDescription="@ProfileReadOnlyDescription"/>
             </article>
 
             <article class="utf-panel hosting-fact-panel">
@@ -926,7 +920,7 @@
                     </div>
                     <dl class="hosting-facts">
                         <div>
-                            <dt>@Localizer["Hosting_Detail_SelectedProfile"]</dt>
+                            <dt>@Localizer["Hosting_Detail_DesiredProfile"]</dt>
                             <dd>
                                 <strong>@_server.RuntimeProfileDisplayName</strong>
                                 <small><code>@_server.RuntimeProfileIdentifier</code></small>
@@ -936,44 +930,35 @@
                             <dt>@Localizer["Hosting_Detail_EstimatedCost"]</dt>
                             <dd>@FormatProfileCost(_server.EstimatedHourlyCostEur, _server.EstimatedMonthlyCostEur)</dd>
                         </div>
-                        @if (SelectedRuntimeProfile is { } selectedProfile)
+                        @if (_server.Deployment is { } activeDeployment)
                         {
                             <div>
-                                <dt>@Localizer["Hosting_Detail_Compute"]</dt>
-                                <dd>@FormatCompute(selectedProfile)</dd>
+                                <dt>@Localizer["Hosting_Detail_ActiveProfile"]</dt>
+                                <dd>
+                                    <strong>@activeDeployment.RuntimeProfileDisplayName</strong>
+                                    <small><code>@activeDeployment.RuntimeProfileIdentifier</code></small>
+                                </dd>
                             </div>
                             <div>
-                                <dt>@Localizer["Hosting_Detail_ExpectedDisk"]</dt>
-                                <dd>@FormatDiskGiB(selectedProfile.DiskGiB)</dd>
+                                <dt>@Localizer["Hosting_Detail_ActiveProfileCost"]</dt>
+                                <dd>@FormatProfileCost(activeDeployment.EstimatedHourlyCostEur, monthly: null)</dd>
                             </div>
                         }
                     </dl>
-                    @if (_server.CanModify && _availableProfiles.Count > 0)
-                    {
-                        <div class="hosting-profile-editor">
-                            <label class="hosting-field">
-                                <span>@Localizer["Hosting_Detail_ChangeCloudProfile"]</span>
-                                <select value="@_selectedRuntimeProfileIdentifier" @onchange="SelectRuntimeProfile">
-                                    @foreach (var profile in _availableProfiles)
-                                    {
-                                        <option value="@profile.Identifier">@ProfileOption(profile)</option>
-                                    }
-                                </select>
-                            </label>
-                            @if (_server.Deployment is not null)
-                            {
-                                <UtfAlert Intent="MessageIntent.Info">
-                                    @Localizer["Hosting_Detail_ProfileAppliesNextDeployment"]
-                                </UtfAlert>
-                            }
-                            <button class="utf-button utf-button--primary"
-                                    type="button"
-                                    disabled="@(!_profileChanged || _profileMutationInProgress)"
-                                    @onclick="SaveRuntimeProfileAsync">
-                                @Localizer["Hosting_Detail_SaveCloudProfile"]
-                            </button>
-                        </div>
-                    }
+                    <RuntimeProfileEditor Provider="_runtimeProvider"
+                                          ProviderIdentifier="@_server.RuntimeProviderIdentifier"
+                                          CurrentIdentifier="@_server.RuntimeProfileIdentifier"
+                                          SelectedIdentifier="@_selectedRuntimeProfileIdentifier"
+                                          SelectedIdentifierChanged="SelectRuntimeProfile"
+                                          OnSave="SaveRuntimeProfileAsync"
+                                          OnRetry="ReloadRuntimeProfilesAsync"
+                                          IsLoading="@_profilesLoading"
+                                          LoadError="@_profileCatalogError"
+                                          CanModify="@(_server.CanModify && !_server.IsArchived)"
+                                          CanSave="@_profileChanged"
+                                          IsSaving="@_profileMutationInProgress"
+                                          HasActiveDeployment="@(_server.Deployment is not null)"
+                                          ReadOnlyDescription="@ProfileReadOnlyDescription"/>
                 </article>
 
                 <article class="utf-panel hosting-deployment-panel">
@@ -1132,6 +1117,7 @@
     private IReadOnlyList<HostingFileInfo> _files = [];
     private IReadOnlyList<PreservationSelectionInfo> _selections = [];
     private IReadOnlyList<RuntimeProfileInfo> _availableProfiles = [];
+    private RuntimeProviderInfo? _runtimeProvider;
     private IReadOnlyList<GameServerModPackOptionInfo> _modPackOptions = [];
     private Task? _pollTask;
     private bool _isLoading = true;
@@ -1144,6 +1130,7 @@
     private bool _deletingServer;
     private bool _profileMutationInProgress;
     private bool _profileSelectionDirty;
+    private bool _profilesLoading;
     private bool _modPacksLoading;
     private bool _modPackOptionsLoaded;
     private bool _modPackMutationInProgress;
@@ -1155,6 +1142,7 @@
     private string? _fileError;
     private string? _selectionError;
     private string? _modPackError;
+    private string? _profileCatalogError;
     private GameServerActionInfo? _challengedAction;
     private string _confirmationInput = string.Empty;
     private EHostingFileContext _fileContext = EHostingFileContext.Persistent;
@@ -1173,6 +1161,7 @@
 
     private bool _profileChanged
         => _server is not null
+           && SelectedRuntimeProfile is not null
            && !string.Equals(
                _selectedRuntimeProfileIdentifier,
                _server.RuntimeProfileIdentifier,
@@ -1254,6 +1243,11 @@
                .OrderBy(q => q.Order)
                .ToArray()
            ?? [];
+
+    private string ProfileReadOnlyDescription
+        => _server?.IsArchived is true
+            ? Localizer["Hosting_ProfileCatalog_ArchivedDescription"].Value
+            : Localizer["Hosting_ProfileCatalog_ReadOnlyDescription"].Value;
 
     private GameServerActionInfo? PrimaryAction
     {
@@ -1338,6 +1332,7 @@
         await RefreshRuntimeAsync(showLoading: true, _cancellationTokenSource.Token);
         if (_server is not null)
         {
+            await LoadRuntimeProfilesAsync(_cancellationTokenSource.Token);
             await LoadFilesAsync(string.Empty, _cancellationTokenSource.Token);
             if (_server.CanModify)
                 await LoadSelectionsAsync(_cancellationTokenSource.Token);
@@ -1364,18 +1359,7 @@
             _server = await serverTask;
             _jobs = await jobsTask;
             _operations = await operationsTask;
-            if (_server is not null && _availableProfiles.Count is 0)
-            {
-                var capabilities = await GameServerRepository.GetCapabilitiesAsync(cancellationToken);
-                _availableProfiles = capabilities
-                    .FirstOrDefault(q => q.GameIdentifier == _server.GameIdentifier)?
-                    .RuntimeProviderProfiles
-                    .FirstOrDefault(q => q.Identifier == _server.RuntimeProviderIdentifier)?
-                    .Profiles
-                    .ToArray() ?? [];
-            }
-            if (!_profileSelectionDirty && _server is not null)
-                _selectedRuntimeProfileIdentifier = _server.RuntimeProfileIdentifier;
+            SynchronizeRuntimeProfileSelection();
             if (IsArma3Server && !_modPackOptionsLoaded)
                 await LoadModPackOptionsAsync(cancellationToken);
             if (!_modPackSelectionDirty && _server is not null)
@@ -1384,13 +1368,6 @@
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-        }
-        catch (HttpRequestException exception) when (
-            _fileContext == EHostingFileContext.Live
-            && exception.StatusCode == HttpStatusCode.ServiceUnavailable)
-        {
-            _files = [];
-            _fileError = Localizer["Hosting_Detail_LiveFilesUnavailable"];
         }
         catch (Exception exception)
         {
@@ -1401,6 +1378,66 @@
             _isRefreshing = false;
             _isLoading = false;
         }
+    }
+
+    private async Task RefreshAllAsync()
+    {
+        await RefreshRuntimeAsync(showLoading: false, _cancellationTokenSource.Token);
+        if (_server is not null)
+            await LoadRuntimeProfilesAsync(_cancellationTokenSource.Token);
+    }
+
+    private Task ReloadRuntimeProfilesAsync()
+        => LoadRuntimeProfilesAsync(_cancellationTokenSource.Token);
+
+    private async Task LoadRuntimeProfilesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_profilesLoading || _server is null)
+            return;
+
+        _profilesLoading = true;
+        _profileCatalogError = null;
+        try
+        {
+            var capabilities = await GameServerRepository.GetCapabilitiesAsync(cancellationToken);
+            var capability = capabilities.FirstOrDefault(candidate => string.Equals(
+                candidate.GameIdentifier,
+                _server.GameIdentifier,
+                StringComparison.OrdinalIgnoreCase));
+            _runtimeProvider = capability?.RuntimeProviderProfiles.FirstOrDefault(provider => string.Equals(
+                provider.Identifier,
+                _server.RuntimeProviderIdentifier,
+                StringComparison.OrdinalIgnoreCase));
+            _availableProfiles = _runtimeProvider?.Profiles.ToArray() ?? [];
+            SynchronizeRuntimeProfileSelection();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _profileCatalogError = UserFacingError.Message(
+                exception,
+                Localizer["Hosting_ProfileCatalog_LoadFailed"].Value);
+        }
+        finally
+        {
+            _profilesLoading = false;
+        }
+    }
+
+    private void SynchronizeRuntimeProfileSelection()
+    {
+        if (_profileSelectionDirty || _server is null)
+            return;
+
+        var currentProfile = _availableProfiles.FirstOrDefault(profile => string.Equals(
+            profile.Identifier,
+            _server.RuntimeProfileIdentifier,
+            StringComparison.OrdinalIgnoreCase));
+        _selectedRuntimeProfileIdentifier = currentProfile?.Identifier
+                                            ?? _availableProfiles.FirstOrDefault()?.Identifier
+                                            ?? _server.RuntimeProfileIdentifier;
     }
 
     private static string GetOperationIntent(HostingOperationInfo operation)
@@ -1541,10 +1578,14 @@
         }
     }
 
-    private void SelectRuntimeProfile(ChangeEventArgs args)
+    private void SelectRuntimeProfile(string runtimeProfileIdentifier)
     {
-        _selectedRuntimeProfileIdentifier = args.Value?.ToString() ?? string.Empty;
-        _profileSelectionDirty = true;
+        _selectedRuntimeProfileIdentifier = runtimeProfileIdentifier;
+        _profileSelectionDirty = _server is not null
+                                 && !string.Equals(
+                                     runtimeProfileIdentifier,
+                                     _server.RuntimeProfileIdentifier,
+                                     StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task SaveRuntimeProfileAsync()
@@ -1726,6 +1767,13 @@
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+        }
+        catch (HttpRequestException exception) when (
+            _fileContext == EHostingFileContext.Live
+            && exception.StatusCode == HttpStatusCode.ServiceUnavailable)
+        {
+            _files = [];
+            _fileError = Localizer["Hosting_Detail_LiveFilesUnavailable"];
         }
         catch (Exception exception)
         {
@@ -2021,34 +2069,12 @@
                 : $"{Math.Max(0, seconds)} s";
     }
 
-    private string ProfileOption(RuntimeProfileInfo profile)
-        => profile.EstimatedHourlyCostEur is { } hourly
-            ? Localizer[
-                "Hosting_Detail_ProfileOption",
-                profile.DisplayName,
-                profile.VirtualCpuCount?.ToString(CultureInfo.CurrentCulture) ?? "–",
-                profile.MemoryGiB?.ToString("0.#", CultureInfo.CurrentCulture) ?? "–",
-                profile.DiskGiB?.ToString(CultureInfo.CurrentCulture) ?? "–",
-                hourly].Value
-            : Localizer[
-                "Hosting_Detail_ProfileOptionNoPrice",
-                profile.DisplayName,
-                profile.VirtualCpuCount?.ToString(CultureInfo.CurrentCulture) ?? "–",
-                profile.MemoryGiB?.ToString("0.#", CultureInfo.CurrentCulture) ?? "–",
-                profile.DiskGiB?.ToString(CultureInfo.CurrentCulture) ?? "–"].Value;
-
     private string FormatProfileCost(decimal? hourly, decimal? monthly)
         => hourly is null
             ? Localizer["Hosting_Detail_PriceUnavailable"].Value
             : monthly is { } monthlyCost
                 ? Localizer["Hosting_Detail_ProfileCostMonthly", hourly, monthlyCost].Value
                 : Localizer["Hosting_Detail_ProfileCostHourly", hourly].Value;
-
-    private string FormatCompute(RuntimeProfileInfo profile)
-        => Localizer[
-            "Hosting_Detail_ComputeValue",
-            profile.VirtualCpuCount?.ToString(CultureInfo.CurrentCulture) ?? "–",
-            profile.MemoryGiB?.ToString("0.#", CultureInfo.CurrentCulture) ?? "–"].Value;
 
     private string FormatDiskGiB(int? diskGiB)
         => diskGiB is { } value

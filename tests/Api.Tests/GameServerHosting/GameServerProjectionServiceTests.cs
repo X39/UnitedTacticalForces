@@ -1,8 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using X39.UnitedTacticalForces;
 using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Database.Hosting;
+using X39.UnitedTacticalForces.Api.DTO;
+using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
+using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using Xunit;
 
@@ -10,6 +15,73 @@ namespace Api.Tests.GameServerHosting;
 
 public sealed class GameServerProjectionServiceTests
 {
+    [Fact]
+    public async Task Capabilities_KeepEveryRegisteredProviderButSelectOnlyProvidersWithProfiles()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var available = Provider(
+            "available-cloud",
+            profiles:
+            [
+                new RuntimeProfile("standard", "Standard", "General-purpose test profile."),
+            ]);
+        var configurationRequired = Provider(
+            "configuration-required-cloud",
+            isReady: false,
+            readinessFailure: "secret provider configuration detail");
+        var noProfiles = Provider("no-profiles-cloud");
+        var projection = Projection(store.DbContext, available, configurationRequired, noProfiles);
+
+        var capability = Assert.Single(
+            await projection.GetCapabilitiesAsync(new System.Security.Claims.ClaimsPrincipal()));
+
+        Assert.Equal(["available-cloud"], capability.RuntimeProviders);
+        Assert.Equal(
+            ["available-cloud", "configuration-required-cloud", "no-profiles-cloud"],
+            capability.RuntimeProviderProfiles.Select(q => q.Identifier));
+        Assert.Equal(
+            [
+                RuntimeProviderAvailabilityStatuses.Available,
+                RuntimeProviderAvailabilityStatuses.ConfigurationRequired,
+                RuntimeProviderAvailabilityStatuses.NoProfiles,
+            ],
+            capability.RuntimeProviderProfiles.Select(q => q.AvailabilityStatus));
+    }
+
+    [Fact]
+    public async Task Capabilities_IsolateCatalogFailureFromOtherProviders()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var healthy = Provider(
+            "healthy-cloud",
+            profiles:
+            [
+                new RuntimeProfile("standard", "Standard", "General-purpose test profile."),
+            ]);
+        var failing = Provider(
+            "unavailable-catalog-cloud",
+            profileFailure: new InvalidOperationException("token=secret-catalog-token"));
+        var logger = new RecordingLogger<GameServerProjectionService>();
+        var projection = Projection(store.DbContext, [healthy, failing], logger);
+
+        var capability = Assert.Single(
+            await projection.GetCapabilitiesAsync(new System.Security.Claims.ClaimsPrincipal()));
+
+        Assert.Equal(["healthy-cloud"], capability.RuntimeProviders);
+        Assert.Equal(
+            ["healthy-cloud", "unavailable-catalog-cloud"],
+            capability.RuntimeProviderProfiles.Select(q => q.Identifier));
+        Assert.Equal(
+            [
+                RuntimeProviderAvailabilityStatuses.Available,
+                RuntimeProviderAvailabilityStatuses.CatalogUnavailable,
+            ],
+            capability.RuntimeProviderProfiles.Select(q => q.AvailabilityStatus));
+        var warning = Assert.Single(logger.Messages);
+        Assert.Contains("token=<redacted>", warning);
+        Assert.DoesNotContain("secret-catalog-token", warning);
+    }
+
     [Fact]
     public async Task StoppedServer_ProjectsStartAsAvailableOnlyToOperator()
     {
@@ -354,5 +426,95 @@ public sealed class GameServerProjectionServiceTests
         Assert.Equal("create", operation.ProviderState);
         Assert.Equal("0123456789abcdef0123456789abcdef", operation.TraceId);
         Assert.Empty(hidden);
+    }
+
+    private static GameServerProjectionService Projection(
+        X39.UnitedTacticalForces.Database.DatabaseContext dbContext,
+        params IRuntimeProvider[] providers)
+        => Projection(dbContext, providers, NullLogger<GameServerProjectionService>.Instance);
+
+    private static GameServerProjectionService Projection(
+        X39.UnitedTacticalForces.Database.DatabaseContext dbContext,
+        IReadOnlyCollection<IRuntimeProvider> providers,
+        ILogger<GameServerProjectionService> logger)
+        => new(
+            dbContext,
+            new TestGameServerDefinitionCatalog(),
+            providers,
+            new HostingAuthorizationService(dbContext),
+            logger);
+
+    private static IRuntimeProvider Provider(
+        string identifier,
+        bool isReady = true,
+        string? readinessFailure = null,
+        IReadOnlyCollection<RuntimeProfile>? profiles = null,
+        Exception? profileFailure = null)
+        => new CapabilityRuntimeProvider(
+            identifier,
+            new RuntimeProviderCapabilities(
+                true,
+                true,
+                true,
+                IsReady: isReady,
+                ReadinessFailure: readinessFailure),
+            profiles ?? [],
+            profileFailure);
+
+    private sealed class CapabilityRuntimeProvider(
+        string identifier,
+        RuntimeProviderCapabilities capabilities,
+        IReadOnlyCollection<RuntimeProfile> profiles,
+        Exception? profileFailure) : IRuntimeProvider
+    {
+        public string ProviderIdentifier => identifier;
+
+        public RuntimeProviderCapabilities Capabilities => capabilities;
+
+        public Task<IReadOnlyCollection<RuntimeProfile>> GetProfilesAsync(
+            CancellationToken cancellationToken = default)
+            => profileFailure is null
+                ? Task.FromResult(profiles)
+                : Task.FromException<IReadOnlyCollection<RuntimeProfile>>(profileFailure);
+
+        public Task<RuntimeProvisionResult> ProvisionAsync(
+            RuntimeProvisionRequest request,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<RuntimeObservationResult> ObserveAsync(
+            RuntimeObservationRequest request,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<RuntimeReleaseResult> ReleaseAsync(
+            RuntimeReleaseRequest request,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<RuntimeReleaseResult> ReleaseDanglingAsync(
+            RuntimeDanglingReleaseRequest request,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<RuntimeDiscoveryResult> DiscoverAsync(CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
     }
 }

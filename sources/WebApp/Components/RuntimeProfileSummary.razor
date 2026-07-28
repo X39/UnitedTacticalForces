@@ -1,0 +1,65 @@
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@inject IStringLocalizer<Language> Localizer
+
+<section class="runtime-profile-summary" aria-label="@Localizer["Hosting_Profile_Specifications"]">
+    <header>
+        <div>
+            <span>@Localizer["Hosting_Profile_Specifications"]</span>
+            <strong>@Profile.DisplayName</strong>
+        </div>
+        <code>@Profile.Identifier</code>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(Profile.Description))
+    {
+        <p>@Profile.Description</p>
+    }
+
+    <dl>
+        <div>
+            <dt>@Localizer["Hosting_Profile_VirtualCpu"]</dt>
+            <dd>@FormatNumber(Profile.VirtualCpuCount)</dd>
+        </div>
+        <div>
+            <dt>@Localizer["Hosting_Profile_Memory"]</dt>
+            <dd>@FormatGiB(Profile.MemoryGiB)</dd>
+        </div>
+        <div>
+            <dt>@Localizer["Hosting_Profile_Disk"]</dt>
+            <dd>@FormatGiB(Profile.DiskGiB)</dd>
+        </div>
+        <div>
+            <dt>@Localizer["Hosting_Profile_HourlyEstimate"]</dt>
+            <dd>@FormatHourlyCost(Profile.EstimatedHourlyCostEur)</dd>
+        </div>
+        <div>
+            <dt>@Localizer["Hosting_Profile_MonthlyEstimate"]</dt>
+            <dd>@FormatMonthlyCost(Profile.EstimatedMonthlyCostEur)</dd>
+        </div>
+    </dl>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public RuntimeProfileInfo Profile { get; set; } = null!;
+
+    private string FormatNumber(int? value)
+        => value?.ToString(CultureInfo.CurrentCulture)
+           ?? Localizer["Hosting_Profile_NotReported"].Value;
+
+    private string FormatGiB(decimal? value)
+        => value is { } gib
+            ? Localizer["Hosting_Profile_GiB", gib].Value
+            : Localizer["Hosting_Profile_NotReported"].Value;
+
+    private string FormatHourlyCost(decimal? value)
+        => value is { } cost
+            ? Localizer["Hosting_Profile_PerHour", cost].Value
+            : Localizer["Hosting_Profile_NotReported"].Value;
+
+    private string FormatMonthlyCost(decimal? value)
+        => value is { } cost
+            ? Localizer["Hosting_Profile_PerMonth", cost].Value
+            : Localizer["Hosting_Profile_NotReported"].Value;
+}

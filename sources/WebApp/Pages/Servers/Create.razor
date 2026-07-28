@@ -1,6 +1,7 @@
 @page "/command/servers/create"
 @attribute [Authorize]
 @layout CommandCenterLayout
+@using System.Globalization
 @using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
 @inject IGameServerRepository GameServerRepository
 @inject NavigationManager NavigationManager
@@ -25,17 +26,22 @@
             <p>@Localizer["Hosting_Create_ForbiddenDescription"]</p>
         </section>
     }
-    else if (_loadError is not null)
-    {
-        <UtfAlert Intent="MessageIntent.Error">@_loadError</UtfAlert>
-    }
-
-    @if (_isLoading)
+    else if (_isLoading)
     {
         <div class="utf-state-panel">
             @Localizer["Hosting_Create_LoadingCapabilities"]
             <FluentProgress Width="240px"/>
         </div>
+    }
+    else if (_loadError is not null)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer["Hosting_ProfileCatalog_UnavailableTitle"]</h2>
+            <p>@_loadError</p>
+            <button class="utf-button utf-button--ghost" type="button" @onclick="LoadCapabilitiesAsync">
+                @Localizer["Hosting_ProfileCatalog_Retry"]
+            </button>
+        </section>
     }
     else if (_capabilities.Count is 0)
     {
@@ -77,29 +83,52 @@
 
                 <label class="hosting-field">
                     <span>@Localizer["Hosting_Create_Runtime"]</span>
-                    <select value="@_runtimeProviderIdentifier" @onchange="ChangeRuntimeProvider">
-                        @foreach (var provider in SelectedCapability?.RuntimeProviders ?? [])
+                    @if (AvailableProviders.Count > 0)
+                    {
+                        <select value="@_runtimeProviderIdentifier" @onchange="ChangeRuntimeProvider">
+                        @foreach (var provider in AvailableProviders)
                         {
-                            <option value="@provider">@provider</option>
+                            <option value="@provider.Identifier">@provider.Identifier</option>
                         }
-                    </select>
+                        </select>
+                    }
+                    else
+                    {
+                        <div class="hosting-provider-empty">@Localizer["Hosting_ProfileCatalog_NoSelectableProvider"]</div>
+                    }
                     <small>@Localizer["Hosting_Create_RuntimeHint"]</small>
                 </label>
 
-                <label class="hosting-field">
-                    <span>@Localizer["Hosting_Create_Profile"]</span>
-                    <select @bind="_runtimeProfileIdentifier">
-                        @foreach (var profile in SelectedProvider?.Profiles ?? [])
-                        {
-                            <option value="@profile.Identifier">@ProfileOption(profile)</option>
-                        }
-                    </select>
+                @if (SelectedProvider is { } selectedProvider && selectedProvider.Profiles.Count > 0)
+                {
+                    <label class="hosting-field">
+                        <span>@Localizer["Hosting_Create_Profile"]</span>
+                        <select @bind="_runtimeProfileIdentifier">
+                            @foreach (var profile in selectedProvider.Profiles)
+                            {
+                                <option value="@profile.Identifier">@ProfileOption(profile)</option>
+                            }
+                        </select>
+                        <small>@Localizer["Hosting_ProfileCatalog_SelectHint"]</small>
+                    </label>
                     @if (SelectedProfile is { } selectedProfile)
                     {
-                        <small>@selectedProfile.Description</small>
-                        <small>@ProfileCost(selectedProfile)</small>
+                        <RuntimeProfileSummary Profile="selectedProfile"/>
                     }
-                </label>
+                }
+
+                @if (UnavailableProviders.Count > 0)
+                {
+                    <div class="hosting-provider-statuses" aria-label="@Localizer["Hosting_Create_ProviderAvailability"]">
+                        @foreach (var provider in UnavailableProviders)
+                        {
+                            <article>
+                                <strong>@provider.Identifier</strong>
+                                <span>@ProviderUnavailableDescription(provider)</span>
+                            </article>
+                        }
+                    </div>
+                }
 
                 <label class="hosting-check-field">
                     <input type="checkbox" @bind="_isLaunchDisabled"/>
@@ -173,19 +202,43 @@
         => Me.CanCreateGameServers();
 
     private GameServerCapabilityInfo? SelectedCapability
-        => _capabilities.FirstOrDefault((capability) => capability.GameIdentifier == _gameIdentifier);
+        => _capabilities.FirstOrDefault(capability => string.Equals(
+            capability.GameIdentifier,
+            _gameIdentifier,
+            StringComparison.OrdinalIgnoreCase));
+
+    private IReadOnlyList<RuntimeProviderInfo> AvailableProviders
+        => SelectedCapability?.RuntimeProviderProfiles
+               .Where(IsProviderAvailable)
+               .OrderBy(provider => provider.Identifier, StringComparer.OrdinalIgnoreCase)
+               .ToArray()
+           ?? [];
+
+    private IReadOnlyList<RuntimeProviderInfo> UnavailableProviders
+        => SelectedCapability?.RuntimeProviderProfiles
+               .Where(provider => !IsProviderAvailable(provider))
+               .OrderBy(provider => provider.Identifier, StringComparer.OrdinalIgnoreCase)
+               .ToArray()
+           ?? [];
 
     private RuntimeProviderInfo? SelectedProvider
         => SelectedCapability?.RuntimeProviderProfiles.FirstOrDefault(provider =>
-            provider.Identifier == _runtimeProviderIdentifier);
+            string.Equals(
+                provider.Identifier,
+                _runtimeProviderIdentifier,
+                StringComparison.OrdinalIgnoreCase));
 
     private RuntimeProfileInfo? SelectedProfile
-        => SelectedProvider?.Profiles.FirstOrDefault(profile => profile.Identifier == _runtimeProfileIdentifier);
+        => SelectedProvider?.Profiles.FirstOrDefault(profile => string.Equals(
+            profile.Identifier,
+            _runtimeProfileIdentifier,
+            StringComparison.OrdinalIgnoreCase));
 
     private bool CanSubmit
         => !string.IsNullOrWhiteSpace(_title)
            && SelectedCapability is not null
-           && SelectedCapability.RuntimeProviders.Contains(_runtimeProviderIdentifier, StringComparer.Ordinal)
+           && SelectedProvider is not null
+           && IsProviderAvailable(SelectedProvider)
            && SelectedProfile is not null;
 
     protected override async Task OnInitializedAsync()
@@ -196,14 +249,20 @@
             return;
         }
 
+        await LoadCapabilitiesAsync();
+    }
+
+    private async Task LoadCapabilitiesAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
         try
         {
             _capabilities = await GameServerRepository.GetCapabilitiesAsync();
             if (_capabilities.FirstOrDefault() is { } capability)
             {
                 _gameIdentifier = capability.GameIdentifier;
-                _runtimeProviderIdentifier = capability.RuntimeProviders.FirstOrDefault() ?? string.Empty;
-                _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
+                SelectFirstAvailableProvider();
             }
         }
         catch (Exception exception)
@@ -219,13 +278,18 @@
     private void ChangeGame(ChangeEventArgs args)
     {
         _gameIdentifier = args.Value?.ToString() ?? string.Empty;
-        _runtimeProviderIdentifier = SelectedCapability?.RuntimeProviders.FirstOrDefault() ?? string.Empty;
-        _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
+        SelectFirstAvailableProvider();
     }
 
     private void ChangeRuntimeProvider(ChangeEventArgs args)
     {
         _runtimeProviderIdentifier = args.Value?.ToString() ?? string.Empty;
+        _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
+    }
+
+    private void SelectFirstAvailableProvider()
+    {
+        _runtimeProviderIdentifier = AvailableProviders.FirstOrDefault()?.Identifier ?? string.Empty;
         _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
     }
 
@@ -258,13 +322,35 @@
         }
     }
 
-    private static string ProfileOption(RuntimeProfileInfo profile)
+    private string ProfileOption(RuntimeProfileInfo profile)
         => profile.EstimatedHourlyCostEur is { } hourly
-            ? $"{profile.DisplayName} · €{hourly:0.0000}/h"
-            : profile.DisplayName;
+            ? Localizer[
+                "Hosting_Detail_ProfileOption",
+                profile.DisplayName,
+                profile.VirtualCpuCount?.ToString(CultureInfo.CurrentCulture) ?? "—",
+                profile.MemoryGiB?.ToString("0.#", CultureInfo.CurrentCulture) ?? "—",
+                profile.DiskGiB?.ToString(CultureInfo.CurrentCulture) ?? "—",
+                hourly].Value
+            : Localizer[
+                "Hosting_Detail_ProfileOptionNoPrice",
+                profile.DisplayName,
+                profile.VirtualCpuCount?.ToString(CultureInfo.CurrentCulture) ?? "—",
+                profile.MemoryGiB?.ToString("0.#", CultureInfo.CurrentCulture) ?? "—",
+                profile.DiskGiB?.ToString(CultureInfo.CurrentCulture) ?? "—"].Value;
 
-    private static string ProfileCost(RuntimeProfileInfo profile)
-        => profile.EstimatedMonthlyCostEur is { } monthly
-            ? $"Estimated fixed provider cost: €{profile.EstimatedHourlyCostEur:0.0000}/hour, capped at €{monthly:0.00}/month. Traffic and optional services may cost extra."
-            : "The provider did not return a price for this profile.";
+    private static bool IsProviderAvailable(RuntimeProviderInfo provider)
+        => string.Equals(provider.AvailabilityStatus, "available", StringComparison.OrdinalIgnoreCase)
+           && provider.Profiles.Count > 0;
+
+    private string ProviderUnavailableDescription(RuntimeProviderInfo provider)
+        => provider.AvailabilityStatus.Trim().ToLowerInvariant() switch
+        {
+            "configuration-required" => Localizer[
+                "Hosting_ProfileCatalog_ConfigurationRequiredDescription",
+                provider.Identifier].Value,
+            "catalog-unavailable" => Localizer[
+                "Hosting_ProfileCatalog_UnavailableDescription",
+                provider.Identifier].Value,
+            _ => Localizer["Hosting_ProfileCatalog_EmptyDescription", provider.Identifier].Value,
+        };
 }

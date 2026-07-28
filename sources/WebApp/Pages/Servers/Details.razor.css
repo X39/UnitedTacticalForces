@@ -240,17 +240,11 @@
     color: var(--utf-text-muted);
 }
 
-.hosting-profile-editor,
 .hosting-modpack-editor,
 .hosting-file-mutations,
 .hosting-preservation-grid {
     display: grid;
     gap: 16px;
-}
-
-.hosting-profile-editor {
-    padding-top: 16px;
-    border-top: 1px solid var(--utf-stroke);
 }
 
 .hosting-modpack-editor {

@@ -68,6 +68,35 @@
     line-height: 1.4;
 }
 
+.hosting-provider-empty {
+    background: rgba(212, 173, 84, 0.07);
+    border: 1px solid rgba(212, 173, 84, 0.3);
+    border-radius: var(--utf-radius-sm);
+    color: var(--utf-gold-strong);
+    line-height: 1.45;
+    padding: 0.8rem;
+}
+
+.hosting-provider-statuses {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.hosting-provider-statuses article {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--utf-stroke);
+    border-left: 3px solid var(--utf-gold-strong);
+    border-radius: var(--utf-radius-sm);
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.8rem;
+}
+
+.hosting-provider-statuses span {
+    color: var(--utf-text-muted);
+    line-height: 1.45;
+}
+
 .hosting-check-field {
     align-items: flex-start;
     background: rgba(255, 255, 255, 0.025);

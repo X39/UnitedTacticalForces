@@ -17,7 +17,8 @@ internal sealed class GameServerProjectionService(
     DatabaseContext dbContext,
     IGameServerDefinitionCatalog gameDefinitions,
     IEnumerable<IRuntimeProvider> runtimeProviders,
-    IHostingAuthorizationService authorizationService) : IGameServerProjectionService
+    IHostingAuthorizationService authorizationService,
+    ILogger<GameServerProjectionService> logger) : IGameServerProjectionService
 {
     public async Task<IReadOnlyCollection<GameServerCapabilityDto>> GetCapabilitiesAsync(
         ClaimsPrincipal principal,
@@ -25,15 +26,47 @@ internal sealed class GameServerProjectionService(
     {
         var providers = new List<RuntimeProviderDto>();
         foreach (var provider in runtimeProviders
-                     .Where(q => q.Capabilities.IsReady)
                      .OrderBy(q => q.ProviderIdentifier, StringComparer.OrdinalIgnoreCase))
         {
-            var profiles = await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
-            if (profiles.Count is 0)
+            if (!provider.Capabilities.IsReady)
+            {
+                providers.Add(new RuntimeProviderDto
+                {
+                    Identifier = provider.ProviderIdentifier,
+                    AvailabilityStatus = RuntimeProviderAvailabilityStatuses.ConfigurationRequired,
+                });
                 continue;
+            }
+
+            IReadOnlyCollection<RuntimeProfile> profiles;
+            try
+            {
+                profiles = await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(
+                    "Runtime profile catalog discovery failed for provider {ProviderIdentifier}: {Failure}",
+                    provider.ProviderIdentifier,
+                    HostingFailureSanitizer.Sanitize(exception.Message, 512));
+                providers.Add(new RuntimeProviderDto
+                {
+                    Identifier = provider.ProviderIdentifier,
+                    AvailabilityStatus = RuntimeProviderAvailabilityStatuses.CatalogUnavailable,
+                });
+                continue;
+            }
+
             providers.Add(new RuntimeProviderDto
             {
                 Identifier = provider.ProviderIdentifier,
+                AvailabilityStatus = profiles.Count is 0
+                    ? RuntimeProviderAvailabilityStatuses.NoProfiles
+                    : RuntimeProviderAvailabilityStatuses.Available,
                 Profiles = profiles.Select(q => new RuntimeProfileDto
                 {
                     Identifier = q.Identifier,
@@ -53,7 +86,10 @@ internal sealed class GameServerProjectionService(
                 GameIdentifier = capability.GameIdentifier,
                 DisplayName = capability.DisplayName,
                 Description = $"Durable {capability.DisplayName} hosting through a dedicated cloud worker.",
-                RuntimeProviders = providers.Select(q => q.Identifier).ToArray(),
+                RuntimeProviders = providers
+                    .Where(q => q.AvailabilityStatus == RuntimeProviderAvailabilityStatuses.Available)
+                    .Select(q => q.Identifier)
+                    .ToArray(),
                 RuntimeProviderProfiles = providers,
                 Actions = capability.Actions
                     .OrderBy(q => q.Order)

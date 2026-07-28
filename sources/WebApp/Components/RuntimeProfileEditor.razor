@@ -1,0 +1,203 @@
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@inject IStringLocalizer<Language> Localizer
+
+<div class="runtime-profile-editor">
+    @if (IsLoading)
+    {
+        <div class="runtime-profile-editor__loading" role="status">
+            <span>@Localizer["Hosting_ProfileCatalog_Loading"]</span>
+            <FluentProgress Width="220px"/>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(LoadError))
+    {
+        <UtfAlert Intent="MessageIntent.Warning">
+            <strong>@Localizer["Hosting_ProfileCatalog_UnavailableTitle"]</strong>
+            <span>@LoadError</span>
+        </UtfAlert>
+        @RetryButton
+    }
+    else if (Provider is null)
+    {
+        <UtfAlert Intent="MessageIntent.Warning">
+            <strong>@Localizer["Hosting_ProfileCatalog_MissingTitle"]</strong>
+            <span>@Localizer["Hosting_ProfileCatalog_MissingDescription", ProviderIdentifier]</span>
+        </UtfAlert>
+        @RetryButton
+    }
+    else if (!ProviderIsAvailable)
+    {
+        <UtfAlert Intent="MessageIntent.Warning">
+            <strong>@UnavailableTitle</strong>
+            <span>@UnavailableDescription</span>
+        </UtfAlert>
+        @RetryButton
+    }
+    else
+    {
+        @if (!CurrentProfileExists)
+        {
+            <UtfAlert Intent="MessageIntent.Warning">
+                @Localizer["Hosting_ProfileCatalog_CurrentMissing", CurrentIdentifier]
+            </UtfAlert>
+        }
+
+        @if (CanModify)
+        {
+            <label class="runtime-profile-editor__field">
+                <span>@Localizer["Hosting_Detail_ChangeCloudProfile"]</span>
+                <select value="@SelectedIdentifier" @onchange="ChangeSelectionAsync">
+                    @foreach (var profile in Provider.Profiles)
+                    {
+                        <option value="@profile.Identifier">@ProfileOption(profile)</option>
+                    }
+                </select>
+                <small>@Localizer["Hosting_ProfileCatalog_SelectHint"]</small>
+            </label>
+        }
+        else
+        {
+            <UtfAlert Intent="MessageIntent.Info">
+                <strong>@Localizer["Hosting_ProfileCatalog_ReadOnlyTitle"]</strong>
+                <span>@(ReadOnlyDescription ?? Localizer["Hosting_ProfileCatalog_ReadOnlyDescription"].Value)</span>
+            </UtfAlert>
+        }
+
+        @if (SelectedProfile is { } selectedProfile)
+        {
+            <RuntimeProfileSummary Profile="selectedProfile"/>
+        }
+
+        @if (CanModify && HasActiveDeployment)
+        {
+            <UtfAlert Intent="MessageIntent.Info">
+                @Localizer["Hosting_Detail_ProfileAppliesNextDeployment"]
+            </UtfAlert>
+        }
+
+        @if (CanModify)
+        {
+            <button class="utf-button utf-button--primary"
+                    type="button"
+                    disabled="@(!CanSave || IsSaving)"
+                    @onclick="SaveAsync">
+                @(IsSaving
+                    ? Localizer["Hosting_Common_Saving"]
+                    : Localizer["Hosting_Detail_SaveCloudProfile"])
+            </button>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public RuntimeProviderInfo? Provider { get; set; }
+
+    [Parameter, EditorRequired]
+    public string ProviderIdentifier { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string CurrentIdentifier { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string SelectedIdentifier { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> SelectedIdentifierChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public string? LoadError { get; set; }
+
+    [Parameter]
+    public bool CanModify { get; set; }
+
+    [Parameter]
+    public bool CanSave { get; set; }
+
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    [Parameter]
+    public bool HasActiveDeployment { get; set; }
+
+    [Parameter]
+    public string? ReadOnlyDescription { get; set; }
+
+    private RuntimeProfileInfo? SelectedProfile
+        => Provider?.Profiles.FirstOrDefault(profile => string.Equals(
+            profile.Identifier,
+            SelectedIdentifier,
+            StringComparison.OrdinalIgnoreCase));
+
+    private bool CurrentProfileExists
+        => Provider?.Profiles.Any(profile => string.Equals(
+               profile.Identifier,
+               CurrentIdentifier,
+               StringComparison.OrdinalIgnoreCase))
+           ?? false;
+
+    private bool ProviderIsAvailable
+        => Provider is { } provider
+           && string.Equals(provider.AvailabilityStatus, "available", StringComparison.OrdinalIgnoreCase)
+           && provider.Profiles.Count > 0;
+
+    private string UnavailableTitle
+        => Provider?.AvailabilityStatus?.Trim().ToLowerInvariant() switch
+        {
+            "configuration-required" => Localizer["Hosting_ProfileCatalog_ConfigurationRequiredTitle"].Value,
+            "catalog-unavailable" => Localizer["Hosting_ProfileCatalog_UnavailableTitle"].Value,
+            _ => Localizer["Hosting_ProfileCatalog_EmptyTitle"].Value,
+        };
+
+    private string UnavailableDescription
+        => Provider?.AvailabilityStatus?.Trim().ToLowerInvariant() switch
+        {
+            "configuration-required" => Localizer[
+                "Hosting_ProfileCatalog_ConfigurationRequiredDescription",
+                ProviderIdentifier].Value,
+            "catalog-unavailable" => Localizer[
+                "Hosting_ProfileCatalog_UnavailableDescription",
+                ProviderIdentifier].Value,
+            _ => Localizer["Hosting_ProfileCatalog_EmptyDescription", ProviderIdentifier].Value,
+        };
+
+    private Task ChangeSelectionAsync(ChangeEventArgs args)
+        => SelectedIdentifierChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private Task SaveAsync()
+        => OnSave.InvokeAsync();
+
+    private Task RetryAsync()
+        => OnRetry.InvokeAsync();
+
+    private string ProfileOption(RuntimeProfileInfo profile)
+    {
+        var cpu = profile.VirtualCpuCount?.ToString() ?? "—";
+        var memory = profile.MemoryGiB?.ToString("0.#") ?? "—";
+        var disk = profile.DiskGiB?.ToString() ?? "—";
+        return profile.EstimatedHourlyCostEur is { } hourly
+            ? Localizer["Hosting_Detail_ProfileOption", profile.DisplayName, cpu, memory, disk, hourly].Value
+            : Localizer["Hosting_Detail_ProfileOptionNoPrice", profile.DisplayName, cpu, memory, disk].Value;
+    }
+
+    private RenderFragment RetryButton
+        => builder =>
+        {
+            builder.OpenElement(0, "button");
+            builder.AddAttribute(1, "class", "utf-button utf-button--ghost");
+            builder.AddAttribute(2, "type", "button");
+            builder.AddAttribute(3, "disabled", IsLoading);
+            builder.AddAttribute(4, "onclick", EventCallback.Factory.Create(this, RetryAsync));
+            builder.AddContent(5, Localizer["Hosting_ProfileCatalog_Retry"]);
+            builder.CloseElement();
+        };
+}

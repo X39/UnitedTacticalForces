@@ -1,0 +1,44 @@
+.runtime-profile-editor {
+    border-top: 1px solid var(--utf-stroke);
+    display: grid;
+    gap: 16px;
+    padding-top: 16px;
+}
+
+.runtime-profile-editor > .utf-button {
+    justify-self: start;
+}
+
+.runtime-profile-editor__loading,
+.runtime-profile-editor__field {
+    display: grid;
+    gap: 8px;
+}
+
+.runtime-profile-editor__loading {
+    color: var(--utf-text-muted);
+}
+
+.runtime-profile-editor__field > span {
+    color: var(--utf-text);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.runtime-profile-editor__field select {
+    background: var(--utf-surface-2);
+    border: 1px solid var(--utf-stroke-strong);
+    border-radius: var(--utf-radius-sm);
+    color: var(--utf-text);
+    font: inherit;
+    min-height: 42px;
+    padding: 8px 12px;
+    width: 100%;
+}
+
+.runtime-profile-editor__field small {
+    color: var(--utf-text-muted);
+    line-height: 1.45;
+}
