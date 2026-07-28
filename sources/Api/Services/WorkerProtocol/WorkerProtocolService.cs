@@ -144,6 +144,9 @@ internal sealed class WorkerProtocolService(
         CancellationToken cancellationToken = default)
     {
         ValidateProcessEvidence(request.ProcessId, request.ProcessStartedAt);
+        ValidateDiskTelemetry(
+            request.DeploymentStorageTotalBytes,
+            request.DeploymentStorageAvailableBytes);
         await using var transaction = await BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         var worker = await AuthenticateWorkerAsync(
@@ -167,6 +170,12 @@ internal sealed class WorkerProtocolService(
         {
             worker.ProcessId = null;
             worker.ProcessStartedAt = null;
+        }
+        if (request.DeploymentStorageTotalBytes.HasValue)
+        {
+            worker.DiskTotalBytes = request.DeploymentStorageTotalBytes;
+            worker.DiskAvailableBytes = request.DeploymentStorageAvailableBytes;
+            worker.DiskTimeStampObserved = now;
         }
 
         auditWriter.Add(
@@ -579,6 +588,24 @@ internal sealed class WorkerProtocolService(
         => string.IsNullOrWhiteSpace(output)
             ? null
             : HostingFailureSanitizer.Sanitize(output, 16384);
+
+    private static void ValidateDiskTelemetry(long? totalBytes, long? availableBytes)
+    {
+        if (totalBytes.HasValue != availableBytes.HasValue)
+        {
+            throw new WorkerProtocolValidationException(
+                "Deployment storage total and available bytes must be reported together.");
+        }
+        if (!totalBytes.HasValue)
+            return;
+        if (totalBytes.Value < 0 || availableBytes!.Value < 0)
+            throw new WorkerProtocolValidationException("Deployment storage telemetry cannot be negative.");
+        if (availableBytes.Value > totalBytes.Value)
+        {
+            throw new WorkerProtocolValidationException(
+                "Deployment storage available bytes cannot exceed total bytes.");
+        }
+    }
 
     private static string BuildCommandAuditDetails(
         WorkerCommand command,

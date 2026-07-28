@@ -84,6 +84,30 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<IReadOnlyList<GameServerModPackOptionInfo>> GetModPackOptionsAsync(
+        Guid serverId,
+        CancellationToken cancellationToken = default)
+    {
+        var options = await GetFromJsonAsync<GameServerModPackOptionInfo[]>(
+                $"game-servers/{serverId}/mod-pack-options",
+                cancellationToken)
+            .ConfigureAwait(false);
+        return options ?? [];
+    }
+
+    public async Task ChangeModPackAsync(
+        Guid serverId,
+        long? modPackDefinitionId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PutAsJsonAsync(
+                $"game-servers/{serverId}/mod-pack",
+                new { ModPackDefinitionId = modPackDefinitionId },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<IReadOnlyList<LifecycleJobInfo>> GetJobsAsync(
         Guid serverId,
         CancellationToken cancellationToken = default)

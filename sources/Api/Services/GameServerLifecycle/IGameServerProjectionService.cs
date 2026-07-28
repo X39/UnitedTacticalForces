@@ -19,6 +19,11 @@ public interface IGameServerProjectionService
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<GameServerModPackOptionDto>> GetModPackOptionsAsync(
+        Guid gameServerId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyCollection<GameServerNotificationDto>> GetNotificationsAsync(
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);

@@ -5,6 +5,7 @@ using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Database.Authority;
 using X39.UnitedTacticalForces.Database.Authority.Extern;
+using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using Xunit;
@@ -135,6 +136,8 @@ public sealed class GameServerLifecycleServiceTests
         var deployment = await store.DbContext.GameServerDeployments
             .SingleAsync(q => q.PrimaryKey == persistedJob.DeploymentFk);
         Assert.Equal(seed.CostOwner.PrimaryKey, deployment.CostOwnerFk);
+        Assert.Equal("default", deployment.RuntimeProfileIdentifier);
+        Assert.Equal("Default", deployment.RuntimeProfileDisplayName);
         Assert.Equal(EDeploymentStatus.Provisioning, deployment.Status);
         Assert.Equal(ELifecycleJobStatus.Queued, persistedJob.Status);
         Assert.Equal(ELifecycleJobKind.Start, persistedJob.Kind);
@@ -242,6 +245,103 @@ public sealed class GameServerLifecycleServiceTests
                 .Where(q => q.PrimaryKey == seed.Deployment!.PrimaryKey)
                 .Select(q => q.CostOwnerFk)
                 .SingleAsync());
+    }
+
+    [Fact]
+    public async Task ChangeRuntimeProfile_WithUnresolvedDeployment_UpdatesDesiredProfileOnly()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        var deploymentId = seed.Deployment!.PrimaryKey;
+        seed.Server.RuntimeProfileIdentifier = "legacy";
+        seed.Server.RuntimeProfileDisplayName = "Legacy profile";
+        seed.Server.EstimatedHourlyCostEur = 9m;
+        seed.Server.EstimatedMonthlyCostEur = 900m;
+        await store.DbContext.SaveChangesAsync();
+        await store.DbContext.GameServerDeployments
+            .Where(q => q.PrimaryKey == deploymentId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(q => q.RuntimeProfileIdentifier, "legacy")
+                .SetProperty(q => q.RuntimeProfileDisplayName, "Legacy profile")
+                .SetProperty(q => q.EstimatedHourlyCostEur, 9m));
+        store.DbContext.ChangeTracker.Clear();
+        var service = HostingTestData.CreateLifecycleService(store.DbContext);
+        var principal = HostingTestData.ServerPrincipal(
+            seed.User,
+            seed.Server,
+            Claims.ResourceBased.Server.Modify);
+
+        await service.ChangeRuntimeProfileAsync(seed.Server.PrimaryKey, "default", principal);
+
+        store.DbContext.ChangeTracker.Clear();
+        var server = await store.DbContext.GameServers.SingleAsync(q => q.PrimaryKey == seed.Server.PrimaryKey);
+        var deployment = await store.DbContext.GameServerDeployments
+            .SingleAsync(q => q.PrimaryKey == deploymentId);
+        Assert.Equal("default", server.RuntimeProfileIdentifier);
+        Assert.Equal("Default", server.RuntimeProfileDisplayName);
+        Assert.Equal("legacy", deployment.RuntimeProfileIdentifier);
+        Assert.Equal("Legacy profile", deployment.RuntimeProfileDisplayName);
+        Assert.Equal(9m, deployment.EstimatedHourlyCostEur);
+        Assert.Contains(
+            await store.DbContext.HostingAuditRecords.ToArrayAsync(),
+            q => q.Kind == EHostingAuditEventKind.ServerUpdated
+                 && q.GameServerFk == seed.Server.PrimaryKey
+                 && (q.Details?.Contains("AppliesTo=next-deployment", StringComparison.Ordinal) ?? false));
+    }
+
+    [Fact]
+    public async Task ChangeModPack_ValidatesActiveGameScopedSelectionAndAllowsRunningDesiredState()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var matching = Definition("Matching pack", HostingTestData.GameIdentifier, isActive: true);
+        var inactive = Definition("Inactive pack", HostingTestData.GameIdentifier, isActive: false);
+        var otherGame = Definition("Other game pack", "another-game", isActive: true);
+        store.DbContext.ModPackDefinitions.AddRange(matching, inactive, otherGame);
+        await store.DbContext.SaveChangesAsync();
+        var service = HostingTestData.CreateLifecycleService(store.DbContext);
+        var principal = HostingTestData.ServerPrincipal(
+            seed.User,
+            seed.Server,
+            Claims.ResourceBased.Server.Modify);
+
+        await Assert.ThrowsAsync<HostingValidationException>(() => service.ChangeModPackAsync(
+            seed.Server.PrimaryKey,
+            inactive.PrimaryKey,
+            principal));
+        await Assert.ThrowsAsync<HostingValidationException>(() => service.ChangeModPackAsync(
+            seed.Server.PrimaryKey,
+            otherGame.PrimaryKey,
+            principal));
+        await service.ChangeModPackAsync(seed.Server.PrimaryKey, matching.PrimaryKey, principal);
+
+        store.DbContext.ChangeTracker.Clear();
+        var selected = await store.DbContext.GameServers
+            .Where(q => q.PrimaryKey == seed.Server.PrimaryKey)
+            .Select(q => q.SelectedModPackDefinitionFk)
+            .SingleAsync();
+        Assert.Equal(matching.PrimaryKey, selected);
+        Assert.Null(seed.Deployment!.TimeStampResolved);
+
+        await service.ChangeModPackAsync(seed.Server.PrimaryKey, null, principal);
+        store.DbContext.ChangeTracker.Clear();
+        Assert.Null(await store.DbContext.GameServers
+            .Where(q => q.PrimaryKey == seed.Server.PrimaryKey)
+            .Select(q => q.SelectedModPackDefinitionFk)
+            .SingleAsync());
+
+        ModPackDefinition Definition(string title, string gameIdentifier, bool isActive)
+            => new()
+            {
+                Title = title,
+                GameIdentifier = gameIdentifier,
+                IsActive = isActive,
+                OwnerFk = seed.User.PrimaryKey,
+                TimeStampCreated = now,
+                ModPackRevisions = [],
+                ModPackRevisionsOwned = [],
+            };
     }
 
     [Fact]

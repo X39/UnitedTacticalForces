@@ -9,6 +9,7 @@ internal static class Transform
     public static PlainModPackDefinitionDto ToPlainDto(this ModPackDefinition self)
         => new()
         {
+            GameIdentifier   = self.GameIdentifier,
             PrimaryKey       = self.PrimaryKey,
             TimeStampCreated = self.TimeStampCreated,
             Title            = self.Title,
@@ -20,6 +21,7 @@ internal static class Transform
     public static FullModPackDefinitionDto ToFullDto(this ModPackDefinition self)
         => new()
         {
+            GameIdentifier   = self.GameIdentifier,
             PrimaryKey       = self.PrimaryKey,
             TimeStampCreated = self.TimeStampCreated,
             Title            = self.Title,
@@ -69,6 +71,7 @@ internal static class Transform
     public static PlainTerrainDto ToPlainDto(this Terrain self)
         => new()
         {
+            GameIdentifier = self.GameIdentifier,
             PrimaryKey    = self.PrimaryKey,
             Title         = self.Title,
             ImageAssetFk  = self.ImageAssetFk,

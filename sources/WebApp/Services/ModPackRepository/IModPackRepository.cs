@@ -12,7 +12,8 @@ public interface IModPackRepository
         int take,
         bool myModPacksOnly,
         string? search = default,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        string? gameIdentifier = default
     );
 
     Task<PlainModPackDefinitionDto> CreateModPackAsync(

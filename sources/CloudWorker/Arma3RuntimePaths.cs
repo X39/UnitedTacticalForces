@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace X39.UnitedTacticalForces.CloudWorker;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace X39.UnitedTacticalForces.CloudWorker;
 public sealed class Arma3RuntimePaths
 {
     public const int DedicatedServerAppId = 233780;
+    public const int WorkshopAppId = 107410;
 
     public Arma3RuntimePaths(
         string runtimeBasePath,
@@ -25,6 +28,12 @@ public sealed class Arma3RuntimePaths
         DeploymentRoot = Path.Combine(RuntimeBasePath, deploymentId.ToString("N"));
         AgentStatePath = Path.Combine(AgentStateBasePath, "deployments", deploymentId.ToString("N"));
         InstallPath = Path.Combine(DeploymentRoot, "server-instance");
+        SteamAppsPath = Path.Combine(InstallPath, "steamapps");
+        SteamWorkshopPath = Path.Combine(SteamAppsPath, "workshop");
+        SteamWorkshopContentRootPath = Path.Combine(SteamWorkshopPath, "content");
+        SteamWorkshopContentPath = Path.Combine(
+            SteamWorkshopContentRootPath,
+            WorkshopAppId.ToString(CultureInfo.InvariantCulture));
         ConfigurationPath = Path.Combine(DeploymentRoot, "server");
         ProfilePath = Path.Combine(ConfigurationPath, "profiles");
         BattlEyePath = Path.Combine(ConfigurationPath, "battleye");
@@ -43,6 +52,7 @@ public sealed class Arma3RuntimePaths
     public string DeploymentRoot { get; }
     public string AgentStatePath { get; }
     public string InstallPath { get; }
+    public string SteamWorkshopContentPath { get; }
     public string ConfigurationPath { get; }
     public string ProfilePath { get; }
     public string BattlEyePath { get; }
@@ -54,6 +64,9 @@ public sealed class Arma3RuntimePaths
     public string ProcessIdentityPath { get; }
     public string PreparationMarkerPath { get; }
     public string RuntimeLogPath { get; }
+    private string SteamAppsPath { get; }
+    private string SteamWorkshopPath { get; }
+    private string SteamWorkshopContentRootPath { get; }
 
     public void EnsureDirectories()
     {
@@ -61,6 +74,7 @@ public sealed class Arma3RuntimePaths
         Directory.CreateDirectory(AgentStatePath);
         Directory.CreateDirectory(DeploymentRoot);
         Directory.CreateDirectory(InstallPath);
+        Directory.CreateDirectory(SteamWorkshopContentPath);
         Directory.CreateDirectory(ConfigurationPath);
         Directory.CreateDirectory(ProfilePath);
         Directory.CreateDirectory(BattlEyePath);
@@ -82,6 +96,10 @@ public sealed class Arma3RuntimePaths
                          RuntimeBasePath,
                          DeploymentRoot,
                          InstallPath,
+                         SteamAppsPath,
+                         SteamWorkshopPath,
+                         SteamWorkshopContentRootPath,
+                         SteamWorkshopContentPath,
                          ConfigurationPath,
                          ProfilePath,
                          BattlEyePath,
@@ -93,5 +111,14 @@ public sealed class Arma3RuntimePaths
                     path == RuntimeBasePath ? runtimeMode | UnixFileMode.StickyBit : runtimeMode);
             }
         }
+    }
+
+    public string GetSteamWorkshopItemPath(ulong workshopItemId)
+    {
+        if (workshopItemId == 0)
+            throw new ArgumentOutOfRangeException(nameof(workshopItemId));
+        return Path.Combine(
+            SteamWorkshopContentPath,
+            workshopItemId.ToString(CultureInfo.InvariantCulture));
     }
 }

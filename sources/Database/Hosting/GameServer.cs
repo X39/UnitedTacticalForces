@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Database.Authority;
+using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Database.Meta;
 
 namespace X39.UnitedTacticalForces.Database.Hosting;
@@ -48,6 +49,16 @@ public class GameServer : IPrimaryKey<Guid>, ITimeStampCreated
     public CostOwner? CurrentCostOwner { get; set; }
 
     public Guid CurrentCostOwnerFk { get; set; }
+
+    /// <summary>
+    /// Desired game-specific content selection. The selected definition is resolved to an immutable worker-command
+    /// snapshot when a preparation or runtime command is persisted.
+    /// </summary>
+    [ForeignKey(nameof(SelectedModPackDefinitionFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public ModPackDefinition? SelectedModPackDefinition { get; set; }
+
+    public long? SelectedModPackDefinitionFk { get; set; }
 
     public bool IsLaunchDisabled { get; set; }
 

@@ -14584,4 +14584,491 @@
   <data name="Hosting_Detail_StartProfileSummary" xml:space="preserve">
     <value>Start stellt {0} bereit. Geschätzte Providerkosten: {1}.</value>
   </data>
+  <data name="Hosting_Common_No" xml:space="preserve">
+    <value>Nein</value>
+  </data>
+  <data name="Hosting_Common_NotApplicable" xml:space="preserve">
+    <value>Nicht verfügbar</value>
+  </data>
+  <data name="Hosting_Common_Yes" xml:space="preserve">
+    <value>Ja</value>
+  </data>
+  <data name="Hosting_Detail_ActionError" xml:space="preserve">
+    <value>Die Serveraktion konnte nicht in die Warteschlange gestellt werden.</value>
+  </data>
+  <data name="Hosting_Detail_ActionsKicker" xml:space="preserve">
+    <value>Servergesteuerte Bedienung</value>
+  </data>
+  <data name="Hosting_Detail_Add" xml:space="preserve">
+    <value>Auswahl hinzufügen</value>
+  </data>
+  <data name="Hosting_Detail_AddPreservation" xml:space="preserve">
+    <value>Erhaltungsauswahl hinzufügen</value>
+  </data>
+  <data name="Hosting_Detail_AgeDays" xml:space="preserve">
+    <value>{0:0} Tage</value>
+  </data>
+  <data name="Hosting_Detail_AgeHours" xml:space="preserve">
+    <value>{0:0} Stunden</value>
+  </data>
+  <data name="Hosting_Detail_AgeMinutes" xml:space="preserve">
+    <value>{0:0} Minuten</value>
+  </data>
+  <data name="Hosting_Detail_Archived" xml:space="preserve">
+    <value>Archiviert</value>
+  </data>
+  <data name="Hosting_Detail_Attempts" xml:space="preserve">
+    <value>Versuche: {0}</value>
+  </data>
+  <data name="Hosting_Detail_Breadcrumbs" xml:space="preserve">
+    <value>Ordnerpfad</value>
+  </data>
+  <data name="Hosting_Detail_CloudProfileDescription" xml:space="preserve">
+    <value>Wähle das Rechenprofil für die nächste Bereitstellung und prüfe erwartete Kapazität und Kosten.</value>
+  </data>
+  <data name="Hosting_Detail_CloudProfileKicker" xml:space="preserve">
+    <value>Gewünschte Infrastruktur</value>
+  </data>
+  <data name="Hosting_Detail_CloudProfileTitle" xml:space="preserve">
+    <value>Cloud-Profil</value>
+  </data>
+  <data name="Hosting_Detail_Commands" xml:space="preserve">
+    <value>Worker-Befehle ({0})</value>
+  </data>
+  <data name="Hosting_Detail_Compute" xml:space="preserve">
+    <value>Rechenleistung</value>
+  </data>
+  <data name="Hosting_Detail_ComputeValue" xml:space="preserve">
+    <value>{0} vCPU · {1} GiB RAM</value>
+  </data>
+  <data name="Hosting_Detail_CreateFolder" xml:space="preserve">
+    <value>Ordner erstellen</value>
+  </data>
+  <data name="Hosting_Detail_CreateFolderTitle" xml:space="preserve">
+    <value>Neuer Ordner</value>
+  </data>
+  <data name="Hosting_Detail_CurrentState" xml:space="preserve">
+    <value>Aktueller Zustand</value>
+  </data>
+  <data name="Hosting_Detail_Delete" xml:space="preserve">
+    <value>Löschen</value>
+  </data>
+  <data name="Hosting_Detail_DeleteFileConfirm" xml:space="preserve">
+    <value>„{0}“ löschen? Dies kann nicht rückgängig gemacht werden.</value>
+  </data>
+  <data name="Hosting_Detail_DeleteServer" xml:space="preserve">
+    <value>Server löschen</value>
+  </data>
+  <data name="Hosting_Detail_DeleteServerConfirm" xml:space="preserve">
+    <value>„{0}“ löschen? Der Datensatz wird für das Audit archiviert und kann danach nicht mehr gestartet werden.</value>
+  </data>
+  <data name="Hosting_Detail_DeleteServerError" xml:space="preserve">
+    <value>Der Server konnte nicht gelöscht werden.</value>
+  </data>
+  <data name="Hosting_Detail_DeleteUnavailable" xml:space="preserve">
+    <value>Stoppe den Server vollständig und warte auf den Abschluss aller Lebenszyklusaufträge, bevor du ihn löschst.</value>
+  </data>
+  <data name="Hosting_Detail_DeletionPolicy" xml:space="preserve">
+    <value>Löschrichtlinie</value>
+  </data>
+  <data name="Hosting_Detail_DeploymentKicker" xml:space="preserve">
+    <value>Aktuelle Laufzeit</value>
+  </data>
+  <data name="Hosting_Detail_DiskExpectedMismatch" xml:space="preserve">
+    <value>Das gewählte Profil weist {0} Speicherplatz aus, der Worker meldet jedoch nur {1}.</value>
+  </data>
+  <data name="Hosting_Detail_DiskFree" xml:space="preserve">
+    <value>Verfügbar</value>
+  </data>
+  <data name="Hosting_Detail_DiskGiB" xml:space="preserve">
+    <value>{0} GiB</value>
+  </data>
+  <data name="Hosting_Detail_DiskObserved" xml:space="preserve">
+    <value>Gemessen</value>
+  </data>
+  <data name="Hosting_Detail_DiskTotal" xml:space="preserve">
+    <value>Gesamt</value>
+  </data>
+  <data name="Hosting_Detail_DiskUsed" xml:space="preserve">
+    <value>Belegt</value>
+  </data>
+  <data name="Hosting_Detail_Download" xml:space="preserve">
+    <value>Herunterladen</value>
+  </data>
+  <data name="Hosting_Detail_ExpectedDisk" xml:space="preserve">
+    <value>Erwarteter Speicherplatz</value>
+  </data>
+  <data name="Hosting_Detail_FileActions" xml:space="preserve">
+    <value>Aktionen</value>
+  </data>
+  <data name="Hosting_Detail_FileContexts" xml:space="preserve">
+    <value>Dateibereich</value>
+  </data>
+  <data name="Hosting_Detail_FileModified" xml:space="preserve">
+    <value>Änderungsdatum</value>
+  </data>
+  <data name="Hosting_Detail_FileMutationError" xml:space="preserve">
+    <value>Der Dateivorgang konnte nicht abgeschlossen werden.</value>
+  </data>
+  <data name="Hosting_Detail_FileName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Hosting_Detail_FileSelectionError" xml:space="preserve">
+    <value>Die ausgewählte Datei konnte nicht gelesen werden.</value>
+  </data>
+  <data name="Hosting_Detail_FilesEmpty" xml:space="preserve">
+    <value>Dieser Ordner enthält keine sichtbaren Einträge.</value>
+  </data>
+  <data name="Hosting_Detail_FilesError" xml:space="preserve">
+    <value>Die Dateien sind nicht verfügbar oder du bist für diesen Bereich nicht berechtigt.</value>
+  </data>
+  <data name="Hosting_Detail_FileSize" xml:space="preserve">
+    <value>Größe</value>
+  </data>
+  <data name="Hosting_Detail_FilesKicker" xml:space="preserve">
+    <value>Serverbezogener Speicher</value>
+  </data>
+  <data name="Hosting_Detail_FilesLoading" xml:space="preserve">
+    <value>Dateien werden geladen…</value>
+  </data>
+  <data name="Hosting_Detail_FileType" xml:space="preserve">
+    <value>Typ</value>
+  </data>
+  <data name="Hosting_Detail_JobError" xml:space="preserve">
+    <value>Der Eingriff in die Warteschlange konnte nicht abgeschlossen werden.</value>
+  </data>
+  <data name="Hosting_Detail_LastHeartbeat" xml:space="preserve">
+    <value>Letztes Worker-Lebenszeichen</value>
+  </data>
+  <data name="Hosting_Detail_LaunchDisabled" xml:space="preserve">
+    <value>Deaktiviert</value>
+  </data>
+  <data name="Hosting_Detail_LaunchEnabled" xml:space="preserve">
+    <value>Aktiviert</value>
+  </data>
+  <data name="Hosting_Detail_LaunchPolicy" xml:space="preserve">
+    <value>Startrichtlinie</value>
+  </data>
+  <data name="Hosting_Detail_LiveFilesHint" xml:space="preserve">
+    <value>Dateien der aktiven Bereitstellung; nur bearbeitbar, wenn der Server dies zulässt.</value>
+  </data>
+  <data name="Hosting_Detail_LoadError" xml:space="preserve">
+    <value>Der Serverarbeitsbereich konnte nicht aktualisiert werden.</value>
+  </data>
+  <data name="Hosting_Detail_Loading" xml:space="preserve">
+    <value>Serverarbeitsbereich wird geladen…</value>
+  </data>
+  <data name="Hosting_Detail_LogsDescription" xml:space="preserve">
+    <value>Fordere eine aktuelle Diagnoseaufnahme vom dedizierten Worker an und prüfe die zuletzt gemeldete Ausgabe.</value>
+  </data>
+  <data name="Hosting_Detail_LogsKicker" xml:space="preserve">
+    <value>Worker-Diagnose</value>
+  </data>
+  <data name="Hosting_Detail_LogSnapshot" xml:space="preserve">
+    <value>Letzte Aufnahme</value>
+  </data>
+  <data name="Hosting_Detail_LogsTitle" xml:space="preserve">
+    <value>Protokolle</value>
+  </data>
+  <data name="Hosting_Detail_ModeCreateUpdate" xml:space="preserve">
+    <value>Nur erstellen oder aktualisieren</value>
+  </data>
+  <data name="Hosting_Detail_ModeMirror" xml:space="preserve">
+    <value>Löschungen spiegeln</value>
+  </data>
+  <data name="Hosting_Detail_ModPackAppliesNextPreparation" xml:space="preserve">
+    <value>Die Auswahl wird bei der nächsten Vorbereitung angewendet und ändert den aktuell laufenden Prozess nicht.</value>
+  </data>
+  <data name="Hosting_Detail_ModPackDescription" xml:space="preserve">
+    <value>Wähle das Modpack, das der Worker für diesen Server installiert und startet.</value>
+  </data>
+  <data name="Hosting_Detail_ModPackError" xml:space="preserve">
+    <value>Die Modpack-Auswahl konnte nicht geändert werden.</value>
+  </data>
+  <data name="Hosting_Detail_ModPackKicker" xml:space="preserve">
+    <value>Arma-3-Inhalte</value>
+  </data>
+  <data name="Hosting_Detail_ModPackLoading" xml:space="preserve">
+    <value>Verfügbare Modpacks werden geladen…</value>
+  </data>
+  <data name="Hosting_Detail_ModPackTitle" xml:space="preserve">
+    <value>Modpack</value>
+  </data>
+  <data name="Hosting_Detail_NextAction" xml:space="preserve">
+    <value>Empfohlene Aktion</value>
+  </data>
+  <data name="Hosting_Detail_NoActionNeeded" xml:space="preserve">
+    <value>Keine Aktion erforderlich</value>
+  </data>
+  <data name="Hosting_Detail_NoActionNeededDescription" xml:space="preserve">
+    <value>Derzeit ist keine verfügbare Lebenszyklusaktion erforderlich.</value>
+  </data>
+  <data name="Hosting_Detail_NoActions" xml:space="preserve">
+    <value>Der Server stellt derzeit keine Aktionen bereit.</value>
+  </data>
+  <data name="Hosting_Detail_NoDeployment" xml:space="preserve">
+    <value>Keine aktive Bereitstellung. Der dauerhafte Datensatz und die persistenten Daten bleiben verfügbar.</value>
+  </data>
+  <data name="Hosting_Detail_NoDiskTelemetry" xml:space="preserve">
+    <value>Der Worker hat noch keine Speichertelemetrie gemeldet.</value>
+  </data>
+  <data name="Hosting_Detail_NoFileSelected" xml:space="preserve">
+    <value>Keine Datei ausgewählt</value>
+  </data>
+  <data name="Hosting_Detail_NoLogsDescription" xml:space="preserve">
+    <value>Erstelle eine Diagnoseaufnahme, um die vom dedizierten Worker gemeldete Ausgabe zu sehen.</value>
+  </data>
+  <data name="Hosting_Detail_NoLogsTitle" xml:space="preserve">
+    <value>Noch keine Diagnoseaufnahme</value>
+  </data>
+  <data name="Hosting_Detail_NoModPack" xml:space="preserve">
+    <value>Kein Modpack</value>
+  </data>
+  <data name="Hosting_Detail_NotFoundDescription" xml:space="preserve">
+    <value>Der Server existiert nicht oder du bist nicht berechtigt, ihn anzuzeigen.</value>
+  </data>
+  <data name="Hosting_Detail_NotFoundTitle" xml:space="preserve">
+    <value>Server nicht verfügbar</value>
+  </data>
+  <data name="Hosting_Detail_OtherActions" xml:space="preserve">
+    <value>Weitere Aktionen</value>
+  </data>
+  <data name="Hosting_Detail_ParentFolder" xml:space="preserve">
+    <value>Übergeordneter Ordner</value>
+  </data>
+  <data name="Hosting_Detail_PersistentFilesHint" xml:space="preserve">
+    <value>Gespeicherte Eingabedaten für den nächsten Start; ausgewählte Pfade können im aktiven Zustand schreibgeschützt sein.</value>
+  </data>
+  <data name="Hosting_Detail_PossibleCost" xml:space="preserve">
+    <value>Diese Bereitstellung kann weiterhin Kosten verursachen. Sie gilt erst nach abgeschlossener Bereinigung als vollständig gestoppt.</value>
+  </data>
+  <data name="Hosting_Detail_PreservationDescription" xml:space="preserve">
+    <value>Nur ausgewählte Live-Pfade werden bei einem beabsichtigten Stopp oder Worker-Neustart zurück in den persistenten Speicher veröffentlicht.</value>
+  </data>
+  <data name="Hosting_Detail_PreservationEmpty" xml:space="preserve">
+    <value>Derzeit sind keine Erhaltungspfade ausgewählt.</value>
+  </data>
+  <data name="Hosting_Detail_PreservationError" xml:space="preserve">
+    <value>Die Erhaltungsauswahlen sind nicht verfügbar oder konnten nicht geändert werden.</value>
+  </data>
+  <data name="Hosting_Detail_PreservationKicker" xml:space="preserve">
+    <value>Lebenszyklusgrenze</value>
+  </data>
+  <data name="Hosting_Detail_PriceUnavailable" xml:space="preserve">
+    <value>Preis nicht verfügbar</value>
+  </data>
+  <data name="Hosting_Detail_ProfileAppliesNextDeployment" xml:space="preserve">
+    <value>Diese Änderung gilt für die nächste Bereitstellung. Die aktive Bereitstellung wird nicht skaliert.</value>
+  </data>
+  <data name="Hosting_Detail_ProfileCostHourly" xml:space="preserve">
+    <value>{0:0.000} EUR/Stunde</value>
+  </data>
+  <data name="Hosting_Detail_ProfileCostMonthly" xml:space="preserve">
+    <value>{0:0.000} EUR/Stunde · ca. {1:0.00} EUR/Monat</value>
+  </data>
+  <data name="Hosting_Detail_ProfileOption" xml:space="preserve">
+    <value>{0} — {1} vCPU · {2} GiB RAM · {3} GiB Speicher · {4:0.000} EUR/Stunde</value>
+  </data>
+  <data name="Hosting_Detail_ProfileOptionNoPrice" xml:space="preserve">
+    <value>{0} — {1} vCPU · {2} GiB RAM · {3} GiB Speicher · Preis nicht verfügbar</value>
+  </data>
+  <data name="Hosting_Detail_Progress" xml:space="preserve">
+    <value>Fortschritt: {0}%</value>
+  </data>
+  <data name="Hosting_Detail_QueueDescription" xml:space="preserve">
+    <value>Lebenszyklusaufträge und Worker-Befehle werden unabhängig von dieser Browsersitzung gespeichert.</value>
+  </data>
+  <data name="Hosting_Detail_QueueEmpty" xml:space="preserve">
+    <value>Für diesen Server wurden noch keine Lebenszyklusaufträge aufgezeichnet.</value>
+  </data>
+  <data name="Hosting_Detail_QueueKicker" xml:space="preserve">
+    <value>Dauerhafte Vorgänge</value>
+  </data>
+  <data name="Hosting_Detail_RecordKicker" xml:space="preserve">
+    <value>Dauerhafte Identität</value>
+  </data>
+  <data name="Hosting_Detail_RefreshLogs" xml:space="preserve">
+    <value>Aktuelle Protokolle abrufen</value>
+  </data>
+  <data name="Hosting_Detail_Remove" xml:space="preserve">
+    <value>Entfernen</value>
+  </data>
+  <data name="Hosting_Detail_Retry" xml:space="preserve">
+    <value>Wiederholen</value>
+  </data>
+  <data name="Hosting_Detail_SaveModPack" xml:space="preserve">
+    <value>Modpack speichern</value>
+  </data>
+  <data name="Hosting_Detail_Scope" xml:space="preserve">
+    <value>Auswahlbereich</value>
+  </data>
+  <data name="Hosting_Detail_ScopeFile" xml:space="preserve">
+    <value>Exakte Datei</value>
+  </data>
+  <data name="Hosting_Detail_ScopeFlat" xml:space="preserve">
+    <value>Ordner (direkte Dateien)</value>
+  </data>
+  <data name="Hosting_Detail_ScopeRecursive" xml:space="preserve">
+    <value>Ordner (rekursiv)</value>
+  </data>
+  <data name="Hosting_Detail_SeededByGame" xml:space="preserve">
+    <value>Von der Spielimplementierung vorgegeben</value>
+  </data>
+  <data name="Hosting_Detail_SelectedProfile" xml:space="preserve">
+    <value>Gewähltes Profil</value>
+  </data>
+  <data name="Hosting_Detail_ServerAge" xml:space="preserve">
+    <value>Serveralter</value>
+  </data>
+  <data name="Hosting_Detail_Skip" xml:space="preserve">
+    <value>Überspringen</value>
+  </data>
+  <data name="Hosting_Detail_StateOffline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Hosting_Detail_StorageDescription" xml:space="preserve">
+    <value>Die von der aktiven Bereitstellung gemeldete Kapazität zeigt, ob das gewählte Cloud-Profil den erwarteten Speicherplatz bereitstellt.</value>
+  </data>
+  <data name="Hosting_Detail_StorageKicker" xml:space="preserve">
+    <value>Worker-Telemetrie</value>
+  </data>
+  <data name="Hosting_Detail_StorageLocations" xml:space="preserve">
+    <value>Speicherorte</value>
+  </data>
+  <data name="Hosting_Detail_StorageTitle" xml:space="preserve">
+    <value>Bereitstellungsspeicher</value>
+  </data>
+  <data name="Hosting_Detail_TabAudit" xml:space="preserve">
+    <value>Audit</value>
+  </data>
+  <data name="Hosting_Detail_TabCloud" xml:space="preserve">
+    <value>Cloud</value>
+  </data>
+  <data name="Hosting_Detail_TabFiles" xml:space="preserve">
+    <value>Dateien</value>
+  </data>
+  <data name="Hosting_Detail_TabJobs" xml:space="preserve">
+    <value>Aufträge</value>
+  </data>
+  <data name="Hosting_Detail_TabLogs" xml:space="preserve">
+    <value>Protokolle</value>
+  </data>
+  <data name="Hosting_Detail_TabOverview" xml:space="preserve">
+    <value>Übersicht</value>
+  </data>
+  <data name="Hosting_Detail_TabRuntime" xml:space="preserve">
+    <value>Laufzeit</value>
+  </data>
+  <data name="Hosting_Detail_TargetPath" xml:space="preserve">
+    <value>Serverbezogener Pfad</value>
+  </data>
+  <data name="Hosting_Detail_Upload" xml:space="preserve">
+    <value>Hochladen oder ersetzen</value>
+  </data>
+  <data name="Hosting_Detail_UploadTitle" xml:space="preserve">
+    <value>Datei hochladen oder ersetzen</value>
+  </data>
+  <data name="Hosting_Detail_Worker" xml:space="preserve">
+    <value>Worker</value>
+  </data>
+  <data name="Hosting_Detail_WorkspaceNavigation" xml:space="preserve">
+    <value>Bereiche des Serverarbeitsbereichs</value>
+  </data>
+  <data name="Hosting_Servers_JobCount" xml:space="preserve">
+    <value>{0} ausstehend</value>
+  </data>
+  <data name="Hosting_Action_start_Label" xml:space="preserve"><value>Starten</value></data>
+  <data name="Hosting_Action_start_Description" xml:space="preserve"><value>Einen dedizierten Cloud-Worker bereitstellen, das Spiel vorbereiten und den Server starten.</value></data>
+  <data name="Hosting_Action_start_CostDescription" xml:space="preserve"><value>Stellt eine dedizierte Cloud-Laufzeit bereit und verursacht Providerkosten.</value></data>
+  <data name="Hosting_Action_stop_Label" xml:space="preserve"><value>Stoppen</value></data>
+  <data name="Hosting_Action_stop_Description" xml:space="preserve"><value>Daten sichern, den Server stoppen, ausgewählte Daten bewahren und alle Cloud-Ressourcen freigeben.</value></data>
+  <data name="Hosting_Action_stop_CostDescription" xml:space="preserve"><value>Stoppt den Worker und gibt die Bereitstellung nach erfolgreicher Datensicherung frei.</value></data>
+  <data name="Hosting_Action_restart_Label" xml:space="preserve"><value>Spielprozess neu starten</value></data>
+  <data name="Hosting_Action_restart_Description" xml:space="preserve"><value>Startet das Spiel kontrolliert im vorhandenen dedizierten Worker neu.</value></data>
+  <data name="Hosting_Action_restart_CostDescription" xml:space="preserve"><value>Die Cloud-Bereitstellung bleibt zugewiesen.</value></data>
+  <data name="Hosting_Action_install_Label" xml:space="preserve"><value>Spieldateien installieren</value></data>
+  <data name="Hosting_Action_install_Description" xml:space="preserve"><value>Installiert fehlende Dedicated-Server-Dateien auf dem Cloud-Worker.</value></data>
+  <data name="Hosting_Action_install_CostDescription" xml:space="preserve"><value>Die Cloud-Bereitstellung bleibt während der Installation zugewiesen.</value></data>
+  <data name="Hosting_Action_update_Label" xml:space="preserve"><value>Spieldateien aktualisieren</value></data>
+  <data name="Hosting_Action_update_Description" xml:space="preserve"><value>Aktualisiert und überprüft die Spieldateien auf dem Cloud-Worker.</value></data>
+  <data name="Hosting_Action_update_CostDescription" xml:space="preserve"><value>Die Cloud-Bereitstellung bleibt während der Aktualisierung zugewiesen.</value></data>
+  <data name="Hosting_Action_collectlogs_Label" xml:space="preserve"><value>Protokolle prüfen</value></data>
+  <data name="Hosting_Action_collectlogs_Description" xml:space="preserve"><value>Ruft bereinigte Diagnosedaten vom aktiven Cloud-Worker ab.</value></data>
+  <data name="Hosting_Action_collectlogs_CostDescription" xml:space="preserve"><value>Ändert die Cloud-Zuweisung nicht.</value></data>
+  <data name="Hosting_Action_terminate_Label" xml:space="preserve"><value>Sofort beenden</value></data>
+  <data name="Hosting_Action_terminate_Description" xml:space="preserve"><value>Gibt Laufzeitressourcen sofort frei, ohne Live-Daten zu veröffentlichen.</value></data>
+  <data name="Hosting_Action_terminate_CostDescription" xml:space="preserve"><value>Beendet alle zugeordneten Laufzeitkosten, sobald die Freigabe bestätigt ist.</value></data>
+  <data name="Hosting_ActionGroup_Lifecycle" xml:space="preserve"><value>Lebenszyklus</value></data>
+  <data name="Hosting_ActionGroup_Maintenance" xml:space="preserve"><value>Wartung</value></data>
+  <data name="Hosting_ActionGroup_Diagnostics" xml:space="preserve"><value>Diagnose</value></data>
+  <data name="Hosting_ActionGroup_Emergency" xml:space="preserve"><value>Notfall</value></data>
+  <data name="Hosting_CostImpact_NoCostImpact" xml:space="preserve"><value>Keine Kostenauswirkung</value></data>
+  <data name="Hosting_CostImpact_StartsCost" xml:space="preserve"><value>Startet Providerkosten</value></data>
+  <data name="Hosting_CostImpact_StopsCost" xml:space="preserve"><value>Beendet Providerkosten</value></data>
+  <data name="Hosting_CostImpact_KeepsCostRunning" xml:space="preserve"><value>Providerkosten laufen weiter</value></data>
+  <data name="Hosting_CostImpact_Unknown" xml:space="preserve"><value>Unbekannte Kostenauswirkung</value></data>
+  <data name="Hosting_FileClassification_Unknown" xml:space="preserve"><value>Unbekannt</value></data>
+  <data name="Hosting_FileClassification_GameFile" xml:space="preserve"><value>Spieldatei</value></data>
+  <data name="Hosting_FileClassification_SaveFile" xml:space="preserve"><value>Speicherdatei</value></data>
+  <data name="Hosting_FileClassification_Log" xml:space="preserve"><value>Protokoll</value></data>
+  <data name="Hosting_FileClassification_Configuration" xml:space="preserve"><value>Konfiguration</value></data>
+  <data name="Hosting_FileClassification_Mod" xml:space="preserve"><value>Mod</value></data>
+  <data name="Hosting_FileClassification_Mission" xml:space="preserve"><value>Mission</value></data>
+  <data name="Hosting_FileClassification_Upload" xml:space="preserve"><value>Upload</value></data>
+  <data name="Hosting_FileClassification_Generated" xml:space="preserve"><value>Generiert</value></data>
+  <data name="Hosting_FileClassification_Downloaded" xml:space="preserve"><value>Heruntergeladen</value></data>
+  <data name="Hosting_FileClassification_Runtime" xml:space="preserve"><value>Laufzeit</value></data>
+  <data name="Hosting_FileClassification_Other" xml:space="preserve"><value>Sonstiges</value></data>
+  <data name="Hosting_DeploymentStatus_Provisioning" xml:space="preserve"><value>Wird bereitgestellt</value></data>
+  <data name="Hosting_DeploymentStatus_WaitingForWorker" xml:space="preserve"><value>Wartet auf Worker</value></data>
+  <data name="Hosting_DeploymentStatus_Preparing" xml:space="preserve"><value>Wird vorbereitet</value></data>
+  <data name="Hosting_DeploymentStatus_Running" xml:space="preserve"><value>Läuft</value></data>
+  <data name="Hosting_DeploymentStatus_Stopping" xml:space="preserve"><value>Wird gestoppt</value></data>
+  <data name="Hosting_DeploymentStatus_PreservationFailed" xml:space="preserve"><value>Datensicherung fehlgeschlagen</value></data>
+  <data name="Hosting_DeploymentStatus_Terminating" xml:space="preserve"><value>Wird beendet</value></data>
+  <data name="Hosting_DeploymentStatus_Stopped" xml:space="preserve"><value>Gestoppt</value></data>
+  <data name="Hosting_DeploymentStatus_TerminatingDueToFault" xml:space="preserve"><value>Wird nach Fehler beendet</value></data>
+  <data name="Hosting_DeploymentStatus_TerminatedDueToFault" xml:space="preserve"><value>Nach Fehler beendet</value></data>
+  <data name="Hosting_DeploymentStatus_Failed" xml:space="preserve"><value>Fehlgeschlagen</value></data>
+  <data name="Hosting_DeploymentStatus_Terminated" xml:space="preserve"><value>Beendet</value></data>
+  <data name="Hosting_WorkerStatus_Provisioning" xml:space="preserve"><value>Wird bereitgestellt</value></data>
+  <data name="Hosting_WorkerStatus_Online" xml:space="preserve"><value>Online</value></data>
+  <data name="Hosting_WorkerStatus_Degraded" xml:space="preserve"><value>Eingeschränkt</value></data>
+  <data name="Hosting_WorkerStatus_Stopping" xml:space="preserve"><value>Wird gestoppt</value></data>
+  <data name="Hosting_WorkerStatus_Offline" xml:space="preserve"><value>Offline</value></data>
+  <data name="Hosting_WorkerStatus_Faulted" xml:space="preserve"><value>Fehlerhaft</value></data>
+  <data name="Hosting_ServerMessage_OperatePermissionRequired" xml:space="preserve"><value>Die Berechtigung „Server bedienen“ ist erforderlich.</value></data>
+  <data name="Hosting_ServerMessage_OperationPending" xml:space="preserve"><value>Ein anderer Lebenszyklusvorgang steht noch aus.</value></data>
+  <data name="Hosting_ServerMessage_LaunchDisabled" xml:space="preserve"><value>Der Serverstart ist deaktiviert.</value></data>
+  <data name="Hosting_ServerMessage_ActionUnavailableForState" xml:space="preserve"><value>Diese Aktion ist im aktuellen Bereitstellungsstatus nicht verfügbar.</value></data>
+  <data name="Hosting_ServerMessage_TerminationPending" xml:space="preserve"><value>Das Beenden läuft bereits.</value></data>
+  <data name="Hosting_ServerMessage_ConfirmAction" xml:space="preserve"><value>Diese Serveraktion bestätigen.</value></data>
+  <data name="Hosting_ServerMessage_LiveDataWillBeLost" xml:space="preserve"><value>Nicht veröffentlichte Live-Daten gehen verloren.</value></data>
+  <data name="Hosting_LifecycleJobKind_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Hosting_LifecycleJobKind_Stop" xml:space="preserve"><value>Stopp</value></data>
+  <data name="Hosting_LifecycleJobKind_Terminate" xml:space="preserve"><value>Sofortiges Beenden</value></data>
+  <data name="Hosting_LifecycleJobKind_Restart" xml:space="preserve"><value>Neustart</value></data>
+  <data name="Hosting_LifecycleJobKind_Install" xml:space="preserve"><value>Installation</value></data>
+  <data name="Hosting_LifecycleJobKind_Update" xml:space="preserve"><value>Aktualisierung</value></data>
+  <data name="Hosting_LifecycleJobKind_CollectLogs" xml:space="preserve"><value>Protokollabruf</value></data>
+  <data name="Hosting_LifecycleJobKind_Custom" xml:space="preserve"><value>Benutzerdefiniert</value></data>
+  <data name="Hosting_LifecycleJobStatus_Queued" xml:space="preserve"><value>Eingereiht</value></data>
+  <data name="Hosting_LifecycleJobStatus_Running" xml:space="preserve"><value>Läuft</value></data>
+  <data name="Hosting_LifecycleJobStatus_RetryPending" xml:space="preserve"><value>Wiederholung ausstehend</value></data>
+  <data name="Hosting_LifecycleJobStatus_WaitingForWorker" xml:space="preserve"><value>Wartet auf Worker</value></data>
+  <data name="Hosting_LifecycleJobStatus_Succeeded" xml:space="preserve"><value>Erfolgreich</value></data>
+  <data name="Hosting_LifecycleJobStatus_Failed" xml:space="preserve"><value>Fehlgeschlagen</value></data>
+  <data name="Hosting_LifecycleJobStatus_Skipped" xml:space="preserve"><value>Übersprungen</value></data>
+  <data name="Hosting_LifecycleJobStatus_CancelledByCostStop" xml:space="preserve"><value>Durch Kostenstopp abgebrochen</value></data>
+  <data name="Hosting_WorkerCommandStatus_Queued" xml:space="preserve"><value>Eingereiht</value></data>
+  <data name="Hosting_WorkerCommandStatus_Received" xml:space="preserve"><value>Empfangen</value></data>
+  <data name="Hosting_WorkerCommandStatus_Running" xml:space="preserve"><value>Läuft</value></data>
+  <data name="Hosting_WorkerCommandStatus_Succeeded" xml:space="preserve"><value>Erfolgreich</value></data>
+  <data name="Hosting_WorkerCommandStatus_Failed" xml:space="preserve"><value>Fehlgeschlagen</value></data>
+  <data name="Hosting_WorkerCommandStatus_Retried" xml:space="preserve"><value>Wiederholt</value></data>
+  <data name="Hosting_WorkerCommandStatus_Skipped" xml:space="preserve"><value>Übersprungen</value></data>
+  <data name="Hosting_WorkerCommandStatus_CancelledByCostStop" xml:space="preserve"><value>Durch Kostenstopp abgebrochen</value></data>
+  <data name="Hosting_Detail_LiveFilesUnavailable" xml:space="preserve">
+    <value>Das Durchsuchen der Live-Worker-Dateien ist noch nicht verfügbar. Persistente Solldateien und vom Spiel vorgegebene Sicherungspfade bleiben hier verfügbar.</value>
+  </data>
 </root>

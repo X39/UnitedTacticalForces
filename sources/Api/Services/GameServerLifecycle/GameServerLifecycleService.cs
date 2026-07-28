@@ -594,10 +594,6 @@ internal sealed class GameServerLifecycleService(
             .SingleOrDefaultAsync(q => q.PrimaryKey == gameServerId && !q.IsArchived, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new HostingNotFoundException($"Game server {gameServerId} does not exist.");
-        if (await dbContext.GameServerDeployments.AnyAsync(
-                q => q.GameServerFk == gameServerId && q.TimeStampResolved == null,
-                cancellationToken).ConfigureAwait(false))
-            throw new HostingConflictException("The cloud profile cannot change while a deployment is unresolved.");
 
         var provider = runtimeProviders.SingleOrDefault(q => string.Equals(
                            q.ProviderIdentifier,
@@ -611,9 +607,15 @@ internal sealed class GameServerLifecycleService(
                           StringComparison.OrdinalIgnoreCase))
                       ?? throw new HostingValidationException("The selected cloud profile is unavailable.");
         if (string.Equals(server.RuntimeProfileIdentifier, profile.Identifier, StringComparison.OrdinalIgnoreCase)
-            && server.EstimatedHourlyCostEur == profile.EstimatedHourlyCostEur)
+            && string.Equals(server.RuntimeProfileDisplayName, profile.DisplayName, StringComparison.Ordinal)
+            && server.EstimatedHourlyCostEur == profile.EstimatedHourlyCostEur
+            && server.EstimatedMonthlyCostEur == profile.EstimatedMonthlyCostEur)
             return;
 
+        var hasActiveDeployment = await dbContext.GameServerDeployments.AnyAsync(
+                q => q.GameServerFk == gameServerId && q.TimeStampResolved == null,
+                cancellationToken)
+            .ConfigureAwait(false);
         var previous = server.RuntimeProfileIdentifier;
         server.RuntimeProfileIdentifier = profile.Identifier;
         server.RuntimeProfileDisplayName = profile.DisplayName;
@@ -627,7 +629,55 @@ internal sealed class GameServerLifecycleService(
             actorId,
             server.PrimaryKey,
             details: $"PreviousProfile={previous}; Profile={profile.Identifier}; "
-                     + $"HourlyEur={profile.EstimatedHourlyCostEur:F6}");
+                     + $"HourlyEur={profile.EstimatedHourlyCostEur:F6}; "
+                     + $"AppliesTo={(hasActiveDeployment ? "next-deployment" : "next-start")}");
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ChangeModPackAsync(
+        Guid gameServerId,
+        long? modPackDefinitionId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        if (!principal.TryGetUserId(out var actorId)
+            || !authorizationService.HasServerPermission(principal, gameServerId, Claims.ResourceBased.Server.Modify))
+            throw new HostingForbiddenException("Server Modify permission is required.");
+
+        var server = await dbContext.GameServers
+            .SingleOrDefaultAsync(q => q.PrimaryKey == gameServerId && !q.IsArchived, cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new HostingNotFoundException($"Game server {gameServerId} does not exist.");
+
+        if (modPackDefinitionId is { } selectedId)
+        {
+            var selected = await dbContext.ModPackDefinitions
+                .AsNoTracking()
+                .Where(q => q.PrimaryKey == selectedId && q.IsActive)
+                .Select(q => new { q.PrimaryKey, q.GameIdentifier })
+                .SingleOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new HostingValidationException("The selected mod pack is unavailable.");
+            if (!string.Equals(selected.GameIdentifier, server.GameIdentifier, StringComparison.OrdinalIgnoreCase))
+                throw new HostingValidationException("The selected mod pack belongs to a different game.");
+        }
+
+        if (server.SelectedModPackDefinitionFk == modPackDefinitionId)
+            return;
+
+        var previous = server.SelectedModPackDefinitionFk;
+        server.SelectedModPackDefinitionFk = modPackDefinitionId;
+        server.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+        auditWriter.Add(
+            dbContext,
+            EHostingAuditEventKind.ServerUpdated,
+            modPackDefinitionId.HasValue
+                ? "Server mod-pack selection changed."
+                : "Server mod-pack selection cleared.",
+            actorId,
+            server.PrimaryKey,
+            details: $"PreviousModPack={previous?.ToString() ?? "none"}; "
+                     + $"ModPack={modPackDefinitionId?.ToString() ?? "none"}; AppliesTo=next-preparation-or-update");
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

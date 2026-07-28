@@ -28,7 +28,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.ModPacks.All
         /// </summary>
         /// <param name="pathParameters">Path parameters for the request</param>
         /// <param name="requestAdapter">The request adapter to use to execute the requests.</param>
-        public AllRequestBuilder(Dictionary<string, object> pathParameters, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/mod-packs/all{?myModPacksOnly*,search*,skip*,take*}", pathParameters)
+        public AllRequestBuilder(Dictionary<string, object> pathParameters, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/mod-packs/all{?gameIdentifier*,myModPacksOnly*,search*,skip*,take*}", pathParameters)
         {
         }
         /// <summary>
@@ -36,7 +36,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.ModPacks.All
         /// </summary>
         /// <param name="rawUrl">The raw URL to use for the request builder.</param>
         /// <param name="requestAdapter">The request adapter to use to execute the requests.</param>
-        public AllRequestBuilder(string rawUrl, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/mod-packs/all{?myModPacksOnly*,search*,skip*,take*}", rawUrl)
+        public AllRequestBuilder(string rawUrl, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/mod-packs/all{?gameIdentifier*,myModPacksOnly*,search*,skip*,take*}", rawUrl)
         {
         }
         /// <summary>
@@ -92,6 +92,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.ModPacks.All
         [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
         public partial class AllRequestBuilderGetQueryParameters 
         {
+            /// <summary>Stable identifier of the game to return mod packs for.</summary>
+            [QueryParameter("gameIdentifier")]
+            public string GameIdentifier { get; set; }
             /// <summary>If `true`, only those ModPackDefinition&apos;s of the current user are returned.</summary>
             [QueryParameter("myModPacksOnly")]
             public bool? MyModPacksOnly { get; set; }

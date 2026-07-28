@@ -13,11 +13,18 @@ namespace X39.UnitedTacticalForces.Database.Core;
 /// The Terrain class is used to define various terrain properties including its title,
 /// gallery image asset, and whether the terrain is active or not.
 /// </remarks>
+[Index(nameof(GameIdentifier))]
 public class Terrain : IPrimaryKey<long>
 {
     /// <inheritdoc />
     [Key]
     public long PrimaryKey { get; set; }
+
+    /// <summary>
+    /// Stable identifier of the game this terrain belongs to.
+    /// </summary>
+    [MaxLength(64)]
+    public string GameIdentifier { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the title of the terrain.

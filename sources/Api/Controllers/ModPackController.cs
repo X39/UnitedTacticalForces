@@ -10,6 +10,7 @@ using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.DTO.Updates;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
+using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.Util;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
@@ -23,16 +24,21 @@ public class ModPackController : ControllerBase
 {
     private readonly ILogger<ModPackController> _logger;
     private readonly DatabaseContext               _apiDbContext;
+    private readonly IGameServerDefinitionCatalog  _gameDefinitions;
 
     /// <summary>
     ///  Initializes a new instance of the <see cref="ModPackController"/> class.
     /// </summary>
     /// <param name="logger">The <see cref="ILogger"/> to use.</param>
     /// <param name="apiDbContext">The <see cref="DatabaseContext"/> to use.</param>
-    public ModPackController(ILogger<ModPackController> logger, DatabaseContext apiDbContext)
+    public ModPackController(
+        ILogger<ModPackController> logger,
+        DatabaseContext apiDbContext,
+        IGameServerDefinitionCatalog gameDefinitions)
     {
-        _logger       = logger;
-        _apiDbContext = apiDbContext;
+        _logger          = logger;
+        _apiDbContext    = apiDbContext;
+        _gameDefinitions = gameDefinitions;
     }
 
     #region Endpoints
@@ -108,6 +114,9 @@ public class ModPackController : ControllerBase
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
+        var gameIdentifier = ResolveGameIdentifier(payload.GameIdentifier);
+        if (gameIdentifier is null)
+            return BadRequest("Game identifier is not registered.");
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         var modPackRevision = new ModPackRevision
         {
@@ -124,6 +133,7 @@ public class ModPackController : ControllerBase
         var modPack = new ModPackDefinition
         {
             PrimaryKey            = default,
+            GameIdentifier        = gameIdentifier,
             TimeStampCreated      = now,
             Title                 = payload.Title,
             OwnerFk               = userId,
@@ -163,8 +173,26 @@ public class ModPackController : ControllerBase
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
+        var gameIdentifier = ResolveGameIdentifier(payload.GameIdentifier);
+        if (gameIdentifier is null)
+            return BadRequest("Game identifier is not registered.");
+
+        var revisionIds = payload.RevisionIds.Distinct().ToArray();
+        var modPackRevisions = await _apiDbContext.ModPackRevisions
+            .Include(q => q.Definition)
+            .Where(q => revisionIds.Contains(q.PrimaryKey))
+            .ToArrayAsync(cancellationToken);
+        if (modPackRevisions.Length != revisionIds.Length)
+            return BadRequest("One or more mod pack revisions do not exist.");
+        if (modPackRevisions.Any(q => !string.Equals(
+                q.Definition!.GameIdentifier,
+                gameIdentifier,
+                StringComparison.Ordinal)))
+            return BadRequest("All composition members must belong to the selected game.");
+
         var modPack = new ModPackDefinition
         {
+            GameIdentifier        = gameIdentifier,
             IsActive              = true,
             OwnerFk               = userId,
             TimeStampCreated      = NodaSystemClock.Instance.GetCurrentInstant(),
@@ -174,16 +202,8 @@ public class ModPackController : ControllerBase
             ModPackRevisions      = [],
             ModPackRevisionsOwned = null,
         };
-        foreach (var modPackRevisionId in payload.RevisionIds)
-        {
-            var modPackRevision = await _apiDbContext.ModPackRevisions.SingleOrDefaultAsync(
-                c => c.PrimaryKey == modPackRevisionId,
-                cancellationToken
-            );
-            if (modPackRevision is null)
-                return BadRequest();
+        foreach (var modPackRevision in modPackRevisions)
             modPack.ModPackRevisions.Add(modPackRevision);
-        }
 
         var entity = await _apiDbContext.ModPackDefinitions.AddAsync(modPack, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
@@ -400,6 +420,7 @@ public class ModPackController : ControllerBase
         return Ok(
             new ModPackDefinitionDto
             {
+                GameIdentifier   = existingModPack.GameIdentifier,
                 PrimaryKey       = existingModPack.PrimaryKey,
                 TimeStampCreated = existingModPack.TimeStampCreated,
                 Title            = existingModPack.Title,
@@ -739,7 +760,8 @@ public class ModPackController : ControllerBase
         [FromQuery] int take,
         CancellationToken cancellationToken,
         [FromQuery] string? search = null,
-        [FromQuery] bool myModPacksOnly = false
+        [FromQuery] bool myModPacksOnly = false,
+        [FromQuery] string? gameIdentifier = null
     )
     {
         if (take > 500)
@@ -747,27 +769,19 @@ public class ModPackController : ControllerBase
             throw new ArgumentOutOfRangeException(nameof(take), take, "Take has a hard-maximum of 500.");
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
-        IQueryable<ModPackDefinition> modPacks;
+        IQueryable<ModPackDefinition> modPacks = _apiDbContext.ModPackDefinitions
+            .Include(e => e.Owner)
+            .Include(e => e.ModPackRevisions!.Where(q => q.IsActive))
+            .ThenInclude(e => e.UserMetas!.Where(q => q.UserFk == userId))
+            .Where(q => q.IsActive);
         if (myModPacksOnly)
+            modPacks = modPacks.Where(q => q.OwnerFk == userId);
+        if (gameIdentifier.IsNotNullOrWhiteSpace())
         {
-            modPacks = _apiDbContext.ModPackDefinitions
-                .Include(e => e.Owner)
-                .Include(e => e.ModPackRevisions!.Where(q => q.IsActive))
-                .ThenInclude(e => e.UserMetas!.Where(q => q.UserFk == userId))
-                .Where(q => q.IsActive)
-                .Where(q => q.OwnerFk == userId)
-                .Skip(skip)
-                .Take(take);
-        }
-        else
-        {
-            modPacks = _apiDbContext.ModPackDefinitions
-                .Include(e => e.Owner)
-                .Include(e => e.ModPackRevisions!.Where(q => q.IsActive))
-                .ThenInclude(e => e.UserMetas!.Where(q => q.UserFk == userId))
-                .Where(q => q.IsActive)
-                .Skip(skip)
-                .Take(take);
+            var resolvedGameIdentifier = ResolveGameIdentifier(gameIdentifier);
+            if (resolvedGameIdentifier is null)
+                return Ok(Array.Empty<FullModPackDefinitionDto>());
+            modPacks = modPacks.Where(q => q.GameIdentifier == resolvedGameIdentifier);
         }
 
         if (search.IsNotNullOrWhiteSpace())
@@ -788,7 +802,7 @@ public class ModPackController : ControllerBase
             modPacks = modPacks.Where(q => EF.Functions.ILike(q.Title, search, "\\"));
         }
 
-        var result = await modPacks.ToArrayAsync(cancellationToken);
+        var result = await modPacks.Skip(skip).Take(take).ToArrayAsync(cancellationToken);
         return Ok(result.Select(e => e.ToFullDto()));
     }
 
@@ -811,7 +825,8 @@ public class ModPackController : ControllerBase
     [ProducesResponseType<long>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetModPacksCountAsync(
         CancellationToken cancellationToken,
-        [FromQuery] bool myModPacksOnly = false
+        [FromQuery] bool myModPacksOnly = false,
+        [FromQuery] string? gameIdentifier = null
     )
     {
         long count;
@@ -819,16 +834,29 @@ public class ModPackController : ControllerBase
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized();
-            count = await _apiDbContext.ModPackDefinitions
+            var modPacks = _apiDbContext.ModPackDefinitions
                 .Where(q => q.IsActive)
-                .Where(q => q.OwnerFk == userId)
-                .LongCountAsync(cancellationToken);
+                .Where(q => q.OwnerFk == userId);
+            if (gameIdentifier.IsNotNullOrWhiteSpace())
+            {
+                var resolvedGameIdentifier = ResolveGameIdentifier(gameIdentifier);
+                if (resolvedGameIdentifier is null)
+                    return Ok(0L);
+                modPacks = modPacks.Where(q => q.GameIdentifier == resolvedGameIdentifier);
+            }
+            count = await modPacks.LongCountAsync(cancellationToken);
         }
         else
         {
-            count = await _apiDbContext.ModPackDefinitions
-                .Where(q => q.IsActive)
-                .LongCountAsync(cancellationToken);
+            var modPacks = _apiDbContext.ModPackDefinitions.Where(q => q.IsActive);
+            if (gameIdentifier.IsNotNullOrWhiteSpace())
+            {
+                var resolvedGameIdentifier = ResolveGameIdentifier(gameIdentifier);
+                if (resolvedGameIdentifier is null)
+                    return Ok(0L);
+                modPacks = modPacks.Where(q => q.GameIdentifier == resolvedGameIdentifier);
+            }
+            count = await modPacks.LongCountAsync(cancellationToken);
         }
 
         return Ok(count);
@@ -877,6 +905,7 @@ public class ModPackController : ControllerBase
         Instant? latestDownloaded)
         => new()
         {
+            GameIdentifier          = modPack.GameIdentifier,
             PrimaryKey               = modPack.PrimaryKey,
             TimeStampCreated         = modPack.TimeStampCreated,
             Title                    = modPack.Title,
@@ -916,6 +945,14 @@ public class ModPackController : ControllerBase
                || User.HasClaim(Claims.ResourceBased.ModPack.All, routeValue)
                || User.HasClaim(claimIdentifier, routeValue);
     }
+
+    private string? ResolveGameIdentifier(string? gameIdentifier)
+        => _gameDefinitions.GetDefinitions()
+            .FirstOrDefault(q => string.Equals(
+                q.GameIdentifier,
+                gameIdentifier?.Trim(),
+                StringComparison.OrdinalIgnoreCase))
+            ?.GameIdentifier;
 
     private async Task<FileContentResult> ProduceFileContentResultFromModPackAsync(
         long modPackDefinitionId,

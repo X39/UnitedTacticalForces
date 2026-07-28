@@ -8,6 +8,7 @@ public sealed record WorkerCommandInfo
     public string Status { get; init; } = string.Empty;
     public string Stage { get; init; } = string.Empty;
     public string? FailureReason { get; init; }
+    public string? DiagnosticOutput { get; init; }
     public DateTimeOffset TimeStampCreated { get; init; }
     public DateTimeOffset? TimeStampStarted { get; init; }
     public DateTimeOffset? TimeStampCompleted { get; init; }

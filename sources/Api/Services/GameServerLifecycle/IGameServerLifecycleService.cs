@@ -42,6 +42,12 @@ public interface IGameServerLifecycleService
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);
 
+    Task ChangeModPackAsync(
+        Guid gameServerId,
+        long? modPackDefinitionId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
+
     Task ArchiveAsync(
         Guid gameServerId,
         ClaimsPrincipal principal,

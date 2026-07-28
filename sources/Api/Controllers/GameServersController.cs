@@ -80,6 +80,22 @@ public sealed class GameServersController(
         return server is null ? NotFound() : Ok(server.Actions);
     }
 
+    [HttpGet("{gameServerId:guid}/mod-pack-options")]
+    [Authorize(Claims.ResourceBased.Server.View)]
+    [ProducesResponseType<IReadOnlyCollection<GameServerModPackOptionDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetModPackOptionsAsync(
+        [FromRoute] Guid gameServerId,
+        CancellationToken cancellationToken)
+    {
+        var server = await projectionService.GetServerAsync(gameServerId, User, cancellationToken)
+            .ConfigureAwait(false);
+        if (server is null)
+            return NotFound();
+        return Ok(await projectionService
+            .GetModPackOptionsAsync(gameServerId, User, cancellationToken)
+            .ConfigureAwait(false));
+    }
+
     [HttpPost("{gameServerId:guid}/actions/{actionId}")]
     [Authorize(Claims.ResourceBased.Server.Operate)]
     [ProducesResponseType<LifecycleJobDto>(StatusCodes.Status202Accepted)]
@@ -161,6 +177,27 @@ public sealed class GameServersController(
         {
             await lifecycleService
                 .ChangeRuntimeProfileAsync(gameServerId, payload.RuntimeProfileIdentifier, User, cancellationToken)
+                .ConfigureAwait(false);
+            return NoContent();
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
+    }
+
+    [HttpPut("{gameServerId:guid}/mod-pack")]
+    [Authorize(Claims.ResourceBased.Server.Modify)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ChangeModPackAsync(
+        [FromRoute] Guid gameServerId,
+        [FromBody] GameServerModPackSelectionPayload payload,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await lifecycleService
+                .ChangeModPackAsync(gameServerId, payload.ModPackDefinitionId, User, cancellationToken)
                 .ConfigureAwait(false);
             return NoContent();
         }

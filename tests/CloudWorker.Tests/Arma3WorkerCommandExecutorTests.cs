@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using X39.UnitedTacticalForces.CloudWorker;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
@@ -81,6 +82,10 @@ public class Arma3WorkerCommandExecutorTests
         Assert.False(Directory.Exists(staleTemporaryDirectory));
         Assert.False(File.Exists(legacyRunScript));
         Assert.True(commandRunner.RunScriptExistedDuringExecution);
+        Assert.DoesNotContain("workshop_download_item", commandRunner.RunScriptContent, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            processController.ArgumentsAtStart,
+            argument => argument.StartsWith("-mod=", StringComparison.Ordinal));
         Assert.StartsWith(
             System.IO.Path.GetFullPath(options.Arma3.TemporaryDirectory),
             System.IO.Path.GetFullPath(commandRunner.RunScriptPath!),
@@ -95,6 +100,182 @@ public class Arma3WorkerCommandExecutorTests
                 UnixFileMode.UserRead | UnixFileMode.UserWrite,
                 commandRunner.RunScriptMode);
         }
+    }
+
+    [Fact]
+    public async Task Start_WithWorkshopContent_DownloadsAllowlistedItemsAndBuildsSingleModArgument()
+    {
+        using var directory = new TemporaryDirectory();
+        var bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap();
+        var steamCmdPath = System.IO.Path.Combine(directory.Path, "steamcmd.sh");
+        await File.WriteAllTextAsync(steamCmdPath, "test executable placeholder");
+        var options = CreateOptions(directory.Path, steamCmdPath);
+        var paths = new Arma3RuntimePaths(
+            options.RuntimeRoot,
+            options.StateDirectory,
+            bootstrap.DeploymentId,
+            options.Arma3.ExecutableName);
+        var workshopItemIds = new[] { 450814997UL, 463939057UL };
+        var workshopPaths = workshopItemIds.Select(paths.GetSteamWorkshopItemPath).ToArray();
+        var commandRunner = new PreparingCommandRunner(
+            paths.ExecutablePath,
+            preparedDirectories: workshopPaths);
+        var processController = new RecordingProcessController(
+            paths.ExecutablePath,
+            paths.ServerConfigurationPath);
+        var executor = new Arma3WorkerCommandExecutor(
+            bootstrap.ToConnectionConfig(),
+            options,
+            commandRunner: commandRunner,
+            processController: processController,
+            storageTransfer: new RecordingStorageTransfer(paths.ServerConfigurationPath));
+        var command = WithContent(
+            FlatFileWorkerCommandJournalTests.CreateCommand(
+                bootstrap.WorkerId,
+                bootstrap.DeploymentId,
+                bootstrap.ServerId,
+                "start"),
+            [
+                new WorkerContentReference
+                {
+                    Source = Arma3CommandPayload.SteamWorkshopContentSource,
+                    Identifier = workshopItemIds[0].ToString(),
+                    DisplayName = "CBA A3",
+                },
+                new WorkerContentReference
+                {
+                    Source = Arma3CommandPayload.SteamWorkshopContentSource,
+                    Identifier = workshopItemIds[1].ToString(),
+                    DisplayName = "ACE",
+                },
+            ]);
+
+        var result = await executor.ExecuteAsync(command, CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Contains(
+            $"force_install_dir \"{paths.InstallPath.Replace("\\", "\\\\", StringComparison.Ordinal)}\"",
+            commandRunner.RunScriptContent,
+            StringComparison.Ordinal);
+        Assert.Contains("workshop_download_item 107410 450814997", commandRunner.RunScriptContent);
+        Assert.Contains("workshop_download_item 107410 463939057", commandRunner.RunScriptContent);
+        Assert.DoesNotContain("CBA A3", commandRunner.RunScriptContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("ACE", commandRunner.RunScriptContent, StringComparison.Ordinal);
+        var modArgument = Assert.Single(
+            processController.ArgumentsAtStart,
+            q => q.StartsWith("-mod=", StringComparison.Ordinal));
+        Assert.Equal($"-mod={string.Join(';', workshopPaths)}", modArgument);
+    }
+
+    [Fact]
+    public async Task Install_WhenSteamCmdOmitsSelectedWorkshopContent_FailsWithoutPreparationMarker()
+    {
+        using var directory = new TemporaryDirectory();
+        var bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap();
+        var steamCmdPath = System.IO.Path.Combine(directory.Path, "steamcmd.sh");
+        await File.WriteAllTextAsync(steamCmdPath, "test executable placeholder");
+        var options = CreateOptions(directory.Path, steamCmdPath);
+        var paths = new Arma3RuntimePaths(
+            options.RuntimeRoot,
+            options.StateDirectory,
+            bootstrap.DeploymentId,
+            options.Arma3.ExecutableName);
+        var executor = new Arma3WorkerCommandExecutor(
+            bootstrap.ToConnectionConfig(),
+            options,
+            commandRunner: new PreparingCommandRunner(paths.ExecutablePath),
+            processController: new RecordingProcessController(paths.ExecutablePath, paths.ServerConfigurationPath),
+            storageTransfer: new RecordingStorageTransfer(paths.ServerConfigurationPath));
+        var command = WithContent(
+            FlatFileWorkerCommandJournalTests.CreateCommand(
+                bootstrap.WorkerId,
+                bootstrap.DeploymentId,
+                bootstrap.ServerId,
+                "install"),
+            [
+                new WorkerContentReference
+                {
+                    Source = Arma3CommandPayload.SteamWorkshopContentSource,
+                    Identifier = "450814997",
+                    DisplayName = "CBA A3",
+                },
+            ]);
+
+        var result = await executor.ExecuteAsync(command, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("workshop-content-missing", result.ErrorCode);
+        Assert.False(File.Exists(paths.PreparationMarkerPath));
+        Assert.DoesNotContain("steam", result.Output ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Update_WithWorkshopContent_ValidatesServerAndSelectedItems()
+    {
+        using var directory = new TemporaryDirectory();
+        var bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap();
+        var steamCmdPath = System.IO.Path.Combine(directory.Path, "steamcmd.sh");
+        await File.WriteAllTextAsync(steamCmdPath, "test executable placeholder");
+        var options = CreateOptions(directory.Path, steamCmdPath);
+        var paths = new Arma3RuntimePaths(
+            options.RuntimeRoot,
+            options.StateDirectory,
+            bootstrap.DeploymentId,
+            options.Arma3.ExecutableName);
+        const ulong workshopItemId = 450814997;
+        var commandRunner = new PreparingCommandRunner(
+            paths.ExecutablePath,
+            preparedDirectories: [paths.GetSteamWorkshopItemPath(workshopItemId)]);
+        var executor = new Arma3WorkerCommandExecutor(
+            bootstrap.ToConnectionConfig(),
+            options,
+            commandRunner: commandRunner,
+            processController: new RecordingProcessController(paths.ExecutablePath, paths.ServerConfigurationPath),
+            storageTransfer: new RecordingStorageTransfer(paths.ServerConfigurationPath));
+        var command = WithContent(
+            FlatFileWorkerCommandJournalTests.CreateCommand(
+                bootstrap.WorkerId,
+                bootstrap.DeploymentId,
+                bootstrap.ServerId,
+                "update"),
+            [
+                new WorkerContentReference
+                {
+                    Source = Arma3CommandPayload.SteamWorkshopContentSource,
+                    Identifier = workshopItemId.ToString(),
+                    DisplayName = "CBA A3",
+                },
+            ]);
+
+        var result = await executor.ExecuteAsync(command, CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Contains("app_update 233780 validate", commandRunner.RunScriptContent);
+        Assert.Contains("workshop_download_item 107410 450814997 validate", commandRunner.RunScriptContent);
+    }
+
+    [Fact]
+    public async Task ObserveRuntime_ReportsCoherentDeploymentVolumeTelemetry()
+    {
+        using var directory = new TemporaryDirectory();
+        var bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap();
+        var options = CreateOptions(directory.Path, System.IO.Path.Combine(directory.Path, "steamcmd.sh"));
+        var paths = new Arma3RuntimePaths(
+            options.RuntimeRoot,
+            options.StateDirectory,
+            bootstrap.DeploymentId,
+            options.Arma3.ExecutableName);
+        var executor = new Arma3WorkerCommandExecutor(
+            bootstrap.ToConnectionConfig(),
+            options,
+            processController: new RecordingProcessController(paths.ExecutablePath, paths.ServerConfigurationPath));
+
+        var status = await executor.ObserveRuntimeAsync(CancellationToken.None);
+
+        Assert.NotNull(status);
+        Assert.True(status.DeploymentStorageTotalBytes > 0);
+        Assert.True(status.DeploymentStorageAvailableBytes >= 0);
+        Assert.True(status.DeploymentStorageAvailableBytes <= status.DeploymentStorageTotalBytes);
     }
 
     [Fact]
@@ -268,12 +449,46 @@ public class Arma3WorkerCommandExecutorTests
         Assert.Contains("password policy healthy", result.Output, StringComparison.Ordinal);
     }
 
-    private sealed class PreparingCommandRunner(string executablePath, string output = "prepared") : IProcessCommandRunner
+    private static CloudWorkerOptions CreateOptions(string root, string steamCmdPath)
+        => new(
+            System.IO.Path.Combine(root, "bootstrap.json"),
+            System.IO.Path.Combine(root, "state"),
+            System.IO.Path.Combine(root, "runtime"),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(15),
+            true,
+            false,
+            new Arma3WorkerOptions(
+                steamCmdPath,
+                "anonymous",
+                null,
+                null,
+                "arma3server_x64",
+                TimeSpan.FromSeconds(30))
+            {
+                TemporaryDirectory = System.IO.Path.Combine(root, "tmp"),
+            });
+
+    private static WorkerCommandClaimResponse WithContent(
+        WorkerCommandClaimResponse command,
+        IReadOnlyCollection<WorkerContentReference> content)
+    {
+        var payload = JsonNode.Parse(command.Payload)?.AsObject()
+                      ?? throw new InvalidDataException("Test command payload is invalid.");
+        payload[nameof(WorkerCommandPayload.Content)] = JsonSerializer.SerializeToNode(content, CloudWorkerJson.Options);
+        return command with { Payload = payload.ToJsonString(CloudWorkerJson.Options) };
+    }
+
+    private sealed class PreparingCommandRunner(
+        string executablePath,
+        string output = "prepared",
+        IReadOnlyCollection<string>? preparedDirectories = null) : IProcessCommandRunner
     {
         public int RunCount { get; private set; }
         public string? RunScriptPath { get; private set; }
         public bool RunScriptExistedDuringExecution { get; private set; }
         public UnixFileMode? RunScriptMode { get; private set; }
+        public string RunScriptContent { get; private set; } = string.Empty;
 
         public async Task<ProcessCommandResult> RunAsync(
             ProcessStartInfo startInfo,
@@ -282,10 +497,13 @@ public class Arma3WorkerCommandExecutorTests
             RunCount++;
             RunScriptPath = startInfo.ArgumentList.Last();
             RunScriptExistedDuringExecution = File.Exists(RunScriptPath);
+            RunScriptContent = await File.ReadAllTextAsync(RunScriptPath, cancellationToken);
             if (!OperatingSystem.IsWindows())
                 RunScriptMode = File.GetUnixFileMode(RunScriptPath);
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(executablePath)!);
             await File.WriteAllTextAsync(executablePath, "prepared", cancellationToken);
+            foreach (var directory in preparedDirectories ?? [])
+                Directory.CreateDirectory(directory);
             return new ProcessCommandResult(true, 0, output, string.Empty);
         }
     }
@@ -297,6 +515,7 @@ public class Arma3WorkerCommandExecutorTests
         public int StartCount { get; private set; }
         public bool ExecutableExistedAtStart { get; private set; }
         public string? ServerConfigurationAtStart { get; private set; }
+        public IReadOnlyList<string> ArgumentsAtStart { get; private set; } = [];
 
         public Task<Arma3ProcessObservation> ObserveAsync(CancellationToken cancellationToken)
             => Task.FromResult(new Arma3ProcessObservation(false, null, null, null));
@@ -306,6 +525,7 @@ public class Arma3WorkerCommandExecutorTests
             CancellationToken cancellationToken)
         {
             StartCount++;
+            ArgumentsAtStart = arguments.ToArray();
             ExecutableExistedAtStart = File.Exists(executablePath);
             ServerConfigurationAtStart = File.Exists(serverConfigurationPath)
                 ? File.ReadAllText(serverConfigurationPath)

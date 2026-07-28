@@ -6,6 +6,11 @@ namespace X39.UnitedTacticalForces.Api.DTO;
 public record PlainTerrainDto
 {
     /// <summary>
+    /// Stable identifier of the game this terrain belongs to.
+    /// </summary>
+    public string GameIdentifier { get; init; } = string.Empty;
+
+    /// <summary>
     /// Represents the primary key of an entity within the context of the application's data model.
     /// This property is used as a unique identifier for the associated record in the database.
     /// </summary>

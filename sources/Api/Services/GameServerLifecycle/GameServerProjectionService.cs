@@ -103,6 +103,40 @@ internal sealed class GameServerProjectionService(
             : await ProjectServerAsync(server, principal, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyCollection<GameServerModPackOptionDto>> GetModPackOptionsAsync(
+        Guid gameServerId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        if (!authorizationService.HasServerPermission(
+                principal,
+                gameServerId,
+                Claims.ResourceBased.Server.View))
+            return [];
+
+        var gameIdentifier = await dbContext.GameServers
+            .AsNoTracking()
+            .Where(q => q.PrimaryKey == gameServerId && !q.IsArchived)
+            .Select(q => q.GameIdentifier)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (gameIdentifier is null)
+            return [];
+
+        return await dbContext.ModPackDefinitions
+            .AsNoTracking()
+            .Where(q => q.IsActive && q.GameIdentifier == gameIdentifier)
+            .OrderBy(q => q.Title)
+            .ThenBy(q => q.PrimaryKey)
+            .Select(q => new GameServerModPackOptionDto
+            {
+                PrimaryKey = q.PrimaryKey,
+                Title = q.Title,
+            })
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task<IReadOnlyCollection<GameServerNotificationDto>> GetNotificationsAsync(
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
@@ -272,6 +306,7 @@ internal sealed class GameServerProjectionService(
                     Status = q.Status,
                     Stage = q.Stage,
                     FailureReason = q.ErrorMessage,
+                    DiagnosticOutput = q.DiagnosticOutput,
                     TimeStampCreated = q.TimeStampCreated,
                     TimeStampStarted = q.TimeStampStarted,
                     TimeStampCompleted = q.TimeStampCompleted,
@@ -284,6 +319,7 @@ internal sealed class GameServerProjectionService(
             .AsNoTracking()
             .AsSplitQuery()
             .Include(q => q.CurrentCostOwner)
+            .Include(q => q.SelectedModPackDefinition)
             .Include(q => q.Deployments)
             .ThenInclude(q => q.Workers)
             .Include(q => q.Deployments)
@@ -411,6 +447,8 @@ internal sealed class GameServerProjectionService(
             RuntimeProfileDisplayName = server.RuntimeProfileDisplayName,
             EstimatedHourlyCostEur = server.EstimatedHourlyCostEur,
             EstimatedMonthlyCostEur = server.EstimatedMonthlyCostEur,
+            SelectedModPackDefinitionId = server.SelectedModPackDefinitionFk,
+            SelectedModPackDefinitionTitle = server.SelectedModPackDefinition?.Title,
             CreatedById = server.CreatedByFk,
             CostOwnerId = server.CurrentCostOwnerFk,
             CostOwnerName = canSeeOwner
@@ -430,6 +468,9 @@ internal sealed class GameServerProjectionService(
                 : new GameServerDeploymentDto
                 {
                     PrimaryKey = deployment.PrimaryKey,
+                    RuntimeProfileIdentifier = deployment.RuntimeProfileIdentifier,
+                    RuntimeProfileDisplayName = deployment.RuntimeProfileDisplayName,
+                    EstimatedHourlyCostEur = deployment.EstimatedHourlyCostEur,
                     Status = deployment.Status,
                     Stage = deployment.Stage,
                     PossibleCost = deployment.PossibleCost,
@@ -441,6 +482,9 @@ internal sealed class GameServerProjectionService(
                     WorkerId = worker?.PrimaryKey,
                     WorkerStatus = worker?.Status,
                     LastHeartbeat = worker?.LastHeartbeatAt,
+                    DiskTotalBytes = worker?.DiskTotalBytes,
+                    DiskAvailableBytes = worker?.DiskAvailableBytes,
+                    DiskTimeStampObserved = worker?.DiskTimeStampObserved,
                     PublicAddress = publicAddress,
                     ConnectionEndpoint = deployment.Status == EDeploymentStatus.Running
                                          && publicAddress is not null

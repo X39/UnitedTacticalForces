@@ -4,10 +4,12 @@
 @using System.Globalization
 @using X39.UnitedTacticalForces.WebApp.Services
 @using X39.UnitedTacticalForces.WebApp.Services.MediaAssetRepository
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
 @using X39.UnitedTacticalForces.WebApp.Services.TerrainRepository
 @using X39.UnitedTacticalForces.WebApp.UtfApi.Models
 @inject IStringLocalizer<Language> Localizer
 @inject ITerrainRepository TerrainRepository
+@inject IGameServerRepository GameServerRepository
 @inject NavigationManager NavigationManager
 @inject BaseUrl BaseUrl
 @inject MeService Me
@@ -162,6 +164,16 @@
                             </div>
 
                             <label class="terrain-create-field terrain-create-field--wide">
+                                <span>@Localizer["Hosting_Create_Game"]</span>
+                                <select class="utf-command-input" @bind="_gameIdentifier">
+                                    @foreach (var capability in _capabilities)
+                                    {
+                                        <option value="@capability.GameIdentifier">@capability.DisplayName</option>
+                                    }
+                                </select>
+                            </label>
+
+                            <label class="terrain-create-field terrain-create-field--wide">
                                 <span>@Localizer[nameof(Language.Panels_CreateTerrainPanel_Title)]</span>
                                 <input class="utf-command-input"
                                        maxlength="1024"
@@ -214,6 +226,8 @@
     private const string MissingValue = "n/a";
 
     private string _title = string.Empty;
+    private IReadOnlyList<GameServerCapabilityInfo> _capabilities = [];
+    private string _gameIdentifier = string.Empty;
     private Guid? _imageAssetFk;
     private string _imagePath = string.Empty;
     private string _imageMimeType = string.Empty;
@@ -237,6 +251,7 @@
 
     private bool CanCreate
         => !_isSubmitting
+           && !string.IsNullOrWhiteSpace(_gameIdentifier)
            && !string.IsNullOrWhiteSpace(_title)
            && _imageAssetFk is not null;
 
@@ -266,6 +281,12 @@
     private void NextStep()
         => SetStep(_step + 1);
 
+    protected override async Task OnInitializedAsync()
+    {
+        _capabilities = await GameServerRepository.GetCapabilitiesAsync();
+        _gameIdentifier = _capabilities.FirstOrDefault()?.GameIdentifier ?? string.Empty;
+    }
+
     private async Task CreateTerrainAsync()
     {
         if (!CanCreate)
@@ -279,8 +300,9 @@
             var createdTerrain = await TerrainRepository.CreateTerrainAsync(
                     new TerrainCreationPayload
                     {
-                        Title        = _title.Trim(),
-                        ImageAssetFk = _imageAssetFk!.Value,
+                        GameIdentifier = _gameIdentifier,
+                        Title          = _title.Trim(),
+                        ImageAssetFk   = _imageAssetFk!.Value,
                     }
                 )
                 .ConfigureAwait(false);
@@ -335,7 +357,7 @@
     private bool IsStepComplete(int step)
         => step switch
         {
-            1 => !string.IsNullOrWhiteSpace(_title),
+            1 => !string.IsNullOrWhiteSpace(_gameIdentifier) && !string.IsNullOrWhiteSpace(_title),
             2 => HasImage,
             3 => CanCreate,
             _ => false,

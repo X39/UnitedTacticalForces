@@ -259,6 +259,10 @@ public class DatabaseContext : DbContext
                 .WithMany(q => q.CurrentServers)
                 .HasForeignKey(q => q.CurrentCostOwnerFk)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(q => q.SelectedModPackDefinition)
+                .WithMany()
+                .HasForeignKey(q => q.SelectedModPackDefinitionFk)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.ToTable(table =>
             {
                 table.HasCheckConstraint(
@@ -385,6 +389,14 @@ public class DatabaseContext : DbContext
                 table.HasCheckConstraint(
                     "CK_LifecycleWorkers_WorkerCredentialRevocation",
                     "\"WorkerCredentialRevokedAt\" IS NULL OR \"WorkerCredentialIssuedAt\" IS NOT NULL");
+                table.HasCheckConstraint(
+                    "CK_LifecycleWorkers_DiskTelemetry",
+                    "(\"DiskTotalBytes\" IS NULL AND \"DiskAvailableBytes\" IS NULL "
+                    + "AND \"DiskTimeStampObserved\" IS NULL) OR "
+                    + "(\"DiskTotalBytes\" IS NOT NULL AND \"DiskAvailableBytes\" IS NOT NULL "
+                    + "AND \"DiskTimeStampObserved\" IS NOT NULL "
+                    + "AND \"DiskTotalBytes\" >= 0 AND \"DiskAvailableBytes\" >= 0 "
+                    + "AND \"DiskAvailableBytes\" <= \"DiskTotalBytes\")");
             });
         });
 

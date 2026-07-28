@@ -417,6 +417,8 @@ public sealed class CloudWorkerRuntime(
                     Stage = stage,
                     ProcessId = runtime?.ProcessId,
                     ProcessStartedAt = runtime?.ProcessStartedAt,
+                    DeploymentStorageTotalBytes = runtime?.DeploymentStorageTotalBytes,
+                    DeploymentStorageAvailableBytes = runtime?.DeploymentStorageAvailableBytes,
                 },
                 cancellationToken)
             .ConfigureAwait(false);

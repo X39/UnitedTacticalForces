@@ -6,6 +6,7 @@ using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.DTO.Updates;
+using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.Util;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
@@ -25,6 +26,7 @@ public class TerrainController : ControllerBase
 {
     private readonly ILogger<TerrainController> _logger;
     private readonly DatabaseContext               _apiDbContext;
+    private readonly IGameServerDefinitionCatalog  _gameDefinitions;
 
     /// <summary>
     /// Provides API endpoints for managing terrains in the system.
@@ -34,10 +36,14 @@ public class TerrainController : ControllerBase
     /// This controller enforces authorization policies and integrates with the system's logging
     /// and data handling mechanisms.
     /// </remarks>
-    public TerrainController(ILogger<TerrainController> logger, DatabaseContext apiDbContext)
+    public TerrainController(
+        ILogger<TerrainController> logger,
+        DatabaseContext apiDbContext,
+        IGameServerDefinitionCatalog gameDefinitions)
     {
-        _logger       = logger;
-        _apiDbContext = apiDbContext;
+        _logger          = logger;
+        _apiDbContext    = apiDbContext;
+        _gameDefinitions = gameDefinitions;
     }
 
     /// <summary>
@@ -60,13 +66,17 @@ public class TerrainController : ControllerBase
         // ToDo: Add audit log
         if (!await MediaAssetExistsAsync(payload.ImageAssetFk, cancellationToken).ConfigureAwait(false))
             return BadRequest("Image asset does not exist.");
+        var gameIdentifier = ResolveGameIdentifier(payload.GameIdentifier);
+        if (gameIdentifier is null)
+            return BadRequest("Game identifier is not registered.");
 
         var terrain = new Terrain
         {
-            PrimaryKey    = default,
-            Title         = payload.Title,
-            ImageAssetFk  = payload.ImageAssetFk,
-            IsActive      = true,
+            PrimaryKey     = default,
+            GameIdentifier = gameIdentifier,
+            Title          = payload.Title,
+            ImageAssetFk   = payload.ImageAssetFk,
+            IsActive       = true,
         };
         var entity = await _apiDbContext.Terrains.AddAsync(terrain, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
@@ -190,16 +200,22 @@ public class TerrainController : ControllerBase
         [FromQuery] int skip,
         [FromQuery] int take,
         CancellationToken cancellationToken,
-        [FromQuery] string? search = null
+        [FromQuery] string? search = null,
+        [FromQuery] string? gameIdentifier = null
     )
     {
         if (take > 500)
             // ReSharper disable once LocalizableElement
             throw new ArgumentOutOfRangeException(nameof(take), take, "Take has a hard-maximum of 500.");
         var terrains = _apiDbContext.Terrains
-            .Where(q => q.IsActive)
-            .Skip(skip)
-            .Take(take);
+            .Where(q => q.IsActive);
+        if (gameIdentifier.IsNotNullOrWhiteSpace())
+        {
+            var resolvedGameIdentifier = ResolveGameIdentifier(gameIdentifier);
+            if (resolvedGameIdentifier is null)
+                return Ok(Array.Empty<PlainTerrainDto>());
+            terrains = terrains.Where(q => q.GameIdentifier == resolvedGameIdentifier);
+        }
         if (search.IsNotNullOrWhiteSpace())
         {
             search = search.Trim();
@@ -218,7 +234,7 @@ public class TerrainController : ControllerBase
             terrains = terrains.Where(q => EF.Functions.ILike(q.Title, search, "\\"));
         }
 
-        var result = await terrains.ToArrayAsync(cancellationToken);
+        var result = await terrains.Skip(skip).Take(take).ToArrayAsync(cancellationToken);
 
         return Ok(
             result.Select(e => e.ToPlainDto())
@@ -238,11 +254,19 @@ public class TerrainController : ControllerBase
     /// </returns>
     [HttpPost("all/count", Name = nameof(GetTerrainsCountAsync))]
     [ProducesResponseType<long>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetTerrainsCountAsync(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetTerrainsCountAsync(
+        CancellationToken cancellationToken,
+        [FromQuery] string? gameIdentifier = null)
     {
-        var count = await _apiDbContext.Terrains
-            .Where(q => q.IsActive)
-            .LongCountAsync(cancellationToken);
+        var terrains = _apiDbContext.Terrains.Where(q => q.IsActive);
+        if (gameIdentifier.IsNotNullOrWhiteSpace())
+        {
+            var resolvedGameIdentifier = ResolveGameIdentifier(gameIdentifier);
+            if (resolvedGameIdentifier is null)
+                return Ok(0L);
+            terrains = terrains.Where(q => q.GameIdentifier == resolvedGameIdentifier);
+        }
+        var count = await terrains.LongCountAsync(cancellationToken);
 
         return Ok(count);
     }
@@ -253,4 +277,12 @@ public class TerrainController : ControllerBase
                .AsNoTracking()
                .AnyAsync(q => q.PrimaryKey == assetId, cancellationToken)
                .ConfigureAwait(false);
+
+    private string? ResolveGameIdentifier(string? gameIdentifier)
+        => _gameDefinitions.GetDefinitions()
+            .FirstOrDefault(q => string.Equals(
+                q.GameIdentifier,
+                gameIdentifier?.Trim(),
+                StringComparison.OrdinalIgnoreCase))
+            ?.GameIdentifier;
 }

@@ -13,6 +13,8 @@ public sealed record GameServerDto
     public string RuntimeProfileDisplayName { get; init; } = string.Empty;
     public decimal? EstimatedHourlyCostEur { get; init; }
     public decimal? EstimatedMonthlyCostEur { get; init; }
+    public long? SelectedModPackDefinitionId { get; init; }
+    public string? SelectedModPackDefinitionTitle { get; init; }
     public Guid CreatedById { get; init; }
     public Guid CostOwnerId { get; init; }
     public string CostOwnerName { get; init; } = string.Empty;

@@ -23,7 +23,8 @@ internal class ModPackRepositoryImpl(IHttpClientFactory httpClientFactory, BaseU
         int take,
         bool myModPacksOnly,
         string? search = default,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        string? gameIdentifier = default
     )
     {
         var modPacks = await Client.ModPacks
@@ -35,6 +36,7 @@ internal class ModPackRepositoryImpl(IHttpClientFactory httpClientFactory, BaseU
                     conf.QueryParameters.Take           = take;
                     conf.QueryParameters.MyModPacksOnly = myModPacksOnly;
                     conf.QueryParameters.Search         = search;
+                    conf.QueryParameters.GameIdentifier = gameIdentifier;
                 },
                 cancellationToken: cancellationToken
             )

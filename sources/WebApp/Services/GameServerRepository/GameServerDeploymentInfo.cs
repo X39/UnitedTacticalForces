@@ -6,6 +6,9 @@ namespace X39.UnitedTacticalForces.WebApp.Services.GameServerRepository;
 public sealed record GameServerDeploymentInfo
 {
     public Guid PrimaryKey { get; init; }
+    public string RuntimeProfileIdentifier { get; init; } = string.Empty;
+    public string RuntimeProfileDisplayName { get; init; } = string.Empty;
+    public decimal? EstimatedHourlyCostEur { get; init; }
     public string Status { get; init; } = string.Empty;
     public string Stage { get; init; } = string.Empty;
     public bool PossibleCost { get; init; }
@@ -15,6 +18,9 @@ public sealed record GameServerDeploymentInfo
     public Guid? WorkerId { get; init; }
     public string? WorkerStatus { get; init; }
     public DateTimeOffset? LastHeartbeat { get; init; }
+    public long? DiskTotalBytes { get; init; }
+    public long? DiskAvailableBytes { get; init; }
+    public DateTimeOffset? DiskTimeStampObserved { get; init; }
     public string? PublicAddress { get; init; }
     public string? ConnectionEndpoint { get; init; }
     public string? ConnectionProtocol { get; init; }

@@ -6,6 +6,11 @@ namespace X39.UnitedTacticalForces.Api.DTO;
 public record FullModPackDefinitionDto
 {
     /// <summary>
+    /// Stable identifier of the game this mod pack belongs to.
+    /// </summary>
+    public string GameIdentifier { get; init; } = string.Empty;
+
+    /// <summary>
     /// The primary key of this entity.
     /// </summary>
     public long PrimaryKey { get; init; }

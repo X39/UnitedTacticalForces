@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
@@ -9,6 +11,9 @@ namespace X39.UnitedTacticalForces.CloudWorker;
 /// </summary>
 public sealed record Arma3CommandPayload
 {
+    public const string SteamWorkshopContentSource = "steam-workshop";
+    private const int MaximumContentReferences = 256;
+
     [JsonIgnore]
     public WorkerCommandPayload Command { get; init; } = new();
 
@@ -59,5 +64,48 @@ public sealed record Arma3CommandPayload
         {
             throw new InvalidDataException("Arma graceful-stop policy is outside worker safety limits.");
         }
+        _ = GetSteamWorkshopItemIds();
+    }
+
+    public IReadOnlyList<ulong> GetSteamWorkshopItemIds()
+    {
+        var content = Command.Content
+                      ?? throw new InvalidDataException("Arma command content references are missing.");
+        if (content.Count > MaximumContentReferences)
+            throw new InvalidDataException("Arma command contains too many content references.");
+
+        var result = new List<ulong>(content.Count);
+        var seen = new HashSet<ulong>();
+        foreach (var reference in content)
+        {
+            if (reference is null
+                || !Validator.TryValidateObject(
+                    reference,
+                    new ValidationContext(reference),
+                    null,
+                    true))
+            {
+                throw new InvalidDataException("Arma command contains an invalid content reference.");
+            }
+            if (!string.Equals(reference.Source, SteamWorkshopContentSource, StringComparison.Ordinal))
+                throw new InvalidDataException("Arma command contains an unsupported content source.");
+            if (!ulong.TryParse(
+                    reference.Identifier,
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var workshopItemId)
+                || workshopItemId == 0
+                || !string.Equals(
+                    reference.Identifier,
+                    workshopItemId.ToString(CultureInfo.InvariantCulture),
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("Arma Workshop content identifier must be a positive integer.");
+            }
+            if (!seen.Add(workshopItemId))
+                throw new InvalidDataException("Arma command contains duplicate Workshop content references.");
+            result.Add(workshopItemId);
+        }
+        return result;
     }
 }

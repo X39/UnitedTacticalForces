@@ -1266,6 +1266,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<long?>("SelectedModPackDefinitionFk")
+                        .HasColumnType("bigint");
+
                     b.Property<Instant?>("TimeStampArchived")
                         .HasColumnType("timestamp with time zone");
 
@@ -1287,6 +1290,8 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.HasIndex("CurrentCostOwnerFk");
 
                     b.HasIndex("GameIdentifier");
+
+                    b.HasIndex("SelectedModPackDefinitionFk");
 
                     b.HasIndex("IsArchived", "IsLaunchDisabled");
 
@@ -1887,6 +1892,15 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Guid>("DeploymentFk")
                         .HasColumnType("uuid");
 
+                    b.Property<long?>("DiskAvailableBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Instant?>("DiskTimeStampObserved")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DiskTotalBytes")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Identity")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1969,6 +1983,8 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                             t.HasCheckConstraint("CK_LifecycleWorkers_BootstrapConsumption", "\"BootstrapCredentialConsumedAt\" IS NULL OR \"BootstrapCredentialExpiresAt\" IS NOT NULL");
 
                             t.HasCheckConstraint("CK_LifecycleWorkers_BootstrapCredential", "\"BootstrapCredentialHash\" IS NULL OR \"BootstrapCredentialExpiresAt\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_LifecycleWorkers_DiskTelemetry", "(\"DiskTotalBytes\" IS NULL AND \"DiskAvailableBytes\" IS NULL AND \"DiskTimeStampObserved\" IS NULL) OR (\"DiskTotalBytes\" IS NOT NULL AND \"DiskAvailableBytes\" IS NOT NULL AND \"DiskTimeStampObserved\" IS NOT NULL AND \"DiskTotalBytes\" >= 0 AND \"DiskAvailableBytes\" >= 0 AND \"DiskAvailableBytes\" <= \"DiskTotalBytes\")");
 
                             t.HasCheckConstraint("CK_LifecycleWorkers_PendingWorkerCredential", "\"PendingWorkerCredentialHash\" IS NULL OR (\"PendingWorkerCredentialIssuedAt\" IS NOT NULL AND \"PendingWorkerCredentialExpiresAt\" IS NOT NULL)");
 
@@ -3368,9 +3384,16 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackDefinition", "SelectedModPackDefinition")
+                        .WithMany()
+                        .HasForeignKey("SelectedModPackDefinitionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CreatedBy");
 
                     b.Navigation("CurrentCostOwner");
+
+                    b.Navigation("SelectedModPackDefinition");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServerCostOwnerAssignment", b =>

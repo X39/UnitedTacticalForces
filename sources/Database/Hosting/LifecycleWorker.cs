@@ -83,6 +83,18 @@ public class LifecycleWorker : IPrimaryKey<Guid>, ITimeStampCreated
 
     public Instant? ProcessStartedAt { get; set; }
 
+    /// <summary>
+    /// Total capacity in bytes of the deployment-local filesystem at the most recent disk observation.
+    /// </summary>
+    public long? DiskTotalBytes { get; set; }
+
+    /// <summary>
+    /// Bytes still available on the deployment-local filesystem at the most recent disk observation.
+    /// </summary>
+    public long? DiskAvailableBytes { get; set; }
+
+    public Instant? DiskTimeStampObserved { get; set; }
+
     public Instant TimeStampCreated { get; set; }
 
     public Instant TimeStampUpdated { get; set; }

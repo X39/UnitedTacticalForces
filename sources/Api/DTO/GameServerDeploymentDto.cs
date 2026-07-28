@@ -8,6 +8,9 @@ namespace X39.UnitedTacticalForces.Api.DTO;
 public sealed record GameServerDeploymentDto
 {
     public Guid PrimaryKey { get; init; }
+    public string RuntimeProfileIdentifier { get; init; } = string.Empty;
+    public string RuntimeProfileDisplayName { get; init; } = string.Empty;
+    public decimal? EstimatedHourlyCostEur { get; init; }
     public EDeploymentStatus Status { get; init; }
     public string Stage { get; init; } = string.Empty;
     public bool PossibleCost { get; init; }
@@ -17,6 +20,9 @@ public sealed record GameServerDeploymentDto
     public Guid? WorkerId { get; init; }
     public EWorkerStatus? WorkerStatus { get; init; }
     public Instant? LastHeartbeat { get; init; }
+    public long? DiskTotalBytes { get; init; }
+    public long? DiskAvailableBytes { get; init; }
+    public Instant? DiskTimeStampObserved { get; init; }
     public string? PublicAddress { get; init; }
     public string? ConnectionEndpoint { get; init; }
     public string? ConnectionProtocol { get; init; }

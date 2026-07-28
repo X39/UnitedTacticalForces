@@ -20,11 +20,21 @@ public class CloudWorkerRuntimeTests
             9,
             DateTimeOffset.UtcNow));
         var api = new FakeApiClient();
+        var executor = new FakeExecutor
+        {
+            RuntimeStatus = new WorkerRuntimeStatus(
+                "prepared",
+                null,
+                null,
+                null,
+                10_000,
+                4_000),
+        };
         var runtime = new CloudWorkerRuntime(
             api,
             credentialStore,
             new FlatFileWorkerCommandJournal(directory.Path),
-            new FakeExecutor());
+            executor);
         var options = new CloudWorkerOptions(
             System.IO.Path.Combine(directory.Path, "deleted-bootstrap.json"),
             directory.Path,
@@ -47,6 +57,8 @@ public class CloudWorkerRuntimeTests
         Assert.Equal(1, api.HeartbeatCount);
         Assert.Equal(1, api.ClaimCount);
         Assert.Equal("persisted-worker-token", api.LastCredential);
+        Assert.Equal(10_000, api.LastHeartbeatRequest?.DeploymentStorageTotalBytes);
+        Assert.Equal(4_000, api.LastHeartbeatRequest?.DeploymentStorageAvailableBytes);
     }
 
     [Fact]
@@ -416,6 +428,7 @@ public class CloudWorkerRuntimeTests
         public WorkerCommandExecutionResult? ReconciliationResult { get; init; }
         public TimeSpan ExecutionDelay { get; init; }
         public bool CancellationObserved { get; private set; }
+        public WorkerRuntimeStatus? RuntimeStatus { get; init; }
 
         public async Task<WorkerCommandExecutionResult> ExecuteAsync(
             WorkerCommandClaimResponse command,
@@ -455,7 +468,7 @@ public class CloudWorkerRuntimeTests
         }
 
         public Task<WorkerRuntimeStatus?> ObserveRuntimeAsync(CancellationToken cancellationToken)
-            => Task.FromResult<WorkerRuntimeStatus?>(null);
+            => Task.FromResult(RuntimeStatus);
     }
 
     private sealed class FakeApiClient : ICloudWorkerApiClient
@@ -470,6 +483,7 @@ public class CloudWorkerRuntimeTests
         public HttpRequestException? HeartbeatException { get; init; }
         public int SupersedeOnRunningReport { get; init; } = int.MaxValue;
         public bool SupersedeTerminalReports { get; init; }
+        public WorkerHeartbeatRequest? LastHeartbeatRequest { get; private set; }
         private int RunningReportCount { get; set; }
 
         public Task<WorkerRegistrationResult> RegisterAsync(
@@ -497,6 +511,7 @@ public class CloudWorkerRuntimeTests
         {
             HeartbeatCount++;
             LastCredential = workerCredential;
+            LastHeartbeatRequest = request;
             if (HeartbeatException is not null)
                 throw HeartbeatException;
             return Task.CompletedTask;

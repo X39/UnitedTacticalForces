@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
 using Xunit;
 using X39.UnitedTacticalForces;
+using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Authority;
+using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
@@ -807,6 +809,93 @@ public sealed class LifecycleJobExecutorCloudTests
     }
 
     [Fact]
+    public async Task RuntimeCommand_PersistsStableDeduplicatedContentSnapshot()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(
+            store.DbContext,
+            withActiveDeployment: true,
+            deploymentStatus: EDeploymentStatus.Running);
+        seed.Server.GameIdentifier = Arma3GameServerDefinitionRegistration.GameIdentifier;
+        seed.Server.RuntimeProviderIdentifier = ExecutorTestProvider.Identifier;
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var definition = new ModPackDefinition
+        {
+            Title = "Runtime selection",
+            GameIdentifier = Arma3GameServerDefinitionRegistration.GameIdentifier,
+            OwnerFk = seed.User.PrimaryKey,
+            IsActive = true,
+            TimeStampCreated = now,
+            ModPackRevisions = [],
+            ModPackRevisionsOwned = [],
+        };
+        var revision = new ModPackRevision
+        {
+            Definition = definition,
+            UpdatedByFk = seed.User.PrimaryKey,
+            IsActive = true,
+            Html = Arma3ModPackParser.ToHtml(
+                "Runtime selection",
+                new Arma3ModPackParser.TitleLinkPair[]
+                {
+                    new("CBA", "https://steamcommunity.com/sharedfiles/filedetails/?id=450814997"),
+                    new("Duplicate CBA", "https://steamcommunity.com/sharedfiles/filedetails/?id=450814997"),
+                },
+                Array.Empty<Arma3ModPackParser.TitleLinkPair>()),
+            TimeStampCreated = now,
+            ModPackDefinitions = [],
+        };
+        definition.ModPackRevisionsOwned.Add(revision);
+        seed.Server.SelectedModPackDefinition = definition;
+        var worker = new LifecycleWorker
+        {
+            PrimaryKey = Guid.NewGuid(),
+            DeploymentFk = seed.Deployment!.PrimaryKey,
+            Identity = "content-snapshot-worker",
+            Status = EWorkerStatus.Online,
+            LastHeartbeatAt = now,
+            TimeStampRegistered = now,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        var job = new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            DeploymentFk = seed.Deployment.PrimaryKey,
+            RequestedByFk = seed.User.PrimaryKey,
+            Kind = ELifecycleJobKind.CollectLogs,
+            ActionIdentifier = GameServerActions.CollectLogs,
+            Sequence = 1,
+            Status = ELifecycleJobStatus.Running,
+            Stage = "claimed",
+            Attempt = 1,
+            MaxAttempts = 3,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        store.DbContext.AddRange(definition, worker, job);
+        await store.DbContext.SaveChangesAsync();
+        var executor = CreateExecutor(
+            store,
+            new ExecutorTestProvider(),
+            new RecordingCostSliceService());
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            executor.ExecuteAsync(job, cancellation.Token));
+
+        var command = await store.DbContext.WorkerCommands.SingleAsync();
+        var payload = JsonSerializer.Deserialize<WorkerCommandPayload>(
+            command.Payload,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var content = Assert.Single(payload!.Content);
+        Assert.Equal("steam-workshop", content.Source);
+        Assert.Equal("450814997", content.Identifier);
+        Assert.Equal("CBA", content.DisplayName);
+    }
+
+    [Fact]
     public async Task UserTerminate_SkipsWorkerPreservationAndPerformsVerifiedProviderTeardown()
     {
         await using var store = await HostingTestStore.CreateAsync();
@@ -1068,6 +1157,7 @@ public sealed class LifecycleJobExecutorCloudTests
             [provider],
             new WorkerCredentialService(Options.Create(new LifecycleWorkerOptions())),
             bootstrapRenderer ?? new TestBootstrapRenderer(),
+            new GameServerContentSnapshotResolver(dbContext),
             new HostingAuthorizationService(dbContext),
             costSliceService,
             new HostingAuditWriter(),

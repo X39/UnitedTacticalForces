@@ -17,6 +17,9 @@ public partial class CreateModPackPanel
         [MinLength(1)]
         public string Title { get; set; } = string.Empty;
 
+        [Required]
+        public string GameIdentifier { get; init; } = string.Empty;
+
         public bool IsNew { get; init; } = true;
 
         public bool IsComposition { get; init; }
@@ -124,27 +127,38 @@ public partial class CreateModPackPanel
 
     private async Task OnStandaloneOptionsSearch(OptionsSearchEventArgs<FullModPackDefinitionDto> arg)
     {
-        await ModPackAutoCompleteService.FullModPackDefinitionDto.OnOptionsSearch(arg);
-        arg.Items = arg.Items?
-            .Where(IsSelectableStandalone)
-            .ToArray() ?? [];
+        var results = await ModPackRepository.GetModPacksAsync(
+            0,
+            10,
+            false,
+            arg.Text,
+            gameIdentifier: Content.GameIdentifier);
+        arg.Items = results
+            .Where((definition) => IsSelectableStandalone(definition)
+                                   && string.Equals(
+                                       definition.GameIdentifier,
+                                       Content.GameIdentifier,
+                                       StringComparison.Ordinal))
+            .ToArray();
     }
 
     public static Task<PlainModPackDefinitionDto?> OpenCreateStandaloneAsync(
         IDialogService dialogService,
         IStringLocalizer<Language> localizer,
         IModPackRepository modPackRepository,
+        string gameIdentifier,
         CancellationToken cancellationToken = default
     )
-        => OpenCreateAsync(false, dialogService, localizer, modPackRepository, cancellationToken);
+        => OpenCreateAsync(false, dialogService, localizer, modPackRepository, gameIdentifier, cancellationToken);
 
     public static Task<PlainModPackDefinitionDto?> OpenCreateCompositionAsync(
         IDialogService dialogService,
         IStringLocalizer<Language> localizer,
         IModPackRepository modPackRepository,
+        string gameIdentifier,
         CancellationToken cancellationToken = default
     )
-        => OpenCreateAsync(true, dialogService, localizer, modPackRepository, cancellationToken);
+        => OpenCreateAsync(true, dialogService, localizer, modPackRepository, gameIdentifier, cancellationToken);
 
     public static async Task<bool> OpenUpdateAsync(
         IDialogService dialogService,
@@ -161,6 +175,7 @@ public partial class CreateModPackPanel
         {
             IsNew = false,
             IsComposition = modPack.IsComposition ?? false,
+            GameIdentifier = modPack.GameIdentifier ?? string.Empty,
             Localizer = localizer,
             ModPack = modPack,
             Title = modPack.Title ?? string.Empty,
@@ -212,12 +227,14 @@ public partial class CreateModPackPanel
         IDialogService dialogService,
         IStringLocalizer<Language> localizer,
         IModPackRepository modPackRepository,
+        string gameIdentifier,
         CancellationToken cancellationToken
     )
     {
         var data = new Data
         {
             IsComposition = isComposition,
+            GameIdentifier = gameIdentifier,
             Localizer = localizer,
         };
         var dialogReference = await dialogService.ShowPanelAsync<CreateModPackPanel>(
@@ -237,7 +254,8 @@ public partial class CreateModPackPanel
         {
             var payload = new ModPackCompositionCreationPayload
             {
-                Title = data.Title,
+                GameIdentifier = data.GameIdentifier,
+                Title          = data.Title,
                 RevisionIds = GetLatestRevisionIds(data)
                     .Cast<long?>()
                     .ToList(),
@@ -248,8 +266,9 @@ public partial class CreateModPackPanel
         return await modPackRepository.CreateModPackAsync(
             new ModPackCreationPayload
             {
-                Title = data.Title,
-                Html = data.Html,
+                GameIdentifier = data.GameIdentifier,
+                Title          = data.Title,
+                Html           = data.Html,
             },
             cancellationToken
         );

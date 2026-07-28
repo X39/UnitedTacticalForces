@@ -199,20 +199,33 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
 
     public async Task<WorkerRuntimeStatus?> ObserveRuntimeAsync(CancellationToken cancellationToken)
     {
+        var storage = ObserveDeploymentStorage();
         using var observation = await _processController.ObserveAsync(cancellationToken).ConfigureAwait(false);
         if (observation.Error is not null)
-            return new WorkerRuntimeStatus("identity-invalid", null, null, observation.Error);
+        {
+            return new WorkerRuntimeStatus(
+                "identity-invalid",
+                null,
+                null,
+                observation.Error,
+                storage.TotalBytes,
+                storage.AvailableBytes);
+        }
         return observation.IsRunning && observation.Identity is not null
             ? new WorkerRuntimeStatus(
                 "running",
                 observation.Identity.ProcessId,
                 observation.Identity.ProcessStartedAt,
-                null)
+                null,
+                storage.TotalBytes,
+                storage.AvailableBytes)
             : new WorkerRuntimeStatus(
                 IsPrepared() ? "prepared" : "not-installed",
                 null,
                 null,
-                null);
+                null,
+                storage.TotalBytes,
+                storage.AvailableBytes);
     }
 
     private async Task<WorkerCommandExecutionResult> StartAsync(
@@ -245,9 +258,10 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 processId: observation.Identity.ProcessId,
                 processStartedAt: observation.Identity.ProcessStartedAt);
         }
-        if (!IsPrepared())
+        var workshopItemIds = payload.GetSteamWorkshopItemIds();
+        if (!IsPrepared() || !SelectedWorkshopContentExists(workshopItemIds))
         {
-            var prepared = await InstallAsync(payload.Validate, cancellationToken).ConfigureAwait(false);
+            var prepared = await InstallAsync(payload, payload.Validate, cancellationToken).ConfigureAwait(false);
             if (!prepared.Succeeded)
                 return prepared with { Stage = "start-prepare-failed" };
         }
@@ -414,6 +428,13 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             .ConfigureAwait(false);
         if (!stopped.Succeeded)
             return stopped with { Stage = "restart-stop-failed" };
+        var workshopItemIds = payload.GetSteamWorkshopItemIds();
+        if (!IsPrepared() || !SelectedWorkshopContentExists(workshopItemIds))
+        {
+            var prepared = await InstallAsync(payload, payload.Validate, cancellationToken).ConfigureAwait(false);
+            if (!prepared.Succeeded)
+                return prepared with { Stage = "restart-prepare-failed" };
+        }
         var started = await StartAsync(payload, cancellationToken).ConfigureAwait(false);
         return started with { Stage = started.Succeeded ? "restarted" : "restart-start-failed" };
     }
@@ -440,7 +461,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             if (!stopped.Succeeded)
                 return stopped with { Stage = "maintenance-stop-failed" };
         }
-        var maintained = await InstallAsync(validate, cancellationToken).ConfigureAwait(false);
+        var maintained = await InstallAsync(payload, validate, cancellationToken).ConfigureAwait(false);
         if (!maintained.Succeeded || !restart)
             return maintained;
         var started = await StartAsync(payload, cancellationToken).ConfigureAwait(false);
@@ -453,6 +474,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
     }
 
     private async Task<WorkerCommandExecutionResult> InstallAsync(
+        Arma3CommandPayload payload,
         bool validate,
         CancellationToken cancellationToken)
     {
@@ -477,7 +499,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 "Steam credentials are not available through the worker secret mount.");
         }
 
-        var script = BuildSteamCmdScript(password, validate);
+        var workshopItemIds = payload.GetSteamWorkshopItemIds();
+        var script = BuildSteamCmdScript(password, validate, workshopItemIds);
         ProcessCommandResult result;
         var temporaryDirectory = CreateSteamTemporaryDirectory();
         try
@@ -508,6 +531,13 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         var error = WorkerSecretRedactor.Redact(result.Error, secrets) ?? string.Empty;
         if (result.Succeeded && File.Exists(_paths.ExecutablePath))
         {
+            if (!SelectedWorkshopContentExists(workshopItemIds))
+            {
+                return WorkerCommandExecutionResult.Failure(
+                    "workshop-prepare-failed",
+                    "workshop-content-missing",
+                    "SteamCMD completed without all selected Arma Workshop content.");
+            }
             await WritePreparationMarkerAsync(cancellationToken).ConfigureAwait(false);
             return WorkerCommandExecutionResult.Success(validate ? "updated" : "installed", output);
         }
@@ -519,7 +549,10 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 : error);
     }
 
-    private string BuildSteamCmdScript(string? password, bool validate)
+    private string BuildSteamCmdScript(
+        string? password,
+        bool validate,
+        IReadOnlyCollection<ulong> workshopItemIds)
     {
         var builder = new StringBuilder();
         builder.AppendLine("@ShutdownOnFailedCommand 1");
@@ -534,7 +567,19 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             builder.Append(" -beta ").Append(QuoteSteam(_options.Arma3.Branch));
         if (validate)
             builder.Append(" validate");
-        builder.AppendLine().AppendLine("quit");
+        builder.AppendLine();
+        foreach (var workshopItemId in workshopItemIds)
+        {
+            builder
+                .Append("workshop_download_item ")
+                .Append(Arma3RuntimePaths.WorkshopAppId.ToString(CultureInfo.InvariantCulture))
+                .Append(' ')
+                .Append(workshopItemId.ToString(CultureInfo.InvariantCulture));
+            if (validate)
+                builder.Append(" validate");
+            builder.AppendLine();
+        }
+        builder.AppendLine("quit");
         return builder.ToString();
     }
 
@@ -565,6 +610,13 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             if (!SafeNamePattern().IsMatch(payload.ProfileName))
                 throw new InvalidDataException("Arma profile name is invalid.");
             arguments.Add($"-name={payload.ProfileName}");
+        }
+        var workshopItemIds = payload.GetSteamWorkshopItemIds();
+        if (workshopItemIds.Count > 0)
+        {
+            EnsureSelectedWorkshopContentExists(workshopItemIds);
+            arguments.Add(
+                $"-mod={string.Join(';', workshopItemIds.Select(_paths.GetSteamWorkshopItemPath))}");
         }
         return arguments;
     }
@@ -860,6 +912,57 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
 
     private static TimeSpan StopTimeout(Arma3CommandPayload payload)
         => TimeSpan.FromSeconds(payload.Command.GracefulStopTimeoutSeconds);
+
+    private (long? TotalBytes, long? AvailableBytes) ObserveDeploymentStorage()
+    {
+        try
+        {
+            var storagePath = Path.GetFullPath(_paths.DeploymentRoot);
+            while (!Directory.Exists(storagePath))
+            {
+                var parent = Directory.GetParent(storagePath);
+                if (parent is null)
+                    return (null, null);
+                storagePath = parent.FullName;
+            }
+            var drive = new DriveInfo(storagePath);
+            if (!drive.IsReady)
+                return (null, null);
+            var totalBytes = drive.TotalSize;
+            var availableBytes = drive.AvailableFreeSpace;
+            return totalBytes >= 0 && availableBytes >= 0 && availableBytes <= totalBytes
+                ? (totalBytes, availableBytes)
+                : (null, null);
+        }
+        catch (Exception ex) when (ex is IOException
+                                       or UnauthorizedAccessException
+                                       or ArgumentException
+                                       or NotSupportedException)
+        {
+            return (null, null);
+        }
+    }
+
+    private bool SelectedWorkshopContentExists(IEnumerable<ulong> workshopItemIds)
+    {
+        foreach (var workshopItemId in workshopItemIds)
+        {
+            var path = _paths.GetSteamWorkshopItemPath(workshopItemId);
+            if (!Directory.Exists(path))
+                return false;
+            WorkerStoragePath.RejectExistingLinks(_paths.DeploymentRoot, path);
+        }
+        return true;
+    }
+
+    private void EnsureSelectedWorkshopContentExists(IEnumerable<ulong> workshopItemIds)
+    {
+        if (!SelectedWorkshopContentExists(workshopItemIds))
+        {
+            throw new InvalidDataException(
+                "Selected Arma Workshop content is unavailable after SteamCMD preparation.");
+        }
+    }
 
     private bool IsPrepared()
         => File.Exists(_paths.ExecutablePath) && File.Exists(_paths.PreparationMarkerPath);

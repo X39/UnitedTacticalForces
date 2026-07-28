@@ -6,7 +6,9 @@
 @using X39.UnitedTacticalForces.WebApp.UtfApi.Models
 @using X39.UnitedTacticalForces.WebApp.Services
 @using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
 @inject IModPackRepository ModPackRepository
+@inject IGameServerRepository GameServerRepository
 @inject NavigationManager NavigationManager
 @inject ModPackAutoCompleteService ModPackAutoCompleteService
 @inject BaseUrl BaseUrl
@@ -237,6 +239,15 @@
                                 </button>
                             </div>
                             <label class="modpack-create-field modpack-create-field--wide">
+                                <span>@Localizer["Hosting_Create_Game"]</span>
+                                <select class="utf-command-input" value="@_gameIdentifier" @onchange="ChangeGame">
+                                    @foreach (var capability in _capabilities)
+                                    {
+                                        <option value="@capability.GameIdentifier">@capability.DisplayName</option>
+                                    }
+                                </select>
+                            </label>
+                            <label class="modpack-create-field modpack-create-field--wide">
                                 <span>@Localizer[nameof(Language.Title)]</span>
                                 <input class="utf-command-input" maxlength="1024" @bind="_title"/>
                             </label>
@@ -285,6 +296,8 @@
     private const string MissingValue = "n/a";
 
     private string                                              _title            = string.Empty;
+    private IReadOnlyList<GameServerCapabilityInfo>              _capabilities     = [];
+    private string                                               _gameIdentifier   = string.Empty;
     private string                                              _html             = string.Empty;
     private string                                              _htmlFileName     = string.Empty;
     private IEnumerable<UtfApi.Models.FullModPackDefinitionDto> _selectedModPacks = [];
@@ -309,6 +322,7 @@
 
     private bool CanCreate
         => !_isSubmitting
+           && !string.IsNullOrWhiteSpace(_gameIdentifier)
            && !string.IsNullOrWhiteSpace(_title)
            && (_kind is ModPackCreationKind.Composition
                ? _selectedModPacks.Any() && _selectedModPacks.All((modPack) => GetLatestActiveRevision(modPack)?.PrimaryKey is not null)
@@ -335,6 +349,18 @@
 
         _kind = ParseKind(Kind);
         _appliedKind = Kind;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _capabilities = await GameServerRepository.GetCapabilitiesAsync();
+        _gameIdentifier = _capabilities.FirstOrDefault()?.GameIdentifier ?? string.Empty;
+    }
+
+    private void ChangeGame(ChangeEventArgs args)
+    {
+        _gameIdentifier = args.Value?.ToString() ?? string.Empty;
+        _selectedModPacks = [];
     }
 
     private void SetStep(int step)
@@ -371,7 +397,8 @@
                 createdModPack = await ModPackRepository.CreateModPackAsync(
                         new UtfApi.Models.ModPackCompositionCreationPayload
                         {
-                            Title = _title.Trim(),
+                            GameIdentifier = _gameIdentifier,
+                            Title          = _title.Trim(),
                             RevisionIds = GetLatestRevisionIds()
                                 .Cast<long?>()
                                 .ToList(),
@@ -384,8 +411,9 @@
                 createdModPack = await ModPackRepository.CreateModPackAsync(
                         new UtfApi.Models.ModPackCreationPayload
                         {
-                            Title = _title.Trim(),
-                            Html  = _html,
+                            GameIdentifier = _gameIdentifier,
+                            Title          = _title.Trim(),
+                            Html           = _html,
                         }
                     )
                     .ConfigureAwait(false);
@@ -418,10 +446,19 @@
 
     private async Task OnStandaloneOptionsSearch(OptionsSearchEventArgs<UtfApi.Models.FullModPackDefinitionDto> arg)
     {
-        await ModPackAutoCompleteService.FullModPackDefinitionDto.OnOptionsSearch(arg);
-        arg.Items = arg.Items?
-            .Where(IsSelectableStandalone)
-            .ToArray() ?? [];
+        var results = await ModPackRepository.GetModPacksAsync(
+            0,
+            10,
+            false,
+            arg.Text,
+            gameIdentifier: _gameIdentifier);
+        arg.Items = results
+            .Where((definition) => IsSelectableStandalone(definition)
+                                   && string.Equals(
+                                       definition.GameIdentifier,
+                                       _gameIdentifier,
+                                       StringComparison.Ordinal))
+            .ToArray();
     }
 
     private string GetStepClass(int step)
@@ -434,7 +471,7 @@
     private bool IsStepComplete(int step)
         => step switch
         {
-            1 => !string.IsNullOrWhiteSpace(_title),
+            1 => !string.IsNullOrWhiteSpace(_gameIdentifier) && !string.IsNullOrWhiteSpace(_title),
             2 => _kind is ModPackCreationKind.Composition
                 ? _selectedModPacks.Any() && _selectedModPacks.All((modPack) => GetLatestActiveRevision(modPack)?.PrimaryKey is not null)
                 : !string.IsNullOrWhiteSpace(_html),

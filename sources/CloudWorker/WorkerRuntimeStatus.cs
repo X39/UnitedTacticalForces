@@ -4,4 +4,6 @@ public sealed record WorkerRuntimeStatus(
     string State,
     int? ProcessId,
     DateTimeOffset? ProcessStartedAt,
-    string? Detail);
+    string? Detail,
+    long? DeploymentStorageTotalBytes = null,
+    long? DeploymentStorageAvailableBytes = null);

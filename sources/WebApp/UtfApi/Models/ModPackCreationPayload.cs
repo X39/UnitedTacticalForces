@@ -15,6 +15,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
+        /// <summary>Stable identifier of the game this mod pack belongs to.</summary>
+        public string GameIdentifier { get; set; }
         /// <summary>The html property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -56,6 +58,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         {
             return new Dictionary<string, Action<IParseNode>>
             {
+                { "gameIdentifier", n => { GameIdentifier = n.GetStringValue(); } },
                 { "html", n => { Html = n.GetStringValue(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
@@ -67,6 +70,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public virtual void Serialize(ISerializationWriter writer)
         {
             if(ReferenceEquals(writer, null)) throw new ArgumentNullException(nameof(writer));
+            writer.WriteStringValue("gameIdentifier", GameIdentifier);
             writer.WriteStringValue("html", Html);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);

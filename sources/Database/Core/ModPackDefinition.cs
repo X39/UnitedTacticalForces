@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Database.Authority;
 
 namespace X39.UnitedTacticalForces.Database.Core;
@@ -10,6 +11,7 @@ namespace X39.UnitedTacticalForces.Database.Core;
 /// A modpack definition can have multiple revisions.
 /// A modpack may be a composition of multiple modpack revisions.
 /// </summary>
+[Index(nameof(GameIdentifier))]
 public class ModPackDefinition
 {
     /// <summary>
@@ -17,6 +19,12 @@ public class ModPackDefinition
     /// </summary>
     [Key]
     public long PrimaryKey { get; set; }
+
+    /// <summary>
+    /// Stable identifier of the game this mod pack belongs to.
+    /// </summary>
+    [MaxLength(64)]
+    public string GameIdentifier { get; set; } = string.Empty;
 
     /// <summary>
     /// The timestamp when this modpack was created.

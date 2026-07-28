@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces;
+using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Hosting.Contracts;
@@ -118,7 +119,26 @@ public sealed class GameServerProjectionServiceTests
                 TimeStampUpdated = now,
                 TimeStampObserved = now,
             });
+        store.DbContext.LifecycleWorkers.Add(new LifecycleWorker
+        {
+            PrimaryKey = Guid.NewGuid(),
+            DeploymentFk = seed.Deployment.PrimaryKey,
+            Identity = "projection-worker",
+            Status = EWorkerStatus.Online,
+            LastHeartbeatAt = now,
+            DiskTotalBytes = 1_000,
+            DiskAvailableBytes = 375,
+            DiskTimeStampObserved = now,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        });
         await store.DbContext.SaveChangesAsync();
+        await store.DbContext.GameServerDeployments
+            .Where(q => q.PrimaryKey == seed.Deployment.PrimaryKey)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(q => q.RuntimeProfileIdentifier, "active-profile")
+                .SetProperty(q => q.RuntimeProfileDisplayName, "Active profile")
+                .SetProperty(q => q.EstimatedHourlyCostEur, 0.42m));
         var projection = HostingTestData.CreateProjectionService(store.DbContext);
         var principal = HostingTestData.ServerPrincipal(
             seed.User,
@@ -132,6 +152,12 @@ public sealed class GameServerProjectionServiceTests
         Assert.Equal("203.0.113.91:32000", dto.Deployment.ConnectionEndpoint);
         Assert.Equal("UDP", dto.Deployment.ConnectionProtocol);
         Assert.Equal(32000, dto.Deployment.ConnectionPort);
+        Assert.Equal("active-profile", dto.Deployment.RuntimeProfileIdentifier);
+        Assert.Equal("Active profile", dto.Deployment.RuntimeProfileDisplayName);
+        Assert.Equal(0.42m, dto.Deployment.EstimatedHourlyCostEur);
+        Assert.Equal(1_000, dto.Deployment.DiskTotalBytes);
+        Assert.Equal(375, dto.Deployment.DiskAvailableBytes);
+        Assert.Equal(now, dto.Deployment.DiskTimeStampObserved);
         Assert.Equal(2, dto.Deployment.Resources.Count);
         var primaryIp = dto.Deployment.Resources.Single(q => q.Kind == "primary-ip");
         Assert.Equal("assigned", primaryIp.ProviderState);
@@ -169,12 +195,26 @@ public sealed class GameServerProjectionServiceTests
             user,
             (Claims.ResourceBased.Server.Operate, serverId.ToString()));
         var viewerPrincipal = HostingTestData.Principal(user);
+        job.WorkerCommands.Add(new WorkerCommand
+        {
+            PrimaryKey = Guid.NewGuid(),
+            LifecycleJobFk = job.PrimaryKey,
+            DeploymentFk = job.DeploymentFk,
+            WorkerFk = Guid.NewGuid(),
+            Sequence = 1,
+            ActionIdentifier = GameServerActions.CollectLogs,
+            Status = EWorkerCommandStatus.Succeeded,
+            Stage = "logs-collected",
+            DiagnosticOutput = "redacted collected output",
+            TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+        });
 
         var operatorJob = projection.ProjectJob(job, operatorPrincipal);
         var viewerJob = projection.ProjectJob(job, viewerPrincipal);
 
         Assert.True(operatorJob.CanRetry);
         Assert.True(operatorJob.CanSkip);
+        Assert.Equal("redacted collected output", Assert.Single(operatorJob.Commands).DiagnosticOutput);
         Assert.False(viewerJob.CanRetry);
         Assert.False(viewerJob.CanSkip);
 
@@ -183,6 +223,48 @@ public sealed class GameServerProjectionServiceTests
         Assert.Equal("permanent-firewall-create-failed", permanentJob.FailureCode);
         Assert.False(permanentJob.CanRetry);
         Assert.False(permanentJob.CanSkip);
+    }
+
+    [Fact]
+    public async Task ModPackOptions_ProjectOnlyActiveDefinitionsForTheServerGame()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var selected = Definition("Selected", HostingTestData.GameIdentifier, true);
+        var inactive = Definition("Inactive", HostingTestData.GameIdentifier, false);
+        var otherGame = Definition("Other game", "other-game", true);
+        store.DbContext.ModPackDefinitions.AddRange(selected, inactive, otherGame);
+        seed.Server.SelectedModPackDefinition = selected;
+        seed.Server.SelectedModPackDefinitionFk = selected.PrimaryKey;
+        await store.DbContext.SaveChangesAsync();
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(
+            seed.User,
+            seed.Server,
+            Claims.ResourceBased.Server.View);
+
+        var options = await projection.GetModPackOptionsAsync(seed.Server.PrimaryKey, viewer);
+        var server = await projection.GetServerAsync(seed.Server.PrimaryKey, viewer);
+
+        var option = Assert.Single(options);
+        Assert.Equal(selected.PrimaryKey, option.PrimaryKey);
+        Assert.Equal("Selected", option.Title);
+        Assert.NotNull(server);
+        Assert.Equal(selected.PrimaryKey, server.SelectedModPackDefinitionId);
+        Assert.Equal(selected.Title, server.SelectedModPackDefinitionTitle);
+
+        ModPackDefinition Definition(string title, string gameIdentifier, bool isActive)
+            => new()
+            {
+                Title = title,
+                GameIdentifier = gameIdentifier,
+                IsActive = isActive,
+                OwnerFk = seed.User.PrimaryKey,
+                TimeStampCreated = now,
+                ModPackRevisions = [],
+                ModPackRevisionsOwned = [],
+            };
     }
 
     [Fact]

@@ -16,6 +16,7 @@ using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Api.Services.Media;
+using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Common.Event;
 using X39.UnitedTacticalForces.Common.PublicPages;
 using X39.UnitedTacticalForces.Common.Verein;
@@ -460,15 +461,19 @@ internal static class DebugDemoDataSeeder
             )
             .ConfigureAwait(false);
         var terrain = await dbContext.Terrains
-            .FirstOrDefaultAsync(q => q.Title == title, cancellationToken)
+            .FirstOrDefaultAsync(
+                q => q.Title == title
+                     && q.GameIdentifier == Arma3GameServerDefinitionRegistration.GameIdentifier,
+                cancellationToken)
             .ConfigureAwait(false);
         if (terrain is null)
         {
             terrain = new Terrain
             {
-                Title        = title,
-                ImageAssetFk = imageAsset.PrimaryKey,
-                IsActive     = true,
+                GameIdentifier = Arma3GameServerDefinitionRegistration.GameIdentifier,
+                Title          = title,
+                ImageAssetFk   = imageAsset.PrimaryKey,
+                IsActive       = true,
             };
             dbContext.Terrains.Add(terrain);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -493,12 +498,16 @@ internal static class DebugDemoDataSeeder
     {
         var modPack = await dbContext.ModPackDefinitions
             .Include(q => q.ModPackRevisions)
-            .FirstOrDefaultAsync(q => q.Title == title, cancellationToken)
+            .FirstOrDefaultAsync(
+                q => q.Title == title
+                     && q.GameIdentifier == Arma3GameServerDefinitionRegistration.GameIdentifier,
+                cancellationToken)
             .ConfigureAwait(false);
         if (modPack is null)
         {
             modPack = new ModPackDefinition
             {
+                GameIdentifier = Arma3GameServerDefinitionRegistration.GameIdentifier,
                 TimeStampCreated = now,
                 Title = title,
                 OwnerFk = debugUser.PrimaryKey,

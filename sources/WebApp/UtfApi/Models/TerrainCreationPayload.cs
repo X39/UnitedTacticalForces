@@ -15,6 +15,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
+        /// <summary>Stable identifier of the game this terrain belongs to.</summary>
+        public string GameIdentifier { get; set; }
         /// <summary>Gallery media asset used as terrain image.</summary>
         public Guid? ImageAssetFk { get; set; }
         /// <summary>Gets or sets the title of the terrain.</summary>
@@ -50,6 +52,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         {
             return new Dictionary<string, Action<IParseNode>>
             {
+                { "gameIdentifier", n => { GameIdentifier = n.GetStringValue(); } },
                 { "imageAssetFk", n => { ImageAssetFk = n.GetGuidValue(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
@@ -61,6 +64,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public virtual void Serialize(ISerializationWriter writer)
         {
             if(ReferenceEquals(writer, null)) throw new ArgumentNullException(nameof(writer));
+            writer.WriteStringValue("gameIdentifier", GameIdentifier);
             writer.WriteGuidValue("imageAssetFk", ImageAssetFk);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);

@@ -28,4 +28,10 @@ public sealed record WorkerCommandPayload
     /// Optional game port allocated by the control plane for this durable server identity.
     /// </summary>
     public int? Port { get; init; }
+
+    /// <summary>
+    /// Provider-neutral allowlisted content selected for this command.
+    /// Game workers decide which reference sources and identifiers they support.
+    /// </summary>
+    public IReadOnlyCollection<WorkerContentReference> Content { get; init; } = [];
 }

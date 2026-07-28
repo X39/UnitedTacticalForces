@@ -26,6 +26,7 @@ internal sealed class LifecycleJobExecutor(
     IEnumerable<IRuntimeProvider> runtimeProviders,
     IWorkerCredentialService workerCredentialService,
     IWorkerBootstrapPayloadRenderer bootstrapPayloadRenderer,
+    IGameServerContentSnapshotResolver contentSnapshotResolver,
     IHostingAuthorizationService authorizationService,
     IHostingCostSliceService costSliceService,
     IHostingAuditWriter auditWriter,
@@ -1308,6 +1309,9 @@ internal sealed class LifecycleJobExecutor(
             .Where(q => q.DeploymentFk == job.DeploymentFk)
             .MaxAsync(q => (long?) q.Sequence, cancellationToken)
             .ConfigureAwait(false) ?? 0) + 1;
+        var content = await contentSnapshotResolver
+            .ResolveAsync(server.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
         var payload = new WorkerCommandPayload
         {
             ServerId                  = server.PrimaryKey,
@@ -1317,6 +1321,7 @@ internal sealed class LifecycleJobExecutor(
             GracefulStopAttempts      = server.GracefulStopAttempts,
             GracefulStopTimeoutSeconds = server.GracefulStopTimeoutSeconds,
             Port                      = null,
+            Content                   = content,
         };
         var command = new WorkerCommand
         {

@@ -13,6 +13,7 @@ public sealed record WorkerCommandDto
     public EWorkerCommandStatus Status { get; init; }
     public string Stage { get; init; } = string.Empty;
     public string? FailureReason { get; init; }
+    public string? DiagnosticOutput { get; init; }
     public Instant TimeStampCreated { get; init; }
     public Instant? TimeStampStarted { get; init; }
     public Instant? TimeStampCompleted { get; init; }

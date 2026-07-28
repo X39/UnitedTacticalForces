@@ -536,6 +536,11 @@ public class EventsController : ControllerBase
             return Unauthorized();
         if (!await MediaAssetExistsAsync(payload.ImageAssetFk, cancellationToken).ConfigureAwait(false))
             return BadRequest("Image asset does not exist.");
+        if (!await HaveMatchingGameScopeAsync(
+                payload.TerrainFk,
+                payload.ModPackRevisionFk,
+                cancellationToken).ConfigureAwait(false))
+            return BadRequest("Terrain and mod pack must belong to the same game.");
 
         // ToDo: Log audit
         var newEvent = new Event
@@ -635,6 +640,10 @@ public class EventsController : ControllerBase
             && !User.HasClaim(Claims.Administrative.All, string.Empty)
             && !User.HasClaim(Claims.Administrative.Event, string.Empty))
             return Forbid();
+        var terrainFk = payload.TerrainFk ?? existingEvent.TerrainFk;
+        var modPackRevisionFk = payload.ModPackRevisionFk ?? existingEvent.ModPackRevisionFk;
+        if (!await HaveMatchingGameScopeAsync(terrainFk, modPackRevisionFk, cancellationToken).ConfigureAwait(false))
+            return BadRequest("Terrain and mod pack must belong to the same game.");
         var imageChanged = false;
         // ToDo: Log audit
         if (payload.Title is not null)
@@ -790,6 +799,30 @@ public class EventsController : ControllerBase
                .AsNoTracking()
                .AnyAsync(q => q.PrimaryKey == assetId, cancellationToken)
                .ConfigureAwait(false);
+
+    private async Task<bool> HaveMatchingGameScopeAsync(
+        long terrainFk,
+        long modPackRevisionFk,
+        CancellationToken cancellationToken)
+    {
+        var terrainGameIdentifier = await _apiDbContext.Terrains
+            .AsNoTracking()
+            .Where(q => q.PrimaryKey == terrainFk)
+            .Select(q => q.GameIdentifier)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var modPackGameIdentifier = await _apiDbContext.ModPackRevisions
+            .AsNoTracking()
+            .Where(q => q.PrimaryKey == modPackRevisionFk)
+            .Select(q => q.Definition!.GameIdentifier)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return terrainGameIdentifier is not null
+               && string.Equals(
+                   terrainGameIdentifier,
+                   modPackGameIdentifier,
+                   StringComparison.Ordinal);
+    }
 
     private async Task CreateOrUpdateDiscordEventAsync(Event appEvent, bool imageChanged)
     {

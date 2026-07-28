@@ -181,6 +181,67 @@ public sealed class WorkerProtocolServiceTests
     }
 
     [Fact]
+    public async Task Heartbeat_PersistsValidDiskTelemetryAndPreservesLastObservationWhenOmitted()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+
+        await protocol.Service.HeartbeatAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerHeartbeatRequest
+            {
+                DeploymentId = protocol.Deployment.PrimaryKey,
+                DeploymentStorageTotalBytes = 10_000,
+                DeploymentStorageAvailableBytes = 2_500,
+            },
+            protocol.WorkerCredential);
+
+        Assert.Equal(10_000, protocol.Worker.DiskTotalBytes);
+        Assert.Equal(2_500, protocol.Worker.DiskAvailableBytes);
+        var observedAt = Assert.IsType<Instant>(protocol.Worker.DiskTimeStampObserved);
+
+        await protocol.Service.HeartbeatAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerHeartbeatRequest { DeploymentId = protocol.Deployment.PrimaryKey },
+            protocol.WorkerCredential);
+
+        Assert.Equal(10_000, protocol.Worker.DiskTotalBytes);
+        Assert.Equal(2_500, protocol.Worker.DiskAvailableBytes);
+        Assert.Equal(observedAt, protocol.Worker.DiskTimeStampObserved);
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(100, -1)]
+    [InlineData(100, 101)]
+    public async Task Heartbeat_RejectsInvalidDiskTelemetryWithoutPersisting(
+        long totalBytes,
+        long availableBytes)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        var heartbeatBefore = protocol.Worker.LastHeartbeatAt;
+
+        await Assert.ThrowsAsync<WorkerProtocolValidationException>(() => protocol.Service.HeartbeatAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerHeartbeatRequest
+            {
+                DeploymentId = protocol.Deployment.PrimaryKey,
+                DeploymentStorageTotalBytes = totalBytes,
+                DeploymentStorageAvailableBytes = availableBytes,
+            },
+            protocol.WorkerCredential));
+
+        store.DbContext.ChangeTracker.Clear();
+        var worker = await store.DbContext.LifecycleWorkers
+            .SingleAsync(q => q.PrimaryKey == protocol.Worker.PrimaryKey);
+        Assert.Equal(heartbeatBefore, worker.LastHeartbeatAt);
+        Assert.Null(worker.DiskTotalBytes);
+        Assert.Null(worker.DiskAvailableBytes);
+        Assert.Null(worker.DiskTimeStampObserved);
+    }
+
+    [Fact]
     public async Task ClaimCommand_RedeliversStableCommandWithoutDuplicatingAttempt()
     {
         await using var store = await HostingTestStore.CreateAsync();

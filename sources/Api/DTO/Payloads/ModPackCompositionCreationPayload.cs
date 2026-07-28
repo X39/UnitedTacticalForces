@@ -11,6 +11,13 @@
 public record ModPackCompositionCreationPayload
 {
     /// <summary>
+    /// Stable identifier of the game this composition belongs to.
+    /// </summary>
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MaxLength(64)]
+    public string GameIdentifier { get; init; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets the collection of identifiers for the revisions included in the ModPack composition.
     /// </summary>
     public long[] RevisionIds { get; init; } = [];

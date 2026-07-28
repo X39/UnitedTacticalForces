@@ -5,7 +5,7 @@ namespace X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 /// <summary>
 /// Deployment-bound worker liveness and optional process evidence.
 /// </summary>
-public sealed record WorkerHeartbeatRequest
+public sealed record WorkerHeartbeatRequest : IValidatableObject
 {
     public Guid DeploymentId { get; init; }
 
@@ -15,4 +15,26 @@ public sealed record WorkerHeartbeatRequest
     public int? ProcessId { get; init; }
 
     public DateTimeOffset? ProcessStartedAt { get; init; }
+
+    [Range(0, long.MaxValue)]
+    public long? DeploymentStorageTotalBytes { get; init; }
+
+    [Range(0, long.MaxValue)]
+    public long? DeploymentStorageAvailableBytes { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (DeploymentStorageTotalBytes.HasValue != DeploymentStorageAvailableBytes.HasValue)
+        {
+            yield return new ValidationResult(
+                "Deployment storage telemetry must provide both total and available bytes or neither.",
+                [nameof(DeploymentStorageTotalBytes), nameof(DeploymentStorageAvailableBytes)]);
+        }
+        if (DeploymentStorageAvailableBytes > DeploymentStorageTotalBytes)
+        {
+            yield return new ValidationResult(
+                "Deployment storage available bytes cannot exceed total bytes.",
+                [nameof(DeploymentStorageAvailableBytes)]);
+        }
+    }
 }

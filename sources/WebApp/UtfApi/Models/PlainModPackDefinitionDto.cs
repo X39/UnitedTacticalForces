@@ -15,6 +15,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
+        /// <summary>Stable identifier of the game this mod pack belongs to.</summary>
+        public string GameIdentifier { get; set; }
         /// <summary>Whether this modpack is active or not.</summary>
         public bool? IsActive { get; set; }
         /// <summary>Whether this modpack is a composition of multiple modpack revisionsor not.</summary>
@@ -58,6 +60,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         {
             return new Dictionary<string, Action<IParseNode>>
             {
+                { "gameIdentifier", n => { GameIdentifier = n.GetStringValue(); } },
                 { "isActive", n => { IsActive = n.GetBoolValue(); } },
                 { "isComposition", n => { IsComposition = n.GetBoolValue(); } },
                 { "ownerFk", n => { OwnerFk = n.GetGuidValue(); } },
@@ -73,6 +76,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public virtual void Serialize(ISerializationWriter writer)
         {
             if(ReferenceEquals(writer, null)) throw new ArgumentNullException(nameof(writer));
+            writer.WriteStringValue("gameIdentifier", GameIdentifier);
             writer.WriteBoolValue("isActive", IsActive);
             writer.WriteBoolValue("isComposition", IsComposition);
             writer.WriteGuidValue("ownerFk", OwnerFk);

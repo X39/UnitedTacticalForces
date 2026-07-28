@@ -23,6 +23,15 @@ public interface IGameServerRepository
         string runtimeProfileIdentifier,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<GameServerModPackOptionInfo>> GetModPackOptionsAsync(
+        Guid serverId,
+        CancellationToken cancellationToken = default);
+
+    Task ChangeModPackAsync(
+        Guid serverId,
+        long? modPackDefinitionId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<LifecycleJobInfo>> GetJobsAsync(
         Guid serverId,
         CancellationToken cancellationToken = default);
