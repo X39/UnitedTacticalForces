@@ -5,7 +5,8 @@ public sealed record RuntimeProvisionResult(
     string Stage,
     string? Error,
     RuntimeResource? Resource,
-    IReadOnlyList<RuntimeResource>? Resources = null)
+    IReadOnlyList<RuntimeResource>? Resources = null,
+    bool IsProvisioningAttemptDefinitivelyClosed = false)
 {
     public bool Succeeded => Outcome is ERuntimeProviderOutcome.Succeeded;
 

@@ -13,11 +13,15 @@ public sealed record RuntimeResource(
     IReadOnlyDictionary<string, string>? ProviderLabels = null,
     bool IsPlatformManaged = false,
     bool HasTrustworthyAttribution = false,
-    ERuntimeResourceProvisioningReadiness ProvisioningReadiness = ERuntimeResourceProvisioningReadiness.Ready)
+    ERuntimeResourceProvisioningReadiness ProvisioningReadiness = ERuntimeResourceProvisioningReadiness.Ready,
+    ERuntimeResourceOperationalState OperationalState = ERuntimeResourceOperationalState.Uncertain)
 {
     /// <summary>Whether the resource is ready to participate in a publishable recovered graph.</summary>
     public bool IsProvisioningReady => ProvisioningReadiness is ERuntimeResourceProvisioningReadiness.Ready;
 
     /// <summary>Whether stable provider observation proves an unsafe relationship requiring fault teardown.</summary>
     public bool HasProvisioningConflict => ProvisioningReadiness is ERuntimeResourceProvisioningReadiness.Conflict;
+
+    /// <summary>Whether stable provider observation proves that an allocated runtime has operationally faulted.</summary>
+    public bool HasConfirmedOperationalFault => OperationalState is ERuntimeResourceOperationalState.Faulted;
 }

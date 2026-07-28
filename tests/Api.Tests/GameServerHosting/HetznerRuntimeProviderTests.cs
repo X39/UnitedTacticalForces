@@ -2,6 +2,7 @@ using System.Net;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging.Abstractions;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using Xunit;
@@ -167,6 +168,13 @@ public sealed class HetznerRuntimeProviderTests
             Assert.Equal("0.0.0.0/0", Assert.Single(rule.GetProperty("source_ips").EnumerateArray()).GetString());
             Assert.False(rule.TryGetProperty("destination_ips", out _));
         });
+        var firewallFingerprint = firewallRoot.GetProperty("labels")
+            .GetProperty(HetznerRuntimeProvider.FirewallRulesFingerprintLabel)
+            .GetString();
+        Assert.Equal(
+            HetznerRuntimeProvider.FirewallRulesFingerprint(request.InboundNetworkRequirements!),
+            firewallFingerprint);
+        Assert.InRange(firewallFingerprint!.Length, 1, 63);
 
         using var ipBody = JsonDocument.Parse(handler.Requests[4].Body);
         var ipRoot = ipBody.RootElement;
@@ -190,6 +198,117 @@ public sealed class HetznerRuntimeProviderTests
         Assert.Equal(
             HetznerRuntimeProvider.ServerResourceType,
             serverRoot.GetProperty("labels").GetProperty(HetznerRuntimeProvider.ResourceKindLabel).GetString());
+        var serverFingerprint = serverRoot.GetProperty("labels")
+            .GetProperty(HetznerRuntimeProvider.ServerConfigurationFingerprintLabel)
+            .GetString();
+        Assert.Equal(
+            HetznerRuntimeProvider.ServerConfigurationFingerprint("ccx13", "ubuntu-24.04", "fsn1"),
+            serverFingerprint);
+        Assert.InRange(serverFingerprint!.Length, 1, 63);
+    }
+
+    [Fact]
+    public async Task Provision_WhenBarrierClosesBetweenCreates_DoesNotIssueAnotherProviderPost()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.Created, FirewallResponseJson(19, request));
+        var guard = new BoundedProvisioningMutationGuard(authorizedMutationCount: 1);
+        var provider = CreateProvider(handler, provisioningMutationGuard: guard);
+
+        var result = await provider.ProvisionAsync(request);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(ERuntimeProviderOutcome.TransientFailure, result.Outcome);
+        Assert.Equal("provisioning-blocked", result.Stage);
+        Assert.Equal(2, guard.Attempts);
+        Assert.Equal(
+            ["/v1/servers", "/v1/primary_ips", "/v1/firewalls", "/v1/firewalls"],
+            handler.Requests.Select(q => q.Path).ToArray());
+        Assert.Single(handler.Requests, q => q.Method == HttpMethod.Post);
+        Assert.Equal("firewall:19", Assert.Single(result.ProvisionedResources).ResourceIdentifier);
+        Assert.True(result.IsProvisioningAttemptDefinitivelyClosed);
+    }
+
+    [Fact]
+    public async Task Provision_WhenBarrierClosesAfterRecoveredUnknownCreate_ClaimsDefinitiveClosure()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Throw(new HttpRequestException("simulated lost firewall create response"))
+            .Respond(HttpStatusCode.OK, FirewallListJson((19, request)));
+        var guard = new BoundedProvisioningMutationGuard(authorizedMutationCount: 1);
+
+        var result = await CreateProvider(handler, provisioningMutationGuard: guard).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.TransientFailure, result.Outcome);
+        Assert.Equal("provisioning-blocked", result.Stage);
+        Assert.True(result.IsProvisioningAttemptDefinitivelyClosed);
+        Assert.Equal("firewall:19", Assert.Single(result.ProvisionedResources).ResourceIdentifier);
+        Assert.Single(handler.Requests, q => q.Method == HttpMethod.Post);
+    }
+
+    [Fact]
+    public async Task Provision_WhenPreflightDiscoveryFailsBeforeMutation_ClaimsDefinitiveClosure()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Throw(new HttpRequestException("simulated preflight transport failure"))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson());
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.TransientFailure, result.Outcome);
+        Assert.Equal("provision-discovery-failed", result.Stage);
+        Assert.True(result.IsProvisioningAttemptDefinitivelyClosed);
+        Assert.Empty(result.ProvisionedResources);
+        Assert.DoesNotContain(handler.Requests, q => q.Method == HttpMethod.Post);
+    }
+
+    [Fact]
+    public async Task Provision_WhenFirstCreateIsRateLimited_ClosesAttemptWithoutResources()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.TooManyRequests, "{}");
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.TransientFailure, result.Outcome);
+        Assert.Equal("firewall-create-failed", result.Stage);
+        Assert.True(result.IsProvisioningAttemptDefinitivelyClosed);
+        Assert.Empty(result.ProvisionedResources);
+        Assert.Single(handler.Requests, q => q.Method == HttpMethod.Post);
+    }
+
+    [Fact]
+    public async Task Provision_WhenSecondCreateIsRateLimited_ClosesKnownPartialGraph()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.Created, FirewallResponseJson(19, request))
+            .Respond(HttpStatusCode.TooManyRequests, "{}");
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.TransientFailure, result.Outcome);
+        Assert.Equal("primary-ip-create-failed", result.Stage);
+        Assert.True(result.IsProvisioningAttemptDefinitivelyClosed);
+        Assert.Equal("firewall:19", Assert.Single(result.ProvisionedResources).ResourceIdentifier);
+        Assert.Equal(2, handler.Requests.Count(q => q.Method == HttpMethod.Post));
     }
 
     [Fact]
@@ -212,6 +331,204 @@ public sealed class HetznerRuntimeProviderTests
     }
 
     [Theory]
+    [InlineData("cpx31", "ubuntu-24.04", "fsn1")]
+    [InlineData("ccx13", "ubuntu-22.04", "fsn1")]
+    [InlineData("ccx13", "ubuntu-24.04", "nbg1")]
+    public async Task Provision_RejectsRecoveredGraphWithMismatchedAuthoritativeServerConfiguration(
+        string serverType,
+        string image,
+        string location)
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(
+                HttpStatusCode.OK,
+                ServerListJsonWithConfiguration((42, request, "running", serverType, image, location)))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.PermanentFailure, result.Outcome);
+        Assert.Equal("server-configuration-mismatch", result.Stage);
+        Assert.Null(result.Resource);
+        Assert.Equal(3, result.ProvisionedResources.Count);
+        Assert.DoesNotContain(handler.Requests, q => q.Method == HttpMethod.Post);
+    }
+
+    [Fact]
+    public async Task Provision_AcceptsExactFirewallSemanticsRegardlessOfRuleOrderOrSinglePortNotation()
+    {
+        var request = CreateProvisionRequest();
+        var rules = ExpectedFirewallRules(request)
+            .Reverse()
+            .Select(q => q.Port == "30100"
+                ? q with { Port = "30100-30100", Description = "Non-semantic provider description" }
+                : q)
+            .ToArray();
+        var labels = Labels(request, HetznerRuntimeProvider.FirewallResourceType);
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson((42, request)))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithRules((19, request, [42L], rules)))
+            .Respond(HttpStatusCode.OK, PrimaryIpResponseJson(91, request, assigneeId: 42))
+            .Respond(HttpStatusCode.OK, FirewallResponseJsonWithRules(19, labels, rules, 42));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal("recovered-existing", result.Stage);
+        Assert.Equal(3, result.ProvisionedResources.Count);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("extra")]
+    [InlineData("direction")]
+    [InlineData("protocol")]
+    [InlineData("port")]
+    [InlineData("source")]
+    [InlineData("destination")]
+    public async Task Provision_RejectsRecoveredGraphWithFirewallSemanticMismatch(string mutation)
+    {
+        var request = CreateProvisionRequest();
+        var rules = ExpectedFirewallRules(request).ToList();
+        switch (mutation)
+        {
+            case "missing":
+                rules.RemoveAt(1);
+                break;
+            case "extra":
+                rules.Add(rules[0] with { Port = "30200" });
+                break;
+            case "direction":
+                rules[0] = rules[0] with { Direction = "out" };
+                break;
+            case "protocol":
+                rules[0] = rules[0] with { Protocol = "udp" };
+                break;
+            case "port":
+                rules[0] = rules[0] with { Port = "30101" };
+                break;
+            case "source":
+                rules[0] = rules[0] with { SourceIps = ["10.0.0.0/8"] };
+                break;
+            case "destination":
+                rules[0] = rules[0] with { DestinationIps = ["192.0.2.1/32"] };
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null);
+        }
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson((42, request)))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithRules((19, request, [42L], rules.ToArray())));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.PermanentFailure, result.Outcome);
+        Assert.Equal("firewall-rules-mismatch", result.Stage);
+        Assert.Null(result.Resource);
+        Assert.Equal(3, result.ProvisionedResources.Count);
+        Assert.DoesNotContain(handler.Requests, q => q.Method == HttpMethod.Post);
+    }
+
+    [Theory]
+    [InlineData("off")]
+    [InlineData("stopping")]
+    [InlineData("deleting")]
+    [InlineData("failed")]
+    public async Task Provision_ReturnsCompleteAllocatedGraphForConfirmedServerOperationalFault(string status)
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(
+                HttpStatusCode.OK,
+                ServerListJsonWithConfiguration((42, request, status, "ccx13", "ubuntu-24.04", "fsn1")))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.PermanentFailure, result.Outcome);
+        Assert.Equal("server-operational-fault", result.Stage);
+        Assert.Null(result.Resource);
+        Assert.Equal(3, result.ProvisionedResources.Count);
+        Assert.True(result.ProvisionedResources.Single(q => q.ResourceType == "server").HasConfirmedOperationalFault);
+    }
+
+    [Theory]
+    [InlineData("failed", "ccx13", "server-operational-fault")]
+    [InlineData("running", "cpx31", "server-configuration-mismatch")]
+    public async Task Provision_NewlyCreatedFaultedOrMismatchedServerReturnsEveryResourceForTeardown(
+        string status,
+        string serverType,
+        string expectedStage)
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.Created, FirewallResponseJson(19, request))
+            .Respond(HttpStatusCode.Created, PrimaryIpResponseJson(91, request))
+            .Respond(
+                HttpStatusCode.Created,
+                ServerResponseJson(42, request, status: status, serverType: serverType));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.PermanentFailure, result.Outcome);
+        Assert.Equal(expectedStage, result.Stage);
+        Assert.Null(result.Resource);
+        Assert.Equal(3, result.ProvisionedResources.Count);
+        Assert.Equal(3, handler.Requests.Count(q => q.Method == HttpMethod.Post));
+    }
+
+    [Theory]
+    [InlineData("unknown")]
+    [InlineData("provider-added-state")]
+    [InlineData("initializing")]
+    public async Task Provision_LeavesUnrecognizedOrConvergingServerStatusUncertain(string status)
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(
+                HttpStatusCode.OK,
+                ServerListJsonWithConfiguration((42, request, status, "ccx13", "ubuntu-24.04", "fsn1")))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.Unknown, result.Outcome);
+        Assert.Equal("server-operational-state-unverified", result.Stage);
+        Assert.Equal(3, result.ProvisionedResources.Count);
+        var server = result.ProvisionedResources.Single(q => q.ResourceType == "server");
+        Assert.Equal(ERuntimeResourceOperationalState.Uncertain, server.OperationalState);
+        Assert.False(server.HasConfirmedOperationalFault);
+    }
+
+    [Fact]
+    public async Task Provision_DuplicateIntentGraphReturnsEveryDiscoveredResourceForTeardown()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson((42, request), (43, request)))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.PermanentFailure, result.Outcome);
+        Assert.Equal("provision-discovery-failed", result.Stage);
+        Assert.Equal(
+            ["server:42", "server:43", "primary-ip:91", "firewall:19"],
+            result.ProvisionedResources.Select(q => q.ResourceIdentifier).ToArray());
+        Assert.DoesNotContain(handler.Requests, q => q.Method == HttpMethod.Post);
+    }
+
+    [Theory]
     [InlineData()]
     [InlineData(43L)]
     [InlineData(42L, 43L)]
@@ -228,8 +545,14 @@ public sealed class HetznerRuntimeProviderTests
 
         var result = await CreateProvider(handler).ProvisionAsync(request);
 
-        Assert.Equal(ERuntimeProviderOutcome.Unknown, result.Outcome);
-        Assert.Equal("firewall-attachment-unverified", result.Stage);
+        Assert.Equal(
+            appliedServerIds.Length == 0
+                ? ERuntimeProviderOutcome.Unknown
+                : ERuntimeProviderOutcome.PermanentFailure,
+            result.Outcome);
+        Assert.Equal(
+            appliedServerIds.Length == 0 ? "firewall-attachment-pending" : "firewall-attachment-unverified",
+            result.Stage);
         Assert.Equal(3, result.ProvisionedResources.Count);
         Assert.DoesNotContain(handler.Requests, q => q.Method == HttpMethod.Post);
     }
@@ -359,6 +682,26 @@ public sealed class HetznerRuntimeProviderTests
     }
 
     [Fact]
+    public async Task Discover_WhenProviderRepeatsPaginationCursor_FailsAfterOnePage()
+    {
+        var handler = new SequencedHttpMessageHandler().Respond(
+            HttpStatusCode.OK,
+            JsonSerializer.Serialize(new
+            {
+                servers = Array.Empty<object>(),
+                meta = new { pagination = new { next_page = (int?)1 } },
+            }));
+
+        var result = await CreateProvider(handler).DiscoverAsync();
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(ERuntimeProviderOutcome.Unknown, result.Outcome);
+        Assert.Equal("discovery-failed", result.Stage);
+        Assert.Contains("pagination", result.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
     public async Task Discover_ClassifiesRecoveredGraphRelationshipsAsReadyPendingOrConflicting()
     {
         var request = CreateProvisionRequest();
@@ -409,6 +752,106 @@ public sealed class HetznerRuntimeProviderTests
         Assert.All(
             result.Resources.Where(q => q.ResourceType == "primary-ip"),
             q => Assert.True(q.HasProvisioningConflict));
+    }
+
+    [Fact]
+    public async Task Discover_ClassifiesAuthoritativeServerAndFirewallConfigurationDriftAsConflicting()
+    {
+        var request = CreateProvisionRequest();
+        var rules = ExpectedFirewallRules(request);
+        rules[0] = rules[0] with { Port = "30101" };
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(
+                HttpStatusCode.OK,
+                ServerListJsonWithConfiguration((42, request, "running", "cpx31", "ubuntu-24.04", "fsn1")))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithRules((19, request, [42L], rules)));
+
+        var result = await CreateProvider(handler).DiscoverAsync();
+
+        Assert.True(result.Resources.Single(q => q.ResourceType == "server").HasProvisioningConflict);
+        Assert.True(result.Resources.Single(q => q.ResourceType == "firewall").HasProvisioningConflict);
+        Assert.True(result.Resources.Single(q => q.ResourceType == "primary-ip").IsProvisioningReady);
+    }
+
+    [Fact]
+    public async Task Discover_MissingExpectedConfigurationFingerprintsRemainsUncertainWithoutClaimingConflict()
+    {
+        var request = CreateProvisionRequest();
+        var serverLabels = Labels(request, HetznerRuntimeProvider.ServerResourceType);
+        serverLabels.Remove(HetznerRuntimeProvider.ServerConfigurationFingerprintLabel);
+        var firewallLabels = Labels(request, HetznerRuntimeProvider.FirewallResourceType);
+        firewallLabels.Remove(HetznerRuntimeProvider.FirewallRulesFingerprintLabel);
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(
+                HttpStatusCode.OK,
+                ServerListJsonWithLabelsAndConfiguration(
+                    (42, serverLabels, "running", "ccx13", "ubuntu-24.04", "fsn1")))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
+            .Respond(
+                HttpStatusCode.OK,
+                FirewallListJsonWithLabelsAndRules(
+                    (19, firewallLabels, [42L], ExpectedFirewallRules(request))));
+
+        var result = await CreateProvider(handler).DiscoverAsync();
+
+        Assert.All(
+            result.Resources.Where(q => q.ResourceType is "server" or "firewall"),
+            resource =>
+            {
+                Assert.Equal(ERuntimeResourceProvisioningReadiness.Pending, resource.ProvisioningReadiness);
+                Assert.False(resource.HasProvisioningConflict);
+                Assert.False(resource.IsProvisioningReady);
+            });
+    }
+
+    [Fact]
+    public async Task Discover_MissingAuthoritativeConfigurationFieldsRemainsUncertainWithoutClaimingConflict()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJsonWithoutConfiguration(42, request))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithoutRules(19, request, 42));
+
+        var result = await CreateProvider(handler).DiscoverAsync();
+
+        Assert.All(
+            result.Resources.Where(q => q.ResourceType is "server" or "firewall"),
+            resource =>
+            {
+                Assert.Equal(ERuntimeResourceProvisioningReadiness.Pending, resource.ProvisioningReadiness);
+                Assert.False(resource.HasProvisioningConflict);
+            });
+    }
+
+    [Theory]
+    [InlineData("running", (int)ERuntimeResourceOperationalState.Operational, false)]
+    [InlineData("off", (int)ERuntimeResourceOperationalState.Faulted, true)]
+    [InlineData("stopping", (int)ERuntimeResourceOperationalState.Faulted, true)]
+    [InlineData("deleting", (int)ERuntimeResourceOperationalState.Faulted, true)]
+    [InlineData("failed", (int)ERuntimeResourceOperationalState.Faulted, true)]
+    [InlineData("unknown", (int)ERuntimeResourceOperationalState.Uncertain, false)]
+    [InlineData("provider-added-state", (int)ERuntimeResourceOperationalState.Uncertain, false)]
+    public async Task Discover_MapsServerStatusToProviderNeutralOperationalEvidence(
+        string status,
+        int expectedState,
+        bool expectedFault)
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(
+                HttpStatusCode.OK,
+                ServerListJsonWithConfiguration((42, request, status, "ccx13", "ubuntu-24.04", "fsn1")))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson());
+
+        var result = await CreateProvider(handler).DiscoverAsync();
+
+        var server = Assert.Single(result.Resources);
+        Assert.Equal((ERuntimeResourceOperationalState)expectedState, server.OperationalState);
+        Assert.Equal(expectedFault, server.HasConfirmedOperationalFault);
+        Assert.True(server.IsProvisioningReady);
     }
 
     [Fact]
@@ -633,7 +1076,8 @@ public sealed class HetznerRuntimeProviderTests
 
     private static HetznerRuntimeProvider CreateProvider(
         SequencedHttpMessageHandler handler,
-        decimal estimatedHourlyCostEur = 0.10m)
+        decimal estimatedHourlyCostEur = 0.10m,
+        IProviderProvisioningMutationGuard? provisioningMutationGuard = null)
     {
         var optionsProvider = new TestOptionsProvider(new HetznerRuntimeOptions
         {
@@ -646,19 +1090,35 @@ public sealed class HetznerRuntimeProviderTests
             EstimatedHourlyCostEur = estimatedHourlyCostEur,
         });
         var client = new HetznerCloudClient(new TestHttpClientFactory(handler), optionsProvider);
-        return new HetznerRuntimeProvider(client, optionsProvider, NullLogger<HetznerRuntimeProvider>.Instance);
+        return new HetznerRuntimeProvider(
+            client,
+            optionsProvider,
+            provisioningMutationGuard ?? new AlwaysAuthorizedProvisioningMutationGuard(),
+            NullLogger<HetznerRuntimeProvider>.Instance);
     }
 
     private static string ServerResponseJson(
         long id,
         RuntimeProvisionRequest request,
-        string status = "running")
-        => ServerResponseJson(id, Labels(request, HetznerRuntimeProvider.ServerResourceType), status);
+        string status = "running",
+        string serverType = "ccx13",
+        string image = "ubuntu-24.04",
+        string location = "fsn1")
+        => ServerResponseJson(
+            id,
+            Labels(request, HetznerRuntimeProvider.ServerResourceType),
+            status,
+            serverType,
+            image,
+            location);
 
     private static string ServerResponseJson(
         long id,
         IReadOnlyDictionary<string, string> labels,
-        string status = "running")
+        string status = "running",
+        string serverType = "ccx13",
+        string image = "ubuntu-24.04",
+        string location = "fsn1")
         => JsonSerializer.Serialize(new
         {
             server = new
@@ -668,6 +1128,9 @@ public sealed class HetznerRuntimeProviderTests
                 status,
                 labels,
                 public_net = new { ipv4 = new { ip = $"203.0.113.{id}" } },
+                server_type = new { id = 1, name = serverType },
+                image = new { id = 2, name = image },
+                location = new { id = 3, name = location },
             },
         });
 
@@ -703,9 +1166,10 @@ public sealed class HetznerRuntimeProviderTests
         long id,
         RuntimeProvisionRequest request,
         params long[] appliedServerIds)
-        => FirewallResponseJson(
+        => FirewallResponseJsonWithRules(
             id,
             Labels(request, HetznerRuntimeProvider.FirewallResourceType),
+            ExpectedFirewallRules(request),
             appliedServerIds);
 
     private static string FirewallResponseJson(
@@ -720,6 +1184,24 @@ public sealed class HetznerRuntimeProviderTests
                 name = $"utf-{id}",
                 labels,
                 applied_to = appliedServerIds.Select(q => new { type = "server", server = new { id = q } }),
+                rules = Array.Empty<object>(),
+            },
+        });
+
+    private static string FirewallResponseJsonWithRules(
+        long id,
+        IReadOnlyDictionary<string, string> labels,
+        IReadOnlyList<FirewallRuleFixture> rules,
+        params long[] appliedServerIds)
+        => JsonSerializer.Serialize(new
+        {
+            firewall = new
+            {
+                id,
+                name = $"utf-{id}",
+                labels,
+                applied_to = appliedServerIds.Select(q => new { type = "server", server = new { id = q } }),
+                rules,
             },
         });
 
@@ -733,7 +1215,65 @@ public sealed class HetznerRuntimeProviderTests
                 status = "running",
                 labels = Labels(q.Request, HetznerRuntimeProvider.ServerResourceType),
                 public_net = new { ipv4 = new { ip = $"203.0.113.{q.Id}" } },
+                server_type = new { id = 1, name = RequestedServerType(q.Request) },
+                image = new { id = 2, name = "ubuntu-24.04" },
+                location = new { id = 3, name = "fsn1" },
             }),
+            meta = Pagination(),
+        });
+
+    private static string ServerListJsonWithConfiguration(
+        params (long Id, RuntimeProvisionRequest Request, string Status, string ServerType, string Image, string Location)[]
+            values)
+        => JsonSerializer.Serialize(new
+        {
+            servers = values.Select(q => new
+            {
+                id = q.Id,
+                name = $"utf-{q.Id}",
+                status = q.Status,
+                labels = Labels(q.Request, HetznerRuntimeProvider.ServerResourceType),
+                public_net = new { ipv4 = new { ip = $"203.0.113.{q.Id}" } },
+                server_type = new { id = 1, name = q.ServerType },
+                image = new { id = 2, name = q.Image },
+                location = new { id = 3, name = q.Location },
+            }),
+            meta = Pagination(),
+        });
+
+    private static string ServerListJsonWithLabelsAndConfiguration(
+        params (long Id, IReadOnlyDictionary<string, string> Labels, string Status, string ServerType, string Image,
+            string Location)[] values)
+        => JsonSerializer.Serialize(new
+        {
+            servers = values.Select(q => new
+            {
+                id = q.Id,
+                name = $"utf-{q.Id}",
+                status = q.Status,
+                labels = q.Labels,
+                public_net = new { ipv4 = new { ip = $"203.0.113.{q.Id}" } },
+                server_type = new { id = 1, name = q.ServerType },
+                image = new { id = 2, name = q.Image },
+                location = new { id = 3, name = q.Location },
+            }),
+            meta = Pagination(),
+        });
+
+    private static string ServerListJsonWithoutConfiguration(long id, RuntimeProvisionRequest request)
+        => JsonSerializer.Serialize(new
+        {
+            servers = new[]
+            {
+                new
+                {
+                    id,
+                    name = $"utf-{id}",
+                    status = "running",
+                    labels = Labels(request, HetznerRuntimeProvider.ServerResourceType),
+                    public_net = new { ipv4 = new { ip = $"203.0.113.{id}" } },
+                },
+            },
             meta = Pagination(),
         });
 
@@ -789,6 +1329,7 @@ public sealed class HetznerRuntimeProviderTests
                 name = $"utf-{q.Id}",
                 labels = Labels(q.Request, HetznerRuntimeProvider.FirewallResourceType),
                 applied_to = Array.Empty<object>(),
+                rules = ExpectedFirewallRules(q.Request),
             }),
             meta = Pagination(),
         });
@@ -803,14 +1344,66 @@ public sealed class HetznerRuntimeProviderTests
                 name = $"utf-{q.Id}",
                 labels = Labels(q.Request, HetznerRuntimeProvider.FirewallResourceType),
                 applied_to = q.AppliedServerIds.Select(id => new { type = "server", server = new { id } }),
+                rules = ExpectedFirewallRules(q.Request),
             }),
+            meta = Pagination(),
+        });
+
+    private static string FirewallListJsonWithRules(
+        params (long Id, RuntimeProvisionRequest Request, long[] AppliedServerIds, FirewallRuleFixture[] Rules)[] values)
+        => JsonSerializer.Serialize(new
+        {
+            firewalls = values.Select(q => new
+            {
+                id = q.Id,
+                name = $"utf-{q.Id}",
+                labels = Labels(q.Request, HetznerRuntimeProvider.FirewallResourceType),
+                applied_to = q.AppliedServerIds.Select(id => new { type = "server", server = new { id } }),
+                rules = q.Rules,
+            }),
+            meta = Pagination(),
+        });
+
+    private static string FirewallListJsonWithLabelsAndRules(
+        params (long Id, IReadOnlyDictionary<string, string> Labels, long[] AppliedServerIds,
+            FirewallRuleFixture[] Rules)[] values)
+        => JsonSerializer.Serialize(new
+        {
+            firewalls = values.Select(q => new
+            {
+                id = q.Id,
+                name = $"utf-{q.Id}",
+                labels = q.Labels,
+                applied_to = q.AppliedServerIds.Select(id => new { type = "server", server = new { id } }),
+                rules = q.Rules,
+            }),
+            meta = Pagination(),
+        });
+
+    private static string FirewallListJsonWithoutRules(
+        long id,
+        RuntimeProvisionRequest request,
+        params long[] appliedServerIds)
+        => JsonSerializer.Serialize(new
+        {
+            firewalls = new[]
+            {
+                new
+                {
+                    id,
+                    name = $"utf-{id}",
+                    labels = Labels(request, HetznerRuntimeProvider.FirewallResourceType),
+                    applied_to = appliedServerIds.Select(q => new { type = "server", server = new { id = q } }),
+                },
+            },
             meta = Pagination(),
         });
 
     private static object Pagination() => new { pagination = new { next_page = (int?)null } };
 
     private static Dictionary<string, string> Labels(RuntimeProvisionRequest request, string resourceType)
-        => new(StringComparer.Ordinal)
+    {
+        var labels = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [HetznerRuntimeProvider.ManagedLabel] = "true",
             [HetznerRuntimeProvider.ServerLabel] = request.ServerId.ToString("N"),
@@ -819,6 +1412,43 @@ public sealed class HetznerRuntimeProviderTests
             [HetznerRuntimeProvider.WorkerLabel] = request.WorkerId.ToString("N"),
             [HetznerRuntimeProvider.ResourceKindLabel] = resourceType,
         };
+        if (resourceType == HetznerRuntimeProvider.ServerResourceType)
+        {
+            labels[HetznerRuntimeProvider.ServerConfigurationFingerprintLabel] =
+                HetznerRuntimeProvider.ServerConfigurationFingerprint(
+                    RequestedServerType(request),
+                    "ubuntu-24.04",
+                    "fsn1");
+        }
+        else if (resourceType == HetznerRuntimeProvider.FirewallResourceType)
+        {
+            labels[HetznerRuntimeProvider.FirewallRulesFingerprintLabel] =
+                HetznerRuntimeProvider.FirewallRulesFingerprint(request.InboundNetworkRequirements!);
+        }
+        return labels;
+    }
+
+    private static string RequestedServerType(RuntimeProvisionRequest request)
+        => string.IsNullOrWhiteSpace(request.RuntimeProfileIdentifier) ? "ccx13" : request.RuntimeProfileIdentifier;
+
+    private static FirewallRuleFixture[] ExpectedFirewallRules(RuntimeProvisionRequest request)
+        => request.InboundNetworkRequirements!
+            .Select(q => new FirewallRuleFixture(
+                "in",
+                q.Protocol is ERuntimeNetworkProtocol.Tcp ? "tcp" : "udp",
+                q.StartPort == q.EndPort ? $"{q.StartPort}" : $"{q.StartPort}-{q.EndPort}",
+                ["0.0.0.0/0"],
+                [],
+                q.Description))
+            .ToArray();
+
+    private sealed record FirewallRuleFixture(
+        [property: JsonPropertyName("direction")] string Direction,
+        [property: JsonPropertyName("protocol")] string Protocol,
+        [property: JsonPropertyName("port")] string Port,
+        [property: JsonPropertyName("source_ips")] IReadOnlyList<string> SourceIps,
+        [property: JsonPropertyName("destination_ips")] IReadOnlyList<string> DestinationIps,
+        [property: JsonPropertyName("description")] string Description);
 
     private sealed class TestOptionsProvider(HetznerRuntimeOptions value) : IHetznerRuntimeOptionsProvider
     {
@@ -828,6 +1458,43 @@ public sealed class HetznerRuntimeProviderTests
     private sealed class TestHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory
     {
         public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
+    }
+
+    private sealed class AlwaysAuthorizedProvisioningMutationGuard : IProviderProvisioningMutationGuard
+    {
+        public async Task<ProviderProvisioningMutationGuardResult<T>> ExecuteCreateAsync<T>(
+            Guid serverId,
+            Guid deploymentId,
+            Func<CancellationToken, Task<T>> mutation,
+            CancellationToken cancellationToken = default)
+            => new(true, await mutation(cancellationToken), null);
+    }
+
+    private sealed class BoundedProvisioningMutationGuard(int authorizedMutationCount)
+        : IProviderProvisioningMutationGuard
+    {
+        public int Attempts { get; private set; }
+
+        public async Task<ProviderProvisioningMutationGuardResult<T>> ExecuteCreateAsync<T>(
+            Guid serverId,
+            Guid deploymentId,
+            Func<CancellationToken, Task<T>> mutation,
+            CancellationToken cancellationToken = default)
+        {
+            Attempts++;
+            if (Attempts > authorizedMutationCount)
+            {
+                return new ProviderProvisioningMutationGuardResult<T>(
+                    false,
+                    default,
+                    "Provisioning is blocked by durable stop or termination state.");
+            }
+
+            return new ProviderProvisioningMutationGuardResult<T>(
+                true,
+                await mutation(cancellationToken),
+                null);
+        }
     }
 
     private sealed class SequencedHttpMessageHandler : HttpMessageHandler

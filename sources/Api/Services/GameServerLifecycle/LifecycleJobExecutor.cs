@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Diagnostics;
+using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
@@ -34,6 +36,8 @@ internal sealed class LifecycleJobExecutor(
 
     public async Task ExecuteAsync(LifecycleJob lifecycleJob, CancellationToken cancellationToken = default)
     {
+        var expectedLeaseOwner = lifecycleJob.LeaseOwner;
+        var expectedAttempt = lifecycleJob.Attempt;
         var job = await dbContext.LifecycleJobs
             .Include(q => q.GameServer)!
             .ThenInclude(q => q!.CurrentCostOwner)
@@ -88,7 +92,14 @@ internal sealed class LifecycleJobExecutor(
             switch (job.Kind)
             {
                 case ELifecycleJobKind.Start:
-                    await ExecuteStartAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
+                    await ExecuteStartAsync(
+                            job,
+                            server,
+                            deployment,
+                            expectedLeaseOwner,
+                            expectedAttempt,
+                            cancellationToken)
+                        .ConfigureAwait(false);
                     break;
                 case ELifecycleJobKind.Stop:
                     await ExecuteStopAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
@@ -119,6 +130,8 @@ internal sealed class LifecycleJobExecutor(
         LifecycleJob job,
         GameServer server,
         GameServerDeployment deployment,
+        string? expectedLeaseOwner,
+        int expectedAttempt,
         CancellationToken cancellationToken)
     {
         await RevalidateStartAsync(job, server, deployment, cancellationToken).ConfigureAwait(false);
@@ -286,66 +299,203 @@ internal sealed class LifecycleJobExecutor(
                         .ConfigureAwait(false);
                 }
             }
-            intent.Worker.Status = EWorkerStatus.Provisioning;
-            deployment.Status = EDeploymentStatus.Provisioning;
-            deployment.Stage = "provider-create-ready";
-            var provisioningRequestedAt = NodaSystemClock.Instance.GetCurrentInstant();
-            deployment.TimeStampUpdated = provisioningRequestedAt;
-            intent.Resource.TimeStampProvisioningRequested = provisioningRequestedAt;
-            intent.Resource.TimeStampProvisioningResolved = null;
-            intent.Resource.TimeStampUpdated = provisioningRequestedAt;
-            job.MaxAttempts = int.MaxValue;
-            auditWriter.Add(
-                dbContext,
-                EHostingAuditEventKind.DeploymentResourceProvisioningRequested,
-                "Provider resource provisioning requested.",
-                serverId: server.PrimaryKey,
-                deploymentId: deployment.PrimaryKey,
-                lifecycleJobId: job.PrimaryKey,
-                workerId: intent.Worker.PrimaryKey,
-                costOwnerId: deployment.CostOwnerFk,
-                details: $"Provider={provider.ProviderIdentifier}; Kind={intent.Resource.Kind}; "
-                         + $"Intent={intent.Resource.ProvisioningIntentIdentifier}",
-                costImpact: ECostImpact.StartsCost);
-
-            // The one-way bootstrap hash and provider-queryable intent are committed before the create call.
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             await ThrowIfProvisioningBlockedAsync(deployment.PrimaryKey, cancellationToken).ConfigureAwait(false);
             await SetJobProgressAsync(job, "provider-provisioning", 15, cancellationToken).ConfigureAwait(false);
+            var provisionRequest = new RuntimeProvisionRequest(
+                server.PrimaryKey,
+                deployment.PrimaryKey,
+                intent.Worker.PrimaryKey,
+                server.GameIdentifier,
+                intent.IntentId,
+                bootstrapPayload.CloudInit,
+                gameDefinition.InboundNetworkRequirements,
+                deployment.RuntimeProfileIdentifier);
 
-            var provision = await provider.ProvisionAsync(
-                    new RuntimeProvisionRequest(
-                        server.PrimaryKey,
-                        deployment.PrimaryKey,
-                        intent.Worker.PrimaryKey,
-                        server.GameIdentifier,
-                        intent.IntentId,
-                        bootstrapPayload.CloudInit,
-                        gameDefinition.InboundNetworkRequirements,
-                        deployment.RuntimeProfileIdentifier),
+            // Atomically claim the one permitted provider mutation for this durable intent. This server-row lock is
+            // cross-process: overlapping lease holders may both have observed an empty provider graph, but only one
+            // can persist TimeStampProvisioningRequested and proceed to the provider transport. Once claimed, enter
+            // the provider immediately: its first guarded create must either run before Terminate or return a
+            // definitive closed-attempt result after Terminate. No fallible state update belongs in that interval.
+            await ClaimProvisioningMutationAsync(
+                    job,
+                    server,
+                    deployment,
+                    intent.Worker,
+                    intent.Resource,
+                    provider,
+                    expectedLeaseOwner,
+                    expectedAttempt,
                     cancellationToken)
                 .ConfigureAwait(false);
-            if (provision.ProvisionedResources.Count > 0)
-            {
-                await AdoptDiscoveredResourcesAsync(
-                        deployment,
-                        provider,
-                        provision.ProvisionedResources,
-                        intent.Resource,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-            }
+            // A normal lease cancellation (including one caused by Terminate) must not interrupt the provider call
+            // after the durable create claim. Bound it independently so a broken provider cannot hang shutdown.
+            using var providerCallTimeout = new CancellationTokenSource(_options.ProviderSettlementTimeout);
+            var provision = await provider.ProvisionAsync(provisionRequest, providerCallTimeout.Token)
+                .ConfigureAwait(false);
+            // A result returned near the provider-call deadline still needs a full bounded window for mandatory
+            // inventory, accounting, and closure. Reusing the almost-expired call token could discard known IDs.
+            using var resultSettlementTimeout = new CancellationTokenSource(_options.ProviderSettlementTimeout);
+            var settlementCancellationToken = resultSettlementTimeout.Token;
             var hasPotentialProviderCost = provision.ProvisionedResources.Any(q => q.IsPotentiallyCostGenerating);
-            if (provision.Succeeded
-                || hasPotentialProviderCost
-                || provision.Outcome is ERuntimeProviderOutcome.Unknown)
+            var providerResultRequiresCostAccounting = provision.Succeeded
+                                                       || hasPotentialProviderCost
+                                                       || provision.Outcome is ERuntimeProviderOutcome.Unknown;
+            if (provision.ProvisionedResources.Count > 0 || providerResultRequiresCostAccounting)
+            {
+                // Terminate may commit immediately after the provider's final guarded POST. Re-enter the shared
+                // server lock and reload all authoritative provider state before saving the concrete result; otherwise
+                // stale deployment concurrency tokens can roll back every returned provider identifier.
+                await using var resultTransaction = await BeginServerMutationAsync(
+                        server.PrimaryKey,
+                        settlementCancellationToken)
+                    .ConfigureAwait(false);
+                await dbContext.Entry(deployment).ReloadAsync(settlementCancellationToken).ConfigureAwait(false);
+                await ReloadDeploymentProviderStateAsync(deployment.PrimaryKey, settlementCancellationToken)
+                    .ConfigureAwait(false);
+                if (provision.ProvisionedResources.Count > 0)
+                {
+                    await AdoptDiscoveredResourcesAsync(
+                            deployment,
+                            provider,
+                            provision.ProvisionedResources,
+                            intent.Resource,
+                            settlementCancellationToken,
+                            updateDeploymentCostState: false)
+                        .ConfigureAwait(false);
+                }
+                if (provision.Outcome is ERuntimeProviderOutcome.Unknown)
+                {
+                    // The provider may have created a resource that is not observable yet. Make that ambiguity durable
+                    // in the same transaction as every concrete result so crash recovery cannot treat it as no-cost.
+                    intent.Resource.State = EDeploymentResourceState.Unknown;
+                    intent.Resource.PossibleCost = true;
+                    intent.Resource.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                    await dbContext.SaveChangesAsync(settlementCancellationToken).ConfigureAwait(false);
+                }
+                if (providerResultRequiresCostAccounting)
+                {
+                    // Do not enlist the tracked deployment in optimistic concurrency here: a reconciler may update an
+                    // unrelated summary field while this returned graph is being inventoried. A targeted update keeps
+                    // resource identifiers and the cost summary atomic without allowing that race to roll them back.
+                    var accountedAt = NodaSystemClock.Instance.GetCurrentInstant();
+                    await dbContext.GameServerDeployments
+                        .Where(q => q.PrimaryKey == deployment.PrimaryKey)
+                        .ExecuteUpdateAsync(
+                            setters => setters
+                                .SetProperty(q => q.PossibleCost, true)
+                                .SetProperty(q => q.TimeStampUpdated, accountedAt),
+                            settlementCancellationToken)
+                        .ConfigureAwait(false);
+                    await dbContext.Entry(deployment).ReloadAsync(settlementCancellationToken).ConfigureAwait(false);
+                }
+                await resultTransaction.CommitAsync(settlementCancellationToken).ConfigureAwait(false);
+            }
+            if (providerResultRequiresCostAccounting)
             {
                 // A successful, potentially billable partial, or ambiguous mutation can already incur cost. Commit
                 // the balance-neutral reservation exactly once; definitive non-billable failures release it below.
                 await costSliceService.CommitInitialReservationAsync(
                         deployment.PrimaryKey,
                         provider.ProviderIdentifier,
-                        cancellationToken)
+                        settlementCancellationToken)
+                    .ConfigureAwait(false);
+            }
+            if (provision.IsProvisioningAttemptDefinitivelyClosed)
+            {
+                await dbContext.Entry(deployment).ReloadAsync(settlementCancellationToken).ConfigureAwait(false);
+                if (deployment.IsProvisioningBlocked)
+                {
+                    // Only an unseen placeholder can be closed without provider teardown. A concrete resource may
+                    // have been returned by the guarded create even when its attribution/configuration is invalid and
+                    // provider-wide discovery cannot find it. Keep that resource unresolved so Terminate or the
+                    // reconciler must release its persisted provider identifier and verify the non-billable outcome.
+                    if (intent.Resource.ProviderResourceIdentifier is null)
+                    {
+                        var resolvedAt = NodaSystemClock.Instance.GetCurrentInstant();
+                        intent.Resource.State = EDeploymentResourceState.Released;
+                        intent.Resource.PossibleCost = false;
+                        intent.Resource.TimeStampProvisioningResolved = resolvedAt;
+                        intent.Resource.TimeStampReleased = resolvedAt;
+                        intent.Resource.TimeStampUpdated = resolvedAt;
+                    }
+                    await dbContext.SaveChangesAsync(settlementCancellationToken).ConfigureAwait(false);
+                    if (!hasPotentialProviderCost)
+                    {
+                        await costSliceService.ReleaseInitialReservationAsync(
+                                deployment.PrimaryKey,
+                                "The durable provisioning barrier closed before another provider create was issued.",
+                                settlementCancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    throw new LifecycleSupersededException(
+                        provision.Error ?? "Provisioning was stopped by the durable deployment barrier.");
+                }
+
+                if (provision.ProvisionedResources.Count == 0)
+                {
+                    // The provider completed no mutation (for example, its preflight discovery failed). Clear the
+                    // durable create claim so a normal retry can safely try again without treating an unissued POST as
+                    // an ambiguous late resource.
+                    var resetAt = NodaSystemClock.Instance.GetCurrentInstant();
+                    intent.Resource.State = EDeploymentResourceState.Provisioning;
+                    intent.Resource.PossibleCost = false;
+                    intent.Resource.TimeStampProvisioningRequested = null;
+                    intent.Resource.TimeStampProvisioningResolved = null;
+                    intent.Resource.TimeStampReleased = null;
+                    intent.Resource.TimeStampUpdated = resetAt;
+                    deployment.Stage = provision.Stage;
+                    deployment.TimeStampUpdated = resetAt;
+                    await dbContext.SaveChangesAsync(settlementCancellationToken).ConfigureAwait(false);
+                    await costSliceService.ReleaseInitialReservationAsync(
+                            deployment.PrimaryKey,
+                            "The provider confirmed that no provisioning mutation was issued.",
+                            settlementCancellationToken)
+                        .ConfigureAwait(false);
+                    if (provision.Outcome is ERuntimeProviderOutcome.PermanentFailure)
+                    {
+                        await RejectStartAsync(
+                                job,
+                                server,
+                                deployment,
+                                "provider-provisioning-invalid",
+                                provision.Error ?? "The provider rejected the provisioning request.",
+                                settlementCancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    throw new LifecycleExecutionException(
+                        provision.Error ?? "Provider provisioning preflight failed before any mutation was issued.",
+                        provision.Stage);
+                }
+
+                // Every attempted POST has a conclusive outcome, but provisioning stopped with a partial or invalid
+                // graph. Resolve the unseen primary placeholder before fault teardown; all concrete resources were
+                // adopted above and remain individually subject to verified provider release.
+                if (intent.Resource.ProviderResourceIdentifier is null)
+                {
+                    var resolvedAt = NodaSystemClock.Instance.GetCurrentInstant();
+                    intent.Resource.State = EDeploymentResourceState.Released;
+                    intent.Resource.PossibleCost = false;
+                    intent.Resource.TimeStampProvisioningResolved = resolvedAt;
+                    intent.Resource.TimeStampReleased = resolvedAt;
+                    intent.Resource.TimeStampUpdated = resolvedAt;
+                }
+                await dbContext.SaveChangesAsync(settlementCancellationToken).ConfigureAwait(false);
+                if (!hasPotentialProviderCost)
+                {
+                    await costSliceService.ReleaseInitialReservationAsync(
+                            deployment.PrimaryKey,
+                            "The closed partial provider graph contained no potentially billable resource.",
+                            settlementCancellationToken)
+                        .ConfigureAwait(false);
+                }
+                await TriggerFaultCostStopAsync(
+                        job,
+                        server,
+                        deployment,
+                        intent.Worker,
+                        "provider-partial-provisioning-closed",
+                        provision.Error ?? "Provider provisioning ended with a closed partial resource graph.",
+                        settlementCancellationToken)
                     .ConfigureAwait(false);
             }
             if (!provision.Succeeded || provision.Resource is null)
@@ -371,7 +521,7 @@ internal sealed class LifecycleJobExecutor(
                     costImpact: intent.Resource.PossibleCost
                         ? ECostImpact.KeepsCostRunning
                         : ECostImpact.Unknown);
-                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync(settlementCancellationToken).ConfigureAwait(false);
                 if (provision.Outcome is ERuntimeProviderOutcome.PermanentFailure
                     && provision.ProvisionedResources.Count > 0)
                 {
@@ -380,7 +530,7 @@ internal sealed class LifecycleJobExecutor(
                         await costSliceService.ReleaseInitialReservationAsync(
                                 deployment.PrimaryKey,
                                 "Provider partial allocation contained no potentially billable resource.",
-                                cancellationToken)
+                                settlementCancellationToken)
                             .ConfigureAwait(false);
                     }
                     await TriggerFaultCostStopAsync(
@@ -390,7 +540,7 @@ internal sealed class LifecycleJobExecutor(
                             intent.Worker,
                             "provider-partial-provisioning-failed",
                             provision.Error ?? "Provider provisioning failed after allocating part of the resource graph.",
-                            cancellationToken)
+                            settlementCancellationToken)
                         .ConfigureAwait(false);
                 }
                 if (provision.Outcome is ERuntimeProviderOutcome.PermanentFailure)
@@ -400,19 +550,19 @@ internal sealed class LifecycleJobExecutor(
                         await costSliceService.ReleaseInitialReservationAsync(
                                 deployment.PrimaryKey,
                                 "The provider definitively rejected provisioning without allocating a resource.",
-                                cancellationToken)
+                                settlementCancellationToken)
                             .ConfigureAwait(false);
                     }
                     intent.Resource.TimeStampProvisioningResolved = NodaSystemClock.Instance.GetCurrentInstant();
                     intent.Resource.TimeStampUpdated = intent.Resource.TimeStampProvisioningResolved.Value;
-                    await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                    await dbContext.SaveChangesAsync(settlementCancellationToken).ConfigureAwait(false);
                     await RejectStartAsync(
                             job,
                             server,
                             deployment,
                             "provider-provisioning-invalid",
                             provision.Error ?? "The provider rejected the provisioning request.",
-                            cancellationToken)
+                            settlementCancellationToken)
                         .ConfigureAwait(false);
                 }
                 throw new LifecycleExecutionException(
@@ -429,6 +579,32 @@ internal sealed class LifecycleJobExecutor(
                 cancellationToken)
             .ConfigureAwait(false);
 
+        if (observedResource.HasConfirmedOperationalFault)
+        {
+            await TriggerFaultCostStopAsync(
+                    job,
+                    server,
+                    deployment,
+                    intent.Worker,
+                    "provider-resource-operational-fault",
+                    "The provider confirmed that the newly allocated primary runtime resource is not operational.",
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        if (observedResource.OperationalState is ERuntimeResourceOperationalState.Uncertain)
+        {
+            intent.Resource.State = EDeploymentResourceState.Unknown;
+            intent.Resource.PossibleCost = true;
+            intent.Resource.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+            deployment.Stage = "provider-operational-state-pending";
+            deployment.PossibleCost = true;
+            deployment.TimeStampUpdated = intent.Resource.TimeStampUpdated;
+            job.MaxAttempts = int.MaxValue;
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleExecutionException(
+                "The provider has not yet reported a conclusive operational state for the primary runtime resource.");
+        }
+
         await PublishAllocatedResourceAsync(
                 job,
                 server,
@@ -440,11 +616,29 @@ internal sealed class LifecycleJobExecutor(
             .ConfigureAwait(false);
         var command = await EnsureCommandPersistedAsync(job, server, intent.Worker, cancellationToken)
             .ConfigureAwait(false);
-        await SetJobProgressAsync(job, "waiting-for-worker", 35, cancellationToken).ConfigureAwait(false);
-        deployment.Status = EDeploymentStatus.WaitingForWorker;
-        deployment.Stage = "waiting-for-worker";
-        deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await using (var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+                         .ConfigureAwait(false))
+        {
+            await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            if (job.Status is not ELifecycleJobStatus.Running
+                || deployment.IsProvisioningBlocked
+                || deployment.TimeStampResolved.HasValue)
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                throw new LifecycleSupersededException(
+                    "Waiting for the worker was superseded by durable stop or termination state.");
+            }
+            var waitingAt = NodaSystemClock.Instance.GetCurrentInstant();
+            job.Stage = "waiting-for-worker";
+            job.Progress = Math.Max(job.Progress, 35);
+            job.TimeStampUpdated = waitingAt;
+            deployment.Status = EDeploymentStatus.WaitingForWorker;
+            deployment.Stage = "waiting-for-worker";
+            deployment.TimeStampUpdated = waitingAt;
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         var registrationDeadline = intent.Resource.TimeStampObserved!.Value
                                    + Duration.FromTimeSpan(_options.RegistrationGrace);
@@ -478,13 +672,31 @@ internal sealed class LifecycleJobExecutor(
                 .ConfigureAwait(false);
         }
 
-        var now = NodaSystemClock.Instance.GetCurrentInstant();
-        deployment.Status = EDeploymentStatus.Running;
-        deployment.Stage = "running";
-        deployment.PossibleCost = true;
-        deployment.TimeStampStarted ??= now;
-        deployment.TimeStampUpdated = now;
-        await SetJobProgressAsync(job, "running", 100, cancellationToken).ConfigureAwait(false);
+        await using (var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+                         .ConfigureAwait(false))
+        {
+            await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            if (job.Status is not ELifecycleJobStatus.Running
+                || deployment.IsProvisioningBlocked
+                || deployment.TimeStampResolved.HasValue)
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                throw new LifecycleSupersededException(
+                    "The worker start completed after durable stop or termination had already taken priority.");
+            }
+            var now = NodaSystemClock.Instance.GetCurrentInstant();
+            deployment.Status = EDeploymentStatus.Running;
+            deployment.Stage = "running";
+            deployment.PossibleCost = true;
+            deployment.TimeStampStarted ??= now;
+            deployment.TimeStampUpdated = now;
+            job.Stage = "running";
+            job.Progress = 100;
+            job.TimeStampUpdated = now;
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private async Task ExecuteStopAsync(
@@ -497,10 +709,29 @@ internal sealed class LifecycleJobExecutor(
         if (worker is null)
             throw new LifecycleExecutionException("The deployment has no dedicated worker to preserve and stop.");
 
-        deployment.Status = EDeploymentStatus.Stopping;
-        deployment.Stage = "worker-stop-queued";
-        deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await using (var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+                         .ConfigureAwait(false))
+        {
+            await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            if (job.Status is not ELifecycleJobStatus.Running
+                || !deployment.IsProvisioningBlocked
+                || deployment.TimeStampResolved.HasValue
+                || deployment.Status is EDeploymentStatus.Terminating
+                    or EDeploymentStatus.TerminatingDueToFault
+                    or EDeploymentStatus.Terminated
+                    or EDeploymentStatus.TerminatedDueToFault)
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                throw new LifecycleSupersededException(
+                    "Ordinary Stop was superseded by durable termination state.");
+            }
+            deployment.Status = EDeploymentStatus.Stopping;
+            deployment.Stage = "worker-stop-queued";
+            deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
         var command = await EnsureCommandPersistedAsync(job, server, worker, cancellationToken).ConfigureAwait(false);
         try
         {
@@ -516,12 +747,27 @@ internal sealed class LifecycleJobExecutor(
         }
         catch (WorkerCommandFailedException ex)
         {
+            await using var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+                .ConfigureAwait(false);
+            await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            if (job.Status is not ELifecycleJobStatus.Running
+                || deployment.Status is EDeploymentStatus.Terminating
+                    or EDeploymentStatus.TerminatingDueToFault
+                    or EDeploymentStatus.Terminated
+                    or EDeploymentStatus.TerminatedDueToFault)
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                throw new LifecycleSupersededException(
+                    "A preservation failure arrived after durable termination took priority.");
+            }
             deployment.Status = EDeploymentStatus.PreservationFailed;
             deployment.Stage = "worker-stop-or-preservation-failed";
             deployment.FaultCode = ex.ErrorCode;
             deployment.FaultMessage = ex.Message;
             deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             throw new LifecycleExecutionException(ex.Message);
         }
 
@@ -535,14 +781,31 @@ internal sealed class LifecycleJobExecutor(
         GameServerDeployment deployment,
         CancellationToken cancellationToken)
     {
-        var faultTriggered = deployment.Status is EDeploymentStatus.TerminatingDueToFault;
-        deployment.IsProvisioningBlocked = true;
-        if (!faultTriggered)
-            deployment.Status = EDeploymentStatus.Terminating;
-        deployment.Stage = faultTriggered ? "fault-evidence-window" : "provider-teardown";
-        deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
-        await CancelNormalCommandsAsync(deployment.PrimaryKey, job.PrimaryKey, cancellationToken).ConfigureAwait(false);
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        bool faultTriggered;
+        await using (var transitionTransaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+                         .ConfigureAwait(false))
+        {
+            await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            // Another authorized teardown path may have finished while this durable Terminate job was queued. Treat
+            // that as idempotent success; never regress a resolved deployment back to an in-progress status.
+            if (deployment.TimeStampResolved.HasValue || job.Status is not ELifecycleJobStatus.Running)
+            {
+                await transitionTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            faultTriggered = deployment.Status is EDeploymentStatus.TerminatingDueToFault;
+            deployment.IsProvisioningBlocked = true;
+            if (!faultTriggered)
+                deployment.Status = EDeploymentStatus.Terminating;
+            deployment.Stage = faultTriggered ? "fault-evidence-window" : "provider-teardown";
+            deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+            await CancelNormalCommandsAsync(deployment.PrimaryKey, job.PrimaryKey, cancellationToken)
+                .ConfigureAwait(false);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transitionTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
         if (faultTriggered)
         {
             var worker = deployment.Workers.SingleOrDefault(q => q.TimeStampStopped == null);
@@ -588,6 +851,75 @@ internal sealed class LifecycleJobExecutor(
         await SetJobProgressAsync(job, "completed-by-worker", 100, cancellationToken).ConfigureAwait(false);
     }
 
+    private async Task ClaimProvisioningMutationAsync(
+        LifecycleJob job,
+        GameServer server,
+        GameServerDeployment deployment,
+        LifecycleWorker worker,
+        DeploymentResource resource,
+        IRuntimeProvider provider,
+        string? expectedLeaseOwner,
+        int expectedAttempt,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        await dbContext.Entry(resource).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        if (job.Status is not ELifecycleJobStatus.Running
+            || deployment.IsProvisioningBlocked
+            || deployment.TimeStampResolved.HasValue)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleSupersededException(
+                "Provider mutation claiming was superseded by durable stop or termination state.");
+        }
+        if (expectedLeaseOwner is not null
+            && (!string.Equals(job.LeaseOwner, expectedLeaseOwner, StringComparison.Ordinal)
+                || job.Attempt != expectedAttempt
+                || job.LeaseExpires is null
+                || job.LeaseExpires <= now))
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleSupersededException(
+                "The lifecycle processor lease changed before the provider mutation could be claimed.");
+        }
+        if (resource.TimeStampProvisioningRequested.HasValue)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleSupersededException(
+                "This durable provisioning intent was already claimed; provider create will not be reposted.");
+        }
+
+        worker.Status = EWorkerStatus.Provisioning;
+        worker.TimeStampUpdated = now;
+        deployment.Status = EDeploymentStatus.Provisioning;
+        deployment.Stage = "provider-create-ready";
+        deployment.TimeStampUpdated = now;
+        resource.TimeStampProvisioningRequested = now;
+        resource.TimeStampProvisioningResolved = null;
+        resource.TimeStampUpdated = now;
+        job.MaxAttempts = int.MaxValue;
+        auditWriter.Add(
+            dbContext,
+            EHostingAuditEventKind.DeploymentResourceProvisioningRequested,
+            "Provider resource provisioning requested.",
+            serverId: server.PrimaryKey,
+            deploymentId: deployment.PrimaryKey,
+            lifecycleJobId: job.PrimaryKey,
+            workerId: worker.PrimaryKey,
+            costOwnerId: deployment.CostOwnerFk,
+            details: $"Provider={provider.ProviderIdentifier}; Kind={resource.Kind}; "
+                     + $"Intent={resource.ProvisioningIntentIdentifier}",
+            costImpact: ECostImpact.StartsCost);
+
+        // The one-way bootstrap hash and provider-queryable intent are committed before the create call.
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<ProvisioningIntent> EnsureProvisioningIntentAsync(
         LifecycleJob job,
         GameServer server,
@@ -595,6 +927,23 @@ internal sealed class LifecycleJobExecutor(
         IRuntimeProvider provider,
         CancellationToken cancellationToken)
     {
+        await using var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        // The aggregate was loaded before the cross-process server lock was acquired. Refresh both collections so a
+        // waiter sees reservations and provider-request markers committed by the lock holder. A normal tracking query
+        // only adds missing entities and does not overwrite stale values on rows that were already tracked.
+        await ReloadDeploymentProviderStateAsync(deployment.PrimaryKey, cancellationToken).ConfigureAwait(false);
+        if (job.Status is not ELifecycleJobStatus.Running
+            || deployment.IsProvisioningBlocked
+            || deployment.TimeStampResolved.HasValue)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleSupersededException(
+                "Provisioning intent persistence was superseded by durable stop or termination state.");
+        }
+
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         var worker = deployment.Workers.SingleOrDefault(q => q.TimeStampStopped == null);
         if (worker is null)
@@ -661,6 +1010,7 @@ internal sealed class LifecycleJobExecutor(
         deployment.Stage = "provider-intent-persisted";
         deployment.TimeStampUpdated = now;
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return new ProvisioningIntent(worker, resource, parsedIntent);
     }
 
@@ -700,6 +1050,23 @@ internal sealed class LifecycleJobExecutor(
                 throw new LifecycleExecutionException(
                     observation.Error ?? "Provider observation is degraded; allocation remains unresolved.");
             }
+            if (observation.Resource.HasConfirmedOperationalFault)
+            {
+                throw new ProviderResourceGraphFaultException(
+                    "provider-resource-operational-fault",
+                    "Provider observation confirmed that the primary runtime resource is no longer operational.");
+            }
+            if (observation.Resource.OperationalState is ERuntimeResourceOperationalState.Uncertain)
+            {
+                resource.State = EDeploymentResourceState.Unknown;
+                resource.PossibleCost = true;
+                deployment.Stage = "provider-operational-state-pending";
+                deployment.PossibleCost = true;
+                deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                throw new LifecycleExecutionException(
+                    "The provider has not yet reported a conclusive operational state for the primary runtime resource.");
+            }
             return observation.Resource;
         }
 
@@ -733,12 +1100,18 @@ internal sealed class LifecycleJobExecutor(
             if (resource.TimeStampProvisioningRequested.HasValue
                 && resource.TimeStampProvisioningResolved is null)
             {
-                MarkUnallocatedProvisioningIntentResolved(resource);
+                resource.State = EDeploymentResourceState.Unknown;
+                resource.PossibleCost = true;
+                resource.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                deployment.PossibleCost = true;
+                deployment.Stage = "provider-create-not-observed";
+                deployment.TimeStampUpdated = resource.TimeStampUpdated;
+                job.MaxAttempts = int.MaxValue;
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 throw new ProviderResourceGraphFaultException(
                     "provider-create-not-observed",
-                    "Stable provider-wide discovery found no resource for the issued create intent; the deployment "
-                    + "must enter verified fault teardown without reposting create.");
+                    "Provider-wide discovery has not observed the issued create intent. The intent remains unresolved "
+                    + "and must stay under reconciliation without reposting create.");
             }
             resource.TimeStampProvisioningResolved ??= NodaSystemClock.Instance.GetCurrentInstant();
             resource.TimeStampUpdated = resource.TimeStampProvisioningResolved.Value;
@@ -754,7 +1127,6 @@ internal sealed class LifecycleJobExecutor(
         {
             await AdoptDiscoveredResourcesAsync(deployment, provider, matches, resource, cancellationToken)
                 .ConfigureAwait(false);
-            MarkUnallocatedProvisioningIntentResolved(resource);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             throw new ProviderResourceGraphFaultException(
                 "provider-resource-graph-duplicate",
@@ -765,7 +1137,6 @@ internal sealed class LifecycleJobExecutor(
         {
             await AdoptDiscoveredResourcesAsync(deployment, provider, matches, resource, cancellationToken)
                 .ConfigureAwait(false);
-            MarkUnallocatedProvisioningIntentResolved(resource);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             throw new ProviderResourceGraphFaultException(
                 "provider-resource-graph-attribution-conflict",
@@ -790,7 +1161,6 @@ internal sealed class LifecycleJobExecutor(
                 throw new ConfirmedRuntimeMissingException(
                     "Provider-wide discovery confirmed that the primary runtime resource is absent.");
             }
-            MarkUnallocatedProvisioningIntentResolved(resource);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             throw new ProviderResourceGraphFaultException(
                 "provider-resource-graph-incomplete",
@@ -822,20 +1192,27 @@ internal sealed class LifecycleJobExecutor(
             throw new LifecycleExecutionException(
                 "Provider discovery did not return one unambiguous primary runtime resource for the intent.");
         }
-        return primaryMatches[0];
-    }
-
-    private static void MarkUnallocatedProvisioningIntentResolved(DeploymentResource resource)
-    {
-        if (resource.ProviderResourceIdentifier is not null)
-            return;
-
-        var now = NodaSystemClock.Instance.GetCurrentInstant();
-        resource.State = EDeploymentResourceState.Released;
-        resource.PossibleCost = false;
-        resource.TimeStampProvisioningResolved = now;
-        resource.TimeStampReleased = now;
-        resource.TimeStampUpdated = now;
+        var primary = primaryMatches[0];
+        if (primary.HasConfirmedOperationalFault)
+        {
+            throw new ProviderResourceGraphFaultException(
+                "provider-resource-operational-fault",
+                "Provider discovery confirmed that the primary runtime resource is no longer operational.");
+        }
+        if (primary.OperationalState is ERuntimeResourceOperationalState.Uncertain)
+        {
+            resource.State = EDeploymentResourceState.Unknown;
+            resource.PossibleCost = true;
+            resource.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+            deployment.Stage = "provider-operational-state-pending";
+            deployment.PossibleCost = true;
+            deployment.TimeStampUpdated = resource.TimeStampUpdated;
+            job.MaxAttempts = int.MaxValue;
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleExecutionException(
+                "The provider has not yet reported a conclusive operational state for the primary runtime resource.");
+        }
+        return primary;
     }
 
     private async Task PublishAllocatedResourceAsync(
@@ -847,7 +1224,18 @@ internal sealed class LifecycleJobExecutor(
         RuntimeResource observed,
         CancellationToken cancellationToken)
     {
-        await ThrowIfProvisioningBlockedAsync(deployment.PrimaryKey, cancellationToken).ConfigureAwait(false);
+        await using var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        if (job.Status is not ELifecycleJobStatus.Running
+            || deployment.IsProvisioningBlocked
+            || deployment.TimeStampResolved.HasValue)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleSupersededException(
+                "Publishing provider allocation was superseded by durable stop or termination state.");
+        }
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         resource.ProviderResourceIdentifier = observed.ResourceIdentifier;
         resource.Kind = observed.ResourceType;
@@ -875,6 +1263,7 @@ internal sealed class LifecycleJobExecutor(
             details: $"Provider={resource.ProviderIdentifier}; Kind={resource.Kind}; Identity={resource.ProviderResourceIdentifier}",
             costImpact: observed.IsPotentiallyCostGenerating ? ECostImpact.StartsCost : ECostImpact.NoCostImpact);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<WorkerCommand> EnsureCommandPersistedAsync(
@@ -883,9 +1272,37 @@ internal sealed class LifecycleJobExecutor(
         LifecycleWorker worker,
         CancellationToken cancellationToken)
     {
-        var existing = job.WorkerCommands.SingleOrDefault();
+        await using var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        var deployment = await dbContext.GameServerDeployments
+            .SingleAsync(q => q.PrimaryKey == job.DeploymentFk, cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        var stopCommandIsStillAuthorized = job.Kind is ELifecycleJobKind.Stop
+                                           && deployment.Status is (EDeploymentStatus.Stopping
+                                               or EDeploymentStatus.PreservationFailed);
+        if (job.Status is not ELifecycleJobStatus.Running
+            || deployment.TimeStampResolved.HasValue
+            || deployment.Status is EDeploymentStatus.Terminating
+                or EDeploymentStatus.TerminatingDueToFault
+                or EDeploymentStatus.Terminated
+                or EDeploymentStatus.TerminatedDueToFault
+            || deployment.IsProvisioningBlocked && !stopCommandIsStillAuthorized)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleSupersededException(
+                "Worker command creation was superseded by durable stop or termination state.");
+        }
+
+        var existing = await dbContext.WorkerCommands
+            .SingleOrDefaultAsync(q => q.LifecycleJobFk == job.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
         if (existing is not null)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             return existing;
+        }
 
         var sequence = (await dbContext.WorkerCommands
             .Where(q => q.DeploymentFk == job.DeploymentFk)
@@ -927,6 +1344,7 @@ internal sealed class LifecycleJobExecutor(
             workerId: worker.PrimaryKey,
             workerCommandId: command.PrimaryKey);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return command;
     }
 
@@ -1016,6 +1434,48 @@ internal sealed class LifecycleJobExecutor(
         string faultMessage,
         CancellationToken cancellationToken)
     {
+        var isPostgreSql = dbContext.Database.ProviderName?.Contains(
+            "Npgsql",
+            StringComparison.OrdinalIgnoreCase) == true;
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                isPostgreSql ? IsolationLevel.ReadCommitted : IsolationLevel.Serializable,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (isPostgreSql)
+        {
+            await dbContext.GameServers
+                .FromSqlInterpolated(
+                    $"""SELECT * FROM "GameServers" WHERE "PrimaryKey" = {server.PrimaryKey} FOR UPDATE""")
+                .LoadAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"""UPDATE "GameServers" SET "TimeStampUpdated" = "TimeStampUpdated" WHERE "PrimaryKey" = {server.PrimaryKey}""",
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        var existingTermination = await dbContext.LifecycleJobs.AnyAsync(
+                q => q.DeploymentFk == deployment.PrimaryKey
+                     && q.Kind == ELifecycleJobKind.Terminate
+                     && (q.Status == ELifecycleJobStatus.Queued
+                         || q.Status == ELifecycleJobStatus.Running
+                         || q.Status == ELifecycleJobStatus.RetryPending
+                         || q.Status == ELifecycleJobStatus.WaitingForWorker),
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (existingTermination
+            || deployment.TimeStampResolved.HasValue
+            || deployment.Status is EDeploymentStatus.Terminating or EDeploymentStatus.Terminated)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleSupersededException(
+                "A durable Terminate action already owns provider teardown for this deployment.");
+        }
+
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         deployment.IsProvisioningBlocked = true;
         deployment.Status = EDeploymentStatus.TerminatingDueToFault;
@@ -1039,6 +1499,7 @@ internal sealed class LifecycleJobExecutor(
             details: faultMessage,
             costImpact: deployment.PossibleCost ? ECostImpact.StopsCost : ECostImpact.NoCostImpact);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         await CollectBoundedFaultEvidenceAsync(job, server, deployment, worker, cancellationToken)
             .ConfigureAwait(false);
         deployment.Stage = "provider-teardown";
@@ -1280,6 +1741,25 @@ internal sealed class LifecycleJobExecutor(
         bool faultTriggered,
         CancellationToken cancellationToken)
     {
+        if (!terminate)
+        {
+            var preservationSucceeded = await dbContext.WorkerCommands.AnyAsync(
+                    q => q.LifecycleJobFk == job.PrimaryKey
+                         && q.DeploymentFk == deployment.PrimaryKey
+                         && q.Status == EWorkerCommandStatus.Succeeded
+                         && q.ActionIdentifier == GameServerActions.Stop,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (!preservationSucceeded)
+            {
+                deployment.Stage = "worker-stop-preservation-not-confirmed";
+                deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                throw new LifecycleExecutionException(
+                    "Provider teardown is blocked until the ordinary Stop command and preservation publish succeed.");
+            }
+        }
+
         var provider = ResolveProvider(server.RuntimeProviderIdentifier);
         var discovery = await provider.DiscoverAsync(cancellationToken).ConfigureAwait(false);
         if (!discovery.Succeeded)
@@ -1424,41 +1904,108 @@ internal sealed class LifecycleJobExecutor(
                 "A late provider resource was adopted and remains pending automatic cleanup.");
         }
 
-        var now = NodaSystemClock.Instance.GetCurrentInstant();
-        if (worker is not null)
+        // Provider calls cannot participate in the database transaction. Re-enter the server mutation lock before
+        // publishing the terminal state so a Terminate committed during deletion always wins over an older Stop.
+        await using var finalizationTransaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        if (deployment.TimeStampResolved.HasValue)
         {
-            workerCredentialService.RevokeWorkerCredential(worker, now);
-            worker.Status = EWorkerStatus.Offline;
-            worker.ProcessId = null;
-            worker.ProcessStartedAt = null;
-            worker.TimeStampStopped ??= now;
-            worker.TimeStampUpdated = now;
+            await finalizationTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var hasActiveTerminate = await dbContext.LifecycleJobs.AnyAsync(
+                q => q.DeploymentFk == deployment.PrimaryKey
+                     && q.Kind == ELifecycleJobKind.Terminate
+                     && (q.Status == ELifecycleJobStatus.Queued
+                         || q.Status == ELifecycleJobStatus.Running
+                         || q.Status == ELifecycleJobStatus.RetryPending
+                         || q.Status == ELifecycleJobStatus.WaitingForWorker),
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (job.Kind is not ELifecycleJobKind.Terminate && hasActiveTerminate)
+        {
+            // Provider cleanup performed by an older Stop/fault path is useful, but the durable Terminate job owns
+            // terminal publication. Letting it finish also prevents its in-flight provider result from overwriting
+            // freshly resolved metadata.
+            await finalizationTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return;
+        }
+        var effectiveTerminate = terminate
+                                 || hasActiveTerminate
+                                 || deployment.Status is EDeploymentStatus.Terminating
+                                     or EDeploymentStatus.TerminatingDueToFault;
+        var effectiveFaultTriggered = deployment.Status == EDeploymentStatus.TerminatingDueToFault
+                                      || faultTriggered && deployment.Status != EDeploymentStatus.Terminating;
+        if (!effectiveTerminate)
+        {
+            var preservationStillSucceeded = await dbContext.WorkerCommands.AnyAsync(
+                    q => q.LifecycleJobFk == job.PrimaryKey
+                         && q.DeploymentFk == deployment.PrimaryKey
+                         && q.Status == EWorkerCommandStatus.Succeeded
+                         && q.ActionIdentifier == GameServerActions.Stop,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (!preservationStillSucceeded)
+            {
+                await finalizationTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                throw new LifecycleExecutionException(
+                    "Ordinary Stop lost its durable preservation evidence before terminal finalization.");
+            }
+        }
+        var activeWorkerId = await dbContext.LifecycleWorkers
+            .AsNoTracking()
+            .Where(q => q.DeploymentFk == deployment.PrimaryKey && q.TimeStampStopped == null)
+            .Select(q => (Guid?) q.PrimaryKey)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        LifecycleWorker? activeWorker = null;
+        if (activeWorkerId.HasValue)
+        {
+            activeWorker = await dbContext.LifecycleWorkers
+                .SingleAsync(q => q.PrimaryKey == activeWorkerId.Value, cancellationToken)
+                .ConfigureAwait(false);
+            await dbContext.Entry(activeWorker).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        if (activeWorker is not null)
+        {
+            workerCredentialService.RevokeWorkerCredential(activeWorker, now);
+            activeWorker.Status = EWorkerStatus.Offline;
+            activeWorker.ProcessId = null;
+            activeWorker.ProcessStartedAt = null;
+            activeWorker.TimeStampStopped ??= now;
+            activeWorker.TimeStampUpdated = now;
         }
         var hadPossibleCost = deployment.PossibleCost;
         deployment.PossibleCost = false;
-        deployment.Status = terminate
-            ? faultTriggered ? EDeploymentStatus.TerminatedDueToFault : EDeploymentStatus.Terminated
+        deployment.Status = effectiveTerminate
+            ? effectiveFaultTriggered ? EDeploymentStatus.TerminatedDueToFault : EDeploymentStatus.Terminated
             : EDeploymentStatus.Stopped;
-        deployment.Stage = terminate
-            ? faultTriggered ? "terminated-due-to-fault" : "terminated"
+        deployment.Stage = effectiveTerminate
+            ? effectiveFaultTriggered ? "terminated-due-to-fault" : "terminated"
             : "stopped";
         deployment.TimeStampResolved = now;
         deployment.TimeStampUpdated = now;
         auditWriter.Add(
             dbContext,
-            terminate ? EHostingAuditEventKind.DeploymentTerminated : EHostingAuditEventKind.DeploymentStopped,
-            terminate
-                ? faultTriggered
+            effectiveTerminate ? EHostingAuditEventKind.DeploymentTerminated : EHostingAuditEventKind.DeploymentStopped,
+            effectiveTerminate
+                ? effectiveFaultTriggered
                     ? "Deployment terminated after a fault; provider resources are verified non-billable."
                     : "Deployment terminated; provider resources are verified non-billable."
                 : "Deployment stopped; provider resources are verified non-billable.",
             serverId: server.PrimaryKey,
             deploymentId: deployment.PrimaryKey,
             lifecycleJobId: job.PrimaryKey,
-            workerId: worker?.PrimaryKey,
+            workerId: activeWorker?.PrimaryKey,
             costOwnerId: deployment.CostOwnerFk,
             costImpact: hadPossibleCost ? ECostImpact.StopsCost : ECostImpact.NoCostImpact);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await finalizationTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task AdoptDiscoveredResourcesAsync(
@@ -1466,7 +2013,8 @@ internal sealed class LifecycleJobExecutor(
         IRuntimeProvider provider,
         IReadOnlyCollection<RuntimeResource> discovered,
         DeploymentResource? placeholder,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool updateDeploymentCostState = true)
     {
         foreach (var observed in discovered)
         {
@@ -1518,7 +2066,11 @@ internal sealed class LifecycleJobExecutor(
                 existing.TimeStampReleased = null;
             else
                 existing.TimeStampReleased ??= existing.TimeStampObserved;
-            deployment.PossibleCost |= observed.IsPotentiallyCostGenerating;
+            // Provider-result settlement can race unrelated deployment summary updates from reconciliation. Its first
+            // responsibility is to make every concrete provider identifier durable; the resource-level PossibleCost
+            // flag is authoritative and must not be rolled back by a deployment concurrency-token conflict.
+            if (updateDeploymentCostState)
+                deployment.PossibleCost |= observed.IsPotentiallyCostGenerating;
             if (newlyDiscovered && !resolvedPlaceholder)
             {
                 auditWriter.Add(
@@ -1631,6 +2183,55 @@ internal sealed class LifecycleJobExecutor(
         string failureMessage,
         CancellationToken cancellationToken)
     {
+        var isPostgreSql = dbContext.Database.ProviderName?.Contains(
+            "Npgsql",
+            StringComparison.OrdinalIgnoreCase) == true;
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+                isPostgreSql ? IsolationLevel.ReadCommitted : IsolationLevel.Serializable,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (isPostgreSql)
+        {
+            await dbContext.GameServers
+                .FromSqlInterpolated(
+                    $"""SELECT * FROM "GameServers" WHERE "PrimaryKey" = {server.PrimaryKey} FOR UPDATE""")
+                .LoadAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"""UPDATE "GameServers" SET "TimeStampUpdated" = "TimeStampUpdated" WHERE "PrimaryKey" = {server.PrimaryKey}""",
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        await ReloadDeploymentProviderStateAsync(deployment.PrimaryKey, cancellationToken).ConfigureAwait(false);
+        var providerMutationMayExist = deployment.PossibleCost
+                                       || await dbContext.DeploymentResources
+                                           .AsNoTracking()
+                                           .AnyAsync(
+                                               q => q.DeploymentFk == deployment.PrimaryKey
+                                                    && q.TimeStampReleased == null
+                                                    && (q.ProviderResourceIdentifier != null
+                                                        || q.PossibleCost
+                                                        || (q.TimeStampProvisioningRequested != null
+                                                            && q.TimeStampProvisioningResolved == null)),
+                                               cancellationToken)
+                                           .ConfigureAwait(false);
+        if (providerMutationMayExist)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleSupersededException(
+                "Start rejection cannot publish a no-cost terminal state while a provider mutation remains unresolved.");
+        }
+        if (deployment.IsProvisioningBlocked || deployment.TimeStampResolved.HasValue)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            throw new LifecycleSupersededException(
+                "A durable stop or termination transition superseded start rejection.");
+        }
+
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         deployment.Status = EDeploymentStatus.Failed;
         deployment.Stage = "start-revalidation-failed";
@@ -1663,7 +2264,73 @@ internal sealed class LifecycleJobExecutor(
             details: deployment.FaultMessage,
             costImpact: ECostImpact.NoCostImpact);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         throw new PermanentLifecycleExecutionException(deployment.FaultMessage, deployment.FaultCode);
+    }
+
+    private async Task<IDbContextTransaction> BeginServerMutationAsync(
+        Guid serverId,
+        CancellationToken cancellationToken)
+    {
+        var isPostgreSql = dbContext.Database.ProviderName?.Contains(
+            "Npgsql",
+            StringComparison.OrdinalIgnoreCase) == true;
+        var transaction = await dbContext.Database.BeginTransactionAsync(
+                isPostgreSql ? IsolationLevel.ReadCommitted : IsolationLevel.Serializable,
+                cancellationToken)
+            .ConfigureAwait(false);
+        try
+        {
+            if (isPostgreSql)
+            {
+                await dbContext.GameServers
+                    .FromSqlInterpolated(
+                        $"""SELECT * FROM "GameServers" WHERE "PrimaryKey" = {serverId} FOR UPDATE""")
+                    .LoadAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                        $"""UPDATE "GameServers" SET "TimeStampUpdated" = "TimeStampUpdated" WHERE "PrimaryKey" = {serverId}""",
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            return transaction;
+        }
+        catch
+        {
+            await transaction.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private async Task ReloadDeploymentProviderStateAsync(
+        Guid deploymentId,
+        CancellationToken cancellationToken)
+    {
+        await dbContext.LifecycleWorkers
+            .Where(q => q.DeploymentFk == deploymentId)
+            .LoadAsync(cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.DeploymentResources
+            .Where(q => q.DeploymentFk == deploymentId)
+            .LoadAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var workerEntries = dbContext.ChangeTracker
+            .Entries<LifecycleWorker>()
+            .Where(q => q.Entity.DeploymentFk == deploymentId && q.State is not EntityState.Added)
+            .ToArray();
+        foreach (var workerEntry in workerEntries)
+            await workerEntry.ReloadAsync(cancellationToken).ConfigureAwait(false);
+
+        var resourceEntries = dbContext.ChangeTracker
+            .Entries<DeploymentResource>()
+            .Where(q => q.Entity.DeploymentFk == deploymentId && q.State is not EntityState.Added)
+            .ToArray();
+        foreach (var resourceEntry in resourceEntries)
+            await resourceEntry.ReloadAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task ThrowIfProvisioningBlockedAsync(Guid deploymentId, CancellationToken cancellationToken)

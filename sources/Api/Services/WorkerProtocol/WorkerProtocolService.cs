@@ -372,6 +372,27 @@ internal sealed class WorkerProtocolService(
     {
         stage = BoundStage(stage);
         await using var transaction = await BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        var serverId = await dbContext.GameServerDeployments
+            .AsNoTracking()
+            .Where(q => q.PrimaryKey == deploymentId)
+            .Select(q => (Guid?)q.GameServerFk)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false)
+                       ?? throw new WorkerProtocolNotFoundException("The assigned deployment does not exist.");
+        if (IsPostgreSql)
+        {
+            await dbContext.GameServers
+                .FromSqlInterpolated($"""SELECT * FROM "GameServers" WHERE "PrimaryKey" = {serverId} FOR UPDATE""")
+                .LoadAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"""UPDATE "GameServers" SET "TimeStampUpdated" = "TimeStampUpdated" WHERE "PrimaryKey" = {serverId}""",
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         var worker = await AuthenticateWorkerAsync(
                 workerId,

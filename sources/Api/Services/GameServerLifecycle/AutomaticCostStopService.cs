@@ -51,11 +51,22 @@ internal sealed class AutomaticCostStopService(
                 .LoadAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
+        else
+        {
+            // SQLite has no row-level FOR UPDATE. Obtain its serializable writer lock on the same durable server
+            // row used by lifecycle requests and provider-create guards before evaluating the fault transition.
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"""UPDATE "GameServers" SET "TimeStampUpdated" = "TimeStampUpdated" WHERE "PrimaryKey" = {serverId.Value}""",
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         var deployment = await dbContext.GameServerDeployments
-            .Include(q => q.GameServer)
             .SingleAsync(q => q.PrimaryKey == deploymentId, cancellationToken)
             .ConfigureAwait(false);
+        // This service can share a scoped context with a reconciler that loaded the deployment before a concurrent
+        // user Terminate committed. Refresh under the server lock so stale tracked state cannot overwrite that action.
+        await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
         if (deployment.TimeStampResolved is not null)
         {
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -72,6 +83,15 @@ internal sealed class AutomaticCostStopService(
                 cancellationToken)
             .ConfigureAwait(false);
 
+        // A queued user Terminate has intentionally different semantics from an automatic fault stop: it skips
+        // worker evidence and preservation. Preserve that immutable request mode instead of rewriting the deployment
+        // underneath the already queued job.
+        if (existingTermination)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return false;
+        }
+
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         deployment.IsProvisioningBlocked = true;
         deployment.Status = EDeploymentStatus.TerminatingDueToFault;
@@ -81,12 +101,6 @@ internal sealed class AutomaticCostStopService(
         deployment.FaultMessage ??= sanitizedMessage;
         deployment.TimeStampFaulted ??= now;
         deployment.TimeStampUpdated = now;
-        if (existingTermination)
-        {
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-            return false;
-        }
 
         await CancelNormalWorkAsync(deploymentId, now, cancellationToken).ConfigureAwait(false);
         var nextSequence = (await dbContext.LifecycleJobs

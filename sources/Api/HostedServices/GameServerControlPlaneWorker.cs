@@ -277,6 +277,8 @@ internal sealed class GameServerControlPlaneWorker(
             || _options.BootstrapCredentialLifetime <= _options.RegistrationGrace
             || _options.FaultEvidenceCollectionWindow <= TimeSpan.Zero
             || _options.FaultEvidenceCollectionWindow > TimeSpan.FromMinutes(10)
+            || _options.ProviderSettlementTimeout <= TimeSpan.Zero
+            || _options.ProviderSettlementTimeout > TimeSpan.FromMinutes(30)
             || _options.MaxConcurrentJobs <= 0
             || _options.MaxConcurrentNormalJobs <= 0
             || _options.MaxConcurrentNormalJobs >= _options.MaxConcurrentJobs

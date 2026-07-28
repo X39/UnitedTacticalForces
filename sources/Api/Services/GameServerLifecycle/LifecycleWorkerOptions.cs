@@ -17,6 +17,7 @@ public sealed class LifecycleWorkerOptions
     public TimeSpan WorkerCredentialLifetime { get; set; } = TimeSpan.FromDays(30);
     public TimeSpan HealthReconciliationInterval { get; set; } = TimeSpan.FromSeconds(15);
     public TimeSpan FaultEvidenceCollectionWindow { get; set; } = TimeSpan.FromSeconds(60);
+    public TimeSpan ProviderSettlementTimeout { get; set; } = TimeSpan.FromMinutes(5);
     public int MaxConcurrentJobs { get; set; } = 4;
     public int MaxConcurrentNormalJobs { get; set; } = 3;
     public TimeSpan IdlePollInterval { get; set; } = TimeSpan.FromSeconds(2);

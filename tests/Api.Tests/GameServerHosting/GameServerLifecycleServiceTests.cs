@@ -296,6 +296,48 @@ public sealed class GameServerLifecycleServiceTests
     }
 
     [Fact]
+    public async Task AutomaticCostStop_WithExistingUserTerminate_PreservesUserTerminateSemantics()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(
+            store.DbContext,
+            withActiveDeployment: true,
+            deploymentStatus: EDeploymentStatus.Running);
+        var service = HostingTestData.CreateLifecycleService(store.DbContext);
+        var principal = HostingTestData.ServerPrincipal(
+            seed.User,
+            seed.Server,
+            Claims.ResourceBased.Server.Operate);
+        var terminate = await service.EnqueueActionAsync(
+            seed.Server.PrimaryKey,
+            GameServerActions.Terminate,
+            seed.Server.Title,
+            principal);
+        var automaticCostStop = new AutomaticCostStopService(store.DbContext, new HostingAuditWriter());
+
+        var queuedAutomaticTermination = await automaticCostStop.TriggerAsync(
+            seed.Deployment!.PrimaryKey,
+            "worker-control-lost",
+            "The worker heartbeat became stale.");
+
+        store.DbContext.ChangeTracker.Clear();
+        var deployment = await store.DbContext.GameServerDeployments
+            .SingleAsync(q => q.PrimaryKey == seed.Deployment.PrimaryKey);
+        var persistedTerminate = await store.DbContext.LifecycleJobs
+            .SingleAsync(q => q.PrimaryKey == terminate.PrimaryKey);
+        Assert.False(queuedAutomaticTermination);
+        Assert.Equal(EDeploymentStatus.Terminating, deployment.Status);
+        Assert.Equal("termination-requested", deployment.Stage);
+        Assert.Null(deployment.FaultCode);
+        Assert.Null(deployment.FaultMessage);
+        Assert.Equal(seed.User.PrimaryKey, persistedTerminate.RequestedByFk);
+        Assert.Equal(ELifecycleJobStatus.Queued, persistedTerminate.Status);
+        Assert.Single(await store.DbContext.LifecycleJobs
+            .Where(q => q.DeploymentFk == deployment.PrimaryKey && q.Kind == ELifecycleJobKind.Terminate)
+            .ToArrayAsync());
+    }
+
+    [Fact]
     public async Task Retry_SupersedesFailedJobAndRetainsAttemptHistory()
     {
         await using var store = await HostingTestStore.CreateAsync();

@@ -1,4 +1,6 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
@@ -18,15 +20,18 @@ internal sealed class ProviderResourceReconciler(
     DatabaseContext dbContext,
     IEnumerable<IRuntimeProvider> providers,
     IHostingAuditWriter auditWriter,
+    IAutomaticCostStopService automaticCostStopService,
     IWorkerCredentialService workerCredentialService,
     IOptions<ProviderReconciliationOptions> options,
+    IOptions<LifecycleWorkerOptions> lifecycleOptions,
     ILogger<ProviderResourceReconciler> logger) : IProviderResourceReconciler
 {
     private readonly ProviderReconciliationOptions _options = options.Value;
+    private readonly LifecycleWorkerOptions _lifecycleOptions = lifecycleOptions.Value;
 
     public async Task ReconcileAllAsync(CancellationToken cancellationToken = default)
     {
-        _options.Validate();
+        _options.ValidateAgainstProviderSettlement(_lifecycleOptions.ProviderSettlementTimeout);
         foreach (var provider in providers)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -114,6 +119,8 @@ internal sealed class ProviderResourceReconciler(
             .Include(q => q.GameServer)
             .Include(q => q.Resources)
             .Include(q => q.Workers)
+            .Include(q => q.LifecycleJobs)
+            .ThenInclude(q => q.WorkerCommands)
             .Where(q => relevantDeploymentIds.Contains(q.PrimaryKey))
             .ToDictionaryAsync(q => q.PrimaryKey, cancellationToken)
             .ConfigureAwait(false);
@@ -140,6 +147,37 @@ internal sealed class ProviderResourceReconciler(
         var danglingCleanup = new List<DanglingProviderResourceIncident>();
         var reopenedDeployments = new Dictionary<Guid, ReopenedDeployment>();
         var discoveredKeys = new HashSet<string>(StringComparer.Ordinal);
+
+        var duplicateGraphKinds = discovery.Resources
+            .Where(q => string.Equals(
+                            q.ProviderIdentifier,
+                            provider.ProviderIdentifier,
+                            StringComparison.OrdinalIgnoreCase)
+                        && q.IsPlatformManaged
+                        && q.HasTrustworthyAttribution
+                        && q.Attribution?.DeploymentId.HasValue == true
+                        && q.Attribution.ProvisioningIntentId.HasValue)
+            .GroupBy(q => new
+            {
+                DeploymentId = q.Attribution!.DeploymentId!.Value,
+                IntentId = q.Attribution.ProvisioningIntentId!.Value,
+                ResourceType = q.ResourceType.ToUpperInvariant(),
+            })
+            .Where(q => q.Count() > 1)
+            .ToArray();
+        foreach (var duplicate in duplicateGraphKinds)
+        {
+            if (!deployments.TryGetValue(duplicate.Key.DeploymentId, out var deployment))
+                continue;
+            var observed = duplicate.First();
+            await MarkRunningDeploymentGraphFaultAsync(
+                    deployment,
+                    observed,
+                    "provider-resource-graph-duplicate",
+                    $"Provider discovery returned more than one {observed.ResourceType} for one provisioning intent.",
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         foreach (var group in discovery.Resources.GroupBy(ResourceKey, StringComparer.Ordinal))
         {
@@ -176,11 +214,13 @@ internal sealed class ProviderResourceReconciler(
                     existing.PossibleCost = true;
                     existing.TimeStampObserved = NodaSystemClock.Instance.GetCurrentInstant();
                     existing.TimeStampUpdated = existing.TimeStampObserved.Value;
-                    MarkRunningDeploymentGraphFault(
-                        deployment,
-                        observed,
-                        "provider-attribution-conflict",
-                        "Provider attribution conflicts with the durable deployment resource inventory.");
+                    await MarkRunningDeploymentGraphFaultAsync(
+                            deployment,
+                            observed,
+                            "provider-attribution-conflict",
+                            "Provider attribution conflicts with the durable deployment resource inventory.",
+                            cancellationToken)
+                        .ConfigureAwait(false);
                     auditWriter.Add(
                         dbContext,
                         EHostingAuditEventKind.ProviderReconciliationDegraded,
@@ -195,7 +235,8 @@ internal sealed class ProviderResourceReconciler(
 
                 UpdateResourceObservation(existing, observed);
                 deployment.PossibleCost |= observed.IsPotentiallyCostGenerating;
-                MarkRunningDeploymentReadinessFault(deployment, observed);
+                await MarkRunningDeploymentReadinessFaultAsync(deployment, observed, cancellationToken)
+                    .ConfigureAwait(false);
                 if (ShouldRelease(deployment))
                 {
                     RestoreLateCleanupState(
@@ -215,20 +256,48 @@ internal sealed class ProviderResourceReconciler(
                 validCostOwnerIds);
             if (link is not null)
             {
-                existing = AdoptResource(provider, observed, link.Deployment, providerResources);
-                MarkRunningDeploymentReadinessFault(link.Deployment, observed);
-                auditWriter.Add(
-                    dbContext,
-                    EHostingAuditEventKind.DeploymentResourceAdopted,
-                    "A late provider resource was adopted into its attributed deployment.",
-                    serverId: link.Deployment.GameServerFk,
-                    deploymentId: link.Deployment.PrimaryKey,
-                    workerId: link.WorkerId,
-                    costOwnerId: link.Deployment.CostOwnerFk,
-                    details: ResourceDetails(provider, observed),
-                    costImpact: observed.IsPotentiallyCostGenerating
-                        ? ECostImpact.KeepsCostRunning
-                        : ECostImpact.NoCostImpact);
+                // Flush observations already staged by this scan, then serialize a new adoption with lifecycle result
+                // settlement. Both paths may learn about the same graph member at the same time; the lock-time reload
+                // prevents a duplicate insert from rolling back a provider result that only the executor can see.
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await using (var transaction = await BeginServerMutationAsync(
+                                 link.Deployment.GameServerFk,
+                                 cancellationToken)
+                                 .ConfigureAwait(false))
+                {
+                    await dbContext.Entry(link.Deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+                    await ReloadDeploymentResourcesAsync(link.Deployment.PrimaryKey, cancellationToken)
+                        .ConfigureAwait(false);
+                    existing = link.Deployment.Resources.SingleOrDefault(q => ResourceMatches(q, observed));
+                    if (existing is null)
+                    {
+                        existing = AdoptResource(provider, observed, link.Deployment, providerResources);
+                        auditWriter.Add(
+                            dbContext,
+                            EHostingAuditEventKind.DeploymentResourceAdopted,
+                            "A late provider resource was adopted into its attributed deployment.",
+                            serverId: link.Deployment.GameServerFk,
+                            deploymentId: link.Deployment.PrimaryKey,
+                            workerId: link.WorkerId,
+                            costOwnerId: link.Deployment.CostOwnerFk,
+                            details: ResourceDetails(provider, observed),
+                            costImpact: observed.IsPotentiallyCostGenerating
+                                ? ECostImpact.KeepsCostRunning
+                                : ECostImpact.NoCostImpact);
+                    }
+                    else
+                    {
+                        UpdateResourceObservation(existing, observed);
+                        link.Deployment.PossibleCost |= observed.IsPotentiallyCostGenerating;
+                        link.Deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                        if (providerResources.All(q => q.PrimaryKey != existing.PrimaryKey))
+                            providerResources.Add(existing);
+                    }
+                    await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                await MarkRunningDeploymentReadinessFaultAsync(link.Deployment, observed, cancellationToken)
+                    .ConfigureAwait(false);
                 if (ShouldRelease(link.Deployment))
                 {
                     RestoreLateCleanupState(
@@ -294,70 +363,100 @@ internal sealed class ProviderResourceReconciler(
                 discoveredKeys,
                 cancellationToken)
             .ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await ConfirmAbsentIssuedProvisioningIntentsAsync(
+                provider,
+                providerResources,
+                deployments,
+                discovery.Resources,
+                activeDeploymentIdsByServer,
+                reopenedDeployments,
+                cancellationToken)
+            .ConfigureAwait(false);
         var providerWideVerifiedDeploymentIds = await VerifyTeardownBarrierAsync(
                 provider,
                 deployments.Values,
                 cancellationToken)
             .ConfigureAwait(false);
-        FinalizeVerifiedTeardowns(
-            deployments.Values,
-            reopenedDeployments.Keys,
-            providerWideVerifiedDeploymentIds);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await FinalizeVerifiedTeardownsAsync(
+                deployments.Values,
+                reopenedDeployments.Keys,
+                providerWideVerifiedDeploymentIds,
+                cancellationToken)
+            .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private void MarkRunningDeploymentReadinessFault(
+    private async Task MarkRunningDeploymentReadinessFaultAsync(
         GameServerDeployment deployment,
-        RuntimeResource observed)
+        RuntimeResource observed,
+        CancellationToken cancellationToken)
     {
-        if (deployment.Status != EDeploymentStatus.Running
-            || observed.ProvisioningReadiness == ERuntimeResourceProvisioningReadiness.Ready)
+        if (deployment.Status != EDeploymentStatus.Running)
+            return;
+
+        if (observed.HasConfirmedOperationalFault)
         {
+            await MarkRunningDeploymentGraphFaultAsync(
+                    deployment,
+                    observed,
+                    "provider-resource-operational-fault",
+                    $"Provider state '{observed.ProviderState ?? "unknown"}' confirms that the "
+                    + $"{observed.ResourceType} is no longer operational.",
+                    cancellationToken)
+                .ConfigureAwait(false);
             return;
         }
+        if (observed.ProvisioningReadiness is ERuntimeResourceProvisioningReadiness.Ready
+            or ERuntimeResourceProvisioningReadiness.Pending)
+            return;
 
-        var relationship = observed.ProvisioningReadiness == ERuntimeResourceProvisioningReadiness.Conflict
-            ? "conflicts with the attributed deployment graph"
-            : "is no longer attached to the attributed deployment graph";
-        MarkRunningDeploymentGraphFault(
-            deployment,
-            observed,
-            "provider-resource-graph-drift",
-            $"A provider {observed.ResourceType} {relationship}.");
+        await MarkRunningDeploymentGraphFaultAsync(
+                deployment,
+                observed,
+                "provider-resource-graph-drift",
+                $"A provider {observed.ResourceType} conflicts with the attributed deployment graph.",
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
-    private void MarkRunningDeploymentGraphFault(
+    private async Task MarkRunningDeploymentGraphFaultAsync(
         GameServerDeployment deployment,
         RuntimeResource observed,
         string faultCode,
-        string faultMessage)
+        string faultMessage,
+        CancellationToken cancellationToken)
     {
-        if (deployment.Status != EDeploymentStatus.Running)
+        if (!IsExpectedActive(deployment))
         {
             deployment.PossibleCost = true;
-            deployment.Stage = faultCode;
             deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
             return;
         }
 
+        // The shared fault-stop service takes the same durable server lock as user lifecycle actions and provider
+        // creates. It reloads the deployment under that lock, so a concurrent user Terminate keeps its semantics.
+        var faultStopTriggered = await automaticCostStopService.TriggerAsync(
+                deployment.PrimaryKey,
+                faultCode,
+                faultMessage,
+                cancellationToken)
+            .ConfigureAwait(false);
         var now = NodaSystemClock.Instance.GetCurrentInstant();
-        deployment.IsProvisioningBlocked = true;
-        deployment.Status = EDeploymentStatus.TerminatingDueToFault;
-        deployment.Stage = "provider-graph-fault-cost-stop";
         deployment.PossibleCost = true;
-        deployment.FaultCode = faultCode;
-        deployment.FaultMessage = faultMessage;
-        deployment.TimeStampFaulted ??= now;
         deployment.TimeStampUpdated = now;
         auditWriter.Add(
             dbContext,
             EHostingAuditEventKind.ProviderReconciliationDegraded,
-            "Provider graph drift triggered provider-independent fault cost-stop.",
+            faultStopTriggered
+                ? "Provider graph drift triggered provider-independent fault cost-stop."
+                : "Provider graph drift was observed while an existing Terminate action retained teardown ownership.",
             serverId: deployment.GameServerFk,
             deploymentId: deployment.PrimaryKey,
             costOwnerId: deployment.CostOwnerFk,
             details: $"Kind={observed.ResourceType}; Identity={observed.ResourceIdentifier}; Failure={faultMessage}",
-            costImpact: ECostImpact.StopsCost);
+            costImpact: faultStopTriggered ? ECostImpact.StopsCost : ECostImpact.KeepsCostRunning);
     }
 
     private static ReconciliationLink? TryResolveLink(
@@ -678,12 +777,12 @@ internal sealed class ProviderResourceReconciler(
                 resource.TimeStampUpdated = now;
                 if (IsExpectedActive(deployment))
                 {
-                    deployment.IsProvisioningBlocked = true;
-                    deployment.Status = EDeploymentStatus.TerminatingDueToFault;
-                    deployment.Stage = "provider-resource-missing";
-                    deployment.FaultCode = "provider-resource-not-found";
-                    deployment.FaultMessage = "A required provider resource is confirmed absent.";
-                    deployment.TimeStampFaulted ??= now;
+                    await automaticCostStopService.TriggerAsync(
+                            deployment.PrimaryKey,
+                            "provider-resource-not-found",
+                            "A required provider resource is confirmed absent.",
+                            cancellationToken)
+                        .ConfigureAwait(false);
                 }
                 deployment.PossibleCost = deployment.Resources.Any(q =>
                     q.PrimaryKey != resource.PrimaryKey && q.TimeStampReleased == null && q.PossibleCost);
@@ -725,6 +824,150 @@ internal sealed class ProviderResourceReconciler(
                 deployment.TimeStampUpdated = now;
             }
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task ConfirmAbsentIssuedProvisioningIntentsAsync(
+        IRuntimeProvider provider,
+        IEnumerable<DeploymentResource> providerResources,
+        IReadOnlyDictionary<Guid, GameServerDeployment> deployments,
+        IReadOnlyCollection<RuntimeResource> discoveredResources,
+        IReadOnlyDictionary<Guid, HashSet<Guid>> activeDeploymentIdsByServer,
+        IDictionary<Guid, ReopenedDeployment> reopenedDeployments,
+        CancellationToken cancellationToken)
+    {
+        var confirmationWindow = Duration.FromTimeSpan(_options.AmbiguousCreateAbsenceConfirmationWindow);
+        var candidates = providerResources.Where(q =>
+                string.Equals(q.ProviderIdentifier, provider.ProviderIdentifier, StringComparison.OrdinalIgnoreCase)
+                && q.ProviderResourceIdentifier == null
+                && q.TimeStampProvisioningRequested.HasValue)
+            .ToArray();
+        foreach (var resource in candidates)
+        {
+            if (!deployments.TryGetValue(resource.DeploymentFk, out var deployment)
+                || !ShouldRelease(deployment))
+            {
+                continue;
+            }
+            var intentId = ParseIntent(resource);
+            var positiveEvidence = discoveredResources.FirstOrDefault(q =>
+                string.Equals(q.ProviderIdentifier, provider.ProviderIdentifier, StringComparison.OrdinalIgnoreCase)
+                && q.Attribution?.DeploymentId == deployment.PrimaryKey
+                && q.Attribution.ProvisioningIntentId == intentId
+                && (q.IsAllocated || q.IsPotentiallyCostGenerating));
+            if (positiveEvidence is null
+                && (resource.TimeStampProvisioningResolved.HasValue || resource.TimeStampReleased.HasValue))
+            {
+                continue;
+            }
+
+            await using var transaction = await BeginServerMutationAsync(
+                    deployment.GameServerFk,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Entry(resource).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            if (!string.Equals(
+                    resource.ProviderIdentifier,
+                    provider.ProviderIdentifier,
+                    StringComparison.OrdinalIgnoreCase)
+                || resource.ProviderResourceIdentifier is not null
+                || !resource.TimeStampProvisioningRequested.HasValue
+                || !ShouldRelease(deployment))
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            // The marker may be written by one API instance and evaluated by another. Use the shared database clock
+            // for both operations so host clock skew or a local clock correction cannot shorten the safety window.
+            var now = await GetDatabaseNowAsync(cancellationToken).ConfigureAwait(false);
+            if (positiveEvidence is not null)
+            {
+                // Positive evidence invalidates any earlier empty-observation window. Cleanup the concrete resource
+                // normally, then require two fresh empty confirmations. Reopen a synthetic absence closure if another
+                // reconciler instance won that race before this positive observation acquired the server lock.
+                var wasSyntheticallyClosed = resource.TimeStampProvisioningResolved.HasValue
+                                             || resource.TimeStampReleased.HasValue;
+                resource.State = EDeploymentResourceState.Unknown;
+                resource.PossibleCost = true;
+                resource.TimeStampObserved = null;
+                resource.TimeStampProvisioningResolved = null;
+                resource.TimeStampReleased = null;
+                resource.TimeStampUpdated = now;
+                RestoreLateCleanupState(
+                    deployment,
+                    positiveEvidence,
+                    activeDeploymentIdsByServer,
+                    reopenedDeployments);
+                if (wasSyntheticallyClosed)
+                {
+                    auditWriter.Add(
+                        dbContext,
+                        EHostingAuditEventKind.ProviderReconciliationDegraded,
+                        "Positive provider evidence reopened an issued create intent that had been confirmed absent.",
+                        serverId: deployment.GameServerFk,
+                        deploymentId: deployment.PrimaryKey,
+                        costOwnerId: deployment.CostOwnerFk,
+                        details: $"Provider={provider.ProviderIdentifier}; Intent={resource.ProvisioningIntentIdentifier}",
+                        costImpact: ECostImpact.KeepsCostRunning);
+                }
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            if (resource.TimeStampProvisioningResolved.HasValue || resource.TimeStampReleased.HasValue)
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+            if (!resource.TimeStampObserved.HasValue)
+            {
+                resource.TimeStampObserved = now;
+                resource.TimeStampUpdated = now;
+                deployment.Stage = "provider-create-absence-confirmation-pending";
+                deployment.PossibleCost = true;
+                deployment.TimeStampUpdated = now;
+                auditWriter.Add(
+                    dbContext,
+                    EHostingAuditEventKind.ProviderReconciliationDegraded,
+                    "Provider-wide discovery first observed an issued create intent absent; confirmation is pending.",
+                    serverId: deployment.GameServerFk,
+                    deploymentId: deployment.PrimaryKey,
+                    costOwnerId: deployment.CostOwnerFk,
+                    details: $"Provider={provider.ProviderIdentifier}; Intent={resource.ProvisioningIntentIdentifier}",
+                    costImpact: ECostImpact.Unknown);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+            if (now - resource.TimeStampObserved.Value < confirmationWindow)
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            resource.State = EDeploymentResourceState.Released;
+            resource.PossibleCost = false;
+            resource.TimeStampProvisioningResolved = now;
+            resource.TimeStampReleased = now;
+            resource.TimeStampUpdated = now;
+            deployment.PossibleCost = deployment.Resources.Any(q =>
+                q.PrimaryKey != resource.PrimaryKey && q.TimeStampReleased == null && q.PossibleCost);
+            deployment.Stage = "provider-create-confirmed-absent";
+            deployment.TimeStampUpdated = now;
+            auditWriter.Add(
+                dbContext,
+                EHostingAuditEventKind.DeploymentResourceReleased,
+                "Repeated provider-wide discovery confirmed that an issued create intent produced no resource.",
+                serverId: deployment.GameServerFk,
+                deploymentId: deployment.PrimaryKey,
+                costOwnerId: deployment.CostOwnerFk,
+                details: $"Provider={provider.ProviderIdentifier}; Intent={resource.ProvisioningIntentIdentifier}",
+                costImpact: ECostImpact.StopsCost);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -837,38 +1080,85 @@ internal sealed class ProviderResourceReconciler(
            && deployment.Status is (EDeploymentStatus.Stopping
                or EDeploymentStatus.Terminating
                or EDeploymentStatus.TerminatingDueToFault)
+           && IsProviderTeardownAuthorized(deployment)
            && deployment.Resources.All(q =>
                !q.PossibleCost
                && !(q.TimeStampProvisioningRequested.HasValue && !q.TimeStampProvisioningResolved.HasValue)
                && !(q.ProviderResourceIdentifier != null && !q.TimeStampReleased.HasValue));
 
-    private void FinalizeVerifiedTeardowns(
+    private async Task FinalizeVerifiedTeardownsAsync(
         IEnumerable<GameServerDeployment> deployments,
         IReadOnlyCollection<Guid> reopenedDeploymentIds,
-        IReadOnlySet<Guid> providerWideVerifiedDeploymentIds)
+        IReadOnlySet<Guid> providerWideVerifiedDeploymentIds,
+        CancellationToken cancellationToken)
     {
-        var now = NodaSystemClock.Instance.GetCurrentInstant();
         foreach (var deployment in deployments)
         {
+            if (!providerWideVerifiedDeploymentIds.Contains(deployment.PrimaryKey))
+                continue;
+
+            // Re-evaluate the durable state under the same per-server lock used by lifecycle requests and provider
+            // creates. In particular, a user Terminate committed during provider verification must not be finalized
+            // with the older ordinary-Stop semantics held by this reconciler context.
+            await using var transaction = await BeginServerMutationAsync(deployment.GameServerFk, cancellationToken)
+                .ConfigureAwait(false);
+            await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
             if (deployment.TimeStampResolved.HasValue
                 || deployment.Status is not (EDeploymentStatus.Stopping
                     or EDeploymentStatus.Terminating
                     or EDeploymentStatus.TerminatingDueToFault)
-                || !providerWideVerifiedDeploymentIds.Contains(deployment.PrimaryKey))
+                || !await IsProviderTeardownAuthorizedForFinalizationAsync(deployment, cancellationToken)
+                    .ConfigureAwait(false))
             {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
                 continue;
             }
-            if (deployment.Resources.Any(q =>
-                    q.PossibleCost
-                    || (q.TimeStampProvisioningRequested.HasValue && !q.TimeStampProvisioningResolved.HasValue)
-                    || (q.ProviderResourceIdentifier != null && !q.TimeStampReleased.HasValue)))
+            var now = NodaSystemClock.Instance.GetCurrentInstant();
+            var hasLiveRunningLifecycleOwner = await dbContext.LifecycleJobs.AnyAsync(
+                    q => q.DeploymentFk == deployment.PrimaryKey
+                         && q.Status == ELifecycleJobStatus.Running
+                         && q.LeaseOwner != null
+                         && q.LeaseExpires > now,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (hasLiveRunningLifecycleOwner)
             {
+                // Reconciliation may verify and release resources, but an executor that currently owns the durable
+                // job must publish terminal metadata after its in-flight provider call returns.
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+            var hasBlockingInventory = await dbContext.DeploymentResources
+                .AsNoTracking()
+                .AnyAsync(
+                    q => q.DeploymentFk == deployment.PrimaryKey
+                         && (q.PossibleCost
+                             || q.TimeStampProvisioningRequested.HasValue
+                             && !q.TimeStampProvisioningResolved.HasValue
+                             || q.ProviderResourceIdentifier != null && !q.TimeStampReleased.HasValue),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (hasBlockingInventory)
+            {
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
             var previousStatus = deployment.Status;
-            foreach (var worker in deployment.Workers.Where(q => q.TimeStampStopped == null))
+            var activeWorkerIds = await dbContext.LifecycleWorkers
+                .AsNoTracking()
+                .Where(q => q.DeploymentFk == deployment.PrimaryKey && q.TimeStampStopped == null)
+                .Select(q => q.PrimaryKey)
+                .ToArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var activeWorkerId in activeWorkerIds)
             {
+                var worker = await dbContext.LifecycleWorkers
+                    .SingleAsync(q => q.PrimaryKey == activeWorkerId, cancellationToken)
+                    .ConfigureAwait(false);
+                await dbContext.Entry(worker).ReloadAsync(cancellationToken).ConfigureAwait(false);
+                if (worker.TimeStampStopped.HasValue)
+                    continue;
                 workerCredentialService.RevokeWorkerCredential(worker, now);
                 worker.Status = EWorkerStatus.Offline;
                 worker.ProcessId = null;
@@ -904,7 +1194,98 @@ internal sealed class ProviderResourceReconciler(
                 deploymentId: deployment.PrimaryKey,
                 costOwnerId: deployment.CostOwnerFk,
                 costImpact: ECostImpact.StopsCost);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task<bool> IsProviderTeardownAuthorizedForFinalizationAsync(
+        GameServerDeployment deployment,
+        CancellationToken cancellationToken)
+    {
+        if (deployment.Status is EDeploymentStatus.Terminating or EDeploymentStatus.TerminatingDueToFault)
+            return true;
+        if (deployment.Status != EDeploymentStatus.Stopping)
+            return false;
+        if (string.Equals(deployment.Stage, "late-provider-resource-cleanup", StringComparison.Ordinal))
+            return true;
+        return await dbContext.LifecycleJobs.AnyAsync(
+                q => q.DeploymentFk == deployment.PrimaryKey
+                     && q.Kind == ELifecycleJobKind.Stop
+                     && q.ActionIdentifier == GameServerActions.Stop
+                     && q.WorkerCommands.Any(command =>
+                         command.ActionIdentifier == GameServerActions.Stop
+                         && command.Status == EWorkerCommandStatus.Succeeded),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<IDbContextTransaction> BeginServerMutationAsync(
+        Guid serverId,
+        CancellationToken cancellationToken)
+    {
+        var isPostgreSql = dbContext.Database.ProviderName?.Contains(
+            "Npgsql",
+            StringComparison.OrdinalIgnoreCase) == true;
+        var transaction = await dbContext.Database.BeginTransactionAsync(
+                isPostgreSql ? IsolationLevel.ReadCommitted : IsolationLevel.Serializable,
+                cancellationToken)
+            .ConfigureAwait(false);
+        try
+        {
+            if (isPostgreSql)
+            {
+                await dbContext.GameServers
+                    .FromSqlInterpolated(
+                        $"""SELECT * FROM "GameServers" WHERE "PrimaryKey" = {serverId} FOR UPDATE""")
+                    .LoadAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                        $"""UPDATE "GameServers" SET "TimeStampUpdated" = "TimeStampUpdated" WHERE "PrimaryKey" = {serverId}""",
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            return transaction;
+        }
+        catch
+        {
+            await transaction.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private async Task ReloadDeploymentResourcesAsync(Guid deploymentId, CancellationToken cancellationToken)
+    {
+        await dbContext.DeploymentResources
+            .Where(q => q.DeploymentFk == deploymentId)
+            .LoadAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var entries = dbContext.ChangeTracker
+            .Entries<DeploymentResource>()
+            .Where(q => q.Entity.DeploymentFk == deploymentId && q.State is not EntityState.Added)
+            .ToArray();
+        foreach (var entry in entries)
+            await entry.ReloadAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Instant> GetDatabaseNowAsync(CancellationToken cancellationToken)
+    {
+        var providerName = dbContext.Database.ProviderName;
+        var sql = providerName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true
+            ? "SELECT CAST(FLOOR(EXTRACT(EPOCH FROM clock_timestamp()) * 1000) AS bigint) AS \"Value\""
+            : providerName?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) == true
+                ? "SELECT CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER) AS \"Value\""
+                : null;
+        if (sql is null)
+            return NodaSystemClock.Instance.GetCurrentInstant();
+
+        var unixTimeMilliseconds = await dbContext.Database.SqlQueryRaw<long>(sql)
+            .SingleAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return Instant.FromUnixTimeMilliseconds(unixTimeMilliseconds);
     }
 
     private async Task RemoveExpiredResolvedIncidentsAsync(CancellationToken cancellationToken)
@@ -946,15 +1327,26 @@ internal sealed class ProviderResourceReconciler(
            && observed.Attribution.DeploymentId.Value != existing.DeploymentFk;
 
     private static bool ShouldRelease(GameServerDeployment deployment)
-        => deployment.IsProvisioningBlocked
-           || deployment.TimeStampResolved.HasValue
-           || deployment.Status is EDeploymentStatus.Stopping
-               or EDeploymentStatus.Terminating
+        => IsProviderTeardownAuthorized(deployment);
+
+    private static bool IsProviderTeardownAuthorized(GameServerDeployment deployment)
+        => deployment.TimeStampResolved.HasValue
+           || deployment.Status is EDeploymentStatus.Terminating
                or EDeploymentStatus.TerminatingDueToFault
                or EDeploymentStatus.Stopped
                or EDeploymentStatus.Terminated
                or EDeploymentStatus.TerminatedDueToFault
-               or EDeploymentStatus.Failed;
+           || deployment.Status is EDeploymentStatus.Stopping
+           && (string.Equals(
+                   deployment.Stage,
+                   "late-provider-resource-cleanup",
+                   StringComparison.Ordinal)
+               || deployment.LifecycleJobs.Any(q =>
+                   q.Kind == ELifecycleJobKind.Stop
+                   && string.Equals(q.ActionIdentifier, GameServerActions.Stop, StringComparison.Ordinal)
+                   && q.WorkerCommands.Any(command =>
+                       string.Equals(command.ActionIdentifier, GameServerActions.Stop, StringComparison.Ordinal)
+                       && command.Status == EWorkerCommandStatus.Succeeded)));
 
     private static bool IsExpectedActive(GameServerDeployment deployment)
         => !deployment.IsProvisioningBlocked

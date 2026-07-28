@@ -307,6 +307,11 @@ public class DatabaseContext : DbContext
 
         modelBuilder.Entity<GameServerDeployment>(entity =>
         {
+            // These lifecycle boundaries are monotonic. A context loaded before Stop, Terminate, or finalization
+            // must fail instead of publishing stale status, stage, or possible-cost metadata after a provider call.
+            entity.Property(q => q.IsProvisioningBlocked).IsConcurrencyToken();
+            entity.Property(q => q.Status).IsConcurrencyToken();
+            entity.Property(q => q.TimeStampResolved).IsConcurrencyToken();
             entity.HasOne(q => q.GameServer)
                 .WithMany(q => q.Deployments)
                 .HasForeignKey(q => q.GameServerFk)

@@ -6,4 +6,9 @@ internal sealed record HetznerServer(
     string Status,
     string? PublicIpv4,
     string? PublicIpv6,
+    HetznerResourceReference ServerType,
+    HetznerResourceReference Image,
+    HetznerResourceReference Location,
     IReadOnlyDictionary<string, string> Labels);
+
+internal sealed record HetznerResourceReference(long? Id, string Name);

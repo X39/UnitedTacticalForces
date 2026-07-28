@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using X39.Util.DependencyInjection.Attributes;
 
@@ -13,6 +16,7 @@ namespace X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 public sealed class HetznerRuntimeProvider(
     HetznerCloudClient client,
     IHetznerRuntimeOptionsProvider optionsProvider,
+    IProviderProvisioningMutationGuard provisioningMutationGuard,
     ILogger<HetznerRuntimeProvider> logger) : IRuntimeProvider
 {
     public const string Identifier = "hetzner";
@@ -22,6 +26,8 @@ public sealed class HetznerRuntimeProvider(
     internal const string IntentLabel = "utf-intent";
     internal const string WorkerLabel = "utf-worker";
     internal const string ResourceKindLabel = "utf-resource-kind";
+    internal const string ServerConfigurationFingerprintLabel = "utf-server-config";
+    internal const string FirewallRulesFingerprintLabel = "utf-firewall-rules";
     internal const string ServerResourceType = "server";
     internal const string PrimaryIpResourceType = "primary-ip";
     internal const string FirewallResourceType = "firewall";
@@ -185,7 +191,18 @@ public sealed class HetznerRuntimeProvider(
     {
         var intent = await FindIntentResourcesAsync(request, cancellationToken).ConfigureAwait(false);
         if (intent.Outcome is not ERuntimeProviderOutcome.Succeeded)
-            return ProvisionFailure(intent.Outcome, "provision-discovery-failed", intent.Error, intent);
+        {
+            var discoveryFailure = ProvisionFailure(
+                intent.Outcome,
+                "provision-discovery-failed",
+                intent.Error,
+                intent);
+            // ProvisionCore has not attempted a mutation yet. If discovery returned no attributed resources, this
+            // invocation is definitively closed and the control plane may clear its create claim before retrying.
+            return discoveryFailure.ProvisionedResources.Count == 0
+                ? discoveryFailure with { IsProvisioningAttemptDefinitivelyClosed = true }
+                : discoveryFailure;
+        }
         var existingResourceCount = (intent.Server is null ? 0 : 1)
                                     + (intent.PrimaryIp is null ? 0 : 1)
                                     + (intent.Firewall is null ? 0 : 1);
@@ -201,19 +218,35 @@ public sealed class HetznerRuntimeProvider(
 
         var created = false;
         var recoveredAfterAmbiguousCreate = false;
+        var hadUnknownCreateOutcome = false;
         var firewall = intent.Firewall;
         if (firewall is null)
         {
             var labels = BuildLabels(request, FirewallResourceType);
-            var result = await client.CreateFirewallAsync(
-                    new HetznerFirewallCreateRequest(
-                        $"utf-{request.DeploymentId:N}",
-                        request.InboundNetworkRequirements!
-                            .Select(ToFirewallRule)
-                            .ToArray(),
-                        labels),
+            var guardedResult = await provisioningMutationGuard.ExecuteCreateAsync(
+                    request.ServerId,
+                    request.DeploymentId,
+                    guardedCancellationToken => client.CreateFirewallAsync(
+                        new HetznerFirewallCreateRequest(
+                            $"utf-{request.DeploymentId:N}",
+                            request.InboundNetworkRequirements!
+                                .Select(ToFirewallRule)
+                                .ToArray(),
+                            labels),
+                        guardedCancellationToken),
                     cancellationToken)
                 .ConfigureAwait(false);
+            if (!guardedResult.IsAuthorized || guardedResult.Value is null)
+            {
+                return ProvisionFailure(
+                    ERuntimeProviderOutcome.TransientFailure,
+                    "provisioning-blocked",
+                    guardedResult.Failure ?? "Provisioning was blocked before firewall creation.",
+                    intent,
+                    isProvisioningAttemptDefinitivelyClosed: !guardedResult.IsAuthorized
+                                                              && !hadUnknownCreateOutcome);
+            }
+            var result = guardedResult.Value;
             if (result.Outcome is ERuntimeProviderOutcome.Succeeded
                 && result.Value is not null
                 && HasExpectedAttribution(result.Value.Labels, request, FirewallResourceType))
@@ -221,13 +254,24 @@ public sealed class HetznerRuntimeProvider(
                 firewall = result.Value;
                 created = true;
             }
+            else if (result.Outcome is ERuntimeProviderOutcome.Succeeded && result.Value is not null)
+            {
+                return ProvisionFailure(
+                    ERuntimeProviderOutcome.PermanentFailure,
+                    "firewall-create-attribution-mismatch",
+                    "Hetzner created a firewall whose durable UTF attribution does not match the request.",
+                    intent with { Firewall = result.Value },
+                    isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
+            }
             else if (result.Outcome is ERuntimeProviderOutcome.Unknown)
             {
+                hadUnknownCreateOutcome = true;
                 var recovered = await FindIntentFirewallAsync(request, cancellationToken).ConfigureAwait(false);
                 if (recovered.Outcome is ERuntimeProviderOutcome.Succeeded && recovered.Value is not null)
                 {
                     firewall = recovered.Value;
                     recoveredAfterAmbiguousCreate = true;
+                    hadUnknownCreateOutcome = false;
                 }
                 else
                 {
@@ -240,23 +284,60 @@ public sealed class HetznerRuntimeProvider(
             }
             else
             {
-                return ProvisionFailure(result.Outcome, "firewall-create-failed", result.Error, intent);
+                return ProvisionFailure(
+                    result.Outcome,
+                    "firewall-create-failed",
+                    result.Error,
+                    intent,
+                    isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
             }
+        }
+
+        var firewallConfiguration = VerifyFirewallConfiguration(firewall, request);
+        if (firewallConfiguration is not EProviderConfigurationVerification.Verified)
+        {
+            return ProvisionFailure(
+                firewallConfiguration is EProviderConfigurationVerification.Conflict
+                    ? ERuntimeProviderOutcome.PermanentFailure
+                    : ERuntimeProviderOutcome.Unknown,
+                firewallConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "firewall-rules-mismatch"
+                    : "firewall-rules-unverified",
+                firewallConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "The attributed Hetzner firewall rules do not exactly match the requested inbound network plan."
+                    : "The attributed Hetzner firewall rule configuration could not be verified.",
+                intent with { Firewall = firewall },
+                isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
         }
 
         var primaryIp = intent.PrimaryIp;
         if (primaryIp is null)
         {
             var labels = BuildLabels(request, PrimaryIpResourceType);
-            var result = await client.CreatePrimaryIpAsync(
-                    new HetznerPrimaryIpCreateRequest(
-                        $"utf-{request.DeploymentId:N}",
-                        Type: "ipv4",
-                        optionsProvider.Value.Location.Trim(),
-                        AutoDelete: true,
-                        labels),
+            var guardedResult = await provisioningMutationGuard.ExecuteCreateAsync(
+                    request.ServerId,
+                    request.DeploymentId,
+                    guardedCancellationToken => client.CreatePrimaryIpAsync(
+                        new HetznerPrimaryIpCreateRequest(
+                            $"utf-{request.DeploymentId:N}",
+                            Type: "ipv4",
+                            optionsProvider.Value.Location.Trim(),
+                            AutoDelete: true,
+                            labels),
+                        guardedCancellationToken),
                     cancellationToken)
                 .ConfigureAwait(false);
+            if (!guardedResult.IsAuthorized || guardedResult.Value is null)
+            {
+                return ProvisionFailure(
+                    ERuntimeProviderOutcome.TransientFailure,
+                    "provisioning-blocked",
+                    guardedResult.Failure ?? "Provisioning was blocked before Primary IP creation.",
+                    intent with { Firewall = firewall },
+                    isProvisioningAttemptDefinitivelyClosed: !guardedResult.IsAuthorized
+                                                              && !hadUnknownCreateOutcome);
+            }
+            var result = guardedResult.Value;
             if (result.Outcome is ERuntimeProviderOutcome.Succeeded
                 && result.Value is not null
                 && HasExpectedAttribution(result.Value.Labels, request, PrimaryIpResourceType))
@@ -264,13 +345,24 @@ public sealed class HetznerRuntimeProvider(
                 primaryIp = result.Value;
                 created = true;
             }
+            else if (result.Outcome is ERuntimeProviderOutcome.Succeeded && result.Value is not null)
+            {
+                return ProvisionFailure(
+                    ERuntimeProviderOutcome.PermanentFailure,
+                    "primary-ip-create-attribution-mismatch",
+                    "Hetzner created a Primary IP whose durable UTF attribution does not match the request.",
+                    intent with { Firewall = firewall, PrimaryIp = result.Value },
+                    isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
+            }
             else if (result.Outcome is ERuntimeProviderOutcome.Unknown)
             {
+                hadUnknownCreateOutcome = true;
                 var recovered = await FindIntentPrimaryIpAsync(request, cancellationToken).ConfigureAwait(false);
                 if (recovered.Outcome is ERuntimeProviderOutcome.Succeeded && recovered.Value is not null)
                 {
                     primaryIp = recovered.Value;
                     recoveredAfterAmbiguousCreate = true;
+                    hadUnknownCreateOutcome = false;
                 }
                 else
                 {
@@ -287,17 +379,19 @@ public sealed class HetznerRuntimeProvider(
                     result.Outcome,
                     "primary-ip-create-failed",
                     result.Error,
-                    intent with { Firewall = firewall });
+                    intent with { Firewall = firewall },
+                    isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
             }
         }
 
         if (!primaryIp.AutoDelete || !string.Equals(primaryIp.Type, "ipv4", StringComparison.OrdinalIgnoreCase))
         {
             return ProvisionFailure(
-                ERuntimeProviderOutcome.Unknown,
+                ERuntimeProviderOutcome.PermanentFailure,
                 "primary-ip-safety-mismatch",
                 "The attributed Hetzner Primary IP does not have the required IPv4 auto-delete safety configuration.",
-                intent with { Firewall = firewall, PrimaryIp = primaryIp });
+                intent with { Firewall = firewall, PrimaryIp = primaryIp },
+                isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
         }
 
         var server = intent.Server;
@@ -305,24 +399,37 @@ public sealed class HetznerRuntimeProvider(
         {
             var options = optionsProvider.Value;
             var labels = BuildLabels(request, ServerResourceType);
-            var result = await client.CreateServerAsync(
-                    new HetznerServerCreateRequest(
-                        $"utf-{request.DeploymentId:N}",
-                        string.IsNullOrWhiteSpace(request.RuntimeProfileIdentifier)
-                            ? options.ServerType.Trim()
-                            : request.RuntimeProfileIdentifier.Trim(),
-                        options.Image.Trim(),
-                        options.Location.Trim(),
-                        StartAfterCreate: true,
-                        request.CloudInit!,
-                        new HetznerServerPublicNetRequest(
-                            EnableIpv4: true,
-                            EnableIpv6: false,
-                            Ipv4: primaryIp.Id),
-                        [new HetznerServerFirewallRequest(firewall.Id)],
-                        labels),
+            var guardedResult = await provisioningMutationGuard.ExecuteCreateAsync(
+                    request.ServerId,
+                    request.DeploymentId,
+                    guardedCancellationToken => client.CreateServerAsync(
+                        new HetznerServerCreateRequest(
+                            $"utf-{request.DeploymentId:N}",
+                            RequestedServerType(request),
+                            options.Image.Trim(),
+                            options.Location.Trim(),
+                            StartAfterCreate: true,
+                            request.CloudInit!,
+                            new HetznerServerPublicNetRequest(
+                                EnableIpv4: true,
+                                EnableIpv6: false,
+                                Ipv4: primaryIp.Id),
+                            [new HetznerServerFirewallRequest(firewall.Id)],
+                            labels),
+                        guardedCancellationToken),
                     cancellationToken)
                 .ConfigureAwait(false);
+            if (!guardedResult.IsAuthorized || guardedResult.Value is null)
+            {
+                return ProvisionFailure(
+                    ERuntimeProviderOutcome.TransientFailure,
+                    "provisioning-blocked",
+                    guardedResult.Failure ?? "Provisioning was blocked before server creation.",
+                    intent with { Firewall = firewall, PrimaryIp = primaryIp },
+                    isProvisioningAttemptDefinitivelyClosed: !guardedResult.IsAuthorized
+                                                              && !hadUnknownCreateOutcome);
+            }
+            var result = guardedResult.Value;
             if (result.Outcome is ERuntimeProviderOutcome.Succeeded
                 && result.Value is not null
                 && HasExpectedAttribution(result.Value.Labels, request, ServerResourceType))
@@ -330,13 +437,24 @@ public sealed class HetznerRuntimeProvider(
                 server = result.Value;
                 created = true;
             }
+            else if (result.Outcome is ERuntimeProviderOutcome.Succeeded && result.Value is not null)
+            {
+                return ProvisionFailure(
+                    ERuntimeProviderOutcome.PermanentFailure,
+                    "server-create-attribution-mismatch",
+                    "Hetzner created a server whose durable UTF attribution does not match the request.",
+                    intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = result.Value },
+                    isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
+            }
             else if (result.Outcome is ERuntimeProviderOutcome.Unknown)
             {
+                hadUnknownCreateOutcome = true;
                 var recovered = await FindIntentServerAsync(request, cancellationToken).ConfigureAwait(false);
                 if (recovered.Outcome is ERuntimeProviderOutcome.Succeeded && recovered.Value is not null)
                 {
                     server = recovered.Value;
                     recoveredAfterAmbiguousCreate = true;
+                    hadUnknownCreateOutcome = false;
                 }
                 else
                 {
@@ -353,8 +471,43 @@ public sealed class HetznerRuntimeProvider(
                     result.Outcome,
                     "server-create-failed",
                     result.Error,
-                    intent with { Firewall = firewall, PrimaryIp = primaryIp });
+                    intent with { Firewall = firewall, PrimaryIp = primaryIp },
+                    isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
             }
+        }
+
+        var serverConfiguration = VerifyServerConfiguration(server, request);
+        if (serverConfiguration is not EProviderConfigurationVerification.Verified)
+        {
+            return ProvisionFailure(
+                serverConfiguration is EProviderConfigurationVerification.Conflict
+                    ? ERuntimeProviderOutcome.PermanentFailure
+                    : ERuntimeProviderOutcome.Unknown,
+                serverConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "server-configuration-mismatch"
+                    : "server-configuration-unverified",
+                serverConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "The attributed Hetzner server type, image, or location does not match the requested configuration."
+                    : "The attributed Hetzner server type, image, and location could not be verified.",
+                intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
+        }
+
+        var operationalState = GetServerOperationalState(server.Status);
+        if (operationalState is ERuntimeResourceOperationalState.Faulted)
+        {
+            return ProvisionFailure(
+                ERuntimeProviderOutcome.PermanentFailure,
+                "server-operational-fault",
+                $"The attributed Hetzner server entered the faulted provider state '{server.Status}'.",
+                intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
+        }
+        if (operationalState is ERuntimeResourceOperationalState.Uncertain)
+        {
+            return ProvisionFailure(
+                ERuntimeProviderOutcome.Unknown,
+                "server-operational-state-unverified",
+                $"The attributed Hetzner server provider state '{server.Status}' is not yet operationally conclusive.",
+                intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
         }
 
         var verifiedIp = await client.GetPrimaryIpAsync(primaryIp.Id, cancellationToken).ConfigureAwait(false);
@@ -367,14 +520,22 @@ public sealed class HetznerRuntimeProvider(
                 intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
         }
         primaryIp = verifiedIp.Value;
+        if (!primaryIp.AssigneeId.HasValue)
+        {
+            return ProvisionFailure(
+                ERuntimeProviderOutcome.Unknown,
+                "primary-ip-assignment-pending",
+                "The explicit Hetzner Primary IP assignment has not converged yet.",
+                intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
+        }
         if (!HasExpectedAttribution(primaryIp.Labels, request, PrimaryIpResourceType)
-            || primaryIp.AssigneeId != server.Id
+            || primaryIp.AssigneeId.Value != server.Id
             || !string.Equals(primaryIp.AssigneeType, "server", StringComparison.OrdinalIgnoreCase)
             || !string.Equals(primaryIp.Type, "ipv4", StringComparison.OrdinalIgnoreCase)
             || !primaryIp.AutoDelete)
         {
             return ProvisionFailure(
-                ERuntimeProviderOutcome.Unknown,
+                ERuntimeProviderOutcome.PermanentFailure,
                 "primary-ip-assignment-unverified",
                 "The explicit Hetzner Primary IP assignment and auto-delete state could not be verified.",
                 intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
@@ -390,13 +551,36 @@ public sealed class HetznerRuntimeProvider(
                 intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
         }
         firewall = verifiedFirewall.Value;
+        firewallConfiguration = VerifyFirewallConfiguration(firewall, request);
+        if (firewallConfiguration is not EProviderConfigurationVerification.Verified)
+        {
+            return ProvisionFailure(
+                firewallConfiguration is EProviderConfigurationVerification.Conflict
+                    ? ERuntimeProviderOutcome.PermanentFailure
+                    : ERuntimeProviderOutcome.Unknown,
+                firewallConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "firewall-rules-mismatch"
+                    : "firewall-rules-unverified",
+                firewallConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "The attributed Hetzner firewall rules do not exactly match the requested inbound network plan."
+                    : "The attributed Hetzner firewall rule configuration could not be verified.",
+                intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
+        }
+        if (firewall.AppliedToCount == 0)
+        {
+            return ProvisionFailure(
+                ERuntimeProviderOutcome.Unknown,
+                "firewall-attachment-pending",
+                "The attributed Hetzner firewall attachment has not converged yet.",
+                intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
+        }
         if (!HasExpectedAttribution(firewall.Labels, request, FirewallResourceType)
             || firewall.AppliedToCount != 1
             || firewall.AppliedServerIds.Count != 1
             || firewall.AppliedServerIds[0] != server.Id)
         {
             return ProvisionFailure(
-                ERuntimeProviderOutcome.Unknown,
+                ERuntimeProviderOutcome.PermanentFailure,
                 "firewall-attachment-unverified",
                 "The attributed Hetzner firewall is not attached exclusively to the attributed server.",
                 intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
@@ -842,27 +1026,32 @@ public sealed class HetznerRuntimeProvider(
         CancellationToken cancellationToken)
     {
         var server = await FindIntentServerAsync(request, cancellationToken).ConfigureAwait(false);
-        if (server.Outcome is not ERuntimeProviderOutcome.Succeeded and not ERuntimeProviderOutcome.NotFound)
-            return new IntentResourcesResult(server.Outcome, server.Error, server.Value, null, null);
         var primaryIp = await FindIntentPrimaryIpAsync(request, cancellationToken).ConfigureAwait(false);
-        if (primaryIp.Outcome is not ERuntimeProviderOutcome.Succeeded and not ERuntimeProviderOutcome.NotFound)
-            return new IntentResourcesResult(primaryIp.Outcome, primaryIp.Error, server.Value, primaryIp.Value, null);
         var firewall = await FindIntentFirewallAsync(request, cancellationToken).ConfigureAwait(false);
-        if (firewall.Outcome is not ERuntimeProviderOutcome.Succeeded and not ERuntimeProviderOutcome.NotFound)
+        var failure = new[]
         {
-            return new IntentResourcesResult(
-                firewall.Outcome,
-                firewall.Error,
-                server.Value,
-                primaryIp.Value,
-                firewall.Value);
-        }
+            (server.Outcome, server.Error),
+            (primaryIp.Outcome, primaryIp.Error),
+            (firewall.Outcome, firewall.Error),
+        }.Where(q => q.Outcome is not ERuntimeProviderOutcome.Succeeded
+                     and not ERuntimeProviderOutcome.NotFound)
+            .OrderBy(q => q.Outcome switch
+            {
+                ERuntimeProviderOutcome.Unknown => 0,
+                ERuntimeProviderOutcome.TransientFailure => 1,
+                ERuntimeProviderOutcome.PermanentFailure => 2,
+                _ => 3,
+            })
+            .FirstOrDefault();
         return new IntentResourcesResult(
-            ERuntimeProviderOutcome.Succeeded,
-            null,
+            failure == default ? ERuntimeProviderOutcome.Succeeded : failure.Outcome,
+            failure == default ? null : failure.Error,
             server.Value,
             primaryIp.Value,
-            firewall.Value);
+            firewall.Value,
+            server.DiscoveredResources,
+            primaryIp.DiscoveredResources,
+            firewall.DiscoveredResources);
     }
 
     private async Task<IntentResourceResult<HetznerServer>> FindIntentServerAsync(
@@ -904,17 +1093,22 @@ public sealed class HetznerRuntimeProvider(
         string resourceType)
     {
         if (result.Outcome is not ERuntimeProviderOutcome.Succeeded || result.Value is null)
-            return new IntentResourceResult<T>(result.Outcome, result.Error, default);
+            return new IntentResourceResult<T>(result.Outcome, result.Error, default, result.Value ?? []);
         if (result.Value.Count == 0)
-            return new IntentResourceResult<T>(ERuntimeProviderOutcome.NotFound, null, default);
+            return new IntentResourceResult<T>(ERuntimeProviderOutcome.NotFound, null, default, []);
         if (result.Value.Count != 1 || !hasExpectedAttribution(result.Value[0]))
         {
             return new IntentResourceResult<T>(
-                ERuntimeProviderOutcome.Unknown,
+                ERuntimeProviderOutcome.PermanentFailure,
                 $"Hetzner discovery returned conflicting {resourceType} resources for the provisioning intent.",
-                default);
+                default,
+                result.Value);
         }
-        return new IntentResourceResult<T>(ERuntimeProviderOutcome.Succeeded, null, result.Value[0]);
+        return new IntentResourceResult<T>(
+            ERuntimeProviderOutcome.Succeeded,
+            null,
+            result.Value[0],
+            result.Value);
     }
 
     private string? ValidateProvisionRequest(RuntimeProvisionRequest request)
@@ -957,6 +1151,93 @@ public sealed class HetznerRuntimeProvider(
             SourceIps: ["0.0.0.0/0"],
             Description: requirement.Description.Trim());
 
+    internal static string ServerConfigurationFingerprint(string serverType, string image, string location)
+        => Fingerprint(
+        [
+            NormalizeConfigurationValue(serverType),
+            NormalizeConfigurationValue(image),
+            NormalizeConfigurationValue(location),
+        ]);
+
+    internal static string FirewallRulesFingerprint(
+        IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements)
+        => FirewallRulesFingerprint(inboundNetworkRequirements.Select(q =>
+        {
+            var rule = ToFirewallRule(q);
+            return CanonicalFirewallRule(
+                rule.Direction,
+                rule.Protocol,
+                rule.Port,
+                rule.SourceIps,
+                []);
+        }));
+
+    private static string FirewallRulesFingerprint(IReadOnlyList<HetznerFirewallRule> rules)
+        => FirewallRulesFingerprint(rules.Select(q => CanonicalFirewallRule(
+            q.Direction,
+            q.Protocol,
+            q.Port,
+            q.SourceIps,
+            q.DestinationIps)));
+
+    private static string FirewallRulesFingerprint(IEnumerable<string> canonicalRules)
+        => Fingerprint(canonicalRules.Order(StringComparer.Ordinal));
+
+    private static string CanonicalFirewallRule(
+        string direction,
+        string protocol,
+        string port,
+        IEnumerable<string> sourceIps,
+        IEnumerable<string> destinationIps)
+        => string.Join(
+            '|',
+            NormalizeConfigurationValue(direction),
+            NormalizeConfigurationValue(protocol),
+            CanonicalPort(port),
+            string.Join(',', sourceIps.Select(CanonicalAddress).Order(StringComparer.Ordinal)),
+            string.Join(',', destinationIps.Select(CanonicalAddress).Order(StringComparer.Ordinal)));
+
+    private static string CanonicalPort(string port)
+    {
+        var compact = string.Concat(port.Where(q => !char.IsWhiteSpace(q)));
+        var parts = compact.Split('-', StringSplitOptions.TrimEntries);
+        if (parts.Length is 1
+            && int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var single)
+            && single is >= 1 and <= 65535)
+        {
+            return $"{single}-{single}";
+        }
+        if (parts.Length is 2
+            && int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var start)
+            && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var end)
+            && start is >= 1 and <= 65535
+            && end is >= 1 and <= 65535
+            && start <= end)
+        {
+            return $"{start}-{end}";
+        }
+        return NormalizeConfigurationValue(compact);
+    }
+
+    private static string CanonicalAddress(string value)
+    {
+        var parts = value.Trim().Split('/', 2, StringSplitOptions.TrimEntries);
+        if (!IPAddress.TryParse(parts[0], out var address))
+            return NormalizeConfigurationValue(value);
+        return parts.Length == 2 ? $"{address}/{parts[1]}" : address.ToString();
+    }
+
+    private static string Fingerprint(IEnumerable<string> values)
+    {
+        var canonical = string.Join('\n', values);
+        return "v1-" + Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+    }
+
+    private static string NormalizeConfigurationValue(string value) => value.Trim().ToLowerInvariant();
+
     private static IReadOnlyDictionary<string, string> IntentLabels(RuntimeProvisionRequest request)
         => new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -965,10 +1246,11 @@ public sealed class HetznerRuntimeProvider(
             [IntentLabel] = LabelValue(request.ProvisioningIntentId),
         };
 
-    private static IReadOnlyDictionary<string, string> BuildLabels(
+    private IReadOnlyDictionary<string, string> BuildLabels(
         RuntimeProvisionRequest request,
         string resourceType)
-        => new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        var labels = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             [ManagedLabel] = ManagedLabelValue,
             [ServerLabel] = LabelValue(request.ServerId),
@@ -977,6 +1259,76 @@ public sealed class HetznerRuntimeProvider(
             [WorkerLabel] = LabelValue(request.WorkerId),
             [ResourceKindLabel] = resourceType,
         };
+        if (string.Equals(resourceType, ServerResourceType, StringComparison.Ordinal))
+        {
+            labels[ServerConfigurationFingerprintLabel] = ServerConfigurationFingerprint(
+                RequestedServerType(request),
+                optionsProvider.Value.Image,
+                optionsProvider.Value.Location);
+        }
+        else if (string.Equals(resourceType, FirewallResourceType, StringComparison.Ordinal))
+        {
+            labels[FirewallRulesFingerprintLabel] = FirewallRulesFingerprint(
+                request.InboundNetworkRequirements!);
+        }
+        return labels;
+    }
+
+    private string RequestedServerType(RuntimeProvisionRequest request)
+        => string.IsNullOrWhiteSpace(request.RuntimeProfileIdentifier)
+            ? optionsProvider.Value.ServerType.Trim()
+            : request.RuntimeProfileIdentifier.Trim();
+
+    private EProviderConfigurationVerification VerifyServerConfiguration(
+        HetznerServer server,
+        RuntimeProvisionRequest request)
+    {
+        if (!HasProviderIdentity(server.ServerType)
+            || !HasProviderIdentity(server.Image)
+            || !HasProviderIdentity(server.Location))
+        {
+            return EProviderConfigurationVerification.Uncertain;
+        }
+
+        var expected = ServerConfigurationFingerprint(
+            RequestedServerType(request),
+            optionsProvider.Value.Image,
+            optionsProvider.Value.Location);
+        if (!server.Labels.TryGetValue(ServerConfigurationFingerprintLabel, out var attributedExpected)
+            || string.IsNullOrWhiteSpace(attributedExpected))
+        {
+            return EProviderConfigurationVerification.Uncertain;
+        }
+        if (!string.Equals(attributedExpected, expected, StringComparison.Ordinal)
+            || !ProviderIdentityMatches(server.ServerType, RequestedServerType(request))
+            || !ProviderIdentityMatches(server.Image, optionsProvider.Value.Image)
+            || !ProviderIdentityMatches(server.Location, optionsProvider.Value.Location))
+        {
+            return EProviderConfigurationVerification.Conflict;
+        }
+        return EProviderConfigurationVerification.Verified;
+    }
+
+    private static EProviderConfigurationVerification VerifyFirewallConfiguration(
+        HetznerFirewall firewall,
+        RuntimeProvisionRequest request)
+    {
+        if (!firewall.HasRuleConfiguration)
+            return EProviderConfigurationVerification.Uncertain;
+
+        var expected = FirewallRulesFingerprint(request.InboundNetworkRequirements!);
+        if (!firewall.Labels.TryGetValue(FirewallRulesFingerprintLabel, out var attributedExpected)
+            || string.IsNullOrWhiteSpace(attributedExpected))
+        {
+            return EProviderConfigurationVerification.Uncertain;
+        }
+        if (!string.Equals(attributedExpected, expected, StringComparison.Ordinal)
+            || !string.Equals(FirewallRulesFingerprint(firewall.Rules), expected, StringComparison.Ordinal))
+        {
+            return EProviderConfigurationVerification.Conflict;
+        }
+        return EProviderConfigurationVerification.Verified;
+    }
 
     private static bool HasExpectedAttribution(
         IReadOnlyDictionary<string, string> labels,
@@ -1050,13 +1402,18 @@ public sealed class HetznerRuntimeProvider(
                         && string.Equals(leftValue, rightValue, StringComparison.Ordinal));
 
     private static RuntimeResource CreateResource(HetznerServer server, string? explicitPublicAddress = null)
-        => CreateResource(
+    {
+        var operationalState = GetServerOperationalState(server.Status);
+        return CreateResource(
             ServerResourceIdentifier(server.Id),
             ServerResourceType,
             server.Status,
             explicitPublicAddress ?? server.PublicIpv4 ?? server.PublicIpv6,
             potentiallyCostGenerating: true,
-            server.Labels);
+            server.Labels,
+            GetServerConfigurationProvisioningReadiness(server),
+            operationalState);
+    }
 
     private static RuntimeResource CreateResource(
         HetznerPrimaryIp primaryIp,
@@ -1072,7 +1429,7 @@ public sealed class HetznerRuntimeProvider(
 
     private static RuntimeResource CreateResource(
         HetznerFirewall firewall,
-        ERuntimeResourceProvisioningReadiness provisioningReadiness = ERuntimeResourceProvisioningReadiness.Ready)
+        ERuntimeResourceProvisioningReadiness relationshipReadiness = ERuntimeResourceProvisioningReadiness.Ready)
         => CreateResource(
             FirewallResourceIdentifier(firewall.Id),
             FirewallResourceType,
@@ -1080,7 +1437,9 @@ public sealed class HetznerRuntimeProvider(
             publicAddress: null,
             potentiallyCostGenerating: false,
             firewall.Labels,
-            provisioningReadiness);
+            CombineProvisioningReadiness(
+                GetFirewallConfigurationProvisioningReadiness(firewall),
+                relationshipReadiness));
 
     private static RuntimeResource CreateResource(
         string identifier,
@@ -1089,7 +1448,8 @@ public sealed class HetznerRuntimeProvider(
         string? publicAddress,
         bool potentiallyCostGenerating,
         IReadOnlyDictionary<string, string> labels,
-        ERuntimeResourceProvisioningReadiness provisioningReadiness = ERuntimeResourceProvisioningReadiness.Ready)
+        ERuntimeResourceProvisioningReadiness provisioningReadiness = ERuntimeResourceProvisioningReadiness.Ready,
+        ERuntimeResourceOperationalState operationalState = ERuntimeResourceOperationalState.Uncertain)
     {
         var attribution = ParseAttribution(labels);
         var isPlatformManaged = HasLabel(labels, ManagedLabel, ManagedLabelValue)
@@ -1108,7 +1468,90 @@ public sealed class HetznerRuntimeProvider(
             IsPlatformManaged: isPlatformManaged,
             HasTrustworthyAttribution: isPlatformManaged
                                        && attribution.IsComplete,
-            ProvisioningReadiness: provisioningReadiness);
+            ProvisioningReadiness: provisioningReadiness,
+            OperationalState: operationalState);
+    }
+
+    private static ERuntimeResourceProvisioningReadiness GetServerConfigurationProvisioningReadiness(
+        HetznerServer server)
+    {
+        if (!HasProviderIdentity(server.ServerType)
+            || !HasProviderIdentity(server.Image)
+            || !HasProviderIdentity(server.Location)
+            || !server.Labels.TryGetValue(ServerConfigurationFingerprintLabel, out var expected)
+            || string.IsNullOrWhiteSpace(expected))
+        {
+            return ERuntimeResourceProvisioningReadiness.Pending;
+        }
+        return ServerConfigurationFingerprintMatches(server, expected)
+            ? ERuntimeResourceProvisioningReadiness.Ready
+            : ERuntimeResourceProvisioningReadiness.Conflict;
+    }
+
+    private static bool ServerConfigurationFingerprintMatches(HetznerServer server, string expected)
+        => ProviderIdentities(server.ServerType).Any(serverType =>
+            ProviderIdentities(server.Image).Any(image =>
+                ProviderIdentities(server.Location).Any(location => string.Equals(
+                    ServerConfigurationFingerprint(serverType, image, location),
+                    expected,
+                    StringComparison.Ordinal))));
+
+    private static IReadOnlyList<string> ProviderIdentities(HetznerResourceReference reference)
+    {
+        var identities = new List<string>(2);
+        if (!string.IsNullOrWhiteSpace(reference.Name))
+            identities.Add(reference.Name);
+        if (reference.Id is > 0)
+            identities.Add(reference.Id.Value.ToString(CultureInfo.InvariantCulture));
+        return identities;
+    }
+
+    private static bool HasProviderIdentity(HetznerResourceReference reference)
+        => !string.IsNullOrWhiteSpace(reference.Name) || reference.Id is > 0;
+
+    private static bool ProviderIdentityMatches(HetznerResourceReference observed, string requested)
+        => !string.IsNullOrWhiteSpace(requested)
+           && ((!string.IsNullOrWhiteSpace(observed.Name)
+                && string.Equals(observed.Name.Trim(), requested.Trim(), StringComparison.OrdinalIgnoreCase))
+               || (observed.Id is > 0
+                   && long.TryParse(requested.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var id)
+                   && observed.Id.Value == id));
+
+    private static ERuntimeResourceProvisioningReadiness GetFirewallConfigurationProvisioningReadiness(
+        HetznerFirewall firewall)
+    {
+        if (!firewall.HasRuleConfiguration
+            || !firewall.Labels.TryGetValue(FirewallRulesFingerprintLabel, out var expected)
+            || string.IsNullOrWhiteSpace(expected))
+        {
+            return ERuntimeResourceProvisioningReadiness.Pending;
+        }
+        return string.Equals(FirewallRulesFingerprint(firewall.Rules), expected, StringComparison.Ordinal)
+            ? ERuntimeResourceProvisioningReadiness.Ready
+            : ERuntimeResourceProvisioningReadiness.Conflict;
+    }
+
+    private static ERuntimeResourceOperationalState GetServerOperationalState(string? status)
+        => status?.Trim().ToLowerInvariant() switch
+        {
+            "running" => ERuntimeResourceOperationalState.Operational,
+            "off" or "stopping" or "deleting" or "failed" => ERuntimeResourceOperationalState.Faulted,
+            _ => ERuntimeResourceOperationalState.Uncertain,
+        };
+
+    private static ERuntimeResourceProvisioningReadiness CombineProvisioningReadiness(
+        ERuntimeResourceProvisioningReadiness left,
+        ERuntimeResourceProvisioningReadiness right)
+    {
+        if (left is ERuntimeResourceProvisioningReadiness.Conflict
+            || right is ERuntimeResourceProvisioningReadiness.Conflict)
+        {
+            return ERuntimeResourceProvisioningReadiness.Conflict;
+        }
+        return left is ERuntimeResourceProvisioningReadiness.Pending
+               || right is ERuntimeResourceProvisioningReadiness.Pending
+            ? ERuntimeResourceProvisioningReadiness.Pending
+            : ERuntimeResourceProvisioningReadiness.Ready;
     }
 
     private static ERuntimeResourceProvisioningReadiness GetPrimaryIpProvisioningReadiness(
@@ -1202,16 +1645,35 @@ public sealed class HetznerRuntimeProvider(
         ERuntimeProviderOutcome outcome,
         string stage,
         string? error,
-        IntentResourcesResult resources)
+        IntentResourcesResult resources,
+        bool isProvisioningAttemptDefinitivelyClosed = false)
     {
         var discovered = new List<RuntimeResource>(3);
-        if (resources.Server is not null)
+        foreach (var server in resources.DiscoveredServers ?? [])
+            discovered.Add(CreateResource(server));
+        if (resources.Server is not null && discovered.All(q => q.ResourceIdentifier != ServerResourceIdentifier(resources.Server.Id)))
             discovered.Add(CreateResource(resources.Server));
-        if (resources.PrimaryIp is not null)
+        foreach (var primaryIp in resources.DiscoveredPrimaryIps ?? [])
+            discovered.Add(CreateResource(primaryIp));
+        if (resources.PrimaryIp is not null
+            && discovered.All(q => q.ResourceIdentifier != PrimaryIpResourceIdentifier(resources.PrimaryIp.Id)))
+        {
             discovered.Add(CreateResource(resources.PrimaryIp));
-        if (resources.Firewall is not null)
+        }
+        foreach (var firewall in resources.DiscoveredFirewalls ?? [])
+            discovered.Add(CreateResource(firewall));
+        if (resources.Firewall is not null
+            && discovered.All(q => q.ResourceIdentifier != FirewallResourceIdentifier(resources.Firewall.Id)))
+        {
             discovered.Add(CreateResource(resources.Firewall));
-        return new RuntimeProvisionResult(outcome, stage, error, null, discovered);
+        }
+        return new RuntimeProvisionResult(
+            outcome,
+            stage,
+            error,
+            null,
+            discovered,
+            isProvisioningAttemptDefinitivelyClosed);
     }
 
     private static RuntimeObservationResult Observed(RuntimeResource resource)
@@ -1307,15 +1769,26 @@ public sealed class HetznerRuntimeProvider(
         Firewall,
     }
 
+    private enum EProviderConfigurationVerification
+    {
+        Verified,
+        Uncertain,
+        Conflict,
+    }
+
     private sealed record IntentResourceResult<T>(
         ERuntimeProviderOutcome Outcome,
         string? Error,
-        T? Value);
+        T? Value,
+        IReadOnlyList<T> DiscoveredResources);
 
     private sealed record IntentResourcesResult(
         ERuntimeProviderOutcome Outcome,
         string? Error,
         HetznerServer? Server,
         HetznerPrimaryIp? PrimaryIp,
-        HetznerFirewall? Firewall);
+        HetznerFirewall? Firewall,
+        IReadOnlyList<HetznerServer>? DiscoveredServers = null,
+        IReadOnlyList<HetznerPrimaryIp>? DiscoveredPrimaryIps = null,
+        IReadOnlyList<HetznerFirewall>? DiscoveredFirewalls = null);
 }

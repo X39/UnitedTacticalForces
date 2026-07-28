@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using LifecycleWorkerOptions = X39.UnitedTacticalForces.Api.Services.GameServerLifecycle.LifecycleWorkerOptions;
 
 namespace X39.UnitedTacticalForces.Api.HostedServices;
 
@@ -9,19 +10,17 @@ namespace X39.UnitedTacticalForces.Api.HostedServices;
 internal sealed class ProviderResourceReconciliationWorker(
     IServiceScopeFactory scopeFactory,
     IOptions<ProviderReconciliationOptions> options,
+    IOptions<LifecycleWorkerOptions> lifecycleOptions,
     ILogger<ProviderResourceReconciliationWorker> logger) : BackgroundService
 {
     private readonly ProviderReconciliationOptions _options = options.Value;
+    private readonly LifecycleWorkerOptions _lifecycleOptions = lifecycleOptions.Value;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _options.Validate();
-        if (!_options.Enabled)
-        {
-            logger.LogInformation("Provider-wide hosting reconciliation is disabled by configuration.");
-            return;
-        }
-
+        // Configuration that can close a durable intent while its bounded provider settlement is still active is
+        // unsafe. Validate before entering the caught scan loop so the host cannot run silently degraded.
+        _options.ValidateAgainstProviderSettlement(_lifecycleOptions.ProviderSettlementTimeout);
         if (_options.InitialDelay > TimeSpan.Zero)
             await Task.Delay(_options.InitialDelay, stoppingToken).ConfigureAwait(false);
         logger.LogInformation("Provider-wide hosting reconciliation started.");

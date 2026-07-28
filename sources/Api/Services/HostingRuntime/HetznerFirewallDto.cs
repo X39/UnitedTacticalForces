@@ -16,4 +16,28 @@ internal sealed class HetznerFirewallDto
 
     [JsonPropertyName("applied_to")]
     public List<JsonElement>? AppliedTo { get; set; }
+
+    [JsonPropertyName("rules")]
+    public List<HetznerFirewallRuleDto>? Rules { get; set; }
+}
+
+internal sealed class HetznerFirewallRuleDto
+{
+    [JsonPropertyName("direction")]
+    public string? Direction { get; set; }
+
+    [JsonPropertyName("protocol")]
+    public string? Protocol { get; set; }
+
+    [JsonPropertyName("port")]
+    public string? Port { get; set; }
+
+    [JsonPropertyName("source_ips")]
+    public List<string>? SourceIps { get; set; }
+
+    [JsonPropertyName("destination_ips")]
+    public List<string>? DestinationIps { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
 }

@@ -1378,6 +1378,7 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsProvisioningBlocked")
+                        .IsConcurrencyToken()
                         .HasColumnType("boolean");
 
                     b.Property<bool>("PossibleCost")
@@ -1402,6 +1403,7 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasColumnType("character varying(128)");
 
                     b.Property<int>("Status")
+                        .IsConcurrencyToken()
                         .HasColumnType("integer");
 
                     b.Property<Instant>("TimeStampCreated")
@@ -1411,6 +1413,7 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant?>("TimeStampResolved")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant?>("TimeStampStarted")

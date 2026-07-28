@@ -1,8 +1,12 @@
 using System.Text.Json;
+using System.Data.Common;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
 using Xunit;
 using X39.UnitedTacticalForces;
+using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Authority;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
@@ -90,7 +94,7 @@ public sealed class LifecycleJobExecutorCloudTests
     }
 
     [Fact]
-    public async Task Start_AfterIssuedUnknownCreateWithStableEmptyDiscovery_FaultTearsDownWithoutReposting()
+    public async Task Start_AfterIssuedUnknownCreateWithEmptyDiscovery_RemainsUnresolvedWithoutReposting()
     {
         await using var store = await HostingTestStore.CreateAsync();
         var (seed, job) = await SeedRunningStartAsync(store);
@@ -99,29 +103,522 @@ public sealed class LifecycleJobExecutorCloudTests
         var executor = CreateExecutor(store, provider, cost);
 
         await Assert.ThrowsAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
-        await Assert.ThrowsAsync<PermanentLifecycleExecutionException>(() => executor.ExecuteAsync(job));
+        await Assert.ThrowsAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
 
         Assert.Equal(1, provider.ProvisionCalls);
-        Assert.Equal(4, provider.DiscoveryCalls);
+        Assert.Equal(3, provider.DiscoveryCalls);
         Assert.Equal(0, provider.ReleaseCalls);
         Assert.Equal(1, cost.ReserveCalls);
         Assert.Equal(1, cost.CommitCalls);
         var deployment = seed.Deployment!;
         var resource = Assert.Single(store.DbContext.DeploymentResources);
         Assert.NotNull(resource.TimeStampProvisioningRequested);
-        Assert.NotNull(resource.TimeStampProvisioningResolved);
-        Assert.NotNull(resource.TimeStampReleased);
-        Assert.False(resource.PossibleCost);
+        Assert.Null(resource.TimeStampProvisioningResolved);
+        Assert.Null(resource.TimeStampReleased);
+        Assert.True(resource.PossibleCost);
         await store.DbContext.Entry(deployment).ReloadAsync();
         Assert.True(deployment.IsProvisioningBlocked);
-        Assert.Equal(EDeploymentStatus.TerminatedDueToFault, deployment.Status);
+        Assert.Equal(EDeploymentStatus.TerminatingDueToFault, deployment.Status);
         Assert.Equal("provider-create-not-observed", deployment.FaultCode);
-        Assert.NotNull(deployment.TimeStampResolved);
-        Assert.False(deployment.PossibleCost);
+        Assert.Null(deployment.TimeStampResolved);
+        Assert.True(deployment.PossibleCost);
     }
 
     [Fact]
-    public async Task Start_AfterUnknownCreateWithStablePartialGraph_FaultTearsDownWithoutReposting()
+    public async Task Start_WhenProviderConfirmsNoMutationWasIssued_ClearsClaimForSafeRetry()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (_, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.TransientFailure,
+            ProvisionAttemptDefinitivelyClosed = true,
+        };
+        var executor = CreateExecutor(store, provider, new RecordingCostSliceService());
+
+        await Assert.ThrowsAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
+
+        var intent = Assert.Single(store.DbContext.DeploymentResources);
+        Assert.Null(intent.TimeStampProvisioningRequested);
+        Assert.Null(intent.TimeStampProvisioningResolved);
+        Assert.Null(intent.TimeStampReleased);
+        Assert.False(intent.PossibleCost);
+
+        await Assert.ThrowsAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
+
+        Assert.Equal(2, provider.ProvisionCalls);
+        Assert.Null(intent.TimeStampProvisioningRequested);
+    }
+
+    [Fact]
+    public async Task Start_WhenLeaseTokenIsCancelledAfterClaim_StillSettlesProviderResult()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (_, job) = await SeedRunningStartAsync(store);
+        using var leaseCancellation = new CancellationTokenSource();
+        var provider = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.TransientFailure,
+            ProvisionAttemptDefinitivelyClosed = true,
+            OnProvisionAsync = () =>
+            {
+                leaseCancellation.Cancel();
+                return Task.CompletedTask;
+            },
+        };
+        var executor = CreateExecutor(store, provider, new RecordingCostSliceService());
+
+        await Assert.ThrowsAsync<LifecycleExecutionException>(() =>
+            executor.ExecuteAsync(job, leaseCancellation.Token));
+
+        Assert.Equal(1, provider.ProvisionCalls);
+        var intent = Assert.Single(store.DbContext.DeploymentResources);
+        Assert.Null(intent.TimeStampProvisioningRequested);
+        Assert.Null(intent.TimeStampProvisioningResolved);
+        Assert.Null(intent.TimeStampReleased);
+        Assert.False(intent.PossibleCost);
+    }
+
+    [Fact]
+    public async Task Start_WhenProviderReturnsAfterCallDeadline_GetsFreshResultSettlementWindow()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (_, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.TransientFailure,
+            ReturnPartialServerOnUnknown = true,
+            ProvisionAttemptDefinitivelyClosed = true,
+            IgnoreProvisionCancellation = true,
+            OnProvisionAsync = () => Task.Delay(TimeSpan.FromMilliseconds(600)),
+        };
+        var executor = CreateExecutor(
+            store,
+            provider,
+            new RecordingCostSliceService(),
+            workerOptions: new LifecycleWorkerOptions
+            {
+                ProviderSettlementTimeout = TimeSpan.FromMilliseconds(500),
+            });
+
+        var failure = await Record.ExceptionAsync(() => executor.ExecuteAsync(job));
+
+        Assert.NotNull(failure);
+        var concreteServer = await store.DbContext.DeploymentResources.SingleAsync(q => q.Kind == "server");
+        Assert.Equal("server:42", concreteServer.ProviderResourceIdentifier);
+        Assert.Equal(1, provider.ReleaseCalls);
+    }
+
+    [Fact]
+    public async Task Start_WhenCostCommitFailsAfterProviderResult_PersistsCostBearingInventoryAtomically()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider
+        {
+            ReturnPartialServerOnUnknown = true,
+        };
+        var cost = new RecordingCostSliceService
+        {
+            CommitFailure = new InvalidOperationException("simulated crash before reservation commit"),
+        };
+        var executor = CreateExecutor(store, provider, cost);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(job));
+
+        var deployment = seed.Deployment!;
+        await store.DbContext.Entry(deployment).ReloadAsync();
+        var concreteServer = await store.DbContext.DeploymentResources.SingleAsync(q => q.Kind == "server");
+        Assert.Equal("server:42", concreteServer.ProviderResourceIdentifier);
+        Assert.True(concreteServer.PossibleCost);
+        Assert.True(deployment.PossibleCost);
+        Assert.Equal(1, cost.CommitCalls);
+    }
+
+    [Fact]
+    public async Task Start_WithOverlappingApiExecutors_ClaimsProviderMutationExactlyOnce()
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = $"hosting-provisioning-race-{Guid.NewGuid():N}",
+            Mode = SqliteOpenMode.Memory,
+            Cache = SqliteCacheMode.Shared,
+        }.ToString();
+        await using var anchorConnection = new SqliteConnection(connectionString);
+        await anchorConnection.OpenAsync();
+        var anchorOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(anchorConnection)
+            .Options;
+        await using var anchorContext = new NodaTimeSqliteApiDbContext(anchorOptions);
+        await anchorContext.Database.EnsureCreatedAsync();
+        var seed = await HostingTestData.SeedServerAsync(
+            anchorContext,
+            withActiveDeployment: true,
+            deploymentStatus: EDeploymentStatus.Provisioning);
+        var deployment = seed.Deployment!;
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        seed.Server.RuntimeProviderIdentifier = ExecutorTestProvider.Identifier;
+        deployment.PossibleCost = false;
+        deployment.TimeStampStarted = null;
+        seed.User.Claims!.Add(new Claim
+        {
+            Identifier = Claims.ResourceBased.Server.Operate,
+            Value = seed.Server.PrimaryKey.ToString(),
+            Category = "Game servers",
+            Title = Claims.ResourceBased.Server.Operate,
+            Description = "Test operation permission.",
+        });
+        var job = new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            DeploymentFk = deployment.PrimaryKey,
+            RequestedByFk = seed.User.PrimaryKey,
+            Kind = ELifecycleJobKind.Start,
+            ActionIdentifier = GameServerActions.Start,
+            Sequence = 1,
+            Status = ELifecycleJobStatus.Running,
+            Stage = "claimed",
+            Attempt = 1,
+            MaxAttempts = 3,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        anchorContext.LifecycleJobs.Add(job);
+        await anchorContext.SaveChangesAsync();
+
+        await using var connectionA = new SqliteConnection(connectionString);
+        await using var connectionB = new SqliteConnection(connectionString);
+        await connectionA.OpenAsync();
+        await connectionB.OpenAsync();
+        var optionsA = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(connectionA)
+            .Options;
+        var optionsB = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(connectionB)
+            .Options;
+        await using var contextA = new NodaTimeSqliteApiDbContext(optionsA);
+        await using var contextB = new NodaTimeSqliteApiDbContext(optionsB);
+        var bothObservedEmpty = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var discoveryArrivals = 0;
+        var providerCreateCalls = 0;
+        async Task CoordinateInitialDiscoveryAsync(int discoveryCall)
+        {
+            if (discoveryCall != 1)
+                return;
+            if (Interlocked.Increment(ref discoveryArrivals) == 2)
+                bothObservedEmpty.TrySetResult();
+            await bothObservedEmpty.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        Task RecordProviderCreateAsync()
+        {
+            Interlocked.Increment(ref providerCreateCalls);
+            return Task.CompletedTask;
+        }
+        var providerA = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.PermanentFailure,
+            OnDiscoveryAsync = CoordinateInitialDiscoveryAsync,
+            OnProvisionAsync = RecordProviderCreateAsync,
+        };
+        var providerB = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.PermanentFailure,
+            OnDiscoveryAsync = CoordinateInitialDiscoveryAsync,
+            OnProvisionAsync = RecordProviderCreateAsync,
+        };
+        var executorA = CreateExecutor(contextA, providerA, new RecordingCostSliceService());
+        var executorB = CreateExecutor(contextB, providerB, new RecordingCostSliceService());
+        var invocationA = new LifecycleJob { PrimaryKey = job.PrimaryKey, Attempt = job.Attempt };
+        var invocationB = new LifecycleJob { PrimaryKey = job.PrimaryKey, Attempt = job.Attempt };
+
+        var failures = await Task.WhenAll(
+            CaptureExceptionAsync(() => executorA.ExecuteAsync(invocationA)),
+            CaptureExceptionAsync(() => executorB.ExecuteAsync(invocationB)));
+
+        Assert.All(failures, Assert.NotNull);
+        Assert.Equal(1, providerCreateCalls);
+        anchorContext.ChangeTracker.Clear();
+        var persistedIntent = await anchorContext.DeploymentResources.SingleAsync();
+        Assert.NotNull(persistedIntent.TimeStampProvisioningRequested);
+    }
+
+    [Fact]
+    public async Task Start_WhenTerminateCommitsImmediatelyAfterProviderClaim_ClosesAttemptAndTerminates()
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = $"hosting-claim-barrier-race-{Guid.NewGuid():N}",
+            Mode = SqliteOpenMode.Memory,
+            Cache = SqliteCacheMode.Shared,
+        }.ToString();
+        await using var anchorConnection = new SqliteConnection(connectionString);
+        await anchorConnection.OpenAsync();
+        var anchorOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(anchorConnection)
+            .Options;
+        await using var anchorContext = new NodaTimeSqliteApiDbContext(anchorOptions);
+        await anchorContext.Database.EnsureCreatedAsync();
+        var (_, startJob) = await SeedRunningStartAsync(anchorContext);
+
+        var interceptor = new ProvisioningClaimCommittedInterceptor(async () =>
+        {
+            await using var barrierConnection = new SqliteConnection(connectionString);
+            await barrierConnection.OpenAsync();
+            var barrierOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+                .UseSqlite(barrierConnection)
+                .Options;
+            await using var barrierContext = new NodaTimeSqliteApiDbContext(barrierOptions);
+            var deployment = await barrierContext.GameServerDeployments
+                .SingleAsync(q => q.PrimaryKey == startJob.DeploymentFk);
+            deployment.IsProvisioningBlocked = true;
+            deployment.Status = EDeploymentStatus.Terminating;
+            deployment.Stage = "termination-requested";
+            deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+            await barrierContext.SaveChangesAsync();
+        });
+        await using var executorConnection = new SqliteConnection(connectionString);
+        await executorConnection.OpenAsync();
+        var executorOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(executorConnection)
+            .AddInterceptors(interceptor)
+            .Options;
+        await using var executorContext = new NodaTimeSqliteApiDbContext(executorOptions);
+        var provider = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.TransientFailure,
+            ProvisionAttemptDefinitivelyClosed = true,
+        };
+        var cost = new RecordingCostSliceService();
+        var executor = CreateExecutor(executorContext, provider, cost);
+        var invocation = new LifecycleJob { PrimaryKey = startJob.PrimaryKey, Attempt = startJob.Attempt };
+
+        await Assert.ThrowsAsync<LifecycleSupersededException>(() => executor.ExecuteAsync(invocation));
+
+        Assert.Equal(1, provider.ProvisionCalls);
+        anchorContext.ChangeTracker.Clear();
+        var placeholder = await anchorContext.DeploymentResources.SingleAsync();
+        Assert.NotNull(placeholder.TimeStampProvisioningRequested);
+        Assert.NotNull(placeholder.TimeStampProvisioningResolved);
+        Assert.NotNull(placeholder.TimeStampReleased);
+        Assert.False(placeholder.PossibleCost);
+
+        executorContext.ChangeTracker.Clear();
+        var persistedStart = await executorContext.LifecycleJobs.SingleAsync(q => q.PrimaryKey == startJob.PrimaryKey);
+        persistedStart.Status = ELifecycleJobStatus.CancelledByCostStop;
+        persistedStart.TimeStampCompleted = NodaSystemClock.Instance.GetCurrentInstant();
+        var terminateJob = new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = persistedStart.GameServerFk,
+            DeploymentFk = persistedStart.DeploymentFk,
+            RequestedByFk = persistedStart.RequestedByFk,
+            Kind = ELifecycleJobKind.Terminate,
+            ActionIdentifier = GameServerActions.Terminate,
+            Sequence = 2,
+            Priority = int.MaxValue,
+            Status = ELifecycleJobStatus.Running,
+            Stage = "claimed",
+            Attempt = 1,
+            MaxAttempts = int.MaxValue,
+            TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+            TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant(),
+        };
+        executorContext.LifecycleJobs.Add(terminateJob);
+        await executorContext.SaveChangesAsync();
+
+        await executor.ExecuteAsync(terminateJob);
+
+        executorContext.ChangeTracker.Clear();
+        var resolvedDeployment = await executorContext.GameServerDeployments
+            .SingleAsync(q => q.PrimaryKey == startJob.DeploymentFk);
+        Assert.Equal(EDeploymentStatus.Terminated, resolvedDeployment.Status);
+        Assert.NotNull(resolvedDeployment.TimeStampResolved);
+        Assert.False(resolvedDeployment.PossibleCost);
+        Assert.Equal(0, provider.ReleaseCalls);
+    }
+
+    [Fact]
+    public async Task Start_WhenTerminateCommitsInSeparateContextBeforeResultAdoption_PersistsConcreteIdentifier()
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = $"hosting-result-adoption-race-{Guid.NewGuid():N}",
+            Mode = SqliteOpenMode.Memory,
+            Cache = SqliteCacheMode.Shared,
+        }.ToString();
+        await using var anchorConnection = new SqliteConnection(connectionString);
+        await anchorConnection.OpenAsync();
+        var anchorOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(anchorConnection)
+            .Options;
+        await using var anchorContext = new NodaTimeSqliteApiDbContext(anchorOptions);
+        await anchorContext.Database.EnsureCreatedAsync();
+        var (_, startJob) = await SeedRunningStartAsync(anchorContext);
+
+        var provider = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.TransientFailure,
+            ReturnPartialFirewallOnUnknown = true,
+            ReturnPartialServerOnUnknown = true,
+            ProvisionAttemptDefinitivelyClosed = true,
+            OnProvisionAsync = async () =>
+            {
+                await using var barrierConnection = new SqliteConnection(connectionString);
+                await barrierConnection.OpenAsync();
+                var barrierOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+                    .UseSqlite(barrierConnection)
+                    .Options;
+                await using var barrierContext = new NodaTimeSqliteApiDbContext(barrierOptions);
+                var deployment = await barrierContext.GameServerDeployments
+                    .SingleAsync(q => q.PrimaryKey == startJob.DeploymentFk);
+                deployment.IsProvisioningBlocked = true;
+                deployment.Status = EDeploymentStatus.Terminating;
+                deployment.Stage = "termination-requested";
+                deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                var intent = await barrierContext.DeploymentResources
+                    .SingleAsync(q => q.DeploymentFk == startJob.DeploymentFk);
+                var observedAt = NodaSystemClock.Instance.GetCurrentInstant();
+                barrierContext.DeploymentResources.Add(new DeploymentResource
+                {
+                    PrimaryKey = Guid.NewGuid(),
+                    DeploymentFk = deployment.PrimaryKey,
+                    ProviderIdentifier = ExecutorTestProvider.Identifier,
+                    ProvisioningIntentIdentifier = intent.ProvisioningIntentIdentifier,
+                    ProviderResourceIdentifier = "firewall:19",
+                    Kind = "firewall",
+                    State = EDeploymentResourceState.Allocated,
+                    PossibleCost = false,
+                    TimeStampCreated = observedAt,
+                    TimeStampUpdated = observedAt,
+                    TimeStampProvisioningRequested = observedAt,
+                    TimeStampProvisioningResolved = observedAt,
+                });
+                await barrierContext.SaveChangesAsync();
+            },
+        };
+        await using var executorConnection = new SqliteConnection(connectionString);
+        await executorConnection.OpenAsync();
+        var executorOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(executorConnection)
+            .Options;
+        await using var executorContext = new NodaTimeSqliteApiDbContext(executorOptions);
+        var executor = CreateExecutor(executorContext, provider, new RecordingCostSliceService());
+        var invocation = new LifecycleJob { PrimaryKey = startJob.PrimaryKey, Attempt = startJob.Attempt };
+
+        await Assert.ThrowsAsync<LifecycleSupersededException>(() => executor.ExecuteAsync(invocation));
+
+        anchorContext.ChangeTracker.Clear();
+        var resources = await anchorContext.DeploymentResources.ToArrayAsync();
+        Assert.Equal(2, resources.Length);
+        var concreteServer = resources.Single(q => q.Kind == "server");
+        Assert.Equal("server:42", concreteServer.ProviderResourceIdentifier);
+        Assert.NotNull(concreteServer.TimeStampProvisioningResolved);
+        Assert.Null(concreteServer.TimeStampReleased);
+        Assert.True(concreteServer.PossibleCost);
+        Assert.Equal("firewall:19", resources.Single(q => q.Kind == "firewall").ProviderResourceIdentifier);
+    }
+
+    [Fact]
+    public async Task Start_WhenProviderClosesKnownPartialGraph_FaultStopsAndFinalizesTeardown()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.TransientFailure,
+            ReturnPartialFirewallOnUnknown = true,
+            ProvisionAttemptDefinitivelyClosed = true,
+        };
+        var executor = CreateExecutor(store, provider, new RecordingCostSliceService());
+
+        await Assert.ThrowsAsync<PermanentLifecycleExecutionException>(() => executor.ExecuteAsync(job));
+
+        var deployment = seed.Deployment!;
+        await store.DbContext.Entry(deployment).ReloadAsync();
+        Assert.Equal(EDeploymentStatus.TerminatedDueToFault, deployment.Status);
+        Assert.True(deployment.IsProvisioningBlocked);
+        Assert.NotNull(deployment.TimeStampResolved);
+        Assert.False(deployment.PossibleCost);
+        Assert.Equal(1, provider.ProvisionCalls);
+        Assert.Equal(1, provider.ReleaseCalls);
+        var resources = await store.DbContext.DeploymentResources.ToArrayAsync();
+        Assert.Equal(2, resources.Length);
+        Assert.All(resources, q => Assert.NotNull(q.TimeStampProvisioningResolved));
+        Assert.All(resources, q => Assert.NotNull(q.TimeStampReleased));
+        Assert.All(resources, q => Assert.False(q.PossibleCost));
+    }
+
+    [Fact]
+    public async Task Start_WhenTerminateClosesBarrierAfterConcreteServerCreate_RequiresVerifiedTeardown()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, startJob) = await SeedRunningStartAsync(store);
+        var deployment = seed.Deployment!;
+        var provider = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.TransientFailure,
+            ReturnPartialFirewallOnUnknown = true,
+            ReturnPartialServerOnUnknown = true,
+            ProvisionAttemptDefinitivelyClosed = true,
+            OnProvisionAsync = async () =>
+            {
+                deployment.IsProvisioningBlocked = true;
+                deployment.Status = EDeploymentStatus.Terminating;
+                deployment.Stage = "termination-requested";
+                deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                await store.DbContext.SaveChangesAsync();
+            },
+        };
+        var cost = new RecordingCostSliceService();
+        var executor = CreateExecutor(store, provider, cost);
+
+        await Assert.ThrowsAsync<LifecycleSupersededException>(() => executor.ExecuteAsync(startJob));
+
+        var concreteServer = store.DbContext.DeploymentResources.Single(q => q.Kind == "server");
+        Assert.Equal("server:42", concreteServer.ProviderResourceIdentifier);
+        Assert.NotNull(concreteServer.TimeStampProvisioningResolved);
+        Assert.Null(concreteServer.TimeStampReleased);
+        Assert.True(concreteServer.PossibleCost);
+        Assert.Equal(1, provider.ProvisionCalls);
+        Assert.Equal(1, cost.CommitCalls);
+        Assert.Equal(0, cost.ReleaseCalls);
+
+        startJob.Status = ELifecycleJobStatus.CancelledByCostStop;
+        startJob.TimeStampCompleted = NodaSystemClock.Instance.GetCurrentInstant();
+        await store.DbContext.SaveChangesAsync();
+        var terminateJob = new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            DeploymentFk = deployment.PrimaryKey,
+            RequestedByFk = seed.User.PrimaryKey,
+            Kind = ELifecycleJobKind.Terminate,
+            ActionIdentifier = GameServerActions.Terminate,
+            Sequence = 2,
+            Priority = int.MaxValue,
+            Status = ELifecycleJobStatus.Running,
+            Stage = "claimed",
+            Attempt = 1,
+            MaxAttempts = int.MaxValue,
+            TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+            TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant(),
+        };
+        store.DbContext.LifecycleJobs.Add(terminateJob);
+        await store.DbContext.SaveChangesAsync();
+
+        await executor.ExecuteAsync(terminateJob);
+
+        await store.DbContext.Entry(deployment).ReloadAsync();
+        Assert.Equal(EDeploymentStatus.Terminated, deployment.Status);
+        Assert.NotNull(deployment.TimeStampResolved);
+        Assert.False(deployment.PossibleCost);
+        Assert.Equal(2, provider.ReleaseCalls);
+        Assert.All(store.DbContext.DeploymentResources, resource => Assert.NotNull(resource.TimeStampReleased));
+    }
+
+    [Fact]
+    public async Task Start_AfterUnknownPartialGraph_WaitsForLatePrimaryThenTearsDownWithoutReposting()
     {
         await using var store = await HostingTestStore.CreateAsync();
         var (seed, job) = await SeedRunningStartAsync(store);
@@ -133,26 +630,37 @@ public sealed class LifecycleJobExecutorCloudTests
         var executor = CreateExecutor(store, provider, cost);
 
         await Assert.ThrowsAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
-        await Assert.ThrowsAsync<PermanentLifecycleExecutionException>(() => executor.ExecuteAsync(job));
+        await Assert.ThrowsAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
 
         Assert.Equal(1, provider.ProvisionCalls);
-        Assert.Equal(4, provider.DiscoveryCalls);
+        Assert.Equal(3, provider.DiscoveryCalls);
         Assert.Equal(1, provider.ReleaseCalls);
         Assert.Equal(1, cost.ReserveCalls);
         Assert.Equal(1, cost.CommitCalls);
         Assert.Equal(2, store.DbContext.DeploymentResources.Count());
         var placeholder = store.DbContext.DeploymentResources.Single(q => q.Kind == "server");
         Assert.Null(placeholder.ProviderResourceIdentifier);
-        Assert.NotNull(placeholder.TimeStampProvisioningResolved);
-        Assert.NotNull(placeholder.TimeStampReleased);
-        Assert.False(placeholder.PossibleCost);
+        Assert.Null(placeholder.TimeStampProvisioningResolved);
+        Assert.Null(placeholder.TimeStampReleased);
+        Assert.True(placeholder.PossibleCost);
         var firewall = store.DbContext.DeploymentResources.Single(q => q.Kind == "firewall");
         Assert.NotNull(firewall.TimeStampReleased);
         var deployment = seed.Deployment!;
         await store.DbContext.Entry(deployment).ReloadAsync();
-        Assert.Equal(EDeploymentStatus.TerminatedDueToFault, deployment.Status);
+        Assert.Equal(EDeploymentStatus.TerminatingDueToFault, deployment.Status);
         Assert.Equal("provider-resource-graph-incomplete", deployment.FaultCode);
+        Assert.True(deployment.PossibleCost);
+
+        provider.ReturnCompleteReadyGraphAfterUnknown = true;
+        await Assert.ThrowsAsync<PermanentLifecycleExecutionException>(() => executor.ExecuteAsync(job));
+
+        await store.DbContext.Entry(deployment).ReloadAsync();
+        Assert.Equal(1, provider.ProvisionCalls);
+        Assert.Equal(5, provider.DiscoveryCalls);
+        Assert.Equal(3, provider.ReleaseCalls);
+        Assert.Equal(EDeploymentStatus.TerminatedDueToFault, deployment.Status);
         Assert.False(deployment.PossibleCost);
+        Assert.All(store.DbContext.DeploymentResources, q => Assert.NotNull(q.TimeStampReleased));
     }
 
     [Fact]
@@ -315,6 +823,153 @@ public sealed class LifecycleJobExecutorCloudTests
         Assert.Empty(store.DbContext.WorkerCommands);
     }
 
+    [Theory]
+    [InlineData(EDeploymentStatus.Terminated)]
+    [InlineData(EDeploymentStatus.TerminatedDueToFault)]
+    public async Task Terminate_WhenDeploymentWasAlreadyResolved_IsIdempotent(EDeploymentStatus terminalStatus)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job, _) = await SeedTerminateAsync(store, faultTriggered: false);
+        var deployment = seed.Deployment!;
+        var resolvedAt = NodaSystemClock.Instance.GetCurrentInstant();
+        deployment.Status = terminalStatus;
+        deployment.Stage = terminalStatus == EDeploymentStatus.Terminated ? "terminated" : "terminated-due-to-fault";
+        deployment.TimeStampResolved = resolvedAt;
+        deployment.PossibleCost = false;
+        await store.DbContext.SaveChangesAsync();
+        var provider = new ExecutorTestProvider();
+        var executor = CreateExecutor(store, provider, new RecordingCostSliceService());
+
+        await executor.ExecuteAsync(job);
+
+        await store.DbContext.Entry(deployment).ReloadAsync();
+        Assert.Equal(terminalStatus, deployment.Status);
+        Assert.Equal(resolvedAt, deployment.TimeStampResolved);
+        Assert.Equal(0, provider.DiscoveryCalls);
+        Assert.Equal(0, provider.ReleaseCalls);
+    }
+
+    [Fact]
+    public async Task OrdinaryStop_WhenUserTerminateCommitsDuringFinalVerification_DefersTerminalPublication()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(
+            store.DbContext,
+            withActiveDeployment: true,
+            deploymentStatus: EDeploymentStatus.Running);
+        var deployment = seed.Deployment!;
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        seed.Server.RuntimeProviderIdentifier = ExecutorTestProvider.Identifier;
+        deployment.IsProvisioningBlocked = true;
+        var worker = new LifecycleWorker
+        {
+            PrimaryKey = Guid.NewGuid(),
+            DeploymentFk = deployment.PrimaryKey,
+            Identity = "stop-race-worker",
+            WorkerCredentialHash = new string('a', 64),
+            WorkerCredentialIssuedAt = now,
+            WorkerCredentialExpiresAt = now + Duration.FromHours(1),
+            WorkerCredentialActivatedAt = now,
+            TimeStampRegistered = now,
+            Status = EWorkerStatus.Online,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        var stopJob = new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            DeploymentFk = deployment.PrimaryKey,
+            RequestedByFk = seed.User.PrimaryKey,
+            Kind = ELifecycleJobKind.Stop,
+            ActionIdentifier = GameServerActions.Stop,
+            Sequence = 1,
+            Priority = 50,
+            Status = ELifecycleJobStatus.Running,
+            Stage = "claimed",
+            Attempt = 1,
+            MaxAttempts = 3,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        var stopCommand = new WorkerCommand
+        {
+            PrimaryKey = Guid.NewGuid(),
+            LifecycleJobFk = stopJob.PrimaryKey,
+            DeploymentFk = deployment.PrimaryKey,
+            WorkerFk = worker.PrimaryKey,
+            Sequence = 1,
+            Priority = 50,
+            ActionIdentifier = GameServerActions.Stop,
+            Status = EWorkerCommandStatus.Succeeded,
+            Stage = "completed",
+            TimeStampCreated = now,
+            TimeStampStarted = now,
+            TimeStampCompleted = now,
+        };
+        deployment.Workers.Add(worker);
+        stopJob.WorkerCommands.Add(stopCommand);
+        store.DbContext.AddRange(worker, stopJob, stopCommand);
+        await store.DbContext.SaveChangesAsync();
+
+        LifecycleJob? queuedTerminate = null;
+        var provider = new ExecutorTestProvider
+        {
+            OnDiscoveryAsync = async discoveryCall =>
+            {
+                if (discoveryCall != 2)
+                    return;
+                queuedTerminate = new LifecycleJob
+                {
+                    PrimaryKey = Guid.NewGuid(),
+                    GameServerFk = seed.Server.PrimaryKey,
+                    DeploymentFk = deployment.PrimaryKey,
+                    RequestedByFk = seed.User.PrimaryKey,
+                    Kind = ELifecycleJobKind.Terminate,
+                    ActionIdentifier = GameServerActions.Terminate,
+                    Sequence = 2,
+                    Priority = 100,
+                    Status = ELifecycleJobStatus.Queued,
+                    Stage = "queued",
+                    MaxAttempts = int.MaxValue,
+                    TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+                    TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant(),
+                };
+                stopJob.Status = ELifecycleJobStatus.CancelledByCostStop;
+                stopJob.Stage = "cancelled-by-cost-stop";
+                deployment.Status = EDeploymentStatus.Terminating;
+                deployment.Stage = "termination-requested";
+                deployment.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                store.DbContext.LifecycleJobs.Add(queuedTerminate);
+                await store.DbContext.SaveChangesAsync();
+            },
+        };
+        var executor = CreateExecutor(store, provider, new RecordingCostSliceService());
+
+        await executor.ExecuteAsync(stopJob);
+
+        await store.DbContext.Entry(deployment).ReloadAsync();
+        Assert.Equal(EDeploymentStatus.Terminating, deployment.Status);
+        Assert.Equal("termination-requested", deployment.Stage);
+        Assert.Null(deployment.TimeStampResolved);
+        Assert.Equal(2, provider.DiscoveryCalls);
+        Assert.Null(worker.WorkerCredentialRevokedAt);
+
+        // The queued Terminate owns terminal publication even though the older Stop already removed provider cost.
+        Assert.NotNull(queuedTerminate);
+        queuedTerminate.Status = ELifecycleJobStatus.Running;
+        queuedTerminate.Stage = "claimed";
+        await store.DbContext.SaveChangesAsync();
+        await executor.ExecuteAsync(queuedTerminate);
+        await store.DbContext.Entry(deployment).ReloadAsync();
+        Assert.Equal(EDeploymentStatus.Terminated, deployment.Status);
+        Assert.Equal("terminated", deployment.Stage);
+        Assert.NotNull(deployment.TimeStampResolved);
+        Assert.False(deployment.PossibleCost);
+        Assert.NotNull(worker.WorkerCredentialRevokedAt);
+        Assert.Equal(4, provider.DiscoveryCalls);
+    }
+
     [Fact]
     public async Task FaultTerminate_BoundsEvidenceWindowThenContinuesVerifiedProviderTeardown()
     {
@@ -392,13 +1047,28 @@ public sealed class LifecycleJobExecutorCloudTests
         IGameServerDefinitionCatalog? gameServerDefinitions = null,
         LifecycleWorkerOptions? workerOptions = null,
         IWorkerBootstrapPayloadRenderer? bootstrapRenderer = null)
-        => new(
+        => CreateExecutor(
             store.DbContext,
+            provider,
+            costSliceService,
+            gameServerDefinitions,
+            workerOptions,
+            bootstrapRenderer);
+
+    private static LifecycleJobExecutor CreateExecutor(
+        DatabaseContext dbContext,
+        IRuntimeProvider provider,
+        IHostingCostSliceService costSliceService,
+        IGameServerDefinitionCatalog? gameServerDefinitions = null,
+        LifecycleWorkerOptions? workerOptions = null,
+        IWorkerBootstrapPayloadRenderer? bootstrapRenderer = null)
+        => new(
+            dbContext,
             gameServerDefinitions ?? new TestGameServerDefinitionCatalog(),
             [provider],
             new WorkerCredentialService(Options.Create(new LifecycleWorkerOptions())),
             bootstrapRenderer ?? new TestBootstrapRenderer(),
-            new HostingAuthorizationService(store.DbContext),
+            new HostingAuthorizationService(dbContext),
             costSliceService,
             new HostingAuditWriter(),
             Options.Create(workerOptions ?? new LifecycleWorkerOptions
@@ -408,10 +1078,26 @@ public sealed class LifecycleJobExecutorCloudTests
                 IdlePollInterval = TimeSpan.FromMilliseconds(5),
             }));
 
+    private static async Task<Exception?> CaptureExceptionAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+    }
+
     private static async Task<(HostingTestSeed Seed, LifecycleJob Job)> SeedRunningStartAsync(HostingTestStore store)
+        => await SeedRunningStartAsync(store.DbContext);
+
+    private static async Task<(HostingTestSeed Seed, LifecycleJob Job)> SeedRunningStartAsync(DatabaseContext dbContext)
     {
         var seed = await HostingTestData.SeedServerAsync(
-            store.DbContext,
+            dbContext,
             withActiveDeployment: true,
             deploymentStatus: EDeploymentStatus.Provisioning);
         seed.Server.RuntimeProviderIdentifier = ExecutorTestProvider.Identifier;
@@ -442,9 +1128,28 @@ public sealed class LifecycleJobExecutorCloudTests
             TimeStampCreated = now,
             TimeStampUpdated = now,
         };
-        store.DbContext.LifecycleJobs.Add(job);
-        await store.DbContext.SaveChangesAsync();
+        dbContext.LifecycleJobs.Add(job);
+        await dbContext.SaveChangesAsync();
         return (seed, job);
+    }
+
+    private sealed class ProvisioningClaimCommittedInterceptor(Func<Task> onClaimCommitted)
+        : DbTransactionInterceptor
+    {
+        private int _handled;
+
+        public override async Task TransactionCommittedAsync(
+            DbTransaction transaction,
+            TransactionEndEventData eventData,
+            CancellationToken cancellationToken = default)
+        {
+            var hasProvisioningClaim = eventData.Context?.ChangeTracker
+                .Entries<DeploymentResource>()
+                .Any(q => q.Entity.TimeStampProvisioningRequested.HasValue) == true;
+            if (!hasProvisioningClaim || Interlocked.Exchange(ref _handled, 1) != 0)
+                return;
+            await onClaimCommitted();
+        }
     }
 
     private static async Task<(HostingTestSeed Seed, LifecycleJob Job, LifecycleWorker Worker)> SeedTerminateAsync(
@@ -530,6 +1235,8 @@ public sealed class LifecycleJobExecutorCloudTests
 
         public Exception? Failure { get; init; }
 
+        public Exception? CommitFailure { get; init; }
+
         public Task ReserveInitialSliceAsync(
             Guid deploymentId,
             string providerIdentifier,
@@ -545,7 +1252,7 @@ public sealed class LifecycleJobExecutorCloudTests
             CancellationToken cancellationToken = default)
         {
             CommitCalls++;
-            return Task.CompletedTask;
+            return CommitFailure is null ? Task.CompletedTask : Task.FromException(CommitFailure);
         }
 
         public Task ReleaseInitialReservationAsync(
@@ -586,11 +1293,23 @@ public sealed class LifecycleJobExecutorCloudTests
 
         public bool ReturnPartialFirewallOnUnknown { get; init; }
 
+        public bool ReturnPartialServerOnUnknown { get; init; }
+
         public bool ReturnDuplicateServersAfterUnknown { get; init; }
 
         public bool ReturnCompletePendingGraphAfterUnknown { get; init; }
 
         public bool ReturnCompleteConflictingGraphAfterUnknown { get; init; }
+
+        public bool ReturnCompleteReadyGraphAfterUnknown { get; set; }
+
+        public bool ProvisionAttemptDefinitivelyClosed { get; init; }
+
+        public bool IgnoreProvisionCancellation { get; init; }
+
+        public Func<Task>? OnProvisionAsync { get; init; }
+
+        public Func<int, Task>? OnDiscoveryAsync { get; init; }
 
         public ERuntimeProviderOutcome ProvisionOutcome { get; init; } = ERuntimeProviderOutcome.Unknown;
 
@@ -602,33 +1321,36 @@ public sealed class LifecycleJobExecutorCloudTests
 
         public RuntimeProvisionRequest? LastProvisionRequest { get; private set; }
 
-        public Task<RuntimeProvisionResult> ProvisionAsync(
+        public async Task<RuntimeProvisionResult> ProvisionAsync(
             RuntimeProvisionRequest request,
             CancellationToken cancellationToken = default)
         {
             ProvisionCalls++;
             LastProvisionRequest = request;
-            IReadOnlyList<RuntimeResource> partialResources = ReturnPartialFirewallOnUnknown
-                ?
-                [
-                    new RuntimeResource(
-                        Identifier,
-                        "firewall:19",
-                        IsAllocated: true,
-                        IsPotentiallyCostGenerating: false,
-                        ObservedAt: DateTimeOffset.UtcNow,
-                        ResourceType: "firewall",
-                        ProviderState: "allocated",
-                        Attribution: new RuntimeResourceAttribution(
-                            request.ServerId,
-                            request.DeploymentId,
-                            request.ProvisioningIntentId,
-                            request.WorkerId),
-                        IsPlatformManaged: true,
-                        HasTrustworthyAttribution: true),
-                ]
-                : [];
-            return Task.FromResult(new RuntimeProvisionResult(
+            if (OnProvisionAsync is not null)
+                await OnProvisionAsync();
+            if (!IgnoreProvisionCancellation)
+                cancellationToken.ThrowIfCancellationRequested();
+            var partialResources = new List<RuntimeResource>();
+            if (ReturnPartialFirewallOnUnknown)
+            {
+                partialResources.Add(CreateResource(
+                    request,
+                    "firewall:19",
+                    "firewall",
+                    potentiallyBillable: false));
+            }
+            if (ReturnPartialServerOnUnknown)
+            {
+                // Deliberately omit this resource from DiscoverAsync. This models a concrete create result that is
+                // persisted by identifier but cannot be rediscovered through expected-attribution filtering.
+                partialResources.Add(CreateResource(
+                    request,
+                    "server:42",
+                    "server",
+                    potentiallyBillable: true));
+            }
+            return new RuntimeProvisionResult(
                 ProvisionOutcome,
                 ProvisionOutcome is ERuntimeProviderOutcome.PermanentFailure
                     ? "create-rejected"
@@ -637,7 +1359,8 @@ public sealed class LifecycleJobExecutorCloudTests
                     ? "The provider rejected the request without allocating a resource."
                     : "The provider response was lost.",
                 null,
-                partialResources));
+                partialResources,
+                IsProvisioningAttemptDefinitivelyClosed: ProvisionAttemptDefinitivelyClosed);
         }
 
         public Task<RuntimeObservationResult> ObserveAsync(
@@ -663,13 +1386,16 @@ public sealed class LifecycleJobExecutorCloudTests
             CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public Task<RuntimeDiscoveryResult> DiscoverAsync(CancellationToken cancellationToken = default)
+        public async Task<RuntimeDiscoveryResult> DiscoverAsync(CancellationToken cancellationToken = default)
         {
             DiscoveryCalls++;
+            if (OnDiscoveryAsync is not null)
+                await OnDiscoveryAsync(DiscoveryCalls);
             var resources = new List<RuntimeResource>();
             if (LastProvisionRequest is { } request)
             {
                 if (ReturnPartialFirewallOnUnknown
+                    && !ReturnCompleteReadyGraphAfterUnknown
                     && !_releasedResourceIdentifiers.Contains("firewall:19"))
                 {
                     resources.Add(CreateResource(request, "firewall:19", "firewall", potentiallyBillable: false));
@@ -685,7 +1411,9 @@ public sealed class LifecycleJobExecutorCloudTests
                 var completeGraphReadiness = ReturnCompleteConflictingGraphAfterUnknown
                     ? ERuntimeResourceProvisioningReadiness.Conflict
                     : ERuntimeResourceProvisioningReadiness.Pending;
-                if (ReturnCompletePendingGraphAfterUnknown || ReturnCompleteConflictingGraphAfterUnknown)
+                if (ReturnCompletePendingGraphAfterUnknown
+                    || ReturnCompleteConflictingGraphAfterUnknown
+                    || ReturnCompleteReadyGraphAfterUnknown)
                 {
                     foreach (var definition in new[]
                              {
@@ -701,17 +1429,17 @@ public sealed class LifecycleJobExecutorCloudTests
                             definition.Identifier,
                             definition.Kind,
                             definition.Billable,
-                            definition.Kind == "server"
+                            ReturnCompleteReadyGraphAfterUnknown || definition.Kind == "server"
                                 ? ERuntimeResourceProvisioningReadiness.Ready
                                 : completeGraphReadiness));
                     }
                 }
             }
-            return Task.FromResult(new RuntimeDiscoveryResult(
+            return new RuntimeDiscoveryResult(
                 ERuntimeProviderOutcome.Succeeded,
                 "discovered",
                 null,
-                resources));
+                resources);
         }
 
         private static RuntimeResource CreateResource(
@@ -737,6 +1465,7 @@ public sealed class LifecycleJobExecutorCloudTests
                     request.WorkerId),
                 IsPlatformManaged: true,
                 HasTrustworthyAttribution: true,
-                ProvisioningReadiness: provisioningReadiness);
+                ProvisioningReadiness: provisioningReadiness,
+                OperationalState: ERuntimeResourceOperationalState.Operational);
     }
 }
