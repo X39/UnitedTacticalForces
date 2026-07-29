@@ -5,4 +5,5 @@ public sealed record RuntimeProviderInfo
     public string Identifier { get; init; } = string.Empty;
     public string AvailabilityStatus { get; init; } = "available";
     public IReadOnlyCollection<RuntimeProfileInfo> Profiles { get; init; } = [];
+    public RuntimeStorageCapabilitiesInfo? Storage { get; init; }
 }

@@ -8,4 +8,5 @@ public sealed record RuntimeProviderDto
     public string Identifier { get; init; } = string.Empty;
     public string AvailabilityStatus { get; init; } = RuntimeProviderAvailabilityStatuses.Available;
     public IReadOnlyCollection<RuntimeProfileDto> Profiles { get; init; } = [];
+    public RuntimeStorageCapabilitiesDto? Storage { get; init; }
 }

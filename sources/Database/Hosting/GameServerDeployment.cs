@@ -37,6 +37,21 @@ public class GameServerDeployment : IPrimaryKey<Guid>, ITimeStampCreated
     [MaxLength(256)]
     public string RuntimeProfileDisplayName { get; init; } = string.Empty;
 
+    public ERuntimeStorageStrategy RuntimeStorageStrategy { get; set; }
+
+    public long? IncludedStorageBytes { get; set; }
+
+    public long? SelectedExternalStorageBytes { get; set; }
+
+    [MaxLength(512)]
+    public string DeploymentRoot { get; set; } = string.Empty;
+
+    [Column(TypeName = "numeric(18,6)")]
+    public decimal? EstimatedComputeHourlyCostEur { get; set; }
+
+    [Column(TypeName = "numeric(18,6)")]
+    public decimal? EstimatedStorageHourlyCostEur { get; set; }
+
     public EDeploymentStatus Status { get; set; }
 
     [MaxLength(128)]

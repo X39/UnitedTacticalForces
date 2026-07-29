@@ -11,6 +11,8 @@ public sealed record GameServerDeploymentResourceInfo
     public string Kind { get; init; } = string.Empty;
     public string State { get; init; } = string.Empty;
     public bool PossibleCost { get; init; }
+    public long? ProvisionedCapacityBytes { get; init; }
+    public decimal? EstimatedHourlyCostEur { get; init; }
     public string? ProviderState { get; init; }
     public string? PublicAddress { get; init; }
     public DateTimeOffset? TimeStampObserved { get; init; }

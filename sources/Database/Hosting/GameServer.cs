@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Database.Authority;
 using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Database.Meta;
+using X39.UnitedTacticalForces.Hosting.Contracts;
 
 namespace X39.UnitedTacticalForces.Database.Hosting;
 
@@ -31,6 +32,10 @@ public class GameServer : IPrimaryKey<Guid>, ITimeStampCreated
 
     [MaxLength(256)]
     public string RuntimeProfileDisplayName { get; set; } = string.Empty;
+
+    public ERuntimeStorageStrategy RuntimeStorageStrategy { get; set; }
+
+    public long? ExternalStorageSizeGiB { get; set; }
 
     [Column(TypeName = "numeric(18,6)")]
     public decimal? EstimatedHourlyCostEur { get; set; }

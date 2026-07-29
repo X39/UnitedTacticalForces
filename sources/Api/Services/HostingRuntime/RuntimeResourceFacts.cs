@@ -13,6 +13,10 @@ internal static class RuntimeResourceFacts
             target.ProviderState = Limit(observed.ProviderState, 128);
         if (!string.IsNullOrWhiteSpace(observed.PublicAddress))
             target.PublicAddress = Limit(observed.PublicAddress, 256);
+        if (observed.ProvisionedCapacityBytes.HasValue)
+            target.ProvisionedCapacityBytes = observed.ProvisionedCapacityBytes;
+        if (observed.EstimatedHourlyCostEur.HasValue)
+            target.EstimatedHourlyCostEur = observed.EstimatedHourlyCostEur;
     }
 
     private static string Limit(string value, int maximumLength)

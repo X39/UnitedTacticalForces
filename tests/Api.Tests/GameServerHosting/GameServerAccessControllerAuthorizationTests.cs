@@ -45,6 +45,7 @@ public sealed class GameServerAccessControllerAuthorizationTests
     [InlineData(nameof(GameServersController.EstimateStorageDemandAsync), Claims.Creation.Server)]
     [InlineData(nameof(GameServersController.GetCreationModPackOptionsAsync), Claims.Creation.Server)]
     [InlineData(nameof(GameServersController.GetStorageDemandAsync), Claims.ResourceBased.Server.View)]
+    [InlineData(nameof(GameServersController.ChangeRuntimeStorageAsync), Claims.ResourceBased.Server.Modify)]
     public void StorageEstimateRoutes_RequireExpectedAuthorization(string methodName, string expectedPolicy)
     {
         var method = typeof(GameServersController).GetMethod(methodName)

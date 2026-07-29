@@ -15,6 +15,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
     IHostEnvironment environment,
     IOptions<WorkerProvisioningOptions> options) : IWorkerBootstrapPayloadRenderer
 {
+    internal const string ExternalBlockDeviceToken = "__UTF_EXTERNAL_BLOCK_DEVICE__";
     private const int RuntimeGroupId = 10001;
     private readonly WorkerProvisioningOptions _options = options.Value;
 
@@ -23,8 +24,32 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         Guid serverId,
         string gameIdentifier,
         IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements)
+        => Render(
+            bootstrap,
+            serverId,
+            gameIdentifier,
+            inboundNetworkRequirements,
+            new RuntimeStoragePlan(
+                X39.UnitedTacticalForces.Hosting.Contracts.ERuntimeStorageStrategy.IncludedDisk,
+                0,
+                0,
+                _options.RuntimeDirectory,
+                0));
+
+    public WorkerBootstrapPayload Render(
+        WorkerBootstrapConfiguration bootstrap,
+        Guid serverId,
+        string gameIdentifier,
+        IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements,
+        RuntimeStoragePlan storagePlan)
     {
         ValidateOptions();
+        if (!IsSafeAbsolutePath(storagePlan.DeploymentRoot)
+            || storagePlan.RequiredCapacityBytes < 0
+            || storagePlan.SelectedCapacityBytes < storagePlan.RequiredCapacityBytes)
+        {
+            throw new InvalidOperationException("The resolved runtime-storage plan is invalid for bootstrap.");
+        }
         var networkFailure = RuntimeInboundNetworkPlanValidator.Validate(inboundNetworkRequirements);
         if (networkFailure is not null)
             throw new InvalidOperationException(networkFailure);
@@ -54,12 +79,16 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         });
 
         var serviceName = $"utf-cloud-worker-{bootstrap.DeploymentId:N}";
-        var service = RenderSystemdService(serviceName, inboundNetworkRequirements);
+        var service = RenderSystemdService(serviceName, inboundNetworkRequirements, storagePlan.DeploymentRoot);
+        var storageService = RenderStorageService(storagePlan);
+        var storageScript = RenderStorageScript(storagePlan, bootstrap.DeploymentId);
         var cloudInit = $"""
                         #cloud-config
                         package_update: true
                         packages:
                           - docker.io
+                          - e2fsprogs
+                          - util-linux
                         write_files:
                           - path: {_options.BootstrapPath}
                             owner: 'root:root'
@@ -71,28 +100,105 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
                             permissions: '0644'
                             encoding: b64
                             content: {Base64(service)}
+                          - path: /usr/local/sbin/utf-prepare-runtime-storage
+                            owner: root:root
+                            permissions: '0700'
+                            encoding: b64
+                            content: {Base64(storageScript)}
+                          - path: /etc/systemd/system/utf-runtime-storage.service
+                            owner: root:root
+                            permissions: '0644'
+                            encoding: b64
+                            content: {Base64(storageService)}
                         runcmd:
-                          - [ mkdir, -p, {_options.StateDirectory}, {_options.RuntimeDirectory} ]
+                          - [ mkdir, -p, {_options.StateDirectory}, {storagePlan.DeploymentRoot} ]
                           - [ chown, -R, 'root:root', {_options.StateDirectory} ]
                           - [ chmod, '0700', {_options.StateDirectory} ]
-                          - [ chown, -R, 'root:{RuntimeGroupId}', {_options.RuntimeDirectory} ]
-                          - [ chmod, '2770', {_options.RuntimeDirectory} ]
+                          - [ chown, -R, 'root:{RuntimeGroupId}', {storagePlan.DeploymentRoot} ]
+                          - [ chmod, '2770', {storagePlan.DeploymentRoot} ]
                           - [ systemctl, daemon-reload ]
+                          - [ systemctl, enable, --now, utf-runtime-storage.service ]
                           - [ systemctl, enable, --now, {serviceName}.service ]
                         """;
         return new WorkerBootstrapPayload(cloudInit);
     }
 
+    private string RenderStorageService(RuntimeStoragePlan storagePlan)
+        => $"""
+           [Unit]
+           Description=Verify UTF deployment storage
+           Wants=local-fs.target
+           After=local-fs.target
+           Before=utf-cloud-worker.target
+
+           [Service]
+           Type=oneshot
+           ExecStart=/usr/local/sbin/utf-prepare-runtime-storage
+           RemainAfterExit=yes
+
+           [Install]
+           WantedBy=multi-user.target
+           """;
+
+    private string RenderStorageScript(RuntimeStoragePlan storagePlan, Guid deploymentId)
+    {
+        var requiredBytes = storagePlan.RequiredCapacityBytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (!storagePlan.UsesExternalStorage)
+        {
+            return $"""
+                   #!/bin/sh
+                   set -eu
+                   mount_path='{storagePlan.DeploymentRoot}'
+                   mkdir -p "$mount_path"
+                   chown root:{RuntimeGroupId} "$mount_path"
+                   chmod 2770 "$mount_path"
+                   available="$(df -PB1 "$mount_path" | tail -n 1 | tr -s ' ' | cut -d ' ' -f 4)"
+                   test "$available" -ge '{requiredBytes}'
+                   """;
+        }
+
+        var expectedBytes = storagePlan.SelectedCapacityBytes.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var fileSystemLabel = $"UTF_{deploymentId:N}"[..16];
+        return $"""
+               #!/bin/sh
+               set -eu
+               device='{ExternalBlockDeviceToken}'
+               mount_path='{storagePlan.DeploymentRoot}'
+               expected_label='{fileSystemLabel}'
+               test -b "$device"
+               actual_bytes="$(blockdev --getsize64 "$device")"
+               test "$actual_bytes" -ge '{expectedBytes}'
+               if ! blkid -p "$device" >/dev/null 2>&1; then
+                 mkfs.ext4 -F -L "$expected_label" "$device"
+               fi
+               test "$(blkid -s TYPE -o value "$device")" = 'ext4'
+               test "$(blkid -s LABEL -o value "$device")" = "$expected_label"
+               mkdir -p "$mount_path"
+               fstab_line="LABEL=$expected_label $mount_path ext4 defaults,nofail,x-systemd.device-timeout=60 0 2"
+               grep -Fqx "$fstab_line" /etc/fstab || printf '%s\n' "$fstab_line" >> /etc/fstab
+               mount "$mount_path"
+               test "$(findmnt -n -o FSTYPE --target "$mount_path")" = 'ext4'
+               mounted_source="$(readlink -f "$(findmnt -n -o SOURCE --target "$mount_path")")"
+               test "$mounted_source" = "$(readlink -f "$device")"
+               available="$(df -PB1 "$mount_path" | tail -n 1 | tr -s ' ' | cut -d ' ' -f 4)"
+               test "$available" -ge '{requiredBytes}'
+               chown root:{RuntimeGroupId} "$mount_path"
+               chmod 2770 "$mount_path"
+               """;
+    }
+
     private string RenderSystemdService(
         string serviceName,
-        IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements)
+        IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements,
+        string deploymentRoot)
     {
         var publishedPorts = string.Join(' ', inboundNetworkRequirements.Select(RenderPublishedPort));
         return $"""
            [Unit]
            Description=UTF dedicated cloud game-server worker
            Wants=network-online.target docker.service
-           After=network-online.target docker.service
+           Requires=utf-runtime-storage.service
+           After=network-online.target docker.service utf-runtime-storage.service
 
            [Service]
            Type=simple
@@ -109,7 +215,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
              --log-opt max-file={_options.ContainerLogMaxFiles} \
              --mount type=bind,src={_options.BootstrapPath},dst=/run/secrets/utf-worker-bootstrap.json,readonly \
              --mount type=bind,src={_options.StateDirectory},dst=/var/lib/united-tactical-forces/worker \
-             --mount type=bind,src={_options.RuntimeDirectory},dst=/srv/united-tactical-forces/runtime \
+             --mount type=bind,src={deploymentRoot},dst=/srv/united-tactical-forces/runtime \
              {_options.ContainerImage}
            ExecStop=/usr/bin/docker stop --time 30 {serviceName}
            TimeoutStopSec=45

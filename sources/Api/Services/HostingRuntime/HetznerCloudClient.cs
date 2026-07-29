@@ -156,6 +156,80 @@ public sealed class HetznerCloudClient(
     internal Task<HetznerClientResult> PowerOffServerAsync(long serverId, CancellationToken cancellationToken)
         => PostActionAsync($"servers/{serverId}/actions/poweroff", cancellationToken);
 
+    internal Task<HetznerClientResult> PowerOnServerAsync(long serverId, CancellationToken cancellationToken)
+        => PostActionAsync($"servers/{serverId}/actions/poweron", cancellationToken);
+
+    internal async Task<HetznerClientResult<IReadOnlyList<HetznerVolume>>> GetVolumesAsync(
+        IReadOnlyDictionary<string, string> requiredLabels,
+        CancellationToken cancellationToken)
+    {
+        var values = new List<HetznerVolume>();
+        long? page = 1;
+        var pagesRead = 0;
+        while (page.HasValue)
+        {
+            pagesRead++;
+            var response = await SendJsonAsync<HetznerVolumesResponse>(
+                    HttpMethod.Get,
+                    ListPath("volumes", requiredLabels, page.Value),
+                    requestBody: null,
+                    ambiguousMutation: false,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (response.Outcome is not ERuntimeProviderOutcome.Succeeded || response.Value is null)
+                return HetznerClientResult<IReadOnlyList<HetznerVolume>>.Failure(response.Outcome, response.Error);
+            if (response.Value.Volumes is null || response.Value.Meta?.Pagination is null)
+                return MalformedPage<IReadOnlyList<HetznerVolume>>("volumes");
+            values.AddRange(response.Value.Volumes.Select(MapVolume));
+            var nextPage = response.Value.Meta.Pagination.NextPage;
+            if (PaginationFailure(page.Value, nextPage, pagesRead) is { } paginationFailure)
+            {
+                return HetznerClientResult<IReadOnlyList<HetznerVolume>>.Failure(
+                    ERuntimeProviderOutcome.Unknown,
+                    paginationFailure);
+            }
+            page = nextPage;
+        }
+        return HetznerClientResult<IReadOnlyList<HetznerVolume>>.Success(values);
+    }
+
+    internal async Task<HetznerClientResult<HetznerVolume>> GetVolumeAsync(
+        long volumeId,
+        CancellationToken cancellationToken)
+        => await GetSingleAsync<HetznerVolumeResponse, HetznerVolume>(
+                $"volumes/{volumeId}",
+                static q => q.Volume is null ? null : MapVolume(q.Volume),
+                "volume",
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    internal async Task<HetznerClientResult<HetznerVolume>> CreateVolumeAsync(
+        HetznerVolumeCreateRequest request,
+        CancellationToken cancellationToken)
+        => await CreateAsync<HetznerVolumeResponse, HetznerVolume>(
+                "volumes",
+                request,
+                static q => q.Volume is null ? null : MapVolume(q.Volume),
+                static q => q.Id > 0,
+                "volume",
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    internal Task<HetznerClientResult> AttachVolumeAsync(
+        long volumeId,
+        long serverId,
+        CancellationToken cancellationToken)
+        => PostActionAsync(
+            $"volumes/{volumeId}/actions/attach",
+            new HetznerVolumeServerRequest(serverId),
+            cancellationToken);
+
+    internal Task<HetznerClientResult> DetachVolumeAsync(long volumeId, CancellationToken cancellationToken)
+        => PostActionAsync($"volumes/{volumeId}/actions/detach", cancellationToken);
+
+    internal Task<HetznerClientResult> DeleteVolumeAsync(long volumeId, CancellationToken cancellationToken)
+        => DeleteAsync($"volumes/{volumeId}", cancellationToken);
+
     internal async Task<HetznerClientResult<IReadOnlyList<HetznerPrimaryIp>>> GetPrimaryIpsAsync(
         IReadOnlyDictionary<string, string> requiredLabels,
         CancellationToken cancellationToken)
@@ -352,11 +426,17 @@ public sealed class HetznerCloudClient(
     private async Task<HetznerClientResult> PostActionAsync(
         string relativePath,
         CancellationToken cancellationToken)
+        => await PostActionAsync(relativePath, requestBody: null, cancellationToken).ConfigureAwait(false);
+
+    private async Task<HetznerClientResult> PostActionAsync(
+        string relativePath,
+        object? requestBody,
+        CancellationToken cancellationToken)
     {
         var response = await SendAsync(
                 HttpMethod.Post,
                 relativePath,
-                requestBody: null,
+                requestBody,
                 ambiguousMutation: true,
                 cancellationToken)
             .ConfigureAwait(false);
@@ -728,6 +808,20 @@ public sealed class HetznerCloudClient(
             value.AssigneeId,
             value.AssigneeType,
             value.AutoDelete,
+            new HetznerResourceReference(
+                value.Location?.Id is > 0 ? value.Location.Id : null,
+                value.Location?.Name?.Trim() ?? string.Empty),
+            CopyLabels(value.Labels));
+
+    private static HetznerVolume MapVolume(HetznerVolumeDto value)
+        => new(
+            value.Id,
+            value.Name ?? string.Empty,
+            value.Size,
+            value.Status ?? "unknown",
+            value.LinuxDevice ?? string.Empty,
+            value.Server,
+            value.Protection?.Delete ?? false,
             new HetznerResourceReference(
                 value.Location?.Id is > 0 ? value.Location.Id : null,
                 value.Location?.Name?.Trim() ?? string.Empty),

@@ -9,6 +9,13 @@ public sealed record GameServerDeploymentInfo
     public string RuntimeProfileIdentifier { get; init; } = string.Empty;
     public string RuntimeProfileDisplayName { get; init; } = string.Empty;
     public decimal? EstimatedHourlyCostEur { get; init; }
+    public string RuntimeStorageStrategy { get; init; } = "IncludedDisk";
+    public long? PeakStorageRequiredBytes { get; init; }
+    public long? IncludedStorageBytes { get; init; }
+    public long? SelectedExternalStorageBytes { get; init; }
+    public string DeploymentRoot { get; init; } = string.Empty;
+    public decimal? EstimatedComputeHourlyCostEur { get; init; }
+    public decimal? EstimatedStorageHourlyCostEur { get; init; }
     public string Status { get; init; } = string.Empty;
     public string Stage { get; init; } = string.Empty;
     public bool PossibleCost { get; init; }

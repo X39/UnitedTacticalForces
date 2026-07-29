@@ -42,6 +42,13 @@ public interface IGameServerLifecycleService
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);
 
+    Task ChangeRuntimeStorageAsync(
+        Guid gameServerId,
+        X39.UnitedTacticalForces.Hosting.Contracts.ERuntimeStorageStrategy strategy,
+        long? externalStorageSizeGiB,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
+
     Task ChangeModPackAsync(
         Guid gameServerId,
         long? modPackDefinitionId,

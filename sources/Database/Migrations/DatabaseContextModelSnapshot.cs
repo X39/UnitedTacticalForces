@@ -1233,6 +1233,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Guid>("DeploymentFk")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("EstimatedHourlyCostEur")
+                        .HasColumnType("numeric(18,6)");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -1253,6 +1256,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<string>("ProviderState")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<long?>("ProvisionedCapacityBytes")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("ProvisioningIntentIdentifier")
                         .IsRequired()
@@ -1316,6 +1322,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<decimal?>("EstimatedMonthlyCostEur")
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<long?>("ExternalStorageSizeGiB")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("GameIdentifier")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -1351,6 +1360,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<int>("RuntimeStorageStrategy")
+                        .HasColumnType("integer");
 
                     b.Property<long?>("SelectedModPackDefinitionFk")
                         .HasColumnType("bigint");
@@ -1457,7 +1469,18 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Instant?>("CostReservationStartsAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DeploymentRoot")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<decimal?>("EstimatedComputeHourlyCostEur")
+                        .HasColumnType("numeric(18,6)");
+
                     b.Property<decimal?>("EstimatedHourlyCostEur")
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("EstimatedStorageHourlyCostEur")
                         .HasColumnType("numeric(18,6)");
 
                     b.Property<string>("FaultCode")
@@ -1470,6 +1493,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.Property<Guid>("GameServerFk")
                         .HasColumnType("uuid");
+
+                    b.Property<long?>("IncludedStorageBytes")
+                        .HasColumnType("bigint");
 
                     b.Property<bool>("IsProvisioningBlocked")
                         .IsConcurrencyToken()
@@ -1493,6 +1519,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<int>("RuntimeStorageStrategy")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("SelectedExternalStorageBytes")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Stage")
                         .IsRequired()

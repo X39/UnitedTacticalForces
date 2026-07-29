@@ -59,6 +59,11 @@ internal sealed class GameServerLifecycleService(
                           ? profiles.Single()
                           : null)
                       ?? throw new HostingValidationException("The selected cloud profile is unavailable.");
+        ValidateStorageSelection(
+            payload.RuntimeStorageStrategy,
+            payload.ExternalStorageSizeGiB,
+            profile,
+            provider.Capabilities.Storage);
         if (payload.ModPackDefinitionId is { } selectedModPackId)
         {
             var selectedModPack = await dbContext.ModPackDefinitions
@@ -121,6 +126,10 @@ internal sealed class GameServerLifecycleService(
             RuntimeProviderIdentifier = provider.ProviderIdentifier,
             RuntimeProfileIdentifier  = profile.Identifier,
             RuntimeProfileDisplayName = profile.DisplayName,
+            RuntimeStorageStrategy    = payload.RuntimeStorageStrategy,
+            ExternalStorageSizeGiB    = payload.RuntimeStorageStrategy is ERuntimeStorageStrategy.FixedExternal
+                ? payload.ExternalStorageSizeGiB
+                : null,
             EstimatedHourlyCostEur    = profile.EstimatedHourlyCostEur,
             EstimatedMonthlyCostEur   = profile.EstimatedMonthlyCostEur,
             CreatedByFk              = actorId,
@@ -286,8 +295,6 @@ internal sealed class GameServerLifecycleService(
                                      "The selected cloud profile is no longer available. Select another profile before Start.");
             server.RuntimeProfileIdentifier = currentProfile.Identifier;
             server.RuntimeProfileDisplayName = currentProfile.DisplayName;
-            server.EstimatedHourlyCostEur = currentProfile.EstimatedHourlyCostEur;
-            server.EstimatedMonthlyCostEur = currentProfile.EstimatedMonthlyCostEur;
             var storageDemand = await storageDemandService.EstimateAsync(
                     server.GameIdentifier,
                     server.SelectedModPackDefinitionFk,
@@ -295,17 +302,41 @@ internal sealed class GameServerLifecycleService(
                     true,
                     cancellationToken)
                 .ConfigureAwait(false);
+            RuntimeStoragePlan storagePlan;
+            try
+            {
+                storagePlan = runtimeProvider.Capabilities.Storage is null
+                              && currentProfile.DiskGiB is null
+                              && server.RuntimeStorageStrategy is ERuntimeStorageStrategy.IncludedDisk
+                    ? new RuntimeStoragePlan(
+                        ERuntimeStorageStrategy.IncludedDisk,
+                        storageDemand.PeakPreparationRequiredBytes,
+                        storageDemand.PeakPreparationRequiredBytes,
+                        "/srv/united-tactical-forces/runtime",
+                        0m)
+                    : RuntimeStoragePlanResolver.Resolve(
+                        server.RuntimeStorageStrategy,
+                        server.ExternalStorageSizeGiB,
+                        storageDemand.PeakPreparationRequiredBytes,
+                        storageDemand.ProfileSystemReserveBytes,
+                        currentProfile,
+                        runtimeProvider.Capabilities.Storage ?? new RuntimeStorageCapabilities(false));
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new HostingConflictException(ex.Message);
+            }
             var includedStorageBytes = currentProfile.DiskGiB is { } diskGiB
-                ? (long?) Math.Max(0, diskGiB) * 1_073_741_824L
+                ? checked((long?)Math.Max(0, diskGiB) * RuntimeStoragePlanResolver.GiB)
                 : null;
-            long? usableStorageBytes = includedStorageBytes is { } included
-                ? Math.Max(0, included - storageDemand.ProfileSystemReserveBytes)
+            decimal? combinedHourly = currentProfile.EstimatedHourlyCostEur is { } computeHourly
+                ? computeHourly + storagePlan.EstimatedHourlyCostEur
                 : null;
-            var storageProfileFit = usableStorageBytes is null
-                ? "capacity-unknown"
-                : usableStorageBytes >= storageDemand.PeakPreparationRequiredBytes
-                    ? "sufficient"
-                    : "insufficient-external-storage-required";
+            decimal? combinedMonthly = currentProfile.EstimatedMonthlyCostEur is { } computeMonthly
+                ? computeMonthly + storagePlan.EstimatedHourlyCostEur * 730m
+                : null;
+            server.EstimatedHourlyCostEur = combinedHourly;
+            server.EstimatedMonthlyCostEur = combinedMonthly;
 
             deployment = new GameServerDeployment
             {
@@ -314,7 +345,15 @@ internal sealed class GameServerLifecycleService(
                 CostOwnerFk     = server.CurrentCostOwnerFk,
                 RuntimeProfileIdentifier = server.RuntimeProfileIdentifier,
                 RuntimeProfileDisplayName = server.RuntimeProfileDisplayName,
-                EstimatedHourlyCostEur = server.EstimatedHourlyCostEur,
+                RuntimeStorageStrategy = storagePlan.Strategy,
+                IncludedStorageBytes = includedStorageBytes,
+                SelectedExternalStorageBytes = storagePlan.UsesExternalStorage
+                    ? storagePlan.SelectedCapacityBytes
+                    : null,
+                DeploymentRoot = storagePlan.DeploymentRoot,
+                EstimatedComputeHourlyCostEur = currentProfile.EstimatedHourlyCostEur,
+                EstimatedStorageHourlyCostEur = storagePlan.EstimatedHourlyCostEur,
+                EstimatedHourlyCostEur = combinedHourly,
                 PeakStorageRequiredBytes = storageDemand.PeakPreparationRequiredBytes,
                 StorageEstimateStatus = storageDemand.Status.ToString(),
                 StorageEstimateCalculatedAt = storageDemand.CalculatedAt,
@@ -334,8 +373,8 @@ internal sealed class GameServerLifecycleService(
                 deployment.PrimaryKey,
                 costOwnerId: deployment.CostOwnerFk,
                 details: $"PeakStorageBytes={storageDemand.PeakPreparationRequiredBytes}; "
-                         + $"StorageStatus={storageDemand.Status}; StorageProfileFit={storageProfileFit}; "
-                         + $"ProfileUsableStorageBytes={usableStorageBytes?.ToString() ?? "unknown"}",
+                         + $"StorageStatus={storageDemand.Status}; StorageStrategy={storagePlan.Strategy}; "
+                         + $"SelectedStorageBytes={storagePlan.SelectedCapacityBytes}; Root={storagePlan.DeploymentRoot}",
                 costImpact: ECostImpact.NoCostImpact);
         }
         else
@@ -681,6 +720,51 @@ internal sealed class GameServerLifecycleService(
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task ChangeRuntimeStorageAsync(
+        Guid gameServerId,
+        ERuntimeStorageStrategy strategy,
+        long? externalStorageSizeGiB,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        if (!principal.TryGetUserId(out var actorId)
+            || !authorizationService.HasServerPermission(principal, gameServerId, Claims.ResourceBased.Server.Modify))
+            throw new HostingForbiddenException("Server Modify permission is required.");
+
+        var server = await dbContext.GameServers
+            .SingleOrDefaultAsync(q => q.PrimaryKey == gameServerId && !q.IsArchived, cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new HostingNotFoundException($"Game server {gameServerId} does not exist.");
+        var provider = runtimeProviders.SingleOrDefault(q => string.Equals(
+                           q.ProviderIdentifier,
+                           server.RuntimeProviderIdentifier,
+                           StringComparison.OrdinalIgnoreCase))
+                       ?? throw new HostingValidationException("The server's cloud runtime provider is unavailable.");
+        var profile = (await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false))
+            .SingleOrDefault(q => string.Equals(
+                q.Identifier,
+                server.RuntimeProfileIdentifier,
+                StringComparison.OrdinalIgnoreCase))
+            ?? throw new HostingValidationException("The selected cloud profile is unavailable.");
+        ValidateStorageSelection(strategy, externalStorageSizeGiB, profile, provider.Capabilities.Storage);
+
+        var selectedSize = strategy is ERuntimeStorageStrategy.FixedExternal ? externalStorageSizeGiB : null;
+        if (server.RuntimeStorageStrategy == strategy && server.ExternalStorageSizeGiB == selectedSize)
+            return;
+        var previous = server.RuntimeStorageStrategy;
+        server.RuntimeStorageStrategy = strategy;
+        server.ExternalStorageSizeGiB = selectedSize;
+        server.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+        auditWriter.Add(
+            dbContext,
+            EHostingAuditEventKind.ServerUpdated,
+            "Server runtime storage strategy changed.",
+            actorId,
+            server.PrimaryKey,
+            details: $"PreviousStrategy={previous}; Strategy={strategy}; FixedCapacityGiB={selectedSize}");
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task ChangeModPackAsync(
         Guid gameServerId,
         long? modPackDefinitionId,
@@ -849,6 +933,30 @@ internal sealed class GameServerLifecycleService(
             pending.LeaseOwner = null;
             pending.LeaseExpires = null;
             pending.TimeStampCompleted = now;
+        }
+    }
+
+    private static void ValidateStorageSelection(
+        ERuntimeStorageStrategy strategy,
+        long? externalStorageSizeGiB,
+        RuntimeProfile profile,
+        RuntimeStorageCapabilities? capabilities)
+    {
+        if (strategy is ERuntimeStorageStrategy.IncludedDisk && profile.DiskGiB is null && capabilities is null)
+            return;
+        try
+        {
+            _ = RuntimeStoragePlanResolver.Resolve(
+                strategy,
+                externalStorageSizeGiB,
+                requiredCapacityBytes: 0,
+                rootDiskReserveBytes: 0,
+                profile,
+                capabilities ?? new RuntimeStorageCapabilities(false));
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new HostingValidationException(ex.Message);
         }
     }
 

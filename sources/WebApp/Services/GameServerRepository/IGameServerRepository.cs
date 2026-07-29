@@ -35,6 +35,12 @@ public interface IGameServerRepository
         string runtimeProfileIdentifier,
         CancellationToken cancellationToken = default);
 
+    Task ChangeRuntimeStorageAsync(
+        Guid serverId,
+        string strategy,
+        long? externalStorageSizeGiB,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<GameServerModPackOptionInfo>> GetModPackOptionsAsync(
         Guid serverId,
         CancellationToken cancellationToken = default);

@@ -14,7 +14,9 @@ public sealed record RuntimeResource(
     bool IsPlatformManaged = false,
     bool HasTrustworthyAttribution = false,
     ERuntimeResourceProvisioningReadiness ProvisioningReadiness = ERuntimeResourceProvisioningReadiness.Ready,
-    ERuntimeResourceOperationalState OperationalState = ERuntimeResourceOperationalState.Uncertain)
+    ERuntimeResourceOperationalState OperationalState = ERuntimeResourceOperationalState.Uncertain,
+    long? ProvisionedCapacityBytes = null,
+    decimal? EstimatedHourlyCostEur = null)
 {
     /// <summary>Whether the resource is ready to participate in a publishable recovered graph.</summary>
     public bool IsProvisioningReady => ProvisioningReadiness is ERuntimeResourceProvisioningReadiness.Ready;

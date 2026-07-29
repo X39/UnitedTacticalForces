@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
+using X39.UnitedTacticalForces.Hosting.Contracts;
 using Xunit;
 
 namespace Api.Tests.GameServerHosting;
@@ -79,6 +80,37 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
             NetworkPlan()));
     }
 
+    [Fact]
+    public void ExternalStorage_FormatsOnlyUninitializedDeviceAndFailsClosedBeforeWorkerStarts()
+    {
+        var renderer = CreateRenderer(Environments.Development, "utf-cloud-worker:development");
+        var deploymentId = Guid.NewGuid();
+        var bootstrap = Bootstrap() with { DeploymentId = deploymentId };
+        var plan = new RuntimeStoragePlan(
+            ERuntimeStorageStrategy.AutomaticExternal,
+            18L * RuntimeStoragePlanResolver.GiB,
+            20L * RuntimeStoragePlanResolver.GiB,
+            "/srv/utf/deployment",
+            0.02m);
+
+        var payload = renderer.Render(bootstrap, Guid.NewGuid(), "arma3", NetworkPlan(), plan);
+        var files = DecodeWrittenFiles(payload.CloudInit);
+        var script = files.Single(q => q.Contains("mkfs.ext4", StringComparison.Ordinal));
+        var service = files.Single(q => q.Contains("[Service]", StringComparison.Ordinal)
+                                               && q.Contains("docker run", StringComparison.Ordinal));
+
+        Assert.Contains("test -b \"$device\"", script, StringComparison.Ordinal);
+        Assert.Contains("if ! blkid -p", script, StringComparison.Ordinal);
+        Assert.Contains("test \"$(blkid -s LABEL", script, StringComparison.Ordinal);
+        Assert.Contains("findmnt -n -o SOURCE", script, StringComparison.Ordinal);
+        Assert.Contains("blockdev --getsize64", script, StringComparison.Ordinal);
+        Assert.Contains(CloudInitWorkerBootstrapPayloadRenderer.ExternalBlockDeviceToken, script, StringComparison.Ordinal);
+        Assert.Contains("Requires=utf-runtime-storage.service", service, StringComparison.Ordinal);
+        Assert.Contains("After=network-online.target docker.service utf-runtime-storage.service", service, StringComparison.Ordinal);
+        Assert.Contains("src=/srv/utf/deployment,dst=/srv/united-tactical-forces/runtime", service, StringComparison.Ordinal);
+        Assert.DoesNotContain("bootstrap-secret", script, StringComparison.Ordinal);
+    }
+
     private static CloudInitWorkerBootstrapPayloadRenderer CreateRenderer(
         string environmentName,
         string image,
@@ -113,13 +145,18 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
         ];
 
     private static string DecodeSystemdService(string cloudInit)
+        => DecodeWrittenFiles(cloudInit)
+            .Single(q => q.Contains("[Service]", StringComparison.Ordinal)
+                         && q.Contains("docker run", StringComparison.Ordinal));
+
+    private static IReadOnlyList<string> DecodeWrittenFiles(string cloudInit)
         => cloudInit
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(q => q.Trim())
             .Where(q => q.StartsWith("content: ", StringComparison.Ordinal))
             .Select(q => q["content: ".Length..])
             .Select(q => System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(q)))
-            .Single(q => q.Contains("[Service]", StringComparison.Ordinal));
+            .ToArray();
 
     private sealed class TestHostEnvironment : IHostEnvironment
     {

@@ -12,4 +12,12 @@ public interface IWorkerBootstrapPayloadRenderer
         Guid serverId,
         string gameIdentifier,
         IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements);
+
+    WorkerBootstrapPayload Render(
+        WorkerBootstrapConfiguration bootstrap,
+        Guid serverId,
+        string gameIdentifier,
+        IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements,
+        RuntimeStoragePlan storagePlan)
+        => Render(bootstrap, serverId, gameIdentifier, inboundNetworkRequirements);
 }

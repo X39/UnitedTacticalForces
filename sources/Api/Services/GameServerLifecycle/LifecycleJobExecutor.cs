@@ -8,6 +8,7 @@ using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
@@ -27,6 +28,7 @@ internal sealed class LifecycleJobExecutor(
     IWorkerCredentialService workerCredentialService,
     IWorkerBootstrapPayloadRenderer bootstrapPayloadRenderer,
     IGameServerContentSnapshotResolver contentSnapshotResolver,
+    IStorageDemandService storageDemandService,
     IHostingAuthorizationService authorizationService,
     IHostingCostSliceService costSliceService,
     IHostingAuditWriter auditWriter,
@@ -232,6 +234,71 @@ internal sealed class LifecycleJobExecutor(
         if (observedResource is null)
         {
             await ThrowIfProvisioningBlockedAsync(deployment.PrimaryKey, cancellationToken).ConfigureAwait(false);
+            var storagePlan = new RuntimeStoragePlan(
+                deployment.RuntimeStorageStrategy,
+                deployment.PeakStorageRequiredBytes ?? 0,
+                deployment.SelectedExternalStorageBytes ?? deployment.PeakStorageRequiredBytes ?? 0,
+                string.IsNullOrWhiteSpace(deployment.DeploymentRoot)
+                    ? "/srv/united-tactical-forces/runtime"
+                    : deployment.DeploymentRoot,
+                deployment.EstimatedStorageHourlyCostEur ?? 0m);
+            if (provider.Capabilities.Storage is { } storageCapabilities)
+            {
+                var currentProfiles = await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+                var currentProfile = currentProfiles.SingleOrDefault(q => string.Equals(
+                                         q.Identifier,
+                                         deployment.RuntimeProfileIdentifier,
+                                         StringComparison.OrdinalIgnoreCase))
+                                     ?? throw new PermanentLifecycleExecutionException(
+                                         "The selected cloud profile is no longer available before provisioning.");
+                var storageDemand = await storageDemandService.EstimateAsync(
+                        server.GameIdentifier,
+                        server.SelectedModPackDefinitionFk,
+                        server.PrimaryKey,
+                        true,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                try
+                {
+                    storagePlan = RuntimeStoragePlanResolver.Resolve(
+                        server.RuntimeStorageStrategy,
+                        server.ExternalStorageSizeGiB,
+                        storageDemand.PeakPreparationRequiredBytes,
+                        storageDemand.ProfileSystemReserveBytes,
+                        currentProfile,
+                        storageCapabilities);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    await RejectStartAsync(
+                            job,
+                            server,
+                            deployment,
+                            "runtime-storage-invalid",
+                            ex.Message,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    return;
+                }
+                deployment.RuntimeStorageStrategy = storagePlan.Strategy;
+                deployment.IncludedStorageBytes = currentProfile.DiskGiB is { } diskGiB
+                    ? checked((long?)Math.Max(0, diskGiB) * RuntimeStoragePlanResolver.GiB)
+                    : null;
+                deployment.SelectedExternalStorageBytes = storagePlan.UsesExternalStorage
+                    ? storagePlan.SelectedCapacityBytes
+                    : null;
+                deployment.DeploymentRoot = storagePlan.DeploymentRoot;
+                deployment.PeakStorageRequiredBytes = storageDemand.PeakPreparationRequiredBytes;
+                deployment.StorageEstimateStatus = storageDemand.Status.ToString();
+                deployment.StorageEstimateCalculatedAt = storageDemand.CalculatedAt;
+                deployment.ContentSnapshot = JsonSerializer.Serialize(storageDemand.EffectiveContent, CommandJsonOptions);
+                deployment.EstimatedComputeHourlyCostEur = currentProfile.EstimatedHourlyCostEur;
+                deployment.EstimatedStorageHourlyCostEur = storagePlan.EstimatedHourlyCostEur;
+                deployment.EstimatedHourlyCostEur = currentProfile.EstimatedHourlyCostEur is { } computeRate
+                    ? computeRate + storagePlan.EstimatedHourlyCostEur
+                    : null;
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
             // Validate and render all local bootstrap inputs before reserving money. A configuration failure here has
             // not reached the provider and therefore must not leave financial headroom reserved.
             WorkerBootstrapPayload bootstrapPayload;
@@ -242,7 +309,8 @@ internal sealed class LifecycleJobExecutor(
                     bootstrap,
                     server.PrimaryKey,
                     server.GameIdentifier,
-                    gameDefinition.InboundNetworkRequirements);
+                    gameDefinition.InboundNetworkRequirements,
+                    storagePlan);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -310,7 +378,8 @@ internal sealed class LifecycleJobExecutor(
                 intent.IntentId,
                 bootstrapPayload.CloudInit,
                 gameDefinition.InboundNetworkRequirements,
-                deployment.RuntimeProfileIdentifier);
+                deployment.RuntimeProfileIdentifier,
+                storagePlan);
 
             // Atomically claim the one permitted provider mutation for this durable intent. This server-row lock is
             // cross-process: overlapping lease holders may both have observed an empty provider graph, but only one
@@ -902,6 +971,18 @@ internal sealed class LifecycleJobExecutor(
         resource.TimeStampProvisioningRequested = now;
         resource.TimeStampProvisioningResolved = null;
         resource.TimeStampUpdated = now;
+        foreach (var relatedIntent in deployment.Resources.Where(q =>
+                     q.PrimaryKey != resource.PrimaryKey
+                     && q.ProviderResourceIdentifier == null
+                     && string.Equals(
+                         q.ProvisioningIntentIdentifier,
+                         resource.ProvisioningIntentIdentifier,
+                         StringComparison.Ordinal)))
+        {
+            relatedIntent.TimeStampProvisioningRequested = now;
+            relatedIntent.TimeStampProvisioningResolved = null;
+            relatedIntent.TimeStampUpdated = now;
+        }
         job.MaxAttempts = int.MaxValue;
         auditWriter.Add(
             dbContext,
@@ -976,7 +1057,9 @@ internal sealed class LifecycleJobExecutor(
                 string.Equals(q.ProviderIdentifier, provider.ProviderIdentifier, StringComparison.OrdinalIgnoreCase)
                 && q.TimeStampReleased == null)
             .ToArray();
-        var resource = providerResources.SingleOrDefault(q => q.ProviderResourceIdentifier is null)
+        var resource = providerResources.SingleOrDefault(q =>
+                           q.ProviderResourceIdentifier is null
+                           && string.Equals(q.Kind, "server", StringComparison.OrdinalIgnoreCase))
                        ?? providerResources.SingleOrDefault(q =>
                            string.Equals(q.Kind, "server", StringComparison.OrdinalIgnoreCase));
         if (resource is null && providerResources.Length > 0)
@@ -1007,6 +1090,26 @@ internal sealed class LifecycleJobExecutor(
             throw new PermanentLifecycleExecutionException(
                 "The persisted provider provisioning intent is invalid and cannot be reconciled safely.");
         }
+        if (deployment.RuntimeStorageStrategy is not ERuntimeStorageStrategy.IncludedDisk
+            && !providerResources.Any(q => string.Equals(q.Kind, "volume", StringComparison.OrdinalIgnoreCase)))
+        {
+            var volumePlaceholder = new DeploymentResource
+            {
+                PrimaryKey = Guid.NewGuid(),
+                DeploymentFk = deployment.PrimaryKey,
+                ProviderIdentifier = provider.ProviderIdentifier,
+                ProvisioningIntentIdentifier = parsedIntent.ToString("N"),
+                Kind = "volume",
+                State = EDeploymentResourceState.Provisioning,
+                PossibleCost = false,
+                ProvisionedCapacityBytes = deployment.SelectedExternalStorageBytes,
+                EstimatedHourlyCostEur = deployment.EstimatedStorageHourlyCostEur,
+                TimeStampCreated = now,
+                TimeStampUpdated = now,
+            };
+            deployment.Resources.Add(volumePlaceholder);
+            dbContext.DeploymentResources.Add(volumePlaceholder);
+        }
 
         deployment.Stage = "provider-intent-persisted";
         deployment.TimeStampUpdated = now;
@@ -1025,7 +1128,12 @@ internal sealed class LifecycleJobExecutor(
         CancellationToken cancellationToken)
     {
         var intentId = ParseIntent(resource);
-        var requiredResourceTypes = provider.Capabilities.RequiredProvisionedResourceTypes;
+        IReadOnlyList<string>? requiredResourceTypes = provider.Capabilities.RequiredProvisionedResourceTypes;
+        if (deployment.RuntimeStorageStrategy is not ERuntimeStorageStrategy.IncludedDisk
+            && requiredResourceTypes?.Contains("volume", StringComparer.OrdinalIgnoreCase) is not true)
+        {
+            requiredResourceTypes = [.. requiredResourceTypes ?? [], "volume"];
+        }
         var requiresResourceGraphDiscovery = requiredResourceTypes is { Count: > 1 };
         var hadPrimaryResourceIdentifier = resource.ProviderResourceIdentifier is { Length: > 0 };
         if (!requiresResourceGraphDiscovery
@@ -2041,6 +2149,18 @@ internal sealed class LifecycleJobExecutor(
                 placeholder = null;
                 resolvedPlaceholder = true;
             }
+            if (existing is null)
+            {
+                existing = deployment.Resources.SingleOrDefault(q =>
+                    q.ProviderResourceIdentifier == null
+                    && string.Equals(q.Kind, observed.ResourceType, StringComparison.OrdinalIgnoreCase)
+                    && observed.Attribution?.ProvisioningIntentId is { } observedIntent
+                    && string.Equals(
+                        q.ProvisioningIntentIdentifier,
+                        observedIntent.ToString("N"),
+                        StringComparison.OrdinalIgnoreCase));
+                resolvedPlaceholder = existing is not null;
+            }
             var newlyDiscovered = existing is null;
             if (existing is null)
             {
@@ -2387,7 +2507,8 @@ internal sealed class LifecycleJobExecutor(
         {
             "primary-ip" => 0,
             "server" => 1,
-            "firewall" => 2,
+            "volume" => 2,
+            "firewall" => 3,
             _ => 3,
         };
 

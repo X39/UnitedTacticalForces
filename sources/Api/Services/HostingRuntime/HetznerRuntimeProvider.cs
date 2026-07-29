@@ -31,6 +31,7 @@ public sealed class HetznerRuntimeProvider(
     internal const string ServerResourceType = "server";
     internal const string PrimaryIpResourceType = "primary-ip";
     internal const string FirewallResourceType = "firewall";
+    internal const string VolumeResourceType = "volume";
     private const string ManagedLabelValue = "true";
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _provisioningLocks = new();
 
@@ -56,7 +57,15 @@ public sealed class HetznerRuntimeProvider(
                     ServerResourceType,
                     PrimaryIpResourceType,
                     FirewallResourceType,
-                ]);
+                ],
+                Storage: new RuntimeStorageCapabilities(
+                    SupportsExternalBlockStorage: failure is null,
+                    MinimumCapacityGiB: optionsProvider.Value.VolumeMinimumSizeGiB,
+                    MaximumCapacityGiB: optionsProvider.Value.VolumeMaximumSizeGiB,
+                    CapacityIncrementGiB: optionsProvider.Value.VolumeSizeIncrementGiB,
+                    EstimatedHourlyCostPerGiBEur: optionsProvider.Value.VolumeEstimatedHourlyCostPerGiBEur,
+                    DeploymentMountPath: optionsProvider.Value.VolumeMountPath,
+                    ReadinessFailure: failure));
         }
     }
 
@@ -221,8 +230,10 @@ public sealed class HetznerRuntimeProvider(
         }
         var existingResourceCount = (intent.Server is null ? 0 : 1)
                                     + (intent.PrimaryIp is null ? 0 : 1)
-                                    + (intent.Firewall is null ? 0 : 1);
-        if (existingResourceCount is > 0 and < 3)
+                                    + (intent.Firewall is null ? 0 : 1)
+                                    + (intent.Volume is null ? 0 : 1);
+        var expectedResourceCount = request.StoragePlan?.UsesExternalStorage == true ? 4 : 3;
+        if (existingResourceCount is > 0 && existingResourceCount != expectedResourceCount)
         {
             return ProvisionFailure(
                 ERuntimeProviderOutcome.Unknown,
@@ -235,6 +246,86 @@ public sealed class HetznerRuntimeProvider(
         var created = false;
         var recoveredAfterAmbiguousCreate = false;
         var hadUnknownCreateOutcome = false;
+        var volume = intent.Volume;
+        if (request.StoragePlan?.UsesExternalStorage == true && volume is null)
+        {
+            var selectedGiB = request.StoragePlan.SelectedCapacityBytes / RuntimeStoragePlanResolver.GiB;
+            var labels = BuildLabels(request, VolumeResourceType);
+            var guardedResult = await provisioningMutationGuard.ExecuteCreateAsync(
+                    request.ServerId,
+                    request.DeploymentId,
+                    guardedCancellationToken => client.CreateVolumeAsync(
+                        new HetznerVolumeCreateRequest(
+                            $"utf-{request.DeploymentId:N}",
+                            selectedGiB,
+                            optionsProvider.Value.Location.Trim(),
+                            labels),
+                        guardedCancellationToken),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (!guardedResult.IsAuthorized || guardedResult.Value is null)
+            {
+                return ProvisionFailure(
+                    ERuntimeProviderOutcome.TransientFailure,
+                    "provisioning-blocked",
+                    guardedResult.Failure ?? "Provisioning was blocked before Volume creation.",
+                    intent,
+                    isProvisioningAttemptDefinitivelyClosed: !guardedResult.IsAuthorized);
+            }
+            var result = guardedResult.Value;
+            if (result.Outcome is ERuntimeProviderOutcome.Succeeded
+                && result.Value is not null
+                && HasExpectedAttribution(result.Value.Labels, request, VolumeResourceType))
+            {
+                volume = result.Value;
+                created = true;
+            }
+            else if (result.Outcome is ERuntimeProviderOutcome.Unknown)
+            {
+                hadUnknownCreateOutcome = true;
+                var recovered = await FindIntentVolumeAsync(request, cancellationToken).ConfigureAwait(false);
+                if (recovered.Outcome is ERuntimeProviderOutcome.Succeeded && recovered.Value is not null)
+                {
+                    volume = recovered.Value;
+                    recoveredAfterAmbiguousCreate = true;
+                    hadUnknownCreateOutcome = false;
+                }
+                else
+                {
+                    return ProvisionFailure(
+                        ERuntimeProviderOutcome.Unknown,
+                        "volume-create-outcome-unknown",
+                        "Hetzner Volume creation has an unknown outcome; provider-wide reconciliation must continue.",
+                        intent with { Volume = recovered.Value });
+                }
+            }
+            else
+            {
+                return ProvisionFailure(
+                    result.Outcome,
+                    "volume-create-failed",
+                    result.Error,
+                    intent with { Volume = result.Value },
+                    isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
+            }
+        }
+        if (request.StoragePlan?.UsesExternalStorage != true && volume is not null)
+        {
+            return ProvisionFailure(
+                ERuntimeProviderOutcome.PermanentFailure,
+                "unexpected-volume",
+                "The provisioning intent has an external Volume but the resolved storage plan uses included disk.",
+                intent);
+        }
+        if (volume is not null && VerifyVolumeConfiguration(volume, request) is not EProviderConfigurationVerification.Verified)
+        {
+            return ProvisionFailure(
+                ERuntimeProviderOutcome.PermanentFailure,
+                "volume-configuration-mismatch",
+                "The attributed Volume does not match the requested location, size, or protection state.",
+                intent with { Volume = volume });
+        }
+        intent = intent with { Volume = volume };
         var firewall = intent.Firewall;
         if (firewall is null)
         {
@@ -423,6 +514,14 @@ public sealed class HetznerRuntimeProvider(
         {
             var options = optionsProvider.Value;
             var labels = BuildLabels(request, ServerResourceType);
+            var cloudInit = request.CloudInit!;
+            if (volume is not null)
+            {
+                cloudInit = cloudInit.Replace(
+                    WorkerProtocol.CloudInitWorkerBootstrapPayloadRenderer.ExternalBlockDeviceToken,
+                    $"/dev/disk/by-id/scsi-0HC_Volume_{volume.Id}",
+                    StringComparison.Ordinal);
+            }
             var guardedResult = await provisioningMutationGuard.ExecuteCreateAsync(
                     request.ServerId,
                     request.DeploymentId,
@@ -432,8 +531,8 @@ public sealed class HetznerRuntimeProvider(
                             RequestedServerType(request),
                             options.Image.Trim(),
                             options.Location.Trim(),
-                            StartAfterCreate: true,
-                            request.CloudInit!,
+                            StartAfterCreate: volume is null,
+                            cloudInit,
                             new HetznerServerPublicNetRequest(
                                 EnableIpv4: true,
                                 EnableIpv6: false,
@@ -514,6 +613,90 @@ public sealed class HetznerRuntimeProvider(
                     ? "The attributed Hetzner server type, image, or location does not match the requested configuration."
                     : "The attributed Hetzner server type, image, and location could not be verified.",
                 intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
+        }
+
+        if (volume is not null)
+        {
+            if (!volume.ServerId.HasValue)
+            {
+                var attached = await provisioningMutationGuard.ExecuteCreateAsync(
+                        request.ServerId,
+                        request.DeploymentId,
+                        guardedCancellationToken => client.AttachVolumeAsync(
+                            volume.Id,
+                            server.Id,
+                            guardedCancellationToken),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (!attached.IsAuthorized || attached.Value is null)
+                {
+                    return ProvisionFailure(
+                        ERuntimeProviderOutcome.TransientFailure,
+                        "volume-attach-blocked",
+                        attached.Failure ?? "Volume attachment was blocked by the provisioning barrier.",
+                        intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server, Volume = volume });
+                }
+                if (attached.Value.Outcome is not ERuntimeProviderOutcome.Succeeded
+                    and not ERuntimeProviderOutcome.Unknown)
+                {
+                    return ProvisionFailure(
+                        attached.Value.Outcome,
+                        "volume-attach-failed",
+                        attached.Value.Error,
+                        intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server, Volume = volume });
+                }
+            }
+            var verifiedVolume = await client.GetVolumeAsync(volume.Id, cancellationToken).ConfigureAwait(false);
+            if (verifiedVolume.Outcome is not ERuntimeProviderOutcome.Succeeded || verifiedVolume.Value is null)
+            {
+                return ProvisionFailure(
+                    verifiedVolume.Outcome,
+                    "volume-attachment-verification-failed",
+                    verifiedVolume.Error,
+                    intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server, Volume = volume });
+            }
+            volume = verifiedVolume.Value;
+            if (VerifyVolumeConfiguration(volume, request) is not EProviderConfigurationVerification.Verified
+                || volume.ServerId != server.Id
+                || string.IsNullOrWhiteSpace(volume.LinuxDevice))
+            {
+                return ProvisionFailure(
+                    volume.ServerId.HasValue && volume.ServerId != server.Id
+                        ? ERuntimeProviderOutcome.PermanentFailure
+                        : ERuntimeProviderOutcome.Unknown,
+                    "volume-attachment-unverified",
+                    "The attributed Volume attachment, location, capacity, or stable device identity is not verified.",
+                    intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server, Volume = volume });
+            }
+            if (string.Equals(server.Status, "off", StringComparison.OrdinalIgnoreCase))
+            {
+                var poweredOn = await provisioningMutationGuard.ExecuteCreateAsync(
+                        request.ServerId,
+                        request.DeploymentId,
+                        guardedCancellationToken => client.PowerOnServerAsync(server.Id, guardedCancellationToken),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (!poweredOn.IsAuthorized || poweredOn.Value is null)
+                {
+                    return ProvisionFailure(
+                        ERuntimeProviderOutcome.TransientFailure,
+                        "server-poweron-blocked",
+                        poweredOn.Failure ?? "Server power-on was blocked by the provisioning barrier.",
+                        intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server, Volume = volume });
+                }
+                if (poweredOn.Value.Outcome is not ERuntimeProviderOutcome.Succeeded
+                    and not ERuntimeProviderOutcome.Unknown)
+                {
+                    return ProvisionFailure(
+                        poweredOn.Value.Outcome,
+                        "server-poweron-failed",
+                        poweredOn.Value.Error,
+                        intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server, Volume = volume });
+                }
+                var poweredServer = await client.GetServerAsync(server.Id, cancellationToken).ConfigureAwait(false);
+                if (poweredServer.Outcome is ERuntimeProviderOutcome.Succeeded && poweredServer.Value is not null)
+                    server = poweredServer.Value;
+            }
         }
 
         var operationalState = GetServerOperationalState(server.Status);
@@ -624,12 +807,14 @@ public sealed class HetznerRuntimeProvider(
                 intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
         }
 
-        var resources = new RuntimeResource[]
+        var resources = new List<RuntimeResource>
         {
             CreateResource(server, primaryIp.Ip),
             CreateResource(primaryIp),
             CreateResource(firewall),
         };
+        if (volume is not null)
+            resources.Add(CreateResource(volume));
         var stage = recoveredAfterAmbiguousCreate
             ? "recovered-after-ambiguous-create"
             : created
@@ -732,6 +917,8 @@ public sealed class HetznerRuntimeProvider(
                 .ConfigureAwait(false),
             EHetznerResourceKind.Firewall => await ObserveFirewallAsync(request, providerResourceId, cancellationToken)
                 .ConfigureAwait(false),
+            EHetznerResourceKind.Volume => await ObserveVolumeAsync(request, providerResourceId, cancellationToken)
+                .ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
         HostingTelemetry.CompleteRuntimeOperation(activity, result.Outcome, result.Stage, result.Error);
@@ -799,6 +986,13 @@ public sealed class HetznerRuntimeProvider(
                     q => HasExpectedAttribution(q.Labels, request, FirewallResourceType),
                     cancellationToken)
                 .ConfigureAwait(false),
+            EHetznerResourceKind.Volume => await ReleaseVolumeAsync(
+                    providerResourceId,
+                    q => HasExpectedAttribution(q.Labels, request, VolumeResourceType),
+                    (server, volume) => HasExpectedAttribution(server.Labels, request, ServerResourceType)
+                                        && HasMatchingAttribution(volume.Labels, server.Labels),
+                    cancellationToken)
+                .ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
         HostingTelemetry.CompleteRuntimeOperation(activity, result.Outcome, result.Stage, result.Error);
@@ -864,6 +1058,13 @@ public sealed class HetznerRuntimeProvider(
                     q => IsSafelyManaged(q.Labels, FirewallResourceType),
                     cancellationToken)
                 .ConfigureAwait(false),
+            EHetznerResourceKind.Volume => await ReleaseVolumeAsync(
+                    providerResourceId,
+                    q => IsSafelyManaged(q.Labels, VolumeResourceType),
+                    (server, volume) => IsSafelyManaged(server.Labels, ServerResourceType)
+                                        && HasMatchingAttribution(volume.Labels, server.Labels),
+                    cancellationToken)
+                .ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
     }
@@ -909,6 +1110,9 @@ public sealed class HetznerRuntimeProvider(
         var firewalls = await client.GetFirewallsAsync(labels, cancellationToken).ConfigureAwait(false);
         if (!TryDiscoveryValue(firewalls, out var discoveredFirewalls, out failure))
             return failure!;
+        var volumes = await client.GetVolumesAsync(labels, cancellationToken).ConfigureAwait(false);
+        if (!TryDiscoveryValue(volumes, out var discoveredVolumes, out failure))
+            return failure!;
         var providerServers = discoveredServers!;
 
         return new RuntimeDiscoveryResult(
@@ -923,6 +1127,9 @@ public sealed class HetznerRuntimeProvider(
                 .. discoveredFirewalls!.Select(q => CreateResource(
                     q,
                     GetFirewallProvisioningReadiness(q, providerServers))),
+                .. discoveredVolumes!.Select(q => CreateResource(
+                    q,
+                    GetVolumeProvisioningReadiness(q, providerServers, optionsProvider.Value.Location))),
             ]);
     }
 
@@ -933,6 +1140,8 @@ public sealed class HetznerRuntimeProvider(
     internal static string PrimaryIpResourceIdentifier(long providerPrimaryIpId) => $"primary-ip:{providerPrimaryIpId}";
 
     internal static string FirewallResourceIdentifier(long providerFirewallId) => $"firewall:{providerFirewallId}";
+
+    internal static string VolumeResourceIdentifier(long providerVolumeId) => $"volume:{providerVolumeId}";
 
     private async Task<RuntimeObservationResult> ObserveServerAsync(
         RuntimeObservationRequest request,
@@ -973,6 +1182,19 @@ public sealed class HetznerRuntimeProvider(
         if (!HasExpectedAttribution(value!.Labels, request, FirewallResourceType))
             return UnattributedObservation();
         return Observed(CreateResource(value));
+    }
+
+    private async Task<RuntimeObservationResult> ObserveVolumeAsync(
+        RuntimeObservationRequest request,
+        long id,
+        CancellationToken cancellationToken)
+    {
+        var observation = await client.GetVolumeAsync(id, cancellationToken).ConfigureAwait(false);
+        if (!TryObservedValue(observation, out var value, out var failure))
+            return failure!;
+        if (!HasExpectedAttribution(value!.Labels, request, VolumeResourceType))
+            return UnattributedObservation();
+        return Observed(CreateResource(value, GetVolumeConfigurationReadiness(value, optionsProvider.Value.Location)));
     }
 
     private async Task<RuntimeReleaseResult> ReleaseServerAsync(
@@ -1094,6 +1316,62 @@ public sealed class HetznerRuntimeProvider(
         return VerifyRelease(verification.Outcome, verification.Error, FirewallResourceType, id);
     }
 
+    private async Task<RuntimeReleaseResult> ReleaseVolumeAsync(
+        long id,
+        Func<HetznerVolume, bool> isAttributed,
+        Func<HetznerServer, HetznerVolume, bool> isSafeAttachment,
+        CancellationToken cancellationToken)
+    {
+        var observed = await client.GetVolumeAsync(id, cancellationToken).ConfigureAwait(false);
+        if (observed.Outcome is ERuntimeProviderOutcome.NotFound)
+            return VerifiedReleasedResult("released-already-absent");
+        if (observed.Outcome is not ERuntimeProviderOutcome.Succeeded || observed.Value is null)
+            return ReleaseFailure(observed.Outcome, "release-observation-failed", observed.Error);
+        if (!isAttributed(observed.Value))
+            return UnattributedRelease();
+        if (observed.Value.DeleteProtected)
+        {
+            return ReleaseFailure(
+                ERuntimeProviderOutcome.PermanentFailure,
+                "release-volume-protected",
+                "The attributed Volume has provider deletion protection enabled.");
+        }
+        if (observed.Value.ServerId.HasValue)
+        {
+            var attachedServer = await client.GetServerAsync(observed.Value.ServerId.Value, cancellationToken)
+                .ConfigureAwait(false);
+            if (attachedServer.Outcome is not ERuntimeProviderOutcome.Succeeded || attachedServer.Value is null)
+            {
+                return ReleaseFailure(
+                    attachedServer.Outcome,
+                    "release-volume-attachment-unverified",
+                    attachedServer.Error ?? "The server attached to the Volume could not be verified safely.");
+            }
+            if (!isSafeAttachment(attachedServer.Value, observed.Value))
+                return UnattributedRelease();
+            var detached = await client.DetachVolumeAsync(id, cancellationToken).ConfigureAwait(false);
+            if (detached.Outcome is not ERuntimeProviderOutcome.Succeeded and not ERuntimeProviderOutcome.Unknown)
+                return ReleaseFailure(detached.Outcome, "release-volume-detach-failed", detached.Error);
+            var verification = await client.GetVolumeAsync(id, cancellationToken).ConfigureAwait(false);
+            if (verification.Outcome is ERuntimeProviderOutcome.NotFound)
+                return VerifiedReleasedResult("released-during-detach");
+            if (verification.Outcome is not ERuntimeProviderOutcome.Succeeded || verification.Value is null)
+                return ReleaseFailure(verification.Outcome, "release-volume-detach-verification-failed", verification.Error);
+            if (verification.Value.ServerId.HasValue)
+            {
+                return ReleaseFailure(
+                    ERuntimeProviderOutcome.TransientFailure,
+                    "release-volume-detach-pending",
+                    "The attributed Volume is still attached after requesting detach.");
+            }
+        }
+        var deleted = await client.DeleteVolumeAsync(id, cancellationToken).ConfigureAwait(false);
+        if (deleted.Outcome is not ERuntimeProviderOutcome.Succeeded and not ERuntimeProviderOutcome.NotFound)
+            return ReleaseFailure(deleted.Outcome, "release-delete-failed", deleted.Error);
+        var absent = await client.GetVolumeAsync(id, cancellationToken).ConfigureAwait(false);
+        return VerifyRelease(absent.Outcome, absent.Error, VolumeResourceType, id);
+    }
+
     private async Task<IntentResourcesResult> FindIntentResourcesAsync(
         RuntimeProvisionRequest request,
         CancellationToken cancellationToken)
@@ -1101,11 +1379,19 @@ public sealed class HetznerRuntimeProvider(
         var server = await FindIntentServerAsync(request, cancellationToken).ConfigureAwait(false);
         var primaryIp = await FindIntentPrimaryIpAsync(request, cancellationToken).ConfigureAwait(false);
         var firewall = await FindIntentFirewallAsync(request, cancellationToken).ConfigureAwait(false);
+        var volume = request.StoragePlan?.UsesExternalStorage == true
+            ? await FindIntentVolumeAsync(request, cancellationToken).ConfigureAwait(false)
+            : new IntentResourceResult<HetznerVolume>(
+                ERuntimeProviderOutcome.NotFound,
+                null,
+                null,
+                []);
         var failure = new[]
         {
             (server.Outcome, server.Error),
             (primaryIp.Outcome, primaryIp.Error),
             (firewall.Outcome, firewall.Error),
+            (volume.Outcome, volume.Error),
         }.Where(q => q.Outcome is not ERuntimeProviderOutcome.Succeeded
                      and not ERuntimeProviderOutcome.NotFound)
             .OrderBy(q => q.Outcome switch
@@ -1122,9 +1408,11 @@ public sealed class HetznerRuntimeProvider(
             server.Value,
             primaryIp.Value,
             firewall.Value,
+            volume.Value,
             server.DiscoveredResources,
             primaryIp.DiscoveredResources,
-            firewall.DiscoveredResources);
+            firewall.DiscoveredResources,
+            volume.DiscoveredResources);
     }
 
     private async Task<IntentResourceResult<HetznerServer>> FindIntentServerAsync(
@@ -1158,6 +1446,17 @@ public sealed class HetznerRuntimeProvider(
             result,
             q => HasExpectedAttribution(q.Labels, request, FirewallResourceType),
             FirewallResourceType);
+    }
+
+    private async Task<IntentResourceResult<HetznerVolume>> FindIntentVolumeAsync(
+        RuntimeProvisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await client.GetVolumesAsync(IntentLabels(request), cancellationToken).ConfigureAwait(false);
+        return SelectSingle(
+            result,
+            q => HasExpectedAttribution(q.Labels, request, VolumeResourceType),
+            VolumeResourceType);
     }
 
     private static IntentResourceResult<T> SelectSingle<T>(
@@ -1202,7 +1501,31 @@ public sealed class HetznerRuntimeProvider(
         var networkFailure = RuntimeInboundNetworkPlanValidator.Validate(request.InboundNetworkRequirements);
         if (networkFailure is not null)
             return networkFailure;
+        if (request.StoragePlan?.UsesExternalStorage == true
+            && !request.CloudInit.Contains(
+                X39.UnitedTacticalForces.Api.Services.WorkerProtocol.CloudInitWorkerBootstrapPayloadRenderer
+                    .ExternalBlockDeviceToken,
+                StringComparison.Ordinal))
+        {
+            return "External-storage bootstrap is missing its provider device placeholder.";
+        }
         return null;
+    }
+
+    private EProviderConfigurationVerification VerifyVolumeConfiguration(
+        HetznerVolume volume,
+        RuntimeProvisionRequest request)
+    {
+        if (request.StoragePlan?.UsesExternalStorage != true)
+            return EProviderConfigurationVerification.Conflict;
+        var expectedGiB = request.StoragePlan.SelectedCapacityBytes / RuntimeStoragePlanResolver.GiB;
+        if (!HasProviderIdentity(volume.Location))
+            return EProviderConfigurationVerification.Uncertain;
+        return volume.SizeGiB == expectedGiB
+               && !volume.DeleteProtected
+               && ProviderIdentityMatches(volume.Location, optionsProvider.Value.Location)
+            ? EProviderConfigurationVerification.Verified
+            : EProviderConfigurationVerification.Conflict;
     }
 
     private static HetznerFirewallRuleRequest ToFirewallRule(RuntimeInboundNetworkRequirement requirement)
@@ -1525,6 +1848,20 @@ public sealed class HetznerRuntimeProvider(
                 GetFirewallConfigurationProvisioningReadiness(firewall),
                 relationshipReadiness));
 
+    private RuntimeResource CreateResource(
+        HetznerVolume volume,
+        ERuntimeResourceProvisioningReadiness readiness = ERuntimeResourceProvisioningReadiness.Ready)
+        => CreateResource(
+            VolumeResourceIdentifier(volume.Id),
+            VolumeResourceType,
+            volume.ServerId.HasValue ? $"attached:{volume.ServerId.Value}" : volume.Status,
+            publicAddress: null,
+            potentiallyCostGenerating: true,
+            volume.Labels,
+            readiness,
+            provisionedCapacityBytes: checked(volume.SizeGiB * RuntimeStoragePlanResolver.GiB),
+            estimatedHourlyCostEur: volume.SizeGiB * optionsProvider.Value.VolumeEstimatedHourlyCostPerGiBEur);
+
     private static RuntimeResource CreateResource(
         string identifier,
         string resourceType,
@@ -1533,7 +1870,9 @@ public sealed class HetznerRuntimeProvider(
         bool potentiallyCostGenerating,
         IReadOnlyDictionary<string, string> labels,
         ERuntimeResourceProvisioningReadiness provisioningReadiness = ERuntimeResourceProvisioningReadiness.Ready,
-        ERuntimeResourceOperationalState operationalState = ERuntimeResourceOperationalState.Uncertain)
+        ERuntimeResourceOperationalState operationalState = ERuntimeResourceOperationalState.Uncertain,
+        long? provisionedCapacityBytes = null,
+        decimal? estimatedHourlyCostEur = null)
     {
         var attribution = ParseAttribution(labels);
         var isPlatformManaged = HasLabel(labels, ManagedLabel, ManagedLabelValue)
@@ -1553,7 +1892,9 @@ public sealed class HetznerRuntimeProvider(
             HasTrustworthyAttribution: isPlatformManaged
                                        && attribution.IsComplete,
             ProvisioningReadiness: provisioningReadiness,
-            OperationalState: operationalState);
+            OperationalState: operationalState,
+            ProvisionedCapacityBytes: provisionedCapacityBytes,
+            EstimatedHourlyCostEur: estimatedHourlyCostEur);
     }
 
     private static ERuntimeResourceProvisioningReadiness GetServerConfigurationProvisioningReadiness(
@@ -1686,6 +2027,35 @@ public sealed class HetznerRuntimeProvider(
             : ERuntimeResourceProvisioningReadiness.Conflict;
     }
 
+    private static ERuntimeResourceProvisioningReadiness GetVolumeConfigurationReadiness(
+        HetznerVolume volume,
+        string expectedLocation)
+    {
+        if (volume.DeleteProtected || volume.SizeGiB <= 0)
+            return ERuntimeResourceProvisioningReadiness.Conflict;
+        if (!HasProviderIdentity(volume.Location) || string.IsNullOrWhiteSpace(expectedLocation))
+            return ERuntimeResourceProvisioningReadiness.Pending;
+        return ProviderIdentityMatches(volume.Location, expectedLocation)
+            ? ERuntimeResourceProvisioningReadiness.Ready
+            : ERuntimeResourceProvisioningReadiness.Conflict;
+    }
+
+    private static ERuntimeResourceProvisioningReadiness GetVolumeProvisioningReadiness(
+        HetznerVolume volume,
+        IReadOnlyCollection<HetznerServer> servers,
+        string expectedLocation)
+    {
+        var configuration = GetVolumeConfigurationReadiness(volume, expectedLocation);
+        if (configuration is not ERuntimeResourceProvisioningReadiness.Ready)
+            return configuration;
+        if (!volume.ServerId.HasValue || string.IsNullOrWhiteSpace(volume.LinuxDevice))
+            return ERuntimeResourceProvisioningReadiness.Pending;
+        var attributedServerId = ResolveAttributedServerId(volume.Labels, servers);
+        return attributedServerId.HasValue && volume.ServerId == attributedServerId
+            ? ERuntimeResourceProvisioningReadiness.Ready
+            : ERuntimeResourceProvisioningReadiness.Conflict;
+    }
+
     private static long? ResolveAttributedServerId(
         IReadOnlyDictionary<string, string> resourceLabels,
         IReadOnlyCollection<HetznerServer> servers)
@@ -1737,10 +2107,11 @@ public sealed class HetznerRuntimeProvider(
             EHetznerResourceKind.Server => ServerResourceType,
             EHetznerResourceKind.PrimaryIp => PrimaryIpResourceType,
             EHetznerResourceKind.Firewall => FirewallResourceType,
+            EHetznerResourceKind.Volume => VolumeResourceType,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
 
-    private static RuntimeProvisionResult ProvisionFailure(
+    private RuntimeProvisionResult ProvisionFailure(
         ERuntimeProviderOutcome outcome,
         string stage,
         string? error,
@@ -1765,6 +2136,13 @@ public sealed class HetznerRuntimeProvider(
             && discovered.All(q => q.ResourceIdentifier != FirewallResourceIdentifier(resources.Firewall.Id)))
         {
             discovered.Add(CreateResource(resources.Firewall));
+        }
+        foreach (var volume in resources.DiscoveredVolumes ?? [])
+            discovered.Add(CreateResource(volume));
+        if (resources.Volume is not null
+            && discovered.All(q => q.ResourceIdentifier != VolumeResourceIdentifier(resources.Volume.Id)))
+        {
+            discovered.Add(CreateResource(resources.Volume));
         }
         return new RuntimeProvisionResult(
             outcome,
@@ -1866,6 +2244,7 @@ public sealed class HetznerRuntimeProvider(
         Server,
         PrimaryIp,
         Firewall,
+        Volume,
     }
 
     private enum EProviderConfigurationVerification
@@ -1887,7 +2266,9 @@ public sealed class HetznerRuntimeProvider(
         HetznerServer? Server,
         HetznerPrimaryIp? PrimaryIp,
         HetznerFirewall? Firewall,
+        HetznerVolume? Volume,
         IReadOnlyList<HetznerServer>? DiscoveredServers = null,
         IReadOnlyList<HetznerPrimaryIp>? DiscoveredPrimaryIps = null,
-        IReadOnlyList<HetznerFirewall>? DiscoveredFirewalls = null);
+        IReadOnlyList<HetznerFirewall>? DiscoveredFirewalls = null,
+        IReadOnlyList<HetznerVolume>? DiscoveredVolumes = null);
 }

@@ -243,6 +243,51 @@
                     <StorageDemandSummary Demand="storageDemand"
                                           SelectedProfileIdentifier="_selectedRuntimeProfileIdentifier"/>
                 }
+                @if (_runtimeProvider?.Storage is { } storage)
+                {
+                    <div class="hosting-form-grid">
+                        <label class="hosting-field">
+                            <span>Deployment storage</span>
+                            <select value="@_selectedRuntimeStorageStrategy"
+                                    disabled="@(!_server.CanModify || _server.IsArchived || _server.Deployment is not null || _storageMutationInProgress)"
+                                    @onchange="SelectRuntimeStorage">
+                                <option value="IncludedDisk">Included server disk only</option>
+                                @if (storage.SupportsExternalBlockStorage)
+                                {
+                                    <option value="AutomaticExternal">Automatically sized external storage</option>
+                                    <option value="FixedExternal">Explicit external capacity</option>
+                                }
+                            </select>
+                        </label>
+                        @if (_selectedRuntimeStorageStrategy == "FixedExternal")
+                        {
+                            <label class="hosting-field">
+                                <span>External capacity (GiB)</span>
+                                <input type="number"
+                                       min="@storage.MinimumCapacityGiB"
+                                       max="@storage.MaximumCapacityGiB"
+                                       step="@storage.CapacityIncrementGiB"
+                                       value="@_selectedExternalStorageSizeGiB"
+                                       disabled="@(_storageMutationInProgress || _server.Deployment is not null)"
+                                       @onchange="SelectExternalStorageSize"/>
+                            </label>
+                        }
+                    </div>
+                    <p class="hosting-muted">
+                        @StorageSelectionSummary(storage)
+                        Full cost-stop or termination deletes external deployment storage.
+                    </p>
+                    @if (!string.IsNullOrWhiteSpace(storage.ReadinessFailure))
+                    {
+                        <UtfAlert Intent="MessageIntent.Warning">@storage.ReadinessFailure</UtfAlert>
+                    }
+                    <button class="utf-button utf-button--primary"
+                            type="button"
+                            disabled="@(!CanSaveRuntimeStorage(storage))"
+                            @onclick="SaveRuntimeStorageAsync">
+                        Save deployment storage
+                    </button>
+                }
             </article>
 
             <article class="utf-panel hosting-fact-panel">
@@ -1142,6 +1187,8 @@
     private bool _selectionMutationInProgress;
     private bool _deletingServer;
     private bool _profileMutationInProgress;
+    private bool _storageMutationInProgress;
+    private bool _storageSelectionDirty;
     private bool _profileSelectionDirty;
     private bool _profilesLoading;
     private bool _modPacksLoading;
@@ -1171,6 +1218,8 @@
     private string _selectionScope = "File";
     private string _selectionMode = "CreateOrUpdate";
     private string _selectedRuntimeProfileIdentifier = string.Empty;
+    private string _selectedRuntimeStorageStrategy = "IncludedDisk";
+    private long? _selectedExternalStorageSizeGiB;
     private long? _selectedModPackDefinitionId;
     private string _fileSortColumn = "name";
     private bool _fileSortDescending;
@@ -1426,6 +1475,7 @@
                 StringComparison.OrdinalIgnoreCase));
             _availableProfiles = _runtimeProvider?.Profiles.ToArray() ?? [];
             SynchronizeRuntimeProfileSelection();
+            SynchronizeRuntimeStorageSelection();
             await LoadStorageDemandAsync(cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -1480,6 +1530,14 @@
         _selectedRuntimeProfileIdentifier = currentProfile?.Identifier
                                             ?? _availableProfiles.FirstOrDefault()?.Identifier
                                             ?? _server.RuntimeProfileIdentifier;
+    }
+
+    private void SynchronizeRuntimeStorageSelection()
+    {
+        if (_storageSelectionDirty || _server is null)
+            return;
+        _selectedRuntimeStorageStrategy = _server.RuntimeStorageStrategy;
+        _selectedExternalStorageSizeGiB = _server.ExternalStorageSizeGiB;
     }
 
     private static string GetOperationIntent(HostingOperationInfo operation)
@@ -1655,6 +1713,70 @@
             _profileMutationInProgress = false;
         }
     }
+
+    private void SelectRuntimeStorage(ChangeEventArgs args)
+    {
+        _selectedRuntimeStorageStrategy = args.Value?.ToString() ?? "IncludedDisk";
+        _storageSelectionDirty = true;
+    }
+
+    private void SelectExternalStorageSize(ChangeEventArgs args)
+    {
+        _selectedExternalStorageSizeGiB = long.TryParse(
+            args.Value?.ToString(),
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out var size)
+                ? size
+                : null;
+        _storageSelectionDirty = true;
+    }
+
+    private bool CanSaveRuntimeStorage(RuntimeStorageCapabilitiesInfo storage)
+        => _server is { CanModify: true, IsArchived: false, Deployment: null }
+           && _storageSelectionDirty
+           && !_storageMutationInProgress
+           && string.IsNullOrWhiteSpace(storage.ReadinessFailure)
+           && (_selectedRuntimeStorageStrategy != "FixedExternal"
+               || _selectedExternalStorageSizeGiB is { } size
+               && size >= storage.MinimumCapacityGiB
+               && size <= storage.MaximumCapacityGiB
+               && size % storage.CapacityIncrementGiB == 0);
+
+    private async Task SaveRuntimeStorageAsync()
+    {
+        if (_server is null)
+            return;
+        _storageMutationInProgress = true;
+        _operationError = null;
+        try
+        {
+            await GameServerRepository.ChangeRuntimeStorageAsync(
+                ServerId,
+                _selectedRuntimeStorageStrategy,
+                _selectedRuntimeStorageStrategy == "FixedExternal" ? _selectedExternalStorageSizeGiB : null,
+                _cancellationTokenSource.Token);
+            _storageSelectionDirty = false;
+            await RefreshRuntimeAsync(showLoading: false, _cancellationTokenSource.Token);
+        }
+        catch (Exception exception)
+        {
+            _operationError = UserFacingError.Message(exception, "The deployment storage selection could not be saved.");
+        }
+        finally
+        {
+            _storageMutationInProgress = false;
+        }
+    }
+
+    private string StorageSelectionSummary(RuntimeStorageCapabilitiesInfo storage)
+        => _selectedRuntimeStorageStrategy switch
+        {
+            "IncludedDisk" => $"Deployment content uses the included profile disk ({SelectedRuntimeProfile?.DiskGiB?.ToString(CultureInfo.CurrentCulture) ?? "unknown"} GiB). ",
+            "AutomaticExternal" => $"Deployment content uses a Volume at {storage.DeploymentMountPath}; capacity is resolved from the latest peak requirement when Start provisions. ",
+            "FixedExternal" => $"Deployment content uses a {_selectedExternalStorageSizeGiB?.ToString(CultureInfo.CurrentCulture) ?? "—"} GiB Volume at {storage.DeploymentMountPath}. ",
+            _ => string.Empty,
+        };
 
     private void SelectModPack(ChangeEventArgs args)
     {

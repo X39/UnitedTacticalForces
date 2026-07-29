@@ -30,6 +30,17 @@ public sealed class HetznerRuntimeOptions
     /// </summary>
     public decimal EstimatedHourlyCostEur { get; set; }
 
+    public long VolumeMinimumSizeGiB { get; set; } = 10;
+
+    public long VolumeMaximumSizeGiB { get; set; } = 10_240;
+
+    public long VolumeSizeIncrementGiB { get; set; } = 1;
+
+    /// <summary>Conservative provisioned-capacity rate; operators may update it without code changes.</summary>
+    public decimal VolumeEstimatedHourlyCostPerGiBEur { get; set; } = 0.000061m;
+
+    public string VolumeMountPath { get; set; } = "/srv/united-tactical-forces/runtime";
+
     internal string? ValidateConnection()
     {
         if (string.IsNullOrWhiteSpace(Token))
@@ -67,6 +78,15 @@ public sealed class HetznerRuntimeOptions
             return $"{SectionName}:Location must be configured.";
         if (EstimatedHourlyCostEur <= 0)
             return $"{SectionName}:EstimatedHourlyCostEur must be greater than zero.";
+        if (VolumeMinimumSizeGiB <= 0
+            || VolumeMaximumSizeGiB < VolumeMinimumSizeGiB
+            || VolumeSizeIncrementGiB <= 0
+            || VolumeEstimatedHourlyCostPerGiBEur <= 0
+            || !VolumeMountPath.StartsWith("/", StringComparison.Ordinal)
+            || VolumeMountPath.Contains("..", StringComparison.Ordinal))
+        {
+            return $"{SectionName}:Volume settings must define a safe mount path, positive price, and valid capacity range.";
+        }
         return null;
     }
 

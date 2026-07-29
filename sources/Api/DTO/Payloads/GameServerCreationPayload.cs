@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using X39.UnitedTacticalForces.Hosting.Contracts;
 
 namespace X39.UnitedTacticalForces.Api.DTO.Payloads;
 
@@ -30,6 +31,10 @@ public sealed record GameServerCreationPayload
     /// </summary>
     [Required, MaxLength(128)]
     public string RuntimeProfileIdentifier { get; init; } = string.Empty;
+
+    public ERuntimeStorageStrategy RuntimeStorageStrategy { get; init; }
+
+    public long? ExternalStorageSizeGiB { get; init; }
 
     /// <summary>
     /// Optional selected payer. When omitted, the caller's personal cost owner is used.

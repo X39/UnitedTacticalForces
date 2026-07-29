@@ -117,6 +117,20 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task ChangeRuntimeStorageAsync(
+        Guid serverId,
+        string strategy,
+        long? externalStorageSizeGiB,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PutAsJsonAsync(
+                $"game-servers/{serverId}/runtime-storage",
+                new { Strategy = strategy, ExternalStorageSizeGiB = externalStorageSizeGiB },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<IReadOnlyList<GameServerModPackOptionInfo>> GetModPackOptionsAsync(
         Guid serverId,
         CancellationToken cancellationToken = default)

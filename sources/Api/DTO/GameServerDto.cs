@@ -11,6 +11,8 @@ public sealed record GameServerDto
     public string RuntimeProviderIdentifier { get; init; } = string.Empty;
     public string RuntimeProfileIdentifier { get; init; } = string.Empty;
     public string RuntimeProfileDisplayName { get; init; } = string.Empty;
+    public X39.UnitedTacticalForces.Hosting.Contracts.ERuntimeStorageStrategy RuntimeStorageStrategy { get; init; }
+    public long? ExternalStorageSizeGiB { get; init; }
     public decimal? EstimatedHourlyCostEur { get; init; }
     public decimal? EstimatedMonthlyCostEur { get; init; }
     public long? SelectedModPackDefinitionId { get; init; }

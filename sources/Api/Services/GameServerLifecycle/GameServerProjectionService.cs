@@ -85,6 +85,18 @@ internal sealed class GameServerProjectionService(
                     EstimatedHourlyCostEur = q.EstimatedHourlyCostEur,
                     EstimatedMonthlyCostEur = q.EstimatedMonthlyCostEur,
                 }).ToArray(),
+                Storage = provider.Capabilities.Storage is { } storage
+                    ? new RuntimeStorageCapabilitiesDto
+                    {
+                        SupportsExternalBlockStorage = storage.SupportsExternalBlockStorage,
+                        MinimumCapacityGiB = storage.MinimumCapacityGiB,
+                        MaximumCapacityGiB = storage.MaximumCapacityGiB,
+                        CapacityIncrementGiB = storage.CapacityIncrementGiB,
+                        EstimatedHourlyCostPerGiBEur = storage.EstimatedHourlyCostPerGiBEur,
+                        DeploymentMountPath = storage.DeploymentMountPath,
+                        ReadinessFailure = storage.ReadinessFailure,
+                    }
+                    : null,
             });
         }
         return gameDefinitions.GetDefinitions()
@@ -627,6 +639,8 @@ internal sealed class GameServerProjectionService(
             RuntimeProviderIdentifier = server.RuntimeProviderIdentifier,
             RuntimeProfileIdentifier = server.RuntimeProfileIdentifier,
             RuntimeProfileDisplayName = server.RuntimeProfileDisplayName,
+            RuntimeStorageStrategy = server.RuntimeStorageStrategy,
+            ExternalStorageSizeGiB = server.ExternalStorageSizeGiB,
             EstimatedHourlyCostEur = server.EstimatedHourlyCostEur,
             EstimatedMonthlyCostEur = server.EstimatedMonthlyCostEur,
             SelectedModPackDefinitionId = server.SelectedModPackDefinitionFk,
@@ -653,6 +667,13 @@ internal sealed class GameServerProjectionService(
                     RuntimeProfileIdentifier = deployment.RuntimeProfileIdentifier,
                     RuntimeProfileDisplayName = deployment.RuntimeProfileDisplayName,
                     EstimatedHourlyCostEur = deployment.EstimatedHourlyCostEur,
+                    RuntimeStorageStrategy = deployment.RuntimeStorageStrategy,
+                    PeakStorageRequiredBytes = deployment.PeakStorageRequiredBytes,
+                    IncludedStorageBytes = deployment.IncludedStorageBytes,
+                    SelectedExternalStorageBytes = deployment.SelectedExternalStorageBytes,
+                    DeploymentRoot = deployment.DeploymentRoot,
+                    EstimatedComputeHourlyCostEur = deployment.EstimatedComputeHourlyCostEur,
+                    EstimatedStorageHourlyCostEur = deployment.EstimatedStorageHourlyCostEur,
                     Status = deployment.Status,
                     Stage = deployment.Stage,
                     PossibleCost = deployment.PossibleCost,
@@ -686,6 +707,8 @@ internal sealed class GameServerProjectionService(
                             Kind = q.Kind,
                             State = q.State,
                             PossibleCost = q.PossibleCost,
+                            ProvisionedCapacityBytes = q.ProvisionedCapacityBytes,
+                            EstimatedHourlyCostEur = q.EstimatedHourlyCostEur,
                             ProviderState = q.ProviderState,
                             PublicAddress = q.PublicAddress,
                             TimeStampObserved = q.TimeStampObserved,

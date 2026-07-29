@@ -5,6 +5,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging.Abstractions;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
+using X39.UnitedTacticalForces.Hosting.Contracts;
 using Xunit;
 
 namespace Api.Tests.GameServerHosting;
@@ -798,7 +800,8 @@ public sealed class HetznerRuntimeProviderTests
                 PrimaryIpListJsonWithLabels(
                     (91, Labels(request, HetznerRuntimeProvider.PrimaryIpResourceType), 42L),
                     (92, incompleteManaged, null)))
-            .Respond(HttpStatusCode.OK, FirewallListJson((19, request)));
+            .Respond(HttpStatusCode.OK, FirewallListJson((19, request)))
+            .Respond(HttpStatusCode.OK, VolumeListJson());
 
         var result = await CreateProvider(handler).DiscoverAsync();
 
@@ -808,8 +811,59 @@ public sealed class HetznerRuntimeProviderTests
         Assert.True(result.Resources.Single(q => q.ResourceIdentifier == "primary-ip:91").HasTrustworthyAttribution);
         Assert.False(result.Resources.Single(q => q.ResourceIdentifier == "primary-ip:92").HasTrustworthyAttribution);
         Assert.Equal(
-            ["/v1/servers", "/v1/primary_ips", "/v1/firewalls"],
+            ["/v1/servers", "/v1/primary_ips", "/v1/firewalls", "/v1/volumes"],
             handler.Requests.Select(q => q.Path).ToArray());
+    }
+
+    [Fact]
+    public async Task Discover_InventoriesAttributedLateVolumeWithCapacityAndCost()
+    {
+        var request = CreateExternalProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson((42, request)))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.OK, VolumeListJson((73, request, 20, 42L)));
+
+        var result = await CreateProvider(handler).DiscoverAsync();
+
+        var volume = Assert.Single(result.Resources, q => q.ResourceType == "volume");
+        Assert.True(volume.HasTrustworthyAttribution);
+        Assert.True(volume.IsProvisioningReady);
+        Assert.Equal(20L * RuntimeStoragePlanResolver.GiB, volume.ProvisionedCapacityBytes);
+        Assert.Equal(20m * 0.000061m, volume.EstimatedHourlyCostEur);
+    }
+
+    [Fact]
+    public async Task Provision_AmbiguousVolumeCreateIsRecoveredByIntentWithoutDuplicateCreate()
+    {
+        var request = CreateExternalProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.OK, VolumeListJson())
+            .Throw(new HttpRequestException("simulated lost Volume create response"))
+            .Respond(HttpStatusCode.OK, VolumeListJson())
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.OK, VolumeListJson((73, request, 20, null)));
+        var provider = CreateProvider(handler);
+
+        var first = await provider.ProvisionAsync(request);
+        var second = await provider.ProvisionAsync(request);
+
+        Assert.Equal("volume-create-outcome-unknown", first.Stage);
+        Assert.Equal("provision-incomplete-resource-graph", second.Stage);
+        var creates = handler.Requests.Where(q => q.Method == HttpMethod.Post && q.Path == "/v1/volumes").ToArray();
+        var create = Assert.Single(creates);
+        Assert.Contains("\"location\":\"fsn1\"", create.Body, StringComparison.Ordinal);
+        Assert.Contains("\"size\":20", create.Body, StringComparison.Ordinal);
+        Assert.Contains($"\"{HetznerRuntimeProvider.IntentLabel}\"", create.Body, StringComparison.Ordinal);
+        Assert.Contains($"\"{HetznerRuntimeProvider.WorkerLabel}\"", create.Body, StringComparison.Ordinal);
+        Assert.Contains("\"utf-resource-kind\":\"volume\"", create.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain(TestToken, create.Body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -839,17 +893,20 @@ public sealed class HetznerRuntimeProviderTests
         var ready = await CreateProvider(new SequencedHttpMessageHandler()
                 .Respond(HttpStatusCode.OK, ServerListJson((42, request)))
                 .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
-                .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L]))))
+                .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])))
+                .Respond(HttpStatusCode.OK, VolumeListJson()))
             .DiscoverAsync();
         var pending = await CreateProvider(new SequencedHttpMessageHandler()
                 .Respond(HttpStatusCode.OK, ServerListJson((42, request)))
                 .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, null)))
-                .Respond(HttpStatusCode.OK, FirewallListJson((19, request))))
+                .Respond(HttpStatusCode.OK, FirewallListJson((19, request)))
+                .Respond(HttpStatusCode.OK, VolumeListJson()))
             .DiscoverAsync();
         var conflicting = await CreateProvider(new SequencedHttpMessageHandler()
                 .Respond(HttpStatusCode.OK, ServerListJson((42, request)))
                 .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 43L)))
-                .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [43L]))))
+                .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [43L])))
+                .Respond(HttpStatusCode.OK, VolumeListJson()))
             .DiscoverAsync();
 
         Assert.All(ready.Resources, q => Assert.True(q.IsProvisioningReady));
@@ -876,7 +933,8 @@ public sealed class HetznerRuntimeProviderTests
                 PrimaryIpListJsonWithSafety(
                     (91, request, 42L, "ipv4", false),
                     (92, request, 42L, "ipv6", true)))
-            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])));
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])))
+            .Respond(HttpStatusCode.OK, VolumeListJson());
 
         var result = await CreateProvider(handler).DiscoverAsync();
 
@@ -892,7 +950,8 @@ public sealed class HetznerRuntimeProviderTests
         var handler = new SequencedHttpMessageHandler()
             .Respond(HttpStatusCode.OK, ServerListJson((42, request)))
             .Respond(HttpStatusCode.OK, PrimaryIpListJsonWithLocations((91, request, 42L, "nbg1")))
-            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])));
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])))
+            .Respond(HttpStatusCode.OK, VolumeListJson());
 
         var result = await CreateProvider(handler).DiscoverAsync();
 
@@ -911,7 +970,8 @@ public sealed class HetznerRuntimeProviderTests
                 HttpStatusCode.OK,
                 ServerListJsonWithConfiguration((42, request, "running", "cpx31", "ubuntu-24.04", "fsn1")))
             .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
-            .Respond(HttpStatusCode.OK, FirewallListJsonWithRules((19, request, [42L], rules)));
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithRules((19, request, [42L], rules)))
+            .Respond(HttpStatusCode.OK, VolumeListJson());
 
         var result = await CreateProvider(handler).DiscoverAsync();
 
@@ -937,7 +997,8 @@ public sealed class HetznerRuntimeProviderTests
             .Respond(
                 HttpStatusCode.OK,
                 FirewallListJsonWithLabelsAndRules(
-                    (19, firewallLabels, [42L], ExpectedFirewallRules(request))));
+                    (19, firewallLabels, [42L], ExpectedFirewallRules(request))))
+            .Respond(HttpStatusCode.OK, VolumeListJson());
 
         var result = await CreateProvider(handler).DiscoverAsync();
 
@@ -958,7 +1019,8 @@ public sealed class HetznerRuntimeProviderTests
         var handler = new SequencedHttpMessageHandler()
             .Respond(HttpStatusCode.OK, ServerListJsonWithoutConfiguration(42, request))
             .Respond(HttpStatusCode.OK, PrimaryIpListJson((91, request, 42L)))
-            .Respond(HttpStatusCode.OK, FirewallListJsonWithoutRules(19, request, 42));
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithoutRules(19, request, 42))
+            .Respond(HttpStatusCode.OK, VolumeListJson());
 
         var result = await CreateProvider(handler).DiscoverAsync();
 
@@ -990,7 +1052,8 @@ public sealed class HetznerRuntimeProviderTests
                 HttpStatusCode.OK,
                 ServerListJsonWithConfiguration((42, request, status, "ccx13", "ubuntu-24.04", "fsn1")))
             .Respond(HttpStatusCode.OK, PrimaryIpListJson())
-            .Respond(HttpStatusCode.OK, FirewallListJson());
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.OK, VolumeListJson());
 
         var result = await CreateProvider(handler).DiscoverAsync();
 
@@ -1038,6 +1101,33 @@ public sealed class HetznerRuntimeProviderTests
             [HttpMethod.Get, HttpMethod.Get, HttpMethod.Post, HttpMethod.Get, HttpMethod.Delete, HttpMethod.Get],
             secondPass.Requests.Select(q => q.Method).ToArray());
         Assert.Equal("/v1/primary_ips/91/actions/unassign", secondPass.Requests[2].Path);
+    }
+
+    [Fact]
+    public async Task ReleaseVolume_VerifiesAttachmentThenDetachesDeletesAndConfirmsAbsence()
+    {
+        var request = CreateExternalProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, VolumeResponseJson(73, request, 20, 42L))
+            .Respond(HttpStatusCode.OK, ServerResponseJson(42, request, status: "off"))
+            .Respond(HttpStatusCode.Created, "{}")
+            .Respond(HttpStatusCode.OK, VolumeResponseJson(73, request, 20, null))
+            .Respond(HttpStatusCode.NoContent, string.Empty)
+            .Respond(HttpStatusCode.NotFound, "{}");
+
+        var result = await CreateProvider(handler).ReleaseAsync(new RuntimeReleaseRequest(
+            request.ServerId,
+            request.DeploymentId,
+            "volume:73",
+            request.ProvisioningIntentId,
+            request.WorkerId));
+
+        Assert.True(result.IsVerifiedNonBillable, result.Error);
+        Assert.Equal(
+            [HttpMethod.Get, HttpMethod.Get, HttpMethod.Post, HttpMethod.Get, HttpMethod.Delete, HttpMethod.Get],
+            handler.Requests.Select(q => q.Method).ToArray());
+        Assert.Equal("/v1/volumes/73/actions/detach", handler.Requests[2].Path);
+        Assert.Equal("/v1/volumes/73", handler.Requests[4].Path);
     }
 
     [Fact]
@@ -1219,6 +1309,18 @@ public sealed class HetznerRuntimeProviderTests
                 new(ERuntimeNetworkProtocol.Tcp, 30100, 30100, "Primary test traffic"),
                 new(ERuntimeNetworkProtocol.Udp, 30110, 30112, "Secondary test traffic"),
             ]);
+
+    private static RuntimeProvisionRequest CreateExternalProvisionRequest()
+        => CreateProvisionRequest() with
+        {
+            CloudInit = $"#cloud-config\n{CloudInitWorkerBootstrapPayloadRenderer.ExternalBlockDeviceToken}",
+            StoragePlan = new RuntimeStoragePlan(
+                ERuntimeStorageStrategy.AutomaticExternal,
+                18L * RuntimeStoragePlanResolver.GiB,
+                20L * RuntimeStoragePlanResolver.GiB,
+                "/srv/united-tactical-forces/runtime",
+                20m * 0.000061m),
+        };
 
     private static HetznerRuntimeProvider CreateProvider(
         SequencedHttpMessageHandler handler,
@@ -1572,6 +1674,42 @@ public sealed class HetznerRuntimeProviderTests
             },
             meta = Pagination(),
         });
+
+    private static string VolumeResponseJson(
+        long id,
+        RuntimeProvisionRequest request,
+        long sizeGiB,
+        long? serverId)
+        => JsonSerializer.Serialize(new
+        {
+            volume = VolumeFixture(id, request, sizeGiB, serverId),
+        });
+
+    private static string VolumeListJson(
+        params (long Id, RuntimeProvisionRequest Request, long SizeGiB, long? ServerId)[] values)
+        => JsonSerializer.Serialize(new
+        {
+            volumes = values.Select(q => VolumeFixture(q.Id, q.Request, q.SizeGiB, q.ServerId)),
+            meta = Pagination(),
+        });
+
+    private static object VolumeFixture(
+        long id,
+        RuntimeProvisionRequest request,
+        long sizeGiB,
+        long? serverId)
+        => new
+        {
+            id,
+            name = $"utf-{id}",
+            size = sizeGiB,
+            status = "available",
+            linux_device = $"/dev/disk/by-id/scsi-0HC_Volume_{id}",
+            server = serverId,
+            location = new { id = 1, name = "fsn1" },
+            protection = new { delete = false },
+            labels = Labels(request, HetznerRuntimeProvider.VolumeResourceType),
+        };
 
     private static object Pagination() => new { pagination = new { next_page = (int?)null } };
 

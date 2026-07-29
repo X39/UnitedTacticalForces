@@ -8,4 +8,5 @@ public sealed record RuntimeProvisionRequest(
     Guid ProvisioningIntentId = default,
     string? CloudInit = null,
     IReadOnlyList<RuntimeInboundNetworkRequirement>? InboundNetworkRequirements = null,
-    string RuntimeProfileIdentifier = "");
+    string RuntimeProfileIdentifier = "",
+    RuntimeStoragePlan? StoragePlan = null);

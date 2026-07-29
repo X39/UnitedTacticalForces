@@ -8,4 +8,5 @@ public sealed record RuntimeProviderCapabilities(
     bool IsReady = true,
     string? ReadinessFailure = null,
     decimal? EstimatedHourlyCostEur = null,
-    IReadOnlyList<string>? RequiredProvisionedResourceTypes = null);
+    IReadOnlyList<string>? RequiredProvisionedResourceTypes = null,
+    RuntimeStorageCapabilities? Storage = null);

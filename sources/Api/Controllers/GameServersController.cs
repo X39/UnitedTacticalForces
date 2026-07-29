@@ -217,6 +217,32 @@ public sealed class GameServersController(
         }
     }
 
+    [HttpPut("{gameServerId:guid}/runtime-storage")]
+    [Authorize(Claims.ResourceBased.Server.Modify)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ChangeRuntimeStorageAsync(
+        [FromRoute] Guid gameServerId,
+        [FromBody] GameServerRuntimeStorageUpdatePayload payload,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await lifecycleService
+                .ChangeRuntimeStorageAsync(
+                    gameServerId,
+                    payload.Strategy,
+                    payload.ExternalStorageSizeGiB,
+                    User,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return NoContent();
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
+    }
+
     [HttpPut("{gameServerId:guid}/mod-pack")]
     [Authorize(Claims.ResourceBased.Server.Modify)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

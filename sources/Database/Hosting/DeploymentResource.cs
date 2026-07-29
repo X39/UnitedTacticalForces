@@ -52,6 +52,11 @@ public class DeploymentResource : IPrimaryKey<Guid>, ITimeStampCreated
 
     public bool PossibleCost { get; set; }
 
+    public long? ProvisionedCapacityBytes { get; set; }
+
+    [Column(TypeName = "numeric(18,6)")]
+    public decimal? EstimatedHourlyCostEur { get; set; }
+
     public Instant TimeStampCreated { get; set; }
 
     public Instant TimeStampUpdated { get; set; }

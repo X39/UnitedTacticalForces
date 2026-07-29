@@ -130,6 +130,44 @@
                     }
                 }
 
+                @if (SelectedProfile is not null)
+                {
+                    <label class="hosting-field">
+                        <span>Deployment storage</span>
+                        <select value="@_runtimeStorageStrategy" @onchange="ChangeStorageStrategy">
+                            <option value="IncludedDisk">Included server disk only</option>
+                            @if (SelectedProvider?.Storage?.SupportsExternalBlockStorage is true)
+                            {
+                                <option value="AutomaticExternal">Automatically sized external storage</option>
+                                <option value="FixedExternal">Explicitly sized external storage</option>
+                            }
+                        </select>
+                        <small>The mutable game, Workshop, Scenario, and preparation root uses one filesystem.</small>
+                    </label>
+                    @if (_runtimeStorageStrategy == "FixedExternal" && SelectedProvider?.Storage is { } storage)
+                    {
+                        <label class="hosting-field">
+                            <span>External capacity (GiB)</span>
+                            <input type="number"
+                                   min="@storage.MinimumCapacityGiB"
+                                   max="@storage.MaximumCapacityGiB"
+                                   step="@storage.CapacityIncrementGiB"
+                                   @bind="_externalStorageSizeGiB"/>
+                        </label>
+                    }
+                    <div class="utf-state-panel">
+                        <strong>@StorageFilesystemDescription()</strong>
+                        <span>Selected capacity: @FormatBytes(SelectedStorageBytes())</span>
+                        <span>Combined estimate: @FormatCombinedPrice()</span>
+                    </div>
+                    @if (_runtimeStorageStrategy != "IncludedDisk")
+                    {
+                        <UtfAlert Intent="MessageIntent.Warning">
+                            External deployment storage is ephemeral and is deleted during full cost-stop or termination.
+                        </UtfAlert>
+                    }
+                }
+
                 @if (_isEstimateLoading)
                 {
                     <div class="utf-state-panel" role="status">Calculating storage demand…</div>
@@ -219,6 +257,8 @@
     private string _gameIdentifier = string.Empty;
     private string _runtimeProviderIdentifier = string.Empty;
     private string _runtimeProfileIdentifier = string.Empty;
+    private string _runtimeStorageStrategy = "IncludedDisk";
+    private long? _externalStorageSizeGiB;
     private IReadOnlyList<GameServerModPackOptionInfo> _modPackOptions = [];
     private long? _modPackDefinitionId;
     private StorageDemandInfo? _storageDemand;
@@ -271,7 +311,8 @@
            && SelectedCapability is not null
            && SelectedProvider is not null
            && IsProviderAvailable(SelectedProvider)
-           && SelectedProfile is not null;
+           && SelectedProfile is not null
+           && IsStorageSelectionValid();
 
     protected override async Task OnInitializedAsync()
     {
@@ -320,6 +361,7 @@
     {
         _runtimeProviderIdentifier = args.Value?.ToString() ?? string.Empty;
         _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
+        SelectDefaultStorage();
         await RefreshEstimateAsync();
     }
 
@@ -327,6 +369,15 @@
     {
         _runtimeProfileIdentifier = args.Value?.ToString() ?? string.Empty;
         await RefreshEstimateAsync();
+    }
+
+    private void ChangeStorageStrategy(ChangeEventArgs args)
+    {
+        _runtimeStorageStrategy = args.Value?.ToString() ?? "IncludedDisk";
+        if (_runtimeStorageStrategy == "FixedExternal" && SelectedProvider?.Storage is { } storage)
+            _externalStorageSizeGiB ??= storage.MinimumCapacityGiB;
+        else if (_runtimeStorageStrategy != "FixedExternal")
+            _externalStorageSizeGiB = null;
     }
 
     private async Task ChangeModPackAsync(ChangeEventArgs args)
@@ -345,6 +396,7 @@
     {
         _runtimeProviderIdentifier = AvailableProviders.FirstOrDefault()?.Identifier ?? string.Empty;
         _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
+        SelectDefaultStorage();
     }
 
     private async Task RefreshSelectionsAndEstimateAsync()
@@ -395,6 +447,10 @@
                 GameIdentifier = _gameIdentifier,
                 RuntimeProviderIdentifier = _runtimeProviderIdentifier,
                 RuntimeProfileIdentifier = _runtimeProfileIdentifier,
+                RuntimeStorageStrategy = _runtimeStorageStrategy,
+                ExternalStorageSizeGiB = _runtimeStorageStrategy == "FixedExternal"
+                    ? _externalStorageSizeGiB
+                    : null,
                 ModPackDefinitionId = _modPackDefinitionId,
                 IsLaunchDisabled = _isLaunchDisabled,
             });
@@ -429,6 +485,78 @@
     private static bool IsProviderAvailable(RuntimeProviderInfo provider)
         => string.Equals(provider.AvailabilityStatus, "available", StringComparison.OrdinalIgnoreCase)
            && provider.Profiles.Count > 0;
+
+    private void SelectDefaultStorage()
+    {
+        _runtimeStorageStrategy = SelectedProvider?.Storage?.SupportsExternalBlockStorage is true
+            ? "AutomaticExternal"
+            : "IncludedDisk";
+        _externalStorageSizeGiB = null;
+    }
+
+    private bool IsStorageSelectionValid()
+    {
+        if (SelectedProfile is null || _storageDemand is null)
+            return false;
+        if (_runtimeStorageStrategy == "IncludedDisk")
+        {
+            return _storageDemand.RuntimeProfiles.FirstOrDefault(q => string.Equals(
+                q.RuntimeProfileIdentifier,
+                SelectedProfile.Identifier,
+                StringComparison.OrdinalIgnoreCase))?.IsSufficient == true;
+        }
+        if (SelectedProvider?.Storage is not { SupportsExternalBlockStorage: true } storage)
+            return false;
+        var selectedGiB = _runtimeStorageStrategy == "AutomaticExternal"
+            ? AutomaticStorageGiB(storage)
+            : _externalStorageSizeGiB;
+        return selectedGiB is { } value
+               && value >= storage.MinimumCapacityGiB
+               && value <= storage.MaximumCapacityGiB
+               && value % storage.CapacityIncrementGiB == 0
+               && checked(value * 1_073_741_824L) >= _storageDemand.PeakPreparationRequiredBytes;
+    }
+
+    private long? SelectedStorageBytes()
+    {
+        if (_runtimeStorageStrategy == "IncludedDisk")
+            return SelectedProfile?.UsableStorageBytes;
+        if (SelectedProvider?.Storage is not { } storage)
+            return null;
+        var gib = _runtimeStorageStrategy == "AutomaticExternal"
+            ? AutomaticStorageGiB(storage)
+            : _externalStorageSizeGiB;
+        return gib.HasValue ? checked(gib.Value * 1_073_741_824L) : null;
+    }
+
+    private long? AutomaticStorageGiB(RuntimeStorageCapabilitiesInfo storage)
+    {
+        if (_storageDemand is null)
+            return null;
+        var required = (_storageDemand.PeakPreparationRequiredBytes + 1_073_741_823L) / 1_073_741_824L;
+        var minimum = Math.Max(required, storage.MinimumCapacityGiB);
+        return ((minimum + storage.CapacityIncrementGiB - 1) / storage.CapacityIncrementGiB)
+               * storage.CapacityIncrementGiB;
+    }
+
+    private string StorageFilesystemDescription()
+        => _runtimeStorageStrategy == "IncludedDisk"
+            ? "Deployment content uses the included server-root filesystem."
+            : $"Deployment content uses the verified external filesystem at {SelectedProvider?.Storage?.DeploymentMountPath}.";
+
+    private string FormatCombinedPrice()
+    {
+        if (SelectedProfile?.EstimatedHourlyCostEur is not { } compute)
+            return "Unavailable";
+        var storage = _runtimeStorageStrategy == "IncludedDisk"
+            ? 0m
+            : (SelectedStorageBytes() ?? 0) / 1_073_741_824m
+              * (SelectedProvider?.Storage?.EstimatedHourlyCostPerGiBEur ?? 0m);
+        return $"{compute + storage:C6}/hour · {(compute + storage) * 730m:C2}/month";
+    }
+
+    private static string FormatBytes(long? bytes)
+        => bytes.HasValue ? $"{bytes.Value / 1_073_741_824m:0.##} GiB" : "Unavailable";
 
     private string ProviderUnavailableDescription(RuntimeProviderInfo provider)
         => provider.AvailabilityStatus.Trim().ToLowerInvariant() switch
