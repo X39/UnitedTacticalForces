@@ -1309,9 +1309,10 @@ internal sealed class LifecycleJobExecutor(
             .Where(q => q.DeploymentFk == job.DeploymentFk)
             .MaxAsync(q => (long?) q.Sequence, cancellationToken)
             .ConfigureAwait(false) ?? 0) + 1;
-        var content = await contentSnapshotResolver
-            .ResolveAsync(server.PrimaryKey, cancellationToken)
-            .ConfigureAwait(false);
+        var content = deployment.PeakStorageRequiredBytes is not null && deployment.ContentSnapshot is not null
+            ? JsonSerializer.Deserialize<WorkerContentReference[]>(deployment.ContentSnapshot, CommandJsonOptions)
+              ?? throw new PermanentLifecycleExecutionException("The persisted content snapshot is invalid.")
+            : await contentSnapshotResolver.ResolveAsync(server.PrimaryKey, cancellationToken).ConfigureAwait(false);
         var payload = new WorkerCommandPayload
         {
             ServerId                  = server.PrimaryKey,
@@ -1322,6 +1323,7 @@ internal sealed class LifecycleJobExecutor(
             GracefulStopTimeoutSeconds = server.GracefulStopTimeoutSeconds,
             Port                      = null,
             Content                   = content,
+            PeakStorageRequiredBytes  = deployment.PeakStorageRequiredBytes,
         };
         var command = new WorkerCommand
         {

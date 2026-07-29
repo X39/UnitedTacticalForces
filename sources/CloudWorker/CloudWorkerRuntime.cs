@@ -419,6 +419,7 @@ public sealed class CloudWorkerRuntime(
                     ProcessStartedAt = runtime?.ProcessStartedAt,
                     DeploymentStorageTotalBytes = runtime?.DeploymentStorageTotalBytes,
                     DeploymentStorageAvailableBytes = runtime?.DeploymentStorageAvailableBytes,
+                    ControlledDeploymentBytes = runtime?.ControlledDeploymentBytes,
                 },
                 cancellationToken)
             .ConfigureAwait(false);
@@ -461,7 +462,8 @@ public sealed class CloudWorkerRuntime(
                 outcome?.ErrorMessage,
                 outcome?.Output,
                 outcome?.ProcessId,
-                outcome?.ProcessStartedAt),
+                outcome?.ProcessStartedAt,
+                outcome?.StorageMeasurements),
             cancellationToken);
 
     private static void ValidateTransport(CloudWorkerConnectionConfig connection, bool allowInsecureHttp)

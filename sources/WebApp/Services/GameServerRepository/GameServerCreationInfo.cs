@@ -9,6 +9,7 @@ public sealed record GameServerCreationInfo
     public string GameIdentifier { get; init; } = string.Empty;
     public string RuntimeProviderIdentifier { get; init; } = string.Empty;
     public string RuntimeProfileIdentifier { get; init; } = string.Empty;
+    public long? ModPackDefinitionId { get; init; }
     public Guid? CostOwnerId { get; init; }
     public bool IsLaunchDisabled { get; init; }
 }

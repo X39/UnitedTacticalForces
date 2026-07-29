@@ -230,6 +230,19 @@
                                       IsSaving="@_profileMutationInProgress"
                                       HasActiveDeployment="@(_server.Deployment is not null)"
                                       ReadOnlyDescription="@ProfileReadOnlyDescription"/>
+                @if (_storageDemandLoading)
+                {
+                    <p class="hosting-muted" role="status">Refreshing storage estimate…</p>
+                }
+                else if (_storageDemandError is not null)
+                {
+                    <UtfAlert Intent="MessageIntent.Warning">Storage estimate unavailable: @_storageDemandError</UtfAlert>
+                }
+                else if (_storageDemand is { } storageDemand)
+                {
+                    <StorageDemandSummary Demand="storageDemand"
+                                          SelectedProfileIdentifier="_selectedRuntimeProfileIdentifier"/>
+                }
             </article>
 
             <article class="utf-panel hosting-fact-panel">
@@ -1143,6 +1156,9 @@
     private string? _selectionError;
     private string? _modPackError;
     private string? _profileCatalogError;
+    private StorageDemandInfo? _storageDemand;
+    private bool _storageDemandLoading;
+    private string? _storageDemandError;
     private GameServerActionInfo? _challengedAction;
     private string _confirmationInput = string.Empty;
     private EHostingFileContext _fileContext = EHostingFileContext.Persistent;
@@ -1410,6 +1426,7 @@
                 StringComparison.OrdinalIgnoreCase));
             _availableProfiles = _runtimeProvider?.Profiles.ToArray() ?? [];
             SynchronizeRuntimeProfileSelection();
+            await LoadStorageDemandAsync(cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -1423,6 +1440,31 @@
         finally
         {
             _profilesLoading = false;
+        }
+    }
+
+    private async Task LoadStorageDemandAsync(CancellationToken cancellationToken = default)
+    {
+        if (_server is null || _storageDemandLoading)
+            return;
+
+        _storageDemandLoading = true;
+        _storageDemandError = null;
+        try
+        {
+            _storageDemand = await GameServerRepository.GetStorageDemandAsync(ServerId, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _storageDemand = null;
+            _storageDemandError = UserFacingError.Message(exception, "The estimate could not be refreshed.");
+        }
+        finally
+        {
+            _storageDemandLoading = false;
         }
     }
 
@@ -1664,6 +1706,7 @@
                 _cancellationTokenSource.Token);
             _modPackSelectionDirty = false;
             await RefreshRuntimeAsync(showLoading: false, _cancellationTokenSource.Token);
+            await LoadStorageDemandAsync(_cancellationTokenSource.Token);
         }
         catch (OperationCanceledException) when (_cancellationTokenSource.IsCancellationRequested)
         {

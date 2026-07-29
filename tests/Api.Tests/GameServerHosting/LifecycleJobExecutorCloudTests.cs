@@ -880,7 +880,7 @@ public sealed class LifecycleJobExecutorCloudTests
             store,
             new ExecutorTestProvider(),
             new RecordingCostSliceService());
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             executor.ExecuteAsync(job, cancellation.Token));

@@ -193,11 +193,13 @@ public sealed class WorkerProtocolServiceTests
                 DeploymentId = protocol.Deployment.PrimaryKey,
                 DeploymentStorageTotalBytes = 10_000,
                 DeploymentStorageAvailableBytes = 2_500,
+                ControlledDeploymentBytes = 4_000,
             },
             protocol.WorkerCredential);
 
         Assert.Equal(10_000, protocol.Worker.DiskTotalBytes);
         Assert.Equal(2_500, protocol.Worker.DiskAvailableBytes);
+        Assert.Equal(4_000, protocol.Worker.ControlledDeploymentBytes);
         var observedAt = Assert.IsType<Instant>(protocol.Worker.DiskTimeStampObserved);
 
         await protocol.Service.HeartbeatAsync(
@@ -229,6 +231,7 @@ public sealed class WorkerProtocolServiceTests
                 DeploymentId = protocol.Deployment.PrimaryKey,
                 DeploymentStorageTotalBytes = totalBytes,
                 DeploymentStorageAvailableBytes = availableBytes,
+                ControlledDeploymentBytes = 0,
             },
             protocol.WorkerCredential));
 
@@ -239,6 +242,131 @@ public sealed class WorkerProtocolServiceTests
         Assert.Null(worker.DiskTotalBytes);
         Assert.Null(worker.DiskAvailableBytes);
         Assert.Null(worker.DiskTimeStampObserved);
+    }
+
+    [Fact]
+    public async Task ClaimCommand_InsufficientMountedStorageFailsBeforeDelivery()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Command.Payload = JsonSerializer.Serialize(new WorkerCommandPayload
+        {
+            GameIdentifier = "arma3",
+            PeakStorageRequiredBytes = 8_000,
+        });
+        await store.DbContext.SaveChangesAsync();
+        await protocol.Service.HeartbeatAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerHeartbeatRequest
+            {
+                DeploymentId = protocol.Deployment.PrimaryKey,
+                DeploymentStorageTotalBytes = 10_000,
+                DeploymentStorageAvailableBytes = 1_000,
+                ControlledDeploymentBytes = 2_000,
+            },
+            protocol.WorkerCredential);
+
+        var claimed = await protocol.Service.ClaimCommandAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerCommandClaimRequest { DeploymentId = protocol.Deployment.PrimaryKey },
+            protocol.WorkerCredential);
+
+        Assert.Null(claimed);
+        Assert.Equal(EWorkerCommandStatus.Failed, protocol.Command.Status);
+        Assert.Equal("storage-capacity-insufficient", protocol.Command.ErrorCode);
+        Assert.Contains("external storage", protocol.Command.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SuccessfulPreparationMeasurements_PersistAndReplayIdempotently()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Command.Payload = JsonSerializer.Serialize(new WorkerCommandPayload
+        {
+            GameIdentifier = "arma3",
+            PeakStorageRequiredBytes = 1,
+            Content =
+            [
+                new WorkerContentReference
+                {
+                    Source = "steam-workshop",
+                    Identifier = "450814997",
+                    DisplayName = "CBA",
+                },
+            ],
+        });
+        await store.DbContext.SaveChangesAsync();
+        await protocol.Service.HeartbeatAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerHeartbeatRequest
+            {
+                DeploymentId = protocol.Deployment.PrimaryKey,
+                DeploymentStorageTotalBytes = 10_000,
+                DeploymentStorageAvailableBytes = 5_000,
+                ControlledDeploymentBytes = 1_000,
+            },
+            protocol.WorkerCredential);
+        Assert.NotNull(await protocol.Service.ClaimCommandAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerCommandClaimRequest { DeploymentId = protocol.Deployment.PrimaryKey },
+            protocol.WorkerCredential));
+        var measurements = new[]
+        {
+            new WorkerStorageMeasurement
+            {
+                ComponentKind = "runtime",
+                ApplicationIdentifier = "233780",
+                ItemIdentifier = "dedicated-server",
+                InstalledBytes = 4_000,
+                VersionMetadata = "runtime-v1",
+            },
+            new WorkerStorageMeasurement
+            {
+                ComponentKind = "workshop",
+                ApplicationIdentifier = "107410",
+                ItemIdentifier = "450814997",
+                InstalledBytes = 2_000,
+                VersionMetadata = "workshop-v1",
+            },
+        };
+        var report = new WorkerCommandProcessRequest
+        {
+            DeploymentId = protocol.Deployment.PrimaryKey,
+            Stage = "game-running",
+            ProcessId = 456,
+            ProcessStartedAt = DateTimeOffset.UtcNow,
+            StorageMeasurements = measurements,
+        };
+
+        await protocol.Service.ReportSucceededAsync(
+            protocol.Worker.PrimaryKey,
+            protocol.Command.PrimaryKey,
+            report,
+            protocol.WorkerCredential);
+        await protocol.Service.ReportSucceededAsync(
+            protocol.Worker.PrimaryKey,
+            protocol.Command.PrimaryKey,
+            report,
+            protocol.WorkerCredential);
+
+        var observations = await store.DbContext.ContentStorageObservations.AsNoTracking().ToArrayAsync();
+        Assert.Equal(2, observations.Length);
+        Assert.All(observations, value => Assert.Equal(protocol.Command.PrimaryKey, value.LastMeasuredWorkerCommandFk));
+
+        var conflicting = report with
+        {
+            StorageMeasurements =
+            [
+                measurements[0] with { InstalledBytes = 4_001 },
+                measurements[1],
+            ],
+        };
+        await Assert.ThrowsAsync<WorkerProtocolConflictException>(() => protocol.Service.ReportSucceededAsync(
+            protocol.Worker.PrimaryKey,
+            protocol.Command.PrimaryKey,
+            conflicting,
+            protocol.WorkerCredential));
     }
 
     [Fact]

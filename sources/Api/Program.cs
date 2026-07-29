@@ -125,6 +125,8 @@ internal class Program
             builder.Configuration.GetSection(ProviderReconciliationOptions.SectionName));
         builder.Services.Configure<HostingFinanceOptions>(
             builder.Configuration.GetSection(HostingFinanceOptions.SectionName));
+        builder.Services.Configure<Services.StorageDemand.StorageDemandOptions>(
+            builder.Configuration.GetSection(Services.StorageDemand.StorageDemandOptions.SectionName));
         builder.Services.AddDbContextFactory<DatabaseContext>(
             options =>
             {

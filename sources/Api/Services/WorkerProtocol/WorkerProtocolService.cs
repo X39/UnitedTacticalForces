@@ -146,7 +146,8 @@ internal sealed class WorkerProtocolService(
         ValidateProcessEvidence(request.ProcessId, request.ProcessStartedAt);
         ValidateDiskTelemetry(
             request.DeploymentStorageTotalBytes,
-            request.DeploymentStorageAvailableBytes);
+            request.DeploymentStorageAvailableBytes,
+            request.ControlledDeploymentBytes);
         await using var transaction = await BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         var worker = await AuthenticateWorkerAsync(
@@ -175,6 +176,7 @@ internal sealed class WorkerProtocolService(
         {
             worker.DiskTotalBytes = request.DeploymentStorageTotalBytes;
             worker.DiskAvailableBytes = request.DeploymentStorageAvailableBytes;
+            worker.ControlledDeploymentBytes = request.ControlledDeploymentBytes;
             worker.DiskTimeStampObserved = now;
         }
 
@@ -231,6 +233,33 @@ internal sealed class WorkerProtocolService(
         }
         if (!CanExecuteCommand(worker.Deployment!, command, now))
             throw new WorkerProtocolConflictException("The command was superseded by deployment cost-stop state.");
+        if (TryGetStorageCapacityFailure(worker, command, out var storageFailureCode, out var storageFailure))
+        {
+            command.Status = EWorkerCommandStatus.Failed;
+            command.Stage = storageFailureCode;
+            command.ErrorCode = storageFailureCode;
+            command.ErrorMessage = storageFailure;
+            command.TimeStampCompleted = now;
+            command.LeaseOwner = null;
+            command.LeaseExpires = null;
+            command.LifecycleJob!.Stage = storageFailureCode;
+            command.LifecycleJob.TimeStampUpdated = now;
+            worker.Deployment!.Stage = storageFailureCode;
+            worker.Deployment.TimeStampUpdated = now;
+            auditWriter.Add(
+                dbContext,
+                EHostingAuditEventKind.WorkerCommandFailed,
+                "Mounted storage validation rejected preparation before SteamCMD.",
+                serverId: command.LifecycleJob.GameServerFk,
+                deploymentId: command.DeploymentFk,
+                lifecycleJobId: command.LifecycleJobFk,
+                workerId: worker.PrimaryKey,
+                workerCommandId: command.PrimaryKey,
+                details: storageFailure);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return null;
+        }
 
         var newDeliveryAttempt = command.LeaseExpires is null || command.LeaseExpires <= now;
         var lease = PositiveDuration(_options.JobLease, nameof(LifecycleWorkerOptions.JobLease));
@@ -293,6 +322,7 @@ internal sealed class WorkerProtocolService(
             null,
             null,
             null,
+            null,
             cancellationToken);
 
     public Task ReportRunningAsync(
@@ -312,6 +342,7 @@ internal sealed class WorkerProtocolService(
             EWorkerCommandStatus.Running,
             request.ProcessId,
             request.ProcessStartedAt,
+            null,
             null,
             null,
             null,
@@ -338,6 +369,7 @@ internal sealed class WorkerProtocolService(
             null,
             null,
             request.Output,
+            request.StorageMeasurements,
             cancellationToken);
     }
 
@@ -362,6 +394,7 @@ internal sealed class WorkerProtocolService(
             request.ErrorCode,
             request.ErrorMessage,
             request.Output,
+            null,
             cancellationToken);
     }
 
@@ -377,6 +410,7 @@ internal sealed class WorkerProtocolService(
         string? errorCode,
         string? errorMessage,
         string? diagnosticOutput,
+        IReadOnlyCollection<WorkerStorageMeasurement>? storageMeasurements,
         CancellationToken cancellationToken)
     {
         stage = BoundStage(stage);
@@ -446,6 +480,11 @@ internal sealed class WorkerProtocolService(
             errorCode,
             errorMessage,
             diagnosticOutput);
+        if (targetStatus is EWorkerCommandStatus.Succeeded)
+        {
+            await ApplyStorageMeasurementsAsync(command, storageMeasurements ?? [], now, cancellationToken)
+                .ConfigureAwait(false);
+        }
         worker.LastHeartbeatAt = now;
         if (worker.Status is EWorkerStatus.Provisioning or EWorkerStatus.Degraded)
             worker.Status = EWorkerStatus.Online;
@@ -589,9 +628,9 @@ internal sealed class WorkerProtocolService(
             ? null
             : HostingFailureSanitizer.Sanitize(output, 16384);
 
-    private static void ValidateDiskTelemetry(long? totalBytes, long? availableBytes)
+    private static void ValidateDiskTelemetry(long? totalBytes, long? availableBytes, long? controlledBytes)
     {
-        if (totalBytes.HasValue != availableBytes.HasValue)
+        if (totalBytes.HasValue != availableBytes.HasValue || totalBytes.HasValue != controlledBytes.HasValue)
         {
             throw new WorkerProtocolValidationException(
                 "Deployment storage total and available bytes must be reported together.");
@@ -604,6 +643,142 @@ internal sealed class WorkerProtocolService(
         {
             throw new WorkerProtocolValidationException(
                 "Deployment storage available bytes cannot exceed total bytes.");
+        }
+        if (controlledBytes!.Value < 0 || controlledBytes.Value > totalBytes.Value)
+            throw new WorkerProtocolValidationException("Controlled deployment storage telemetry is invalid.");
+    }
+
+    private static bool TryGetStorageCapacityFailure(
+        LifecycleWorker worker,
+        WorkerCommand command,
+        out string code,
+        out string failure)
+    {
+        code = string.Empty;
+        failure = string.Empty;
+        if (command.LifecycleJob?.Kind is not ELifecycleJobKind.Start)
+            return false;
+        WorkerCommandPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<WorkerCommandPayload>(command.Payload, CommandJsonOptions);
+        }
+        catch (JsonException)
+        {
+            payload = null;
+        }
+        if (payload?.PeakStorageRequiredBytes is not { } requiredBytes)
+            return false;
+        if (worker.DiskAvailableBytes is not { } availableBytes
+            || worker.ControlledDeploymentBytes is not { } controlledBytes)
+        {
+            code = "storage-capacity-unavailable";
+            failure = "Mounted deployment storage could not be measured safely before SteamCMD.";
+            return true;
+        }
+        var usableBytes = availableBytes > long.MaxValue - controlledBytes
+            ? long.MaxValue
+            : availableBytes + controlledBytes;
+        if (usableBytes >= requiredBytes)
+            return false;
+        code = "storage-capacity-insufficient";
+        failure = $"Mounted deployment storage provides {usableBytes} usable bytes but preparation requires "
+                  + $"{requiredBytes} bytes. Select a larger profile or attach external storage.";
+        return true;
+    }
+
+    private async Task ApplyStorageMeasurementsAsync(
+        WorkerCommand command,
+        IReadOnlyCollection<WorkerStorageMeasurement> measurements,
+        Instant now,
+        CancellationToken cancellationToken)
+    {
+        if (measurements.Count == 0)
+            return;
+        if (measurements.Count > 512)
+            throw new WorkerProtocolValidationException("Too many storage measurements were reported.");
+        var payload = JsonSerializer.Deserialize<WorkerCommandPayload>(command.Payload, CommandJsonOptions)
+                      ?? throw new WorkerProtocolValidationException("The worker command payload is invalid.");
+        var expectedWorkshop = payload.Content
+            .Where(q => string.Equals(q.Source, "steam-workshop", StringComparison.OrdinalIgnoreCase))
+            .Select(q => q.Identifier)
+            .ToHashSet(StringComparer.Ordinal);
+        if (payload.PeakStorageRequiredBytes is not null)
+        {
+            var reportedWorkshop = measurements
+                .Where(q => string.Equals(q.ComponentKind, "workshop", StringComparison.OrdinalIgnoreCase))
+                .Select(q => q.ItemIdentifier.Trim())
+                .ToHashSet(StringComparer.Ordinal);
+            var runtimeCount = measurements.Count(q => string.Equals(
+                q.ComponentKind,
+                "runtime",
+                StringComparison.OrdinalIgnoreCase));
+            if (runtimeCount != 1 || !reportedWorkshop.SetEquals(expectedWorkshop))
+            {
+                throw new WorkerProtocolValidationException(
+                    "Successful preparation must report one runtime measurement and every snapshotted Workshop item.");
+            }
+        }
+        var identities = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var measurement in measurements)
+        {
+            var kind = measurement.ComponentKind.Trim().ToLowerInvariant();
+            var application = measurement.ApplicationIdentifier.Trim();
+            var item = measurement.ItemIdentifier.Trim();
+            var identity = $"{kind}\n{application}\n{item}";
+            if (!identities.Add(identity)
+                || measurement.InstalledBytes < 0
+                || application.Length is 0 or > 128
+                || item.Length is 0 or > 128
+                || measurement.VersionMetadata?.Length > 256)
+            {
+                throw new WorkerProtocolValidationException("A storage measurement is invalid or duplicated.");
+            }
+            if (kind is "workshop" && !expectedWorkshop.Contains(item))
+                throw new WorkerProtocolValidationException("A storage measurement is not part of the command snapshot.");
+            if (kind is not ("runtime" or "workshop"))
+                throw new WorkerProtocolValidationException("The storage measurement component kind is unsupported.");
+
+            var source = kind == "workshop" ? "steam-workshop" : "game-runtime";
+            var observation = await dbContext.ContentStorageObservations.SingleOrDefaultAsync(
+                    q => q.GameIdentifier == payload.GameIdentifier
+                         && q.SourceIdentifier == source
+                         && q.ApplicationIdentifier == application
+                         && q.ItemIdentifier == item,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (observation?.LastMeasuredWorkerCommandFk == command.PrimaryKey)
+            {
+                if (observation.MeasuredBytes != measurement.InstalledBytes
+                    || !string.Equals(
+                        observation.MeasuredVersion,
+                        measurement.VersionMetadata,
+                        StringComparison.Ordinal))
+                {
+                    throw new WorkerProtocolConflictException(
+                        "A replayed storage measurement conflicts with the persisted command outcome.");
+                }
+                continue;
+            }
+            observation ??= new ContentStorageObservation
+            {
+                PrimaryKey = Guid.NewGuid(),
+                GameIdentifier = payload.GameIdentifier,
+                ComponentKind = kind,
+                SourceIdentifier = source,
+                ApplicationIdentifier = application,
+                ItemIdentifier = item,
+                TimeStampCreated = now,
+            };
+            if (dbContext.Entry(observation).State is EntityState.Detached)
+                dbContext.ContentStorageObservations.Add(observation);
+            observation.MeasuredBytes = measurement.InstalledBytes;
+            observation.MeasuredVersion = measurement.VersionMetadata;
+            observation.MeasuredAt = now;
+            observation.ObservationStatus = "measured";
+            observation.ObservationSource = "external-worker";
+            observation.LastMeasuredWorkerCommandFk = command.PrimaryKey;
+            observation.TimeStampUpdated = now;
         }
     }
 

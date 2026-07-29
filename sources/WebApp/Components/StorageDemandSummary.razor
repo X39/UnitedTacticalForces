@@ -1,0 +1,116 @@
+@using System.Globalization
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+
+<section class="utf-panel storage-demand" aria-labelledby="storage-demand-title">
+    <div class="hosting-section-heading">
+        <span class="utf-kicker">Storage preflight</span>
+        <h2 id="storage-demand-title">Content storage demand</h2>
+        <p>Estimated installed usage and the recommended capacity while content is downloaded or updated.</p>
+    </div>
+
+    <dl class="storage-demand__totals">
+        <div><dt>Steady-state usage</dt><dd>@FormatBytes(Demand.SteadyStateRequiredBytes)</dd></div>
+        <div><dt>Preparation workspace</dt><dd>@FormatBytes(Demand.PreparationWorkspaceBytes)</dd></div>
+        <div><dt>Safety margin (@Demand.SafetyMarginPercent.ToString("0.#", CultureInfo.CurrentCulture)%)</dt><dd>@FormatBytes(Demand.SafetyMarginBytes)</dd></div>
+        <div><dt>Recommended peak capacity</dt><dd>@FormatBytes(Demand.PeakPreparationRequiredBytes)</dd></div>
+    </dl>
+
+    <p class="storage-demand__status">
+        <strong>Confidence:</strong> @StatusText(Demand.Status).
+        @if (Demand.MeasurementTimestamp is { } measuredAt)
+        {
+            <span> Latest filesystem measurement: @measuredAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture).</span>
+        }
+    </p>
+
+    @if (Demand.MissingComponents.Count > 0)
+    {
+        <UtfAlert Intent="MessageIntent.Warning">
+            This estimate uses conservative fallbacks for: @string.Join(", ", Demand.MissingComponents).
+        </UtfAlert>
+    }
+
+    @if (SelectedFit is { IsSufficient: false })
+    {
+        <UtfAlert Intent="MessageIntent.Warning">
+            The selected profile is insufficient for the recommended peak capacity. Choose a larger profile or
+            provide external storage. Provisioning remains available, but preparation will not start without enough
+            mounted free space.
+        </UtfAlert>
+    }
+    else if (SelectedFit is { IsSufficient: null })
+    {
+        <UtfAlert Intent="MessageIntent.Warning">
+            The selected profile's capacity is unknown. External storage may be required; mounted capacity is checked
+            before content preparation.
+        </UtfAlert>
+    }
+
+    <h3>Runtime profile capacity</h3>
+    <div class="storage-demand__profiles">
+        @foreach (var profile in Demand.RuntimeProfiles)
+        {
+            <article class="storage-demand__profile">
+                <strong>@profile.DisplayName</strong>
+                <span>Included: @FormatOptionalBytes(profile.IncludedCapacityBytes)</span>
+                <span>Usable after system reserve: @FormatOptionalBytes(profile.UsableCapacityBytes)</span>
+                <span><strong>@FitText(profile.IsSufficient)</strong></span>
+            </article>
+        }
+    </div>
+
+    <details>
+        <summary>Component breakdown</summary>
+        <ul class="storage-demand__components">
+            @foreach (var component in Demand.Components)
+            {
+                <li>
+                    <span><strong>@component.DisplayName</strong> — @component.Kind</span>
+                    <span>@FormatBytes(component.RequiredBytes); @StatusText(component.Status); @component.Source</span>
+                </li>
+            }
+        </ul>
+    </details>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public StorageDemandInfo Demand { get; set; } = null!;
+
+    [Parameter]
+    public string? SelectedProfileIdentifier { get; set; }
+
+    private RuntimeProfileStorageFitInfo? SelectedFit
+        => Demand.RuntimeProfiles.FirstOrDefault(profile => string.Equals(
+            profile.RuntimeProfileIdentifier,
+            SelectedProfileIdentifier,
+            StringComparison.OrdinalIgnoreCase));
+
+    private static string StatusText(string status)
+        => status.Trim().ToLowerInvariant() switch
+        {
+            "measured" => "measured",
+            "estimated" => "estimated",
+            "incomplete" => "incomplete",
+            _ => "unavailable",
+        };
+
+    private static string FitText(bool? sufficient)
+        => sufficient switch
+        {
+            true => "Sufficient",
+            false => "Insufficient — external storage or a larger profile is required",
+            null => "Capacity unknown — external storage may be required",
+        };
+
+    private static string FormatOptionalBytes(long? bytes)
+        => bytes is { } value ? FormatBytes(value) : "unknown";
+
+    private static string FormatBytes(long bytes)
+    {
+        const decimal gib = 1_073_741_824m;
+        return bytes >= gib
+            ? $"{bytes / gib:0.##} GiB"
+            : $"{bytes / 1_048_576m:0.##} MiB";
+    }
+}

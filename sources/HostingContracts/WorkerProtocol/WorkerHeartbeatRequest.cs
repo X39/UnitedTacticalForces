@@ -22,6 +22,9 @@ public sealed record WorkerHeartbeatRequest : IValidatableObject
     [Range(0, long.MaxValue)]
     public long? DeploymentStorageAvailableBytes { get; init; }
 
+    [Range(0, long.MaxValue)]
+    public long? ControlledDeploymentBytes { get; init; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (DeploymentStorageTotalBytes.HasValue != DeploymentStorageAvailableBytes.HasValue)
@@ -35,6 +38,12 @@ public sealed record WorkerHeartbeatRequest : IValidatableObject
             yield return new ValidationResult(
                 "Deployment storage available bytes cannot exceed total bytes.",
                 [nameof(DeploymentStorageAvailableBytes)]);
+        }
+        if (ControlledDeploymentBytes.HasValue != DeploymentStorageTotalBytes.HasValue)
+        {
+            yield return new ValidationResult(
+                "Controlled deployment bytes must accompany deployment storage telemetry.",
+                [nameof(ControlledDeploymentBytes)]);
         }
     }
 }

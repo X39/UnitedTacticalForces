@@ -41,6 +41,19 @@ public sealed class GameServerAccessControllerAuthorizationTests
         Assert.Equal(Claims.ResourceBased.Server.Modify, policy.Policy);
     }
 
+    [Theory]
+    [InlineData(nameof(GameServersController.EstimateStorageDemandAsync), Claims.Creation.Server)]
+    [InlineData(nameof(GameServersController.GetCreationModPackOptionsAsync), Claims.Creation.Server)]
+    [InlineData(nameof(GameServersController.GetStorageDemandAsync), Claims.ResourceBased.Server.View)]
+    public void StorageEstimateRoutes_RequireExpectedAuthorization(string methodName, string expectedPolicy)
+    {
+        var method = typeof(GameServersController).GetMethod(methodName)
+                     ?? throw new InvalidOperationException($"{methodName} endpoint was not found.");
+        var policy = Assert.Single(method.GetCustomAttributes<AuthorizeAttribute>(inherit: true));
+
+        Assert.Equal(expectedPolicy, policy.Policy);
+    }
+
     [Fact]
     public async Task ManageAccessRequirement_AcceptsOnlyExactTypeValueAndStringValueType()
     {

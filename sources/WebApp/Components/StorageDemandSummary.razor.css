@@ -1,0 +1,41 @@
+.storage-demand {
+    display: grid;
+    gap: 1rem;
+}
+
+.storage-demand__totals,
+.storage-demand__profiles {
+    display: grid;
+    gap: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.storage-demand__totals div,
+.storage-demand__profile {
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: .5rem;
+    display: grid;
+    gap: .25rem;
+    padding: .75rem;
+}
+
+.storage-demand__totals dt,
+.storage-demand__profile span {
+    color: var(--neutral-foreground-hint);
+}
+
+.storage-demand__totals dd {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.storage-demand__components {
+    display: grid;
+    gap: .5rem;
+    padding-left: 1.25rem;
+}
+
+.storage-demand__components li {
+    display: grid;
+}

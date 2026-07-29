@@ -34,6 +34,7 @@ public sealed class GameServerLifecycleServiceTests
             store.DbContext,
             new GameServerDefinitionCatalog([new Arma3GameServerDefinitionRegistration()]),
             [new TestRuntimeProvider()],
+            new TestStorageDemandService(),
             new HostingAuthorizationService(store.DbContext),
             new HostingAuditWriter());
 
@@ -138,6 +139,9 @@ public sealed class GameServerLifecycleServiceTests
         Assert.Equal(seed.CostOwner.PrimaryKey, deployment.CostOwnerFk);
         Assert.Equal("default", deployment.RuntimeProfileIdentifier);
         Assert.Equal("Default", deployment.RuntimeProfileDisplayName);
+        Assert.Equal("[]", deployment.ContentSnapshot);
+        Assert.Equal(0, deployment.PeakStorageRequiredBytes);
+        Assert.Equal(EStorageEstimateStatus.Incomplete.ToString(), deployment.StorageEstimateStatus);
         Assert.Equal(EDeploymentStatus.Provisioning, deployment.Status);
         Assert.Equal(ELifecycleJobStatus.Queued, persistedJob.Status);
         Assert.Equal(ELifecycleJobKind.Start, persistedJob.Kind);

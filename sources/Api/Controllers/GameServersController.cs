@@ -96,6 +96,37 @@ public sealed class GameServersController(
             .ConfigureAwait(false));
     }
 
+    [HttpGet("creation/mod-pack-options")]
+    [Authorize(Claims.Creation.Server)]
+    [ProducesResponseType<IReadOnlyCollection<GameServerModPackOptionDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCreationModPackOptionsAsync(
+        [FromQuery] string gameIdentifier,
+        CancellationToken cancellationToken)
+        => Ok(await projectionService
+            .GetCreationModPackOptionsAsync(gameIdentifier, cancellationToken)
+            .ConfigureAwait(false));
+
+    [HttpPost("storage-demand-estimate")]
+    [Authorize(Claims.Creation.Server)]
+    [ProducesResponseType<StorageDemandDto>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> EstimateStorageDemandAsync(
+        [FromBody] StorageDemandEstimatePayload payload,
+        CancellationToken cancellationToken)
+        => Ok(await projectionService.EstimateStorageDemandAsync(payload, cancellationToken).ConfigureAwait(false));
+
+    [HttpGet("{gameServerId:guid}/storage-demand")]
+    [Authorize(Claims.ResourceBased.Server.View)]
+    [ProducesResponseType<StorageDemandDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetStorageDemandAsync(
+        [FromRoute] Guid gameServerId,
+        CancellationToken cancellationToken)
+    {
+        var demand = await projectionService.GetStorageDemandAsync(gameServerId, User, cancellationToken)
+            .ConfigureAwait(false);
+        return demand is null ? NotFound() : Ok(demand);
+    }
+
     [HttpPost("{gameServerId:guid}/actions/{actionId}")]
     [Authorize(Claims.ResourceBased.Server.Operate)]
     [ProducesResponseType<LifecycleJobDto>(StatusCodes.Status202Accepted)]

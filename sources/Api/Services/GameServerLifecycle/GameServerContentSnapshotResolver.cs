@@ -34,7 +34,19 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
             .SingleOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false)
             ?? throw new PermanentLifecycleExecutionException("The game server no longer exists.");
-        if (server.SelectedModPackDefinitionFk is not { } definitionId)
+        return await ResolveAsync(
+                server.GameIdentifier,
+                server.SelectedModPackDefinitionFk,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyCollection<WorkerContentReference>> ResolveAsync(
+        string gameIdentifier,
+        long? modPackDefinitionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (modPackDefinitionId is not { } definitionId)
             return [];
 
         var definition = await dbContext.ModPackDefinitions
@@ -51,13 +63,13 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
             ?? throw InvalidSelection("The selected content definition no longer exists.");
         if (!definition.IsActive)
             throw InvalidSelection("The selected content definition is no longer active.");
-        if (!string.Equals(definition.GameIdentifier, server.GameIdentifier, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(definition.GameIdentifier, gameIdentifier, StringComparison.OrdinalIgnoreCase))
             throw InvalidSelection("The selected content definition belongs to a different game.");
 
         // Provider-neutral selections remain durable for every game. Arma 3 is the first implementation that maps
         // those selections to concrete worker content references.
         if (!string.Equals(
-                server.GameIdentifier,
+                gameIdentifier,
                 Arma3GameServerDefinitionRegistration.GameIdentifier,
                 StringComparison.OrdinalIgnoreCase))
             return [];
@@ -86,7 +98,7 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
             throw InvalidSelection("The selected standalone content definition has no unique active revision.");
         if (revisions.Any(q => !string.Equals(
                 q.GameIdentifier,
-                server.GameIdentifier,
+                gameIdentifier,
                 StringComparison.OrdinalIgnoreCase)))
         {
             throw InvalidSelection("The selected composition contains cross-game content.");

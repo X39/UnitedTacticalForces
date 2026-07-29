@@ -8,6 +8,8 @@ public sealed record RuntimeProfileInfo
     public int? VirtualCpuCount { get; init; }
     public decimal? MemoryGiB { get; init; }
     public int? DiskGiB { get; init; }
+    public long? IncludedStorageBytes { get; init; }
+    public long? UsableStorageBytes { get; init; }
     public decimal? EstimatedHourlyCostEur { get; init; }
     public decimal? EstimatedMonthlyCostEur { get; init; }
 }

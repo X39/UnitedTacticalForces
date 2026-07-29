@@ -10,7 +10,9 @@ public sealed record WorkerCommandExecutionResult(
     string? ErrorMessage = null,
     string? Output = null,
     int? ProcessId = null,
-    DateTimeOffset? ProcessStartedAt = null)
+    DateTimeOffset? ProcessStartedAt = null,
+    IReadOnlyCollection<X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol.WorkerStorageMeasurement>?
+        StorageMeasurements = null)
 {
     public static WorkerCommandExecutionResult Success(
         string stage,

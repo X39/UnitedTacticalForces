@@ -73,12 +73,25 @@
 
                 <label class="hosting-field">
                     <span>@Localizer["Hosting_Create_Game"]</span>
-                    <select value="@_gameIdentifier" @onchange="ChangeGame">
+                    <select value="@_gameIdentifier" @onchange="ChangeGameAsync">
                         @foreach (var capability in _capabilities)
                         {
                             <option value="@capability.GameIdentifier">@capability.DisplayName</option>
                         }
                     </select>
+                </label>
+
+                <label class="hosting-field">
+                    <span>Modpack (optional)</span>
+                    <select value="@(_modPackDefinitionId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)"
+                            @onchange="ChangeModPackAsync">
+                        <option value="">No Modpack</option>
+                        @foreach (var modPack in _modPackOptions)
+                        {
+                            <option value="@modPack.PrimaryKey">@modPack.Title</option>
+                        }
+                    </select>
+                    <small>The effective nested selection is flattened and repeated Workshop items count once.</small>
                 </label>
 
                 <label class="hosting-field">
@@ -103,7 +116,7 @@
                 {
                     <label class="hosting-field">
                         <span>@Localizer["Hosting_Create_Profile"]</span>
-                        <select @bind="_runtimeProfileIdentifier">
+                        <select value="@_runtimeProfileIdentifier" @onchange="ChangeRuntimeProfileAsync">
                             @foreach (var profile in selectedProvider.Profiles)
                             {
                                 <option value="@profile.Identifier">@ProfileOption(profile)</option>
@@ -115,6 +128,20 @@
                     {
                         <RuntimeProfileSummary Profile="selectedProfile"/>
                     }
+                }
+
+                @if (_isEstimateLoading)
+                {
+                    <div class="utf-state-panel" role="status">Calculating storage demand…</div>
+                }
+                else if (_estimateError is not null)
+                {
+                    <UtfAlert Intent="MessageIntent.Warning">Storage estimate unavailable: @_estimateError</UtfAlert>
+                }
+                else if (_storageDemand is { } storageDemand)
+                {
+                    <StorageDemandSummary Demand="storageDemand"
+                                          SelectedProfileIdentifier="_runtimeProfileIdentifier"/>
                 }
 
                 @if (UnavailableProviders.Count > 0)
@@ -192,6 +219,11 @@
     private string _gameIdentifier = string.Empty;
     private string _runtimeProviderIdentifier = string.Empty;
     private string _runtimeProfileIdentifier = string.Empty;
+    private IReadOnlyList<GameServerModPackOptionInfo> _modPackOptions = [];
+    private long? _modPackDefinitionId;
+    private StorageDemandInfo? _storageDemand;
+    private bool _isEstimateLoading;
+    private string? _estimateError;
     private bool _isLaunchDisabled;
     private bool _isLoading = true;
     private bool _isSaving;
@@ -263,6 +295,7 @@
             {
                 _gameIdentifier = capability.GameIdentifier;
                 SelectFirstAvailableProvider();
+                await RefreshSelectionsAndEstimateAsync();
             }
         }
         catch (Exception exception)
@@ -275,22 +308,76 @@
         }
     }
 
-    private void ChangeGame(ChangeEventArgs args)
+    private async Task ChangeGameAsync(ChangeEventArgs args)
     {
         _gameIdentifier = args.Value?.ToString() ?? string.Empty;
+        _modPackDefinitionId = null;
         SelectFirstAvailableProvider();
+        await RefreshSelectionsAndEstimateAsync();
     }
 
-    private void ChangeRuntimeProvider(ChangeEventArgs args)
+    private async Task ChangeRuntimeProvider(ChangeEventArgs args)
     {
         _runtimeProviderIdentifier = args.Value?.ToString() ?? string.Empty;
         _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
+        await RefreshEstimateAsync();
+    }
+
+    private async Task ChangeRuntimeProfileAsync(ChangeEventArgs args)
+    {
+        _runtimeProfileIdentifier = args.Value?.ToString() ?? string.Empty;
+        await RefreshEstimateAsync();
+    }
+
+    private async Task ChangeModPackAsync(ChangeEventArgs args)
+    {
+        _modPackDefinitionId = long.TryParse(
+            args.Value?.ToString(),
+            NumberStyles.None,
+            CultureInfo.InvariantCulture,
+            out var value)
+            ? value
+            : null;
+        await RefreshEstimateAsync();
     }
 
     private void SelectFirstAvailableProvider()
     {
         _runtimeProviderIdentifier = AvailableProviders.FirstOrDefault()?.Identifier ?? string.Empty;
         _runtimeProfileIdentifier = SelectedProvider?.Profiles.FirstOrDefault()?.Identifier ?? string.Empty;
+    }
+
+    private async Task RefreshSelectionsAndEstimateAsync()
+    {
+        _modPackOptions = await GameServerRepository.GetCreationModPackOptionsAsync(_gameIdentifier);
+        await RefreshEstimateAsync();
+    }
+
+    private async Task RefreshEstimateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_gameIdentifier) || string.IsNullOrWhiteSpace(_runtimeProviderIdentifier))
+            return;
+
+        _isEstimateLoading = true;
+        _estimateError = null;
+        try
+        {
+            _storageDemand = await GameServerRepository.EstimateStorageDemandAsync(new StorageDemandEstimateRequestInfo
+            {
+                GameIdentifier = _gameIdentifier,
+                ModPackDefinitionId = _modPackDefinitionId,
+                RuntimeProviderIdentifier = _runtimeProviderIdentifier,
+            });
+        }
+        catch (Exception exception)
+        {
+            _storageDemand = null;
+            _estimateError = UserFacingError.Message(exception, "The estimate could not be refreshed.");
+        }
+        finally
+        {
+            _isEstimateLoading = false;
+        }
     }
 
     private async Task CreateServerAsync()
@@ -308,6 +395,7 @@
                 GameIdentifier = _gameIdentifier,
                 RuntimeProviderIdentifier = _runtimeProviderIdentifier,
                 RuntimeProfileIdentifier = _runtimeProfileIdentifier,
+                ModPackDefinitionId = _modPackDefinitionId,
                 IsLaunchDisabled = _isLaunchDisabled,
             });
             NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/servers/{server.PrimaryKey}"));

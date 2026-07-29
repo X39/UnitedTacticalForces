@@ -6,6 +6,8 @@ using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.Api.Services.StorageDemand;
+using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.Util.DependencyInjection.Attributes;
 using GameDefinition = X39.UnitedTacticalForces.Api.Services.GameServerDefinition.GameServerDefinition;
@@ -17,9 +19,12 @@ internal sealed class GameServerProjectionService(
     DatabaseContext dbContext,
     IGameServerDefinitionCatalog gameDefinitions,
     IEnumerable<IRuntimeProvider> runtimeProviders,
+    IStorageDemandService storageDemandService,
     IHostingAuthorizationService authorizationService,
+    IOptions<StorageDemandOptions> storageDemandOptions,
     ILogger<GameServerProjectionService> logger) : IGameServerProjectionService
 {
+    private readonly StorageDemandOptions _storageDemandOptions = storageDemandOptions.Value;
     public async Task<IReadOnlyCollection<GameServerCapabilityDto>> GetCapabilitiesAsync(
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
@@ -75,6 +80,8 @@ internal sealed class GameServerProjectionService(
                     VirtualCpuCount = q.VirtualCpuCount,
                     MemoryGiB = q.MemoryGiB,
                     DiskGiB = q.DiskGiB,
+                    IncludedStorageBytes = IncludedStorageBytes(q),
+                    UsableStorageBytes = UsableStorageBytes(q),
                     EstimatedHourlyCostEur = q.EstimatedHourlyCostEur,
                     EstimatedMonthlyCostEur = q.EstimatedMonthlyCostEur,
                 }).ToArray(),
@@ -172,6 +179,145 @@ internal sealed class GameServerProjectionService(
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
     }
+
+    public async Task<IReadOnlyCollection<GameServerModPackOptionDto>> GetCreationModPackOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default)
+        => await dbContext.ModPackDefinitions
+            .AsNoTracking()
+            .Where(q => q.IsActive && q.GameIdentifier == gameIdentifier.Trim())
+            .OrderBy(q => q.Title)
+            .ThenBy(q => q.PrimaryKey)
+            .Select(q => new GameServerModPackOptionDto
+            {
+                PrimaryKey = q.PrimaryKey,
+                Title = q.Title,
+            })
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<StorageDemandDto?> GetStorageDemandAsync(
+        Guid gameServerId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        if (!authorizationService.HasServerPermission(
+                principal,
+                gameServerId,
+                Claims.ResourceBased.Server.View))
+            return null;
+        var server = await dbContext.GameServers
+            .AsNoTracking()
+            .Where(q => q.PrimaryKey == gameServerId && !q.IsArchived)
+            .Select(q => new
+            {
+                q.GameIdentifier,
+                q.SelectedModPackDefinitionFk,
+                q.RuntimeProviderIdentifier,
+            })
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (server is null)
+            return null;
+        var demand = await storageDemandService.EstimateAsync(
+                server.GameIdentifier,
+                server.SelectedModPackDefinitionFk,
+                gameServerId,
+                true,
+                cancellationToken)
+            .ConfigureAwait(false);
+        return await ProjectStorageDemandAsync(demand, server.RuntimeProviderIdentifier, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<StorageDemandDto> EstimateStorageDemandAsync(
+        DTO.Payloads.StorageDemandEstimatePayload payload,
+        CancellationToken cancellationToken = default)
+    {
+        var demand = await storageDemandService.EstimateAsync(
+                payload.GameIdentifier,
+                payload.ModPackDefinitionId,
+                null,
+                true,
+                cancellationToken)
+            .ConfigureAwait(false);
+        return await ProjectStorageDemandAsync(demand, payload.RuntimeProviderIdentifier, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<StorageDemandDto> ProjectStorageDemandAsync(
+        StorageDemandResult demand,
+        string runtimeProviderIdentifier,
+        CancellationToken cancellationToken)
+    {
+        var provider = runtimeProviders.SingleOrDefault(q => string.Equals(
+            q.ProviderIdentifier,
+            runtimeProviderIdentifier,
+            StringComparison.OrdinalIgnoreCase));
+        IReadOnlyCollection<RuntimeProfile> profiles = provider is null
+            ? []
+            : await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+        return new StorageDemandDto
+        {
+            SteadyStateRequiredBytes = demand.SteadyStateRequiredBytes,
+            PreparationWorkspaceBytes = demand.PreparationWorkspaceBytes,
+            SafetyMarginPercent = demand.SafetyMarginPercent,
+            SafetyMarginBytes = demand.SafetyMarginBytes,
+            PeakPreparationRequiredBytes = demand.PeakPreparationRequiredBytes,
+            Status = demand.Status,
+            CalculatedAt = demand.CalculatedAt,
+            MeasurementTimestamp = demand.MeasurementTimestamp,
+            MissingComponents = demand.MissingComponents,
+            Components = demand.Components.Select(q => new StorageDemandComponentDto
+            {
+                Identifier = q.Identifier,
+                DisplayName = q.DisplayName,
+                Kind = q.Kind,
+                RequiredBytes = q.RequiredBytes,
+                Status = q.Status,
+                Source = q.Source,
+                ObservedAt = q.ObservedAt,
+                Detail = q.Detail,
+            }).ToArray(),
+            RuntimeProfiles = profiles.Select(q =>
+            {
+                var included = IncludedStorageBytes(q);
+                var usable = UsableStorageBytes(q);
+                var sufficient = usable.HasValue
+                    ? usable.Value >= demand.PeakPreparationRequiredBytes
+                    : (bool?) null;
+                return new RuntimeProfileStorageFitDto
+                {
+                    RuntimeProviderIdentifier = runtimeProviderIdentifier,
+                    RuntimeProfileIdentifier = q.Identifier,
+                    DisplayName = q.DisplayName,
+                    IncludedCapacityBytes = included,
+                    UsableCapacityBytes = usable,
+                    IsSufficient = sufficient,
+                    ExternalStorageRequired = sufficient is not true,
+                };
+            }).ToArray(),
+        };
+    }
+
+    private static long? IncludedStorageBytes(RuntimeProfile profile)
+    {
+        if (profile.DiskGiB is not { } diskGiB || diskGiB < 0)
+            return null;
+        try
+        {
+            return checked(diskGiB * StorageDemandOptions.GiB);
+        }
+        catch (OverflowException)
+        {
+            return long.MaxValue;
+        }
+    }
+
+    private long? UsableStorageBytes(RuntimeProfile profile)
+        => IncludedStorageBytes(profile) is { } included
+            ? Math.Max(0, included - Math.Max(0, _storageDemandOptions.RuntimeProfileSystemReserveBytes))
+            : null;
 
     public async Task<IReadOnlyCollection<GameServerNotificationDto>> GetNotificationsAsync(
         ClaimsPrincipal principal,

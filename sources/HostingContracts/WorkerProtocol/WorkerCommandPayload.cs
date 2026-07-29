@@ -34,4 +34,9 @@ public sealed record WorkerCommandPayload
     /// Game workers decide which reference sources and identifiers they support.
     /// </summary>
     public IReadOnlyCollection<WorkerContentReference> Content { get; init; } = [];
+
+    /// <summary>
+    /// Conservative peak bytes snapshotted by the control plane for validation before preparation.
+    /// </summary>
+    public long? PeakStorageRequiredBytes { get; init; }
 }

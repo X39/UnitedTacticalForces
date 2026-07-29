@@ -52,6 +52,39 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
             .ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<GameServerModPackOptionInfo>> GetCreationModPackOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default)
+    {
+        var options = await GetFromJsonAsync<GameServerModPackOptionInfo[]>(
+                $"game-servers/creation/mod-pack-options?gameIdentifier={Uri.EscapeDataString(gameIdentifier)}",
+                cancellationToken)
+            .ConfigureAwait(false);
+        return options ?? [];
+    }
+
+    public async Task<StorageDemandInfo> EstimateStorageDemandAsync(
+        StorageDemandEstimateRequestInfo payload,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsJsonAsync("game-servers/storage-demand-estimate", payload, cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await ReadRequiredAsync<StorageDemandInfo>(response, "Storage estimate", cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<StorageDemandInfo> GetStorageDemandAsync(
+        Guid serverId,
+        CancellationToken cancellationToken = default)
+    {
+        var value = await GetFromJsonAsync<StorageDemandInfo>(
+                $"game-servers/{serverId}/storage-demand",
+                cancellationToken)
+            .ConfigureAwait(false);
+        return value ?? throw new InvalidOperationException("Storage estimate returned no response body.");
+    }
+
     public async Task<GameServerInfo> CreateServerAsync(
         GameServerCreationInfo payload,
         CancellationToken cancellationToken = default)

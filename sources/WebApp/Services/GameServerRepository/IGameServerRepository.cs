@@ -12,6 +12,18 @@ public interface IGameServerRepository
 
     Task<GameServerInfo?> GetServerAsync(Guid serverId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<GameServerModPackOptionInfo>> GetCreationModPackOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default);
+
+    Task<StorageDemandInfo> EstimateStorageDemandAsync(
+        StorageDemandEstimateRequestInfo payload,
+        CancellationToken cancellationToken = default);
+
+    Task<StorageDemandInfo> GetStorageDemandAsync(
+        Guid serverId,
+        CancellationToken cancellationToken = default);
+
     Task<GameServerInfo> CreateServerAsync(
         GameServerCreationInfo payload,
         CancellationToken cancellationToken = default);

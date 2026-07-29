@@ -9,4 +9,6 @@ public sealed record WorkerCommandReportRequest(
     string? ErrorMessage,
     string? Output,
     int? ProcessId,
-    DateTimeOffset? ProcessStartedAt);
+    DateTimeOffset? ProcessStartedAt,
+    IReadOnlyCollection<X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol.WorkerStorageMeasurement>?
+        StorageMeasurements = null);

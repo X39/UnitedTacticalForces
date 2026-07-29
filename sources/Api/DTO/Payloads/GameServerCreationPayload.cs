@@ -37,6 +37,11 @@ public sealed record GameServerCreationPayload
     public Guid? CostOwnerId { get; init; }
 
     /// <summary>
+    /// Optional effective content selection applied to the new server record.
+    /// </summary>
+    public long? ModPackDefinitionId { get; init; }
+
+    /// <summary>
     /// Whether this record is intentionally unavailable for launch.
     /// </summary>
     public bool IsLaunchDisabled { get; init; }

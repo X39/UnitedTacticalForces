@@ -87,6 +87,22 @@ public class GameServerDeployment : IPrimaryKey<Guid>, ITimeStampCreated
     [Column(TypeName = "numeric(18,6)")]
     public decimal? EstimatedHourlyCostEur { get; set; }
 
+    /// <summary>
+    /// Conservative peak storage demand snapshotted before provider mutation.
+    /// </summary>
+    public long? PeakStorageRequiredBytes { get; set; }
+
+    [MaxLength(32)]
+    public string? StorageEstimateStatus { get; set; }
+
+    public Instant? StorageEstimateCalculatedAt { get; set; }
+
+    /// <summary>
+    /// Effective, flattened content selection fixed before provider mutation for this deployment.
+    /// </summary>
+    [Column(TypeName = "jsonb")]
+    public string? ContentSnapshot { get; set; }
+
     public ICollection<DeploymentResource> Resources { get; set; } = [];
 
     public ICollection<LifecycleWorker> Workers { get; set; } = [];

@@ -1014,6 +1014,92 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.ToTable("EventSlots");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ContentStorageObservation", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApplicationIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ComponentKind")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant?>("ExternalUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExternalVersion")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("GameIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ItemIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("LastMeasuredWorkerCommandFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("MeasuredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("MeasuredBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MeasuredVersion")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ObservationSource")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ObservationStatus")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant?>("ReportedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("ReportedBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("TimeStampUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("LastMeasuredWorkerCommandFk");
+
+                    b.HasIndex("GameIdentifier", "SourceIdentifier", "ApplicationIdentifier", "ItemIdentifier")
+                        .IsUnique();
+
+                    b.ToTable("ContentStorageObservations", t =>
+                        {
+                            t.HasCheckConstraint("CK_ContentStorageObservations_Bytes", "(\"ReportedBytes\" IS NULL OR \"ReportedBytes\" >= 0) AND (\"MeasuredBytes\" IS NULL OR \"MeasuredBytes\" >= 0)");
+                        });
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostOwner", b =>
                 {
                     b.Property<Guid>("PrimaryKey")
@@ -1356,6 +1442,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ContentSnapshot")
+                        .HasColumnType("jsonb");
+
                     b.Property<Instant?>("CostAuthorizationExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1386,6 +1475,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("boolean");
 
+                    b.Property<long?>("PeakStorageRequiredBytes")
+                        .HasColumnType("bigint");
+
                     b.Property<bool>("PossibleCost")
                         .HasColumnType("boolean");
 
@@ -1410,6 +1502,13 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<int>("Status")
                         .IsConcurrencyToken()
                         .HasColumnType("integer");
+
+                    b.Property<Instant?>("StorageEstimateCalculatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StorageEstimateStatus")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<Instant>("TimeStampCreated")
                         .HasColumnType("timestamp with time zone");
@@ -1889,6 +1988,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<long?>("ControlledDeploymentBytes")
+                        .HasColumnType("bigint");
+
                     b.Property<Guid>("DeploymentFk")
                         .HasColumnType("uuid");
 
@@ -1984,7 +2086,7 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                             t.HasCheckConstraint("CK_LifecycleWorkers_BootstrapCredential", "\"BootstrapCredentialHash\" IS NULL OR \"BootstrapCredentialExpiresAt\" IS NOT NULL");
 
-                            t.HasCheckConstraint("CK_LifecycleWorkers_DiskTelemetry", "(\"DiskTotalBytes\" IS NULL AND \"DiskAvailableBytes\" IS NULL AND \"DiskTimeStampObserved\" IS NULL) OR (\"DiskTotalBytes\" IS NOT NULL AND \"DiskAvailableBytes\" IS NOT NULL AND \"DiskTimeStampObserved\" IS NOT NULL AND \"DiskTotalBytes\" >= 0 AND \"DiskAvailableBytes\" >= 0 AND \"DiskAvailableBytes\" <= \"DiskTotalBytes\")");
+                            t.HasCheckConstraint("CK_LifecycleWorkers_DiskTelemetry", "(\"DiskTotalBytes\" IS NULL AND \"DiskAvailableBytes\" IS NULL AND \"ControlledDeploymentBytes\" IS NULL AND \"DiskTimeStampObserved\" IS NULL) OR (\"DiskTotalBytes\" IS NOT NULL AND \"DiskAvailableBytes\" IS NOT NULL AND \"ControlledDeploymentBytes\" IS NOT NULL AND \"DiskTimeStampObserved\" IS NOT NULL AND \"DiskTotalBytes\" >= 0 AND \"DiskAvailableBytes\" >= 0 AND \"ControlledDeploymentBytes\" >= 0 AND \"DiskAvailableBytes\" <= \"DiskTotalBytes\")");
 
                             t.HasCheckConstraint("CK_LifecycleWorkers_PendingWorkerCredential", "\"PendingWorkerCredentialHash\" IS NULL OR (\"PendingWorkerCredentialIssuedAt\" IS NOT NULL AND \"PendingWorkerCredentialExpiresAt\" IS NOT NULL)");
 
@@ -3347,6 +3449,16 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("AssignedTo");
 
                     b.Navigation("Event");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ContentStorageObservation", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.WorkerCommand", "LastMeasuredWorkerCommand")
+                        .WithMany()
+                        .HasForeignKey("LastMeasuredWorkerCommandFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("LastMeasuredWorkerCommand");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostOwner", b =>

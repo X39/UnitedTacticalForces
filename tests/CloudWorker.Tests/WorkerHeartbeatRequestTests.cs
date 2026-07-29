@@ -14,6 +14,7 @@ public class WorkerHeartbeatRequestTests
         {
             DeploymentStorageTotalBytes = 1_000,
             DeploymentStorageAvailableBytes = 400,
+            ControlledDeploymentBytes = 300,
         }));
     }
 
@@ -31,6 +32,19 @@ public class WorkerHeartbeatRequestTests
         {
             DeploymentStorageTotalBytes = totalBytes,
             DeploymentStorageAvailableBytes = availableBytes,
+            ControlledDeploymentBytes = totalBytes is null || availableBytes is null ? null : 0,
+        };
+
+        Assert.NotEmpty(Validate(request));
+    }
+
+    [Fact]
+    public void StorageTelemetry_RequiresControlledRootUsageWithDiskTelemetry()
+    {
+        var request = new WorkerHeartbeatRequest
+        {
+            DeploymentStorageTotalBytes = 1_000,
+            DeploymentStorageAvailableBytes = 400,
         };
 
         Assert.NotEmpty(Validate(request));

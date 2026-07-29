@@ -18,4 +18,7 @@ public sealed record WorkerCommandProcessRequest
 
     [MaxLength(16384)]
     public string? Output { get; init; }
+
+    [MaxLength(512)]
+    public IReadOnlyCollection<WorkerStorageMeasurement> StorageMeasurements { get; init; } = [];
 }

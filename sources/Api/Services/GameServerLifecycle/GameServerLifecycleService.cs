@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using System.Data;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.Util.DependencyInjection.Attributes;
 
@@ -16,9 +18,11 @@ internal sealed class GameServerLifecycleService(
     DatabaseContext dbContext,
     IGameServerDefinitionCatalog gameDefinitions,
     IEnumerable<IRuntimeProvider> runtimeProviders,
+    IStorageDemandService storageDemandService,
     IHostingAuthorizationService authorizationService,
     IHostingAuditWriter auditWriter) : IGameServerLifecycleService
 {
+    private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
     public async Task<GameServer> CreateAsync(
         GameServerCreationPayload payload,
         ClaimsPrincipal principal,
@@ -55,6 +59,23 @@ internal sealed class GameServerLifecycleService(
                           ? profiles.Single()
                           : null)
                       ?? throw new HostingValidationException("The selected cloud profile is unavailable.");
+        if (payload.ModPackDefinitionId is { } selectedModPackId)
+        {
+            var selectedModPack = await dbContext.ModPackDefinitions
+                .AsNoTracking()
+                .Where(q => q.PrimaryKey == selectedModPackId && q.IsActive)
+                .Select(q => new { q.GameIdentifier })
+                .SingleOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new HostingValidationException("The selected mod pack is unavailable.");
+            if (!string.Equals(
+                    selectedModPack.GameIdentifier,
+                    capability.GameIdentifier,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw new HostingValidationException("The selected mod pack belongs to a different game.");
+            }
+        }
 
         var actor = await dbContext.Users
             .Include(q => q.Claims)
@@ -105,6 +126,7 @@ internal sealed class GameServerLifecycleService(
             CreatedByFk              = actorId,
             CurrentCostOwner         = costOwner,
             CurrentCostOwnerFk       = costOwner.PrimaryKey,
+            SelectedModPackDefinitionFk = payload.ModPackDefinitionId,
             IsLaunchDisabled         = payload.IsLaunchDisabled,
             LaunchDisabledReason     = payload.IsLaunchDisabled ? "Disabled when the server was created." : null,
             TimeStampCreated         = now,
@@ -266,6 +288,24 @@ internal sealed class GameServerLifecycleService(
             server.RuntimeProfileDisplayName = currentProfile.DisplayName;
             server.EstimatedHourlyCostEur = currentProfile.EstimatedHourlyCostEur;
             server.EstimatedMonthlyCostEur = currentProfile.EstimatedMonthlyCostEur;
+            var storageDemand = await storageDemandService.EstimateAsync(
+                    server.GameIdentifier,
+                    server.SelectedModPackDefinitionFk,
+                    server.PrimaryKey,
+                    true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            var includedStorageBytes = currentProfile.DiskGiB is { } diskGiB
+                ? (long?) Math.Max(0, diskGiB) * 1_073_741_824L
+                : null;
+            long? usableStorageBytes = includedStorageBytes is { } included
+                ? Math.Max(0, included - storageDemand.ProfileSystemReserveBytes)
+                : null;
+            var storageProfileFit = usableStorageBytes is null
+                ? "capacity-unknown"
+                : usableStorageBytes >= storageDemand.PeakPreparationRequiredBytes
+                    ? "sufficient"
+                    : "insufficient-external-storage-required";
 
             deployment = new GameServerDeployment
             {
@@ -275,6 +315,10 @@ internal sealed class GameServerLifecycleService(
                 RuntimeProfileIdentifier = server.RuntimeProfileIdentifier,
                 RuntimeProfileDisplayName = server.RuntimeProfileDisplayName,
                 EstimatedHourlyCostEur = server.EstimatedHourlyCostEur,
+                PeakStorageRequiredBytes = storageDemand.PeakPreparationRequiredBytes,
+                StorageEstimateStatus = storageDemand.Status.ToString(),
+                StorageEstimateCalculatedAt = storageDemand.CalculatedAt,
+                ContentSnapshot = JsonSerializer.Serialize(storageDemand.EffectiveContent, SnapshotJsonOptions),
                 Status          = EDeploymentStatus.Provisioning,
                 Stage           = "queued",
                 TimeStampCreated = now,
@@ -289,6 +333,9 @@ internal sealed class GameServerLifecycleService(
                 server.PrimaryKey,
                 deployment.PrimaryKey,
                 costOwnerId: deployment.CostOwnerFk,
+                details: $"PeakStorageBytes={storageDemand.PeakPreparationRequiredBytes}; "
+                         + $"StorageStatus={storageDemand.Status}; StorageProfileFit={storageProfileFit}; "
+                         + $"ProfileUsableStorageBytes={usableStorageBytes?.ToString() ?? "unknown"}",
                 costImpact: ECostImpact.NoCostImpact);
         }
         else

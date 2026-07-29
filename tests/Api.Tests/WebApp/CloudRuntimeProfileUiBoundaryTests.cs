@@ -10,6 +10,7 @@ public partial class CloudRuntimeProfileUiBoundaryTests
     private const string DetailsPath = "sources/WebApp/Pages/Servers/Details.razor";
     private const string EditorPath = "sources/WebApp/Components/RuntimeProfileEditor.razor";
     private const string SummaryPath = "sources/WebApp/Components/RuntimeProfileSummary.razor";
+    private const string StorageSummaryPath = "sources/WebApp/Components/StorageDemandSummary.razor";
     private const string EnglishResourcePath = "sources/WebApp/Properties/Language.resx";
     private const string GermanResourcePath = "sources/WebApp/Properties/Language.de.resx";
 
@@ -151,6 +152,26 @@ public partial class CloudRuntimeProfileUiBoundaryTests
         Assert.Contains("!IsProviderAvailable(provider)", unavailableProviders, StringComparison.Ordinal);
         Assert.Contains("IsProviderAvailable(SelectedProvider)", submitGuard, StringComparison.Ordinal);
         Assert.Contains("AvailableProviders.FirstOrDefault()", initialSelection, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StorageDemandUi_UsesAccessibleFitAndIncompleteMessaging()
+    {
+        var summary = ReadRepositoryFile(StorageSummaryPath);
+        var create = ReadRepositoryFile(CreatePath);
+        var details = ReadRepositoryFile(DetailsPath);
+
+        Assert.Contains("Steady-state usage", summary, StringComparison.Ordinal);
+        Assert.Contains("Recommended peak capacity", summary, StringComparison.Ordinal);
+        Assert.Contains("Sufficient", summary, StringComparison.Ordinal);
+        Assert.Contains("Insufficient", summary, StringComparison.Ordinal);
+        Assert.Contains("Capacity unknown", summary, StringComparison.Ordinal);
+        Assert.Contains("external storage", summary, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("conservative fallbacks", summary, StringComparison.Ordinal);
+        Assert.Contains("@foreach (var profile in Demand.RuntimeProfiles)", summary, StringComparison.Ordinal);
+        Assert.Contains("<StorageDemandSummary", create, StringComparison.Ordinal);
+        Assert.Contains("<StorageDemandSummary", details, StringComparison.Ordinal);
+        Assert.Contains("Modpack (optional)", create, StringComparison.Ordinal);
     }
 
     [Fact]

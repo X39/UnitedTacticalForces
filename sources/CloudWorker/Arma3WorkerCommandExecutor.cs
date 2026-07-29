@@ -209,7 +209,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 null,
                 observation.Error,
                 storage.TotalBytes,
-                storage.AvailableBytes);
+                storage.AvailableBytes,
+                storage.ControlledBytes);
         }
         return observation.IsRunning && observation.Identity is not null
             ? new WorkerRuntimeStatus(
@@ -218,14 +219,16 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 observation.Identity.ProcessStartedAt,
                 null,
                 storage.TotalBytes,
-                storage.AvailableBytes)
+                storage.AvailableBytes,
+                storage.ControlledBytes)
             : new WorkerRuntimeStatus(
                 IsPrepared() ? "prepared" : "not-installed",
                 null,
                 null,
                 null,
                 storage.TotalBytes,
-                storage.AvailableBytes);
+                storage.AvailableBytes,
+                storage.ControlledBytes);
     }
 
     private async Task<WorkerCommandExecutionResult> StartAsync(
@@ -478,6 +481,9 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         bool validate,
         CancellationToken cancellationToken)
     {
+        var storageFailure = ValidateStorageCapacity(payload);
+        if (storageFailure is not null)
+            return storageFailure;
         if (!File.Exists(_options.Arma3.SteamCmdPath))
         {
             return WorkerCommandExecutionResult.Failure(
@@ -539,7 +545,11 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                     "SteamCMD completed without all selected Arma Workshop content.");
             }
             await WritePreparationMarkerAsync(cancellationToken).ConfigureAwait(false);
-            return WorkerCommandExecutionResult.Success(validate ? "updated" : "installed", output);
+            var measurements = MeasurePreparedContent(workshopItemIds);
+            return WorkerCommandExecutionResult.Success(validate ? "updated" : "installed", output) with
+            {
+                StorageMeasurements = measurements,
+            };
         }
         return WorkerCommandExecutionResult.Failure(
             "steamcmd-failed",
@@ -913,7 +923,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
     private static TimeSpan StopTimeout(Arma3CommandPayload payload)
         => TimeSpan.FromSeconds(payload.Command.GracefulStopTimeoutSeconds);
 
-    private (long? TotalBytes, long? AvailableBytes) ObserveDeploymentStorage()
+    private (long? TotalBytes, long? AvailableBytes, long? ControlledBytes) ObserveDeploymentStorage()
     {
         try
         {
@@ -922,25 +932,148 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             {
                 var parent = Directory.GetParent(storagePath);
                 if (parent is null)
-                    return (null, null);
+                    return (null, null, null);
                 storagePath = parent.FullName;
             }
             var drive = new DriveInfo(storagePath);
             if (!drive.IsReady)
-                return (null, null);
+                return (null, null, null);
             var totalBytes = drive.TotalSize;
             var availableBytes = drive.AvailableFreeSpace;
+            var controlledBytes = Directory.Exists(_paths.DeploymentRoot)
+                ? MeasureDirectory(_paths.DeploymentRoot)
+                : 0;
             return totalBytes >= 0 && availableBytes >= 0 && availableBytes <= totalBytes
-                ? (totalBytes, availableBytes)
-                : (null, null);
+                ? (totalBytes, availableBytes, controlledBytes)
+                : (null, null, null);
         }
         catch (Exception ex) when (ex is IOException
                                        or UnauthorizedAccessException
                                        or ArgumentException
                                        or NotSupportedException)
         {
-            return (null, null);
+            return (null, null, null);
         }
+    }
+
+    private WorkerCommandExecutionResult? ValidateStorageCapacity(Arma3CommandPayload payload)
+    {
+        if (payload.Command.PeakStorageRequiredBytes is not { } requiredBytes)
+            return null;
+        var storage = ObserveDeploymentStorage();
+        if (storage.AvailableBytes is not { } availableBytes || storage.ControlledBytes is not { } controlledBytes)
+        {
+            return WorkerCommandExecutionResult.Failure(
+                "storage-capacity-unavailable",
+                "storage-capacity-unavailable",
+                "Mounted deployment storage could not be measured safely before SteamCMD.");
+        }
+        var usableBytes = availableBytes > long.MaxValue - controlledBytes
+            ? long.MaxValue
+            : availableBytes + controlledBytes;
+        return usableBytes >= requiredBytes
+            ? null
+            : WorkerCommandExecutionResult.Failure(
+                "storage-capacity-insufficient",
+                "storage-capacity-insufficient",
+                $"Mounted deployment storage provides {usableBytes} usable bytes but preparation requires "
+                + $"{requiredBytes} bytes. Select a larger profile or attach external storage.");
+    }
+
+    private IReadOnlyCollection<WorkerStorageMeasurement> MeasurePreparedContent(
+        IReadOnlyCollection<ulong> workshopItemIds)
+    {
+        var measurements = new List<WorkerStorageMeasurement>(workshopItemIds.Count + 1)
+        {
+            new()
+            {
+                ComponentKind = "runtime",
+                ApplicationIdentifier = Arma3RuntimePaths.DedicatedServerAppId.ToString(CultureInfo.InvariantCulture),
+                ItemIdentifier = "dedicated-server",
+                InstalledBytes = MeasureDirectory(_paths.InstallPath, [_paths.SteamWorkshopContentPath]),
+                VersionMetadata = ReadManifestValue(_paths.RuntimeManifestPath, "buildid"),
+            },
+        };
+        foreach (var workshopItemId in workshopItemIds.Distinct().Order())
+        {
+            measurements.Add(new WorkerStorageMeasurement
+            {
+                ComponentKind = "workshop",
+                ApplicationIdentifier = Arma3RuntimePaths.WorkshopAppId.ToString(CultureInfo.InvariantCulture),
+                ItemIdentifier = workshopItemId.ToString(CultureInfo.InvariantCulture),
+                InstalledBytes = MeasureDirectory(_paths.GetSteamWorkshopItemPath(workshopItemId)),
+                VersionMetadata = ReadWorkshopManifestVersion(workshopItemId),
+            });
+        }
+        return measurements;
+    }
+
+    private static long MeasureDirectory(string root, IReadOnlyCollection<string>? excludedRoots = null)
+    {
+        root = Path.GetFullPath(root);
+        if (!Directory.Exists(root))
+            throw new DirectoryNotFoundException("A prepared content path is unavailable for measurement.");
+        WorkerStoragePath.RejectExistingLinks(root, root);
+        var excluded = (excludedRoots ?? [])
+            .Select(Path.GetFullPath)
+            .ToHashSet(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        long total = 0;
+        var pending = new Stack<string>();
+        pending.Push(root);
+        while (pending.TryPop(out var directory))
+        {
+            if (excluded.Contains(directory))
+                continue;
+            WorkerStoragePath.RejectLink(directory);
+            foreach (var entry in Directory.EnumerateFileSystemEntries(directory))
+            {
+                WorkerStoragePath.RejectLink(entry);
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    pending.Push(Path.GetFullPath(entry));
+                    continue;
+                }
+                var length = new FileInfo(entry).Length;
+                total = checked(total + length);
+            }
+        }
+        return total;
+    }
+
+    private static string? ReadManifestValue(string path, string key)
+    {
+        if (!File.Exists(path) || new FileInfo(path).Length > 16 * 1024 * 1024)
+            return null;
+        WorkerStoragePath.RejectLink(path);
+        var content = File.ReadAllText(path);
+        var match = Regex.Match(
+            content,
+            $"\\\"{Regex.Escape(key)}\\\"\\s*\\\"(?<value>[^\\\"]+)\\\"",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+        return match.Success ? match.Groups["value"].Value : null;
+    }
+
+    private string? ReadWorkshopManifestVersion(ulong workshopItemId)
+    {
+        if (!File.Exists(_paths.WorkshopManifestPath)
+            || new FileInfo(_paths.WorkshopManifestPath).Length > 16 * 1024 * 1024)
+        {
+            return null;
+        }
+        WorkerStoragePath.RejectLink(_paths.WorkshopManifestPath);
+        var content = File.ReadAllText(_paths.WorkshopManifestPath);
+        var item = Regex.Match(
+            content,
+            $"\\\"{workshopItemId.ToString(CultureInfo.InvariantCulture)}\\\"\\s*\\{{(?<body>.*?)\\n\\s*\\}}",
+            RegexOptions.CultureInvariant | RegexOptions.Singleline);
+        if (!item.Success)
+            return null;
+        var version = Regex.Match(
+            item.Groups["body"].Value,
+            "\\\"timeupdated\\\"\\s*\\\"(?<value>[0-9]+)\\\"",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+        return version.Success ? version.Groups["value"].Value : null;
     }
 
     private bool SelectedWorkshopContentExists(IEnumerable<ulong> workshopItemIds)

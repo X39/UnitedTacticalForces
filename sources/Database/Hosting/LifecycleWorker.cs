@@ -93,6 +93,11 @@ public class LifecycleWorker : IPrimaryKey<Guid>, ITimeStampCreated
     /// </summary>
     public long? DiskAvailableBytes { get; set; }
 
+    /// <summary>
+    /// Bytes currently held beneath the worker-controlled deployment root.
+    /// </summary>
+    public long? ControlledDeploymentBytes { get; set; }
+
     public Instant? DiskTimeStampObserved { get; set; }
 
     public Instant TimeStampCreated { get; set; }

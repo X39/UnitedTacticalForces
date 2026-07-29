@@ -1,12 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces;
 using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
+using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using Xunit;
@@ -200,6 +202,7 @@ public sealed class GameServerProjectionServiceTests
             LastHeartbeatAt = now,
             DiskTotalBytes = 1_000,
             DiskAvailableBytes = 375,
+            ControlledDeploymentBytes = 500,
             DiskTimeStampObserved = now,
             TimeStampCreated = now,
             TimeStampUpdated = now,
@@ -441,7 +444,9 @@ public sealed class GameServerProjectionServiceTests
             dbContext,
             new TestGameServerDefinitionCatalog(),
             providers,
+            new TestStorageDemandService(),
             new HostingAuthorizationService(dbContext),
+            Options.Create(new StorageDemandOptions()),
             logger);
 
     private static IRuntimeProvider Provider(

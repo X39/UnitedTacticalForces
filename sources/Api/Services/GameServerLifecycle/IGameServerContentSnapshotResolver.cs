@@ -7,4 +7,9 @@ public interface IGameServerContentSnapshotResolver
     Task<IReadOnlyCollection<WorkerContentReference>> ResolveAsync(
         Guid gameServerId,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<WorkerContentReference>> ResolveAsync(
+        string gameIdentifier,
+        long? modPackDefinitionId,
+        CancellationToken cancellationToken = default);
 }

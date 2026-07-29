@@ -45,6 +45,8 @@ public sealed class Arma3RuntimePaths
         ProcessIdentityPath = Path.Combine(AgentStatePath, "arma3-process.json");
         PreparationMarkerPath = Path.Combine(AgentStatePath, "arma3-prepared");
         RuntimeLogPath = Path.Combine(LogPath, "arma3-runtime.log");
+        WorkshopManifestPath = Path.Combine(SteamWorkshopPath, $"appworkshop_{WorkshopAppId}.acf");
+        RuntimeManifestPath = Path.Combine(SteamAppsPath, $"appmanifest_{DedicatedServerAppId}.acf");
     }
 
     public string RuntimeBasePath { get; }
@@ -64,6 +66,8 @@ public sealed class Arma3RuntimePaths
     public string ProcessIdentityPath { get; }
     public string PreparationMarkerPath { get; }
     public string RuntimeLogPath { get; }
+    public string WorkshopManifestPath { get; }
+    public string RuntimeManifestPath { get; }
     private string SteamAppsPath { get; }
     private string SteamWorkshopPath { get; }
     private string SteamWorkshopContentRootPath { get; }

@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Api;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Authority;
 using X39.UnitedTacticalForces.Database.Authority.Extern;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
+using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 
 namespace Api.Tests.GameServerHosting;
@@ -113,6 +115,7 @@ internal static class HostingTestData
             dbContext,
             new TestGameServerDefinitionCatalog(),
             [new TestRuntimeProvider()],
+            new TestStorageDemandService(),
             new HostingAuthorizationService(dbContext),
             new HostingAuditWriter());
 
@@ -121,6 +124,8 @@ internal static class HostingTestData
             dbContext,
             new TestGameServerDefinitionCatalog(),
             [new TestRuntimeProvider()],
+            new TestStorageDemandService(),
             new HostingAuthorizationService(dbContext),
+            Options.Create(new StorageDemandOptions()),
             NullLogger<GameServerProjectionService>.Instance);
 }

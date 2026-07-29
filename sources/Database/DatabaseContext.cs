@@ -58,6 +58,7 @@ public class DatabaseContext : DbContext
     public DbSet<GameServerDeployment> GameServerDeployments { get; set; } = null!;
     public DbSet<DeploymentResource> DeploymentResources { get; set; } = null!;
     public DbSet<LifecycleWorker> LifecycleWorkers { get; set; } = null!;
+    public DbSet<ContentStorageObservation> ContentStorageObservations { get; set; } = null!;
     public DbSet<LifecycleJob> LifecycleJobs { get; set; } = null!;
     public DbSet<LifecycleJobAttempt> LifecycleJobAttempts { get; set; } = null!;
     public DbSet<WorkerCommand> WorkerCommands { get; set; } = null!;
@@ -392,10 +393,13 @@ public class DatabaseContext : DbContext
                 table.HasCheckConstraint(
                     "CK_LifecycleWorkers_DiskTelemetry",
                     "(\"DiskTotalBytes\" IS NULL AND \"DiskAvailableBytes\" IS NULL "
+                    + "AND \"ControlledDeploymentBytes\" IS NULL "
                     + "AND \"DiskTimeStampObserved\" IS NULL) OR "
                     + "(\"DiskTotalBytes\" IS NOT NULL AND \"DiskAvailableBytes\" IS NOT NULL "
+                    + "AND \"ControlledDeploymentBytes\" IS NOT NULL "
                     + "AND \"DiskTimeStampObserved\" IS NOT NULL "
                     + "AND \"DiskTotalBytes\" >= 0 AND \"DiskAvailableBytes\" >= 0 "
+                    + "AND \"ControlledDeploymentBytes\" >= 0 "
                     + "AND \"DiskAvailableBytes\" <= \"DiskTotalBytes\")");
             });
         });
@@ -457,6 +461,18 @@ public class DatabaseContext : DbContext
                 .HasDatabaseName(WorkerCommand.ActiveDeploymentIndexName)
                 .IsUnique()
                 .HasFilter(WorkerCommand.ActiveDeploymentIndexFilter);
+        });
+
+        modelBuilder.Entity<ContentStorageObservation>(entity =>
+        {
+            entity.HasOne(q => q.LastMeasuredWorkerCommand)
+                .WithMany()
+                .HasForeignKey(q => q.LastMeasuredWorkerCommandFk)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_ContentStorageObservations_Bytes",
+                "(\"ReportedBytes\" IS NULL OR \"ReportedBytes\" >= 0) AND "
+                + "(\"MeasuredBytes\" IS NULL OR \"MeasuredBytes\" >= 0)"));
         });
 
         modelBuilder.Entity<PreservationSelection>(entity =>

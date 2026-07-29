@@ -24,6 +24,19 @@ public interface IGameServerProjectionService
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<GameServerModPackOptionDto>> GetCreationModPackOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default);
+
+    Task<StorageDemandDto?> GetStorageDemandAsync(
+        Guid gameServerId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
+
+    Task<StorageDemandDto> EstimateStorageDemandAsync(
+        DTO.Payloads.StorageDemandEstimatePayload payload,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyCollection<GameServerNotificationDto>> GetNotificationsAsync(
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);
