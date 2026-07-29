@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
+using X39.UnitedTacticalForces.GameServerImplementations;
 
 namespace X39.UnitedTacticalForces.CloudWorker;
 
@@ -85,7 +86,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 "fault-stop" => await FaultStopAndPreserveAsync(command, payload, cancellationToken)
                     .ConfigureAwait(false),
                 "terminate" => await _processController.TerminateAsync(cancellationToken).ConfigureAwait(false),
-                "restart" => await RestartAsync(payload, cancellationToken).ConfigureAwait(false),
+                "restart" => await RestartAsync(command, payload, cancellationToken).ConfigureAwait(false),
                 "collect-logs" => await CollectLogsRestartSafeAsync(cancellationToken).ConfigureAwait(false),
                 _ => WorkerCommandExecutionResult.Failure(
                     "action-unsupported",
@@ -419,6 +420,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
     }
 
     private async Task<WorkerCommandExecutionResult> RestartAsync(
+        WorkerCommandClaimResponse command,
         Arma3CommandPayload payload,
         CancellationToken cancellationToken)
     {
@@ -438,7 +440,27 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             if (!prepared.Succeeded)
                 return prepared with { Stage = "restart-prepare-failed" };
         }
-        var started = await StartAsync(payload, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _storageTransfer
+                .ResetPersistentOverlayAsync(_paths.DeploymentRoot, cancellationToken)
+                .ConfigureAwait(false);
+            await _renderer.RenderAsync(payload, _paths, cancellationToken).ConfigureAwait(false);
+            await _storageTransfer
+                .ApplyPersistentSnapshotAsync(command, _paths.DeploymentRoot, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsStorageTransferFailure(ex))
+        {
+            return WorkerCommandExecutionResult.Failure(
+                "restart-persistent-overlay-failed",
+                "persistent-overlay-failed",
+                WorkerSecretRedactor.Redact(ex.Message, SnapshotDiagnosticSecrets())
+                ?? "Persistent data could not be prepared.");
+        }
+        var started = await _processController
+            .StartAsync(BuildLaunchArguments(payload), cancellationToken)
+            .ConfigureAwait(false);
         return started with { Stage = started.Succeeded ? "restarted" : "restart-start-failed" };
     }
 
@@ -881,15 +903,15 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
 
     private void RememberPayloadSecrets(Arma3CommandPayload payload)
     {
-        foreach (var (key, value) in payload.ServerConfiguration.Concat(payload.BasicConfiguration))
+        var sensitiveKeys = GameConfigurationImplementations.Get(payload.Command.GameIdentifier)
+            .Definitions
+            .Where(q => q.Sensitive)
+            .Select(q => q.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var (key, value) in payload.Command.Configuration)
         {
-            if (SensitiveConfigurationKeyPattern().IsMatch(key))
+            if (sensitiveKeys.Contains(key))
                 RememberJsonSecrets(value);
-        }
-        foreach (var (key, value) in payload.BattlEyeConfiguration)
-        {
-            if (SensitiveConfigurationKeyPattern().IsMatch(key))
-                RememberDiagnosticSecret(value);
         }
     }
 

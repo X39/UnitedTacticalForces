@@ -15,4 +15,9 @@ public sealed record HostingFileDto
     public EFileContext Context { get; init; }
     public EFileClassification Classification { get; init; }
     public bool CanModify { get; init; }
+    public EHostingFileOrigin Origin { get; init; }
+    public EHostingFileModificationMode ModificationMode { get; init; }
+    public bool IsGeneratedTarget { get; init; }
+    public bool OverridesGenerated { get; init; }
+    public EConfigurationContentStatus ConfigurationStatus { get; init; }
 }

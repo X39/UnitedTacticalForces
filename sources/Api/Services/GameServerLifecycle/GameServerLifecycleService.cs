@@ -81,6 +81,29 @@ internal sealed class GameServerLifecycleService(
                 throw new HostingValidationException("The selected mod pack belongs to a different game.");
             }
         }
+        if (payload.ConfigurationProfileId is null && payload.ConfigurationProfileRevisionId is not null)
+            throw new HostingValidationException("A pinned configuration revision requires a selected profile.");
+        if (payload.ConfigurationProfileId is { } selectedConfigurationProfileId)
+        {
+            var selectedConfigurationProfile = await dbContext.ConfigurationProfiles
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    q => q.PrimaryKey == selectedConfigurationProfileId && !q.IsArchived,
+                    cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new HostingValidationException("The selected configuration profile is unavailable.");
+            if (!string.Equals(
+                    selectedConfigurationProfile.GameIdentifier,
+                    capability.GameIdentifier,
+                    StringComparison.OrdinalIgnoreCase))
+                throw new HostingValidationException("The selected configuration profile belongs to a different game.");
+            if (payload.ConfigurationProfileRevisionId is { } selectedRevisionId
+                && !await dbContext.ConfigurationProfileRevisions.AnyAsync(
+                    q => q.PrimaryKey == selectedRevisionId
+                         && q.ConfigurationProfileFk == selectedConfigurationProfileId,
+                    cancellationToken).ConfigureAwait(false))
+                throw new HostingValidationException("The pinned configuration revision is unavailable.");
+        }
 
         var actor = await dbContext.Users
             .Include(q => q.Claims)
@@ -136,6 +159,8 @@ internal sealed class GameServerLifecycleService(
             CurrentCostOwner         = costOwner,
             CurrentCostOwnerFk       = costOwner.PrimaryKey,
             SelectedModPackDefinitionFk = payload.ModPackDefinitionId,
+            SelectedConfigurationProfileFk = payload.ConfigurationProfileId,
+            PinnedConfigurationProfileRevisionFk = payload.ConfigurationProfileRevisionId,
             IsLaunchDisabled         = payload.IsLaunchDisabled,
             LaunchDisabledReason     = payload.IsLaunchDisabled ? "Disabled when the server was created." : null,
             TimeStampCreated         = now,

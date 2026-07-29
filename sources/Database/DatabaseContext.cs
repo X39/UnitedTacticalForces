@@ -63,6 +63,10 @@ public class DatabaseContext : DbContext
     public DbSet<LifecycleJobAttempt> LifecycleJobAttempts { get; set; } = null!;
     public DbSet<WorkerCommand> WorkerCommands { get; set; } = null!;
     public DbSet<PreservationSelection> PreservationSelections { get; set; } = null!;
+    public DbSet<ConfigurationProfile> ConfigurationProfiles { get; set; } = null!;
+    public DbSet<ConfigurationProfileRevision> ConfigurationProfileRevisions { get; set; } = null!;
+    public DbSet<ConfigurationProfileValue> ConfigurationProfileValues { get; set; } = null!;
+    public DbSet<GameServerConfigurationValue> GameServerConfigurationValues { get; set; } = null!;
     public DbSet<HostingAuditRecord> HostingAuditRecords { get; set; } = null!;
     public DbSet<HostingCostLedgerEntry> HostingCostLedgerEntries { get; set; } = null!;
     public DbSet<HostingFinanceOperation> HostingFinanceOperations { get; set; } = null!;
@@ -196,6 +200,7 @@ public class DatabaseContext : DbContext
             CreateClaim(-14, "Creation", "Create wiki pages", UtfClaims.Creation.Wiki, "Allows creating wiki pages."),
             CreateClaim(-15, "Creation", "Create roles", UtfClaims.Creation.Role, "Allows creating roles."),
             CreateClaim(-16, "Creation", "Create servers", UtfClaims.Creation.Server, "Allows creating game servers."),
+            CreateClaim(-58, "Creation", "Create configuration profiles", UtfClaims.Creation.ConfigurationProfile, "Allows creating configuration profiles."),
             CreateClaim(-17, "Users", "Manage users", UtfClaims.User.All, "Allows all user-management actions."),
             CreateClaim(-18, "Users", "List users", UtfClaims.User.List, "Allows listing users."),
             CreateClaim(-19, "Users", "View Steam IDs", UtfClaims.User.ViewSteamId64, "Allows viewing Steam identifiers."),
@@ -228,7 +233,12 @@ public class DatabaseContext : DbContext
             CreateClaim(-54, "Resource", "Delete mod pack", UtfClaims.ResourceBased.ModPack.Delete, "Resource claim for mod-pack deletion.", true),
             CreateClaim(-55, "Resource", "Terrain access", UtfClaims.ResourceBased.Terrain.All, "Resource claim for all actions on terrain.", true),
             CreateClaim(-56, "Resource", "Modify terrain", UtfClaims.ResourceBased.Terrain.Modify, "Resource claim for terrain modification.", true),
-            CreateClaim(-57, "Resource", "Delete terrain", UtfClaims.ResourceBased.Terrain.Delete, "Resource claim for terrain deletion.", true));
+            CreateClaim(-57, "Resource", "Delete terrain", UtfClaims.ResourceBased.Terrain.Delete, "Resource claim for terrain deletion.", true),
+            CreateClaim(-59, "Resource", "Configuration-profile access", UtfClaims.ResourceBased.ConfigurationProfile.All, "Resource claim for all actions on a configuration profile.", true),
+            CreateClaim(-60, "Resource", "View configuration profile", UtfClaims.ResourceBased.ConfigurationProfile.View, "Resource claim for viewing a configuration profile.", true),
+            CreateClaim(-61, "Resource", "Modify configuration profile", UtfClaims.ResourceBased.ConfigurationProfile.Modify, "Resource claim for modifying a configuration profile.", true),
+            CreateClaim(-62, "Resource", "Manage configuration-profile access", UtfClaims.ResourceBased.ConfigurationProfile.ManageAccess, "Resource claim for managing configuration-profile access.", true),
+            CreateClaim(-63, "Resource", "Archive configuration profile", UtfClaims.ResourceBased.ConfigurationProfile.Archive, "Resource claim for archiving configuration profiles.", true));
     }
 
     private static Claim CreateClaim(
@@ -263,6 +273,14 @@ public class DatabaseContext : DbContext
             entity.HasOne(q => q.SelectedModPackDefinition)
                 .WithMany()
                 .HasForeignKey(q => q.SelectedModPackDefinitionFk)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(q => q.SelectedConfigurationProfile)
+                .WithMany(q => q.GameServers)
+                .HasForeignKey(q => q.SelectedConfigurationProfileFk)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(q => q.PinnedConfigurationProfileRevision)
+                .WithMany(q => q.PinnedGameServers)
+                .HasForeignKey(q => q.PinnedConfigurationProfileRevisionFk)
                 .OnDelete(DeleteBehavior.SetNull);
             entity.ToTable(table =>
             {
@@ -484,6 +502,49 @@ public class DatabaseContext : DbContext
             entity.HasOne(q => q.CreatedBy)
                 .WithMany()
                 .HasForeignKey(q => q.CreatedByFk)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ConfigurationProfile>(entity =>
+        {
+            entity.HasOne(q => q.CreatedBy)
+                .WithMany()
+                .HasForeignKey(q => q.CreatedByFk)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ConfigurationProfileRevision>(entity =>
+        {
+            entity.HasOne(q => q.ConfigurationProfile)
+                .WithMany(q => q.Revisions)
+                .HasForeignKey(q => q.ConfigurationProfileFk)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(q => q.CreatedBy)
+                .WithMany()
+                .HasForeignKey(q => q.CreatedByFk)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint(
+                "CK_ConfigurationProfileRevisions_RevisionNumber",
+                "\"RevisionNumber\" > 0"));
+        });
+
+        modelBuilder.Entity<ConfigurationProfileValue>(entity =>
+        {
+            entity.HasOne(q => q.ConfigurationProfileRevision)
+                .WithMany(q => q.Values)
+                .HasForeignKey(q => q.ConfigurationProfileRevisionFk)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GameServerConfigurationValue>(entity =>
+        {
+            entity.HasOne(q => q.GameServer)
+                .WithMany(q => q.ConfigurationValues)
+                .HasForeignKey(q => q.GameServerFk)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(q => q.UpdatedBy)
+                .WithMany()
+                .HasForeignKey(q => q.UpdatedByFk)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

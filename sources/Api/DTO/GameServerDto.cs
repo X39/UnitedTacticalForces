@@ -17,6 +17,9 @@ public sealed record GameServerDto
     public decimal? EstimatedMonthlyCostEur { get; init; }
     public long? SelectedModPackDefinitionId { get; init; }
     public string? SelectedModPackDefinitionTitle { get; init; }
+    public Guid? SelectedConfigurationProfileId { get; init; }
+    public string? SelectedConfigurationProfileTitle { get; init; }
+    public Guid? PinnedConfigurationProfileRevisionId { get; init; }
     public Guid CreatedById { get; init; }
     public Guid CostOwnerId { get; init; }
     public string CostOwnerName { get; init; } = string.Empty;

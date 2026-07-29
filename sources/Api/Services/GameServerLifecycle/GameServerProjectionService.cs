@@ -514,6 +514,7 @@ internal sealed class GameServerProjectionService(
             .AsSplitQuery()
             .Include(q => q.CurrentCostOwner)
             .Include(q => q.SelectedModPackDefinition)
+            .Include(q => q.SelectedConfigurationProfile)
             .Include(q => q.Deployments)
             .ThenInclude(q => q.Workers)
             .Include(q => q.Deployments)
@@ -645,6 +646,9 @@ internal sealed class GameServerProjectionService(
             EstimatedMonthlyCostEur = server.EstimatedMonthlyCostEur,
             SelectedModPackDefinitionId = server.SelectedModPackDefinitionFk,
             SelectedModPackDefinitionTitle = server.SelectedModPackDefinition?.Title,
+            SelectedConfigurationProfileId = server.SelectedConfigurationProfileFk,
+            SelectedConfigurationProfileTitle = server.SelectedConfigurationProfile?.Title,
+            PinnedConfigurationProfileRevisionId = server.PinnedConfigurationProfileRevisionFk,
             CreatedById = server.CreatedByFk,
             CostOwnerId = server.CurrentCostOwnerFk,
             CostOwnerName = canSeeOwner

@@ -65,6 +65,21 @@ public class GameServer : IPrimaryKey<Guid>, ITimeStampCreated
 
     public long? SelectedModPackDefinitionFk { get; set; }
 
+    [ForeignKey(nameof(SelectedConfigurationProfileFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public ConfigurationProfile? SelectedConfigurationProfile { get; set; }
+
+    public Guid? SelectedConfigurationProfileFk { get; set; }
+
+    /// <summary>
+    /// Pinned immutable revision. Null means follow the selected profile's latest revision.
+    /// </summary>
+    [ForeignKey(nameof(PinnedConfigurationProfileRevisionFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public ConfigurationProfileRevision? PinnedConfigurationProfileRevision { get; set; }
+
+    public Guid? PinnedConfigurationProfileRevisionFk { get; set; }
+
     public bool IsLaunchDisabled { get; set; }
 
     [MaxLength(1024)]
@@ -89,6 +104,8 @@ public class GameServer : IPrimaryKey<Guid>, ITimeStampCreated
     public ICollection<LifecycleJob> LifecycleJobs { get; set; } = [];
 
     public ICollection<PreservationSelection> PreservationSelections { get; set; } = [];
+
+    public ICollection<GameServerConfigurationValue> ConfigurationValues { get; set; } = [];
 
     public ICollection<HostingAuditRecord> AuditRecords { get; set; } = [];
 }

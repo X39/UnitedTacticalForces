@@ -8,6 +8,7 @@
     <AssemblyName>X39.UnitedTacticalForces.CloudWorker</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\GameServerImplementations\GameServerImplementations.csproj" />
     <ProjectReference Include="..\HostingContracts\HostingContracts.csproj" />
   </ItemGroup>
   <ItemGroup>

@@ -1,5 +1,7 @@
 using System.Text.Json;
 using X39.UnitedTacticalForces.CloudWorker;
+using X39.UnitedTacticalForces.GameServerImplementations;
+using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 using Xunit;
 
 namespace CloudWorker.Tests;
@@ -17,14 +19,15 @@ public class Arma3ConfigurationRendererTests
             "arma3server_x64");
         var payload = new Arma3CommandPayload
         {
-            ServerConfiguration = new Dictionary<string, JsonElement>
+            Command = new WorkerCommandPayload
             {
-                ["hostname"] = JsonSerializer.SerializeToElement("UTF Test"),
-                ["maxPlayers"] = JsonSerializer.SerializeToElement(64),
-            },
-            BattlEyeConfiguration = new Dictionary<string, string>
-            {
-                ["RConPort"] = "2307",
+                GameIdentifier = Arma3ConfigurationImplementation.Identifier,
+                Configuration = new Dictionary<string, JsonElement>
+                {
+                    ["server.cfg@hostname"] = JsonSerializer.SerializeToElement("UTF Test"),
+                    ["server.cfg@maxPlayers"] = JsonSerializer.SerializeToElement(64),
+                    ["beserver.cfg@RConPort"] = JsonSerializer.SerializeToElement(2307),
+                },
             },
         };
 
@@ -34,6 +37,11 @@ public class Arma3ConfigurationRendererTests
         Assert.Contains("hostname = \"UTF Test\";", serverConfig, StringComparison.Ordinal);
         Assert.Contains("maxPlayers = 64;", serverConfig, StringComparison.Ordinal);
         Assert.Equal("RConPort 2307" + Environment.NewLine, await File.ReadAllTextAsync(paths.BattlEyeConfigurationPath));
+        var expected = GameConfigurationImplementations.Get(Arma3ConfigurationImplementation.Identifier)
+            .Render(payload.Command.Configuration)
+            .Single(q => q.Path == Arma3ConfigurationImplementation.ServerTarget)
+            .Content;
+        Assert.Equal(expected, await File.ReadAllBytesAsync(paths.ServerConfigurationPath));
     }
 
     [Fact]
@@ -47,9 +55,13 @@ public class Arma3ConfigurationRendererTests
             "arma3server_x64");
         var payload = new Arma3CommandPayload
         {
-            ServerConfiguration = new Dictionary<string, JsonElement>
+            Command = new WorkerCommandPayload
             {
-                ["hostname; password"] = JsonSerializer.SerializeToElement("bad"),
+                GameIdentifier = Arma3ConfigurationImplementation.Identifier,
+                Configuration = new Dictionary<string, JsonElement>
+                {
+                    ["server.cfg@hostname; password"] = JsonSerializer.SerializeToElement("bad"),
+                },
             },
         };
 

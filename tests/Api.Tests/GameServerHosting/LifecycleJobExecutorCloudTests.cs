@@ -12,6 +12,7 @@ using X39.UnitedTacticalForces.Database.Authority;
 using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
@@ -1158,6 +1159,8 @@ public sealed class LifecycleJobExecutorCloudTests
             new WorkerCredentialService(Options.Create(new LifecycleWorkerOptions())),
             bootstrapRenderer ?? new TestBootstrapRenderer(),
             new GameServerContentSnapshotResolver(dbContext),
+            new GameServerConfigurationService(dbContext),
+            new EmptyServerFileStorage(),
             new TestStorageDemandService(),
             new HostingAuthorizationService(dbContext),
             costSliceService,
@@ -1167,7 +1170,31 @@ public sealed class LifecycleJobExecutorCloudTests
                 RegistrationGrace = TimeSpan.FromMinutes(15),
                 BootstrapCredentialLifetime = TimeSpan.FromMinutes(45),
                 IdlePollInterval = TimeSpan.FromMilliseconds(5),
-            }));
+             }));
+
+    private sealed class EmptyServerFileStorage : IServerFileStorage
+    {
+        public Task<IReadOnlyList<ServerFileEntry>> BrowseAsync(
+            Guid serverId, Guid? deploymentId, EFileContext context, string relativePath,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<ServerFileEntry>>([]);
+
+        public Task<ServerFileDownload> OpenReadAsync(
+            Guid serverId, Guid? deploymentId, EFileContext context, string relativePath,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<ServerFileEntry> UploadAsync(
+            Guid serverId, Guid? deploymentId, EFileContext context, string relativePath, Stream content,
+            bool overwrite, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<ServerFileEntry> CreateDirectoryAsync(
+            Guid serverId, Guid? deploymentId, EFileContext context, string relativePath,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task DeleteAsync(
+            Guid serverId, Guid? deploymentId, EFileContext context, string relativePath, bool recursive,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
 
     private static async Task<Exception?> CaptureExceptionAsync(Func<Task> action)
     {

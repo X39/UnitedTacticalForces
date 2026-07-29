@@ -52,6 +52,129 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
             .ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<ConfigurationProfileOptionInfo>> GetConfigurationProfileOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default)
+    {
+        var values = await GetFromJsonAsync<ConfigurationProfileOptionInfo[]>(
+                $"configuration-profiles/options?gameIdentifier={Uri.EscapeDataString(gameIdentifier)}",
+                cancellationToken)
+            .ConfigureAwait(false);
+        return values ?? [];
+    }
+
+    public async Task<IReadOnlyList<ConfigurationProfileInfo>> GetConfigurationProfilesAsync(
+        CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<ConfigurationProfileInfo[]>("configuration-profiles", cancellationToken)
+            .ConfigureAwait(false) ?? [];
+
+    public async Task<ConfigurationProfileDetailsInfo> GetConfigurationProfileAsync(
+        Guid profileId,
+        CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<ConfigurationProfileDetailsInfo>(
+                $"configuration-profiles/{profileId}", cancellationToken)
+            .ConfigureAwait(false)
+           ?? throw new InvalidOperationException("Configuration profile returned no response body.");
+
+    public async Task<ConfigurationProfileInfo> CreateConfigurationProfileAsync(
+        string title,
+        string gameIdentifier,
+        IReadOnlyList<ConfigurationValueUpdateInfo> values,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsJsonAsync(
+                "configuration-profiles",
+                new { Title = title, GameIdentifier = gameIdentifier, Values = values },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await ReadRequiredAsync<ConfigurationProfileInfo>(response, "Profile creation", cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task CreateConfigurationProfileRevisionAsync(
+        Guid profileId,
+        IReadOnlyList<ConfigurationValueUpdateInfo> values,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsJsonAsync(
+                $"configuration-profiles/{profileId}/revisions",
+                new { Values = values },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task ArchiveConfigurationProfileAsync(Guid profileId, CancellationToken cancellationToken = default)
+    {
+        var response = await HttpClient.PostAsync(
+                BaseUrl.ResolveApiUrl($"configuration-profiles/{profileId}/archive"), null, cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public Task ChangeConfigurationProfileUserAccessAsync(
+        Guid profileId, Guid userId, string permission, bool grant,
+        CancellationToken cancellationToken = default)
+        => ChangeConfigurationProfileAccessAsync(
+            profileId, "users", new { UserId = userId, Permission = permission }, grant, cancellationToken);
+
+    public Task ChangeConfigurationProfileRoleAccessAsync(
+        Guid profileId, long roleId, string permission, bool grant,
+        CancellationToken cancellationToken = default)
+        => ChangeConfigurationProfileAccessAsync(
+            profileId, "roles", new { RoleId = roleId, Permission = permission }, grant, cancellationToken);
+
+    private async Task ChangeConfigurationProfileAccessAsync(
+        Guid profileId, string subject, object payload, bool grant, CancellationToken cancellationToken)
+    {
+        var response = await PostAsJsonAsync(
+                $"configuration-profiles/{profileId}/access/{subject}/{(grant ? "grant" : "revoke")}",
+                payload,
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<GameConfigurationInfo> GetConfigurationAsync(
+        Guid serverId,
+        CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<GameConfigurationInfo>(
+                $"game-servers/{serverId}/configuration",
+                cancellationToken)
+            .ConfigureAwait(false)
+           ?? throw new InvalidOperationException("Configuration returned no response body.");
+
+    public async Task<GameConfigurationInfo> UpdateConfigurationAsync(
+        Guid serverId,
+        IReadOnlyList<ConfigurationValueUpdateInfo> values,
+        IReadOnlyList<string> resetKeys,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PutAsJsonAsync(
+                $"game-servers/{serverId}/configuration",
+                new { Values = values, ResetKeys = resetKeys },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await ReadRequiredAsync<GameConfigurationInfo>(response, "Configuration update", cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task SelectConfigurationProfileAsync(
+        Guid serverId,
+        Guid? profileId,
+        Guid? pinnedRevisionId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PutAsJsonAsync(
+                $"game-servers/{serverId}/configuration/profile",
+                new { ProfileId = profileId, PinnedRevisionId = pinnedRevisionId },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<IReadOnlyList<GameServerModPackOptionInfo>> GetCreationModPackOptionsAsync(
         string gameIdentifier,
         CancellationToken cancellationToken = default)
@@ -239,13 +362,15 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
         EHostingFileContext context,
         string path,
         ReadOnlyMemory<byte> content,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool confirmGeneratedOverride = false)
     {
         using var body = new ByteArrayContent(content.ToArray());
         body.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
         var response = await HttpClient
             .PutAsync(
-                BaseUrl.ResolveApiUrl(FileRoute(serverId, context, path)),
+                BaseUrl.ResolveApiUrl(FileRoute(serverId, context, path)
+                                      + (confirmGeneratedOverride ? "&confirmGeneratedOverride=true" : string.Empty)),
                 body,
                 cancellationToken
             )

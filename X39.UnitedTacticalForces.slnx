@@ -11,6 +11,7 @@
     <Project Path="sources\CloudWorker\CloudWorker.csproj" Type="Classic C#" />
     <Project Path="sources\Common\Common.csproj" Type="Classic C#" />
     <Project Path="sources\Database\Database.csproj" Type="Classic C#" />
+    <Project Path="sources\GameServerImplementations\GameServerImplementations.csproj" Type="Classic C#" />
     <Project Path="sources\HostingContracts\HostingContracts.csproj" Type="Classic C#" />
     <Project Path="sources\ServiceDefaults\ServiceDefaults.csproj" Type="Classic C#" />
     <Project Path="sources\WebSocketContracts\WebSocketContracts.csproj" Type="Classic C#" />

@@ -74,4 +74,9 @@ public enum EHostingAuditEventKind
     DeploymentResourceProvisioningFailed = 66,
     DeploymentResourceReleaseRequested = 67,
     DeploymentResourceReleaseFailed = 68,
+    ServerConfigurationChanged = 69,
+    ServerConfigurationProfileChanged = 70,
+    ConfigurationProfileCreated = 71,
+    ConfigurationProfileRevisionCreated = 72,
+    ConfigurationProfileArchived = 73,
 }

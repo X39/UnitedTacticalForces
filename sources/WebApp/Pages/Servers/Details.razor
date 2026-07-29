@@ -4,6 +4,7 @@
 @implements IAsyncDisposable
 @using System.Globalization
 @using System.Net
+@using System.Text.Json
 @using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
 @inject IGameServerRepository GameServerRepository
 @inject BaseUrl BaseUrl
@@ -103,6 +104,12 @@
                     @onclick="@(() => SelectWorkspaceSection("files"))">
                 @Localizer["Hosting_Detail_TabFiles"]
             </button>
+            <button class="@WorkspaceTabClass("configuration")"
+                    type="button"
+                    aria-current="@(_activeSection == "configuration" ? "page" : null)"
+                    @onclick="@(() => SelectWorkspaceSection("configuration"))">
+                Configuration
+            </button>
             <button class="@WorkspaceTabClass("jobs")"
                     type="button"
                     aria-current="@(_activeSection == "jobs" ? "page" : null)"
@@ -120,6 +127,82 @@
                 @Localizer["Hosting_Detail_TabAudit"]
             </button>
         </nav>
+
+        @if (_activeSection == "configuration")
+        {
+            <section class="utf-panel">
+                <div class="hosting-section-heading">
+                    <span class="utf-kicker">Effective game configuration</span>
+                    <h2>Structured settings</h2>
+                    <p>Defaults, the selected profile revision, and sparse server overrides are resolved here. A physical file at a generated target still wins at runtime.</p>
+                </div>
+                @if (_configurationLoading)
+                {
+                    <div class="utf-state-panel">Loading configuration…</div>
+                }
+                else if (_configurationError is not null)
+                {
+                    <UtfAlert Intent="MessageIntent.Error">@_configurationError</UtfAlert>
+                }
+                else if (_configuration is { } configuration)
+                {
+                    <label class="hosting-field">
+                        <span>Configuration profile</span>
+                        <select value="@(configuration.ProfileId?.ToString() ?? string.Empty)" @onchange="ChangeConfigurationProfileAsync">
+                            <option value="">Game defaults only</option>
+                            @foreach (var profile in _configurationProfileOptions)
+                            {
+                                <option value="@profile.PrimaryKey">@profile.Title</option>
+                            }
+                        </select>
+                    </label>
+                    @if (configuration.ProfileId is not null)
+                    {
+                        <div class="hosting-form-actions">
+                            <button class="utf-button utf-button--ghost" type="button" @onclick="FollowLatestProfileAsync">Follow latest</button>
+                            <button class="utf-button utf-button--ghost" type="button" disabled="@(configuration.ProfileRevisionId is null)" @onclick="PinCurrentProfileAsync">Pin revision @configuration.ProfileRevisionNumber</button>
+                        </div>
+                    }
+                    @if (!configuration.IsComplete)
+                    {
+                        <UtfAlert Intent="MessageIntent.Warning">Required values are missing or invalid. The generated targets remain visible, but Start and generated downloads are blocked.</UtfAlert>
+                    }
+                    @foreach (var target in configuration.Entries.GroupBy(q => q.TargetPath))
+                    {
+                        <section class="hosting-file-mutations">
+                            <div>
+                                <h3>@target.Key</h3>
+                                @if (_configurationOverriddenTargets.Contains(target.Key))
+                                {
+                                    <UtfAlert Intent="MessageIntent.Warning">A physical persistent file is effective at this target. Structured settings are hidden until that override is deleted in Files.</UtfAlert>
+                                }
+                                else
+                                {
+                                @foreach (var entry in target.GroupBy(q => q.Group).SelectMany(q => q))
+                                {
+                                    <label class="hosting-field">
+                                        <span>@entry.DisplayName <small>from @entry.Source</small></span>
+                                        <textarea disabled="@(!_server.CanModify || entry.Sensitive && entry.Value is null)"
+                                                  value="@ConfigurationEditValue(entry)"
+                                                  @onchange="@(args => SetConfigurationEdit(entry.Key, args.Value?.ToString()))"></textarea>
+                                        <small>@entry.Description @entry.Warning</small>
+                                    </label>
+                                    @if (_server.CanModify && entry.Source == "Server")
+                                    {
+                                        <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => ResetConfigurationEntryAsync(entry.Key))">Reset to inherited value</button>
+                                    }
+                                }
+                                }
+                            </div>
+                        </section>
+                    }
+                    @if (_server.CanModify)
+                    {
+                        <button class="utf-button utf-button--primary" type="button" disabled="@(_configurationSaving || _configurationEdits.Count == 0)" @onclick="SaveConfigurationAsync">Save overrides</button>
+                    }
+                }
+            </section>
+        }
 
         @if (_activeSection == "overview")
         {
@@ -780,6 +863,10 @@
                                         <FluentIcon Value="@(new Icons.Regular.Size20.DocumentBulletListClock())"/>
                                     }
                                     <strong>@entry.Name</strong>
+                                    @if (entry.IsGeneratedTarget)
+                                    {
+                                        <small>@(entry.OverridesGenerated ? "persistent override" : entry.ConfigurationStatus == "Incomplete" ? "generated · incomplete" : "generated")</small>
+                                    }
                                 </button>
                             </div>
                             <time role="cell">@(entry.ModifiedAt is { } modifiedAt ? FormatDate(modifiedAt) : "–")</time>
@@ -794,7 +881,7 @@
                                         @Localizer["Hosting_Detail_Download"]
                                     </a>
                                 }
-                                @if (entry.CanModify)
+                                @if (entry.CanModify && (!entry.IsGeneratedTarget || entry.OverridesGenerated))
                                 {
                                     <button class="utf-button utf-button--ghost"
                                             type="button"
@@ -820,6 +907,13 @@
                     </label>
                     <InputFile OnChange="SelectUploadAsync"/>
                     <small>@(_selectedUploadName ?? Localizer["Hosting_Detail_NoFileSelected"])</small>
+                    @if (UploadTargetsGeneratedFile)
+                    {
+                        <label class="hosting-check-field">
+                            <input type="checkbox" @bind="_confirmGeneratedOverride"/>
+                            <span><strong>Create persistent override</strong><small>This hides structured editing for the generated target until the uploaded file is deleted.</small></span>
+                        </label>
+                    }
                     <button class="utf-button utf-button--primary"
                             type="button"
                             disabled="@(_fileMutationInProgress || _selectedUpload is null || string.IsNullOrWhiteSpace(_uploadPath))"
@@ -1218,6 +1312,10 @@
     private IReadOnlyList<LifecycleJobInfo> _jobs = [];
     private IReadOnlyList<HostingOperationInfo> _operations = [];
     private IReadOnlyList<HostingFileInfo> _files = [];
+    private GameConfigurationInfo? _configuration;
+    private IReadOnlyList<ConfigurationProfileOptionInfo> _configurationProfileOptions = [];
+    private readonly Dictionary<string, string> _configurationEdits = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _configurationOverriddenTargets = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<PreservationSelectionInfo> _selections = [];
     private IReadOnlyList<RuntimeProfileInfo> _availableProfiles = [];
     private RuntimeProviderInfo? _runtimeProvider;
@@ -1228,6 +1326,8 @@
     private bool _actionInProgress;
     private bool _jobInterventionInProgress;
     private bool _filesLoading;
+    private bool _configurationLoading;
+    private bool _configurationSaving;
     private bool _fileMutationInProgress;
     private bool _selectionMutationInProgress;
     private bool _deletingServer;
@@ -1245,6 +1345,7 @@
     private string? _loadError;
     private string? _operationError;
     private string? _fileError;
+    private string? _configurationError;
     private string? _selectionError;
     private string? _modPackError;
     private string? _profileCatalogError;
@@ -1258,6 +1359,7 @@
     private byte[]? _selectedUpload;
     private string? _selectedUploadName;
     private string _uploadPath = string.Empty;
+    private bool _confirmGeneratedOverride;
     private string _directoryPath = string.Empty;
     private string _selectionPath = string.Empty;
     private string _selectionScope = "File";
@@ -1284,6 +1386,11 @@
     private bool CanMutateFiles
         => _server is { CanModify: true }
            && _fileContext is EHostingFileContext.Persistent;
+
+    private bool UploadTargetsGeneratedFile
+        => _files.Any(q => q.IsGeneratedTarget
+                           && !q.OverridesGenerated
+                           && string.Equals(q.Path, _uploadPath, StringComparison.OrdinalIgnoreCase));
 
     private IReadOnlyList<FileBreadcrumb> FileBreadcrumbs
     {
@@ -1632,6 +1739,131 @@
         _activeSection = section;
         if (section == "audit")
             _showAllOperations = true;
+        if (section == "configuration" && _configuration is null)
+            _ = LoadConfigurationAsync(_cancellationTokenSource.Token);
+    }
+
+    private async Task LoadConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        if (_server is null)
+            return;
+        _configurationLoading = true;
+        _configurationError = null;
+        try
+        {
+            _configuration = await GameServerRepository.GetConfigurationAsync(ServerId, cancellationToken);
+            _configurationProfileOptions = await GameServerRepository
+                .GetConfigurationProfileOptionsAsync(_server.GameIdentifier, cancellationToken);
+            _configurationOverriddenTargets.Clear();
+            foreach (var target in _configuration.Entries.Select(q => q.TargetPath).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var entries = await GameServerRepository.GetFilesAsync(
+                    ServerId,
+                    EHostingFileContext.Persistent,
+                    ParentPath(target),
+                    cancellationToken);
+                if (entries.Any(q => string.Equals(q.Path, target, StringComparison.OrdinalIgnoreCase)
+                                     && (q.OverridesGenerated || q.ConfigurationStatus == "Conflict")))
+                    _configurationOverriddenTargets.Add(target);
+            }
+            _configurationEdits.Clear();
+        }
+        catch (Exception exception)
+        {
+            _configurationError = UserFacingError.Message(exception, "The structured configuration could not be loaded.");
+        }
+        finally
+        {
+            _configurationLoading = false;
+        }
+    }
+
+    private string ConfigurationEditValue(GameConfigurationEntryInfo entry)
+        => _configurationEdits.TryGetValue(entry.Key, out var value)
+            ? value
+            : entry.Value?.GetRawText() ?? string.Empty;
+
+    private void SetConfigurationEdit(string key, string? value)
+        => _configurationEdits[key] = value ?? "null";
+
+    private async Task SaveConfigurationAsync()
+    {
+        _configurationSaving = true;
+        _configurationError = null;
+        try
+        {
+            var updates = _configurationEdits.Select(q =>
+            {
+                using var document = JsonDocument.Parse(q.Value);
+                return new ConfigurationValueUpdateInfo(q.Key, document.RootElement.Clone());
+            }).ToArray();
+            _configuration = await GameServerRepository.UpdateConfigurationAsync(
+                ServerId,
+                updates,
+                [],
+                _cancellationTokenSource.Token);
+            _configurationEdits.Clear();
+        }
+        catch (Exception exception)
+        {
+            _configurationError = UserFacingError.Message(exception, "The configuration changes could not be saved. Values must be valid JSON for their declared type.");
+        }
+        finally
+        {
+            _configurationSaving = false;
+        }
+    }
+
+    private async Task ResetConfigurationEntryAsync(string key)
+    {
+        try
+        {
+            _configuration = await GameServerRepository.UpdateConfigurationAsync(
+                ServerId,
+                [],
+                [key],
+                _cancellationTokenSource.Token);
+            _configurationEdits.Remove(key);
+        }
+        catch (Exception exception)
+        {
+            _configurationError = UserFacingError.Message(exception, "The server override could not be reset.");
+        }
+    }
+
+    private async Task ChangeConfigurationProfileAsync(ChangeEventArgs args)
+    {
+        var profileId = Guid.TryParse(args.Value?.ToString(), out var value) ? value : (Guid?) null;
+        await GameServerRepository.SelectConfigurationProfileAsync(
+            ServerId,
+            profileId,
+            null,
+            _cancellationTokenSource.Token);
+        await LoadConfigurationAsync(_cancellationTokenSource.Token);
+    }
+
+    private async Task FollowLatestProfileAsync()
+    {
+        if (_configuration?.ProfileId is not { } profileId)
+            return;
+        await GameServerRepository.SelectConfigurationProfileAsync(
+            ServerId,
+            profileId,
+            null,
+            _cancellationTokenSource.Token);
+        await LoadConfigurationAsync(_cancellationTokenSource.Token);
+    }
+
+    private async Task PinCurrentProfileAsync()
+    {
+        if (_configuration is not { ProfileId: { } profileId, ProfileRevisionId: { } revisionId })
+            return;
+        await GameServerRepository.SelectConfigurationProfileAsync(
+            ServerId,
+            profileId,
+            revisionId,
+            _cancellationTokenSource.Token);
+        await LoadConfigurationAsync(_cancellationTokenSource.Token);
     }
 
     private string WorkspaceTabClass(string section)
@@ -2054,6 +2286,7 @@
             _selectedUpload = memory.ToArray();
             _selectedUploadName = file.Name;
             _uploadPath = CombinePath(_currentPath, file.Name);
+            _confirmGeneratedOverride = false;
         }
         catch (Exception exception)
         {
@@ -2077,11 +2310,13 @@
                 _fileContext,
                 _uploadPath,
                 _selectedUpload,
-                _cancellationTokenSource.Token
+                _cancellationTokenSource.Token,
+                _confirmGeneratedOverride
             );
             _selectedUpload = null;
             _selectedUploadName = null;
             _uploadPath = string.Empty;
+            _confirmGeneratedOverride = false;
             await LoadFilesAsync(_currentPath, _cancellationTokenSource.Token);
         }
         catch (Exception exception)

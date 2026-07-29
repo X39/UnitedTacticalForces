@@ -1,0 +1,139 @@
+@page "/command/configuration-profiles"
+@attribute [Authorize]
+@layout CommandCenterLayout
+@using System.Text.Json
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@inject IGameServerRepository Repository
+
+<PageTitle>Configuration profiles</PageTitle>
+
+<div class="hosting-page">
+    <UtfCommandPageHeader Title="Configuration profiles"
+                          Description="Reusable immutable game-configuration baselines, revision history, and scoped access."/>
+    @if (_error is not null) { <UtfAlert Intent="MessageIntent.Error">@_error</UtfAlert> }
+    <div class="hosting-create-grid">
+        <section class="utf-panel">
+            <h2>Profiles</h2>
+            @foreach (var profile in _profiles)
+            {
+                <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => SelectAsync(profile.PrimaryKey))">
+                    @profile.Title · @profile.GameIdentifier · r@profile.LatestRevisionNumber
+                </button>
+            }
+            <h3>Create profile</h3>
+            <label class="hosting-field"><span>Title</span><input @bind="_title"/></label>
+            <label class="hosting-field"><span>Game identifier</span><input @bind="_game"/></label>
+            <label class="hosting-field"><span>Complete values (JSON object keyed by definition key)</span><textarea rows="10" @bind="_valuesJson"></textarea></label>
+            <button class="utf-button utf-button--primary" type="button" @onclick="CreateAsync">Create</button>
+        </section>
+        @if (_selected is { } selected)
+        {
+            <section class="utf-panel">
+                <h2>@selected.Profile.Title</h2>
+                <p>@selected.Profile.GameIdentifier · @(selected.Profile.IsArchived ? "Archived" : "Active")</p>
+                <h3>Revision history</h3>
+                @foreach (var revision in selected.Revisions.OrderByDescending(q => q.RevisionNumber))
+                {
+                    <details>
+                        <summary>Revision @revision.RevisionNumber · @revision.TimeStampCreated</summary>
+                        <pre>@JsonSerializer.Serialize(revision.Values, PrettyJson)</pre>
+                        @if (revision.RedactedKeys.Count > 0) { <p>Redacted: @string.Join(", ", revision.RedactedKeys)</p> }
+                    </details>
+                }
+                <h3>Create immutable revision</h3>
+                <textarea rows="10" @bind="_revisionJson"></textarea>
+                <button class="utf-button utf-button--primary" type="button" @onclick="CreateRevisionAsync">Create revision</button>
+                <h3>Scoped access</h3>
+                <label class="hosting-field"><span>User ID</span><input @bind="_userId"/></label>
+                <label class="hosting-field"><span>Role ID</span><input @bind="_roleId"/></label>
+                <label class="hosting-field"><span>Permission</span><select @bind="_permission">
+                    <option value="cfg">Full</option><option value="cfg:view">View</option><option value="cfg:modify">Modify</option><option value="cfg:manage-access">Manage access</option><option value="cfg:archive">Archive</option>
+                </select></label>
+                <div class="hosting-form-actions">
+                    <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => ChangeAccessAsync(true))">Grant</button>
+                    <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => ChangeAccessAsync(false))">Revoke</button>
+                    <button class="utf-button utf-button--ghost" type="button" @onclick="ArchiveAsync">Archive profile</button>
+                </div>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions PrettyJson = new() { WriteIndented = true };
+    private IReadOnlyList<ConfigurationProfileInfo> _profiles = [];
+    private ConfigurationProfileDetailsInfo? _selected;
+    private string _title = string.Empty;
+    private string _game = "arma3";
+    private string _valuesJson = "{}";
+    private string _revisionJson = "{}";
+    private string _userId = string.Empty;
+    private string _roleId = string.Empty;
+    private string _permission = "cfg";
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => RefreshAsync();
+
+    private async Task RefreshAsync() => _profiles = await Repository.GetConfigurationProfilesAsync();
+    private async Task SelectAsync(Guid id) => _selected = await Repository.GetConfigurationProfileAsync(id);
+
+    private async Task CreateAsync()
+    {
+        await RunAsync(async () =>
+        {
+            var created = await Repository.CreateConfigurationProfileAsync(_title, _game, ParseValues(_valuesJson));
+            await RefreshAsync();
+            await SelectAsync(created.PrimaryKey);
+        });
+    }
+
+    private async Task CreateRevisionAsync()
+    {
+        if (_selected is null) return;
+        await RunAsync(async () =>
+        {
+            await Repository.CreateConfigurationProfileRevisionAsync(_selected.Profile.PrimaryKey, ParseValues(_revisionJson));
+            await SelectAsync(_selected.Profile.PrimaryKey);
+        });
+    }
+
+    private async Task ChangeAccessAsync(bool grant)
+    {
+        if (_selected is null) return;
+        await RunAsync(async () =>
+        {
+            if (Guid.TryParse(_userId, out var userId))
+                await Repository.ChangeConfigurationProfileUserAccessAsync(_selected.Profile.PrimaryKey, userId, _permission, grant);
+            if (long.TryParse(_roleId, out var roleId))
+                await Repository.ChangeConfigurationProfileRoleAccessAsync(_selected.Profile.PrimaryKey, roleId, _permission, grant);
+        });
+    }
+
+    private async Task ArchiveAsync()
+    {
+        if (_selected is null) return;
+        await RunAsync(async () =>
+        {
+            await Repository.ArchiveConfigurationProfileAsync(_selected.Profile.PrimaryKey);
+            await RefreshAsync();
+            await SelectAsync(_selected.Profile.PrimaryKey);
+        });
+    }
+
+    private static IReadOnlyList<ConfigurationValueUpdateInfo> ParseValues(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            throw new JsonException("Values must be a JSON object.");
+        return document.RootElement.EnumerateObject()
+            .Select(q => new ConfigurationValueUpdateInfo(q.Name, q.Value.Clone()))
+            .ToArray();
+    }
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _error = null;
+        try { await action(); }
+        catch (Exception exception) { _error = UserFacingError.Message(exception, "The configuration-profile operation failed."); }
+    }
+}

@@ -20,11 +20,7 @@ public sealed record Arma3CommandPayload
     public bool Validate { get; init; }
     public bool Force { get; init; }
     public string? BindAddress { get; init; }
-    public string? ProfileName { get; init; }
-    public Dictionary<string, JsonElement> ServerConfiguration { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, JsonElement> BasicConfiguration { get; init; } = new(StringComparer.Ordinal);
-    public Dictionary<string, string> BattlEyeConfiguration { get; init; } = new(StringComparer.Ordinal);
-
+    public string? ProfileName { get; init; } = "UTFServer";
     public static Arma3CommandPayload Parse(string payload)
     {
         if (string.IsNullOrWhiteSpace(payload) || payload.Trim() == "{}")

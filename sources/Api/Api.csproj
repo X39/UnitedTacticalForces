@@ -70,6 +70,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Common\Common.csproj"/>
         <ProjectReference Include="..\Database\Database.csproj"/>
+        <ProjectReference Include="..\GameServerImplementations\GameServerImplementations.csproj"/>
         <ProjectReference Include="..\HostingContracts\HostingContracts.csproj"/>
         <ProjectReference Include="..\WebSocketContracts\WebSocketContracts.csproj"/>
         <ProjectReference Include="..\Claims\Claims.csproj"/>

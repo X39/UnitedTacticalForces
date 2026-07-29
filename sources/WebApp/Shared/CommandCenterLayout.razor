@@ -35,6 +35,10 @@
                             <FluentIcon Value="@(new Icons.Regular.Size24.Settings())"/>
                             <span>@Localizer["Hosting_Nav_Servers"]</span>
                         </NavLink>
+                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/configuration-profiles")">
+                            <FluentIcon Value="@(new Icons.Regular.Size24.Settings())"/>
+                            <span>Configuration profiles</span>
+                        </NavLink>
                     }
                     @if (Me.HasClaimOrEventAdmin(Claims.Creation.Events))
                     {
@@ -275,6 +279,7 @@
                 "command"               => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Overview)].Value,
                 "command/servers"        => Localizer["Hosting_Nav_Servers"].Value,
                 "command/servers/create" => Localizer["Hosting_Create_Title"].Value,
+                "command/configuration-profiles" => "Configuration profiles",
                 _ when path.StartsWith("command/servers/", StringComparison.Ordinal) => Localizer["Hosting_Detail_Title"].Value,
                 "events/all"            => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventAdministration)].Value,
                 "command/events"        => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventAdministration)].Value,

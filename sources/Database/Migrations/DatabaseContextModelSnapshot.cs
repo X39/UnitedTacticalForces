@@ -203,6 +203,15 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         },
                         new
                         {
+                            PrimaryKey = -58L,
+                            Category = "Creation",
+                            Description = "Allows creating configuration profiles.",
+                            Identifier = "crt:cfg",
+                            IsPrefix = false,
+                            Title = "Create configuration profiles"
+                        },
+                        new
+                        {
                             PrimaryKey = -17L,
                             Category = "Users",
                             Description = "Allows all user-management actions.",
@@ -497,6 +506,51 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                             Identifier = "trn:delete",
                             IsPrefix = true,
                             Title = "Delete terrain"
+                        },
+                        new
+                        {
+                            PrimaryKey = -59L,
+                            Category = "Resource",
+                            Description = "Resource claim for all actions on a configuration profile.",
+                            Identifier = "cfg",
+                            IsPrefix = true,
+                            Title = "Configuration-profile access"
+                        },
+                        new
+                        {
+                            PrimaryKey = -60L,
+                            Category = "Resource",
+                            Description = "Resource claim for viewing a configuration profile.",
+                            Identifier = "cfg:view",
+                            IsPrefix = true,
+                            Title = "View configuration profile"
+                        },
+                        new
+                        {
+                            PrimaryKey = -61L,
+                            Category = "Resource",
+                            Description = "Resource claim for modifying a configuration profile.",
+                            Identifier = "cfg:modify",
+                            IsPrefix = true,
+                            Title = "Modify configuration profile"
+                        },
+                        new
+                        {
+                            PrimaryKey = -62L,
+                            Category = "Resource",
+                            Description = "Resource claim for managing configuration-profile access.",
+                            Identifier = "cfg:manage-access",
+                            IsPrefix = true,
+                            Title = "Manage configuration-profile access"
+                        },
+                        new
+                        {
+                            PrimaryKey = -63L,
+                            Category = "Resource",
+                            Description = "Resource claim for archiving configuration profiles.",
+                            Identifier = "cfg:archive",
+                            IsPrefix = true,
+                            Title = "Archive configuration profile"
                         });
                 });
 
@@ -1014,6 +1068,103 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.ToTable("EventSlots");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfile", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedByFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("GameIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<Instant?>("TimeStampArchived")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("TimeStampUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("CreatedByFk");
+
+                    b.HasIndex("GameIdentifier", "IsArchived");
+
+                    b.ToTable("ConfigurationProfiles");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfileRevision", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConfigurationProfileFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedByFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("CreatedByFk");
+
+                    b.HasIndex("ConfigurationProfileFk", "RevisionNumber")
+                        .IsUnique();
+
+                    b.ToTable("ConfigurationProfileRevisions", t =>
+                        {
+                            t.HasCheckConstraint("CK_ConfigurationProfileRevisions_RevisionNumber", "\"RevisionNumber\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfileValue", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConfigurationProfileRevisionFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DefinitionKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ValueJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("ConfigurationProfileRevisionFk", "DefinitionKey")
+                        .IsUnique();
+
+                    b.ToTable("ConfigurationProfileValues");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ContentStorageObservation", b =>
                 {
                     b.Property<Guid>("PrimaryKey")
@@ -1346,6 +1497,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
 
+                    b.Property<Guid?>("PinnedConfigurationProfileRevisionFk")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("RuntimeProfileDisplayName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1363,6 +1517,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.Property<int>("RuntimeStorageStrategy")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("SelectedConfigurationProfileFk")
+                        .HasColumnType("uuid");
 
                     b.Property<long?>("SelectedModPackDefinitionFk")
                         .HasColumnType("bigint");
@@ -1389,6 +1546,10 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.HasIndex("GameIdentifier");
 
+                    b.HasIndex("PinnedConfigurationProfileRevisionFk");
+
+                    b.HasIndex("SelectedConfigurationProfileFk");
+
                     b.HasIndex("SelectedModPackDefinitionFk");
 
                     b.HasIndex("IsArchived", "IsLaunchDisabled");
@@ -1397,6 +1558,40 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         {
                             t.HasCheckConstraint("CK_GameServers_GracefulStopPolicy", "\"GracefulStopAttempts\" > 0 AND \"GracefulStopTimeoutSeconds\" > 0");
                         });
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServerConfigurationValue", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DefinitionKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("TimeStampUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UpdatedByFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ValueJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("UpdatedByFk");
+
+                    b.HasIndex("GameServerFk", "DefinitionKey")
+                        .IsUnique();
+
+                    b.ToTable("GameServerConfigurationValues");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServerCostOwnerAssignment", b =>
@@ -3483,6 +3678,47 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("Event");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfile", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfileRevision", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfile", "ConfigurationProfile")
+                        .WithMany("Revisions")
+                        .HasForeignKey("ConfigurationProfileFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ConfigurationProfile");
+
+                    b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfileValue", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfileRevision", "ConfigurationProfileRevision")
+                        .WithMany("Values")
+                        .HasForeignKey("ConfigurationProfileRevisionFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ConfigurationProfileRevision");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ContentStorageObservation", b =>
                 {
                     b.HasOne("X39.UnitedTacticalForces.Database.Hosting.WorkerCommand", "LastMeasuredWorkerCommand")
@@ -3528,6 +3764,16 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfileRevision", "PinnedConfigurationProfileRevision")
+                        .WithMany("PinnedGameServers")
+                        .HasForeignKey("PinnedConfigurationProfileRevisionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfile", "SelectedConfigurationProfile")
+                        .WithMany("GameServers")
+                        .HasForeignKey("SelectedConfigurationProfileFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackDefinition", "SelectedModPackDefinition")
                         .WithMany()
                         .HasForeignKey("SelectedModPackDefinitionFk")
@@ -3537,7 +3783,30 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.Navigation("CurrentCostOwner");
 
+                    b.Navigation("PinnedConfigurationProfileRevision");
+
+                    b.Navigation("SelectedConfigurationProfile");
+
                     b.Navigation("SelectedModPackDefinition");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServerConfigurationValue", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany("ConfigurationValues")
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "UpdatedBy")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GameServer");
+
+                    b.Navigation("UpdatedBy");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServerCostOwnerAssignment", b =>
@@ -4211,6 +4480,20 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("UserMetas");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfile", b =>
+                {
+                    b.Navigation("GameServers");
+
+                    b.Navigation("Revisions");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfileRevision", b =>
+                {
+                    b.Navigation("PinnedGameServers");
+
+                    b.Navigation("Values");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostOwner", b =>
                 {
                     b.Navigation("AuditRecords");
@@ -4227,6 +4510,8 @@ namespace X39.UnitedTacticalForces.Database.Migrations
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServer", b =>
                 {
                     b.Navigation("AuditRecords");
+
+                    b.Navigation("ConfigurationValues");
 
                     b.Navigation("CostOwnerAssignments");
 

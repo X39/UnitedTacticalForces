@@ -47,6 +47,16 @@ public sealed record GameServerCreationPayload
     public long? ModPackDefinitionId { get; init; }
 
     /// <summary>
+    /// Optional reusable configuration baseline. Null uses game defaults and server-local values only.
+    /// </summary>
+    public Guid? ConfigurationProfileId { get; init; }
+
+    /// <summary>
+    /// Optional immutable revision pin. Null follows the selected profile's latest revision.
+    /// </summary>
+    public Guid? ConfigurationProfileRevisionId { get; init; }
+
+    /// <summary>
     /// Whether this record is intentionally unavailable for launch.
     /// </summary>
     public bool IsLaunchDisabled { get; init; }

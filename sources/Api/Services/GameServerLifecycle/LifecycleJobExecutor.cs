@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
@@ -28,6 +29,8 @@ internal sealed class LifecycleJobExecutor(
     IWorkerCredentialService workerCredentialService,
     IWorkerBootstrapPayloadRenderer bootstrapPayloadRenderer,
     IGameServerContentSnapshotResolver contentSnapshotResolver,
+    IGameServerConfigurationService configurationService,
+    IServerFileStorage serverFileStorage,
     IStorageDemandService storageDemandService,
     IHostingAuthorizationService authorizationService,
     IHostingCostSliceService costSliceService,
@@ -1421,6 +1424,8 @@ internal sealed class LifecycleJobExecutor(
             ? JsonSerializer.Deserialize<WorkerContentReference[]>(deployment.ContentSnapshot, CommandJsonOptions)
               ?? throw new PermanentLifecycleExecutionException("The persisted content snapshot is invalid.")
             : await contentSnapshotResolver.ResolveAsync(server.PrimaryKey, cancellationToken).ConfigureAwait(false);
+        var configuration = await configurationService.ResolveAsync(server.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
         var payload = new WorkerCommandPayload
         {
             ServerId                  = server.PrimaryKey,
@@ -1431,6 +1436,7 @@ internal sealed class LifecycleJobExecutor(
             GracefulStopTimeoutSeconds = server.GracefulStopTimeoutSeconds,
             Port                      = null,
             Content                   = content,
+            Configuration             = configuration.Values,
             PeakStorageRequiredBytes  = deployment.PeakStorageRequiredBytes,
         };
         var command = new WorkerCommand
@@ -2253,6 +2259,52 @@ internal sealed class LifecycleJobExecutor(
     {
         if (deployment.IsProvisioningBlocked)
             throw new LifecycleSupersededException("Provisioning is blocked by durable stop or termination state.");
+        var configuration = await configurationService.ResolveAsync(server.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
+        if (!configuration.IsComplete)
+        {
+            await RejectStartAsync(
+                    job,
+                    server,
+                    deployment,
+                    "configuration-incomplete",
+                    $"Required game configuration is incomplete: {string.Join(", ", configuration.MissingRequired.Select(q => q.Definition.Key))}.",
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        foreach (var target in configuration.Implementation.Targets)
+        {
+            var normalizedTarget = SafeServerPath.Normalize(target.Path, false);
+            var separator = normalizedTarget.LastIndexOf('/');
+            var parent = separator < 0 ? string.Empty : normalizedTarget[..separator];
+            IReadOnlyList<ServerFileEntry> entries;
+            try
+            {
+                entries = await serverFileStorage.BrowseAsync(
+                        server.PrimaryKey,
+                        null,
+                        EFileContext.Persistent,
+                        parent,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                continue;
+            }
+            if (entries.Any(q => q.IsDirectory
+                                 && q.RelativePath.Equals(normalizedTarget, StringComparison.OrdinalIgnoreCase)))
+            {
+                await RejectStartAsync(
+                        job,
+                        server,
+                        deployment,
+                        "configuration-target-conflict",
+                        $"A persistent directory conflicts with generated configuration target '{normalizedTarget}'.",
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
         if (server.IsLaunchDisabled || server.IsArchived)
         {
             await RejectStartAsync(

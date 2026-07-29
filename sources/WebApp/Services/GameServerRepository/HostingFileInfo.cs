@@ -13,4 +13,9 @@ public sealed record HostingFileInfo
     public string Context { get; init; } = string.Empty;
     public string Classification { get; init; } = string.Empty;
     public bool CanModify { get; init; }
+    public string Origin { get; init; } = string.Empty;
+    public string ModificationMode { get; init; } = string.Empty;
+    public bool IsGeneratedTarget { get; init; }
+    public bool OverridesGenerated { get; init; }
+    public string ConfigurationStatus { get; init; } = string.Empty;
 }

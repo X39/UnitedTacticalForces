@@ -4,9 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Hosting.Contracts;
+using X39.UnitedTacticalForces.GameServerImplementations;
 using StorageFailureSanitizer = X39.UnitedTacticalForces.Api.Services.HostingRuntime.HostingFailureSanitizer;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
@@ -19,6 +21,7 @@ public sealed class GameServerFilesController(
     IServerFileStorage fileStorage,
     IServerFileClassifier fileClassifier,
     IGameServerDefinitionCatalog gameDefinitions,
+    IGameServerConfigurationService configurationService,
     IPreservationSelectionResolver preservationSelectionResolver,
     IHostingAuthorizationService authorizationService,
     IHostingAuditWriter auditWriter,
@@ -41,19 +44,32 @@ public sealed class GameServerFilesController(
         {
             var deploymentId = await ResolveDeploymentAsync(gameServerId, fileContext, cancellationToken)
                 .ConfigureAwait(false);
-            var entries = await fileStorage
-                .BrowseAsync(gameServerId, deploymentId, fileContext, path ?? string.Empty, cancellationToken)
-                .ConfigureAwait(false);
             var capability = await GetCapabilityAsync(gameServerId, cancellationToken).ConfigureAwait(false);
             var canViewSensitive = HasModifyPermission(gameServerId);
-            var projected = entries
-                .Where(q => canViewSensitive
-                            || GameServerFileCapabilityPolicy.Resolve(
-                                capability,
-                                q.RelativePath,
-                                q.IsDirectory)?.Sensitive != true)
-                .Select(q => Project(q, capability))
-                .ToArray();
+            var normalizedPath = SafeServerPath.Normalize(path ?? string.Empty);
+            ResolvedGameConfiguration? configuration = null;
+            if (fileContext is EFileContext.Persistent
+                && GameConfigurationImplementations.TryGet(capability.GameIdentifier, out _))
+                configuration = await configurationService.ResolveAsync(gameServerId, cancellationToken)
+                    .ConfigureAwait(false);
+            IReadOnlyList<ServerFileEntry> entries;
+            try
+            {
+                entries = await fileStorage
+                    .BrowseAsync(gameServerId, deploymentId, fileContext, normalizedPath, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (DirectoryNotFoundException) when (
+                configuration is not null && HasGeneratedDescendant(configuration, normalizedPath))
+            {
+                entries = [];
+            }
+            var projected = ProjectEffectiveEntries(
+                entries,
+                capability,
+                configuration,
+                normalizedPath,
+                canViewSensitive);
             if (fileContext is EFileContext.Persistent
                 && await dbContext.GameServerDeployments.AnyAsync(
                     q => q.GameServerFk == gameServerId && q.TimeStampResolved == null,
@@ -89,13 +105,53 @@ public sealed class GameServerFilesController(
             var deploymentId = await ResolveDeploymentAsync(gameServerId, fileContext, cancellationToken)
                 .ConfigureAwait(false);
             var capability = await GetCapabilityAsync(gameServerId, cancellationToken).ConfigureAwait(false);
-            if (GameServerFileCapabilityPolicy.Resolve(capability, path, false)?.Sensitive == true
-                && !HasModifyPermission(gameServerId))
+            var canViewSensitive = HasModifyPermission(gameServerId);
+            var generatedTarget = fileContext is EFileContext.Persistent
+                ? GetGeneratedTarget(capability.GameIdentifier, path)
+                : null;
+            if ((GameServerFileCapabilityPolicy.Resolve(capability, path, false)?.Sensitive == true
+                 || generatedTarget?.Sensitive == true)
+                && !canViewSensitive)
                 return Forbid();
-            var download = await fileStorage
-                .OpenReadAsync(gameServerId, deploymentId, fileContext, path, cancellationToken)
-                .ConfigureAwait(false);
-            return File(download.Content, "application/octet-stream", download.FileName, enableRangeProcessing: true);
+            try
+            {
+                var download = await fileStorage
+                    .OpenReadAsync(gameServerId, deploymentId, fileContext, path, cancellationToken)
+                    .ConfigureAwait(false);
+                return File(download.Content, "application/octet-stream", download.FileName, enableRangeProcessing: true);
+            }
+            catch (FileNotFoundException) when (generatedTarget is not null)
+            {
+                var configuration = await configurationService.ResolveAsync(gameServerId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!IsTargetComplete(configuration, generatedTarget.Path))
+                {
+                    return Conflict(new
+                    {
+                        error = "The generated configuration file is incomplete.",
+                        missingKeys = MissingTargetKeys(configuration, generatedTarget.Path),
+                    });
+                }
+                var rendered = configuration.Implementation.Render(configuration.Values)
+                    .Single(q => q.Path.Equals(generatedTarget.Path, StringComparison.OrdinalIgnoreCase));
+                return File(rendered.Content, "application/octet-stream", Path.GetFileName(rendered.Path));
+            }
+            catch (DirectoryNotFoundException) when (generatedTarget is not null)
+            {
+                var configuration = await configurationService.ResolveAsync(gameServerId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!IsTargetComplete(configuration, generatedTarget.Path))
+                {
+                    return Conflict(new
+                    {
+                        error = "The generated configuration file is incomplete.",
+                        missingKeys = MissingTargetKeys(configuration, generatedTarget.Path),
+                    });
+                }
+                var rendered = configuration.Implementation.Render(configuration.Values)
+                    .Single(q => q.Path.Equals(generatedTarget.Path, StringComparison.OrdinalIgnoreCase));
+                return File(rendered.Content, "application/octet-stream", Path.GetFileName(rendered.Path));
+            }
         }
         catch (Exception ex) when (TryMapStorageException(ex, out var result))
         {
@@ -110,6 +166,7 @@ public sealed class GameServerFilesController(
         [FromRoute] Guid gameServerId,
         [FromRoute] string context,
         [FromQuery] string path,
+        [FromQuery] bool confirmGeneratedOverride,
         CancellationToken cancellationToken)
     {
         if (!TryParseContext(context, out var fileContext))
@@ -118,6 +175,18 @@ public sealed class GameServerFilesController(
             return Forbid();
         try
         {
+            var capability = await GetCapabilityAsync(gameServerId, cancellationToken).ConfigureAwait(false);
+            var generatedTarget = fileContext is EFileContext.Persistent
+                ? GetGeneratedTarget(capability.GameIdentifier, path)
+                : null;
+            if (generatedTarget is not null && !confirmGeneratedOverride)
+            {
+                return Conflict(new
+                {
+                    error = "Uploading here overrides a generated configuration file; explicit confirmation is required.",
+                    requiresOverrideConfirmation = true,
+                });
+            }
             if (!await CanMutatePathAsync(gameServerId, fileContext, path, false, cancellationToken)
                     .ConfigureAwait(false))
                 return Conflict(new { error = "The selected file classification is read-only." });
@@ -133,7 +202,15 @@ public sealed class GameServerFilesController(
             var entry = await fileStorage
                 .UploadAsync(gameServerId, deploymentId, fileContext, path, Request.Body, true, cancellationToken)
                 .ConfigureAwait(false);
-            return Ok(Project(entry, await GetCapabilityAsync(gameServerId, cancellationToken).ConfigureAwait(false)));
+            var projected = Project(entry, capability);
+            return Ok(generatedTarget is null
+                ? projected
+                : projected with
+                {
+                    IsGeneratedTarget = true,
+                    OverridesGenerated = true,
+                    Origin = EHostingFileOrigin.PersistentOverride,
+                });
         }
         catch (Exception ex) when (TryMapStorageException(ex, out var result))
         {
@@ -155,6 +232,11 @@ public sealed class GameServerFilesController(
             return Forbid();
         try
         {
+            if (fileContext is EFileContext.Persistent
+                && GetGeneratedTarget(
+                    (await GetCapabilityAsync(gameServerId, cancellationToken).ConfigureAwait(false)).GameIdentifier,
+                    payload.Path) is not null)
+                return Conflict(new { error = "A generated file target cannot be replaced by a directory." });
             if (!await CanMutatePathAsync(gameServerId, fileContext, payload.Path, true, cancellationToken)
                     .ConfigureAwait(false))
                 return Conflict(new { error = "The selected directory classification is read-only." });
@@ -205,7 +287,13 @@ public sealed class GameServerFilesController(
                     cancellationToken)
                 .ConfigureAwait(false);
             if (existing is null)
+            {
+                var capability = await GetCapabilityAsync(gameServerId, cancellationToken).ConfigureAwait(false);
+                if (fileContext is EFileContext.Persistent
+                    && GetGeneratedTarget(capability.GameIdentifier, path) is not null)
+                    return Conflict(new { error = "A generated target cannot be raw-deleted." });
                 return NotFound();
+            }
             if (!await CanMutatePathAsync(
                     gameServerId,
                     fileContext,
@@ -389,8 +477,138 @@ public sealed class GameServerFilesController(
                             entry.RelativePath,
                             entry.IsDirectory,
                             entry.Context),
+            Origin = entry.Context is EFileContext.Persistent
+                ? EHostingFileOrigin.Persistent
+                : EHostingFileOrigin.Live,
+            ModificationMode = entry.IsWritable
+                ? EHostingFileModificationMode.RawFile
+                : EHostingFileModificationMode.None,
+            ConfigurationStatus = EConfigurationContentStatus.NotApplicable,
         };
     }
+
+    private static HostingFileDto[] ProjectEffectiveEntries(
+        IReadOnlyList<ServerFileEntry> physicalEntries,
+        GameServerDefinition capability,
+        ResolvedGameConfiguration? configuration,
+        string directoryPath,
+        bool canModify)
+    {
+        var result = physicalEntries
+            .Select(q => Project(q, capability))
+            .ToDictionary(q => q.Name, StringComparer.OrdinalIgnoreCase);
+        if (configuration is null)
+            return result.Values.OrderByDescending(q => q.IsDirectory).ThenBy(q => q.Name).ToArray();
+
+        var normalizedDirectory = directoryPath.Trim('/');
+        foreach (var target in configuration.Implementation.Targets)
+        {
+            var normalizedTarget = SafeServerPath.Normalize(target.Path, false);
+            var relative = normalizedDirectory.Length == 0
+                ? normalizedTarget
+                : normalizedTarget.StartsWith(normalizedDirectory + "/", StringComparison.OrdinalIgnoreCase)
+                    ? normalizedTarget[(normalizedDirectory.Length + 1)..]
+                    : string.Empty;
+            if (relative.Length == 0)
+                continue;
+            var separator = relative.IndexOf('/');
+            var childName = separator < 0 ? relative : relative[..separator];
+            var childPath = normalizedDirectory.Length == 0 ? childName : $"{normalizedDirectory}/{childName}";
+            var isDirectory = separator >= 0;
+
+            if (result.TryGetValue(childName, out var existing))
+            {
+                if (!isDirectory && childPath.Equals(normalizedTarget, StringComparison.OrdinalIgnoreCase))
+                {
+                    result[childName] = existing with
+                    {
+                        IsGeneratedTarget = true,
+                        OverridesGenerated = !existing.IsDirectory,
+                        Origin = existing.IsDirectory
+                            ? EHostingFileOrigin.Persistent
+                            : EHostingFileOrigin.PersistentOverride,
+                        ConfigurationStatus = existing.IsDirectory
+                            ? EConfigurationContentStatus.Conflict
+                            : EConfigurationContentStatus.Ready,
+                    };
+                }
+                continue;
+            }
+
+            if (isDirectory)
+            {
+                result[childName] = new HostingFileDto
+                {
+                    Path = childPath,
+                    Name = childName,
+                    IsDirectory = true,
+                    Context = EFileContext.Persistent,
+                    Classification = EFileClassification.Configuration,
+                    Origin = EHostingFileOrigin.Generated,
+                    ConfigurationStatus = EConfigurationContentStatus.Ready,
+                };
+                continue;
+            }
+
+            var complete = IsTargetComplete(configuration, normalizedTarget);
+            long? size = null;
+            if (complete)
+            {
+                size = configuration.Implementation.Render(configuration.Values)
+                    .Single(q => q.Path.Equals(normalizedTarget, StringComparison.OrdinalIgnoreCase))
+                    .Content.LongLength;
+            }
+            result[childName] = new HostingFileDto
+            {
+                Path = normalizedTarget,
+                Name = childName,
+                IsDirectory = false,
+                Size = size,
+                Context = EFileContext.Persistent,
+                Classification = EFileClassification.Configuration,
+                CanModify = canModify,
+                Origin = EHostingFileOrigin.Generated,
+                ModificationMode = canModify
+                    ? EHostingFileModificationMode.StructuredConfiguration
+                    : EHostingFileModificationMode.None,
+                IsGeneratedTarget = true,
+                ConfigurationStatus = complete
+                    ? EConfigurationContentStatus.Ready
+                    : EConfigurationContentStatus.Incomplete,
+            };
+        }
+        return result.Values.OrderByDescending(q => q.IsDirectory).ThenBy(q => q.Name).ToArray();
+    }
+
+    private static bool HasGeneratedDescendant(ResolvedGameConfiguration configuration, string directoryPath)
+    {
+        var normalized = directoryPath.Trim('/');
+        return configuration.Implementation.Targets.Any(q => normalized.Length == 0
+            || SafeServerPath.Normalize(q.Path, false)
+                .StartsWith(normalized + "/", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static GeneratedConfigurationTarget? GetGeneratedTarget(string gameIdentifier, string path)
+    {
+        if (!GameConfigurationImplementations.TryGet(gameIdentifier, out var implementation))
+            return null;
+        var normalized = SafeServerPath.Normalize(path, false);
+        return implementation.Targets.SingleOrDefault(q =>
+            SafeServerPath.Normalize(q.Path, false).Equals(normalized, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsTargetComplete(ResolvedGameConfiguration configuration, string targetPath)
+        => !configuration.Entries.Any(q => q.Definition.TargetPath.Equals(targetPath, StringComparison.OrdinalIgnoreCase)
+                                           && q.Definition.Required
+                                           && (!q.Value.HasValue || !q.IsCompatible));
+
+    private static string[] MissingTargetKeys(ResolvedGameConfiguration configuration, string targetPath)
+        => configuration.Entries
+            .Where(q => q.Definition.TargetPath.Equals(targetPath, StringComparison.OrdinalIgnoreCase)
+                        && q.Definition.Required
+                        && (!q.Value.HasValue || !q.IsCompatible))
+            .Select(q => q.Definition.Key)
+            .ToArray();
 
     private static bool TryParseContext(string context, out EFileContext parsed)
         => Enum.TryParse(context, true, out parsed) && Enum.IsDefined(parsed);

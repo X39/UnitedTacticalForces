@@ -95,6 +95,18 @@
                 </label>
 
                 <label class="hosting-field">
+                    <span>Configuration profile (optional)</span>
+                    <select @bind="_configurationProfileId">
+                        <option value="">Game defaults</option>
+                        @foreach (var profile in _configurationProfileOptions)
+                        {
+                            <option value="@profile.PrimaryKey">@profile.Title (latest revision @profile.LatestRevisionNumber)</option>
+                        }
+                    </select>
+                    <small>The server follows the latest immutable revision. It can be pinned or cleared later.</small>
+                </label>
+
+                <label class="hosting-field">
                     <span>@Localizer["Hosting_Create_Runtime"]</span>
                     @if (AvailableProviders.Count > 0)
                     {
@@ -269,6 +281,8 @@
     private long? _externalStorageSizeGiB;
     private IReadOnlyList<GameServerModPackOptionInfo> _modPackOptions = [];
     private long? _modPackDefinitionId;
+    private IReadOnlyList<ConfigurationProfileOptionInfo> _configurationProfileOptions = [];
+    private Guid? _configurationProfileId;
     private StorageDemandInfo? _storageDemand;
     private bool _isEstimateLoading;
     private string? _estimateError;
@@ -361,6 +375,7 @@
     {
         _gameIdentifier = args.Value?.ToString() ?? string.Empty;
         _modPackDefinitionId = null;
+        _configurationProfileId = null;
         SelectFirstAvailableProvider();
         await RefreshSelectionsAndEstimateAsync();
     }
@@ -410,6 +425,8 @@
     private async Task RefreshSelectionsAndEstimateAsync()
     {
         _modPackOptions = await GameServerRepository.GetCreationModPackOptionsAsync(_gameIdentifier);
+        _configurationProfileOptions = await GameServerRepository
+            .GetConfigurationProfileOptionsAsync(_gameIdentifier);
         await RefreshEstimateAsync();
     }
 
@@ -460,6 +477,7 @@
                     ? _externalStorageSizeGiB
                     : null,
                 ModPackDefinitionId = _modPackDefinitionId,
+                ConfigurationProfileId = _configurationProfileId,
                 IsLaunchDisabled = _isLaunchDisabled,
             });
             NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/servers/{server.PrimaryKey}"));

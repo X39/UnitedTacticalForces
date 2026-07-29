@@ -33,6 +33,7 @@ public static class Claims
         public const string Wiki    = "crt:wiki";
         public const string Role  = "crt:rls";
         public const string Server  = "crt:sv";
+        public const string ConfigurationProfile = "crt:cfg";
     }
 
     public static class User
@@ -105,6 +106,15 @@ public static class Claims
             public const string All    = "mp";
             public const string Modify = "mp:modify";
             public const string Delete = "mp:delete";
+        }
+
+        public static class ConfigurationProfile
+        {
+            public const string All          = "cfg";
+            public const string View         = "cfg:view";
+            public const string Modify       = "cfg:modify";
+            public const string ManageAccess = "cfg:manage-access";
+            public const string Archive      = "cfg:archive";
         }
 
         public static class Terrain

@@ -25,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\sources\Api\Api.csproj" />
+    <ProjectReference Include="..\..\sources\GameServerImplementations\GameServerImplementations.csproj" />
   </ItemGroup>
   <Target Name="CopySqliteNativeAssetForTestHost" AfterTargets="Build">
     <ItemGroup>

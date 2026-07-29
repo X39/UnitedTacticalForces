@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 
 /// <summary>
@@ -34,6 +36,12 @@ public sealed record WorkerCommandPayload
     /// Game workers decide which reference sources and identifiers they support.
     /// </summary>
     public IReadOnlyCollection<WorkerContentReference> Content { get; init; } = [];
+
+    /// <summary>
+    /// Resolved, typed game-configuration snapshot captured when this durable command is created.
+    /// </summary>
+    public IReadOnlyDictionary<string, JsonElement> Configuration { get; init; }
+        = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
 
     /// <summary>
     /// Conservative peak bytes snapshotted by the control plane for validation before preparation.

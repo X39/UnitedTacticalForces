@@ -12,6 +12,54 @@ public interface IGameServerRepository
 
     Task<GameServerInfo?> GetServerAsync(Guid serverId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ConfigurationProfileOptionInfo>> GetConfigurationProfileOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ConfigurationProfileInfo>> GetConfigurationProfilesAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<ConfigurationProfileDetailsInfo> GetConfigurationProfileAsync(
+        Guid profileId,
+        CancellationToken cancellationToken = default);
+
+    Task<ConfigurationProfileInfo> CreateConfigurationProfileAsync(
+        string title,
+        string gameIdentifier,
+        IReadOnlyList<ConfigurationValueUpdateInfo> values,
+        CancellationToken cancellationToken = default);
+
+    Task CreateConfigurationProfileRevisionAsync(
+        Guid profileId,
+        IReadOnlyList<ConfigurationValueUpdateInfo> values,
+        CancellationToken cancellationToken = default);
+
+    Task ArchiveConfigurationProfileAsync(Guid profileId, CancellationToken cancellationToken = default);
+
+    Task ChangeConfigurationProfileUserAccessAsync(
+        Guid profileId, Guid userId, string permission, bool grant,
+        CancellationToken cancellationToken = default);
+
+    Task ChangeConfigurationProfileRoleAccessAsync(
+        Guid profileId, long roleId, string permission, bool grant,
+        CancellationToken cancellationToken = default);
+
+    Task<GameConfigurationInfo> GetConfigurationAsync(
+        Guid serverId,
+        CancellationToken cancellationToken = default);
+
+    Task<GameConfigurationInfo> UpdateConfigurationAsync(
+        Guid serverId,
+        IReadOnlyList<ConfigurationValueUpdateInfo> values,
+        IReadOnlyList<string> resetKeys,
+        CancellationToken cancellationToken = default);
+
+    Task SelectConfigurationProfileAsync(
+        Guid serverId,
+        Guid? profileId,
+        Guid? pinnedRevisionId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<GameServerModPackOptionInfo>> GetCreationModPackOptionsAsync(
         string gameIdentifier,
         CancellationToken cancellationToken = default);
@@ -86,7 +134,8 @@ public interface IGameServerRepository
         EHostingFileContext context,
         string path,
         ReadOnlyMemory<byte> content,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool confirmGeneratedOverride = false);
 
     Task<HostingFileInfo> CreateDirectoryAsync(
         Guid serverId,

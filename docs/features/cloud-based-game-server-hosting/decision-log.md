@@ -1,0 +1,517 @@
+# Decision Log
+
+## Detail
+
+This document records decisions made during the fresh cloud based game server hosting specification discussion.
+
+Old change requests and planning files are intentionally ignored as source material unless explicitly reintroduced.
+
+## Decisions
+
+- The spec pack path is `docs/features/cloud-based-game-server-hosting`.
+- The spec will be developed naturally through discussion rather than copied from old planning files.
+- The user-facing core is: create a supported game server with a few clicks, get it running, and fully stop it with a few clicks so it no longer generates cost.
+- Users need file modification capabilities on hosted servers.
+- The platform has separate provider-neutral cloud/runtime and game-hosting abstraction boundaries.
+- User stories describe generic hosting behavior; game-specific statements are explicit implementation acceptance examples.
+- Arma 3 is the first implementation of the game-hosting abstraction, not a game implemented directly into the cloud layer.
+- The system must be game agnostic from a developer, control-plane, cloud/runtime, and client perspective.
+- The Arma 3 implementation must not depend on a concrete cloud provider.
+- The cloud/runtime layer must not contain Arma 3-specific lifecycle, content, configuration, file, or Scenario behavior.
+- Arma 3-specific problems, including mod loading, must be generalized where they represent common hosting concepts.
+- Game implementations provide stable typed configuration definitions through a lightweight game-neutral value abstraction.
+- Configuration keys can identify the target and setting, for example `server.cfg@port`, so one game can own several configuration surfaces.
+- Abstract configuration values are persisted as individual database-backed records keyed by their definitions.
+- Game implementations translate resolved values into game-specific files, arguments, environment, or runtime controls.
+- Sensitive configuration definitions are redacted from unauthorized clients and logs and rendered only in the authorized worker/runtime path.
+- Abstract configuration resolves with the precedence `game defaults < selected profile revision < sparse Server-local configuration < physical persistent file`.
+- Configuration Profiles are optional reusable baselines; existing Servers receive no profile backfill and profile-less Servers remain valid.
+- Sparse Server-local values are mutable, atomically validated, resettable, and audited without storing secrets in audit text.
+- Configuration Profiles have immutable revisions; Servers either follow latest or pin an explicit revision.
+- Start resolves the effective profile revision, and creating a newer revision does not change pinned Servers.
+- Missing optional configuration values use definition defaults; a required definition without a compatible value or usable default blocks Start.
+- Removed definitions and incompatible historical values remain in revision history but are ignored during rendering.
+- An incompatible value is not coerced: a compatible definition default is used when available, and the profile editor shows an inline warning at that setting.
+- Correcting a mismatch creates a new profile revision.
+- Persistent directory browsing is a mixed effective projection of physical storage and game-declared virtual generated targets.
+- A physical file collision appears once as the effective override; deleting it immediately reveals the generated target again.
+- A physical directory at a generated-file target is rejected for new writes and reported as a blocking conflict when pre-existing.
+- Start preparation orders game setup, Mod preparation/output, and Configuration Profile rendering before persistent expected-file synchronization.
+- Persistent expected-file synchronization is always the final operation before invoking the game Start action.
+- Persistent files override generated configuration or Mod-related files at matching paths without mutating reusable profiles, Mods, or Modpacks.
+- The UI identifies generated targets overridden by persistent files; removing an override restores generation on the next Start.
+- Administrators need an overview of all deployed resources and generated cost.
+- Administrators need the ability to stop cost-generating resources.
+- Costs must support user-based ownership and non-user cost centers, including a Verein-level cost center.
+- Event hosts need a quick way to create a Server configured from event context and operate it through the normal Server lifecycle.
+- The user profile opens the initial Notification Center surface, where authorized users see relevant running, pending, stopping, cleanup-pending, or still-billable Servers and can reach appropriate actions.
+- Server notification items are independent of the profile layout so a future dedicated Notification Center can reuse them.
+- In this spec, "stop server" means the server is no longer generating any cost.
+- Stopping a cloud server means deleting or releasing billable provider resources unless a resource is literally free.
+- The product needs a persistent server data model so user/server files can remain available while runtime/provider resources are stopped.
+- Persistent server data must be resolved before finalizing lifecycle behavior because it affects start, stop, file management, and Arma 3 content handling.
+- Persistent server data must be configurable in the long term behind a storage abstraction.
+- The first implementation of persistent server data only needs to support the local filesystem.
+- The previous "file areas" framing is rejected for now; server files should be modeled as a simple folder-like file tree.
+- The first implementation stores files for a server under `{ConfiguredBasePath}/{ServerId}/...`, for example `CONFIGURED/PATH/123/...`.
+- The file DTO should primarily support a path.
+- The UI should support the simple folder/file model, preferably with a Windows Explorer-like browser, but the exact UI presentation is not important yet.
+- Differentiating game files, save files, logs, configs, mods, uploaded files, downloaded files, and generated files is a separate classification/metadata problem over the file tree.
+- Mods and modpacks are a first-class content domain, not just arbitrary files.
+- The current Arma 3 HTML modpack style must remain supported.
+- The generic mod/content model must not be framed around Arma 3 HTML modpacks.
+- Arma 3 HTML behavior belongs in an Arma-specific adapter/generator.
+- Workshop-style mods should be generic enough to support other games, such as Space Engineers, without assuming Arma 3's proprietary HTML format.
+- Game implementations advertise their specialized Modpack artifact formats and own parsing, validation, generation, and compatibility warnings; the generic platform only exposes format capabilities and transports artifacts.
+- Game-specific interchange/download artifacts are derived outputs, not authoritative generic Modpack state.
+- Arma 3 Launcher HTML is the first game-provided format. Import maps Workshop identity, reuses Mods, creates missing Mods as Shared, removes duplicates, and creates a Modpack/new immutable revision.
+- Arma HTML export uses the flattened effective set, includes client-only/shared Workshop Mods, excludes server-only Mods, and warns about unrepresentable file-based Mods.
+- Client download tracking uses a resolved output fingerprint containing contributing Modpack revisions, flattened client/shared Mods, observed Workshop versions or file checksums, and the game-specific format.
+- Scenario-required client content participates in that fingerprint, and floating Workshop updates can change it without a new Modpack revision.
+- Per user/context/format, UTF stores the last successfully delivered or explicitly acknowledged fingerprint; a mismatch means an update is required but does not prove local installation state.
+- Per-Mod user download history is deferred from v1.
+- The existing WebApp is the v1 discovery/download surface; Events and Modpack pages expose status, warnings, and game-provided artifacts.
+- The API authorizes delivery and may serve bytes or issue a short-lived storage URL; large content can come directly from the storage backend without a separate download website.
+- Modpack latest/pinned mode is icon-first: sync/latest for follow-latest and a pin for fixed revision.
+- The latest tooltip explains Start-time revision resolution, latest-only Workshop files, and that running Servers do not update automatically.
+- The pin tooltip identifies the revision, explains fixed declared composition/settings, and warns that Workshop payloads may still change.
+- The descriptive tooltips are also accessible labels; meaning cannot rely on icon recognition or color alone.
+- The Arma 3 implementation can request and prepare Workshop mods from modpack information through generic content-source and worker contracts; this is not Arma 3 behavior in the cloud layer.
+- The future model needs a Mod concept in addition to Modpack.
+- A Mod has exactly one source: Steam Workshop downloaded through DepotDownloader or platform-managed file-based content.
+- A Mod has exactly one usage role: client-only, server-only, or shared.
+- Modpacks are reusable catalog/setup objects that can contain Mods and other Modpacks.
+- Nested Modpacks are flattened recursively into an effective Mod set with duplicate Mods removed.
+- Servers consume modpacks to make mod setup easier.
+- Modpacks are not per-server editable file copies.
+- Servers should consume the latest modpack revision by default.
+- Fixed modpack revision consumption is useful, but must be explicit or clearly toggleable.
+- A Modpack revision is an immutable declaration of its direct Mod and nested Modpack membership and configuration.
+- Source reproducibility is independent of modpack-revision immutability: pin-capable sources can identify exact retrievable artifacts, while floating sources cannot.
+- Steam Workshop is treated as a floating latest-only source because historical payloads generally cannot be retrieved.
+- At Start, Workshop-backed entries resolve to the latest content Steam currently exposes, even when the server pins a modpack revision.
+- The deployment records the resolved Workshop identity and observed version/revision metadata for history and diagnostics but does not promise later restoration of the same bytes.
+- An active deployment retains the content resolved during Start; external mod updates are not applied automatically while it is running.
+- If a server follows latest modpack mode, a full stop/start cycle should use the latest modpack revision.
+- Game-specific output generators are needed so generic modpack data can produce the format each game requires.
+- The system may need a user-facing download surface where users can download individual updated mods.
+- The system must track whether users have downloaded mod versions when client-side updates matter.
+- File-based Mod storage uses a storage abstraction with local filesystem as first backend.
+- File-based content belongs to the Mod independently of the Modpacks that reference it; the physical layout is not divided by usage role.
+- Game-specific generator registration/versioning is implementation detail; no user-managed generator versions are needed in the spec.
+- Full modpack subscription and global notification UX is deferred.
+- For now, users should be informed about modpack updates when browsing relevant contexts such as an event that uses the modpack.
+- Long-lived and short-lived/event servers both create persisted server records.
+- The platform can run deployments for multiple different server records concurrently.
+- Each individual server record has at most one active deployment at a time.
+- Each server start that allocates cloud resources creates a deployment that inventories every provider/runtime resource allocated or adopted for that runtime.
+- Fully stopping a server must bring every resource in its deployment inventory into a verified non-billable state.
+- Deployment resources will normally be deleted or released during full stop; retaining one is acceptable only when its retained state is verified to create no further cost.
+- Full stop is not successfully complete while any deployment resource remains billable or has unresolved billing state.
+- Deployment teardown is a durable automatic reconciliation process, not a user-operated retry workflow.
+- Reconciliation continually checks inventoried resources and retries outstanding cleanup until every resource is verified non-billable.
+- Resources already verified non-billable are not destructively processed again during later reconciliation passes.
+- Users are not required to retry individual cleanup failures.
+- Administrators need diagnostic visibility into failures, affected resources, attempt history, and possible continuing cost, while routine retries remain automatic.
+- A server record remains active while any resource belonging to its deployment remains allocated or has unresolved provider state.
+- The same server record cannot start another deployment until the previous deployment has no allocated or unresolved resources.
+- Deployment allocation/cost state and server operational health are distinct signals.
+- The system regularly reconciles expected runtime resources with provider-observed state to detect out-of-band changes and provider faults.
+- A server may be operationally dead while its deployment remains active and potentially billable.
+- Provider-state drift and unexpected runtime-resource shutdown or deletion must be visible to administrators.
+- Hetzner is the first provider implementation, but periodic resource observation and drift detection are provider-neutral requirements.
+- The control plane provisions, observes, and tears down provider resources independently of the target runtime worker.
+- Runtime workers perform work inside provisioned resources, including game installation, content preparation, persistent-data placement, configuration generation, process control, and health reporting.
+- Each active deployment has exactly one dedicated worker for its server record.
+- The one-worker rule prohibits overlapping allocated worker instances for the same individual server record's active deployment, including during restart or replacement.
+- A replacement worker instance is provisioned only after the previous worker instance is verified fully deprovisioned.
+- Worker restart is a convenience operation composed of an ordered worker stop followed by worker start.
+- The planned no-heartbeat gap during worker restart uses the configurable worker-registration startup window rather than the ordinary missed-heartbeat fault threshold.
+- If the replacement fails to register within that window, the deployment enters automatic fault-triggered termination/cost-stop.
+- The worker is provisioned with the deployment, controls only that server instance, and is torn down during full cost-stop.
+- A fully stopped server record has no worker.
+- The platform does not maintain a pool of pre-provisioned, idle, shared, or interchangeable workers.
+- Workers are never reassigned between server records or deployments.
+- Worker-side commands are targeted to the deployment's dedicated worker rather than scheduled across a worker fleet.
+- Each dedicated worker maintains an authenticated outbound command connection to the control plane.
+- Worker commands are persisted before delivery, have stable identities, and target one deployment.
+- Command receipt acknowledgement and command completion are distinct.
+- After reconnect or worker-agent restart, the worker retrieves outstanding commands for its deployment.
+- Each worker keeps a local durable command journal keyed by stable command identity and records receipt, execution state, and outcome.
+- Redelivery of a known command returns its recorded state/outcome instead of starting a second execution.
+- Uncertain post-crash outcomes are reconciled with runtime reality before side effects are retried; handlers are idempotent or operation-specifically reconcilable.
+- The journal is stored only on the worker resource using an implementation-chosen local mechanism such as SQLite or flat files.
+- Workers do not own or depend on an externally hosted database; the control plane remains the durable queue system of record.
+- During degraded worker communication before a confirmed fault, otherwise valid normal commands are persisted and queued for delivery when the dedicated worker reconnects.
+- The normal server UI may use a busy or pending indicator and does not need to embed detailed command-queue contents.
+- A separate command-queue view is available for the relevant server, distinguishes queued, running, completed, failed, retried, skipped, and cancelled work, and exposes useful failure context.
+- Accepted normal commands execute in request order, including apparently redundant in-runtime command sequences; they are not coalesced into a final desired state.
+- Users cannot withdraw an accepted command merely because it is still queued; user-initiated queue cancellation is not required for the initial design.
+- Queue cancellation may be introduced later if operational experience shows it is needed.
+- Restarting the dedicated worker or its resource preserves the durable queue, and remaining commands resume in order after reconnection.
+- A failed normal command pauses later normal commands because they may depend on effects that did not complete.
+- An authorized user can retry the failed command or explicitly skip it to allow later commands to continue.
+- Any failed normal command can be explicitly skipped in the initial design; the platform does not require a non-skippable-command safety classification.
+- Game-specific skip safeguards may be introduced later if operational experience shows they are needed.
+- Starting and stopping are server actions, not individual access privileges.
+- Authorization to execute server actions also authorizes retrying or skipping failed queued actions; no separate queue-management privilege is required.
+- Server Operate covers every currently available non-administrative action projected for that Server, including normal full Stop.
+- Administrative and emergency actions remain separately protected by their dedicated claims and are not implied by Server Operate.
+- Retry and skip preserve command history and record the intervention rather than silently rewriting the queue.
+- Command-queue history has a separate configurable maximum-age retention policy, initially one month, rather than inheriting completed-deployment history retention.
+- Command age cleanup applies only to completed, skipped, and cancelled entries.
+- Queued, running, and failed commands are retained regardless of age until their work or required intervention is resolved.
+- If loss of worker control becomes a confirmed fault and cost-stop begins, queued normal commands are cancelled by cost-stop under the established priority rule.
+- Command redelivery reconciles stable command identity, persisted stage, and runtime reality before repeating side effects.
+- Conflicting commands for the same deployment do not execute concurrently.
+- Provider-resource cost-stop does not depend on worker command connectivity.
+- Full cost-stop has priority over all normal worker commands.
+- Full server stop/deprovisioning closes the normal command queue because the deployment will no longer have a worker.
+- Normal commands still queued when deprovisioning begins are cancelled by cost-stop, and new runtime, game, and live-file actions are unavailable rather than added to the queue.
+- Worker cancellation or safe completion is best-effort and cannot block provider teardown indefinitely.
+- Commands interrupted by cost-stop are recorded as cancelled by cost-stop.
+- Each server has a game-neutral selection of live files or folders that normally synchronize into persistent server storage before intentional worker deprovisioning.
+- The game implementation seeds initial preservation selections when a server record is created.
+- Preservation selections persist with the durable server configuration across deployments.
+- Users can manually add or remove allowed files or folders, including game-seeded selections.
+- Manage-files access is required to browse eligible paths and view or edit preservation selections.
+- Server Operate permits Stop/restart to use the saved preservation selection but does not itself expose or permit editing file paths; changing it requires Server Modify.
+- Game-implementation updates do not silently re-add a preservation path that a user removed.
+- Preservation selections have three scopes: one file, a flat folder containing only direct files, and a recursive folder containing all descendants.
+- Folder selections are evaluated against live contents at synchronization time, so newly created matching files are included.
+- Selected-path synchronization supports both create/update-only behavior and optional deletion propagation from live runtime storage to persistent storage.
+- Deletion propagation is configured per preservation selection, allowing different selected files or folders on the same server to use different behavior.
+- Manually added preservation selections default to create/update only; mirror-deletions behavior requires an explicit choice.
+- Game implementations may specify deletion behavior for the preservation selections they seed.
+- When preservation selections overlap, the most specific matching selection determines deletion behavior.
+- Selection specificity is ordered as recursive folder, then flat folder, then exact file match; deeper paths win within the same scope.
+- When deletion propagation is disabled, a persistent file is retained even if its selected live counterpart is absent.
+- Deletion propagation is a synchronization policy, not a user authorization permission.
+- The generic platform, control plane, and worker contract operate on server-relative selections and do not contain game-specific path knowledge.
+- Pre-deprovision synchronization must not blindly copy the entire runtime filesystem.
+- Before selected-path synchronization, the worker asks the game implementation to save and gracefully stop the game process.
+- Graceful-shutdown attempt limits and maximum wait are configurable per server record and may permit repeated graceful shutdown requests.
+- If the game process remains stuck after those limits expire, the worker force-terminates it.
+- Selected-path synchronization begins only after the game process stops or the game implementation explicitly declares the files ready for safe preservation.
+- Selected-path synchronization still runs after forced game-process termination, and its outcome indicates that the preserved data may be inconsistent.
+- A synchronization result replaces persistent state only after its transfer completes successfully; failure leaves the previous persistent state intact.
+- Stop-time synchronization does not automatically retain historical generations or backups.
+- Temporary staging may support safe publication but is removed rather than retained as user-visible history.
+- Worker restart uses the same selected-path synchronization before the old worker is removed and the replacement restores persistent data.
+- If selected-path synchronization fails during an ordinary user-requested stop or worker restart, the operation fails and pauses for intervention while the existing worker remains allocated and potentially billable.
+- The extraordinary user-invoked full-stop operation is named Terminate.
+- Terminate is available whenever the individual server record has an active deployment, not only after synchronization fails or stalls.
+- Terminate is terminal for the active deployment's provisioned resources and immediately begins durable provider-resource teardown.
+- Terminate skips graceful game-process shutdown and selected-path preservation and does not depend on worker availability.
+- Terminate preserves the durable server record and previously published persistent server data.
+- Terminate is available while provisioning is in progress and first persists a barrier that prevents further provider-create requests for that deployment.
+- Pending provisioning is cancelled where possible, while already-issued provider requests remain subject to reconciliation because they may still complete.
+- Provider provisioning intent and deployment attribution are durable before a create request is issued so resources remain discoverable after a lost response.
+- Reliable attribution and later discovery of every cost-generating resource type are mandatory provider-adapter capabilities.
+- A provider that cannot meet those requirements is always unusable for provisioning; starts are blocked with a clear administrative reason and no unsafe override.
+- Temporary degradation of a normally capable provider delays provider-dependent lifecycle stages rather than making the provider structurally unsupported.
+- New starts may remain durably pending before provisioning, and in-progress provisioning or teardown remains pending at the affected stage.
+- Stop and Terminate cannot complete while required provider teardown or non-billable verification is unavailable; possible cost remains visible.
+- Provider recovery resumes delayed work only after reconciling persisted intent with provider-observed reality.
+- Delayed starts revalidate current authorization and all start prerequisites immediately before their first cost-generating provider action.
+- Revalidation includes cost-owner validity, current credit/allowance, server eligibility, authorization, and provider capability.
+- Delayed starts do not retain a request-time snapshot of server setup contents.
+- When provisioning can proceed, a delayed start uses the server record's current expected configuration, modpack and Scenario selections, and persistent expected files.
+- Setup changes made during the provider wait are intentionally included; this edge case does not require version-selection UX, conflict handling, or another confirmation.
+- Transient provider capability degradation leaves the delayed start waiting.
+- Any non-transient authorization or business-rule failure terminally fails that start operation without creating resources and records the reason.
+- Correcting the failure later does not auto-resume the start; an authorized user queues a new request.
+- A late, untracked, duplicate, or unexpected resource that can be linked to persisted provisioning intent is adopted into its deployment and is not classified as dangling.
+- A linked late or unexpected resource retains the deployment's cost owner while it is reconciled or cleaned up.
+- The control plane regularly scans every configured provider scope for linked late/unexpected resources and true dangling resources independently of active lifecycle jobs.
+- A dangling resource is recognizable as platform-managed but cannot be linked to a valid provisioning intent, deployment, or cost owner.
+- Dangling resources are automatically cleaned up and their cost is attributed as platform/Verein operational cost rather than to a user or unrelated deployment.
+- Unknown provider resources without trustworthy platform attribution are ignored by the initial dangling-resource workflow rather than deleted, adopted, classified, or repeatedly alerted on.
+- Administrative external/ignored marking and unattributed-resource adoption are deferred features.
+- Provider resource groups, projects, or equivalent configured scopes should isolate platform-managed resources where available; platform attribution remains the automatic-cleanup boundary.
+- Discovering a late linked resource restores its deployment's unresolved allocation and possible-cost visibility until automatic cleanup completes.
+- A successfully self-cleaned one-off dangling resource is retained in operational history without requiring an immediate administrator alert.
+- Failed cleanup, prolonged possible cost, or repeated dangling-resource creation within a configurable observation window escalates to administrators.
+- Repeated dangling-resource occurrence indicates a serious provisioning/reconciliation defect even when each cleanup succeeds.
+- Completed dangling-resource incident history has a separate configurable retention policy that defaults to one year.
+- Active or unresolved dangling incidents are not removed by age-based cleanup, and separately governed financial/audit evidence is preserved.
+- Users with Server Operate can invoke Terminate after a clear data-loss/full-stop warning and mandatory typed Server-specific confirmation challenge; administrators already receive this capability through their existing bypass.
+- Ordinary preservation transfer has no separate configurable timeout; slow or stalled work remains visible until it completes, fails, or Terminate is used.
+- Terminate bypasses the normal queue and interrupts active preservation.
+- Terminate cancels all running and queued normal actions, including the start portion of a worker restart.
+- Terminate discards unpublished staged data, retains the previous persistent state, and proceeds to verified full cost-stop with no replacement worker.
+- Terminate and its actor are audited.
+- Automatic, fault-triggered, cost-enforcement, and emergency cost-stop make a bounded preservation attempt, then proceed if synchronization cannot complete; they record unpreserved selected data where possible.
+- Lifecycle clicks create persistent asynchronous operations whose execution is disconnected from the originating HTTP request and browser session.
+- Server/deployment state describes intended and observed reality, while lifecycle jobs record requested work and progress.
+- Lifecycle operation progress survives API, control-plane processor, and worker restarts.
+- Resumed processing reconciles persisted and externally observed state before repeating side effects.
+- Recovery must not create duplicate provider resources merely because a process crashed after an external operation succeeded.
+- The product does not require worker/control-plane protocol-version negotiation or a compatibility matrix.
+- A dedicated worker can be restarted within its existing deployment to update its software; this does not create a new deployment or change the worker's assignment.
+- Worker restart/update uses the normal durable recovery and runtime-reconciliation behavior before interrupted work resumes.
+- Newly provisioned workers register through an outbound secure connection using a short-lived, single-use bootstrap credential.
+- Worker registration is bounded by a configurable startup window that may be tuned for provider, game, or other deployment context.
+- Failure to register within the effective startup window is a confirmed deployment fault and triggers automatic fault-triggered termination/cost-stop rather than leaving the deployment indefinitely allocated in a starting state.
+- Successful registration binds a non-secret worker identity to the intended deployment and issues a revocable authentication credential.
+- Worker identity and worker credential are distinct: the credential proves the deployment-bound identity.
+- A scoped token is the expected first credential implementation, while the worker contract may support other secure credential mechanisms later.
+- Worker credentials grant access only to the assigned deployment and permitted jobs and expire or are revoked when teardown completes.
+- Worker bootstrap and authentication secrets are not exposed to frontend clients or unredacted logs.
+- Normal worker operation requires no inbound administrative or job-control port.
+- Missing worker heartbeats initially degrade communication health while the deployment remains active and potentially billable.
+- After a configurable missed-heartbeat threshold, loss of worker control is treated as a confirmed operational fault and triggers fault-triggered termination/cost-stop.
+- Suspected worker failure triggers a bounded best-effort diagnostic collection stage before destructive teardown.
+- Diagnostics may come from a reconnected worker, previously buffered or uploaded logs, game/agent output, and provider-supported diagnostics.
+- Diagnostic collection has a configurable maximum window and cannot delay cost-stop indefinitely.
+- Collected fault diagnostics are deployment-linked, claim-protected, redacted for secrets, and governed by configurable retention.
+- Workers are not required to continuously replicate operational logs into persistent platform storage for provider-failure recovery.
+- Provider-level loss may result in unrecoverable worker logs; diagnostics record that outcome rather than delaying cleanup.
+- Confirmed deployment faults that prevent safe continuation trigger automatic full cost-stop reconciliation.
+- Provider-confirmed absence, shutdown, or irrecoverable failure of a required runtime resource counts as a confirmed deployment fault.
+- Fault recovery does not automatically recreate or replace missing cloud infrastructure.
+- Provider API unavailability or unknown provider state degrades observation but does not itself trigger teardown.
+- During degraded observation, the system preserves the last known allocation and cost state and continues checking.
+- Repeated or prolonged provider-observation uncertainty is escalated to administrators after a configurable threshold.
+- The UI distinguishes a deployment that is terminating due to a fault from one that was terminated after fault-triggered cleanup completed.
+- Fault-triggered teardown continues to communicate possible cost until every deployment resource is verified non-billable.
+- The originating fault and cleanup outcome remain available for administrator diagnostics and history.
+- Manual resolution of unverified provider cleanup is a dangerous exception protected by a dedicated claim.
+- Manual resolution applies to a specifically identified provider resource and is never represented as provider-verified cleanup.
+- The UI must warn that manual resolution does not delete the cloud resource and may leave continuing cost.
+- Manual resolution requires a mandatory explanation and a typed resource-specific confirmation challenge so it cannot be completed accidentally.
+- Manual resolution records the administrator, timestamp, resource identity, last known state, explanation, and optional supporting evidence.
+- Detailed completed-deployment history has a configurable retention period that defaults to one year.
+- Expired detailed history includes resource inventories, provider identifiers, reconciliation attempts, and fault diagnostics.
+- The default retention policy preserves a minimal deployment timeline summary after detailed history expires.
+- Minimal-summary retention is independently configurable.
+- Deployment-history retention behavior is configuration-driven so installation-specific policy changes do not require lifecycle code changes.
+- An automatic cleanup job applies the configured deployment-history retention policy.
+- Deployment-history cleanup must not remove active or unresolved deployments.
+- Deployment-history cleanup must not silently delete financial ledger entries or evidence governed by separate retention requirements.
+- Persistent platform-managed server data and reusable content are outside the deployment teardown boundary.
+- Short-lived/event server records may be automatically archived after use, not deleted.
+- Administrators must be able to review temporary server creations later.
+- Persistent server data does not include installed game binaries by default.
+- Starting a cloud server restores/installs game files through worker tooling, downloads external content where needed, then uploads/syncs server data to the worker.
+- The lifecycle needs a full cost-stop action that tears down billable resources.
+- The lifecycle also needs runtime-only shutdown/restart for quick configuration iteration; this keeps resources billable and must not be labeled as full stop.
+- Hidden file synchronization between persistent storage and live cloud runtime should be avoided.
+- File management should expose two explicit modes: persistent files and live cloud files.
+- Persistent files are stored source data for future starts.
+- Live cloud files are files currently present on the active cloud worker/runtime.
+- Persistent/expected data is applied to the worker at start, and selected live data is preserved into persistent storage at stop.
+- The initial design has no general-purpose apply, pull, merge, or synchronization action between start and stop.
+- During an active deployment, selected persistent paths are viewable but read-only because stop-time synchronization will replace them from the live worker.
+- Unselected persistent paths remain editable during an active deployment as expected data for the next start, and live paths remain separately editable where allowed.
+- Separate server templates are likely double bookkeeping because they would need nearly all server features except launching.
+- Reusable setup should prefer existing server records as clone/template sources.
+- A server record can be launch-disabled when it is intended only as a reusable setup source.
+- Server lifecycle should be modeled through categorized actionable capabilities rather than one fixed universal runtime enum.
+- Create is a distinct platform operation that persists the durable server record and never starts it implicitly.
+- Start and Stop are mandatory well-known server actions for every game implementation; games may declare additional custom actions.
+- Start provisions the deployment's dedicated worker, prepares the server through the game implementation, and invokes the game's start behavior.
+- Stop is the ordinary full cost-stop lifecycle action and invokes the game's stop behavior as part of graceful shutdown before preservation and teardown.
+- Runtime-only actions must be separate from teardown/cost-stop actions.
+- Games can expose additional game-defined actions and states.
+- A server can expose multiple concurrent game-specific operational states rather than one universal runtime state.
+- Before the game server starts, applicable preparation/runtime states are supplied by the dedicated worker; after startup, the game integration supplies game-server states through the worker.
+- Arma 3-specific states such as mission selection and running session do not need equivalents in other games.
+- Platform-owned lifecycle, provider, worker-communication, and cost facts remain visible alongside game-specific operational states.
+- The API should project and localize action labels, state labels, and descriptions.
+- The client should not implement game-specific action/state logic.
+- The platform must still expose universal cost semantics, especially whether a server is cost-generating and whether cost-stop is available or required.
+- Every projected action should include cost impact metadata.
+- Initial action cost impact values are: starts cost, stops cost, keeps cost running, no cost impact, and unknown cost impact.
+- Start and Stop are the only universal semantic action identities; custom action grouping/order is provider-supplied presentation metadata rather than a rigid category taxonomy.
+- Every projected action includes stable ID, localized label/description/icon, presentation group/order, enabled state and safe unavailable reason, danger/confirmation behavior, pending-operation status, optional expected duration, and cost-impact description.
+- Authorization remains server-side, and projected unavailable reasons do not expose internal claim identifiers.
+- Cost owners are debtors in a ledger sense.
+- Initial cost owner types are individual users, the Verein, and external organizations.
+- The Verein is the creditor and pays Hetzner/future providers directly.
+- Providers should not bill or contact app users directly.
+- Payment is mandatory eventually, but the first implementation only needs manually recorded bank transfers.
+- V1 supports recording refunds/withdrawals of unused prepaid credit after an authorized finance user performs the bank transfer externally.
+- Refunds cannot exceed unused available credit and record actor, beneficiary owner, amount, date, external reference, and reason.
+- Payment and refund records are append-only; mistakes use linked reversal/correction entries rather than edit or deletion.
+- Kassenbuch entries record cost owner, entry type, amount/currency, effective date, recorded timestamp/actor, external reference, optional reason, and linked original entry where applicable; full bank-account details are unnecessary.
+- The append-only ledger is authoritative, while each cost owner has a derived current-balance projection updated atomically with appended entries.
+- Periodic derived checkpoints identify an ordered ledger position so recovery/validation replays only the later bounded tail.
+- Projections and checkpoints are rebuildable acceleration structures and never replace or rewrite authoritative ledger history.
+- Cost owners can have prepaid credit.
+- Prepaid/zero-debt mode is the default for all cost owner types.
+- Cost owners can only start cost-generating resources if sufficient credit is available unless explicit allowance exists.
+- Authorized administrators can grant explicit finite allowances.
+- Allowance is not unlimited spending or open-ended overdraft.
+- Spending is bounded by credit plus allowance.
+- The system should force-stop servers once all credit plus allowance is used up.
+- The Verein cost owner uses the same credit/allowance mechanics as other cost owners.
+- If Verein-owned cost should be effectively always allowed, operators can grant a deliberately high allowance rather than using a separate special case.
+- Treating Verein the same gives budgeting and Kassenbuch tracking without extra conceptual rules.
+- Allowance granting is controlled by claims.
+- Payment recording is controlled by claims.
+- Resource-scoped CostOwner.Use authorizes selecting one cost owner; CostOwner.View separately authorizes inspecting its finance position.
+- Global claims are Finance.ViewAll, Finance.RecordPayment, Finance.RecordRefund, Finance.CorrectLedger, Finance.ManageAllowance, Finance.FreezeCostOwner, and Finance.ManagePolicy.
+- Finance.All is an explicit umbrella for global finance capabilities but does not replace resource-scoped CostOwner.Use for payer selection.
+- Global finance mutation claims are independently assignable and do not imply one another.
+- Users can view their own personal cost-owner position without a finance claim.
+- Production roles are administrator-created and never receive finance semantics from a hard-coded role name.
+- A theoretical Kassenwart role may exist in demo seed data only as an example claim bundle.
+- Users can inspect their own credit, allowance, running cost, and relevant ledger entries.
+- Users can only select cost owners they have a claim for.
+- Cost-owner selection can be granted through roles, such as assigning Verein cost-owner usage to a role.
+- Credit exhaustion triggers force-stop.
+- By default, provider cost that continues while credit-exhaustion teardown is unresolved remains charged to the deployment's original cost owner, even beyond credit and allowance.
+- Accounting policy can instead make the Verein absorb cost incurred after the persisted credit-exhaustion cost-stop boundary.
+- The cleanup-overrun payer policy is one installation-wide operator-controlled setting, not a per-owner or per-server policy.
+- It is changed explicitly if recurring overruns justify a different accounting policy; the system never switches it automatically.
+- Administrators need aggregate overrun frequency and cost visibility to support that decision.
+- This policy changes ledger attribution only; deployment ownership, provider-resource attribution, and teardown remain unchanged.
+- Financial history records the enforcement boundary and which party absorbed the cleanup overrun.
+- Low-credit notification should be shown before starting a server from cost-neutral state.
+- Cost owner changes are not allowed while a server is running or cost-generating.
+- To fix a wrong cost owner in v1, fully stop the server, change the cost owner, and start again.
+- After completion, authorized finance users can correct wrong cost attribution through compensating ledger entries that credit the wrong owner and debit the correct owner.
+- Corrections are append-only and do not rewrite deployment attribution, provider-cost evidence, or original ledger entries.
+- Corrections record actor, time, reason, affected records, amount, source owner, and destination owner.
+- Running cost is checked/reserved in configurable N-minute slices.
+- At each slice, the system records/updates consumed cost and checks whether the next slice can be paid while preserving the configured safety range.
+- The safety range is protected reserve, not extra spendable credit.
+- The safety range is a configurable installation-wide minimum applied to every cost owner and server.
+- Future context-specific policy may increase the effective reserve but cannot reduce it below the installation-wide minimum.
+- The continuation rule is conceptually `availableCredit + allowance - alreadyConsumed - nextSliceEstimate >= safetyRange`.
+- The goal of the safety range is to avoid users going negative because of delayed billing or estimate drift.
+- Event Quick Create creates an ordinary Server record; it does not introduce a separate Event Server type or lifecycle.
+- Create and Start remain distinct: Event Quick Create does not provision a worker or begin deployment cost.
+- Event-created Servers use the same Start, Stop, Terminate, worker, queue, preservation, teardown, billing, authorization, and audit rules as every Server.
+- Event Quick Create can use an event duration estimate to show expected affordability; standard Start performs authoritative revalidation.
+- An event can optionally configure a hosting cost center; otherwise its host's individual cost owner is the default payer.
+- A configured event cost center overrides the host default, subject to current permission and affordability revalidation at Start.
+- Event Quick Create should show an estimated runtime affordability graph around the event duration and the maximum available runtime when it exceeds the visible window.
+- Every Event has a required estimated duration, which may be a best guess rather than an exact end time.
+- The estimated duration establishes an automatic Stop safety deadline that the event host can extend while the Server is active.
+- Extending the deadline does not bypass credit enforcement, fault teardown, or other independent cost-stop rules.
+- A game-supported condition such as all players having left can Stop the Server before that deadline.
+- Game support may emit configured staged in-game warnings before automatic shutdown.
+- Every event automatic-close condition invokes the ordinary durable Server Stop action.
+- Events can opt into or out of UTF-hosted server infrastructure.
+- Hosting-specific event data is only required when an event is intended to be hosted through UTF.
+- If an event does not require hosted infrastructure, Event Quick Create is not shown.
+- Event Quick Create is only available when all required hosting data is present.
+- Incomplete hosting data should lead to setup prompts, not partial launch.
+- Events can have a "ready except mission/world" state for late-arriving game content.
+- Event hosting UI has separate Replace scenario and Quick Create actions.
+- Event participants can see event-facing join information and obtain the Modpack without receiving Server-management claims.
+- Participation alone does not grant Server View, Operate, Modify, ManageAccess, DeleteData, or other scoped Server permissions.
+- Planned participation/acceptance is distinct from actual attendance.
+- When supported, the game server reports observed participants through the worker so event attendance can be recorded automatically.
+- Automatic attendance requires a configurable minimum connected duration based on reported connection intervals; a brief join alone does not count.
+- The event host can manually correct attendance when observation is unavailable or wrong, and the correction is audited with its reason.
+- Attendance evidence for an unmatched external game identity is retained but does not affect a UTF user's statistics until linked.
+- Linking that identity later can associate historical attendance with the user while preserving the original observation and link provenance.
+- Actual attendance supports authoritative participation facts such as accepted, attended, accepted-but-missed, participation-rate inputs, and qualifying duration; registration alone is not proof of participation.
+- A trust score is derived from those facts and maps to one user-facing trust label.
+- The score and label are explainable projections, not manually maintained independent truth.
+- The scoring formula and label thresholds are one installation-wide community policy.
+- Policy changes recalculate current scores/labels from unchanged participation facts; old labels are not permanent truth.
+- Event hosting naming should remain neutral even if the first implementation is Arma 3-centric.
+- Missions/worlds/saves/playable content should be modeled as reusable content, not one-off event files.
+- The generic domain term is Scenario.
+- Scenario UI labels can be game-specific, such as Mission for Arma 3 or World for other games.
+- Scenarios are versioned and reusable, similar in spirit to modpacks.
+- Events and servers can reference Scenarios.
+- Scenario selection follows latest by default and can be pinned explicitly.
+- Event Quick Create copies that Scenario selection mode into the normal Server setup.
+- Latest Scenario mode resolves the newest version when Start runs; pinned mode retains the explicitly selected version.
+- Every Scenario is scoped to exactly one compatible game type, and each immutable Scenario version has an immutable declaration of zero or more required Modpacks.
+- At Start, Scenario-required Modpacks and the Server-selected Modpack are combined, recursively flattened, and deduplicated through the generic Modpack resolver.
+- Scenario/game incompatibility, unresolvable requirements, or dependency conflicts block Start before game launch.
+- Runtime evidence records the effective Scenario version, its declared dependency selections, and the effective Mod content observed for that Start.
+- Every immutable Scenario version references a logically identified artifact with a checksum; its physical storage path is not domain identity.
+- A local implementation may use `{ConfiguredScenarioPath}/{ScenarioId}/{VersionId}/...`, while the storage abstraction remains replaceable by object storage.
+- The worker stages the resolved Scenario artifact into its game-specific path during Start, before Configuration Profile rendering and final persistent expected-file synchronization.
+- Scenario versions record version label, game type, source/original filename, artifact size/checksum, creation actor/time, dependency declaration, optional description/changelog, and game-defined metadata.
+- Game-defined Scenario metadata is captured with the immutable version rather than rediscovered on every Start.
+- Arma 3 Scenario versions require mission display name and terrain/world identifier; the adapter extracts them when reliable, otherwise the uploader supplies them before acceptance.
+- Scenario View includes immutable version-artifact download from the Command Center; selection, consumption, Server operation, and Event participation do not grant that access.
+- Arma 3 Event/Server setup can select an existing Scenario version or upload a new one when the actor has the required Scenario permission.
+- Event-created Servers are short-lived; event automation can invoke the ordinary durable Stop action at the configured time and archive the Server record after successful full cost-stop cleanup.
+- Authorized users can also Stop the Server manually; event automation does not create a special teardown path.
+- Arma 3 mission files are the first Scenario implementation.
+- Administrators can perform all server, cleanup, provider, file, archive, and cost-control actions when their claims allow it.
+- Admin emergency powers include force cost-stop, retry teardown, inspect provider resources, mark manual cleanup, freeze cost owners, manage allowances, archive servers, and delete persistent data.
+- Admin powers are still claims-based and audited.
+- Servers, modpacks, scenarios, cost owners, and related resources must be resource-claim-scopeable.
+- Users can have access to specific resources without global access to all resources of that type.
+- Resource access can be granted to users or roles.
+- For Modpacks and terrains, scoped read/access is administrative Command Center visibility rather than permission to consume the resource.
+- Any scoped Modpack permission makes the Command Center available and shows that Modpack in its management list; a generalized permission shows all Modpacks.
+- Event/server setup may select available Modpacks and terrains without those administrative visibility claims.
+- Modpack download and runtime consumption do not require Command Center Modpack visibility.
+- A server's use of a Modpack neither requires nor grants administrative access to that Modpack.
+- Resource creators, such as modpack creators, can grant full or partial access to other users or roles when their claims allow it.
+- Partial access may include view, edit, execute actions, manage access, upload files, replace scenario, update modpack, and delete/archive capabilities.
+- ManageAccess is distinct from Modify: Modify changes resource content/configuration, while ManageAccess grants or revokes scoped permissions for users or roles.
+- Modify alone does not authorize permission delegation.
+- Full/generalized resource access includes both Modify and ManageAccess.
+- Existing resource-claim infrastructure should be extended rather than replaced.
+- Existing resource claims use claim identifier plus resource id claim value.
+- Existing resource-claim prefixes include modpacks and terrain with all/modify/delete permissions.
+- Admin claims already bypass resource claims.
+- Current resource-claim assignment is administrator/role-management gated; this is a compliance gap because ManageAccess users must be able to grant/revoke access for their specific resource.
+- Creator attribution and resource claims are not equivalent; resource creation must grant explicit initial claims.
+- Creating a Server, Modpack, or Scenario automatically grants the creator explicit full scoped access, including Modify and ManageAccess.
+- CreatedBy is audit/accountability provenance so administrators know who introduced a resource and whom they can contact about it.
+- CreatedBy is not authorization-bearing ownership and is not transferred when operational responsibility changes.
+- Current responsibility is expressed through explicit scoped claims.
+- Spec permission vocabulary should include view, edit, manage files, execute actions, manage access, archive, delete data, and finance-specific use/view/manage/payment/freeze permissions.
+- The minimum Server scoped permissions are View, Operate, Modify, ManageAccess, and DeleteData.
+- Operate covers Start, Stop, and projected non-administrative game-specific actions; dangerous administrative/emergency actions keep dedicated claims.
+- Server Modify covers eligible configuration, file-management, and preservation-selection changes, while irreversible persistent-data deletion requires DeleteData.
+- The minimum Modpack, Scenario, terrain, and Configuration Profile scoped permissions are View, Modify, ManageAccess, and Archive/Delete.
+- Creation permission is collection-scoped; creation then issues the creator an explicit full scoped grant on the new resource.
+- Resource references do not inherit administrative access. Managing a Server neither requires nor grants administrative access to selected reusable content, and selection/consumption neither requires nor grants administrative View.
+- A configurable installation-wide minimum EUR safety range is required for credit enforcement.
+- Kassenbuch workflows must be represented through claims assigned to users or administrator-created roles.
+- Money transferred to the Verein by a user for hosting is still tracked as that cost owner's credit until consumed/resolved.
+- V1 persistent Server data is stored only on the website/API host's configured local filesystem; cloud/object/selectable storage modes are out of scope.
+- Local retained storage is Verein operational cost and is not charged to a Server cost owner, so Stop still means no attributable cost in v1.
+- Not-yet-started commands can be cancelled without side effects or technical cost, but a routine user-facing pending-cancellation surface is not required in v1.
+- Running-operation cancellation is operation-specific and must safely reconcile partial effects; otherwise normal Stop or destructive Terminate provides the lifecycle control.
+- Arma 3 v1 configuration and file behavior follows the official Bohemia Startup Parameters, Server Config, Basic Config, Server Profile, and BattlEye documentation.
+- Arma launch-read configs are next-Start inputs, logs are read-only, and supported live changes use projected game/BattlEye/RCon actions rather than arbitrary hot file editing.
+- Arma Scenario/Mod artifacts remain reusable content, while installed game and downloaded Workshop binaries are rebuilt rather than preserved per Server.
+- Storage estimates distinguish installed steady state from peak preparation demand; the initial replaceable peak
+  policy adds 100% of downloadable content, 5 GiB workspace, and a 20% safety margin.
+- Effective content is flattened and deduplicated by Workshop identity before sizing. Steam metadata is estimated
+  evidence; a fresh matching worker measurement takes precedence, while stale/deleted/inaccessible/unknown evidence
+  remains visible and uses a conservative fallback.
+- Runtime-profile fit is advisory before provisioning because external storage may be mounted. The worker-mounted
+  capacity check is mandatory before SteamCMD and is repeated immediately by the worker before mutation.
+- Runtime deployment storage is a provider-neutral, single-filesystem plan: included disk only, automatically sized
+  external block storage, or fixed-size external block storage. Included and external capacities are not additive.
+- Automatic external capacity is resolved from current peak demand when delayed Start reaches provisioning and is
+  rounded upward to provider minimum, maximum, and increment constraints.
+- External runtime storage is an ephemeral, cost-owned deployment resource. Hetzner Volumes are the first adapter;
+  each is durably attributed before mutation, provider-wide discoverable, late-adoptable, and independently deleted
+  with verified absence before cost-stop succeeds.
+- The external filesystem holds the mutable deployment root. OS/bootstrap necessities remain on root disk, and a
+  stable-device, label-based mount gate verifies identity, filesystem, and capacity before the worker starts.
+- Provisioned external capacity contributes to estimates, affordability, ledger slices, administrative cost views,
+  and automatic cost-stop. Retained Mod caches and permanent per-server Volumes remain deferred.
+- Successful authenticated worker preparation reports bounded runtime and Workshop sizes. Command-attributed,
+  idempotently persisted observations improve later estimates without moving process execution into the API.
+- Scenario demand remains an explicit extension point until the active Scenario domain is implemented.
+
+## Definition Of Done
+
+- [ ] Every major product decision from the conversation is captured here.
+- [ ] Each decision is reflected in at least one focused spec document.
+- [ ] Open questions are moved into decisions when resolved.
+
+## Open Questions
+
+- UI naming for launch-disabled reusable server records is unresolved.
+- Default N-minute reservation slice duration is unresolved.
+- Event affordability graph details are unresolved.
+- Compatibility/migration of existing deployed modpack and terrain claim identifiers to the agreed permission vocabulary remains an implementation concern.
