@@ -132,40 +132,48 @@
 
                 @if (SelectedProfile is not null)
                 {
-                    <label class="hosting-field">
-                        <span>Deployment storage</span>
-                        <select value="@_runtimeStorageStrategy" @onchange="ChangeStorageStrategy">
-                            <option value="IncludedDisk">Included server disk only</option>
-                            @if (SelectedProvider?.Storage?.SupportsExternalBlockStorage is true)
-                            {
-                                <option value="AutomaticExternal">Automatically sized external storage</option>
-                                <option value="FixedExternal">Explicitly sized external storage</option>
-                            }
-                        </select>
-                        <small>The mutable game, Workshop, Scenario, and preparation root uses one filesystem.</small>
-                    </label>
-                    @if (_runtimeStorageStrategy == "FixedExternal" && SelectedProvider?.Storage is { } storage)
-                    {
+                    <section class="hosting-storage-configuration" aria-labelledby="create-storage-title">
+                        <div class="hosting-section-heading">
+                            <span class="utf-kicker">Deployment storage</span>
+                            <h3 id="create-storage-title">Storage for @SelectedProfile.DisplayName</h3>
+                            <p>The game, Workshop, Scenario, and preparation root uses one filesystem.</p>
+                        </div>
                         <label class="hosting-field">
-                            <span>External capacity (GiB)</span>
-                            <input type="number"
-                                   min="@storage.MinimumCapacityGiB"
-                                   max="@storage.MaximumCapacityGiB"
-                                   step="@storage.CapacityIncrementGiB"
-                                   @bind="_externalStorageSizeGiB"/>
+                            <span>Storage strategy</span>
+                            <select value="@_runtimeStorageStrategy" @onchange="ChangeStorageStrategy">
+                                <option value="IncludedDisk">Included profile disk only</option>
+                                @if (SelectedProvider?.Storage?.SupportsExternalBlockStorage is true)
+                                {
+                                    <option value="AutomaticExternal">Automatically sized external storage</option>
+                                    <option value="FixedExternal">Explicitly sized external storage</option>
+                                }
+                            </select>
                         </label>
-                    }
-                    <div class="utf-state-panel">
-                        <strong>@StorageFilesystemDescription()</strong>
-                        <span>Selected capacity: @FormatBytes(SelectedStorageBytes())</span>
-                        <span>Combined estimate: @FormatCombinedPrice()</span>
-                    </div>
-                    @if (_runtimeStorageStrategy != "IncludedDisk")
-                    {
-                        <UtfAlert Intent="MessageIntent.Warning">
-                            External deployment storage is ephemeral and is deleted during full cost-stop or termination.
-                        </UtfAlert>
-                    }
+                        @if (_runtimeStorageStrategy == "FixedExternal" && SelectedProvider?.Storage is { } storage)
+                        {
+                            <label class="hosting-field">
+                                <span>External capacity (GiB)</span>
+                                <input type="number"
+                                       min="@storage.MinimumCapacityGiB"
+                                       max="@storage.MaximumCapacityGiB"
+                                       step="@storage.CapacityIncrementGiB"
+                                       @bind="_externalStorageSizeGiB"/>
+                            </label>
+                        }
+                        <dl class="hosting-storage-selection-facts">
+                            <div><dt>Included profile disk</dt><dd>@(SelectedProfile.DiskGiB?.ToString(CultureInfo.CurrentCulture) ?? "—") GiB</dd></div>
+                            <div><dt>Estimated peak requirement</dt><dd>@(_storageDemand is { } demand ? FormatBytes(demand.PeakPreparationRequiredBytes) : "Calculating…")</dd></div>
+                            <div><dt>Selected deployment capacity</dt><dd>@FormatBytes(SelectedStorageBytes())</dd></div>
+                            <div><dt>Combined estimated price</dt><dd>@FormatCombinedPrice()</dd></div>
+                        </dl>
+                        <p class="hosting-storage-filesystem">@StorageFilesystemDescription()</p>
+                        @if (_runtimeStorageStrategy != "IncludedDisk")
+                        {
+                            <UtfAlert Intent="MessageIntent.Warning">
+                                External deployment storage is ephemeral and is deleted during full cost-stop or termination.
+                            </UtfAlert>
+                        }
+                    </section>
                 }
 
                 @if (_isEstimateLoading)

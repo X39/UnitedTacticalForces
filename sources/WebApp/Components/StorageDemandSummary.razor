@@ -46,18 +46,20 @@
         </UtfAlert>
     }
 
-    <h3>Runtime profile capacity</h3>
-    <div class="storage-demand__profiles">
-        @foreach (var profile in Demand.RuntimeProfiles)
-        {
-            <article class="storage-demand__profile">
-                <strong>@profile.DisplayName</strong>
-                <span>Included: @FormatOptionalBytes(profile.IncludedCapacityBytes)</span>
-                <span>Usable after system reserve: @FormatOptionalBytes(profile.UsableCapacityBytes)</span>
-                <span><strong>@FitText(profile.IsSufficient)</strong></span>
-            </article>
-        }
-    </div>
+    <h3>Selected runtime profile capacity</h3>
+    @if (SelectedFit is { } selectedFit)
+    {
+        <article class="storage-demand__profile">
+            <strong>@selectedFit.DisplayName</strong>
+            <span>Included: @FormatOptionalBytes(selectedFit.IncludedCapacityBytes)</span>
+            <span>Usable after system reserve: @FormatOptionalBytes(selectedFit.UsableCapacityBytes)</span>
+            <span><strong>@FitText(selectedFit.IsSufficient)</strong></span>
+        </article>
+    }
+    else
+    {
+        <p class="storage-demand__status">Capacity information is unavailable for the selected runtime profile.</p>
+    }
 
     <details>
         <summary>Component breakdown</summary>

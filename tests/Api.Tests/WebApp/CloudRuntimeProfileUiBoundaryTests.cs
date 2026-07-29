@@ -168,10 +168,32 @@ public partial class CloudRuntimeProfileUiBoundaryTests
         Assert.Contains("Capacity unknown", summary, StringComparison.Ordinal);
         Assert.Contains("external storage", summary, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("conservative fallbacks", summary, StringComparison.Ordinal);
-        Assert.Contains("@foreach (var profile in Demand.RuntimeProfiles)", summary, StringComparison.Ordinal);
+        Assert.Contains("Selected runtime profile capacity", summary, StringComparison.Ordinal);
+        Assert.Contains("@if (SelectedFit is { } selectedFit)", summary, StringComparison.Ordinal);
+        Assert.DoesNotContain("@foreach (var profile in Demand.RuntimeProfiles)", summary, StringComparison.Ordinal);
         Assert.Contains("<StorageDemandSummary", create, StringComparison.Ordinal);
         Assert.Contains("<StorageDemandSummary", details, StringComparison.Ordinal);
         Assert.Contains("Modpack (optional)", create, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Details_StorageConfigurationLivesOnCloudTabAndUsesSelectedProfile()
+    {
+        var details = ReadRepositoryFile(DetailsPath);
+        var overview = ReadSection(
+            details,
+            "@if (_activeSection == \"overview\")",
+            "@if (_activeSection is \"overview\" or \"audit\")");
+        var cloud = ReadSection(
+            details,
+            "@if (_activeSection == \"cloud\")",
+            "@if (_activeSection == \"logs\")");
+
+        Assert.DoesNotContain("hosting-storage-configuration", overview, StringComparison.Ordinal);
+        Assert.Contains("hosting-storage-configuration", cloud, StringComparison.Ordinal);
+        Assert.Contains("Storage for @SelectedRuntimeProfile?.DisplayName", cloud, StringComparison.Ordinal);
+        Assert.Contains("<StorageDemandSummary", cloud, StringComparison.Ordinal);
+        Assert.Contains("SelectedProfileIdentifier=\"_selectedRuntimeProfileIdentifier\"", cloud, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -327,6 +327,64 @@
     background: var(--utf-bg);
 }
 
+.hosting-storage-configuration {
+    display: grid;
+    gap: 16px;
+    margin-top: 8px;
+    padding: 20px;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 4px;
+    background: var(--utf-bg);
+}
+
+.hosting-storage-configuration h3 {
+    margin: 0;
+    color: var(--utf-text);
+    font-size: 16px;
+}
+
+.hosting-storage-selection-grid,
+.hosting-storage-selection-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+}
+
+.hosting-storage-selection-facts {
+    margin: 0;
+}
+
+.hosting-storage-selection-facts > div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 4px;
+    background: var(--utf-surface);
+}
+
+.hosting-storage-selection-facts dt {
+    color: var(--utf-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.hosting-storage-selection-facts dd {
+    margin: 0;
+    font-weight: 700;
+}
+
+.hosting-storage-filesystem {
+    margin: 0;
+    color: var(--utf-text-muted);
+}
+
+.hosting-storage-configuration > .utf-button {
+    justify-self: start;
+}
+
 .hosting-storage-card h3 {
     margin: 0;
     color: var(--utf-text);
@@ -956,6 +1014,11 @@
     }
 
     .hosting-storage-facts {
+        grid-template-columns: 1fr;
+    }
+
+    .hosting-storage-selection-grid,
+    .hosting-storage-selection-facts {
         grid-template-columns: 1fr;
     }
 
