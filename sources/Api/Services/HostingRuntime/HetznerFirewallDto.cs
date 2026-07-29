@@ -15,10 +15,37 @@ internal sealed class HetznerFirewallDto
     public Dictionary<string, string>? Labels { get; set; }
 
     [JsonPropertyName("applied_to")]
-    public List<JsonElement>? AppliedTo { get; set; }
+    public required List<HetznerFirewallResourceDto?>? AppliedTo { get; set; }
 
     [JsonPropertyName("rules")]
     public List<HetznerFirewallRuleDto>? Rules { get; set; }
+}
+
+internal sealed class HetznerFirewallResourceDto
+{
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    [JsonPropertyName("server")]
+    public HetznerFirewallResourceServerDto? Server { get; set; }
+
+    [JsonPropertyName("label_selector")]
+    public HetznerFirewallResourceLabelSelectorDto? LabelSelector { get; set; }
+
+    [JsonPropertyName("applied_to_resources")]
+    public List<HetznerFirewallResourceDto?>? AppliedToResources { get; set; }
+}
+
+internal sealed class HetznerFirewallResourceServerDto
+{
+    [JsonPropertyName("id")]
+    public long Id { get; set; }
+}
+
+internal sealed class HetznerFirewallResourceLabelSelectorDto
+{
+    [JsonPropertyName("selector")]
+    public string? Selector { get; set; }
 }
 
 internal sealed class HetznerFirewallRuleDto

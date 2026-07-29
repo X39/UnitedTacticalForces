@@ -5,5 +5,5 @@ namespace X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 internal sealed class HetznerPaginationDto
 {
     [JsonPropertyName("next_page")]
-    public int? NextPage { get; set; }
+    public required long? NextPage { get; set; }
 }

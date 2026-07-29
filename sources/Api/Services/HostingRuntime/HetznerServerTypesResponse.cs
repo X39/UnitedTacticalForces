@@ -5,7 +5,8 @@ namespace X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 internal sealed class HetznerServerTypesResponse
 {
     [JsonPropertyName("server_types")]
-    public IReadOnlyList<HetznerServerTypeDto>? ServerTypes { get; set; }
+    public required IReadOnlyList<HetznerServerTypeDto>? ServerTypes { get; set; }
 
-    public HetznerMetaDto? Meta { get; set; }
+    [JsonPropertyName("meta")]
+    public required HetznerMetaDto? Meta { get; set; }
 }

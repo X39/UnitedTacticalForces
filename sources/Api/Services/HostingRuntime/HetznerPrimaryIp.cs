@@ -8,4 +8,5 @@ internal sealed record HetznerPrimaryIp(
     long? AssigneeId,
     string? AssigneeType,
     bool AutoDelete,
+    HetznerResourceReference Location,
     IReadOnlyDictionary<string, string> Labels);

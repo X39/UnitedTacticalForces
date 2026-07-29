@@ -66,6 +66,19 @@ public sealed class HetznerRuntimeProvider(
         if (optionsProvider.Value.ValidateProvisioning() is { } failure)
             throw new InvalidOperationException(failure);
 
+        var pricingCurrency = await client.GetPricingCurrencyAsync(cancellationToken).ConfigureAwait(false);
+        if (pricingCurrency.Outcome is not ERuntimeProviderOutcome.Succeeded
+            || string.IsNullOrWhiteSpace(pricingCurrency.Value))
+        {
+            throw new InvalidOperationException(
+                pricingCurrency.Error ?? "Hetzner's project pricing currency could not be loaded.");
+        }
+        if (!string.Equals(pricingCurrency.Value.Trim(), "EUR", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Hetzner pricing currency '{SafeCurrencyCode(pricingCurrency.Value)}' is not supported; "
+                + "UTF hosting cost accounting is EUR-denominated.");
+        }
         var result = await client.GetServerTypesAsync(cancellationToken).ConfigureAwait(false);
         if (result.Outcome is not ERuntimeProviderOutcome.Succeeded || result.Value is null)
             throw new InvalidOperationException(result.Error ?? "Hetzner server types could not be loaded.");
@@ -75,20 +88,22 @@ public sealed class HetznerRuntimeProvider(
         var profiles = result.Value
             .Where(q => !string.IsNullOrWhiteSpace(q.Name)
                         && string.Equals(q.Architecture, "x86", StringComparison.OrdinalIgnoreCase)
-                        && q.Deprecation.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
-                        && (q.Locations is null || q.Locations.Any(l => l.Available
-                            && string.Equals(l.Location?.Name, location, StringComparison.OrdinalIgnoreCase))))
+                        && TryGetAvailableServerTypeLocation(q, location, out _)
+                        && ToProfileInteger(q.Cores).HasValue
+                        && ToProfileInteger(q.Disk).HasValue)
             .Select(q =>
             {
                 var price = q.Prices?.FirstOrDefault(p =>
                     string.Equals(p.Location, location, StringComparison.OrdinalIgnoreCase));
+                var cores = ToProfileInteger(q.Cores);
+                var disk = ToProfileInteger(q.Disk);
                 return new RuntimeProfile(
                     q.Name!.Trim(),
                     string.IsNullOrWhiteSpace(q.Description) ? q.Name.Trim() : q.Description.Trim(),
-                    $"{q.Cores} vCPU · {q.Memory:0.##} GiB RAM · {q.Disk} GiB disk",
-                    q.Cores,
+                    $"{cores} vCPU · {q.Memory:0.##} GiB RAM · {disk} GiB disk",
+                    cores,
                     q.Memory,
-                    q.Disk,
+                    disk,
                     ParsePrice(price?.PriceHourly?.Gross),
                     ParsePrice(price?.PriceMonthly?.Gross));
             })
@@ -106,7 +121,8 @@ public sealed class HetznerRuntimeProvider(
                 EstimatedHourlyCostEur = q.EstimatedHourlyCostEur + fixedResourceOverhead,
                 EstimatedMonthlyCostEur = q.EstimatedMonthlyCostEur + fixedResourceOverhead * 730m,
             })
-            .OrderBy(q => q.EstimatedHourlyCostEur ?? decimal.MaxValue)
+            .OrderByDescending(q => IsRecommendedServerType(result.Value, q.Identifier, location))
+            .ThenBy(q => q.EstimatedHourlyCostEur ?? decimal.MaxValue)
             .ThenBy(q => q.Identifier, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
@@ -384,12 +400,20 @@ public sealed class HetznerRuntimeProvider(
             }
         }
 
-        if (!primaryIp.AutoDelete || !string.Equals(primaryIp.Type, "ipv4", StringComparison.OrdinalIgnoreCase))
+        var primaryIpConfiguration = VerifyPrimaryIpConfiguration(primaryIp);
+        if (primaryIpConfiguration is not EProviderConfigurationVerification.Verified)
         {
             return ProvisionFailure(
-                ERuntimeProviderOutcome.PermanentFailure,
-                "primary-ip-safety-mismatch",
-                "The attributed Hetzner Primary IP does not have the required IPv4 auto-delete safety configuration.",
+                primaryIpConfiguration is EProviderConfigurationVerification.Conflict
+                    ? ERuntimeProviderOutcome.PermanentFailure
+                    : ERuntimeProviderOutcome.Unknown,
+                primaryIpConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "primary-ip-configuration-mismatch"
+                    : "primary-ip-configuration-unverified",
+                primaryIpConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "The attributed Hetzner Primary IP does not have the required IPv4, auto-delete, "
+                      + "and location configuration."
+                    : "The attributed Hetzner Primary IP configuration could not be verified.",
                 intent with { Firewall = firewall, PrimaryIp = primaryIp },
                 isProvisioningAttemptDefinitivelyClosed: !hadUnknownCreateOutcome);
         }
@@ -520,6 +544,22 @@ public sealed class HetznerRuntimeProvider(
                 intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
         }
         primaryIp = verifiedIp.Value;
+        primaryIpConfiguration = VerifyPrimaryIpConfiguration(primaryIp);
+        if (primaryIpConfiguration is not EProviderConfigurationVerification.Verified)
+        {
+            return ProvisionFailure(
+                primaryIpConfiguration is EProviderConfigurationVerification.Conflict
+                    ? ERuntimeProviderOutcome.PermanentFailure
+                    : ERuntimeProviderOutcome.Unknown,
+                primaryIpConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "primary-ip-configuration-mismatch"
+                    : "primary-ip-configuration-unverified",
+                primaryIpConfiguration is EProviderConfigurationVerification.Conflict
+                    ? "The explicit Hetzner Primary IP no longer has the required IPv4, auto-delete, "
+                      + "and location configuration."
+                    : "The explicit Hetzner Primary IP configuration could not be verified.",
+                intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server });
+        }
         if (!primaryIp.AssigneeId.HasValue)
         {
             return ProvisionFailure(
@@ -530,9 +570,7 @@ public sealed class HetznerRuntimeProvider(
         }
         if (!HasExpectedAttribution(primaryIp.Labels, request, PrimaryIpResourceType)
             || primaryIp.AssigneeId.Value != server.Id
-            || !string.Equals(primaryIp.AssigneeType, "server", StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(primaryIp.Type, "ipv4", StringComparison.OrdinalIgnoreCase)
-            || !primaryIp.AutoDelete)
+            || !string.Equals(primaryIp.AssigneeType, "server", StringComparison.OrdinalIgnoreCase))
         {
             return ProvisionFailure(
                 ERuntimeProviderOutcome.PermanentFailure,
@@ -613,6 +651,39 @@ public sealed class HetznerRuntimeProvider(
         => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : null;
+
+    private static string SafeCurrencyCode(string value)
+    {
+        var candidate = value.Trim();
+        return candidate.Length == 3 && candidate.All(char.IsAsciiLetter)
+            ? candidate.ToUpperInvariant()
+            : "unknown";
+    }
+
+    private static int? ToProfileInteger(decimal value)
+        => value > 0m && value <= int.MaxValue && decimal.Truncate(value) == value
+            ? decimal.ToInt32(value)
+            : null;
+
+    private static bool TryGetAvailableServerTypeLocation(
+        HetznerServerTypeDto serverType,
+        string expectedLocation,
+        out HetznerServerTypeLocationDto? serverTypeLocation)
+    {
+        serverTypeLocation = serverType.Locations?.FirstOrDefault(q =>
+            q.Available
+            && q.Deprecation.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+            && string.Equals(q.Name, expectedLocation, StringComparison.OrdinalIgnoreCase));
+        return serverTypeLocation is not null;
+    }
+
+    private static bool IsRecommendedServerType(
+        IEnumerable<HetznerServerTypeDto> serverTypes,
+        string identifier,
+        string location)
+        => serverTypes.Any(q => string.Equals(q.Name, identifier, StringComparison.OrdinalIgnoreCase)
+                                && TryGetAvailableServerTypeLocation(q, location, out var serverTypeLocation)
+                                && serverTypeLocation!.Recommended);
 
     public async Task<RuntimeObservationResult> ObserveAsync(
         RuntimeObservationRequest request,
@@ -848,7 +919,7 @@ public sealed class HetznerRuntimeProvider(
                 .. providerServers.Select(q => CreateResource(q)),
                 .. discoveredPrimaryIps!.Select(q => CreateResource(
                     q,
-                    GetPrimaryIpProvisioningReadiness(q, providerServers))),
+                    GetPrimaryIpProvisioningReadiness(q, providerServers, optionsProvider.Value.Location))),
                 .. discoveredFirewalls!.Select(q => CreateResource(
                     q,
                     GetFirewallProvisioningReadiness(q, providerServers))),
@@ -886,7 +957,9 @@ public sealed class HetznerRuntimeProvider(
             return failure!;
         if (!HasExpectedAttribution(value!.Labels, request, PrimaryIpResourceType))
             return UnattributedObservation();
-        return Observed(CreateResource(value));
+        return Observed(CreateResource(
+            value,
+            GetPrimaryIpConfigurationProvisioningReadiness(value, optionsProvider.Value.Location)));
     }
 
     private async Task<RuntimeObservationResult> ObserveFirewallAsync(
@@ -1309,6 +1382,17 @@ public sealed class HetznerRuntimeProvider(
         return EProviderConfigurationVerification.Verified;
     }
 
+    private EProviderConfigurationVerification VerifyPrimaryIpConfiguration(HetznerPrimaryIp primaryIp)
+    {
+        if (!primaryIp.AutoDelete || !string.Equals(primaryIp.Type, "ipv4", StringComparison.OrdinalIgnoreCase))
+            return EProviderConfigurationVerification.Conflict;
+        if (!HasProviderIdentity(primaryIp.Location))
+            return EProviderConfigurationVerification.Uncertain;
+        return ProviderIdentityMatches(primaryIp.Location, optionsProvider.Value.Location)
+            ? EProviderConfigurationVerification.Verified
+            : EProviderConfigurationVerification.Conflict;
+    }
+
     private static EProviderConfigurationVerification VerifyFirewallConfiguration(
         HetznerFirewall firewall,
         RuntimeProvisionRequest request)
@@ -1556,10 +1640,12 @@ public sealed class HetznerRuntimeProvider(
 
     private static ERuntimeResourceProvisioningReadiness GetPrimaryIpProvisioningReadiness(
         HetznerPrimaryIp primaryIp,
-        IReadOnlyCollection<HetznerServer> servers)
+        IReadOnlyCollection<HetznerServer> servers,
+        string expectedLocation)
     {
-        if (!primaryIp.AutoDelete || !string.Equals(primaryIp.Type, "ipv4", StringComparison.OrdinalIgnoreCase))
-            return ERuntimeResourceProvisioningReadiness.Conflict;
+        var configurationReadiness = GetPrimaryIpConfigurationProvisioningReadiness(primaryIp, expectedLocation);
+        if (configurationReadiness is not ERuntimeResourceProvisioningReadiness.Ready)
+            return configurationReadiness;
         if (!primaryIp.AssigneeId.HasValue)
             return ERuntimeResourceProvisioningReadiness.Pending;
         if (!string.Equals(primaryIp.AssigneeType, "server", StringComparison.OrdinalIgnoreCase))
@@ -1567,6 +1653,19 @@ public sealed class HetznerRuntimeProvider(
 
         var attributedServerId = ResolveAttributedServerId(primaryIp.Labels, servers);
         return attributedServerId.HasValue && primaryIp.AssigneeId == attributedServerId
+            ? ERuntimeResourceProvisioningReadiness.Ready
+            : ERuntimeResourceProvisioningReadiness.Conflict;
+    }
+
+    private static ERuntimeResourceProvisioningReadiness GetPrimaryIpConfigurationProvisioningReadiness(
+        HetznerPrimaryIp primaryIp,
+        string expectedLocation)
+    {
+        if (!primaryIp.AutoDelete || !string.Equals(primaryIp.Type, "ipv4", StringComparison.OrdinalIgnoreCase))
+            return ERuntimeResourceProvisioningReadiness.Conflict;
+        if (string.IsNullOrWhiteSpace(expectedLocation) || !HasProviderIdentity(primaryIp.Location))
+            return ERuntimeResourceProvisioningReadiness.Pending;
+        return ProviderIdentityMatches(primaryIp.Location, expectedLocation)
             ? ERuntimeResourceProvisioningReadiness.Ready
             : ERuntimeResourceProvisioningReadiness.Conflict;
     }

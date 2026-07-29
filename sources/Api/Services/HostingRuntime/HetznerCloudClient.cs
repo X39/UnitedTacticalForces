@@ -28,7 +28,7 @@ public sealed class HetznerCloudClient(
         CancellationToken cancellationToken)
     {
         var values = new List<HetznerServerTypeDto>();
-        int? page = 1;
+        long? page = 1;
         var pagesRead = 0;
         while (page.HasValue)
         {
@@ -47,8 +47,13 @@ public sealed class HetznerCloudClient(
                     response.Error);
             }
 
-            values.AddRange(response.Value.ServerTypes ?? []);
-            var nextPage = response.Value.Meta?.Pagination?.NextPage;
+            if (response.Value.ServerTypes is null || response.Value.Meta?.Pagination is null)
+            {
+                return MalformedPage<IReadOnlyList<HetznerServerTypeDto>>("server types");
+            }
+
+            values.AddRange(response.Value.ServerTypes);
+            var nextPage = response.Value.Meta.Pagination.NextPage;
             if (PaginationFailure(page.Value, nextPage, pagesRead) is { } paginationFailure)
             {
                 return HetznerClientResult<IReadOnlyList<HetznerServerTypeDto>>.Failure(
@@ -61,12 +66,33 @@ public sealed class HetznerCloudClient(
         return HetznerClientResult<IReadOnlyList<HetznerServerTypeDto>>.Success(values);
     }
 
+    internal async Task<HetznerClientResult<string>> GetPricingCurrencyAsync(
+        CancellationToken cancellationToken)
+    {
+        var response = await SendJsonAsync<HetznerPricingResponse>(
+                HttpMethod.Get,
+                "pricing",
+                requestBody: null,
+                ambiguousMutation: false,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (response.Outcome is not ERuntimeProviderOutcome.Succeeded || response.Value is null)
+            return HetznerClientResult<string>.Failure(response.Outcome, response.Error);
+
+        var currency = NormalizeCurrency(response.Value.Pricing?.Currency);
+        return currency is null
+            ? HetznerClientResult<string>.Failure(
+                ERuntimeProviderOutcome.Unknown,
+                "Hetzner Cloud returned an unreadable pricing currency response.")
+            : HetznerClientResult<string>.Success(currency);
+    }
+
     internal async Task<HetznerClientResult<IReadOnlyList<HetznerServer>>> GetServersAsync(
         IReadOnlyDictionary<string, string> requiredLabels,
         CancellationToken cancellationToken)
     {
         var values = new List<HetznerServer>();
-        int? page = 1;
+        long? page = 1;
         var pagesRead = 0;
         while (page.HasValue)
         {
@@ -85,8 +111,11 @@ public sealed class HetznerCloudClient(
                     response.Error);
             }
 
-            values.AddRange((response.Value.Servers ?? []).Select(MapServer));
-            var nextPage = response.Value.Meta?.Pagination?.NextPage;
+            if (response.Value.Servers is null || response.Value.Meta?.Pagination is null)
+                return MalformedPage<IReadOnlyList<HetznerServer>>("servers");
+
+            values.AddRange(response.Value.Servers.Select(MapServer));
+            var nextPage = response.Value.Meta.Pagination.NextPage;
             if (PaginationFailure(page.Value, nextPage, pagesRead) is { } paginationFailure)
             {
                 return HetznerClientResult<IReadOnlyList<HetznerServer>>.Failure(
@@ -132,7 +161,7 @@ public sealed class HetznerCloudClient(
         CancellationToken cancellationToken)
     {
         var values = new List<HetznerPrimaryIp>();
-        int? page = 1;
+        long? page = 1;
         var pagesRead = 0;
         while (page.HasValue)
         {
@@ -151,8 +180,11 @@ public sealed class HetznerCloudClient(
                     response.Error);
             }
 
-            values.AddRange((response.Value.PrimaryIps ?? []).Select(MapPrimaryIp));
-            var nextPage = response.Value.Meta?.Pagination?.NextPage;
+            if (response.Value.PrimaryIps is null || response.Value.Meta?.Pagination is null)
+                return MalformedPage<IReadOnlyList<HetznerPrimaryIp>>("Primary IPs");
+
+            values.AddRange(response.Value.PrimaryIps.Select(MapPrimaryIp));
+            var nextPage = response.Value.Meta.Pagination.NextPage;
             if (PaginationFailure(page.Value, nextPage, pagesRead) is { } paginationFailure)
             {
                 return HetznerClientResult<IReadOnlyList<HetznerPrimaryIp>>.Failure(
@@ -202,7 +234,7 @@ public sealed class HetznerCloudClient(
         CancellationToken cancellationToken)
     {
         var values = new List<HetznerFirewall>();
-        int? page = 1;
+        long? page = 1;
         var pagesRead = 0;
         while (page.HasValue)
         {
@@ -221,8 +253,11 @@ public sealed class HetznerCloudClient(
                     response.Error);
             }
 
-            values.AddRange((response.Value.Firewalls ?? []).Select(MapFirewall));
-            var nextPage = response.Value.Meta?.Pagination?.NextPage;
+            if (response.Value.Firewalls is null || response.Value.Meta?.Pagination is null)
+                return MalformedPage<IReadOnlyList<HetznerFirewall>>("firewalls");
+
+            values.AddRange(response.Value.Firewalls.Select(MapFirewall));
+            var nextPage = response.Value.Meta.Pagination.NextPage;
             if (PaginationFailure(page.Value, nextPage, pagesRead) is { } paginationFailure)
             {
                 return HetznerClientResult<IReadOnlyList<HetznerFirewall>>.Failure(
@@ -436,19 +471,19 @@ public sealed class HetznerCloudClient(
                 return result;
             }
 
-            var outcome = MapFailure(response.StatusCode, ambiguousMutation);
             errorType = $"http.{statusCode}";
             var sensitiveRequestValue = requestBody is HetznerServerCreateRequest serverRequest
                 ? serverRequest.UserData
                 : null;
-            var error = await BuildFailureMessageAsync(
+            var failure = await BuildFailureAsync(
                     response,
                     options.Token,
                     sensitiveRequestValue,
                     cancellationToken)
                 .ConfigureAwait(false);
+            var outcome = MapFailure(response.StatusCode, failure.ProviderCode, ambiguousMutation);
             response.Dispose();
-            result = HetznerHttpResult.Failure(outcome, error);
+            result = HetznerHttpResult.Failure(outcome, failure.Message);
             return result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -507,7 +542,12 @@ public sealed class HetznerCloudClient(
         }
     }
 
-    private static string? PaginationFailure(int currentPage, int? nextPage, int pagesRead)
+    private static HetznerClientResult<T> MalformedPage<T>(string resourceName)
+        => HetznerClientResult<T>.Failure(
+            ERuntimeProviderOutcome.Unknown,
+            $"Hetzner Cloud returned an unreadable paginated {resourceName} response.");
+
+    private static string? PaginationFailure(long currentPage, long? nextPage, int pagesRead)
     {
         if (!nextPage.HasValue)
             return null;
@@ -548,16 +588,38 @@ public sealed class HetznerCloudClient(
     private static string ListPath(
         string resource,
         IReadOnlyDictionary<string, string> requiredLabels,
-        int page)
+        long page)
     {
         var selector = string.Join(',', requiredLabels.Select(q => $"{q.Key}={q.Value}"));
         return $"{resource}?label_selector={Uri.EscapeDataString(selector)}&page={page}&per_page={PageSize}";
     }
 
-    private static ERuntimeProviderOutcome MapFailure(HttpStatusCode statusCode, bool ambiguousMutation)
+    private static ERuntimeProviderOutcome MapFailure(
+        HttpStatusCode statusCode,
+        string? providerCode,
+        bool ambiguousMutation)
     {
         if (statusCode is HttpStatusCode.NotFound)
             return ERuntimeProviderOutcome.NotFound;
+        if (statusCode is HttpStatusCode.PreconditionFailed)
+            return ERuntimeProviderOutcome.TransientFailure;
+        if ((int)statusCode == 423
+            && string.Equals(providerCode, "protected", StringComparison.OrdinalIgnoreCase))
+        {
+            return ERuntimeProviderOutcome.PermanentFailure;
+        }
+        if ((int)statusCode == 423)
+            return ERuntimeProviderOutcome.TransientFailure;
+        if (statusCode is HttpStatusCode.Conflict
+            && string.Equals(providerCode, "uniqueness_error", StringComparison.OrdinalIgnoreCase))
+        {
+            return ERuntimeProviderOutcome.PermanentFailure;
+        }
+        if (statusCode is HttpStatusCode.Conflict
+            && string.Equals(providerCode, "conflict", StringComparison.OrdinalIgnoreCase))
+        {
+            return ERuntimeProviderOutcome.TransientFailure;
+        }
         if (ambiguousMutation
             && (statusCode is HttpStatusCode.Conflict or HttpStatusCode.RequestTimeout
                 || (int)statusCode >= 500))
@@ -571,21 +633,12 @@ public sealed class HetznerCloudClient(
         return ERuntimeProviderOutcome.PermanentFailure;
     }
 
-    private static async Task<string> BuildFailureMessageAsync(
+    private static async Task<HetznerFailure> BuildFailureAsync(
         HttpResponseMessage response,
         string token,
         string? sensitiveRequestValue,
         CancellationToken cancellationToken)
     {
-        var summary = response.StatusCode switch
-        {
-            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
-                => "Hetzner Cloud rejected the configured credentials.",
-            HttpStatusCode.NotFound => "The Hetzner Cloud resource was not found.",
-            HttpStatusCode.TooManyRequests => "Hetzner Cloud rate-limited the request.",
-            _ when (int)response.StatusCode >= 500 => "Hetzner Cloud is temporarily unavailable.",
-            _ => $"Hetzner Cloud rejected the request with HTTP status {(int)response.StatusCode}.",
-        };
         string? providerCode = null;
         string? providerMessage = null;
         try
@@ -612,6 +665,22 @@ public sealed class HetznerCloudClient(
             // A broken error body must not hide the status code that triggered this diagnostic.
         }
 
+        var summary = response.StatusCode switch
+        {
+            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+                => "Hetzner Cloud rejected the configured credentials.",
+            HttpStatusCode.NotFound => "The Hetzner Cloud resource was not found.",
+            HttpStatusCode.PreconditionFailed => "The requested Hetzner Cloud resource is temporarily unavailable.",
+            HttpStatusCode.TooManyRequests => "Hetzner Cloud rate-limited the request.",
+            _ when (int)response.StatusCode == 423
+                   && string.Equals(providerCode, "protected", StringComparison.OrdinalIgnoreCase)
+                => "Hetzner Cloud protects this resource from the requested action.",
+            _ when (int)response.StatusCode == 423
+                   && string.Equals(providerCode, "locked", StringComparison.OrdinalIgnoreCase)
+                => "The Hetzner Cloud resource is temporarily locked.",
+            _ when (int)response.StatusCode >= 500 => "Hetzner Cloud is temporarily unavailable.",
+            _ => $"Hetzner Cloud rejected the request with HTTP status {(int)response.StatusCode}.",
+        };
         var requestId = TryGetRequestId(response);
         var detail = (providerCode, providerMessage) switch
         {
@@ -623,7 +692,9 @@ public sealed class HetznerCloudClient(
         var reference = string.IsNullOrWhiteSpace(requestId)
             ? string.Empty
             : $" Provider request: {requestId}.";
-        return HostingFailureSanitizer.Sanitize(summary + detail + reference, token, sensitiveRequestValue);
+        return new HetznerFailure(
+            HostingFailureSanitizer.Sanitize(summary + detail + reference, token, sensitiveRequestValue),
+            providerCode);
     }
 
     private static string? TryGetRequestId(HttpResponseMessage response)
@@ -645,7 +716,7 @@ public sealed class HetznerCloudClient(
             value.PublicNet?.Ipv6?.Ip,
             ResourceReference(value.ServerType),
             ResourceReference(value.Image),
-            ResourceReference(value.Location ?? value.Datacenter?.Location),
+            ResourceReference(value.Location),
             CopyLabels(value.Labels));
 
     private static HetznerPrimaryIp MapPrimaryIp(HetznerPrimaryIpDto value)
@@ -657,17 +728,23 @@ public sealed class HetznerCloudClient(
             value.AssigneeId,
             value.AssigneeType,
             value.AutoDelete,
+            new HetznerResourceReference(
+                value.Location?.Id is > 0 ? value.Location.Id : null,
+                value.Location?.Name?.Trim() ?? string.Empty),
             CopyLabels(value.Labels));
 
     private static HetznerFirewall MapFirewall(HetznerFirewallDto value)
-        => new(
+    {
+        var appliedResources = MapAppliedResources(value.AppliedTo);
+        return new HetznerFirewall(
             value.Id,
             value.Name ?? string.Empty,
-            value.AppliedTo?.Count ?? 0,
-            GetAppliedServerIds(value.AppliedTo),
+            appliedResources.Count,
+            appliedResources.ServerIds,
             (value.Rules ?? []).Select(MapFirewallRule).ToArray(),
             value.Rules is not null,
             CopyLabels(value.Labels));
+    }
 
     private static HetznerFirewallRule MapFirewallRule(HetznerFirewallRuleDto value)
         => new(
@@ -681,33 +758,59 @@ public sealed class HetznerCloudClient(
     private static HetznerResourceReference ResourceReference(HetznerResourceReferenceDto? value)
         => new(value?.Id is > 0 ? value.Id : null, value?.Name?.Trim() ?? string.Empty);
 
-    private static IReadOnlyList<long> GetAppliedServerIds(IReadOnlyList<JsonElement>? appliedTo)
+    private static AppliedFirewallResources MapAppliedResources(
+        IReadOnlyList<HetznerFirewallResourceDto?>? appliedTo)
     {
         if (appliedTo is null)
-            return [];
+            return new AppliedFirewallResources(1, []);
 
-        var serverIds = new List<long>(appliedTo.Count);
-        foreach (var target in appliedTo)
+        var serverIds = new List<long>();
+        var seenServerIds = new HashSet<long>();
+        var resourceCount = 0;
+        var pending = new Stack<HetznerFirewallResourceDto?>(appliedTo.Reverse());
+        while (pending.TryPop(out var target))
         {
-            if (target.ValueKind is not JsonValueKind.Object
-                || !target.TryGetProperty("type", out var type)
-                || !string.Equals(type.GetString(), "server", StringComparison.OrdinalIgnoreCase)
-                || !target.TryGetProperty("server", out var server)
-                || server.ValueKind is not JsonValueKind.Object
-                || !server.TryGetProperty("id", out var identifier)
-                || !identifier.TryGetInt64(out var serverId))
-            {
+            resourceCount++;
+            if (target is null)
                 continue;
+            if (string.Equals(target.Type, "server", StringComparison.OrdinalIgnoreCase)
+                && target.Server?.Id is > 0)
+            {
+                if (seenServerIds.Add(target.Server.Id))
+                    serverIds.Add(target.Server.Id);
             }
-            serverIds.Add(serverId);
+
+            if (target.AppliedToResources is not null)
+            {
+                for (var index = target.AppliedToResources.Count - 1; index >= 0; index--)
+                    pending.Push(target.AppliedToResources[index]);
+            }
         }
-        return serverIds;
+
+        // Count selector nodes as well as their resolved resources. A selector must never masquerade as the one
+        // direct server attachment expected by provisioning, and any declared attachment keeps teardown fail-closed.
+        return new AppliedFirewallResources(resourceCount, serverIds);
     }
+
+    private static string? NormalizeCurrency(string? value)
+    {
+        var normalized = value?.Trim();
+        if (normalized is not { Length: 3 } || normalized.Any(q => !IsAsciiLetter(q)))
+            return null;
+        return normalized.ToUpperInvariant();
+    }
+
+    private static bool IsAsciiLetter(char value)
+        => value is >= 'A' and <= 'Z' or >= 'a' and <= 'z';
 
     private static IReadOnlyDictionary<string, string> CopyLabels(Dictionary<string, string>? labels)
         => labels is null
             ? new Dictionary<string, string>(StringComparer.Ordinal)
             : new Dictionary<string, string>(labels, StringComparer.Ordinal);
+
+    private sealed record AppliedFirewallResources(int Count, IReadOnlyList<long> ServerIds);
+
+    private sealed record HetznerFailure(string Message, string? ProviderCode);
 
     private sealed record HetznerHttpResult(
         ERuntimeProviderOutcome Outcome,

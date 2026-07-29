@@ -27,9 +27,6 @@ internal sealed class HetznerServerDto
 
     [JsonPropertyName("location")]
     public HetznerResourceReferenceDto? Location { get; set; }
-
-    [JsonPropertyName("datacenter")]
-    public HetznerDatacenterDto? Datacenter { get; set; }
 }
 
 internal sealed class HetznerResourceReferenceDto
@@ -39,10 +36,4 @@ internal sealed class HetznerResourceReferenceDto
 
     [JsonPropertyName("name")]
     public string? Name { get; set; }
-}
-
-internal sealed class HetznerDatacenterDto
-{
-    [JsonPropertyName("location")]
-    public HetznerResourceReferenceDto? Location { get; set; }
 }

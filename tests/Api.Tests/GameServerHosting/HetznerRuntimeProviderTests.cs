@@ -14,59 +14,173 @@ public sealed class HetznerRuntimeProviderTests
     [Fact]
     public async Task Profiles_ReturnAvailableX86SizesAndProviderPricesForConfiguredLocation()
     {
-        var handler = new SequencedHttpMessageHandler().Respond(
-            HttpStatusCode.OK,
-            JsonSerializer.Serialize(new
-            {
-                server_types = new object[]
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, PricingJson("EUR"))
+            .Respond(
+                HttpStatusCode.OK,
+                JsonSerializer.Serialize(new
                 {
-                    new
+                    server_types = new object[]
                     {
-                        name = "ccx13",
-                        description = "Dedicated AMD",
-                        cores = 2,
-                        memory = 8,
-                        disk = 80,
-                        cpu_type = "dedicated",
-                        architecture = "x86",
-                        deprecation = (object?)null,
-                        locations = new[] { new { location = new { name = "fsn1" }, available = true } },
-                        prices = new[]
+                        new
                         {
-                            new
+                            name = "ccx13",
+                            description = "Dedicated AMD",
+                            cores = 2.0m,
+                            memory = 8.0m,
+                            disk = 80.0m,
+                            cpu_type = "dedicated",
+                            architecture = "x86",
+                            locations = new[]
                             {
-                                location = "fsn1",
-                                price_hourly = new { gross = "0.0800" },
-                                price_monthly = new { gross = "50.00" },
+                                new
+                                {
+                                    id = 1,
+                                    name = "fsn1",
+                                    available = true,
+                                    recommended = true,
+                                    deprecation = (object?)null,
+                                },
+                            },
+                            prices = new[]
+                            {
+                                new
+                                {
+                                    location = "fsn1",
+                                    price_hourly = new { gross = "0.0800" },
+                                    price_monthly = new { gross = "50.00" },
+                                },
                             },
                         },
+                        new
+                        {
+                            name = "cpx11",
+                            description = "Deprecated in fsn1",
+                            cores = 2,
+                            memory = 4,
+                            disk = 40,
+                            cpu_type = "shared",
+                            architecture = "x86",
+                            locations = new[]
+                            {
+                                new
+                                {
+                                    id = 1,
+                                    name = "fsn1",
+                                    available = true,
+                                    recommended = false,
+                                    deprecation = new { announced = "2026-01-01T00:00:00+00:00" },
+                                },
+                            },
+                            prices = Array.Empty<object>(),
+                        },
+                        new
+                        {
+                            name = "cx22",
+                            description = "Shared Intel",
+                            cores = 2,
+                            memory = 4,
+                            disk = 40,
+                            cpu_type = "shared",
+                            architecture = "x86",
+                            // The deprecated top-level value is no longer authoritative; fsn1 remains selectable.
+                            deprecation = new { announced = "2025-01-01T00:00:00+00:00" },
+                            locations = new[]
+                            {
+                                new
+                                {
+                                    id = 1,
+                                    name = "fsn1",
+                                    available = true,
+                                    recommended = false,
+                                    deprecation = (object?)null,
+                                },
+                            },
+                            prices = new[]
+                            {
+                                new
+                                {
+                                    location = "fsn1",
+                                    price_hourly = new { gross = "0.0400" },
+                                    price_monthly = new { gross = "30.00" },
+                                },
+                            },
+                        },
+                        new
+                        {
+                            name = "cax11",
+                            description = "Arm",
+                            cores = 2,
+                            memory = 4,
+                            disk = 40,
+                            cpu_type = "shared",
+                            architecture = "arm",
+                            locations = new[]
+                            {
+                                new
+                                {
+                                    id = 1,
+                                    name = "fsn1",
+                                    available = true,
+                                    recommended = true,
+                                    deprecation = (object?)null,
+                                },
+                            },
+                            prices = Array.Empty<object>(),
+                        },
                     },
-                    new
-                    {
-                        name = "cax11",
-                        description = "Arm",
-                        cores = 2,
-                        memory = 4,
-                        disk = 40,
-                        cpu_type = "shared",
-                        architecture = "arm",
-                        deprecation = (object?)null,
-                        locations = new[] { new { location = new { name = "fsn1" }, available = true } },
-                        prices = Array.Empty<object>(),
-                    },
-                },
-                meta = new { pagination = new { next_page = (int?)null } },
-            }));
+                    meta = new { pagination = new { next_page = (long?)null } },
+                }));
 
         var profiles = await CreateProvider(handler, estimatedHourlyCostEur: 0.10m).GetProfilesAsync();
 
-        var profile = Assert.Single(profiles);
+        Assert.Equal(["ccx13", "cx22"], profiles.Select(q => q.Identifier).ToArray());
+        var profile = profiles.First();
         Assert.Equal("ccx13", profile.Identifier);
         Assert.Equal(2, profile.VirtualCpuCount);
         Assert.Equal(8m, profile.MemoryGiB);
         Assert.Equal(0.10m, profile.EstimatedHourlyCostEur);
         Assert.Equal(64.60m, profile.EstimatedMonthlyCostEur);
-        Assert.Equal("/v1/server_types", Assert.Single(handler.Requests).Path);
+        Assert.Equal(["/v1/pricing", "/v1/server_types"], handler.Requests.Select(q => q.Path).ToArray());
+    }
+
+    [Fact]
+    public async Task Profiles_RejectsNonEurPricingBeforeLoadingServerTypes()
+    {
+        var handler = new SequencedHttpMessageHandler().Respond(HttpStatusCode.OK, PricingJson("USD"));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateProvider(handler).GetProfilesAsync());
+
+        Assert.Contains("USD", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("EUR", exception.Message, StringComparison.Ordinal);
+        Assert.Equal("/v1/pricing", Assert.Single(handler.Requests).Path);
+    }
+
+    [Fact]
+    public async Task Profiles_WhenPricingCurrencyIsMissing_PropagatesCatalogFailure()
+    {
+        var handler = new SequencedHttpMessageHandler().Respond(HttpStatusCode.OK, PricingJson(null));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateProvider(handler).GetProfilesAsync());
+
+        Assert.Contains("currency", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("/v1/pricing", Assert.Single(handler.Requests).Path);
+    }
+
+    [Fact]
+    public async Task Profiles_WhenPricingRequestFails_PropagatesCatalogFailure()
+    {
+        var handler = new SequencedHttpMessageHandler().Respond(
+            HttpStatusCode.ServiceUnavailable,
+            JsonSerializer.Serialize(new { error = new { code = "service_error", message = "Unavailable" } }));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateProvider(handler).GetProfilesAsync());
+
+        Assert.Contains("service_error", exception.Message, StringComparison.Ordinal);
+        Assert.Equal("/v1/pricing", Assert.Single(handler.Requests).Path);
     }
 
     [Fact]
@@ -352,6 +466,23 @@ public sealed class HetznerRuntimeProviderTests
         Assert.Equal(ERuntimeProviderOutcome.PermanentFailure, result.Outcome);
         Assert.Equal("server-configuration-mismatch", result.Stage);
         Assert.Null(result.Resource);
+        Assert.Equal(3, result.ProvisionedResources.Count);
+        Assert.DoesNotContain(handler.Requests, q => q.Method == HttpMethod.Post);
+    }
+
+    [Fact]
+    public async Task Provision_RejectsRecoveredPrimaryIpInWrongLocation()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson((42, request)))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJsonWithLocations((91, request, 42L, "nbg1")))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.PermanentFailure, result.Outcome);
+        Assert.Equal("primary-ip-configuration-mismatch", result.Stage);
         Assert.Equal(3, result.ProvisionedResources.Count);
         Assert.DoesNotContain(handler.Requests, q => q.Method == HttpMethod.Post);
     }
@@ -755,6 +886,21 @@ public sealed class HetznerRuntimeProviderTests
     }
 
     [Fact]
+    public async Task Discover_ClassifiesWrongLocationPrimaryIpAsConflicting()
+    {
+        var request = CreateProvisionRequest();
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson((42, request)))
+            .Respond(HttpStatusCode.OK, PrimaryIpListJsonWithLocations((91, request, 42L, "nbg1")))
+            .Respond(HttpStatusCode.OK, FirewallListJsonWithAttachments((19, request, [42L])));
+
+        var result = await CreateProvider(handler).DiscoverAsync();
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.True(result.Resources.Single(q => q.ResourceType == "primary-ip").HasProvisioningConflict);
+    }
+
+    [Fact]
     public async Task Discover_ClassifiesAuthoritativeServerAndFirewallConfigurationDriftAsConflicting()
     {
         var request = CreateProvisionRequest();
@@ -1097,6 +1243,9 @@ public sealed class HetznerRuntimeProviderTests
             NullLogger<HetznerRuntimeProvider>.Instance);
     }
 
+    private static string PricingJson(string? currency)
+        => JsonSerializer.Serialize(new { pricing = new { currency } });
+
     private static string ServerResponseJson(
         long id,
         RuntimeProvisionRequest request,
@@ -1137,16 +1286,19 @@ public sealed class HetznerRuntimeProviderTests
     private static string PrimaryIpResponseJson(
         long id,
         RuntimeProvisionRequest request,
-        long? assigneeId = null)
+        long? assigneeId = null,
+        string location = "fsn1")
         => PrimaryIpResponseJson(
             id,
             Labels(request, HetznerRuntimeProvider.PrimaryIpResourceType),
-            assigneeId);
+            assigneeId,
+            location);
 
     private static string PrimaryIpResponseJson(
         long id,
         IReadOnlyDictionary<string, string> labels,
-        long? assigneeId = null)
+        long? assigneeId = null,
+        string location = "fsn1")
         => JsonSerializer.Serialize(new
         {
             primary_ip = new
@@ -1158,6 +1310,7 @@ public sealed class HetznerRuntimeProviderTests
                 assignee_id = assigneeId,
                 assignee_type = assigneeId.HasValue ? "server" : "unassigned",
                 auto_delete = true,
+                location = new { id = 1, name = location },
                 labels,
             },
         });
@@ -1297,7 +1450,27 @@ public sealed class HetznerRuntimeProviderTests
                 assignee_id = q.AssigneeId,
                 assignee_type = q.AssigneeId.HasValue ? "server" : "unassigned",
                 auto_delete = true,
+                location = new { id = 1, name = "fsn1" },
                 labels = q.Labels,
+            }),
+            meta = Pagination(),
+        });
+
+    private static string PrimaryIpListJsonWithLocations(
+        params (long Id, RuntimeProvisionRequest Request, long? AssigneeId, string Location)[] values)
+        => JsonSerializer.Serialize(new
+        {
+            primary_ips = values.Select(q => new
+            {
+                id = q.Id,
+                name = $"utf-{q.Id}",
+                ip = $"203.0.113.{q.Id}",
+                type = "ipv4",
+                assignee_id = q.AssigneeId,
+                assignee_type = q.AssigneeId.HasValue ? "server" : "unassigned",
+                auto_delete = true,
+                location = new { id = 1, name = q.Location },
+                labels = Labels(q.Request, HetznerRuntimeProvider.PrimaryIpResourceType),
             }),
             meta = Pagination(),
         });
@@ -1315,6 +1488,7 @@ public sealed class HetznerRuntimeProviderTests
                 assignee_id = q.AssigneeId,
                 assignee_type = q.AssigneeId.HasValue ? "server" : "unassigned",
                 auto_delete = q.AutoDelete,
+                location = new { id = 1, name = "fsn1" },
                 labels = Labels(q.Request, HetznerRuntimeProvider.PrimaryIpResourceType),
             }),
             meta = Pagination(),

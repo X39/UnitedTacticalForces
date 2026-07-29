@@ -25,6 +25,9 @@ internal sealed class HetznerPrimaryIpDto
     [JsonPropertyName("auto_delete")]
     public bool AutoDelete { get; set; }
 
+    [JsonPropertyName("location")]
+    public HetznerLocationDto? Location { get; set; }
+
     [JsonPropertyName("labels")]
     public Dictionary<string, string>? Labels { get; set; }
 }

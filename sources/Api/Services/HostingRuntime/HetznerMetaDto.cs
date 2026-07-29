@@ -5,5 +5,5 @@ namespace X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 internal sealed class HetznerMetaDto
 {
     [JsonPropertyName("pagination")]
-    public HetznerPaginationDto? Pagination { get; set; }
+    public required HetznerPaginationDto? Pagination { get; set; }
 }
