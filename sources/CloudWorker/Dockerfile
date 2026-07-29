@@ -3,9 +3,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f AS build
 WORKDIR /src
 COPY sources/HostingContracts/HostingContracts.csproj sources/HostingContracts/
+COPY sources/GameServerImplementations/GameServerImplementations.csproj sources/GameServerImplementations/
 COPY sources/CloudWorker/CloudWorker.csproj sources/CloudWorker/
 RUN dotnet restore sources/CloudWorker/CloudWorker.csproj
 COPY sources/HostingContracts/ sources/HostingContracts/
+COPY sources/GameServerImplementations/ sources/GameServerImplementations/
 COPY sources/CloudWorker/ sources/CloudWorker/
 RUN dotnet publish sources/CloudWorker/CloudWorker.csproj \
     --configuration Release \
