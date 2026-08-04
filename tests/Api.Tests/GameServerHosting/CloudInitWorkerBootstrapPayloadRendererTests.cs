@@ -141,6 +141,50 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
     }
 
     [Fact]
+    public void AdministrativeSsh_RendersKeyOnlyAccountWithoutPublishingSshIntoWorkerContainer()
+    {
+        var renderer = CreateRenderer(
+            Environments.Development,
+            "utf-cloud-worker:development",
+            options =>
+            {
+                options.AdministrativeSshEnabled = true;
+                options.AdministrativeSshAuthorizedKeys =
+                [
+                    "ssh-ed25519 MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE= utf-admin",
+                ];
+                options.AdministrativeSshSourceCidrs = ["203.0.113.10/32"];
+            });
+
+        var payload = renderer.Render(Bootstrap(), Guid.NewGuid(), "arma3", NetworkPlan());
+
+        Assert.Contains("name: utf-admin", payload.CloudInit, StringComparison.Ordinal);
+        Assert.Contains("ssh_pwauth: false", payload.CloudInit, StringComparison.Ordinal);
+        Assert.Contains("disable_root: true", payload.CloudInit, StringComparison.Ordinal);
+        Assert.Contains("ssh-ed25519 MDEyMz", payload.CloudInit, StringComparison.Ordinal);
+        Assert.DoesNotContain("--publish 22:22", DecodeSystemdService(payload.CloudInit), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AdministrativeSsh_AddsSourceRestrictedHostFirewallRequirement()
+    {
+        var options = Options.Create(new WorkerProvisioningOptions
+        {
+            AdministrativeSshEnabled = true,
+            AdministrativeSshAuthorizedKeys =
+            [
+                "ssh-ed25519 MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE= utf-admin",
+            ],
+            AdministrativeSshSourceCidrs = ["203.0.113.10/32", "2001:db8::/64"],
+        });
+
+        var requirement = new AdministrativeSshAccess(options).AddTo(NetworkPlan()).Single(q => q.StartPort == 22);
+
+        Assert.Equal(ERuntimeNetworkProtocol.Tcp, requirement.Protocol);
+        Assert.Equal(["203.0.113.10/32", "2001:db8::/64"], requirement.SourceCidrs);
+    }
+
+    [Fact]
     public void ExternalStorage_FormatsOnlyUninitializedDeviceAndFailsClosedBeforeWorkerStarts()
     {
         var renderer = CreateRenderer(Environments.Development, "utf-cloud-worker:development");
@@ -184,10 +228,12 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
             .Build();
         var options = new WorkerProvisioningOptions { ContainerImage = image };
         configure?.Invoke(options);
+        var wrappedOptions = Options.Create(options);
         return new CloudInitWorkerBootstrapPayloadRenderer(
             configuration,
             new TestHostEnvironment { EnvironmentName = environmentName },
-            Options.Create(options));
+            wrappedOptions,
+            new AdministrativeSshAccess(wrappedOptions));
     }
 
     private static WorkerBootstrapConfiguration Bootstrap()

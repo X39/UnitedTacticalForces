@@ -1544,7 +1544,7 @@ public sealed class HetznerRuntimeProvider(
                 ? requirement.StartPort.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 : $"{requirement.StartPort.ToString(System.Globalization.CultureInfo.InvariantCulture)}-"
                   + requirement.EndPort.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            SourceIps: ["0.0.0.0/0"],
+            SourceIps: requirement.SourceCidrs ?? ["0.0.0.0/0"],
             Description: requirement.Description.Trim());
 
     internal static string ServerConfigurationFingerprint(string serverType, string image, string location)

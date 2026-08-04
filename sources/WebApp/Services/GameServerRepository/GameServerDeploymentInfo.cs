@@ -32,6 +32,7 @@ public sealed record GameServerDeploymentInfo
     public string? ConnectionEndpoint { get; init; }
     public string? ConnectionProtocol { get; init; }
     public int? ConnectionPort { get; init; }
+    public string? AdministrativeSshCommand { get; init; }
     public IReadOnlyCollection<GameServerDeploymentResourceInfo> Resources { get; init; } = [];
     public DateTimeOffset TimeStampCreated { get; init; }
     public DateTimeOffset? TimeStampStarted { get; init; }

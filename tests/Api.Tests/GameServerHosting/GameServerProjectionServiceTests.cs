@@ -10,6 +10,7 @@ using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using Xunit;
 
@@ -214,7 +215,17 @@ public sealed class GameServerProjectionServiceTests
                 .SetProperty(q => q.RuntimeProfileIdentifier, "active-profile")
                 .SetProperty(q => q.RuntimeProfileDisplayName, "Active profile")
                 .SetProperty(q => q.EstimatedHourlyCostEur, 0.42m));
-        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var projection = HostingTestData.CreateProjectionService(
+            store.DbContext,
+            new WorkerProvisioningOptions
+            {
+                AdministrativeSshEnabled = true,
+                AdministrativeSshAuthorizedKeys =
+                [
+                    "ssh-ed25519 MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE= utf-admin",
+                ],
+                AdministrativeSshSourceCidrs = ["203.0.113.10/32"],
+            });
         var principal = HostingTestData.ServerPrincipal(
             seed.User,
             seed.Server,
@@ -227,6 +238,7 @@ public sealed class GameServerProjectionServiceTests
         Assert.Equal("203.0.113.91:32000", dto.Deployment.ConnectionEndpoint);
         Assert.Equal("UDP", dto.Deployment.ConnectionProtocol);
         Assert.Equal(32000, dto.Deployment.ConnectionPort);
+        Assert.Null(dto.Deployment.AdministrativeSshCommand);
         Assert.Equal("active-profile", dto.Deployment.RuntimeProfileIdentifier);
         Assert.Equal("Active profile", dto.Deployment.RuntimeProfileDisplayName);
         Assert.Equal(0.42m, dto.Deployment.EstimatedHourlyCostEur);
@@ -237,6 +249,12 @@ public sealed class GameServerProjectionServiceTests
         var primaryIp = dto.Deployment.Resources.Single(q => q.Kind == "primary-ip");
         Assert.Equal("assigned", primaryIp.ProviderState);
         Assert.Equal("203.0.113.91", primaryIp.PublicAddress);
+
+        var administrator = HostingTestData.Principal(
+            seed.User,
+            (Claims.Administrative.All, string.Empty));
+        var administrativeDto = await projection.GetServerAsync(seed.Server.PrimaryKey, administrator);
+        Assert.Equal("ssh utf-admin@203.0.113.91", administrativeDto?.Deployment?.AdministrativeSshCommand);
     }
 
     [Fact]
@@ -446,6 +464,7 @@ public sealed class GameServerProjectionServiceTests
             providers,
             new TestStorageDemandService(),
             new HostingAuthorizationService(dbContext),
+            new AdministrativeSshAccess(Options.Create(new WorkerProvisioningOptions())),
             Options.Create(new StorageDemandOptions()),
             logger);
 

@@ -28,6 +28,7 @@ internal sealed class LifecycleJobExecutor(
     IEnumerable<IRuntimeProvider> runtimeProviders,
     IWorkerCredentialService workerCredentialService,
     IWorkerBootstrapPayloadRenderer bootstrapPayloadRenderer,
+    AdministrativeSshAccess administrativeSshAccess,
     IGameServerContentSnapshotResolver contentSnapshotResolver,
     IGameServerConfigurationService configurationService,
     IServerFileStorage serverFileStorage,
@@ -158,8 +159,24 @@ internal sealed class LifecycleJobExecutor(
             return;
         }
 
-        var networkFailure = RuntimeInboundNetworkPlanValidator.Validate(
-            gameDefinition.InboundNetworkRequirements);
+        IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements;
+        try
+        {
+            inboundNetworkRequirements = administrativeSshAccess.AddTo(gameDefinition.InboundNetworkRequirements);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await RejectStartAsync(
+                    job,
+                    server,
+                    deployment,
+                    "administrative-ssh-invalid",
+                    ex.Message,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+        var networkFailure = RuntimeInboundNetworkPlanValidator.Validate(inboundNetworkRequirements);
         if (networkFailure is not null)
         {
             await RejectStartAsync(
@@ -380,7 +397,7 @@ internal sealed class LifecycleJobExecutor(
                 server.GameIdentifier,
                 intent.IntentId,
                 bootstrapPayload.CloudInit,
-                gameDefinition.InboundNetworkRequirements,
+                inboundNetworkRequirements,
                 deployment.RuntimeProfileIdentifier,
                 storagePlan);
 
@@ -1541,6 +1558,8 @@ internal sealed class LifecycleJobExecutor(
             job.Stage = workerState.TimeStampRegistered is null ? "waiting-for-worker-registration" : state.Stage;
             job.Progress = workerState.TimeStampRegistered is null ? 40 : Math.Max(job.Progress, 50);
             job.TimeStampUpdated = now;
+            deployment.Stage = job.Stage;
+            deployment.TimeStampUpdated = now;
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             await Task.Delay(_options.IdlePollInterval, cancellationToken).ConfigureAwait(false);
         }

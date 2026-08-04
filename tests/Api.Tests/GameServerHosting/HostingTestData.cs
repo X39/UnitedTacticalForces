@@ -8,6 +8,7 @@ using X39.UnitedTacticalForces.Database.Authority.Extern;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.StorageDemand;
+using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 
 namespace Api.Tests.GameServerHosting;
@@ -119,13 +120,16 @@ internal static class HostingTestData
             new HostingAuthorizationService(dbContext),
             new HostingAuditWriter());
 
-    public static GameServerProjectionService CreateProjectionService(DatabaseContext dbContext)
+    public static GameServerProjectionService CreateProjectionService(
+        DatabaseContext dbContext,
+        WorkerProvisioningOptions? workerProvisioningOptions = null)
         => new(
             dbContext,
             new TestGameServerDefinitionCatalog(),
             [new TestRuntimeProvider()],
             new TestStorageDemandService(),
             new HostingAuthorizationService(dbContext),
+            new AdministrativeSshAccess(Options.Create(workerProvisioningOptions ?? new WorkerProvisioningOptions())),
             Options.Create(new StorageDemandOptions()),
             NullLogger<GameServerProjectionService>.Instance);
 }

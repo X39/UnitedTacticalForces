@@ -1,0 +1,47 @@
+using Xunit;
+
+namespace Api.Tests.WebApp;
+
+public sealed class EmergencyTerminateUiBoundaryTests
+{
+    [Fact]
+    public void NotificationTerminate_DeepLinksToTheTypedChallenge()
+    {
+        var profileMenu = ReadRepositoryFile("sources/WebApp/Components/UtfProfileMenu.razor");
+        var details = ReadRepositoryFile("sources/WebApp/Pages/Servers/Details.razor");
+
+        Assert.Contains("?action={Uri.EscapeDataString(action.Id)}", profileMenu, StringComparison.Ordinal);
+        Assert.Contains("[SupplyParameterFromQuery(Name = \"action\")]", details, StringComparison.Ordinal);
+        Assert.Contains("_challengedAction = requestedAction;", details, StringComparison.Ordinal);
+        Assert.Contains("_confirmationInputElement.FocusAsync()", details, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void FailedTerminateSubmission_KeepsTheChallengeOpen()
+    {
+        var details = ReadRepositoryFile("sources/WebApp/Pages/Servers/Details.razor");
+
+        Assert.Contains("private async Task<bool> ExecuteActionAsync", details, StringComparison.Ordinal);
+        Assert.Contains("if (await ExecuteActionAsync(action, _confirmationInput))", details, StringComparison.Ordinal);
+        Assert.Contains("return false;", details, StringComparison.Ordinal);
+    }
+
+    private static string ReadRepositoryFile(string repositoryRelativePath)
+        => File.ReadAllText(Path.Combine(RepositoryRoot, repositoryRelativePath));
+
+    private static string RepositoryRoot
+    {
+        get
+        {
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            while (directory is not null
+                   && !File.Exists(Path.Combine(directory.FullName, "X39.UnitedTacticalForces.slnx")))
+            {
+                directory = directory.Parent;
+            }
+
+            return directory?.FullName
+                   ?? throw new InvalidOperationException("Could not find repository root.");
+        }
+    }
+}

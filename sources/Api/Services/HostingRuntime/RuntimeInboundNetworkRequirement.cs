@@ -7,4 +7,5 @@ public sealed record RuntimeInboundNetworkRequirement(
     ERuntimeNetworkProtocol Protocol,
     int StartPort,
     int EndPort,
-    string Description);
+    string Description,
+    IReadOnlyList<string>? SourceCidrs = null);

@@ -165,3 +165,10 @@ stdout/stderr through systemd, Docker, or another host collector. Centralized Op
 `OTEL_EXPORTER_OTLP_ENDPOINT` is configured. Remote observability is operational only when either host console logs
 are retained or an OTLP endpoint is configured; the bounded durable database/UI record does not replace stack traces
 and centralized retention.
+
+Optional emergency SSH access is configured under `Hosting:WorkerProvisioning`. Set
+`AdministrativeSshEnabled`, install one or more `AdministrativeSshAuthorizedKeys`, and restrict
+`AdministrativeSshSourceCidrs` to the operator networks that may reach TCP/22. New deployment hosts then receive a
+key-only `utf-admin` account; password login and root login remain disabled. The server detail page returns the SSH
+command and bootstrap/worker diagnostic commands only to users carrying the global `adm` claim. Existing deployment
+hosts are not modified retroactively.

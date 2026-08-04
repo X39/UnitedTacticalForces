@@ -13,7 +13,8 @@ namespace X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 public sealed class CloudInitWorkerBootstrapPayloadRenderer(
     IConfiguration configuration,
     IHostEnvironment environment,
-    IOptions<WorkerProvisioningOptions> options) : IWorkerBootstrapPayloadRenderer
+    IOptions<WorkerProvisioningOptions> options,
+    AdministrativeSshAccess administrativeSshAccess) : IWorkerBootstrapPayloadRenderer
 {
     internal const string ExternalBlockDeviceToken = "__UTF_EXTERNAL_BLOCK_DEVICE__";
     private const int RuntimeGroupId = 10001;
@@ -84,13 +85,16 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         var storageScript = RenderStorageScript(storagePlan, bootstrap.DeploymentId);
         var registryConfig = RenderRegistryConfig();
         var registryConfigDirectory = GetAbsoluteParentPath(_options.RegistryConfigPath);
+        var administrativeSsh = administrativeSshAccess.RenderCloudInitFragment();
         var cloudInit = $"""
                         #cloud-config
+                        {administrativeSsh}
                         package_update: true
                         packages:
                           - docker.io
                           - e2fsprogs
                           - util-linux
+                          - openssh-server
                         write_files:
                           - path: {_options.BootstrapPath}
                             owner: 'root:root'

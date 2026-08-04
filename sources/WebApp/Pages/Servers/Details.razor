@@ -375,7 +375,35 @@
                                 </dd>
                             </div>
                         }
+                        @if (!string.IsNullOrWhiteSpace(deployment.AdministrativeSshCommand))
+                        {
+                            <div>
+                                <dt>Administrator SSH</dt>
+                                <dd><code>@deployment.AdministrativeSshCommand</code></dd>
+                            </div>
+                        }
                     </dl>
+                    @if (string.Equals(deployment.Stage, "waiting-for-worker-registration", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(deployment.Stage, "waiting-for-worker", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <UtfAlert Intent="MessageIntent.Info">
+                            The VM is allocated, but its worker has not registered yet. Initial package updates,
+                            Docker installation, storage preparation, and the first worker-image pull happen before
+                            registration and can take several minutes.
+                        </UtfAlert>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(deployment.AdministrativeSshCommand))
+                    {
+                        <details class="hosting-commands">
+                            <summary>Worker failure diagnostics</summary>
+                            <div>
+                                <div class="hosting-command"><span>Cloud-init status and errors</span><code>sudo cloud-init status --long</code></div>
+                                <div class="hosting-command"><span>Cloud-init log</span><code>sudo journalctl -u cloud-final --no-pager -n 200</code></div>
+                                <div class="hosting-command"><span>UTF services</span><code>sudo systemctl --failed; sudo systemctl list-units 'utf-*'</code></div>
+                                <div class="hosting-command"><span>Worker container and logs</span><code>sudo docker ps -a; sudo docker logs --tail 200 $(sudo docker ps -aq --filter name=utf-cloud-worker)</code></div>
+                            </div>
+                        </details>
+                    }
                     @if (deployment.Resources.Count > 0)
                     {
                         <details class="hosting-commands">
@@ -619,6 +647,7 @@
                     <label>
                         <span>@Localizer["Hosting_Detail_TypeChallenge", challengedAction.ConfirmationChallenge!]</span>
                         <input autocomplete="off"
+                               @ref="_confirmationInputElement"
                                value="@_confirmationInput"
                                @oninput="UpdateConfirmationInput"/>
                     </label>
@@ -1308,6 +1337,9 @@
     [Parameter]
     public Guid ServerId { get; set; }
 
+    [SupplyParameterFromQuery(Name = "action")]
+    public string? RequestedAction { get; set; }
+
     private GameServerInfo? _server;
     private IReadOnlyList<LifecycleJobInfo> _jobs = [];
     private IReadOnlyList<HostingOperationInfo> _operations = [];
@@ -1341,6 +1373,9 @@
     private bool _modPackMutationInProgress;
     private bool _modPackSelectionDirty;
     private bool _showAllOperations;
+    private string? _handledRequestedAction;
+    private bool _focusConfirmationInput;
+    private ElementReference _confirmationInputElement;
     private string _activeSection = "overview";
     private string? _loadError;
     private string? _operationError;
@@ -1594,6 +1629,44 @@
         {
             _isRefreshing = false;
             _isLoading = false;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrWhiteSpace(RequestedAction))
+            _handledRequestedAction = null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_server is not null
+            && !string.IsNullOrWhiteSpace(RequestedAction)
+            && !string.Equals(_handledRequestedAction, RequestedAction, StringComparison.OrdinalIgnoreCase))
+        {
+            _handledRequestedAction = RequestedAction;
+            var requestedAction = _server.Actions.SingleOrDefault(q => string.Equals(
+                q.Id,
+                RequestedAction,
+                StringComparison.OrdinalIgnoreCase));
+            if (requestedAction is { Enabled: true, Pending: false }
+                && !string.IsNullOrWhiteSpace(requestedAction.ConfirmationChallenge))
+            {
+                _challengedAction = requestedAction;
+                _confirmationInput = string.Empty;
+                _focusConfirmationInput = true;
+                NavigationManager.NavigateTo(
+                    BaseUrl.ResolveSelfUrl($"command/servers/{ServerId}"),
+                    replace: true);
+                StateHasChanged();
+                return;
+            }
+        }
+
+        if (_focusConfirmationInput)
+        {
+            _focusConfirmationInput = false;
+            await _confirmationInputElement.FocusAsync();
         }
     }
 
@@ -1899,6 +1972,7 @@
         {
             _challengedAction = action;
             _confirmationInput = string.Empty;
+            _focusConfirmationInput = true;
             return;
         }
 
@@ -1916,7 +1990,7 @@
                 return;
         }
 
-        await ExecuteActionAsync(action, confirmation: null);
+        _ = await ExecuteActionAsync(action, confirmation: null);
     }
 
     private async Task ConfirmChallengedActionAsync()
@@ -1924,11 +1998,11 @@
         if (_challengedAction is not { } action || !ChallengeMatches)
             return;
 
-        await ExecuteActionAsync(action, _confirmationInput);
-        CancelChallenge();
+        if (await ExecuteActionAsync(action, _confirmationInput))
+            CancelChallenge();
     }
 
-    private async Task ExecuteActionAsync(GameServerActionInfo action, string? confirmation)
+    private async Task<bool> ExecuteActionAsync(GameServerActionInfo action, string? confirmation)
     {
         _actionInProgress = true;
         _operationError = null;
@@ -1941,13 +2015,16 @@
                 _cancellationTokenSource.Token
             );
             await RefreshRuntimeAsync(showLoading: false, _cancellationTokenSource.Token);
+            return true;
         }
         catch (OperationCanceledException) when (_cancellationTokenSource.IsCancellationRequested)
         {
+            return false;
         }
         catch (Exception exception)
         {
             _operationError = UserFacingError.Message(exception, Localizer["Hosting_Detail_ActionError"].Value);
+            return false;
         }
         finally
         {

@@ -1,9 +1,12 @@
+using System.Net;
+
 namespace X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 
 internal static class RuntimeInboundNetworkPlanValidator
 {
     internal const int MaximumRequirementCount = 32;
     internal const int MaximumDescriptionLength = 100;
+    internal const int MaximumSourceCidrCount = 32;
 
     public static string? Validate(IReadOnlyList<RuntimeInboundNetworkRequirement>? requirements)
     {
@@ -32,6 +35,14 @@ internal static class RuntimeInboundNetworkPlanValidator
             {
                 return $"Inbound network requirement {index + 1} has an invalid description.";
             }
+            if (requirement.SourceCidrs is not { } sourceCidrs)
+                continue;
+            if (sourceCidrs.Count is 0 or > MaximumSourceCidrCount)
+                return $"Inbound network requirement {index + 1} has an invalid source CIDR count.";
+            if (sourceCidrs.Any(q => string.IsNullOrWhiteSpace(q)
+                                     || !q.Contains('/')
+                                     || !IPNetwork.TryParse(q, out _)))
+                return $"Inbound network requirement {index + 1} has an invalid source CIDR.";
         }
 
         return null;

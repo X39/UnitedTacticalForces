@@ -7,6 +7,7 @@ using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.StorageDemand;
+using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.Util.DependencyInjection.Attributes;
@@ -21,6 +22,7 @@ internal sealed class GameServerProjectionService(
     IEnumerable<IRuntimeProvider> runtimeProviders,
     IStorageDemandService storageDemandService,
     IHostingAuthorizationService authorizationService,
+    AdministrativeSshAccess administrativeSshAccess,
     IOptions<StorageDemandOptions> storageDemandOptions,
     ILogger<GameServerProjectionService> logger) : IGameServerProjectionService
 {
@@ -700,6 +702,9 @@ internal sealed class GameServerProjectionService(
                         : null,
                     ConnectionProtocol = connection?.Protocol.ToString().ToUpperInvariant(),
                     ConnectionPort = connection?.Port,
+                    AdministrativeSshCommand = principal.HasClaim(Claims.Administrative.All, string.Empty)
+                        ? administrativeSshAccess.GetCommand(publicAddress ?? string.Empty)
+                        : null,
                     Resources = deployment.Resources
                         .OrderBy(q => q.Kind, StringComparer.OrdinalIgnoreCase)
                         .ThenBy(q => q.ProviderResourceIdentifier, StringComparer.Ordinal)

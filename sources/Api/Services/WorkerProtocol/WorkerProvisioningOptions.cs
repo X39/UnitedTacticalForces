@@ -47,4 +47,21 @@ public sealed class WorkerProvisioningOptions
     public string ContainerLogMaxSize { get; set; } = "10m";
 
     public int ContainerLogMaxFiles { get; set; } = 3;
+
+    /// <summary>
+    /// Enables key-only emergency SSH access on newly provisioned deployment hosts.
+    /// </summary>
+    public bool AdministrativeSshEnabled { get; set; }
+
+    public string AdministrativeSshUser { get; set; } = "utf-admin";
+
+    /// <summary>
+    /// OpenSSH public keys installed for the emergency administrator account. Private keys remain operator-owned.
+    /// </summary>
+    public string[] AdministrativeSshAuthorizedKeys { get; set; } = [];
+
+    /// <summary>
+    /// Provider-firewall source networks allowed to reach TCP/22. Required when SSH access is enabled.
+    /// </summary>
+    public string[] AdministrativeSshSourceCidrs { get; set; } = [];
 }

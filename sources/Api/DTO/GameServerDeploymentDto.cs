@@ -34,6 +34,8 @@ public sealed record GameServerDeploymentDto
     public string? ConnectionEndpoint { get; init; }
     public string? ConnectionProtocol { get; init; }
     public int? ConnectionPort { get; init; }
+    /// <summary>Key-only emergency access command, disclosed only to global administrators.</summary>
+    public string? AdministrativeSshCommand { get; init; }
     public IReadOnlyCollection<GameServerDeploymentResourceDto> Resources { get; init; } = [];
     public Instant TimeStampCreated { get; init; }
     public Instant? TimeStampStarted { get; init; }

@@ -1158,6 +1158,7 @@ public sealed class LifecycleJobExecutorCloudTests
             [provider],
             new WorkerCredentialService(Options.Create(new LifecycleWorkerOptions())),
             bootstrapRenderer ?? new TestBootstrapRenderer(),
+            new AdministrativeSshAccess(Options.Create(new WorkerProvisioningOptions())),
             new GameServerContentSnapshotResolver(dbContext),
             new GameServerConfigurationService(dbContext),
             new EmptyServerFileStorage(),

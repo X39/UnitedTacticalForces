@@ -382,7 +382,9 @@
         if (!string.IsNullOrWhiteSpace(action.ConfirmationChallenge))
         {
             CloseMenu();
-            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/servers/{notification.ServerId}"));
+            NavigationManager.NavigateTo(
+                BaseUrl.ResolveSelfUrl(
+                    $"command/servers/{notification.ServerId}?action={Uri.EscapeDataString(action.Id)}"));
             return;
         }
 
