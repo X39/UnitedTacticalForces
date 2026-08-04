@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Authority;
 using X39.UnitedTacticalForces.Database.Authority.Extern;
+using X39.UnitedTacticalForces.Database.Hosting;
+using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Services;
 using X39.Util;
@@ -70,6 +72,18 @@ public class ValidationHelper
                     configuration[Constants.Configuration.General.AutoVerifyNewUsers] ?? "False"),
             };
             await apiDbContext.Users.AddAsync(user)
+                .ConfigureAwait(false);
+            var now = NodaSystemClock.Instance.GetCurrentInstant();
+            await apiDbContext.CostOwners.AddAsync(new CostOwner
+                {
+                    PrimaryKey = Guid.NewGuid(),
+                    Kind = ECostOwnerKind.User,
+                    User = user,
+                    DisplayName = user.Nickname,
+                    Currency = "EUR",
+                    TimeStampCreated = now,
+                    TimeStampUpdated = now,
+                })
                 .ConfigureAwait(false);
             await apiDbContext.SaveChangesAsync()
                 .ConfigureAwait(false);

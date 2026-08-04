@@ -12,6 +12,8 @@ using X39.UnitedTacticalForces.Database.Eventing;
 using X39.UnitedTacticalForces.Database.Media;
 using X39.UnitedTacticalForces.Database.Verein;
 using X39.UnitedTacticalForces.Database.Wiki;
+using X39.UnitedTacticalForces.Database.Hosting;
+using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Database;
@@ -127,6 +129,7 @@ internal static class DebugDemoDataSeeder
             .ConfigureAwait(false);
         await EnsureDebugRolesAsync(dbContext, allDebugUsers, claimCatalog, cancellationToken).ConfigureAwait(false);
         await EnsureDebugUserProfilesAsync(dbContext, allDebugUsers, cancellationToken).ConfigureAwait(false);
+        await EnsureDebugCostOwnersAsync(dbContext, allDebugUsers.Values, now, cancellationToken).ConfigureAwait(false);
 
         var altis = await EnsureTerrainAsync(dbContext, mediaAssetService, DebugTerrainAltisTitle, cancellationToken).ConfigureAwait(false);
         var tanoa = await EnsureTerrainAsync(dbContext, mediaAssetService, DebugTerrainTanoaTitle, cancellationToken).ConfigureAwait(false);
@@ -205,6 +208,31 @@ internal static class DebugDemoDataSeeder
         await EnsureWikiPagesAsync(dbContext, allDebugUsers, now, cancellationToken).ConfigureAwait(false);
         await EnsurePublicPagesAsync(dbContext, mediaAssetService, allDebugUsers, now, cancellationToken).ConfigureAwait(false);
         await EnsureVereinDataAsync(dbContext, allDebugUsers, now, cancellationToken).ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task EnsureDebugCostOwnersAsync(
+        DatabaseContext dbContext,
+        IEnumerable<User> users,
+        Instant now,
+        CancellationToken cancellationToken)
+    {
+        foreach (var user in users)
+        {
+            if (await dbContext.CostOwners.AnyAsync(q => q.UserFk == user.PrimaryKey, cancellationToken)
+                    .ConfigureAwait(false))
+                continue;
+            dbContext.CostOwners.Add(new CostOwner
+            {
+                PrimaryKey = Guid.NewGuid(),
+                Kind = ECostOwnerKind.User,
+                UserFk = user.PrimaryKey,
+                DisplayName = user.Nickname,
+                Currency = "EUR",
+                TimeStampCreated = now,
+                TimeStampUpdated = now,
+            });
+        }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

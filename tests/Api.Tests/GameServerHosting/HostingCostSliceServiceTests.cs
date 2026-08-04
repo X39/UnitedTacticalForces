@@ -161,6 +161,38 @@ public sealed class HostingCostSliceServiceTests
     }
 
     [Fact]
+    public async Task InitialReservation_UsesPersistedPolicyInsteadOfConfigurationDefaults()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        seed.CostOwner.Balance = 1m;
+        await store.DbContext.SaveChangesAsync();
+        var options = Options.Create(new HostingFinanceOptions
+        {
+            MinimumSafetyRangeEur = 5m,
+            ReservationSlice = TimeSpan.FromMinutes(15),
+            ReconciliationInterval = TimeSpan.FromSeconds(30),
+            EstimatedHourlyCostEur = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
+            {
+                [TestRuntimeProvider.Identifier] = 0.10m,
+            },
+        });
+        var auditWriter = new HostingAuditWriter();
+        var policyService = new HostingFinancePolicyService(store.DbContext, auditWriter, options);
+        await policyService.UpdateAsync(0.50m, 30, seed.User.PrimaryKey);
+        var service = new HostingCostSliceService(store.DbContext, auditWriter, policyService, options);
+
+        await service.ReserveInitialSliceAsync(seed.Deployment!.PrimaryKey, TestRuntimeProvider.Identifier);
+
+        await store.DbContext.Entry(seed.Deployment).ReloadAsync();
+        Assert.Equal(0.0500m, seed.Deployment.ReservedProviderCostEur);
+        Assert.Single(await store.DbContext.HostingFinancePolicies.ToArrayAsync());
+        Assert.Contains(
+            await store.DbContext.HostingAuditRecords.ToArrayAsync(),
+            q => q.Kind == X39.UnitedTacticalForces.Hosting.Contracts.EHostingAuditEventKind.HostingFinancePolicyChanged);
+    }
+
+    [Fact]
     public async Task AuthorizeNextSlice_ContinuesCleanupAccountingAsDebt()
     {
         await using var store = await HostingTestStore.CreateAsync();

@@ -5,6 +5,8 @@ using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
+using X39.UnitedTacticalForces.Database;
+using X39.UnitedTacticalForces.Hosting.Contracts;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
@@ -14,8 +16,152 @@ namespace X39.UnitedTacticalForces.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route(Constants.Routes.CostOwners)]
-public sealed class CostOwnersController(IHostingFinanceService financeService) : ControllerBase
+public sealed class CostOwnersController(
+    DatabaseContext dbContext,
+    IHostingFinanceService financeService,
+    IHostingFinancePolicyService financePolicyService,
+    IHostingAuthorizationService authorizationService) : ControllerBase
 {
+    /// <summary>
+    /// Lists every cost owner and their current hosting-finance position.
+    /// </summary>
+    [HttpGet]
+    [Authorize(Claims.Finance.ViewAll)]
+    [ProducesResponseType<IReadOnlyList<HostingCostOwnerDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllAsync(CancellationToken cancellationToken)
+    {
+        var owners = await dbContext.CostOwners
+            .AsNoTracking()
+            .OrderBy(q => q.DisplayName)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var result = new List<HostingCostOwnerDto>(owners.Length);
+        foreach (var owner in owners)
+        {
+            result.Add(await ToCostOwnerDtoAsync(owner, cancellationToken).ConfigureAwait(false));
+        }
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Returns one cost owner's current hosting-finance position when the caller may inspect it.
+    /// </summary>
+    [HttpGet("{costOwnerId:guid}")]
+    [ProducesResponseType<HostingCostOwnerDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAsync(Guid costOwnerId, CancellationToken cancellationToken)
+    {
+        var owner = await dbContext.CostOwners
+            .AsNoTracking()
+            .SingleOrDefaultAsync(q => q.PrimaryKey == costOwnerId, cancellationToken)
+            .ConfigureAwait(false);
+        if (owner is null)
+            return NotFound();
+        if (!await authorizationService.CanViewCostOwnerAsync(User, owner.PrimaryKey, cancellationToken)
+                .ConfigureAwait(false))
+            return Forbid();
+        return Ok(await ToCostOwnerDtoAsync(owner, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// Returns the hosting-finance position belonging to one user.
+    /// </summary>
+    [HttpGet("users/{userId:guid}")]
+    [ProducesResponseType<HostingCostOwnerDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetForUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var owner = await dbContext.CostOwners
+            .AsNoTracking()
+            .SingleOrDefaultAsync(q => q.UserFk == userId, cancellationToken)
+            .ConfigureAwait(false);
+        if (owner is null)
+            return NotFound();
+        if (!await authorizationService.CanViewCostOwnerAsync(User, owner.PrimaryKey, cancellationToken)
+                .ConfigureAwait(false))
+            return Forbid();
+        return Ok(await ToCostOwnerDtoAsync(owner, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// Creates the hosting-finance position for a user before their first server is created.
+    /// </summary>
+    [HttpPost("users/{userId:guid}")]
+    [ProducesResponseType<HostingCostOwnerDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> EnsureForUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        if (!CanInitializeCostOwner())
+            return Forbid();
+
+        var owner = await dbContext.CostOwners
+            .SingleOrDefaultAsync(q => q.UserFk == userId, cancellationToken)
+            .ConfigureAwait(false);
+        if (owner is null)
+        {
+            var user = await dbContext.Users
+                .AsNoTracking()
+                .SingleOrDefaultAsync(q => q.PrimaryKey == userId && !q.IsDeleted, cancellationToken)
+                .ConfigureAwait(false);
+            if (user is null)
+                return NotFound();
+            var now = NodaSystemClock.Instance.GetCurrentInstant();
+            owner = new CostOwner
+            {
+                PrimaryKey = Guid.NewGuid(),
+                Kind = ECostOwnerKind.User,
+                UserFk = user.PrimaryKey,
+                DisplayName = user.Nickname,
+                Currency = "EUR",
+                TimeStampCreated = now,
+                TimeStampUpdated = now,
+            };
+            dbContext.CostOwners.Add(owner);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        return Ok(await ToCostOwnerDtoAsync(owner, cancellationToken).ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// Returns the effective installation-wide affordability policy.
+    /// </summary>
+    [HttpGet("policy")]
+    [Authorize(Claims.Finance.ViewAll)]
+    [ProducesResponseType<HostingFinancePolicyDto>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPolicyAsync(CancellationToken cancellationToken)
+        => Ok(ToDto(await financePolicyService.GetAsync(cancellationToken).ConfigureAwait(false)));
+
+    /// <summary>
+    /// Updates the persisted installation-wide affordability policy.
+    /// </summary>
+    [HttpPut("policy")]
+    [Authorize(Claims.Finance.ManagePolicy)]
+    [ProducesResponseType<HostingFinancePolicyDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdatePolicyAsync(
+        [FromBody] HostingFinancePolicyUpdatePayload payload,
+        CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var actorId))
+            return Unauthorized();
+        try
+        {
+            return Ok(ToDto(await financePolicyService.UpdateAsync(
+                    payload.MinimumSafetyRangeEur,
+                    payload.ReservationSliceMinutes,
+                    actorId,
+                    cancellationToken)
+                .ConfigureAwait(false)));
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
+    }
+
     /// <summary>
     /// Records a bank transfer already received by the Verein and credits the selected cost owner.
     /// </summary>
@@ -231,6 +377,57 @@ public sealed class CostOwnersController(IHostingFinanceService financeService) 
             entry.ReversedEntryFk,
             entry.ExternalReference,
             entry.Reason);
+
+    private async Task<HostingCostOwnerDto> ToCostOwnerDtoAsync(
+        CostOwner owner,
+        CancellationToken cancellationToken)
+    {
+        var reservations = await dbContext.GameServerDeployments
+            .AsNoTracking()
+            .Where(q => q.CostOwnerFk == owner.PrimaryKey
+                        && q.TimeStampResolved == null
+                        && q.ReservedProviderCostEur != null)
+            .Select(q => q.ReservedProviderCostEur!.Value)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var reserved = reservations.Sum();
+        var ledger = await dbContext.HostingCostLedgerEntries
+            .AsNoTracking()
+            .Where(q => q.CostOwnerFk == owner.PrimaryKey)
+            .OrderByDescending(q => q.TimeStampCreated)
+            .Take(20)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return new HostingCostOwnerDto(
+            owner.PrimaryKey,
+            owner.Kind,
+            owner.UserFk,
+            owner.DisplayName,
+            owner.IsFrozen,
+            owner.Balance,
+            owner.Allowance,
+            reserved,
+            owner.Balance + (owner.Allowance ?? 0m) - reserved,
+            owner.Currency,
+            owner.TimeStampUpdated,
+            ledger.Select(ToDto).ToArray());
+    }
+
+    private static HostingFinancePolicyDto ToDto(EffectiveHostingFinancePolicy policy)
+        => new(
+            policy.MinimumSafetyRangeEur,
+            (int)policy.ReservationSlice.TotalMinutes,
+            policy.TimeStampUpdated,
+            policy.UpdatedById);
+
+    private bool CanInitializeCostOwner()
+        => User.HasAnyEmptyClaim(
+            Claims.Administrative.All,
+            Claims.Administrative.Hosting,
+            Claims.Administrative.Server,
+            Claims.Finance.All,
+            Claims.Finance.RecordPayment,
+            Claims.Finance.ManageAllowance);
 
     private static HostingFinanceOperationDto ToDto(HostingFinanceOperation operation)
         => new(

@@ -195,6 +195,15 @@ public sealed class HostingFinanceServiceTests
                 typeof(Guid),
                 typeof(HostingLedgerReversalPayload),
                 typeof(CancellationToken)));
+        Assert.Equal(
+            Claims.Finance.ViewAll,
+            GetAuthorizePolicy(nameof(CostOwnersController.GetAllAsync), typeof(CancellationToken)));
+        Assert.Equal(
+            Claims.Finance.ManagePolicy,
+            GetAuthorizePolicy(
+                nameof(CostOwnersController.UpdatePolicyAsync),
+                typeof(HostingFinancePolicyUpdatePayload),
+                typeof(CancellationToken)));
 
         Assert.True(await IsSatisfiedAsync(new FinanceRecordPaymentRequirement(), Claims.Finance.RecordPayment));
         Assert.False(await IsSatisfiedAsync(new FinanceRecordPaymentRequirement(), Claims.Finance.ManageAllowance));
@@ -210,6 +219,12 @@ public sealed class HostingFinanceServiceTests
         Assert.True(await IsSatisfiedAsync(new FinanceManageAllowanceRequirement(), Claims.Finance.All));
         Assert.True(await IsSatisfiedAsync(new FinanceRecordRefundRequirement(), Claims.Finance.All));
         Assert.True(await IsSatisfiedAsync(new FinanceCorrectLedgerRequirement(), Claims.Finance.All));
+        Assert.True(await IsSatisfiedAsync(new FinanceViewAllRequirement(), Claims.Finance.ViewAll));
+        Assert.False(await IsSatisfiedAsync(new FinanceViewAllRequirement(), Claims.Finance.ManagePolicy));
+        Assert.True(await IsSatisfiedAsync(new FinanceManagePolicyRequirement(), Claims.Finance.ManagePolicy));
+        Assert.False(await IsSatisfiedAsync(new FinanceManagePolicyRequirement(), Claims.Finance.ViewAll));
+        Assert.True(await IsSatisfiedAsync(new FinanceViewAllRequirement(), Claims.Finance.All));
+        Assert.True(await IsSatisfiedAsync(new FinanceManagePolicyRequirement(), Claims.Finance.All));
     }
 
     private static HostingCostSliceService CreateCostService(HostingTestStore store)

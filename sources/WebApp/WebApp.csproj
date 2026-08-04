@@ -27,6 +27,7 @@
     <ProjectReference Include="..\X39.BI.Config.Parsing\X39.BI.Config.Parsing.csproj" />
     <ProjectReference Include="..\Common\Common.csproj" />
     <ProjectReference Include="..\Claims\Claims.csproj" />
+    <ProjectReference Include="..\HostingContracts\HostingContracts.csproj" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Update="Properties\Language.resx">

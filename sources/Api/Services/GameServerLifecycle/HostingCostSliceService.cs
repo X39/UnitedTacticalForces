@@ -17,15 +17,25 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 internal sealed class HostingCostSliceService(
     DatabaseContext dbContext,
     IHostingAuditWriter auditWriter,
+    IHostingFinancePolicyService financePolicyService,
     IOptions<HostingFinanceOptions> options) : IHostingCostSliceService
 {
     private readonly HostingFinanceOptions _options = options.Value;
+
+    public HostingCostSliceService(
+        DatabaseContext dbContext,
+        IHostingAuditWriter auditWriter,
+        IOptions<HostingFinanceOptions> options)
+        : this(dbContext, auditWriter, new HostingFinancePolicyService(dbContext, auditWriter, options), options)
+    {
+    }
 
     public async Task ReserveInitialSliceAsync(
         Guid deploymentId,
         string providerIdentifier,
         CancellationToken cancellationToken = default)
     {
+        var policy = await financePolicyService.GetAsync(cancellationToken).ConfigureAwait(false);
         var locked = await BeginLockedDeploymentAsync(deploymentId, cancellationToken).ConfigureAwait(false);
         await using var transaction = locked.Transaction;
         var (deployment, owner) = (locked.Deployment, locked.Owner);
@@ -51,7 +61,7 @@ internal sealed class HostingCostSliceService(
             ? selectedRate
             : _options.GetHourlyRate(providerIdentifier);
         var sliceStartsAt = now;
-        var sliceEndsAt = now + Duration.FromTimeSpan(_options.ReservationSlice);
+        var sliceEndsAt = now + Duration.FromTimeSpan(policy.ReservationSlice);
         var amount = CalculateAmount(rate, sliceStartsAt, sliceEndsAt);
         var otherReservations = await GetOtherReservationTotalAsync(
                 owner.PrimaryKey,
@@ -59,7 +69,7 @@ internal sealed class HostingCostSliceService(
                 cancellationToken)
             .ConfigureAwait(false);
         var availableAfter = owner.Balance + (owner.Allowance ?? 0m) - otherReservations - amount;
-        if (availableAfter < _options.MinimumSafetyRangeEur)
+        if (availableAfter < policy.MinimumSafetyRangeEur)
         {
             throw new HostingAffordabilityException(
                 "The cost owner cannot reserve the next provider-cost slice while preserving the required safety range.");
@@ -88,6 +98,7 @@ internal sealed class HostingCostSliceService(
         string providerIdentifier,
         CancellationToken cancellationToken = default)
     {
+        var policy = await financePolicyService.GetAsync(cancellationToken).ConfigureAwait(false);
         var locked = await BeginLockedDeploymentAsync(deploymentId, cancellationToken).ConfigureAwait(false);
         await using var transaction = locked.Transaction;
         var (deployment, owner) = (locked.Deployment, locked.Owner);
@@ -106,7 +117,7 @@ internal sealed class HostingCostSliceService(
                 ? selectedRate
                 : _options.GetHourlyRate(providerIdentifier);
             var now = NodaSystemClock.Instance.GetCurrentInstant();
-            var sliceEndsAt = now + Duration.FromTimeSpan(_options.ReservationSlice);
+            var sliceEndsAt = now + Duration.FromTimeSpan(policy.ReservationSlice);
             ChargeSlice(
                 deployment,
                 owner,
@@ -163,6 +174,7 @@ internal sealed class HostingCostSliceService(
         bool enforceAffordability,
         CancellationToken cancellationToken = default)
     {
+        var policy = await financePolicyService.GetAsync(cancellationToken).ConfigureAwait(false);
         var locked = await BeginLockedDeploymentAsync(deploymentId, cancellationToken).ConfigureAwait(false);
         await using var transaction = locked.Transaction;
         var (deployment, owner) = (locked.Deployment, locked.Owner);
@@ -194,10 +206,10 @@ internal sealed class HostingCostSliceService(
         var sliceStartsAt = deployment.CostAuthorizationExpiresAt is { } priorEnd && priorEnd < now
             ? priorEnd
             : deployment.CostAuthorizationExpiresAt ?? now;
-        var ordinarySliceEnd = sliceStartsAt + Duration.FromTimeSpan(_options.ReservationSlice);
-        var sliceEndsAt = ordinarySliceEnd > now + Duration.FromTimeSpan(_options.ReservationSlice)
+        var ordinarySliceEnd = sliceStartsAt + Duration.FromTimeSpan(policy.ReservationSlice);
+        var sliceEndsAt = ordinarySliceEnd > now + Duration.FromTimeSpan(policy.ReservationSlice)
             ? ordinarySliceEnd
-            : now + Duration.FromTimeSpan(_options.ReservationSlice);
+            : now + Duration.FromTimeSpan(policy.ReservationSlice);
         var amount = CalculateAmount(rate, sliceStartsAt, sliceEndsAt);
         var otherReservations = await GetOtherReservationTotalAsync(
                 owner.PrimaryKey,
@@ -205,7 +217,7 @@ internal sealed class HostingCostSliceService(
                 cancellationToken)
             .ConfigureAwait(false);
         var availableAfter = owner.Balance + (owner.Allowance ?? 0m) - otherReservations - amount;
-        if (enforceAffordability && availableAfter < _options.MinimumSafetyRangeEur)
+        if (enforceAffordability && availableAfter < policy.MinimumSafetyRangeEur)
         {
             throw new HostingAffordabilityException(
                 "The cost owner cannot fund the next provider-cost slice while preserving the required safety range.");

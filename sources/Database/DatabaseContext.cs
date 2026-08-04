@@ -71,6 +71,7 @@ public class DatabaseContext : DbContext
     public DbSet<HostingCostLedgerEntry> HostingCostLedgerEntries { get; set; } = null!;
     public DbSet<HostingFinanceOperation> HostingFinanceOperations { get; set; } = null!;
     public DbSet<HostingFinanceCorrectionAllocation> HostingFinanceCorrectionAllocations { get; set; } = null!;
+    public DbSet<HostingFinancePolicy> HostingFinancePolicies { get; set; } = null!;
     public DbSet<DanglingProviderResourceIncident> DanglingProviderResourceIncidents { get; set; } = null!;
 
     #endregion
@@ -479,6 +480,17 @@ public class DatabaseContext : DbContext
                 .HasDatabaseName(WorkerCommand.ActiveDeploymentIndexName)
                 .IsUnique()
                 .HasFilter(WorkerCommand.ActiveDeploymentIndexFilter);
+        });
+
+        modelBuilder.Entity<HostingFinancePolicy>(entity =>
+        {
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_HostingFinancePolicies_Singleton", "\"PrimaryKey\" = 1");
+                table.HasCheckConstraint(
+                    "CK_HostingFinancePolicies_Values",
+                    "\"MinimumSafetyRangeEur\" >= 0 AND \"ReservationSliceMinutes\" BETWEEN 1 AND 1440");
+            });
         });
 
         modelBuilder.Entity<ContentStorageObservation>(entity =>

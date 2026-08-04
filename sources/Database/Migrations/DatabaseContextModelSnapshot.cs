@@ -2054,6 +2054,35 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         });
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.HostingFinancePolicy", b =>
+                {
+                    b.Property<int>("PrimaryKey")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MinimumSafetyRangeEur")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("ReservationSliceMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("TimeStampUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedByFk")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("UpdatedByFk");
+
+                    b.ToTable("HostingFinancePolicies", t =>
+                        {
+                            t.HasCheckConstraint("CK_HostingFinancePolicies_Singleton", "\"PrimaryKey\" = 1");
+
+                            t.HasCheckConstraint("CK_HostingFinancePolicies_Values", "\"MinimumSafetyRangeEur\" >= 0 AND \"ReservationSliceMinutes\" BETWEEN 1 AND 1440");
+                        });
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.LifecycleJob", b =>
                 {
                     b.Property<Guid>("PrimaryKey")
@@ -4016,6 +4045,16 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("TargetFinanceOperation");
 
                     b.Navigation("TargetLedgerEntry");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.HostingFinancePolicy", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "UpdatedBy")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("UpdatedBy");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.LifecycleJob", b =>

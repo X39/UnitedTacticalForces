@@ -79,4 +79,5 @@ public enum EHostingAuditEventKind
     ConfigurationProfileCreated = 71,
     ConfigurationProfileRevisionCreated = 72,
     ConfigurationProfileArchived = 73,
+    HostingFinancePolicyChanged = 74,
 }

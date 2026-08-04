@@ -50,6 +50,17 @@
                 </div>
             }
 
+            @if (CanManageFinance)
+            {
+                <div class="utf-command-nav__group">
+                    <div class="utf-command-nav__label">Finance</div>
+                    <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/hosting-finance")">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.WalletCreditCard())"/>
+                        <span>Hosting finance</span>
+                    </NavLink>
+                </div>
+            }
+
             @if (CanManageAssets)
             {
                 <div class="utf-command-nav__group">
@@ -223,6 +234,11 @@
            || CanManageWikiMedia
            || CanManageMediaGallery;
 
+    private bool CanManageFinance
+        => Me.HasClaim(
+            Claims.Finance.All,
+            Claims.Finance.ViewAll);
+
     private bool CanManageWikiMedia
         => Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All);
 
@@ -262,7 +278,8 @@
         => CanManageOperations
            || CanManageAssets
            || CanManageCommunity
-           || CanManageGovernance;
+           || CanManageGovernance
+           || CanManageFinance;
 
     private string CurrentArea
     {
@@ -280,6 +297,7 @@
                 "command/servers"        => Localizer["Hosting_Nav_Servers"].Value,
                 "command/servers/create" => Localizer["Hosting_Create_Title"].Value,
                 "command/configuration-profiles" => "Configuration profiles",
+                "command/hosting-finance" => "Hosting finance",
                 _ when path.StartsWith("command/servers/", StringComparison.Ordinal) => Localizer["Hosting_Detail_Title"].Value,
                 "events/all"            => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventAdministration)].Value,
                 "command/events"        => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventAdministration)].Value,

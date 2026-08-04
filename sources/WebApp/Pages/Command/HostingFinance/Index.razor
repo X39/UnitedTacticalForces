@@ -1,0 +1,292 @@
+@page "/command/hosting-finance"
+@layout CommandCenterLayout
+@using System.Globalization
+@using X39.UnitedTacticalForces.Hosting.Contracts
+@using X39.UnitedTacticalForces.WebApp.Services
+@using X39.UnitedTacticalForces.WebApp.Services.HostingFinanceRepository
+@inject IHostingFinanceRepository FinanceRepository
+@inject IToastService ToastService
+@inject MeService Me
+
+<PageTitle>Hosting finance</PageTitle>
+
+<UtfCommandPageHeader Title="Hosting finance"
+                      Description="Manage prepaid hosting credit, finite allowances, and the global affordability reserve.">
+    <Actions>
+        <UtfCommandButton Disabled="@_isLoading" OnClick="LoadAsync">Refresh</UtfCommandButton>
+    </Actions>
+</UtfCommandPageHeader>
+
+@if (!CanViewFinance)
+{
+    <section class="utf-empty-state">
+        <h2>Finance access required</h2>
+        <p>The Finance.ViewAll claim is required to inspect hosting balances.</p>
+    </section>
+}
+else if (_loadError is not null)
+{
+    <div class="utf-state-panel utf-state-panel--warning" role="alert">@_loadError</div>
+}
+else if (_isLoading)
+{
+    <div class="utf-state-panel">Loading hosting finance… <FluentProgress Width="240px"/></div>
+}
+else
+{
+    <div class="hosting-finance-grid">
+        <section class="utf-panel hosting-finance-panel">
+            <div class="hosting-finance-heading">
+                <div>
+                    <span class="utf-kicker">Global policy</span>
+                    <h2>Protected reserve</h2>
+                </div>
+                <span class="utf-status utf-status--info">Installation-wide</span>
+            </div>
+            <p>
+                Every owner must retain this amount after the next estimated provider-cost slice. It is a safety reserve,
+                not an individual spending limit.
+            </p>
+            <div class="hosting-finance-form">
+                <label>
+                    <span>Minimum safety range (EUR)</span>
+                    <input class="utf-command-input" type="number" min="0" step="0.01"
+                           disabled="@(!CanManagePolicy || _isSavingPolicy)" @bind="_minimumSafetyRangeEur"/>
+                </label>
+                <label>
+                    <span>Reservation slice (minutes)</span>
+                    <input class="utf-command-input" type="number" min="1" max="1440" step="1"
+                           disabled="@(!CanManagePolicy || _isSavingPolicy)" @bind="_reservationSliceMinutes"/>
+                </label>
+                @if (CanManagePolicy)
+                {
+                    <UtfCommandButton Variant="primary" Disabled="@_isSavingPolicy" OnClick="SavePolicyAsync">
+                        @(_isSavingPolicy ? "Saving…" : "Save global policy")
+                    </UtfCommandButton>
+                }
+            </div>
+        </section>
+
+        <section class="utf-panel hosting-finance-panel">
+            <div class="hosting-finance-heading">
+                <div>
+                    <span class="utf-kicker">Cost owners</span>
+                    <h2>Member and organization balances</h2>
+                </div>
+                <span class="utf-status utf-status--neutral">@_owners.Count owner(s)</span>
+            </div>
+            <label>
+                <span>Selected cost owner</span>
+                <select class="utf-command-input" value="@_selectedOwnerId" @onchange="SelectOwner">
+                    @foreach (var optionOwner in _owners)
+                    {
+                        <option value="@optionOwner.CostOwnerId">@optionOwner.DisplayName (@FormatOwnerKind(optionOwner.Kind))</option>
+                    }
+                </select>
+            </label>
+
+            @if (SelectedOwner is { } owner)
+            {
+                <dl class="hosting-finance-metrics">
+                    <div><dt>Prepaid balance</dt><dd>@FormatMoney(owner.Balance, owner.Currency)</dd></div>
+                    <div><dt>Finite allowance</dt><dd>@(owner.Allowance.HasValue ? FormatMoney(owner.Allowance.Value, owner.Currency) : "None")</dd></div>
+                    <div><dt>Reserved</dt><dd>@FormatMoney(owner.ReservedProviderCost, owner.Currency)</dd></div>
+                    <div><dt>Spendable before reserve</dt><dd>@FormatMoney(owner.SpendableAmount, owner.Currency)</dd></div>
+                </dl>
+
+                <div class="hosting-finance-actions">
+                    <div class="hosting-finance-form">
+                        <h3>Record received payment</h3>
+                        <p>Use this after the bank transfer has reached the Verein account.</p>
+                        <label><span>Amount (EUR)</span><input class="utf-command-input" type="number" min="0.01" step="0.01" @bind="_paymentAmount"/></label>
+                        <label><span>Bank transfer reference</span><input class="utf-command-input" maxlength="128" @bind="_paymentReference"/></label>
+                        <label><span>Reason or note</span><input class="utf-command-input" maxlength="512" @bind="_paymentReason"/></label>
+                        <UtfCommandButton Variant="primary" Disabled="@(!CanRecordPayment || _isSavingOwner)" OnClick="RecordPaymentAsync">
+                            Record payment
+                        </UtfCommandButton>
+                    </div>
+
+                    <div class="hosting-finance-form">
+                        <h3>Finite allowance</h3>
+                        <p>An allowance permits bounded debt in addition to prepaid credit. It does not change the balance.</p>
+                        <label><span>Allowance (EUR)</span><input class="utf-command-input" type="number" min="0" step="0.01" disabled="@_revokeAllowance" @bind="_allowance"/></label>
+                        <label class="hosting-finance-check"><input type="checkbox" @bind="_revokeAllowance"/><span>Revoke allowance (prepaid-only)</span></label>
+                        <label><span>Required reason</span><input class="utf-command-input" maxlength="512" @bind="_allowanceReason"/></label>
+                        <UtfCommandButton Variant="primary" Disabled="@(!CanManageAllowance || _isSavingOwner)" OnClick="SaveAllowanceAsync">
+                            Save allowance
+                        </UtfCommandButton>
+                    </div>
+                </div>
+            }
+        </section>
+    </div>
+
+    @if (SelectedOwner is { RecentLedgerEntries.Count: > 0 } selected)
+    {
+        <section class="utf-panel hosting-finance-panel">
+            <span class="utf-kicker">Audit trail</span>
+            <h2>Recent entries for @selected.DisplayName</h2>
+            <div class="hosting-finance-ledger">
+                <table>
+                    <thead><tr><th>Effective</th><th>Kind</th><th>Amount</th><th>Balance after</th><th>Reference / reason</th></tr></thead>
+                    <tbody>
+                    @foreach (var entry in selected.RecentLedgerEntries)
+                    {
+                        <tr>
+                            <td>@entry.TimeStampEffective.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</td>
+                            <td>@FormatLedgerKind(entry.Kind)</td>
+                            <td>@FormatMoney(entry.Amount, entry.Currency)</td>
+                            <td>@FormatMoney(entry.BalanceAfter, entry.Currency)</td>
+                            <td>@string.Join(" · ", new[] { entry.ExternalReference, entry.Reason }.Where(q => !string.IsNullOrWhiteSpace(q)))</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+}
+
+@code {
+    private IReadOnlyList<HostingCostOwnerInfo> _owners = [];
+    private HostingFinancePolicyInfo? _policy;
+    private Guid? _selectedOwnerId;
+    private decimal _minimumSafetyRangeEur;
+    private int _reservationSliceMinutes = 15;
+    private decimal _paymentAmount;
+    private string _paymentReference = string.Empty;
+    private string? _paymentReason;
+    private decimal _allowance;
+    private bool _revokeAllowance;
+    private string _allowanceReason = string.Empty;
+    private bool _isLoading;
+    private bool _isSavingPolicy;
+    private bool _isSavingOwner;
+    private string? _loadError;
+
+    private bool CanViewFinance => Me.HasClaim(Claims.Finance.All, Claims.Finance.ViewAll);
+    private bool CanRecordPayment => Me.HasClaim(Claims.Finance.All, Claims.Finance.RecordPayment);
+    private bool CanManageAllowance => Me.HasClaim(Claims.Finance.All, Claims.Finance.ManageAllowance);
+    private bool CanManagePolicy => Me.HasClaim(Claims.Finance.All, Claims.Finance.ManagePolicy);
+    private HostingCostOwnerInfo? SelectedOwner => _owners.FirstOrDefault(q => q.CostOwnerId == _selectedOwnerId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanViewFinance)
+            await LoadAsync().ConfigureAwait(false);
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _loadError = null;
+        try
+        {
+            _owners = await FinanceRepository.GetCostOwnersAsync().ConfigureAwait(false);
+            _policy = await FinanceRepository.GetPolicyAsync().ConfigureAwait(false);
+            _minimumSafetyRangeEur = _policy.MinimumSafetyRangeEur;
+            _reservationSliceMinutes = _policy.ReservationSliceMinutes;
+            if (_selectedOwnerId is null || _owners.All(q => q.CostOwnerId != _selectedOwnerId))
+                _selectedOwnerId = _owners.FirstOrDefault()?.CostOwnerId;
+            LoadOwnerEditor();
+        }
+        catch (Exception ex)
+        {
+            _loadError = UserFacingError.Message(ex);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void SelectOwner(ChangeEventArgs args)
+    {
+        _selectedOwnerId = Guid.TryParse(args.Value?.ToString(), out var value) ? value : null;
+        LoadOwnerEditor();
+    }
+
+    private void LoadOwnerEditor()
+    {
+        _allowance = SelectedOwner?.Allowance ?? 0m;
+        _revokeAllowance = SelectedOwner?.Allowance is null;
+        _allowanceReason = string.Empty;
+        _paymentAmount = 0m;
+        _paymentReference = string.Empty;
+        _paymentReason = null;
+    }
+
+    private async Task SavePolicyAsync()
+    {
+        if (!CanManagePolicy)
+            return;
+        _isSavingPolicy = true;
+        try
+        {
+            _policy = await FinanceRepository.UpdatePolicyAsync(_minimumSafetyRangeEur, _reservationSliceMinutes)
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess("Hosting finance policy saved.");
+        }
+        catch (Exception ex) { ToastService.ShowError(UserFacingError.Message(ex)); }
+        finally { _isSavingPolicy = false; }
+    }
+
+    private async Task RecordPaymentAsync()
+    {
+        if (!CanRecordPayment || SelectedOwner is not { } owner)
+            return;
+        if (_paymentAmount <= 0 || string.IsNullOrWhiteSpace(_paymentReference))
+        {
+            ToastService.ShowError("Enter a positive amount and a bank transfer reference.");
+            return;
+        }
+        _isSavingOwner = true;
+        try
+        {
+            await FinanceRepository.RecordPaymentAsync(owner.CostOwnerId, _paymentAmount, DateTimeOffset.UtcNow,
+                    _paymentReference, _paymentReason)
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess("Received payment recorded as hosting credit.");
+            await LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) { ToastService.ShowError(UserFacingError.Message(ex)); }
+        finally { _isSavingOwner = false; }
+    }
+
+    private async Task SaveAllowanceAsync()
+    {
+        if (!CanManageAllowance || SelectedOwner is not { } owner)
+            return;
+        if (string.IsNullOrWhiteSpace(_allowanceReason))
+        {
+            ToastService.ShowError("A reason is required when changing an allowance.");
+            return;
+        }
+        _isSavingOwner = true;
+        try
+        {
+            await FinanceRepository.ChangeAllowanceAsync(owner.CostOwnerId,
+                    _revokeAllowance ? null : _allowance, _allowanceReason)
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess("Finite allowance saved.");
+            await LoadAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) { ToastService.ShowError(UserFacingError.Message(ex)); }
+        finally { _isSavingOwner = false; }
+    }
+
+    private static string FormatMoney(decimal value, string currency)
+        => $"{value:N4} {currency}";
+
+    private static string FormatOwnerKind(ECostOwnerKind kind) => kind switch
+    {
+        ECostOwnerKind.User => "member",
+        ECostOwnerKind.Verein => "Verein",
+        ECostOwnerKind.ExternalOrganization => "organization",
+        _ => kind.ToString(),
+    };
+
+    private static string FormatLedgerKind(EHostingLedgerEntryKind kind)
+        => kind.ToString().Replace("ProviderCostSlice", "Provider cost").Replace("BankTransferPayment", "Payment")
+            .Replace("AllowanceChanged", "Allowance changed");
+}
