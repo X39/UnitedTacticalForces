@@ -24,6 +24,9 @@ public abstract class AnyClaimValuePairFromRouteRequirementBase : IAppRequiremen
     /// <inheritdoc />
     public virtual ValueTask<bool> IsSatisfiedAsync(HttpContext httpContext, IServiceProvider serviceProvider)
     {
+        if (httpContext.User.HasClaim(Claims.Administrative.All, string.Empty))
+            return ValueTask.FromResult(true);
+
         foreach (var (claim, routeParameter) in _claims)
         {
             if (routeParameter is null)

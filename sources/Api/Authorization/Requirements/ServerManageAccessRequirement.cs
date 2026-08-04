@@ -15,6 +15,9 @@ public sealed class ServerManageAccessRequirement : ServerIdRequirement
     public override ValueTask<bool> IsSatisfiedAsync(HttpContext httpContext, IServiceProvider serviceProvider)
     {
         _ = serviceProvider;
+        if (httpContext.User.IsGlobalAdministrator())
+            return ValueTask.FromResult(true);
+
         if (!httpContext.Request.RouteValues.TryGetValue(RouteParameterName, out var routeValue))
             return ValueTask.FromResult(false);
         if (!Guid.TryParse(routeValue?.ToString(), out var gameServerId))

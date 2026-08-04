@@ -105,7 +105,8 @@ public class RolesController : ControllerBase
             return Unauthorized();
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
         var existingRole = await _apiDbContext.Roles.SingleAsync(q => q.PrimaryKey == roleId, cancellationToken);
-        var isInRole = User.HasClaim(Claims.Administrative.Role, string.Empty)
+        var isInRole = User.IsGlobalAdministrator()
+                       || User.HasClaim(Claims.Administrative.Role, string.Empty)
                        || await _apiDbContext.Users
                            .Where(q => q.PrimaryKey == currentUserId)
                            .SelectMany(q => q.Roles!)
@@ -182,7 +183,8 @@ public class RolesController : ControllerBase
             return Unauthorized();
         await using var dbTransaction = await _apiDbContext.Database.BeginTransactionAsync(cancellationToken);
         var existingClaim = await _apiDbContext.Claims.SingleAsync(q => q.PrimaryKey == claimId, cancellationToken);
-        var isInRole = User.HasClaim(Claims.Administrative.Role, string.Empty)
+        var isInRole = User.IsGlobalAdministrator()
+                       || User.HasClaim(Claims.Administrative.Role, string.Empty)
                        || await _apiDbContext.Users
                            .Where(q => q.PrimaryKey == currentUserId)
                            .SelectMany(q => q.Roles!)

@@ -881,20 +881,25 @@ public class UsersController : ControllerBase
         }
 
         if (updatedUser.Nickname is not null)
-            if (User.HasClaim(Claims.User.Nickname, string.Empty)
+            if (User.IsGlobalAdministrator()
+                || User.HasClaim(Claims.User.Nickname, string.Empty)
                 || User.HasClaim(Claims.Administrative.User, string.Empty)
                 || isSelf)
                 existingUser.Nickname = updatedUser.Nickname;
         if (updatedUser.EMail is not null)
-            if (User.HasClaim(Claims.User.EMail, string.Empty)
+            if (User.IsGlobalAdministrator()
+                || User.HasClaim(Claims.User.EMail, string.Empty)
                 || User.HasClaim(Claims.Administrative.User, string.Empty)
                 || isSelf)
                 existingUser.EMail = updatedUser.EMail;
         if (updatedUser.IsBanned is not null)
-            if (User.HasClaim(Claims.User.Ban, string.Empty) || User.HasClaim(Claims.Administrative.User, string.Empty))
+            if (User.IsGlobalAdministrator()
+                || User.HasClaim(Claims.User.Ban, string.Empty)
+                || User.HasClaim(Claims.Administrative.User, string.Empty))
                 existingUser.IsBanned = updatedUser.IsBanned.Value;
         if (updatedUser.IsVerified is not null)
-            if (User.HasClaim(Claims.User.Verify, string.Empty)
+            if (User.IsGlobalAdministrator()
+                || User.HasClaim(Claims.User.Verify, string.Empty)
                 || User.HasClaim(Claims.Administrative.User, string.Empty))
                 existingUser.IsVerified = updatedUser.IsVerified.Value;
         await _apiDbContext.SaveChangesAsync(cancellationToken);
@@ -1132,6 +1137,7 @@ public class UsersController : ControllerBase
 
     private bool CanViewUserField(User user, Guid currentUserId, string claim)
         => user.PrimaryKey == currentUserId
+           || User.IsGlobalAdministrator()
            || User.HasClaim(claim, string.Empty)
            || User.HasClaim(Claims.Administrative.User, string.Empty);
 

@@ -8,6 +8,12 @@ namespace X39.UnitedTacticalForces.Api.ExtensionMethods;
 
 public static class ClaimsPrincipalExtensions
 {
+    /// <summary>
+    /// Returns whether the principal carries the unconditional application-superuser claim.
+    /// </summary>
+    public static bool IsGlobalAdministrator(this ClaimsPrincipal self)
+        => self.HasClaim(Claims.Administrative.All, string.Empty);
+
     public static bool TrySteamIdentity(
         this ClaimsPrincipal self,
         [NotNullWhen(true)] out ClaimsIdentity? steamIdentity)
@@ -108,6 +114,7 @@ public static class ClaimsPrincipalExtensions
         this ClaimsPrincipal self,
         params string[] claimIdentifiers)
     {
-        return claimIdentifiers.Any(claimIdentifier => self.HasClaim(claimIdentifier, string.Empty));
+        return self.IsGlobalAdministrator()
+               || claimIdentifiers.Any(claimIdentifier => self.HasClaim(claimIdentifier, string.Empty));
     }
 }

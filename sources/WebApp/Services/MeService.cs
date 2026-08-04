@@ -106,6 +106,8 @@ public class MeService(IUserRepository userRepository)
     {
         if (!IsAuthenticated)
             return false;
+        if (IsGlobalAdministrator)
+            return true;
         if (HasExactEmptyClaim(claim))
             return true;
         return claims.Any(HasExactEmptyClaim);
@@ -124,6 +126,8 @@ public class MeService(IUserRepository userRepository)
     {
         if (!IsAuthenticated)
             return false;
+        if (IsGlobalAdministrator)
+            return true;
         if (User.Claims?.Any((q) => q.Identifier == claim) ?? false)
             return true;
         return claims.Any(r => User.Claims?.Any((q) => q.Identifier == r) ?? false);
@@ -133,6 +137,8 @@ public class MeService(IUserRepository userRepository)
     {
         if (!IsAuthenticated)
             return false;
+        if (IsGlobalAdministrator)
+            return true;
         if (User.Claims?.Any((q) => q.Identifier == claim1) ?? false)
             return true;
         if (User.Claims?.Any((q) => q.Identifier == claim2) ?? false)
@@ -144,6 +150,8 @@ public class MeService(IUserRepository userRepository)
     {
         if (!IsAuthenticated)
             return false;
+        if (IsGlobalAdministrator)
+            return true;
         if (User.Claims?.Any((q) => q.Identifier == claim1) ?? false)
             return true;
         if (User.Claims?.Any((q) => q.Identifier == claim2) ?? false)
@@ -157,6 +165,8 @@ public class MeService(IUserRepository userRepository)
     {
         if (!IsAuthenticated)
             return false;
+        if (IsGlobalAdministrator)
+            return true;
 
         return User.Claims?.Any((q) => q.Identifier == claim && q.Value == value) ?? false;
     }
@@ -174,6 +184,10 @@ public class MeService(IUserRepository userRepository)
 
     private bool HasExactEmptyClaim(string claim)
         => User.Claims?.Any((q) => q.Identifier == claim && (q.Value is null || q.Value == string.Empty)) ?? false;
+
+    private bool IsGlobalAdministrator
+        => User.Claims?.Any(q => q.Identifier == Claims.Administrative.All
+                                 && string.IsNullOrEmpty(q.Value)) ?? false;
 
     public bool HasClaimOrAdmin(string claim, params string[] claims)
         => HasClaim(Claims.Administrative.All, claim, claims);

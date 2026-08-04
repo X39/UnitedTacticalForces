@@ -22,6 +22,14 @@ public sealed class AppAuthorizationHandler : IAuthorizationHandler
     {
         if (context.Resource is not HttpContext httpContext)
             throw new NullReferenceException("The AuthorizationHandlerContext.Resource is not a http context.");
+        if (httpContext.User.HasClaim(Claims.Administrative.All, string.Empty))
+        {
+            foreach (var requirement in context.Requirements.OfType<IAppRequirement>())
+            {
+                context.Succeed(requirement);
+            }
+            return;
+        }
         foreach (var appRequirement in context.Requirements.OfType<IAppRequirement>())
         {
             if (await appRequirement.IsSatisfiedAsync(httpContext, _serviceProvider))
