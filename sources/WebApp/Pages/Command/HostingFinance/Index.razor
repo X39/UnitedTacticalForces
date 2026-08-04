@@ -7,150 +7,237 @@
 @inject IHostingFinanceRepository FinanceRepository
 @inject IToastService ToastService
 @inject MeService Me
+@inject IStringLocalizer<Language> Localizer
 
-<PageTitle>Hosting finance</PageTitle>
+<PageTitle>@Localizer["HostingFinance_PageTitle"]</PageTitle>
 
-<UtfCommandPageHeader Title="Hosting finance"
-                      Description="Manage prepaid hosting credit, finite allowances, and the global affordability reserve.">
-    <Actions>
-        <UtfCommandButton Disabled="@_isLoading" OnClick="LoadAsync">Refresh</UtfCommandButton>
-    </Actions>
-</UtfCommandPageHeader>
+<div class="hosting-finance-page">
+    <UtfCommandPageHeader Title="@(Localizer["HostingFinance_Title"])"
+                          Description="@(Localizer["HostingFinance_Description"])">
+        <Actions>
+            <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
+                <Icon><FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/></Icon>
+                <ChildContent>@Localizer["HostingFinance_Refresh"]</ChildContent>
+            </UtfCommandButton>
+        </Actions>
+    </UtfCommandPageHeader>
 
-@if (!CanViewFinance)
-{
-    <section class="utf-empty-state">
-        <h2>Finance access required</h2>
-        <p>The Finance.ViewAll claim is required to inspect hosting balances.</p>
-    </section>
-}
-else if (_loadError is not null)
-{
-    <div class="utf-state-panel utf-state-panel--warning" role="alert">@_loadError</div>
-}
-else if (_isLoading)
-{
-    <div class="utf-state-panel">Loading hosting finance… <FluentProgress Width="240px"/></div>
-}
-else
-{
-    <div class="hosting-finance-grid">
-        <section class="utf-panel hosting-finance-panel">
-            <div class="hosting-finance-heading">
+    @if (!CanViewFinance)
+    {
+        <section class="utf-empty-state">
+            <h2>@Localizer["HostingFinance_NoAccessTitle"]</h2>
+            <p>@Localizer["HostingFinance_NoAccessMessage"]</p>
+        </section>
+    }
+    else if (_loadError is not null)
+    {
+        <div class="utf-state-panel utf-state-panel--warning" role="alert">@_loadError</div>
+    }
+    else
+    {
+        <section class="utf-panel hosting-finance-policy">
+            <div class="hosting-finance-section-heading">
                 <div>
-                    <span class="utf-kicker">Global policy</span>
-                    <h2>Protected reserve</h2>
+                    <span class="utf-kicker">@Localizer["HostingFinance_PolicyKicker"]</span>
+                    <h2>@Localizer["HostingFinance_PolicyTitle"]</h2>
+                    <p>@Localizer["HostingFinance_PolicyDescription"]</p>
                 </div>
-                <span class="utf-status utf-status--info">Installation-wide</span>
+                <span class="utf-status utf-status--info">
+                    <span class="utf-status__dot"></span>@Localizer["HostingFinance_Global"]
+                </span>
             </div>
-            <p>
-                Every owner must retain this amount after the next estimated provider-cost slice. It is a safety reserve,
-                not an individual spending limit.
-            </p>
-            <div class="hosting-finance-form">
-                <label>
-                    <span>Minimum safety range (EUR)</span>
+            <div class="hosting-finance-policy-fields">
+                <label class="utf-command-field">
+                    <span>@Localizer["HostingFinance_MinimumReserve"]</span>
                     <input class="utf-command-input" type="number" min="0" step="0.01"
                            disabled="@(!CanManagePolicy || _isSavingPolicy)" @bind="_minimumSafetyRangeEur"/>
                 </label>
-                <label>
-                    <span>Reservation slice (minutes)</span>
+                <label class="utf-command-field">
+                    <span>@Localizer["HostingFinance_ReservationSlice"]</span>
                     <input class="utf-command-input" type="number" min="1" max="1440" step="1"
                            disabled="@(!CanManagePolicy || _isSavingPolicy)" @bind="_reservationSliceMinutes"/>
                 </label>
                 @if (CanManagePolicy)
                 {
-                    <UtfCommandButton Variant="primary" Disabled="@_isSavingPolicy" OnClick="SavePolicyAsync">
-                        @(_isSavingPolicy ? "Saving…" : "Save global policy")
+                    <UtfCommandButton Class="hosting-finance-policy-save" Variant="primary"
+                                      Disabled="@_isSavingPolicy" OnClick="SavePolicyAsync">
+                        @(_isSavingPolicy ? Localizer["HostingFinance_Saving"] : Localizer["HostingFinance_SavePolicy"])
                     </UtfCommandButton>
                 }
             </div>
         </section>
 
-        <section class="utf-panel hosting-finance-panel">
-            <div class="hosting-finance-heading">
-                <div>
-                    <span class="utf-kicker">Cost owners</span>
-                    <h2>Member and organization balances</h2>
+        <div class="hosting-finance-workspace">
+            <aside class="utf-panel hosting-finance-owner-browser">
+                <div class="hosting-finance-browser-heading">
+                    <div>
+                        <span class="utf-kicker">@Localizer["HostingFinance_OwnersKicker"]</span>
+                        <h2>@Localizer["HostingFinance_OwnersTitle"]</h2>
+                    </div>
+                    <span class="utf-status utf-status--neutral">@_totalOwnerCount</span>
                 </div>
-                <span class="utf-status utf-status--neutral">@_owners.Count owner(s)</span>
-            </div>
-            <label>
-                <span>Selected cost owner</span>
-                <select class="utf-command-input" value="@_selectedOwnerId" @onchange="SelectOwner">
-                    @foreach (var optionOwner in _owners)
-                    {
-                        <option value="@optionOwner.CostOwnerId">@optionOwner.DisplayName (@FormatOwnerKind(optionOwner.Kind))</option>
-                    }
-                </select>
-            </label>
 
-            @if (SelectedOwner is { } owner)
-            {
-                <dl class="hosting-finance-metrics">
-                    <div><dt>Prepaid balance</dt><dd>@FormatMoney(owner.Balance, owner.Currency)</dd></div>
-                    <div><dt>Finite allowance</dt><dd>@(owner.Allowance.HasValue ? FormatMoney(owner.Allowance.Value, owner.Currency) : "None")</dd></div>
-                    <div><dt>Reserved</dt><dd>@FormatMoney(owner.ReservedProviderCost, owner.Currency)</dd></div>
-                    <div><dt>Spendable before reserve</dt><dd>@FormatMoney(owner.SpendableAmount, owner.Currency)</dd></div>
-                </dl>
+                <form class="hosting-finance-search" @onsubmit="SearchAsync" @onsubmit:preventDefault="true">
+                    <UtfCommandSearch Label="@(Localizer["HostingFinance_SearchLabel"])"
+                                      Placeholder="@(Localizer["HostingFinance_SearchPlaceholder"])"
+                                      Value="@_search" ValueChanged="OnSearchChanged"/>
+                    <UtfCommandButton Type="submit" Disabled="@_isLoadingOwners">
+                        @Localizer["HostingFinance_Search"]
+                    </UtfCommandButton>
+                </form>
 
-                <div class="hosting-finance-actions">
-                    <div class="hosting-finance-form">
-                        <h3>Record received payment</h3>
-                        <p>Use this after the bank transfer has reached the Verein account.</p>
-                        <label><span>Amount (EUR)</span><input class="utf-command-input" type="number" min="0.01" step="0.01" @bind="_paymentAmount"/></label>
-                        <label><span>Bank transfer reference</span><input class="utf-command-input" maxlength="128" @bind="_paymentReference"/></label>
-                        <label><span>Reason or note</span><input class="utf-command-input" maxlength="512" @bind="_paymentReason"/></label>
-                        <UtfCommandButton Variant="primary" Disabled="@(!CanRecordPayment || _isSavingOwner)" OnClick="RecordPaymentAsync">
-                            Record payment
+                @if (_isLoadingOwners)
+                {
+                    <div class="hosting-finance-browser-state">
+                        @Localizer["HostingFinance_LoadingOwners"]
+                        <FluentProgress Width="180px"/>
+                    </div>
+                }
+                else if (_owners.Count == 0)
+                {
+                    <div class="hosting-finance-browser-state">@Localizer["HostingFinance_NoOwners"]</div>
+                }
+                else
+                {
+                    <div class="hosting-finance-owner-list" role="listbox" aria-label="@(Localizer["HostingFinance_OwnerResultsAria"])">
+                        @foreach (var optionOwner in _owners)
+                        {
+                            <button type="button" role="option" aria-selected="@(optionOwner.CostOwnerId == _selectedOwnerId)"
+                                    class="@GetOwnerButtonClass(optionOwner)" @onclick="@(() => SelectOwner(optionOwner))">
+                                <span class="hosting-finance-owner-avatar" aria-hidden="true">@GetInitials(optionOwner.DisplayName)</span>
+                                <span class="hosting-finance-owner-copy">
+                                    <strong>@optionOwner.DisplayName</strong>
+                                    <span>@FormatOwnerKind(optionOwner.Kind) · @FormatMoney(optionOwner.Balance, optionOwner.Currency)</span>
+                                </span>
+                                @if (optionOwner.IsFrozen)
+                                {
+                                    <span class="utf-status utf-status--warning">@Localizer["HostingFinance_Frozen"]</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                }
+
+                @if (_totalOwnerCount > PageSize)
+                {
+                    <div class="hosting-finance-pagination">
+                        <UtfCommandButton Disabled="@(_pageIndex == 0 || _isLoadingOwners)" OnClick="PreviousPageAsync">
+                            @Localizer["HostingFinance_Previous"]
+                        </UtfCommandButton>
+                        <span>@FormatPageLabel()</span>
+                        <UtfCommandButton Disabled="@(!HasNextPage || _isLoadingOwners)" OnClick="NextPageAsync">
+                            @Localizer["HostingFinance_Next"]
                         </UtfCommandButton>
                     </div>
+                }
+            </aside>
 
-                    <div class="hosting-finance-form">
-                        <h3>Finite allowance</h3>
-                        <p>An allowance permits bounded debt in addition to prepaid credit. It does not change the balance.</p>
-                        <label><span>Allowance (EUR)</span><input class="utf-command-input" type="number" min="0" step="0.01" disabled="@_revokeAllowance" @bind="_allowance"/></label>
-                        <label class="hosting-finance-check"><input type="checkbox" @bind="_revokeAllowance"/><span>Revoke allowance (prepaid-only)</span></label>
-                        <label><span>Required reason</span><input class="utf-command-input" maxlength="512" @bind="_allowanceReason"/></label>
-                        <UtfCommandButton Variant="primary" Disabled="@(!CanManageAllowance || _isSavingOwner)" OnClick="SaveAllowanceAsync">
-                            Save allowance
-                        </UtfCommandButton>
+            <main class="hosting-finance-detail">
+                @if (SelectedOwner is not { } owner)
+                {
+                    <section class="utf-empty-state hosting-finance-select-prompt">
+                        <FluentIcon Value="@(new Icons.Regular.Size24.PersonSearch())"/>
+                        <h2>@Localizer["HostingFinance_SelectOwnerTitle"]</h2>
+                        <p>@Localizer["HostingFinance_SelectOwnerMessage"]</p>
+                    </section>
+                }
+                else
+                {
+                    <section class="utf-panel hosting-finance-summary">
+                        <div class="hosting-finance-section-heading">
+                            <div>
+                                <span class="utf-kicker">@FormatOwnerKind(owner.Kind)</span>
+                                <h2>@owner.DisplayName</h2>
+                            </div>
+                            <span class="utf-status @(owner.IsFrozen ? "utf-status--warning" : "utf-status--success")">
+                                <span class="utf-status__dot"></span>
+                                @(owner.IsFrozen ? Localizer["HostingFinance_Frozen"] : Localizer["HostingFinance_Active"])
+                            </span>
+                        </div>
+                        <dl class="hosting-finance-metrics">
+                            <div><dt>@Localizer["HostingFinance_Balance"]</dt><dd>@FormatMoney(owner.Balance, owner.Currency)</dd></div>
+                            <div><dt>@Localizer["HostingFinance_Allowance"]</dt><dd>@(owner.Allowance.HasValue ? FormatMoney(owner.Allowance.Value, owner.Currency) : Localizer["HostingFinance_None"])</dd></div>
+                            <div><dt>@Localizer["HostingFinance_Reserved"]</dt><dd>@FormatMoney(owner.ReservedProviderCost, owner.Currency)</dd></div>
+                            <div><dt>@Localizer["HostingFinance_Spendable"]</dt><dd>@FormatMoney(owner.SpendableAmount, owner.Currency)</dd></div>
+                        </dl>
+                    </section>
+
+                    <div class="hosting-finance-actions">
+                        <section class="utf-panel hosting-finance-action-card">
+                            <div>
+                                <span class="utf-kicker">@Localizer["HostingFinance_PaymentKicker"]</span>
+                                <h3>@Localizer["HostingFinance_PaymentTitle"]</h3>
+                                <p>@Localizer["HostingFinance_PaymentDescription"]</p>
+                            </div>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_Amount"]</span><input class="utf-command-input" type="number" min="0.01" step="0.01" @bind="_paymentAmount"/></label>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_Reference"]</span><input class="utf-command-input" maxlength="128" @bind="_paymentReference"/></label>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_Note"]</span><textarea class="utf-command-input" rows="3" maxlength="512" @bind="_paymentReason"></textarea></label>
+                            <UtfCommandButton Variant="primary" Disabled="@(!CanRecordPayment || _isSavingOwner)" OnClick="RecordPaymentAsync">
+                                @Localizer["HostingFinance_RecordPayment"]
+                            </UtfCommandButton>
+                        </section>
+
+                        <section class="utf-panel hosting-finance-action-card">
+                            <div>
+                                <span class="utf-kicker">@Localizer["HostingFinance_AllowanceKicker"]</span>
+                                <h3>@Localizer["HostingFinance_AllowanceTitle"]</h3>
+                                <p>@Localizer["HostingFinance_AllowanceDescription"]</p>
+                            </div>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_AllowanceAmount"]</span><input class="utf-command-input" type="number" min="0" step="0.01" disabled="@_revokeAllowance" @bind="_allowance"/></label>
+                            <label class="hosting-finance-check"><input type="checkbox" @bind="_revokeAllowance"/><span>@Localizer["HostingFinance_RevokeAllowance"]</span></label>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_Reason"]</span><textarea class="utf-command-input" rows="3" maxlength="512" @bind="_allowanceReason"></textarea></label>
+                            <UtfCommandButton Variant="primary" Disabled="@(!CanManageAllowance || _isSavingOwner)" OnClick="SaveAllowanceAsync">
+                                @Localizer["HostingFinance_SaveAllowance"]
+                            </UtfCommandButton>
+                        </section>
                     </div>
-                </div>
-            }
-        </section>
-    </div>
 
-    @if (SelectedOwner is { RecentLedgerEntries.Count: > 0 } selected)
-    {
-        <section class="utf-panel hosting-finance-panel">
-            <span class="utf-kicker">Audit trail</span>
-            <h2>Recent entries for @selected.DisplayName</h2>
-            <div class="hosting-finance-ledger">
-                <table>
-                    <thead><tr><th>Effective</th><th>Kind</th><th>Amount</th><th>Balance after</th><th>Reference / reason</th></tr></thead>
-                    <tbody>
-                    @foreach (var entry in selected.RecentLedgerEntries)
-                    {
-                        <tr>
-                            <td>@entry.TimeStampEffective.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</td>
-                            <td>@FormatLedgerKind(entry.Kind)</td>
-                            <td>@FormatMoney(entry.Amount, entry.Currency)</td>
-                            <td>@FormatMoney(entry.BalanceAfter, entry.Currency)</td>
-                            <td>@string.Join(" · ", new[] { entry.ExternalReference, entry.Reason }.Where(q => !string.IsNullOrWhiteSpace(q)))</td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                    <section class="utf-panel hosting-finance-ledger-panel">
+                        <div class="hosting-finance-section-heading">
+                            <div>
+                                <span class="utf-kicker">@Localizer["HostingFinance_LedgerKicker"]</span>
+                                <h2>@Localizer["HostingFinance_LedgerTitle"]</h2>
+                            </div>
+                        </div>
+                        @if (owner.RecentLedgerEntries.Count == 0)
+                        {
+                            <div class="hosting-finance-browser-state">@Localizer["HostingFinance_NoLedgerEntries"]</div>
+                        }
+                        else
+                        {
+                            <div class="utf-command-table-scroll">
+                                <table class="utf-command-table">
+                                    <thead><tr><th>@Localizer["HostingFinance_ColumnEffective"]</th><th>@Localizer["HostingFinance_ColumnKind"]</th><th>@Localizer["HostingFinance_ColumnAmount"]</th><th>@Localizer["HostingFinance_ColumnBalance"]</th><th>@Localizer["HostingFinance_ColumnContext"]</th></tr></thead>
+                                    <tbody>
+                                    @foreach (var entry in owner.RecentLedgerEntries)
+                                    {
+                                        <tr>
+                                            <td>@entry.TimeStampEffective.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</td>
+                                            <td>@FormatLedgerKind(entry.Kind)</td>
+                                            <td class="@(entry.Amount < 0 ? "hosting-finance-negative" : "hosting-finance-positive")">@FormatMoney(entry.Amount, entry.Currency)</td>
+                                            <td>@FormatMoney(entry.BalanceAfter, entry.Currency)</td>
+                                            <td>@string.Join(" · ", new[] { entry.ExternalReference, entry.Reason }.Where(q => !string.IsNullOrWhiteSpace(q)))</td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </section>
+                }
+            </main>
+        </div>
     }
-}
+</div>
 
 @code {
+    private const int PageSize = 20;
     private IReadOnlyList<HostingCostOwnerInfo> _owners = [];
     private HostingFinancePolicyInfo? _policy;
     private Guid? _selectedOwnerId;
+    private long _totalOwnerCount;
+    private int _pageIndex;
+    private string _search = string.Empty;
     private decimal _minimumSafetyRangeEur;
     private int _reservationSliceMinutes = 15;
     private decimal _paymentAmount;
@@ -160,6 +247,7 @@ else
     private bool _revokeAllowance;
     private string _allowanceReason = string.Empty;
     private bool _isLoading;
+    private bool _isLoadingOwners;
     private bool _isSavingPolicy;
     private bool _isSavingOwner;
     private string? _loadError;
@@ -168,43 +256,53 @@ else
     private bool CanRecordPayment => Me.HasClaim(Claims.Finance.All, Claims.Finance.RecordPayment);
     private bool CanManageAllowance => Me.HasClaim(Claims.Finance.All, Claims.Finance.ManageAllowance);
     private bool CanManagePolicy => Me.HasClaim(Claims.Finance.All, Claims.Finance.ManagePolicy);
+    private bool HasNextPage => (_pageIndex + 1L) * PageSize < _totalOwnerCount;
     private HostingCostOwnerInfo? SelectedOwner => _owners.FirstOrDefault(q => q.CostOwnerId == _selectedOwnerId);
 
     protected override async Task OnInitializedAsync()
     {
         if (CanViewFinance)
-            await LoadAsync().ConfigureAwait(false);
+            await RefreshAsync().ConfigureAwait(false);
     }
 
-    private async Task LoadAsync()
+    private async Task RefreshAsync()
     {
         _isLoading = true;
         _loadError = null;
         try
         {
-            _owners = await FinanceRepository.GetCostOwnersAsync().ConfigureAwait(false);
             _policy = await FinanceRepository.GetPolicyAsync().ConfigureAwait(false);
             _minimumSafetyRangeEur = _policy.MinimumSafetyRangeEur;
             _reservationSliceMinutes = _policy.ReservationSliceMinutes;
-            if (_selectedOwnerId is null || _owners.All(q => q.CostOwnerId != _selectedOwnerId))
-                _selectedOwnerId = _owners.FirstOrDefault()?.CostOwnerId;
-            LoadOwnerEditor();
+            await LoadOwnersAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            _loadError = UserFacingError.Message(ex);
+            _loadError = string.Format(CultureInfo.CurrentCulture, Localizer["HostingFinance_LoadError"].Value, UserFacingError.Message(ex));
         }
-        finally
-        {
-            _isLoading = false;
-        }
+        finally { _isLoading = false; }
     }
 
-    private void SelectOwner(ChangeEventArgs args)
+    private async Task LoadOwnersAsync(bool preserveSelection = true)
     {
-        _selectedOwnerId = Guid.TryParse(args.Value?.ToString(), out var value) ? value : null;
-        LoadOwnerEditor();
+        _isLoadingOwners = true;
+        try
+        {
+            var page = await FinanceRepository.GetCostOwnersAsync(_search, _pageIndex * PageSize, PageSize).ConfigureAwait(false);
+            _owners = page.Owners;
+            _totalOwnerCount = page.TotalCount;
+            if (!preserveSelection || _selectedOwnerId is null || _owners.All(q => q.CostOwnerId != _selectedOwnerId))
+                _selectedOwnerId = null;
+            LoadOwnerEditor();
+        }
+        finally { _isLoadingOwners = false; }
     }
+
+    private Task OnSearchChanged(string value) { _search = value; return Task.CompletedTask; }
+    private async Task SearchAsync() { _pageIndex = 0; await LoadOwnersAsync(false).ConfigureAwait(false); }
+    private async Task PreviousPageAsync() { if (_pageIndex > 0) _pageIndex--; await LoadOwnersAsync(false).ConfigureAwait(false); }
+    private async Task NextPageAsync() { if (HasNextPage) _pageIndex++; await LoadOwnersAsync(false).ConfigureAwait(false); }
+    private void SelectOwner(HostingCostOwnerInfo owner) { _selectedOwnerId = owner.CostOwnerId; LoadOwnerEditor(); }
 
     private void LoadOwnerEditor()
     {
@@ -218,14 +316,12 @@ else
 
     private async Task SavePolicyAsync()
     {
-        if (!CanManagePolicy)
-            return;
+        if (!CanManagePolicy) return;
         _isSavingPolicy = true;
         try
         {
-            _policy = await FinanceRepository.UpdatePolicyAsync(_minimumSafetyRangeEur, _reservationSliceMinutes)
-                .ConfigureAwait(false);
-            ToastService.ShowSuccess("Hosting finance policy saved.");
+            _policy = await FinanceRepository.UpdatePolicyAsync(_minimumSafetyRangeEur, _reservationSliceMinutes).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["HostingFinance_PolicySaved"]);
         }
         catch (Exception ex) { ToastService.ShowError(UserFacingError.Message(ex)); }
         finally { _isSavingPolicy = false; }
@@ -233,21 +329,18 @@ else
 
     private async Task RecordPaymentAsync()
     {
-        if (!CanRecordPayment || SelectedOwner is not { } owner)
-            return;
+        if (!CanRecordPayment || SelectedOwner is not { } owner) return;
         if (_paymentAmount <= 0 || string.IsNullOrWhiteSpace(_paymentReference))
         {
-            ToastService.ShowError("Enter a positive amount and a bank transfer reference.");
+            ToastService.ShowError(Localizer["HostingFinance_PaymentValidation"]);
             return;
         }
         _isSavingOwner = true;
         try
         {
-            await FinanceRepository.RecordPaymentAsync(owner.CostOwnerId, _paymentAmount, DateTimeOffset.UtcNow,
-                    _paymentReference, _paymentReason)
-                .ConfigureAwait(false);
-            ToastService.ShowSuccess("Received payment recorded as hosting credit.");
-            await LoadAsync().ConfigureAwait(false);
+            await FinanceRepository.RecordPaymentAsync(owner.CostOwnerId, _paymentAmount, DateTimeOffset.UtcNow, _paymentReference, _paymentReason).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["HostingFinance_PaymentSaved"]);
+            await LoadOwnersAsync().ConfigureAwait(false);
         }
         catch (Exception ex) { ToastService.ShowError(UserFacingError.Message(ex)); }
         finally { _isSavingOwner = false; }
@@ -255,38 +348,33 @@ else
 
     private async Task SaveAllowanceAsync()
     {
-        if (!CanManageAllowance || SelectedOwner is not { } owner)
-            return;
+        if (!CanManageAllowance || SelectedOwner is not { } owner) return;
         if (string.IsNullOrWhiteSpace(_allowanceReason))
         {
-            ToastService.ShowError("A reason is required when changing an allowance.");
+            ToastService.ShowError(Localizer["HostingFinance_AllowanceValidation"]);
             return;
         }
         _isSavingOwner = true;
         try
         {
-            await FinanceRepository.ChangeAllowanceAsync(owner.CostOwnerId,
-                    _revokeAllowance ? null : _allowance, _allowanceReason)
-                .ConfigureAwait(false);
-            ToastService.ShowSuccess("Finite allowance saved.");
-            await LoadAsync().ConfigureAwait(false);
+            await FinanceRepository.ChangeAllowanceAsync(owner.CostOwnerId, _revokeAllowance ? null : _allowance, _allowanceReason).ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["HostingFinance_AllowanceSaved"]);
+            await LoadOwnersAsync().ConfigureAwait(false);
         }
         catch (Exception ex) { ToastService.ShowError(UserFacingError.Message(ex)); }
         finally { _isSavingOwner = false; }
     }
 
-    private static string FormatMoney(decimal value, string currency)
-        => $"{value:N4} {currency}";
-
-    private static string FormatOwnerKind(ECostOwnerKind kind) => kind switch
+    private static string FormatMoney(decimal value, string currency) => $"{value:N2} {currency}";
+    private string FormatPageLabel() => string.Format(CultureInfo.CurrentCulture, Localizer["HostingFinance_PageLabel"].Value, _pageIndex + 1, Math.Max(1, (int)Math.Ceiling(_totalOwnerCount / (double)PageSize)));
+    private string GetOwnerButtonClass(HostingCostOwnerInfo owner) => owner.CostOwnerId == _selectedOwnerId ? "hosting-finance-owner hosting-finance-owner--selected" : "hosting-finance-owner";
+    private static string GetInitials(string value) => string.Concat(value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(q => char.ToUpperInvariant(q[0])));
+    private string FormatOwnerKind(ECostOwnerKind kind) => kind switch
     {
-        ECostOwnerKind.User => "member",
-        ECostOwnerKind.Verein => "Verein",
-        ECostOwnerKind.ExternalOrganization => "organization",
+        ECostOwnerKind.User => Localizer["HostingFinance_OwnerMember"],
+        ECostOwnerKind.Verein => Localizer["HostingFinance_OwnerVerein"],
+        ECostOwnerKind.ExternalOrganization => Localizer["HostingFinance_OwnerOrganization"],
         _ => kind.ToString(),
     };
-
-    private static string FormatLedgerKind(EHostingLedgerEntryKind kind)
-        => kind.ToString().Replace("ProviderCostSlice", "Provider cost").Replace("BankTransferPayment", "Payment")
-            .Replace("AllowanceChanged", "Allowance changed");
+    private string FormatLedgerKind(EHostingLedgerEntryKind kind) => Localizer[$"HostingFinance_LedgerKind_{kind}"].ResourceNotFound ? kind.ToString() : Localizer[$"HostingFinance_LedgerKind_{kind}"];
 }

@@ -197,7 +197,12 @@ public sealed class HostingFinanceServiceTests
                 typeof(CancellationToken)));
         Assert.Equal(
             Claims.Finance.ViewAll,
-            GetAuthorizePolicy(nameof(CostOwnersController.GetAllAsync), typeof(CancellationToken)));
+            GetAuthorizePolicy(
+                nameof(CostOwnersController.GetAllAsync),
+                typeof(string),
+                typeof(int),
+                typeof(int),
+                typeof(CancellationToken)));
         Assert.Equal(
             Claims.Finance.ManagePolicy,
             GetAuthorizePolicy(

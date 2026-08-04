@@ -53,10 +53,10 @@
             @if (CanManageFinance)
             {
                 <div class="utf-command-nav__group">
-                    <div class="utf-command-nav__label">Finance</div>
+                    <div class="utf-command-nav__label">@Localizer["Shared_CommandCenter_Group_Finance"]</div>
                     <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/hosting-finance")">
                         <FluentIcon Value="@(new Icons.Regular.Size24.WalletCreditCard())"/>
-                        <span>Hosting finance</span>
+                        <span>@Localizer["Shared_CommandCenter_Nav_HostingFinance"]</span>
                     </NavLink>
                 </div>
             }
@@ -297,7 +297,7 @@
                 "command/servers"        => Localizer["Hosting_Nav_Servers"].Value,
                 "command/servers/create" => Localizer["Hosting_Create_Title"].Value,
                 "command/configuration-profiles" => "Configuration profiles",
-                "command/hosting-finance" => "Hosting finance",
+                "command/hosting-finance" => Localizer["Shared_CommandCenter_Nav_HostingFinance"].Value,
                 _ when path.StartsWith("command/servers/", StringComparison.Ordinal) => Localizer["Hosting_Detail_Title"].Value,
                 "events/all"            => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventAdministration)].Value,
                 "command/events"        => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventAdministration)].Value,

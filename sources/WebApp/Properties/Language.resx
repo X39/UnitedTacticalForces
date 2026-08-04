@@ -15130,4 +15130,78 @@
   <data name="Hosting_Detail_ActiveProfileCost" xml:space="preserve"><value>Active hourly estimate</value></data>
   <data name="Hosting_ProfileCatalog_ArchivedDescription" xml:space="preserve"><value>Archived servers are read-only. Restore or recreate the server before changing its profile.</value></data>
   <data name="Hosting_Create_ProviderAvailability" xml:space="preserve"><value>Unavailable cloud providers</value></data>
+  <data name="Shared_CommandCenter_Group_Finance" xml:space="preserve"><value>Finance</value></data>
+  <data name="Shared_CommandCenter_Nav_HostingFinance" xml:space="preserve"><value>Hosting finance</value></data>
+  <data name="HostingFinance_PageTitle" xml:space="preserve"><value>Hosting finance</value></data>
+  <data name="HostingFinance_Title" xml:space="preserve"><value>Hosting finance</value></data>
+  <data name="HostingFinance_Description" xml:space="preserve"><value>Manage hosting credit, allowances, and the reserve that protects deployments from slow provider billing.</value></data>
+  <data name="HostingFinance_Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="HostingFinance_NoAccessTitle" xml:space="preserve"><value>Finance access required</value></data>
+  <data name="HostingFinance_NoAccessMessage" xml:space="preserve"><value>You do not have permission to inspect hosting balances.</value></data>
+  <data name="HostingFinance_LoadError" xml:space="preserve"><value>Hosting finance could not be loaded: {0}</value></data>
+  <data name="HostingFinance_PolicyKicker" xml:space="preserve"><value>Safety settings</value></data>
+  <data name="HostingFinance_PolicyTitle" xml:space="preserve"><value>Global affordability policy</value></data>
+  <data name="HostingFinance_PolicyDescription" xml:space="preserve"><value>The protected reserve remains unavailable for spending so a slowly provisioned server can still be stopped safely. It is not a member-specific limit.</value></data>
+  <data name="HostingFinance_Global" xml:space="preserve"><value>Applies globally</value></data>
+  <data name="HostingFinance_MinimumReserve" xml:space="preserve"><value>Protected reserve (EUR)</value></data>
+  <data name="HostingFinance_ReservationSlice" xml:space="preserve"><value>Provider-cost reservation (minutes)</value></data>
+  <data name="HostingFinance_SavePolicy" xml:space="preserve"><value>Save policy</value></data>
+  <data name="HostingFinance_Saving" xml:space="preserve"><value>Saving…</value></data>
+  <data name="HostingFinance_PolicySaved" xml:space="preserve"><value>Hosting finance policy saved.</value></data>
+  <data name="HostingFinance_OwnersKicker" xml:space="preserve"><value>Cost owners</value></data>
+  <data name="HostingFinance_OwnersTitle" xml:space="preserve"><value>Accounts</value></data>
+  <data name="HostingFinance_SearchLabel" xml:space="preserve"><value>Find an account</value></data>
+  <data name="HostingFinance_SearchPlaceholder" xml:space="preserve"><value>Name or organization</value></data>
+  <data name="HostingFinance_Search" xml:space="preserve"><value>Search</value></data>
+  <data name="HostingFinance_LoadingOwners" xml:space="preserve"><value>Loading accounts…</value></data>
+  <data name="HostingFinance_NoOwners" xml:space="preserve"><value>No accounts match this search.</value></data>
+  <data name="HostingFinance_OwnerResultsAria" xml:space="preserve"><value>Cost-owner search results</value></data>
+  <data name="HostingFinance_Frozen" xml:space="preserve"><value>Frozen</value></data>
+  <data name="HostingFinance_Active" xml:space="preserve"><value>Active</value></data>
+  <data name="HostingFinance_Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="HostingFinance_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="HostingFinance_PageLabel" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="HostingFinance_SelectOwnerTitle" xml:space="preserve"><value>Select an account</value></data>
+  <data name="HostingFinance_SelectOwnerMessage" xml:space="preserve"><value>Search for a member or organization, then select an account to inspect its balance and record finance changes.</value></data>
+  <data name="HostingFinance_Balance" xml:space="preserve"><value>Prepaid balance</value></data>
+  <data name="HostingFinance_Allowance" xml:space="preserve"><value>Allowance</value></data>
+  <data name="HostingFinance_Reserved" xml:space="preserve"><value>Currently reserved</value></data>
+  <data name="HostingFinance_Spendable" xml:space="preserve"><value>Available before reserve</value></data>
+  <data name="HostingFinance_None" xml:space="preserve"><value>None</value></data>
+  <data name="HostingFinance_PaymentKicker" xml:space="preserve"><value>Incoming funds</value></data>
+  <data name="HostingFinance_PaymentTitle" xml:space="preserve"><value>Record a received payment</value></data>
+  <data name="HostingFinance_PaymentDescription" xml:space="preserve"><value>Credit money only after the bank transfer has reached the Verein account.</value></data>
+  <data name="HostingFinance_Amount" xml:space="preserve"><value>Amount (EUR)</value></data>
+  <data name="HostingFinance_Reference" xml:space="preserve"><value>Bank transfer reference</value></data>
+  <data name="HostingFinance_Note" xml:space="preserve"><value>Note (optional)</value></data>
+  <data name="HostingFinance_RecordPayment" xml:space="preserve"><value>Record payment</value></data>
+  <data name="HostingFinance_PaymentValidation" xml:space="preserve"><value>Enter a positive amount and a bank transfer reference.</value></data>
+  <data name="HostingFinance_PaymentSaved" xml:space="preserve"><value>The received payment was added as hosting credit.</value></data>
+  <data name="HostingFinance_AllowanceKicker" xml:space="preserve"><value>Controlled credit</value></data>
+  <data name="HostingFinance_AllowanceTitle" xml:space="preserve"><value>Set an allowance</value></data>
+  <data name="HostingFinance_AllowanceDescription" xml:space="preserve"><value>An allowance permits bounded debt in addition to prepaid credit. It does not alter the balance.</value></data>
+  <data name="HostingFinance_AllowanceAmount" xml:space="preserve"><value>Allowance (EUR)</value></data>
+  <data name="HostingFinance_RevokeAllowance" xml:space="preserve"><value>Revoke allowance; require prepaid credit</value></data>
+  <data name="HostingFinance_Reason" xml:space="preserve"><value>Reason</value></data>
+  <data name="HostingFinance_SaveAllowance" xml:space="preserve"><value>Save allowance</value></data>
+  <data name="HostingFinance_AllowanceValidation" xml:space="preserve"><value>A reason is required when changing an allowance.</value></data>
+  <data name="HostingFinance_AllowanceSaved" xml:space="preserve"><value>Allowance saved.</value></data>
+  <data name="HostingFinance_LedgerKicker" xml:space="preserve"><value>Audit trail</value></data>
+  <data name="HostingFinance_LedgerTitle" xml:space="preserve"><value>Recent account activity</value></data>
+  <data name="HostingFinance_NoLedgerEntries" xml:space="preserve"><value>No ledger entries have been recorded for this account.</value></data>
+  <data name="HostingFinance_ColumnEffective" xml:space="preserve"><value>Effective</value></data>
+  <data name="HostingFinance_ColumnKind" xml:space="preserve"><value>Type</value></data>
+  <data name="HostingFinance_ColumnAmount" xml:space="preserve"><value>Amount</value></data>
+  <data name="HostingFinance_ColumnBalance" xml:space="preserve"><value>Balance after</value></data>
+  <data name="HostingFinance_ColumnContext" xml:space="preserve"><value>Reference / reason</value></data>
+  <data name="HostingFinance_OwnerMember" xml:space="preserve"><value>Member</value></data>
+  <data name="HostingFinance_OwnerVerein" xml:space="preserve"><value>Verein</value></data>
+  <data name="HostingFinance_OwnerOrganization" xml:space="preserve"><value>Organization</value></data>
+  <data name="HostingFinance_LedgerKind_ProviderCostSlice" xml:space="preserve"><value>Provider cost</value></data>
+  <data name="HostingFinance_LedgerKind_BankTransferPayment" xml:space="preserve"><value>Payment</value></data>
+  <data name="HostingFinance_LedgerKind_AllowanceChanged" xml:space="preserve"><value>Allowance changed</value></data>
+  <data name="HostingFinance_LedgerKind_ExternalRefund" xml:space="preserve"><value>Refund</value></data>
+  <data name="HostingFinance_LedgerKind_DeploymentCostCorrectionCredit" xml:space="preserve"><value>Cost correction credit</value></data>
+  <data name="HostingFinance_LedgerKind_DeploymentCostCorrectionDebit" xml:space="preserve"><value>Cost correction debit</value></data>
+  <data name="HostingFinance_LedgerKind_LedgerReversal" xml:space="preserve"><value>Reversal</value></data>
 </root>

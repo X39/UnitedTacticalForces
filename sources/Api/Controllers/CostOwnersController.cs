@@ -23,16 +23,33 @@ public sealed class CostOwnersController(
     IHostingAuthorizationService authorizationService) : ControllerBase
 {
     /// <summary>
-    /// Lists every cost owner and their current hosting-finance position.
+    /// Lists a filtered page of cost owners and their current hosting-finance positions.
     /// </summary>
     [HttpGet]
     [Authorize(Claims.Finance.ViewAll)]
-    [ProducesResponseType<IReadOnlyList<HostingCostOwnerDto>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAllAsync(CancellationToken cancellationToken)
+    [ProducesResponseType<HostingCostOwnerPageDto>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllAsync(
+        [FromQuery] string? search,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20,
+        CancellationToken cancellationToken = default)
     {
-        var owners = await dbContext.CostOwners
+        skip = Math.Max(0, skip);
+        take = Math.Clamp(take, 1, 50);
+        var query = dbContext.CostOwners.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(q => EF.Functions.ILike(q.DisplayName, $"%{normalizedSearch}%"));
+        }
+
+        var totalCount = await query.LongCountAsync(cancellationToken).ConfigureAwait(false);
+        var owners = await query
             .AsNoTracking()
             .OrderBy(q => q.DisplayName)
+            .ThenBy(q => q.PrimaryKey)
+            .Skip(skip)
+            .Take(take)
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
         var result = new List<HostingCostOwnerDto>(owners.Length);
@@ -40,7 +57,7 @@ public sealed class CostOwnersController(
         {
             result.Add(await ToCostOwnerDtoAsync(owner, cancellationToken).ConfigureAwait(false));
         }
-        return Ok(result);
+        return Ok(new HostingCostOwnerPageDto { Owners = result.ToArray(), TotalCount = totalCount });
     }
 
     /// <summary>

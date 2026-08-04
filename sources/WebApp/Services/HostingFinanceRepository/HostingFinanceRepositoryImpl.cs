@@ -7,9 +7,18 @@ namespace X39.UnitedTacticalForces.WebApp.Services.HostingFinanceRepository;
 internal sealed class HostingFinanceRepositoryImpl(IHttpClientFactory httpClientFactory, BaseUrl baseUrl)
     : RepositoryBase(httpClientFactory, baseUrl), IHostingFinanceRepository
 {
-    public async Task<IReadOnlyList<HostingCostOwnerInfo>> GetCostOwnersAsync(
+    public async Task<HostingCostOwnerPageInfo> GetCostOwnersAsync(
+        string? search,
+        int skip,
+        int take,
         CancellationToken cancellationToken = default)
-        => await GetFromJsonAsync<HostingCostOwnerInfo[]>("cost-owners", cancellationToken).ConfigureAwait(false) ?? [];
+    {
+        var query = $"cost-owners?skip={Math.Max(0, skip)}&take={Math.Clamp(take, 1, 50)}";
+        if (!string.IsNullOrWhiteSpace(search))
+            query += $"&search={Uri.EscapeDataString(search.Trim())}";
+        return await GetFromJsonAsync<HostingCostOwnerPageInfo>(query, cancellationToken).ConfigureAwait(false)
+               ?? new HostingCostOwnerPageInfo();
+    }
 
     public async Task<HostingCostOwnerInfo?> GetUserCostOwnerAsync(
         Guid userId,
