@@ -38,7 +38,10 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
 
         var service = DecodeSystemdService(payload.CloudInit);
         Assert.Contains($"docker image inspect {image}", service, StringComparison.Ordinal);
-        Assert.Contains($"|| /usr/bin/docker pull {image}", service, StringComparison.Ordinal);
+        Assert.Contains(
+            $"|| /usr/bin/docker --config /etc/united-tactical-forces/registry pull {image}",
+            service,
+            StringComparison.Ordinal);
         Assert.Contains("--network bridge", service, StringComparison.Ordinal);
         Assert.Contains("--publish 2302-2306:2302-2306/udp", service, StringComparison.Ordinal);
         Assert.DoesNotContain("--network host", service, StringComparison.Ordinal);
@@ -50,6 +53,63 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
         Assert.Contains("169.254.169.254/32", service, StringComparison.Ordinal);
         Assert.Contains("[ chown, -R, 'root:root', /var/lib/united-tactical-forces/worker ]", payload.CloudInit);
         Assert.Contains("[ chmod, '0700', /var/lib/united-tactical-forces/worker ]", payload.CloudInit);
+    }
+
+    [Fact]
+    public void Production_PrivateRegistryRendersRootOnlyDockerAuthWithoutExposingRawToken()
+    {
+        var digest = new string('b', 64);
+        var image = $"ghcr.io/x39/united-tactical-forces-cloud-worker@sha256:{digest}";
+        const string registryToken = "github_pat_private_pull_marker";
+        var renderer = CreateRenderer(
+            Environments.Production,
+            image,
+            options =>
+            {
+                options.RegistryAuthenticationRequired = true;
+                options.RegistryUsername = "X39";
+                options.RegistryToken = registryToken;
+            });
+
+        var payload = renderer.Render(Bootstrap(), Guid.NewGuid(), "arma3", NetworkPlan());
+
+        Assert.DoesNotContain(registryToken, payload.CloudInit, StringComparison.Ordinal);
+        Assert.Contains("permissions: '0400'", payload.CloudInit, StringComparison.Ordinal);
+        var files = DecodeWrittenFiles(payload.CloudInit);
+        var registryConfig = files.Single(q => q.Contains("\"auths\"", StringComparison.Ordinal));
+        using var document = System.Text.Json.JsonDocument.Parse(registryConfig);
+        var encodedCredential = document.RootElement
+            .GetProperty("auths")
+            .GetProperty("ghcr.io")
+            .GetProperty("auth")
+            .GetString();
+        Assert.NotNull(encodedCredential);
+        var credential = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encodedCredential));
+        Assert.Equal($"X39:{registryToken}", credential);
+        var service = DecodeSystemdService(payload.CloudInit);
+        Assert.Contains(
+            $"docker --config /etc/united-tactical-forces/registry pull {image}",
+            service,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(registryToken, service, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Production_RejectsMissingRequiredRegistryCredentials()
+    {
+        var digest = new string('c', 64);
+        var renderer = CreateRenderer(
+            Environments.Production,
+            $"ghcr.io/x39/united-tactical-forces-cloud-worker@sha256:{digest}",
+            options => options.RegistryAuthenticationRequired = true);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => renderer.Render(
+            Bootstrap(),
+            Guid.NewGuid(),
+            "arma3",
+            NetworkPlan()));
+
+        Assert.Contains("registry credentials", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -44,6 +44,9 @@ services:
       Discord__Bot__BotToken: ${DISCORD_BOT_TOKEN:-}
       Hosting__Providers__Hetzner__Token: ${HETZNER_TOKEN:-}
       Hosting__WorkerProvisioning__ContainerImage: ${CLOUD_WORKER_IMAGE:-}
+      Hosting__WorkerProvisioning__RegistryUsername: ${GHCR_PULL_USERNAME:-}
+      Hosting__WorkerProvisioning__RegistryToken: ${GHCR_PULL_TOKEN:-}
+      Hosting__WorkerProvisioning__RegistryAuthenticationRequired: "true"
       Hosting__PersistentStorage__BasePath: /var/lib/united-tactical-forces/hosting
     volumes:
       - api_media:/app/App_Data

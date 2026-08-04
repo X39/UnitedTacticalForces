@@ -82,6 +82,8 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         var service = RenderSystemdService(serviceName, inboundNetworkRequirements, storagePlan.DeploymentRoot);
         var storageService = RenderStorageService(storagePlan);
         var storageScript = RenderStorageScript(storagePlan, bootstrap.DeploymentId);
+        var registryConfig = RenderRegistryConfig();
+        var registryConfigDirectory = GetAbsoluteParentPath(_options.RegistryConfigPath);
         var cloudInit = $"""
                         #cloud-config
                         package_update: true
@@ -95,6 +97,11 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
                             permissions: '0400'
                             encoding: b64
                             content: {Base64(bootstrapDocument)}
+                          - path: {_options.RegistryConfigPath}
+                            owner: 'root:root'
+                            permissions: '0400'
+                            encoding: b64
+                            content: {Base64(registryConfig)}
                           - path: /etc/systemd/system/{serviceName}.service
                             owner: root:root
                             permissions: '0644'
@@ -111,7 +118,10 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
                             encoding: b64
                             content: {Base64(storageService)}
                         runcmd:
-                          - [ mkdir, -p, {_options.StateDirectory}, {storagePlan.DeploymentRoot} ]
+                          - [ mkdir, -p, {registryConfigDirectory}, {_options.StateDirectory}, {storagePlan.DeploymentRoot} ]
+                          - [ chown, 'root:root', {registryConfigDirectory}, {_options.RegistryConfigPath} ]
+                          - [ chmod, '0700', {registryConfigDirectory} ]
+                          - [ chmod, '0400', {_options.RegistryConfigPath} ]
                           - [ chown, -R, 'root:root', {_options.StateDirectory} ]
                           - [ chmod, '0700', {_options.StateDirectory} ]
                           - [ chown, -R, 'root:{RuntimeGroupId}', {storagePlan.DeploymentRoot} ]
@@ -121,6 +131,17 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
                           - [ systemctl, enable, --now, {serviceName}.service ]
                         """;
         return new WorkerBootstrapPayload(cloudInit);
+    }
+
+    private string RenderRegistryConfig()
+    {
+        var auths = new Dictionary<string, object>();
+        if (!string.IsNullOrEmpty(_options.RegistryUsername) && !string.IsNullOrEmpty(_options.RegistryToken))
+        {
+            var credential = Base64($"{_options.RegistryUsername}:{_options.RegistryToken}");
+            auths[_options.RegistryServer] = new { auth = credential };
+        }
+        return JsonSerializer.Serialize(new { auths });
     }
 
     private string RenderStorageService(RuntimeStoragePlan storagePlan)
@@ -204,7 +225,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
            Type=simple
            Restart=always
            RestartSec=5
-           ExecStartPre=/bin/sh -c '/usr/bin/docker image inspect {_options.ContainerImage} >/dev/null 2>&1 || /usr/bin/docker pull {_options.ContainerImage}'
+           ExecStartPre=/bin/sh -c '/usr/bin/docker image inspect {_options.ContainerImage} >/dev/null 2>&1 || /usr/bin/docker --config {GetAbsoluteParentPath(_options.RegistryConfigPath)} pull {_options.ContainerImage}'
            ExecStartPre=-/usr/bin/docker rm -f {serviceName}
            ExecStartPre=/bin/sh -c '/usr/sbin/iptables -C DOCKER-USER -d 169.254.169.254/32 -j REJECT >/dev/null 2>&1 || /usr/sbin/iptables -I DOCKER-USER -d 169.254.169.254/32 -j REJECT'
            ExecStart=/usr/bin/docker run --rm --name {serviceName} --user 0:{RuntimeGroupId} \
@@ -244,6 +265,10 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         if (!IsSafeContainerImage(_options.ContainerImage)
             || !environment.IsDevelopment() && !HasImmutableSha256Digest(_options.ContainerImage)
             || !IsSafeAbsolutePath(_options.BootstrapPath)
+            || !IsSafeRegistryServer(_options.RegistryServer)
+            || !IsSafeRegistryCredentialPair()
+            || !IsSafeAbsolutePath(_options.RegistryConfigPath)
+            || _options.RegistryConfigPath.LastIndexOf('/') <= 0
             || !IsSafeAbsolutePath(_options.StateDirectory)
             || !IsSafeAbsolutePath(_options.RuntimeDirectory)
             || _options.ContainerPidsLimit is < 64 or > 32768
@@ -252,8 +277,9 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
             || _options.ContainerLogMaxFiles is < 1 or > 20)
         {
             throw new InvalidOperationException(
-                "Hosting:WorkerProvisioning requires safe paths and, outside Development, an immutable "
-                + "container image reference ending in @sha256:<64 hex characters>.");
+                "Hosting:WorkerProvisioning requires safe paths, valid paired registry credentials when required, "
+                + "and, outside Development, an immutable container image reference ending in "
+                + "@sha256:<64 hex characters>.");
         }
     }
 
@@ -275,6 +301,32 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         => value.StartsWith("/", StringComparison.Ordinal)
            && !value.Contains("..", StringComparison.Ordinal)
            && value.All(q => char.IsAsciiLetterOrDigit(q) || q is '/' or '.' or '-' or '_');
+
+    private static string GetAbsoluteParentPath(string value)
+    {
+        var separatorIndex = value.LastIndexOf('/');
+        if (separatorIndex <= 0)
+            throw new InvalidOperationException("The registry config path has no absolute parent directory.");
+        return value[..separatorIndex];
+    }
+
+    private static bool IsSafeRegistryServer(string value)
+        => !string.IsNullOrWhiteSpace(value)
+           && value.Length <= 253
+           && value.All(q => char.IsAsciiLetterOrDigit(q) || q is '.' or '-' or ':');
+
+    private bool IsSafeRegistryCredentialPair()
+    {
+        var hasUsername = !string.IsNullOrEmpty(_options.RegistryUsername);
+        var hasToken = !string.IsNullOrEmpty(_options.RegistryToken);
+        if (hasUsername != hasToken || _options.RegistryAuthenticationRequired && !hasUsername)
+            return false;
+        return !hasUsername
+               || _options.RegistryUsername.Length <= 256
+               && _options.RegistryToken.Length <= 4096
+               && !_options.RegistryUsername.Any(char.IsControl)
+               && !_options.RegistryToken.Any(char.IsControl);
+    }
 
     private static bool IsSafeSize(string value)
     {
