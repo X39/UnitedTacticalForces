@@ -59,6 +59,51 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
     }
 
     [Fact]
+    public void Arma3_RendersRootOnlySteamSecretAndWorkerEnvironmentWithoutExposingRawPassword()
+    {
+        const string password = "synthetic-steam-password";
+        var renderer = CreateRenderer(
+            Environments.Development,
+            "utf-cloud-worker:development",
+            steamPassword: password);
+
+        var payload = renderer.Render(Bootstrap(), Guid.NewGuid(), "arma3", NetworkPlan());
+
+        Assert.DoesNotContain(password, payload.CloudInit, StringComparison.Ordinal);
+        var files = DecodeWrittenFiles(payload.CloudInit);
+        Assert.Contains(password, files);
+        var service = DecodeSystemdService(payload.CloudInit);
+        Assert.Contains("--env UTF_STEAM_USERNAME=utf_steam_test", service, StringComparison.Ordinal);
+        Assert.Contains(
+            "--env UTF_STEAM_PASSWORD_FILE=/run/secrets/utf-steam-password",
+            service,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "src=/etc/united-tactical-forces/steam-password,dst=/run/secrets/utf-steam-password,readonly",
+            service,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(password, service, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Arma3_RejectsProvisioningBeforeProviderMutationWhenSteamCredentialsAreMissing()
+    {
+        var renderer = CreateRenderer(
+            Environments.Development,
+            "utf-cloud-worker:development",
+            steamUsername: null,
+            steamPassword: null);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => renderer.Render(
+            Bootstrap(),
+            Guid.NewGuid(),
+            "arma3",
+            NetworkPlan()));
+
+        Assert.Contains("Steam:Username", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Production_PrivateRegistryRendersRootOnlyDockerAuthWithoutExposingRawToken()
     {
         var digest = new string('b', 64);
@@ -221,12 +266,16 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
     private static CloudInitWorkerBootstrapPayloadRenderer CreateRenderer(
         string environmentName,
         string image,
-        Action<WorkerProvisioningOptions>? configure = null)
+        Action<WorkerProvisioningOptions>? configure = null,
+        string? steamUsername = "utf_steam_test",
+        string? steamPassword = "synthetic-password")
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["General:ApiBaseUrl"] = "https://control-plane.example/api/",
+                ["Steam:Username"] = steamUsername,
+                ["Steam:Password"] = steamPassword,
             })
             .Build();
         var options = new WorkerProvisioningOptions { ContainerImage = image };

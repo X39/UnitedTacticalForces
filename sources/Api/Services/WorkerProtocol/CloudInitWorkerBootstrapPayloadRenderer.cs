@@ -18,6 +18,8 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
 {
     internal const string ExternalBlockDeviceToken = "__UTF_EXTERNAL_BLOCK_DEVICE__";
     private const int RuntimeGroupId = 10001;
+    private const string SteamPasswordPath = "/etc/united-tactical-forces/steam-password";
+    private const string ContainerSteamPasswordPath = "/run/secrets/utf-steam-password";
     private readonly WorkerProvisioningOptions _options = options.Value;
 
     public WorkerBootstrapPayload Render(
@@ -45,6 +47,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         RuntimeStoragePlan storagePlan)
     {
         ValidateOptions();
+        var steamCredentials = ResolveSteamCredentials(gameIdentifier);
         if (!IsSafeAbsolutePath(storagePlan.DeploymentRoot)
             || storagePlan.RequiredCapacityBytes < 0
             || storagePlan.SelectedCapacityBytes < storagePlan.RequiredCapacityBytes)
@@ -80,7 +83,11 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         });
 
         var serviceName = $"utf-cloud-worker-{bootstrap.DeploymentId:N}";
-        var service = RenderSystemdService(serviceName, inboundNetworkRequirements, storagePlan.DeploymentRoot);
+        var service = RenderSystemdService(
+            serviceName,
+            inboundNetworkRequirements,
+            storagePlan.DeploymentRoot,
+            steamCredentials);
         var storageService = RenderStorageService(storagePlan);
         var storageScript = RenderStorageScript(storagePlan, bootstrap.DeploymentId);
         var registryConfig = RenderRegistryConfig();
@@ -106,6 +113,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
                             permissions: '0400'
                             encoding: b64
                             content: {Base64(registryConfig)}
+                        {RenderSteamPasswordFile(steamCredentials)}
                           - path: /etc/systemd/system/{serviceName}.service
                             owner: root:root
                             permissions: '0644'
@@ -147,6 +155,40 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         }
         return JsonSerializer.Serialize(new { auths });
     }
+
+    private (string Username, string Password)? ResolveSteamCredentials(string gameIdentifier)
+    {
+        if (!string.Equals(gameIdentifier, "arma3", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var username = configuration["Steam:Username"];
+        var password = configuration["Steam:Password"];
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException(
+                "Steam:Username and Steam:Password must be configured before an Arma 3 worker can be provisioned.");
+        }
+        if (username.Length > 128
+            || username.Any(q => !char.IsAsciiLetterOrDigit(q) && q is not ('_' or '-' or '.' or '@'))
+            || password.Length > 4096
+            || password.Any(char.IsControl))
+        {
+            throw new InvalidOperationException("The configured Steam worker credentials are invalid.");
+        }
+
+        return (username, password);
+    }
+
+    private static string RenderSteamPasswordFile((string Username, string Password)? credentials)
+        => credentials is null
+            ? string.Empty
+            : $"""
+                - path: {SteamPasswordPath}
+                  owner: 'root:root'
+                  permissions: '0400'
+                  encoding: b64
+                  content: {Base64(credentials.Value.Password)}
+              """;
 
     private string RenderStorageService(RuntimeStoragePlan storagePlan)
         => $"""
@@ -215,9 +257,17 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
     private string RenderSystemdService(
         string serviceName,
         IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements,
-        string deploymentRoot)
+        string deploymentRoot,
+        (string Username, string Password)? steamCredentials)
     {
         var publishedPorts = string.Join(' ', inboundNetworkRequirements.Select(RenderPublishedPort));
+        var steamArguments = steamCredentials is null
+            ? string.Empty
+            : $"""
+              --env UTF_STEAM_USERNAME={steamCredentials.Value.Username} \
+                --env UTF_STEAM_PASSWORD_FILE={ContainerSteamPasswordPath} \
+                --mount type=bind,src={SteamPasswordPath},dst={ContainerSteamPasswordPath},readonly \
+              """;
         return $"""
            [Unit]
            Description=UTF dedicated cloud game-server worker
@@ -242,6 +292,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
              --mount type=bind,src={_options.BootstrapPath},dst=/run/secrets/utf-worker-bootstrap.json,readonly \
              --mount type=bind,src={_options.StateDirectory},dst=/var/lib/united-tactical-forces/worker \
              --mount type=bind,src={deploymentRoot},dst=/srv/united-tactical-forces/runtime \
+             {steamArguments}
              {_options.ContainerImage}
            ExecStop=/usr/bin/docker stop --time 30 {serviceName}
            TimeoutStopSec=45

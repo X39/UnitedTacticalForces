@@ -756,14 +756,29 @@
                                 <details class="hosting-commands">
                                     <summary>@Localizer["Hosting_Detail_Commands", job.Commands.Count]</summary>
                                     <div>
+                                        <a class="utf-button utf-button--ghost hosting-protocol-download"
+                                           href="@GetProtocolDownloadUrl(job)"
+                                           download="@GetProtocolFileName(job)">
+                                            @Localizer["Common_Download"] protocol
+                                        </a>
                                         @foreach (var command in job.Commands.OrderBy((command) => command.Sequence))
                                         {
                                             <div class="hosting-command" @key="command.PrimaryKey">
                                                 <span>#@command.Sequence · @LocalizeActionId(command.ActionId)</span>
                                                 <strong>@LocalizeToken("Hosting_WorkerCommandStatus", command.Status) · @HumanizeToken(command.Stage)</strong>
+                                                <dl class="hosting-protocol-meta">
+                                                    <div><dt>Command ID</dt><dd><code>@command.PrimaryKey</code></dd></div>
+                                                    <div><dt>Created</dt><dd>@FormatDate(command.TimeStampCreated)</dd></div>
+                                                    <div><dt>Started</dt><dd>@FormatOptionalDate(command.TimeStampStarted)</dd></div>
+                                                    <div><dt>Completed</dt><dd>@FormatOptionalDate(command.TimeStampCompleted)</dd></div>
+                                                </dl>
                                                 @if (!string.IsNullOrWhiteSpace(command.FailureReason))
                                                 {
                                                     <small>@command.FailureReason</small>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(command.DiagnosticOutput))
+                                                {
+                                                    <pre class="hosting-log-output hosting-protocol-output" tabindex="0">@command.DiagnosticOutput</pre>
                                                 }
                                             </div>
                                         }
@@ -1326,9 +1341,20 @@
                 @if (LatestDiagnosticCommand is { } diagnosticCommand)
                 {
                     <div class="hosting-log-meta">
-                        <UtfStatusBadge Intent="success">@Localizer["Hosting_Detail_LogSnapshot"]</UtfStatusBadge>
+                        <UtfStatusBadge Intent="@(IsFailedCommand(diagnosticCommand) ? "danger" : "success")">
+                            @LocalizeToken("Hosting_WorkerCommandStatus", diagnosticCommand.Status)
+                        </UtfStatusBadge>
+                        <a class="utf-button utf-button--ghost"
+                           href="@GetCommandDownloadUrl(diagnosticCommand)"
+                           download="@GetCommandFileName(diagnosticCommand)">
+                            @Localizer["Common_Download"]
+                        </a>
                         <time>@FormatDate(diagnosticCommand.TimeStampCompleted ?? diagnosticCommand.TimeStampCreated)</time>
                     </div>
+                    @if (!string.IsNullOrWhiteSpace(diagnosticCommand.FailureReason))
+                    {
+                        <p class="hosting-fault">@diagnosticCommand.FailureReason</p>
+                    }
                     <pre class="hosting-log-output" tabindex="0">@diagnosticCommand.DiagnosticOutput</pre>
                 }
                 else
@@ -1565,11 +1591,26 @@
             StringComparison.OrdinalIgnoreCase));
 
     private WorkerCommandInfo? LatestDiagnosticCommand
-        => _jobs
-            .SelectMany(q => q.Commands)
-            .Where(q => !string.IsNullOrWhiteSpace(q.DiagnosticOutput))
-            .OrderByDescending(q => q.TimeStampCompleted ?? q.TimeStampCreated)
-            .FirstOrDefault();
+    {
+        get
+        {
+            var commands = _jobs
+                .SelectMany(q => q.Commands)
+                .Where(q => !string.IsNullOrWhiteSpace(q.DiagnosticOutput))
+                .ToArray();
+            return commands
+                       .Where(q => IsFailedCommand(q)
+                                   && !string.Equals(q.ActionId, "fault-stop", StringComparison.OrdinalIgnoreCase))
+                       .OrderByDescending(q => q.TimeStampCompleted ?? q.TimeStampCreated)
+                       .FirstOrDefault()
+                   ?? commands
+                       .OrderByDescending(q => q.TimeStampCompleted ?? q.TimeStampCreated)
+                       .FirstOrDefault();
+        }
+    }
+
+    private static bool IsFailedCommand(WorkerCommandInfo command)
+        => string.Equals(command.Status, "Failed", StringComparison.OrdinalIgnoreCase);
 
     private string ServerStateIntent
         => _server?.Deployment switch
@@ -2580,6 +2621,68 @@
             + $"?path={Uri.EscapeDataString(entry.Path)}"
         );
 
+    private static string GetProtocolDownloadUrl(LifecycleJobInfo job)
+        => ToTextDataUrl(BuildProtocol(job));
+
+    private static string GetProtocolFileName(LifecycleJobInfo job)
+        => $"utf-lifecycle-{job.PrimaryKey:D}.txt";
+
+    private static string GetCommandDownloadUrl(WorkerCommandInfo command)
+        => ToTextDataUrl(BuildCommandProtocol(command));
+
+    private static string GetCommandFileName(WorkerCommandInfo command)
+        => $"utf-worker-command-{command.PrimaryKey:D}.txt";
+
+    private static string ToTextDataUrl(string value)
+        => "data:text/plain;charset=utf-8;base64,"
+           + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value));
+
+    private static string BuildProtocol(LifecycleJobInfo job)
+    {
+        var builder = new System.Text.StringBuilder()
+            .AppendLine("United Tactical Forces lifecycle protocol")
+            .AppendLine($"Job ID: {job.PrimaryKey:D}")
+            .AppendLine($"Server ID: {job.GameServerId:D}")
+            .AppendLine($"Deployment ID: {job.DeploymentId?.ToString("D") ?? "n/a"}")
+            .AppendLine($"Kind: {job.Kind}")
+            .AppendLine($"Action: {job.ActionId}")
+            .AppendLine($"Status: {job.Status}")
+            .AppendLine($"Stage: {job.Stage}")
+            .AppendLine($"Progress: {job.ProgressPercent}%")
+            .AppendLine($"Attempt: {job.AttemptCount}")
+            .AppendLine($"Created: {job.TimeStampCreated:O}")
+            .AppendLine($"Updated: {job.TimeStampUpdated:O}")
+            .AppendLine($"Started: {FormatProtocolDate(job.TimeStampStarted)}")
+            .AppendLine($"Completed: {FormatProtocolDate(job.TimeStampCompleted)}")
+            .AppendLine($"Failure code: {job.FailureCode ?? "n/a"}")
+            .AppendLine($"Failure reason: {job.FailureReason ?? "n/a"}");
+        foreach (var command in job.Commands.OrderBy(q => q.Sequence))
+        {
+            builder
+                .AppendLine()
+                .Append(BuildCommandProtocol(command));
+        }
+        return builder.ToString();
+    }
+
+    private static string BuildCommandProtocol(WorkerCommandInfo command)
+        => new System.Text.StringBuilder()
+            .AppendLine($"--- Worker command #{command.Sequence} ---")
+            .AppendLine($"Command ID: {command.PrimaryKey:D}")
+            .AppendLine($"Action: {command.ActionId}")
+            .AppendLine($"Status: {command.Status}")
+            .AppendLine($"Stage: {command.Stage}")
+            .AppendLine($"Created: {command.TimeStampCreated:O}")
+            .AppendLine($"Started: {FormatProtocolDate(command.TimeStampStarted)}")
+            .AppendLine($"Completed: {FormatProtocolDate(command.TimeStampCompleted)}")
+            .AppendLine($"Failure: {command.FailureReason ?? "n/a"}")
+            .AppendLine("Diagnostic output:")
+            .AppendLine(command.DiagnosticOutput ?? "n/a")
+            .ToString();
+
+    private static string FormatProtocolDate(DateTimeOffset? value)
+        => value?.ToString("O", CultureInfo.InvariantCulture) ?? "n/a";
+
     private static string GetActionClass(GameServerActionInfo action)
         => action.Dangerous ? "hosting-action hosting-action--danger" : "hosting-action";
 
@@ -2617,6 +2720,9 @@
 
     private static string FormatDate(DateTimeOffset value)
         => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+
+    private static string FormatOptionalDate(DateTimeOffset? value)
+        => value is { } date ? FormatDate(date) : "–";
 
     private string FormatAge(DateTimeOffset value)
     {

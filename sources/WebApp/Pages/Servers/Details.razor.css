@@ -621,6 +621,41 @@
     color: var(--utf-text-muted);
 }
 
+.hosting-protocol-download {
+    margin-top: 10px;
+}
+
+.hosting-protocol-meta {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 6px 16px;
+    margin: 4px 0;
+}
+
+.hosting-protocol-meta div {
+    min-width: 0;
+}
+
+.hosting-protocol-meta dt {
+    color: var(--utf-text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.hosting-protocol-meta dd {
+    margin: 2px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.hosting-protocol-output {
+    grid-column: 1 / -1;
+    min-height: 0;
+    max-height: 24rem;
+    padding: 12px;
+    font-size: 12px;
+}
+
 .hosting-explorer {
     display: grid;
     grid-template-columns: 224px minmax(0, 1fr);
