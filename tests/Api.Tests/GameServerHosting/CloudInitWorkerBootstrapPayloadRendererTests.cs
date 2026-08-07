@@ -46,7 +46,10 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
         Assert.Contains("--publish 2302-2306:2302-2306/udp", service, StringComparison.Ordinal);
         Assert.DoesNotContain("--network host", service, StringComparison.Ordinal);
         Assert.Contains("--cap-drop ALL", service, StringComparison.Ordinal);
-        Assert.Contains("--cap-add SETUID --cap-add SETGID", service, StringComparison.Ordinal);
+        Assert.Contains(
+            "--cap-add SETUID --cap-add SETGID --cap-add CHOWN --cap-add FOWNER",
+            service,
+            StringComparison.Ordinal);
         Assert.Contains("--security-opt no-new-privileges:true", service, StringComparison.Ordinal);
         Assert.Contains("--pids-limit 1024 --memory 7g", service, StringComparison.Ordinal);
         Assert.Contains("--log-opt max-size=10m", service, StringComparison.Ordinal);
