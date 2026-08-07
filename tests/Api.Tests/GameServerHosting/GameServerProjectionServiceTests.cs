@@ -156,6 +156,30 @@ public sealed class GameServerProjectionServiceTests
     }
 
     [Fact]
+    public async Task CreatorFullAccess_KeepsEmergencyCostStopAvailableWhileWaitingForWorker()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(
+            store.DbContext,
+            withActiveDeployment: true,
+            EDeploymentStatus.WaitingForWorker);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var creatorPrincipal = HostingTestData.ServerPrincipal(
+            seed.User,
+            seed.Server,
+            Claims.ResourceBased.Server.All);
+
+        var dto = await projection.GetServerAsync(seed.Server.PrimaryKey, creatorPrincipal);
+
+        Assert.NotNull(dto);
+        var terminate = dto.Actions.Single(q => q.Id == GameServerActions.Terminate);
+        Assert.True(terminate.Enabled);
+        Assert.False(terminate.Pending);
+        Assert.Equal(seed.Server.Title, terminate.ConfirmationChallenge);
+        Assert.Equal(ECostImpact.StopsCost, terminate.CostImpact);
+    }
+
+    [Fact]
     public async Task RunningDeployment_ProjectsDurableProviderGraphAndConnectionEndpoint()
     {
         await using var store = await HostingTestStore.CreateAsync();

@@ -44,6 +44,20 @@
                 <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/servers")">
                     @Localizer["Hosting_Common_BackToServers"]
                 </UtfCommandButton>
+                @if (EmergencyTerminateAction is { } terminateAction)
+                {
+                    <UtfCommandButton Variant="danger"
+                                      Disabled="@(_actionInProgress || !terminateAction.Enabled || terminateAction.Pending)"
+                                      Title="@LocalizeServerMessage(terminateAction.UnavailableReason)"
+                                      OnClick="@(() => RequestActionAsync(terminateAction))">
+                        <Icon><FluentIcon Value="@(new Icons.Regular.Size20.Warning())"/></Icon>
+                        <ChildContent>
+                            @(terminateAction.Pending
+                                ? Localizer["Hosting_Detail_ActionPending"]
+                                : Localizer["Hosting_Detail_TerminateNow"])
+                        </ChildContent>
+                    </UtfCommandButton>
+                }
                 @if (!_server.IsArchived && _server.CanModify)
                 {
                     <UtfCommandButton Variant="danger"
@@ -655,7 +669,7 @@
                         <button class="utf-button utf-button--ghost" type="button" @onclick="CancelChallenge">
                             @Localizer["Hosting_Common_Cancel"]
                         </button>
-                        <button class="utf-button hosting-danger-button"
+                        <button class="utf-button utf-button--danger"
                                 type="button"
                                 disabled="@(!ChallengeMatches || _actionInProgress)"
                                 @onclick="ConfirmChallengedActionAsync">
@@ -1542,6 +1556,12 @@
         => _server?.Actions.FirstOrDefault(q => string.Equals(
             q.Id,
             "collect-logs",
+            StringComparison.OrdinalIgnoreCase));
+
+    private GameServerActionInfo? EmergencyTerminateAction
+        => _server?.Actions.FirstOrDefault(q => string.Equals(
+            q.Id,
+            "terminate",
             StringComparison.OrdinalIgnoreCase));
 
     private WorkerCommandInfo? LatestDiagnosticCommand
@@ -2565,7 +2585,7 @@
 
     private static string GetActionButtonClass(GameServerActionInfo action)
         => action.Dangerous
-            ? "utf-button hosting-danger-button"
+            ? "utf-button utf-button--danger"
             : "utf-button utf-button--primary";
 
     private static string GetActionIcon(string icon)

@@ -15047,6 +15047,8 @@
   <data name="Hosting_LifecycleJobKind_Start" xml:space="preserve"><value>Start</value></data>
   <data name="Hosting_LifecycleJobKind_Stop" xml:space="preserve"><value>Stopp</value></data>
   <data name="Hosting_LifecycleJobKind_Terminate" xml:space="preserve"><value>Sofortiges Beenden</value></data>
+  <data name="Hosting_Detail_TerminateNow" xml:space="preserve"><value>Jetzt deprovisionieren</value></data>
+  <data name="Hosting_Servers_TerminateNow" xml:space="preserve"><value>Jetzt deprovisionieren</value></data>
   <data name="Hosting_LifecycleJobKind_Restart" xml:space="preserve"><value>Neustart</value></data>
   <data name="Hosting_LifecycleJobKind_Install" xml:space="preserve"><value>Installation</value></data>
   <data name="Hosting_LifecycleJobKind_Update" xml:space="preserve"><value>Aktualisierung</value></data>

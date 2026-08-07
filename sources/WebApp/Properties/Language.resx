@@ -15023,6 +15023,8 @@
   <data name="Hosting_Action_collectlogs_Description" xml:space="preserve"><value>Collect redacted diagnostics from the active cloud worker.</value></data>
   <data name="Hosting_Action_collectlogs_CostDescription" xml:space="preserve"><value>Does not change cloud allocation.</value></data>
   <data name="Hosting_Action_terminate_Label" xml:space="preserve"><value>Terminate</value></data>
+  <data name="Hosting_Detail_TerminateNow" xml:space="preserve"><value>Deprovision now</value></data>
+  <data name="Hosting_Servers_TerminateNow" xml:space="preserve"><value>Deprovision now</value></data>
   <data name="Hosting_Action_terminate_Description" xml:space="preserve"><value>Immediately release runtime resources without publishing live data.</value></data>
   <data name="Hosting_Action_terminate_CostDescription" xml:space="preserve"><value>Stops all attributable runtime cost after release is verified.</value></data>
   <data name="Hosting_ActionGroup_Lifecycle" xml:space="preserve"><value>Lifecycle</value></data>

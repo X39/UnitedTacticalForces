@@ -26,6 +26,18 @@ public sealed class EmergencyTerminateUiBoundaryTests
         Assert.Contains("return false;", details, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void EmergencyTerminate_IsExplicitlyAvailableFromServerListAndDetailHeader()
+    {
+        var index = ReadRepositoryFile("sources/WebApp/Pages/Servers/Index.razor");
+        var details = ReadRepositoryFile("sources/WebApp/Pages/Servers/Details.razor");
+
+        Assert.Contains("GetTerminateAction(server)", index, StringComparison.Ordinal);
+        Assert.Contains("?action={Uri.EscapeDataString(action.Id)}", index, StringComparison.Ordinal);
+        Assert.Contains("EmergencyTerminateAction is { } terminateAction", details, StringComparison.Ordinal);
+        Assert.Contains("OnClick=\"@(() => RequestActionAsync(terminateAction))\"", details, StringComparison.Ordinal);
+    }
+
     private static string ReadRepositoryFile(string repositoryRelativePath)
         => File.ReadAllText(Path.Combine(RepositoryRoot, repositoryRelativePath));
 

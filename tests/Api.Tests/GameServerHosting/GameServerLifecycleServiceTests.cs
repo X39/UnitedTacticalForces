@@ -56,6 +56,13 @@ public sealed class GameServerLifecycleServiceTests
             .SingleAsync(q => q.PrimaryKey == server.PrimaryKey);
         Assert.Equal(user.PrimaryKey, persisted.CurrentCostOwner!.UserFk);
         Assert.Equal(3, persisted.PreservationSelections.Count);
+        Assert.Contains(
+            await store.DbContext.Users
+                .Where(q => q.PrimaryKey == user.PrimaryKey)
+                .SelectMany(q => q.Claims!)
+                .ToArrayAsync(),
+            q => q.Identifier == Claims.ResourceBased.Server.All
+                 && q.Value == server.PrimaryKey.ToString());
     }
 
     [Fact]

@@ -111,10 +111,25 @@
 
                     <footer>
                         <span>@Localizer["Hosting_Common_Updated"] @FormatDate(server.TimeStampUpdated)</span>
-                        <a class="utf-button utf-button--ghost"
-                           href="@BaseUrl.ResolveSelfUrl($"command/servers/{server.PrimaryKey}")">
-                            @Localizer["Hosting_Common_Open"]
-                        </a>
+                        <div class="hosting-server-card-actions">
+                            @if (GetTerminateAction(server) is { } terminateAction)
+                            {
+                                <a class="utf-button utf-button--danger @(terminateAction.Enabled && !terminateAction.Pending ? string.Empty : "utf-button--disabled")"
+                                   aria-disabled="@(!terminateAction.Enabled || terminateAction.Pending)"
+                                   href="@(terminateAction.Enabled && !terminateAction.Pending
+                                       ? TerminateUrl(server, terminateAction)
+                                       : null)"
+                                   title="@terminateAction.UnavailableReason">
+                                    @(terminateAction.Pending
+                                        ? Localizer["Hosting_Detail_ActionPending"]
+                                        : Localizer["Hosting_Servers_TerminateNow"])
+                                </a>
+                            }
+                            <a class="utf-button utf-button--ghost"
+                               href="@BaseUrl.ResolveSelfUrl($"command/servers/{server.PrimaryKey}")">
+                                @Localizer["Hosting_Common_Open"]
+                            </a>
+                        </div>
                     </footer>
                 </article>
             }
@@ -211,6 +226,16 @@
 
     private static string FormatDate(DateTimeOffset value)
         => value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+
+    private static GameServerActionInfo? GetTerminateAction(GameServerInfo server)
+        => server.Actions.FirstOrDefault(q => string.Equals(
+            q.Id,
+            "terminate",
+            StringComparison.OrdinalIgnoreCase));
+
+    private string TerminateUrl(GameServerInfo server, GameServerActionInfo action)
+        => BaseUrl.ResolveSelfUrl(
+            $"command/servers/{server.PrimaryKey}?action={Uri.EscapeDataString(action.Id)}");
 
     public async ValueTask DisposeAsync()
     {
