@@ -501,6 +501,7 @@ internal sealed class GameServerProjectionService(
                     ActionId = q.ActionIdentifier,
                     Status = q.Status,
                     Stage = q.Stage,
+                    FailureCode = q.ErrorCode,
                     FailureReason = q.ErrorMessage,
                     DiagnosticOutput = q.DiagnosticOutput,
                     TimeStampCreated = q.TimeStampCreated,

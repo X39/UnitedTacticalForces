@@ -15,7 +15,8 @@ public sealed record Arma3WorkerOptions(
     int? GameUserId = null,
     int? GameGroupId = null,
     string? PrivilegeDropPath = null,
-    int? SteamUserId = null)
+    int? SteamUserId = null,
+    string? SteamHomeDirectory = null)
 {
     public string TemporaryDirectory { get; init; } = "/tmp/united-tactical-forces";
 
@@ -32,7 +33,8 @@ public sealed record Arma3WorkerOptions(
             ParseOptionalPositiveInt(getEnvironmentVariable("UTF_GAME_UID")),
             ParseOptionalPositiveInt(getEnvironmentVariable("UTF_GAME_GID")),
             GetOptional(values, "game-privilege-drop", "UTF_GAME_PRIVILEGE_DROP_PATH", getEnvironmentVariable),
-            ParseOptionalPositiveInt(getEnvironmentVariable("UTF_STEAM_UID")))
+            ParseOptionalPositiveInt(getEnvironmentVariable("UTF_STEAM_UID")),
+            GetOptional(values, "steam-home", "UTF_STEAM_HOME", getEnvironmentVariable))
         {
             TemporaryDirectory = Get(
                 values,

@@ -67,6 +67,7 @@ ENV UTF_WORKER_BOOTSTRAP_PATH=/run/secrets/utf-worker-bootstrap.json \
     UTF_WORKER_STATE_DIRECTORY=/var/lib/united-tactical-forces/worker \
     UTF_WORKER_RUNTIME_ROOT=/srv/united-tactical-forces/runtime \
     UTF_STEAMCMD_PATH=/srv/united-tactical-forces/runtime/.utf-tooling/steamcmd/steamcmd.sh \
+    UTF_STEAM_HOME=/srv/united-tactical-forces/runtime/.utf-tooling/steam-home \
     UTF_STEAM_UID=10003 \
     UTF_GAME_UID=10002 \
     UTF_GAME_GID=10001 \

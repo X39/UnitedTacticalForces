@@ -322,6 +322,7 @@ public sealed class GameServerProjectionServiceTests
             ActionIdentifier = GameServerActions.CollectLogs,
             Status = EWorkerCommandStatus.Succeeded,
             Stage = "logs-collected",
+            ErrorCode = "synthetic-diagnostic-code",
             DiagnosticOutput = "redacted collected output",
             TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
         });
@@ -331,7 +332,9 @@ public sealed class GameServerProjectionServiceTests
 
         Assert.True(operatorJob.CanRetry);
         Assert.True(operatorJob.CanSkip);
-        Assert.Equal("redacted collected output", Assert.Single(operatorJob.Commands).DiagnosticOutput);
+        var operatorCommand = Assert.Single(operatorJob.Commands);
+        Assert.Equal("synthetic-diagnostic-code", operatorCommand.FailureCode);
+        Assert.Equal("redacted collected output", operatorCommand.DiagnosticOutput);
         Assert.False(viewerJob.CanRetry);
         Assert.False(viewerJob.CanSkip);
 

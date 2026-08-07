@@ -771,6 +771,7 @@
                                                     <div><dt>Created</dt><dd>@FormatDate(command.TimeStampCreated)</dd></div>
                                                     <div><dt>Started</dt><dd>@FormatOptionalDate(command.TimeStampStarted)</dd></div>
                                                     <div><dt>Completed</dt><dd>@FormatOptionalDate(command.TimeStampCompleted)</dd></div>
+                                                    <div><dt>Failure code</dt><dd><code>@(command.FailureCode ?? "–")</code></dd></div>
                                                 </dl>
                                                 @if (!string.IsNullOrWhiteSpace(command.FailureReason))
                                                 {
@@ -1344,13 +1345,23 @@
                         <UtfStatusBadge Intent="@(IsFailedCommand(diagnosticCommand) ? "danger" : "success")">
                             @LocalizeToken("Hosting_WorkerCommandStatus", diagnosticCommand.Status)
                         </UtfStatusBadge>
-                        <a class="utf-button utf-button--ghost"
-                           href="@GetCommandDownloadUrl(diagnosticCommand)"
-                           download="@GetCommandFileName(diagnosticCommand)">
-                            @Localizer["Common_Download"]
-                        </a>
+                        @if (LatestDiagnosticJob is { } diagnosticJob)
+                        {
+                            <a class="utf-button utf-button--ghost"
+                               href="@GetProtocolDownloadUrl(diagnosticJob)"
+                               download="@GetProtocolFileName(diagnosticJob)">
+                                @Localizer["Common_Download"] protocol
+                            </a>
+                        }
                         <time>@FormatDate(diagnosticCommand.TimeStampCompleted ?? diagnosticCommand.TimeStampCreated)</time>
                     </div>
+                    <dl class="hosting-protocol-meta">
+                        <div><dt>Command ID</dt><dd><code>@diagnosticCommand.PrimaryKey</code></dd></div>
+                        <div><dt>Action</dt><dd>@LocalizeActionId(diagnosticCommand.ActionId)</dd></div>
+                        <div><dt>Stage</dt><dd>@HumanizeToken(diagnosticCommand.Stage)</dd></div>
+                        <div><dt>Failure code</dt><dd><code>@(diagnosticCommand.FailureCode ?? "–")</code></dd></div>
+                        <div><dt>Started</dt><dd>@FormatOptionalDate(diagnosticCommand.TimeStampStarted)</dd></div>
+                    </dl>
                     @if (!string.IsNullOrWhiteSpace(diagnosticCommand.FailureReason))
                     {
                         <p class="hosting-fault">@diagnosticCommand.FailureReason</p>
@@ -1599,7 +1610,7 @@
                 .Where(q => !string.IsNullOrWhiteSpace(q.DiagnosticOutput))
                 .ToArray();
             return commands
-                       .Where(q => IsFailedCommand(q)
+                       .Where(q => HasFailureEvidence(q)
                                    && !string.Equals(q.ActionId, "fault-stop", StringComparison.OrdinalIgnoreCase))
                        .OrderByDescending(q => q.TimeStampCompleted ?? q.TimeStampCreated)
                        .FirstOrDefault()
@@ -1610,7 +1621,16 @@
     }
 
     private static bool IsFailedCommand(WorkerCommandInfo command)
-        => string.Equals(command.Status, "Failed", StringComparison.OrdinalIgnoreCase);
+        => string.Equals(command.Status, "Failed", StringComparison.OrdinalIgnoreCase)
+           || string.Equals(command.Status, "CancelledByCostStop", StringComparison.OrdinalIgnoreCase);
+
+    private static bool HasFailureEvidence(WorkerCommandInfo command)
+        => IsFailedCommand(command) || !string.IsNullOrWhiteSpace(command.FailureReason);
+
+    private LifecycleJobInfo? LatestDiagnosticJob
+        => LatestDiagnosticCommand is { } command
+            ? _jobs.FirstOrDefault(q => q.Commands.Any(candidate => candidate.PrimaryKey == command.PrimaryKey))
+            : null;
 
     private string ServerStateIntent
         => _server?.Deployment switch
@@ -2627,12 +2647,6 @@
     private static string GetProtocolFileName(LifecycleJobInfo job)
         => $"utf-lifecycle-{job.PrimaryKey:D}.txt";
 
-    private static string GetCommandDownloadUrl(WorkerCommandInfo command)
-        => ToTextDataUrl(BuildCommandProtocol(command));
-
-    private static string GetCommandFileName(WorkerCommandInfo command)
-        => $"utf-worker-command-{command.PrimaryKey:D}.txt";
-
     private static string ToTextDataUrl(string value)
         => "data:text/plain;charset=utf-8;base64,"
            + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value));
@@ -2675,6 +2689,7 @@
             .AppendLine($"Created: {command.TimeStampCreated:O}")
             .AppendLine($"Started: {FormatProtocolDate(command.TimeStampStarted)}")
             .AppendLine($"Completed: {FormatProtocolDate(command.TimeStampCompleted)}")
+            .AppendLine($"Failure code: {command.FailureCode ?? "n/a"}")
             .AppendLine($"Failure: {command.FailureReason ?? "n/a"}")
             .AppendLine("Diagnostic output:")
             .AppendLine(command.DiagnosticOutput ?? "n/a")

@@ -12,6 +12,7 @@ public sealed record WorkerCommandDto
     public string ActionId { get; init; } = string.Empty;
     public EWorkerCommandStatus Status { get; init; }
     public string Stage { get; init; } = string.Empty;
+    public string? FailureCode { get; init; }
     public string? FailureReason { get; init; }
     public string? DiagnosticOutput { get; init; }
     public Instant TimeStampCreated { get; init; }

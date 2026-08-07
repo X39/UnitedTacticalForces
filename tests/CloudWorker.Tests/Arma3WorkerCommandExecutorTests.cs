@@ -82,6 +82,9 @@ public class Arma3WorkerCommandExecutorTests
         Assert.False(Directory.Exists(staleTemporaryDirectory));
         Assert.False(File.Exists(legacyRunScript));
         Assert.True(commandRunner.RunScriptExistedDuringExecution);
+        Assert.Equal(
+            System.IO.Path.Combine(options.RuntimeRoot, ".utf-tooling", "steam-home"),
+            commandRunner.HomeDirectory);
         Assert.DoesNotContain("workshop_download_item", commandRunner.RunScriptContent, StringComparison.Ordinal);
         Assert.DoesNotContain(
             processController.ArgumentsAtStart,
@@ -221,7 +224,7 @@ public class Arma3WorkerCommandExecutorTests
         var executor = new Arma3WorkerCommandExecutor(
             bootstrap.ToConnectionConfig(),
             options,
-            commandRunner: new FailingCommandRunner(System.IO.Path.GetDirectoryName(steamCmdPath)!),
+            commandRunner: new FailingCommandRunner(),
             processController: new RecordingProcessController(
                 System.IO.Path.Combine(directory.Path, "missing-arma"),
                 System.IO.Path.Combine(directory.Path, "missing-server.cfg")),
@@ -528,12 +531,14 @@ public class Arma3WorkerCommandExecutorTests
         public bool RunScriptExistedDuringExecution { get; private set; }
         public UnixFileMode? RunScriptMode { get; private set; }
         public string RunScriptContent { get; private set; } = string.Empty;
+        public string? HomeDirectory { get; private set; }
 
         public async Task<ProcessCommandResult> RunAsync(
             ProcessStartInfo startInfo,
             CancellationToken cancellationToken)
         {
             RunCount++;
+            HomeDirectory = startInfo.Environment["HOME"];
             RunScriptPath = startInfo.ArgumentList.Last();
             RunScriptExistedDuringExecution = File.Exists(RunScriptPath);
             RunScriptContent = await File.ReadAllTextAsync(RunScriptPath, cancellationToken);
@@ -547,14 +552,13 @@ public class Arma3WorkerCommandExecutorTests
         }
     }
 
-    private sealed class FailingCommandRunner(string steamCmdDirectory) : IProcessCommandRunner
+    private sealed class FailingCommandRunner : IProcessCommandRunner
     {
         public async Task<ProcessCommandResult> RunAsync(
             ProcessStartInfo startInfo,
             CancellationToken cancellationToken)
         {
-            _ = startInfo;
-            var logs = System.IO.Path.Combine(steamCmdDirectory, "logs");
+            var logs = System.IO.Path.Combine(startInfo.Environment["HOME"]!, "Steam", "logs");
             Directory.CreateDirectory(logs);
             await File.WriteAllTextAsync(
                 System.IO.Path.Combine(logs, "console_log.txt"),

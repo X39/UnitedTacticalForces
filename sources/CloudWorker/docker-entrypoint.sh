@@ -4,6 +4,7 @@ set -eu
 state_directory="${UTF_WORKER_STATE_DIRECTORY:-/var/lib/united-tactical-forces/worker}"
 runtime_directory="${UTF_WORKER_RUNTIME_ROOT:-/srv/united-tactical-forces/runtime}"
 steamcmd_directory="${runtime_directory}/.utf-tooling/steamcmd"
+steam_home_directory="${UTF_STEAM_HOME:-${runtime_directory}/.utf-tooling/steam-home}"
 game_gid="${UTF_GAME_GID:-10001}"
 steam_uid="${UTF_STEAM_UID:-10003}"
 privilege_drop="${UTF_GAME_PRIVILEGE_DROP_PATH:-/usr/bin/setpriv}"
@@ -21,11 +22,13 @@ chmod 3770 "${runtime_directory}"
 
 # Keep mutable Steam tooling outside the game identity's write boundary. The sticky
 # runtime root prevents the game user from replacing this root-owned directory.
-mkdir -p "${runtime_directory}/.utf-tooling" "${steamcmd_directory}"
+mkdir -p "${runtime_directory}/.utf-tooling" "${steamcmd_directory}" "${steam_home_directory}"
 chown root:root "${runtime_directory}/.utf-tooling"
 chmod 0755 "${runtime_directory}/.utf-tooling"
 chown "${steam_uid}:${game_gid}" "${steamcmd_directory}"
 chmod 0750 "${steamcmd_directory}"
+chown "${steam_uid}:${game_gid}" "${steam_home_directory}"
+chmod 0700 "${steam_home_directory}"
 
 # SteamCMD updates its own files when it starts. The container root filesystem is
 # read-only in production, so seed it into the game-writable runtime mount before

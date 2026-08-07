@@ -40,6 +40,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
     private readonly object _diagnosticSecretsLock = new();
     private readonly HashSet<string> _diagnosticSecrets = new(StringComparer.Ordinal);
     private readonly string _steamTemporaryRoot;
+    private readonly string _steamHomeDirectory;
 
     public Arma3WorkerCommandExecutor(
         CloudWorkerConnectionConfig connection,
@@ -69,6 +70,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                                   _processLauncher);
         _storageTransfer = storageTransfer ?? new UnavailableCloudWorkerStorageTransfer();
         _steamTemporaryRoot = PrepareSteamTemporaryRoot(options.Arma3.TemporaryDirectory);
+        _steamHomeDirectory = ResolveSteamHomeDirectory(options);
         CleanupStaleSteamTemporaryArtifacts();
     }
 
@@ -526,6 +528,16 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 "SteamCMD is not installed in the worker image.");
         }
         _paths.EnsureDirectories();
+        if (!Directory.Exists(_steamHomeDirectory) && _options.Arma3.SteamUserId is null)
+            Directory.CreateDirectory(_steamHomeDirectory);
+        if (!Directory.Exists(_steamHomeDirectory))
+        {
+            return WorkerCommandExecutionResult.Failure(
+                "steam-home-unavailable",
+                "steam-home-missing",
+                "SteamCMD's writable home directory is unavailable.");
+        }
+        WorkerStoragePath.RejectExistingLinks(_options.RuntimeRoot, _steamHomeDirectory);
         if (File.Exists(_paths.PreparationMarkerPath))
             File.Delete(_paths.PreparationMarkerPath);
         var password = await _options.Arma3.ReadSteamPasswordAsync(cancellationToken).ConfigureAwait(false);
@@ -560,6 +572,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 steamCmdPath,
                 Path.GetDirectoryName(steamCmdPath)!,
                 ["+runscript", scriptFile.Path]);
+            startInfo.Environment["HOME"] = _steamHomeDirectory;
             result = await _commandRunner.RunAsync(startInfo, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -617,8 +630,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         AppendDiagnosticSection(diagnostics, "stdout", output);
         AppendDiagnosticSection(diagnostics, "stderr", error);
 
-        var steamCmdDirectory = Path.GetDirectoryName(Path.GetFullPath(_options.Arma3.SteamCmdPath))!;
-        var logDirectory = Path.Combine(steamCmdDirectory, "logs");
+        var logDirectory = Path.Combine(_steamHomeDirectory, "Steam", "logs");
         foreach (var logName in SteamDiagnosticLogNames)
         {
             var path = Path.Combine(logDirectory, logName);
@@ -655,6 +667,22 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
 
     private static string BoundTail(string value, int maximumCharacters)
         => value.Length <= maximumCharacters ? value : value[^maximumCharacters..];
+
+    private static string ResolveSteamHomeDirectory(CloudWorkerOptions options)
+    {
+        var candidate = Path.GetFullPath(
+            string.IsNullOrWhiteSpace(options.Arma3.SteamHomeDirectory)
+                ? Path.Combine(options.RuntimeRoot, ".utf-tooling", "steam-home")
+                : options.Arma3.SteamHomeDirectory);
+        var runtimeRoot = Path.GetFullPath(options.RuntimeRoot);
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var runtimePrefix = runtimeRoot.EndsWith(Path.DirectorySeparatorChar)
+            ? runtimeRoot
+            : runtimeRoot + Path.DirectorySeparatorChar;
+        if (!candidate.StartsWith(runtimePrefix, comparison))
+            throw new InvalidOperationException("SteamCMD's home directory must be inside the runtime root.");
+        return candidate;
+    }
 
     private string BuildSteamCmdScript(
         string? password,
