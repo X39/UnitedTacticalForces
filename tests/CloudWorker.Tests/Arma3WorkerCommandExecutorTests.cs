@@ -210,6 +210,45 @@ public class Arma3WorkerCommandExecutorTests
     }
 
     [Fact]
+    public async Task Install_WhenSteamCmdFails_ReturnsBoundedRedactedProcessAndSteamLogDiagnostics()
+    {
+        using var directory = new TemporaryDirectory();
+        var bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap();
+        var steamCmdPath = System.IO.Path.Combine(directory.Path, "steamcmd", "steamcmd.sh");
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(steamCmdPath)!);
+        await File.WriteAllTextAsync(steamCmdPath, "test executable placeholder");
+        var options = CreateOptions(directory.Path, steamCmdPath);
+        var executor = new Arma3WorkerCommandExecutor(
+            bootstrap.ToConnectionConfig(),
+            options,
+            commandRunner: new FailingCommandRunner(System.IO.Path.GetDirectoryName(steamCmdPath)!),
+            processController: new RecordingProcessController(
+                System.IO.Path.Combine(directory.Path, "missing-arma"),
+                System.IO.Path.Combine(directory.Path, "missing-server.cfg")),
+            storageTransfer: new RecordingStorageTransfer(System.IO.Path.Combine(directory.Path, "server.cfg")));
+
+        var result = await executor.ExecuteAsync(
+            FlatFileWorkerCommandJournalTests.CreateCommand(
+                bootstrap.WorkerId,
+                bootstrap.DeploymentId,
+                bootstrap.ServerId,
+                "install"),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("steamcmd-failed", result.ErrorCode);
+        Assert.Equal("native stderr detail", result.ErrorMessage);
+        Assert.NotNull(result.Output);
+        Assert.True(result.Output.Length <= 16_384);
+        Assert.StartsWith("SteamCMD exit code: 42", result.Output, StringComparison.Ordinal);
+        Assert.Contains("stdout tail marker", result.Output, StringComparison.Ordinal);
+        Assert.Contains("native stderr detail", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Steam console diagnostic", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("diagnostic-secret", result.Output, StringComparison.Ordinal);
+        Assert.Contains("[redacted sensitive worker output]", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Update_WithWorkshopContent_ValidatesServerAndSelectedItems()
     {
         using var directory = new TemporaryDirectory();
@@ -505,6 +544,27 @@ public class Arma3WorkerCommandExecutorTests
             foreach (var directory in preparedDirectories ?? [])
                 Directory.CreateDirectory(directory);
             return new ProcessCommandResult(true, 0, output, string.Empty);
+        }
+    }
+
+    private sealed class FailingCommandRunner(string steamCmdDirectory) : IProcessCommandRunner
+    {
+        public async Task<ProcessCommandResult> RunAsync(
+            ProcessStartInfo startInfo,
+            CancellationToken cancellationToken)
+        {
+            _ = startInfo;
+            var logs = System.IO.Path.Combine(steamCmdDirectory, "logs");
+            Directory.CreateDirectory(logs);
+            await File.WriteAllTextAsync(
+                System.IO.Path.Combine(logs, "console_log.txt"),
+                "Steam console diagnostic\ntoken=diagnostic-secret",
+                cancellationToken);
+            return new ProcessCommandResult(
+                false,
+                42,
+                new string('x', 20_000) + " stdout tail marker",
+                "native stderr detail");
         }
     }
 

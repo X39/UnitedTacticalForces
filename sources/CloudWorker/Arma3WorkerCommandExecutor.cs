@@ -16,7 +16,19 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
 {
     private const string SteamTemporaryDirectoryPrefix = "utf-steamcmd";
     private const string SteamRunScriptExtension = ".runscript";
+    private const int MaximumCommandDiagnosticCharacters = 16 * 1024;
+    private const int MaximumErrorMessageCharacters = 2048;
+    private const int MaximumSteamLogTailBytes = 4 * 1024;
     private const int MaximumDiagnosticConfigurationBytes = 1024 * 1024;
+    private static readonly string[] SteamDiagnosticLogNames =
+    [
+        "bootstrap_log.txt",
+        "connection_log.txt",
+        "console_log.txt",
+        "content_log.txt",
+        "stderr.txt",
+        "workshop_log.txt",
+    ];
     private readonly CloudWorkerConnectionConfig _connection;
     private readonly CloudWorkerOptions _options;
     private readonly Arma3RuntimePaths _paths;
@@ -573,13 +585,76 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 StorageMeasurements = measurements,
             };
         }
+        var diagnosticOutput = await CollectSteamFailureDiagnosticsAsync(
+                result.ExitCode,
+                output,
+                error,
+                secrets,
+                cancellationToken)
+            .ConfigureAwait(false);
         return WorkerCommandExecutionResult.Failure(
-            "steamcmd-failed",
-            "steamcmd-failed",
-            string.IsNullOrWhiteSpace(error)
-                ? $"SteamCMD exited with code {result.ExitCode}."
-                : error);
+                "steamcmd-failed",
+                "steamcmd-failed",
+                BoundTail(
+                    string.IsNullOrWhiteSpace(error)
+                        ? $"SteamCMD exited with code {result.ExitCode}."
+                        : error,
+                    MaximumErrorMessageCharacters))
+            with
+            {
+                Output = diagnosticOutput,
+            };
     }
+
+    private async Task<string> CollectSteamFailureDiagnosticsAsync(
+        int exitCode,
+        string output,
+        string error,
+        IReadOnlyCollection<string> secrets,
+        CancellationToken cancellationToken)
+    {
+        var diagnostics = new StringBuilder();
+        AppendDiagnosticSection(diagnostics, "stdout", output);
+        AppendDiagnosticSection(diagnostics, "stderr", error);
+
+        var steamCmdDirectory = Path.GetDirectoryName(Path.GetFullPath(_options.Arma3.SteamCmdPath))!;
+        var logDirectory = Path.Combine(steamCmdDirectory, "logs");
+        foreach (var logName in SteamDiagnosticLogNames)
+        {
+            var path = Path.Combine(logDirectory, logName);
+            try
+            {
+                if (!File.Exists(path))
+                    continue;
+                WorkerStoragePath.RejectLink(path);
+                var tail = await ReadTailAsync(path, MaximumSteamLogTailBytes, cancellationToken)
+                    .ConfigureAwait(false);
+                AppendDiagnosticSection(diagnostics, $"logs/{logName}", tail);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                AppendDiagnosticSection(
+                    diagnostics,
+                    $"logs/{logName}",
+                    $"Diagnostic log unavailable: {ex.GetType().Name}.");
+            }
+        }
+
+        var prefix = $"SteamCMD exit code: {exitCode.ToString(CultureInfo.InvariantCulture)}{Environment.NewLine}";
+        var redacted = WorkerSecretRedactor.Redact(diagnostics.ToString(), secrets) ?? string.Empty;
+        return prefix + BoundTail(redacted, MaximumCommandDiagnosticCharacters - prefix.Length);
+    }
+
+    private static void AppendDiagnosticSection(StringBuilder builder, string name, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+        builder.Append("--- ").Append(name).AppendLine(" ---");
+        builder.AppendLine(value.TrimEnd());
+    }
+
+    private static string BoundTail(string value, int maximumCharacters)
+        => value.Length <= maximumCharacters ? value : value[^maximumCharacters..];
 
     private string BuildSteamCmdScript(
         string? password,
