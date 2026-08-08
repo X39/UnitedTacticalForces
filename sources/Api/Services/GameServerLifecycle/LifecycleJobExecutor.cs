@@ -1486,7 +1486,7 @@ internal sealed class LifecycleJobExecutor(
         return command;
     }
 
-    private async Task WaitForCommandAsync(
+    internal async Task WaitForCommandAsync(
         LifecycleJob job,
         GameServer server,
         GameServerDeployment deployment,
@@ -1555,12 +1555,10 @@ internal sealed class LifecycleJobExecutor(
                     .ConfigureAwait(false);
             }
 
-            job.Stage = workerState.TimeStampRegistered is null ? "waiting-for-worker-registration" : state.Stage;
-            job.Progress = workerState.TimeStampRegistered is null ? 40 : Math.Max(job.Progress, 50);
-            job.TimeStampUpdated = now;
-            deployment.Stage = job.Stage;
-            deployment.TimeStampUpdated = now;
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            // Worker registration and command reports update the lifecycle job and deployment under the
+            // per-server mutation lock. This polling context intentionally remains read-only: writing the same
+            // progress here races the worker protocol's WaitingForWorker -> Preparing transition and turns a
+            // successful ReportRunning into an optimistic-concurrency retry.
             await Task.Delay(_options.IdlePollInterval, cancellationToken).ConfigureAwait(false);
         }
     }

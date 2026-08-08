@@ -24,6 +24,68 @@ namespace Api.Tests.GameServerHosting;
 public sealed class LifecycleJobExecutorCloudTests
 {
     [Fact]
+    public async Task WaitForCommand_WhenWorkerProtocolAdvancesDeployment_DoesNotWriteStalePollingState()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var deployment = seed.Deployment!;
+        deployment.Status = EDeploymentStatus.WaitingForWorker;
+        deployment.Stage = "waiting-for-worker";
+        var worker = new LifecycleWorker
+        {
+            PrimaryKey = Guid.NewGuid(),
+            DeploymentFk = deployment.PrimaryKey,
+            Identity = "concurrent-report-worker",
+            Status = EWorkerStatus.Online,
+            TimeStampRegistered = now,
+            LastHeartbeatAt = now,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        var command = new WorkerCommand
+        {
+            PrimaryKey = Guid.NewGuid(),
+            LifecycleJobFk = job.PrimaryKey,
+            DeploymentFk = deployment.PrimaryKey,
+            WorkerFk = worker.PrimaryKey,
+            Sequence = 1,
+            ActionIdentifier = GameServerActions.Start,
+            Status = EWorkerCommandStatus.Running,
+            Stage = "running",
+            TimeStampCreated = now,
+            TimeStampStarted = now,
+        };
+        store.DbContext.AddRange(worker, command);
+        await store.DbContext.SaveChangesAsync();
+
+        var concurrentOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(store.Connection)
+            .Options;
+        await using (var concurrentContext = new NodaTimeSqliteApiDbContext(concurrentOptions))
+        {
+            var concurrentDeployment = await concurrentContext.GameServerDeployments
+                .SingleAsync(q => q.PrimaryKey == deployment.PrimaryKey);
+            concurrentDeployment.Status = EDeploymentStatus.Preparing;
+            concurrentDeployment.Stage = "running";
+            concurrentDeployment.TimeStampUpdated = now + Duration.FromMilliseconds(1);
+            await concurrentContext.SaveChangesAsync();
+        }
+
+        var executor = CreateExecutor(store, new ExecutorTestProvider(), new RecordingCostSliceService());
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(30));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => executor.WaitForCommandAsync(
+            job,
+            seed.Server,
+            deployment,
+            worker,
+            command,
+            registrationDeadline: null,
+            cancellationToken: cancellation.Token));
+    }
+
+    [Fact]
     public async Task Start_PassesGameDeclaredInboundNetworkRequirementsToProvider()
     {
         await using var store = await HostingTestStore.CreateAsync();
