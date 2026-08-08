@@ -14870,7 +14870,10 @@
     <value>Last worker heartbeat</value>
   </data>
   <data name="Hosting_Detail_LogsDescription" xml:space="preserve">
-    <value>Request a fresh diagnostic snapshot from the dedicated worker and review its latest reported output.</value>
+    <value>Review the complete worker command protocol history or request a fresh diagnostic snapshot.</value>
+  </data>
+  <data name="Hosting_Detail_DownloadAllProtocols" xml:space="preserve">
+    <value>Download all protocols</value>
   </data>
   <data name="Hosting_Detail_LogsKicker" xml:space="preserve">
     <value>Worker diagnostics</value>
@@ -14891,10 +14894,13 @@
     <value>The server has no currently available lifecycle action that needs attention.</value>
   </data>
   <data name="Hosting_Detail_NoLogsDescription" xml:space="preserve">
-    <value>Collect a diagnostic snapshot to see output reported by the dedicated worker.</value>
+    <value>No worker command protocols have been recorded yet.</value>
   </data>
   <data name="Hosting_Detail_NoLogsTitle" xml:space="preserve">
-    <value>No diagnostic snapshot yet</value>
+    <value>No protocols yet</value>
+  </data>
+  <data name="Hosting_Detail_NoDiagnosticOutput" xml:space="preserve">
+    <value>This command did not report diagnostic output. Its complete lifecycle metadata remains available in the download.</value>
   </data>
   <data name="Hosting_Detail_PriceUnavailable" xml:space="preserve">
     <value>Price unavailable</value>

@@ -14759,7 +14759,10 @@
     <value>Serverarbeitsbereich wird geladen…</value>
   </data>
   <data name="Hosting_Detail_LogsDescription" xml:space="preserve">
-    <value>Fordere eine aktuelle Diagnoseaufnahme vom dedizierten Worker an und prüfe die zuletzt gemeldete Ausgabe.</value>
+    <value>Prüfe den vollständigen Verlauf der Worker-Befehlsprotokolle oder fordere eine aktuelle Diagnoseaufnahme an.</value>
+  </data>
+  <data name="Hosting_Detail_DownloadAllProtocols" xml:space="preserve">
+    <value>Alle Protokolle herunterladen</value>
   </data>
   <data name="Hosting_Detail_LogsKicker" xml:space="preserve">
     <value>Worker-Diagnose</value>
@@ -14816,10 +14819,13 @@
     <value>Keine Datei ausgewählt</value>
   </data>
   <data name="Hosting_Detail_NoLogsDescription" xml:space="preserve">
-    <value>Erstelle eine Diagnoseaufnahme, um die vom dedizierten Worker gemeldete Ausgabe zu sehen.</value>
+    <value>Es wurden noch keine Worker-Befehlsprotokolle aufgezeichnet.</value>
   </data>
   <data name="Hosting_Detail_NoLogsTitle" xml:space="preserve">
-    <value>Noch keine Diagnoseaufnahme</value>
+    <value>Noch keine Protokolle</value>
+  </data>
+  <data name="Hosting_Detail_NoDiagnosticOutput" xml:space="preserve">
+    <value>Dieser Befehl hat keine Diagnoseausgabe gemeldet. Seine vollständigen Lebenszyklus-Metadaten bleiben im Download verfügbar.</value>
   </data>
   <data name="Hosting_Detail_NoModPack" xml:space="preserve">
     <value>Kein Modpack</value>

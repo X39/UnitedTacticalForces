@@ -1321,6 +1321,7 @@
 
         @if (_activeSection == "logs")
         {
+            var protocolEntries = ProtocolEntries;
             <section class="utf-panel hosting-logs-panel">
                 <div class="hosting-section-heading hosting-section-heading--row">
                     <div>
@@ -1328,45 +1329,79 @@
                         <h2>@Localizer["Hosting_Detail_LogsTitle"]</h2>
                         <p>@Localizer["Hosting_Detail_LogsDescription"]</p>
                     </div>
-                    @if (CollectLogsAction is { } collectLogsAction)
-                    {
-                        <button class="utf-button utf-button--primary"
-                                type="button"
-                                disabled="@(_actionInProgress || !collectLogsAction.Enabled || collectLogsAction.Pending)"
-                                title="@collectLogsAction.UnavailableReason"
-                                @onclick="@(() => RequestActionAsync(collectLogsAction))">
-                            @Localizer["Hosting_Detail_RefreshLogs"]
-                        </button>
-                    }
-                </div>
-                @if (LatestDiagnosticCommand is { } diagnosticCommand)
-                {
-                    <div class="hosting-log-meta">
-                        <UtfStatusBadge Intent="@(IsFailedCommand(diagnosticCommand) ? "danger" : "success")">
-                            @LocalizeToken("Hosting_WorkerCommandStatus", diagnosticCommand.Status)
-                        </UtfStatusBadge>
-                        @if (LatestDiagnosticJob is { } diagnosticJob)
+                    <div class="hosting-log-actions">
+                        @if (protocolEntries.Count > 0)
                         {
                             <a class="utf-button utf-button--ghost"
-                               href="@GetProtocolDownloadUrl(diagnosticJob)"
-                               download="@GetProtocolFileName(diagnosticJob)">
-                                @Localizer["Common_Download"] protocol
+                               href="@GetAllProtocolsDownloadUrl()"
+                               download="@GetAllProtocolsFileName()">
+                                @Localizer["Hosting_Detail_DownloadAllProtocols"]
                             </a>
                         }
-                        <time>@FormatDate(diagnosticCommand.TimeStampCompleted ?? diagnosticCommand.TimeStampCreated)</time>
+                        @if (CollectLogsAction is { } collectLogsAction)
+                        {
+                            <button class="utf-button utf-button--primary"
+                                    type="button"
+                                    disabled="@(_actionInProgress || !collectLogsAction.Enabled || collectLogsAction.Pending)"
+                                    title="@collectLogsAction.UnavailableReason"
+                                    @onclick="@(() => RequestActionAsync(collectLogsAction))">
+                                @Localizer["Hosting_Detail_RefreshLogs"]
+                            </button>
+                        }
                     </div>
-                    <dl class="hosting-protocol-meta">
-                        <div><dt>Command ID</dt><dd><code>@diagnosticCommand.PrimaryKey</code></dd></div>
-                        <div><dt>Action</dt><dd>@LocalizeActionId(diagnosticCommand.ActionId)</dd></div>
-                        <div><dt>Stage</dt><dd>@HumanizeToken(diagnosticCommand.Stage)</dd></div>
-                        <div><dt>Failure code</dt><dd><code>@(diagnosticCommand.FailureCode ?? "–")</code></dd></div>
-                        <div><dt>Started</dt><dd>@FormatOptionalDate(diagnosticCommand.TimeStampStarted)</dd></div>
-                    </dl>
-                    @if (!string.IsNullOrWhiteSpace(diagnosticCommand.FailureReason))
+                </div>
+                @if (protocolEntries.Count > 0)
+                {
+                    <div class="hosting-protocol-list">
+                    @for (var protocolIndex = 0; protocolIndex < protocolEntries.Count; protocolIndex++)
                     {
-                        <p class="hosting-fault">@diagnosticCommand.FailureReason</p>
+                        var protocol = protocolEntries[protocolIndex];
+                        var command = protocol.Command;
+                        <details class="hosting-protocol-card" open="@(protocolIndex == 0)" @key="command.PrimaryKey">
+                            <summary>
+                                <span>
+                                    <strong>@LocalizeActionId(command.ActionId)</strong>
+                                    <small>#@command.Sequence · @HumanizeToken(command.Stage)</small>
+                                </span>
+                                <UtfStatusBadge Intent="@(IsFailedCommand(command) ? "danger" : "success")">
+                                    @LocalizeToken("Hosting_WorkerCommandStatus", command.Status)
+                                </UtfStatusBadge>
+                                <time>@FormatDate(ProtocolTimeStamp(command))</time>
+                            </summary>
+                            <div class="hosting-protocol-card-body">
+                                <div class="hosting-log-meta">
+                                    <a class="utf-button utf-button--ghost"
+                                       href="@GetCommandProtocolDownloadUrl(protocol)"
+                                       download="@GetCommandProtocolFileName(protocol)">
+                                        @Localizer["Common_Download"] protocol
+                                    </a>
+                                </div>
+                                <dl class="hosting-protocol-meta">
+                                    <div><dt>Job ID</dt><dd><code>@protocol.Job.PrimaryKey</code></dd></div>
+                                    <div><dt>Command ID</dt><dd><code>@command.PrimaryKey</code></dd></div>
+                                    <div><dt>Action</dt><dd>@LocalizeActionId(command.ActionId)</dd></div>
+                                    <div><dt>Stage</dt><dd>@HumanizeToken(command.Stage)</dd></div>
+                                    <div><dt>Failure code</dt><dd><code>@(command.FailureCode ?? "–")</code></dd></div>
+                                    <div><dt>Created</dt><dd>@FormatDate(command.TimeStampCreated)</dd></div>
+                                    <div><dt>Started</dt><dd>@FormatOptionalDate(command.TimeStampStarted)</dd></div>
+                                    <div><dt>Completed</dt><dd>@FormatOptionalDate(command.TimeStampCompleted)</dd></div>
+                                </dl>
+                                @if (!string.IsNullOrWhiteSpace(command.FailureReason))
+                                {
+                                    <p class="hosting-fault">@command.FailureReason</p>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(command.DiagnosticOutput))
+                                {
+                                    <pre class="hosting-log-output hosting-protocol-output" tabindex="0">@command.DiagnosticOutput</pre>
+                                }
+                                else
+                                {
+                                    <p class="hosting-muted">@Localizer["Hosting_Detail_NoDiagnosticOutput"]</p>
+                                }
+                            </div>
+                        </details>
                     }
-                    <pre class="hosting-log-output" tabindex="0">@diagnosticCommand.DiagnosticOutput</pre>
+                    </div>
                 }
                 else
                 {
@@ -1601,36 +1636,19 @@
             "terminate",
             StringComparison.OrdinalIgnoreCase));
 
-    private WorkerCommandInfo? LatestDiagnosticCommand
-    {
-        get
-        {
-            var commands = _jobs
-                .SelectMany(q => q.Commands)
-                .Where(q => !string.IsNullOrWhiteSpace(q.DiagnosticOutput))
-                .ToArray();
-            return commands
-                       .Where(q => HasFailureEvidence(q)
-                                   && !string.Equals(q.ActionId, "fault-stop", StringComparison.OrdinalIgnoreCase))
-                       .OrderByDescending(q => q.TimeStampCompleted ?? q.TimeStampCreated)
-                       .FirstOrDefault()
-                   ?? commands
-                       .OrderByDescending(q => q.TimeStampCompleted ?? q.TimeStampCreated)
-                       .FirstOrDefault();
-        }
-    }
+    private IReadOnlyList<ProtocolEntry> ProtocolEntries
+        => _jobs
+            .SelectMany(job => job.Commands.Select(command => new ProtocolEntry(job, command)))
+            .OrderByDescending(q => ProtocolTimeStamp(q.Command))
+            .ThenByDescending(q => q.Command.Sequence)
+            .ToArray();
 
     private static bool IsFailedCommand(WorkerCommandInfo command)
         => string.Equals(command.Status, "Failed", StringComparison.OrdinalIgnoreCase)
            || string.Equals(command.Status, "CancelledByCostStop", StringComparison.OrdinalIgnoreCase);
 
-    private static bool HasFailureEvidence(WorkerCommandInfo command)
-        => IsFailedCommand(command) || !string.IsNullOrWhiteSpace(command.FailureReason);
-
-    private LifecycleJobInfo? LatestDiagnosticJob
-        => LatestDiagnosticCommand is { } command
-            ? _jobs.FirstOrDefault(q => q.Commands.Any(candidate => candidate.PrimaryKey == command.PrimaryKey))
-            : null;
+    private static DateTimeOffset ProtocolTimeStamp(WorkerCommandInfo command)
+        => command.TimeStampCompleted ?? command.TimeStampStarted ?? command.TimeStampCreated;
 
     private string ServerStateIntent
         => _server?.Deployment switch
@@ -2647,6 +2665,18 @@
     private static string GetProtocolFileName(LifecycleJobInfo job)
         => $"utf-lifecycle-{job.PrimaryKey:D}.txt";
 
+    private static string GetCommandProtocolDownloadUrl(ProtocolEntry protocol)
+        => ToTextDataUrl(BuildCommandProtocol(protocol.Job, protocol.Command));
+
+    private static string GetCommandProtocolFileName(ProtocolEntry protocol)
+        => $"utf-worker-command-{protocol.Command.PrimaryKey:D}.txt";
+
+    private string GetAllProtocolsDownloadUrl()
+        => ToTextDataUrl(BuildAllProtocols(_jobs));
+
+    private string GetAllProtocolsFileName()
+        => $"utf-server-protocols-{ServerId:D}.txt";
+
     private static string ToTextDataUrl(string value)
         => "data:text/plain;charset=utf-8;base64,"
            + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value));
@@ -2695,8 +2725,36 @@
             .AppendLine(command.DiagnosticOutput ?? "n/a")
             .ToString();
 
+    private static string BuildCommandProtocol(LifecycleJobInfo job, WorkerCommandInfo command)
+        => new System.Text.StringBuilder()
+            .AppendLine("United Tactical Forces worker command protocol")
+            .AppendLine($"Server ID: {job.GameServerId:D}")
+            .AppendLine($"Deployment ID: {job.DeploymentId?.ToString("D") ?? "n/a"}")
+            .AppendLine($"Job ID: {job.PrimaryKey:D}")
+            .AppendLine($"Job status: {job.Status}")
+            .AppendLine($"Job stage: {job.Stage}")
+            .AppendLine()
+            .Append(BuildCommandProtocol(command))
+            .ToString();
+
+    private static string BuildAllProtocols(IEnumerable<LifecycleJobInfo> jobs)
+    {
+        var builder = new System.Text.StringBuilder()
+            .AppendLine("United Tactical Forces server protocol history");
+        foreach (var job in jobs.OrderByDescending(q => q.TimeStampCreated))
+        {
+            builder
+                .AppendLine()
+                .AppendLine(new string('=', 80))
+                .Append(BuildProtocol(job));
+        }
+        return builder.ToString();
+    }
+
     private static string FormatProtocolDate(DateTimeOffset? value)
         => value?.ToString("O", CultureInfo.InvariantCulture) ?? "n/a";
+
+    private sealed record ProtocolEntry(LifecycleJobInfo Job, WorkerCommandInfo Command);
 
     private static string GetActionClass(GameServerActionInfo action)
         => action.Dangerous ? "hosting-action hosting-action--danger" : "hosting-action";

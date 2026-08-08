@@ -950,8 +950,55 @@
     min-height: 480px;
 }
 
+.hosting-log-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
 .hosting-log-meta {
     justify-content: space-between;
+}
+
+.hosting-protocol-list {
+    display: grid;
+    gap: 12px;
+}
+
+.hosting-protocol-card {
+    overflow: hidden;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 6px;
+    background: var(--utf-surface);
+}
+
+.hosting-protocol-card > summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+}
+
+.hosting-protocol-card > summary > span {
+    display: grid;
+    gap: 2px;
+}
+
+.hosting-protocol-card > summary small,
+.hosting-protocol-card > summary time {
+    color: var(--utf-text-muted);
+}
+
+.hosting-protocol-card-body {
+    padding: 0 16px 16px;
+    border-top: 1px solid var(--utf-stroke);
+}
+
+.hosting-protocol-card-body .hosting-log-meta {
+    margin: 12px 0;
 }
 
 .hosting-log-output {
@@ -1103,6 +1150,22 @@
 
     .hosting-command {
         grid-template-columns: 1fr;
+    }
+
+    .hosting-log-actions {
+        justify-content: stretch;
+    }
+
+    .hosting-log-actions .utf-button {
+        width: 100%;
+    }
+
+    .hosting-protocol-card > summary {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .hosting-protocol-card > summary time {
+        grid-column: 1 / -1;
     }
 
     .hosting-command small,
