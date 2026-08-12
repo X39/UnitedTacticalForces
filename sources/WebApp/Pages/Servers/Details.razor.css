@@ -265,8 +265,7 @@
 
 .hosting-field input,
 .hosting-field select,
-.hosting-file-toolbar input,
-.hosting-challenge input {
+.hosting-file-toolbar input {
     box-sizing: border-box;
     width: 100%;
     min-height: 40px;
@@ -547,22 +546,6 @@
 
 .hosting-action-icon {
     color: var(--utf-gold);
-}
-
-.hosting-challenge {
-    display: grid;
-    gap: 16px;
-    padding: 24px;
-    border: 1px solid var(--utf-danger);
-    border-radius: 4px;
-    background: var(--utf-bg);
-}
-
-.hosting-challenge > div:last-child {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
 }
 
 .hosting-job {

@@ -1,0 +1,67 @@
+@implements IDialogContentComponent<X39.UnitedTacticalForces.WebApp.Components.UtfChallengeConfirmationDialog.Data>
+
+<FluentDialogBody Class="utf-challenge-dialog-body">
+    <div class="utf-challenge-dialog">
+        <span class="utf-challenge-dialog__icon" aria-hidden="true">
+            <FluentIcon Value="@(new Icons.Regular.Size24.Warning())"/>
+        </span>
+        <div>
+            <span class="utf-kicker">@Content.Kicker</span>
+            <p>@Content.Message</p>
+            <label>
+                <span>@Content.ChallengeLabel</span>
+                <input @ref="_confirmationInputElement"
+                       autocomplete="off"
+                       value="@Content.Confirmation"
+                       @oninput="UpdateConfirmation"/>
+            </label>
+        </div>
+    </div>
+</FluentDialogBody>
+
+<FluentDialogFooter Class="utf-challenge-dialog-footer">
+    <UtfCommandButton OnClick="CancelAsync">
+        @Content.CancelLabel
+    </UtfCommandButton>
+    <UtfCommandButton Variant="danger"
+                      Disabled="@(!ChallengeMatches)"
+                      OnClick="ConfirmAsync">
+        @Content.ConfirmLabel
+    </UtfCommandButton>
+</FluentDialogFooter>
+
+@code {
+    private ElementReference _confirmationInputElement;
+
+    [CascadingParameter]
+    public FluentDialog Dialog { get; set; } = default!;
+
+    [Parameter]
+    public Data Content { get; set; } = default!;
+
+    private bool ChallengeMatches
+        => string.Equals(Content.Confirmation, Content.Challenge, StringComparison.Ordinal);
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+        => firstRender ? _confirmationInputElement.FocusAsync().AsTask() : Task.CompletedTask;
+
+    private void UpdateConfirmation(ChangeEventArgs args)
+        => Content.Confirmation = args.Value?.ToString() ?? string.Empty;
+
+    private Task CancelAsync()
+        => Dialog.CancelAsync();
+
+    private Task ConfirmAsync()
+        => ChallengeMatches ? Dialog.CloseAsync(Content) : Task.CompletedTask;
+
+    public sealed class Data
+    {
+        public string Kicker { get; init; } = string.Empty;
+        public string Message { get; init; } = string.Empty;
+        public string Challenge { get; init; } = string.Empty;
+        public string ChallengeLabel { get; init; } = string.Empty;
+        public string ConfirmLabel { get; init; } = string.Empty;
+        public string CancelLabel { get; init; } = string.Empty;
+        public string Confirmation { get; set; } = string.Empty;
+    }
+}

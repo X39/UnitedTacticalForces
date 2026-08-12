@@ -650,34 +650,6 @@
                 </div>
             }
 
-            @if (_challengedAction is { } challengedAction)
-            {
-                <section class="hosting-challenge" role="alertdialog" aria-labelledby="hosting-challenge-title">
-                    <div>
-                        <span class="utf-kicker">@Localizer["Hosting_Detail_ConfirmationKicker"]</span>
-                        <h3 id="hosting-challenge-title">@ActionLabel(challengedAction)</h3>
-                        <p>@LocalizeServerMessage(challengedAction.ConfirmationText)</p>
-                    </div>
-                    <label>
-                        <span>@Localizer["Hosting_Detail_TypeChallenge", challengedAction.ConfirmationChallenge!]</span>
-                        <input autocomplete="off"
-                               @ref="_confirmationInputElement"
-                               value="@_confirmationInput"
-                               @oninput="UpdateConfirmationInput"/>
-                    </label>
-                    <div>
-                        <button class="utf-button utf-button--ghost" type="button" @onclick="CancelChallenge">
-                            @Localizer["Hosting_Common_Cancel"]
-                        </button>
-                        <button class="utf-button utf-button--danger"
-                                type="button"
-                                disabled="@(!ChallengeMatches || _actionInProgress)"
-                                @onclick="ConfirmChallengedActionAsync">
-                            @ActionLabel(challengedAction)
-                        </button>
-                    </div>
-                </section>
-            }
         </section>
         }
 
@@ -1460,8 +1432,6 @@
     private bool _modPackSelectionDirty;
     private bool _showAllOperations;
     private string? _handledRequestedAction;
-    private bool _focusConfirmationInput;
-    private ElementReference _confirmationInputElement;
     private string _activeSection = "overview";
     private string? _loadError;
     private string? _operationError;
@@ -1473,8 +1443,6 @@
     private StorageDemandInfo? _storageDemand;
     private bool _storageDemandLoading;
     private string? _storageDemandError;
-    private GameServerActionInfo? _challengedAction;
-    private string _confirmationInput = string.Empty;
     private EHostingFileContext _fileContext = EHostingFileContext.Persistent;
     private string _currentPath = string.Empty;
     private byte[]? _selectedUpload;
@@ -1674,10 +1642,6 @@
                     : LocalizeToken("Hosting_ActionGroup", action.Group))
                 .OrderBy((group) => group.Min((action) => action.Order));
 
-    private bool ChallengeMatches
-        => _challengedAction?.ConfirmationChallenge is { } challenge
-           && string.Equals(_confirmationInput, challenge, StringComparison.Ordinal);
-
     protected override async Task OnInitializedAsync()
     {
         await RefreshRuntimeAsync(showLoading: true, _cancellationTokenSource.Token);
@@ -1751,21 +1715,11 @@
             if (requestedAction is { Enabled: true, Pending: false }
                 && !string.IsNullOrWhiteSpace(requestedAction.ConfirmationChallenge))
             {
-                _challengedAction = requestedAction;
-                _confirmationInput = string.Empty;
-                _focusConfirmationInput = true;
                 NavigationManager.NavigateTo(
                     BaseUrl.ResolveSelfUrl($"command/servers/{ServerId}"),
                     replace: true);
-                StateHasChanged();
-                return;
+                await RequestActionAsync(requestedAction);
             }
-        }
-
-        if (_focusConfirmationInput)
-        {
-            _focusConfirmationInput = false;
-            await _confirmationInputElement.FocusAsync();
         }
     }
 
@@ -2069,9 +2023,17 @@
 
         if (!string.IsNullOrWhiteSpace(action.ConfirmationChallenge))
         {
-            _challengedAction = action;
-            _confirmationInput = string.Empty;
-            _focusConfirmationInput = true;
+            var confirmation = await DialogService.ShowUtfChallengeConfirmationAsync(
+                ActionLabel(action),
+                LocalizeServerMessage(action.ConfirmationText),
+                action.ConfirmationChallenge,
+                Localizer["Hosting_Detail_TypeChallenge", action.ConfirmationChallenge].Value,
+                ActionLabel(action),
+                Localizer["Hosting_Common_Cancel"].Value,
+                kicker: Localizer["Hosting_Detail_ConfirmationKicker"].Value
+            );
+            if (confirmation is not null)
+                _ = await ExecuteActionAsync(action, confirmation);
             return;
         }
 
@@ -2090,15 +2052,6 @@
         }
 
         _ = await ExecuteActionAsync(action, confirmation: null);
-    }
-
-    private async Task ConfirmChallengedActionAsync()
-    {
-        if (_challengedAction is not { } action || !ChallengeMatches)
-            return;
-
-        if (await ExecuteActionAsync(action, _confirmationInput))
-            CancelChallenge();
     }
 
     private async Task<bool> ExecuteActionAsync(GameServerActionInfo action, string? confirmation)
@@ -2640,15 +2593,6 @@
             _selectionMutationInProgress = false;
         }
     }
-
-    private void CancelChallenge()
-    {
-        _challengedAction = null;
-        _confirmationInput = string.Empty;
-    }
-
-    private void UpdateConfirmationInput(ChangeEventArgs args)
-        => _confirmationInput = args.Value?.ToString() ?? string.Empty;
 
     private void UpdateBrowsePath(ChangeEventArgs args)
         => _currentPath = args.Value?.ToString() ?? string.Empty;
