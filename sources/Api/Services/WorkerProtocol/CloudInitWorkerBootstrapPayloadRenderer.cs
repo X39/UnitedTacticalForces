@@ -284,7 +284,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
            ExecStartPre=/bin/sh -c '/usr/sbin/iptables -C DOCKER-USER -d 169.254.169.254/32 -j REJECT >/dev/null 2>&1 || /usr/sbin/iptables -I DOCKER-USER -d 169.254.169.254/32 -j REJECT'
            ExecStart=/usr/bin/docker run --rm --name {serviceName} --user 0:{RuntimeGroupId} \
              --network bridge {publishedPorts} --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=256m \
-             --cap-drop ALL --cap-add SETUID --cap-add SETGID --cap-add CHOWN --cap-add FOWNER \
+             --cap-drop ALL --cap-add SETUID --cap-add SETGID --cap-add CHOWN --cap-add FOWNER --cap-add KILL \
              --security-opt no-new-privileges:true \
              --pids-limit {_options.ContainerPidsLimit} --memory {_options.ContainerMemoryLimit} \
              --log-driver json-file --log-opt max-size={_options.ContainerLogMaxSize} \

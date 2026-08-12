@@ -47,7 +47,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
         Assert.DoesNotContain("--network host", service, StringComparison.Ordinal);
         Assert.Contains("--cap-drop ALL", service, StringComparison.Ordinal);
         Assert.Contains(
-            "--cap-add SETUID --cap-add SETGID --cap-add CHOWN --cap-add FOWNER",
+            "--cap-add SETUID --cap-add SETGID --cap-add CHOWN --cap-add FOWNER --cap-add KILL",
             service,
             StringComparison.Ordinal);
         Assert.Contains("--security-opt no-new-privileges:true", service, StringComparison.Ordinal);
