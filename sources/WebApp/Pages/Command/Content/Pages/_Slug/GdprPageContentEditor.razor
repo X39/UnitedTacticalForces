@@ -4,7 +4,10 @@
 @using X39.UnitedTacticalForces.WebApp.Services.PublicPageRepository
 @inject IStringLocalizer<Language> Localizer
 
-<div class="gdpr-template-editor-shell">
+<div class="@CssClass"
+     aria-invalid="@Invalid"
+     tabindex="-1"
+     @ref="_root">
     <nav class="gdpr-template-section-nav" aria-label='@L("Pages_Command_Content_Gdpr_SectionNavAria", "GDPR content sections")'>
         <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_SectionNavKicker", "Sections")</span>
         <a href="#gdpr-template-intro">@L("Pages_Command_Content_Gdpr_IntroSection", "Intro")</a>
@@ -15,6 +18,32 @@
         <a href="#gdpr-template-partners">@L("Pages_Command_Content_Gdpr_PartnersSection", "External service cards")</a>
         <a href="#gdpr-template-policy">@L("Pages_Command_Content_Gdpr_PolicyCardsSection", "Policy cards")</a>
     </nav>
+
+    <section class="utf-panel gdpr-template-preview-panel">
+        <div class="gdpr-template-panel-header">
+            <div>
+                <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_TemplatePreviewKicker", "Live preview")</span>
+                <h2>@L("Pages_Command_Content_Gdpr_TemplatePreviewTitle", "Rendered public layout")</h2>
+                <p>@L("Pages_Command_Content_Gdpr_TemplatePreviewDescription", "Open a full-width preview when you need it; keep it collapsed while editing.")</p>
+            </div>
+            <div class="gdpr-template-preview-controls">
+                <span class="utf-status utf-status--neutral">
+                    <span class="utf-status__dot"></span>@RevisionLabel
+                </span>
+                <UtfCommandButton OnClick="TogglePreview">
+                    @(_showPreview
+                        ? L("Pages_Command_Content_Gdpr_TemplatePreviewHide", "Hide preview")
+                        : L("Pages_Command_Content_Gdpr_TemplatePreviewShow", "Show preview"))
+                </UtfCommandButton>
+            </div>
+        </div>
+        @if (_showPreview)
+        {
+            <div class="gdpr-template-preview">
+                <GdprPageContentView Content="@Content"/>
+            </div>
+        }
+    </section>
 
     <div class="gdpr-template-form" @oninput="NotifyContentChangedAsync">
         <section id="gdpr-template-intro" class="utf-panel gdpr-template-section">
@@ -184,32 +213,37 @@
         </section>
     </div>
 
-    <aside class="utf-panel gdpr-template-preview-panel">
-        <div class="gdpr-template-panel-header">
-            <div>
-                <span class="utf-kicker">@L("Pages_Command_Content_Gdpr_TemplatePreviewKicker", "Live preview")</span>
-                <h2>@L("Pages_Command_Content_Gdpr_TemplatePreviewTitle", "Rendered public layout")</h2>
-                <p>@L("Pages_Command_Content_Gdpr_TemplatePreviewDescription", "This preview uses the same structured renderer as the public GDPR page.")</p>
-            </div>
-            <span class="utf-status utf-status--neutral">
-                <span class="utf-status__dot"></span>@RevisionLabel
-            </span>
-        </div>
-        <div class="gdpr-template-preview">
-            <GdprPageContentView Content="@Content"/>
-        </div>
-    </aside>
 </div>
 
 @code {
     [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
     public GdprPageContent Content { get; set; } = GdprPageContentSupport.CreateDefaultContent();
+
+    [Parameter]
+    public bool Invalid { get; set; }
 
     [Parameter]
     public string RevisionLabel { get; set; } = string.Empty;
 
     [Parameter]
     public EventCallback OnContentChanged { get; set; }
+
+    private ElementReference _root;
+    private bool _showPreview;
+
+    public ValueTask FocusAsync()
+        => _root.FocusAsync();
+
+    private string CssClass
+        => string.IsNullOrWhiteSpace(Class)
+            ? "gdpr-template-editor-shell"
+            : $"gdpr-template-editor-shell {Class}";
+
+    private void TogglePreview()
+        => _showPreview = !_showPreview;
 
     private async Task NotifyContentChangedAsync()
     {

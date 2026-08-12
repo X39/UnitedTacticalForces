@@ -10,16 +10,20 @@
 @inject MeService Me
 @inject BaseUrl BaseUrl
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
 @inject IStringLocalizer<Language> Localizer
 
 <PageTitle>@Localizer[nameof(Language.Pages_Command_Content_PageEditTitle)]</PageTitle>
+
+<NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges"
+                OnBeforeInternalNavigation="ConfirmInternalNavigationAsync"/>
 
 <div class="public-page-editor-page">
     <UtfCommandPageHeader Title="@GetHeaderTitle()"
                           Description="@(Localizer[nameof(Language.Pages_Command_Content_PageEditDescription)])">
         <Actions>
-            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content/pages")">
-                @Localizer[nameof(Language.Pages_Command_Content_Pages_BackToList)]
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content")">
+                @T("Pages_Command_Content_BackToHub", "Content overview")
             </UtfCommandButton>
             @if (_page is not null)
             {
@@ -27,7 +31,7 @@
                     @Localizer[nameof(Language.Pages_Command_Content_Pages_OpenDetail)]
                 </UtfCommandButton>
             }
-            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl(Slug)">
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl(Slug)" Target="_blank">
                 @Localizer[nameof(Language.Pages_Command_Content_Pages_OpenPublic)]
             </UtfCommandButton>
         </Actions>
@@ -82,13 +86,6 @@
             </dl>
         </section>
 
-        @if (_formError is not null)
-        {
-            <UtfAlert Intent="MessageIntent.Error">
-                @_formError
-            </UtfAlert>
-        }
-
         <div class="public-page-editor-status-row" aria-live="polite">
             <span class="@GetUnsavedStatusClass()">
                 <span class="utf-status__dot"></span>@GetUnsavedStatusText()
@@ -108,48 +105,58 @@
                     </div>
                 </div>
 
-                <div class="utf-command-form public-page-editor-form">
+                <div class="utf-command-form public-page-editor-form" @oninput="ClearValidation">
                     <label>
                         <span>@Localizer[nameof(Language.Pages_Command_Content_PageSlug)]</span>
                         <input class="utf-command-input" type="text" value="@Slug" disabled/>
                     </label>
                     <label>
                         <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormTitle)]</span>
-                        <input class="utf-command-input"
+                        <input class="@GetInputClass(EditorField.Title)"
                                type="text"
                                maxlength="180"
+                               aria-invalid="@IsInvalid(EditorField.Title)"
+                               @ref="_titleInput"
                                @bind="_pageTitle"
                                @bind:event="oninput"/>
                     </label>
                     <label class="utf-command-field--wide">
                         <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormSummary)]</span>
-                        <input class="utf-command-input"
+                        <input class="@GetInputClass(EditorField.Summary)"
                                type="text"
                                maxlength="512"
+                               aria-invalid="@IsInvalid(EditorField.Summary)"
+                               @ref="_summaryInput"
                                @bind="_pageSummary"
                                @bind:event="oninput"/>
                     </label>
                     <label>
                         <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormHeroKicker)]</span>
-                        <input class="utf-command-input"
+                        <input class="@GetInputClass(EditorField.HeroKicker)"
                                type="text"
                                maxlength="96"
+                               aria-invalid="@IsInvalid(EditorField.HeroKicker)"
+                               @ref="_heroKickerInput"
                                @bind="_pageHeroKicker"
                                @bind:event="oninput"/>
                     </label>
                     <label>
                         <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormHeroTitle)]</span>
-                        <input class="utf-command-input"
+                        <input class="@GetInputClass(EditorField.HeroTitle)"
                                type="text"
                                maxlength="180"
+                               aria-invalid="@IsInvalid(EditorField.HeroTitle)"
+                               @ref="_heroTitleInput"
                                @bind="_pageHeroTitle"
                                @bind:event="oninput"/>
                     </label>
                     <label class="utf-command-field--wide">
                         <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormHeroDescription)]</span>
-                        <input class="utf-command-input"
+                        <input class="@GetInputClass(EditorField.HeroDescription)"
                                type="text"
                                maxlength="512"
+                               aria-invalid="@IsInvalid(EditorField.HeroDescription)"
+                               @ref="_heroDescriptionInput"
                                @bind="_pageHeroDescription"
                                @bind:event="oninput"/>
                     </label>
@@ -164,7 +171,10 @@
                                 @T("Pages_Command_Content_PageGalleryOpen", "Open gallery")
                             </UtfCommandButton>
                         </div>
-                        <GalleryImagePicker SelectedAssetId="@_pageHeroImageAssetFk"
+                        <GalleryImagePicker @ref="_galleryPicker"
+                                            Class="@(IsInvalid(EditorField.HeroImage) ? "gallery-image-picker--invalid" : null)"
+                                            Invalid="@IsInvalid(EditorField.HeroImage)"
+                                            SelectedAssetId="@_pageHeroImageAssetFk"
                                             SelectedImagePath="@_pageHeroImagePath"
                                             SelectedFileName="@GetHeroImageFileName()"
                                             UploadTags="@PublicPageUploadTags"
@@ -182,8 +192,10 @@
                     {
                         <label class="utf-command-field--wide">
                             <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormMarkdown)]</span>
-                            <textarea class="utf-command-input public-page-editor-markdown"
+                            <textarea class="@GetInputClass(EditorField.Markdown, "public-page-editor-markdown")"
                                       rows="18"
+                                      aria-invalid="@IsInvalid(EditorField.Markdown)"
+                                      @ref="_markdownInput"
                                       @bind="_pageMarkdown"
                                       @bind:event="oninput"></textarea>
                         </label>
@@ -199,12 +211,14 @@
                         <p>@T("Pages_Command_Content_PageEditorPublicationDescription", "Add an audit-friendly comment and choose whether this revision goes public immediately.")</p>
                     </div>
                 </div>
-                <div class="utf-command-form public-page-editor-form public-page-editor-revision-form">
+                <div class="utf-command-form public-page-editor-form public-page-editor-revision-form" @oninput="ClearValidation">
                     <label class="utf-command-field--wide">
                         <span>@Localizer[nameof(Language.Pages_Command_Content_PageFormRevisionComment)]</span>
-                        <input class="utf-command-input"
+                        <input class="@GetInputClass(EditorField.Comment)"
                                type="text"
                                maxlength="512"
+                               aria-invalid="@IsInvalid(EditorField.Comment)"
+                               @ref="_commentInput"
                                @bind="_pageComment"
                                @bind:event="oninput"/>
                     </label>
@@ -262,7 +276,10 @@
 
         @if (IsGdprPage)
         {
-            <GdprPageContentEditor Content="@_gdprContent"
+            <GdprPageContentEditor @ref="_gdprEditor"
+                                   Class="@(IsInvalid(EditorField.StructuredContent) ? "gdpr-template-editor-shell--invalid" : null)"
+                                   Invalid="@IsInvalid(EditorField.StructuredContent)"
+                                   Content="@_gdprContent"
                                    RevisionLabel="@FormatNextRevision()"
                                    OnContentChanged="HandleGdprContentChanged"/>
             <div class="utf-panel public-page-editor-bottom-actions" aria-label='@T("Pages_Command_Content_PageEditorActionsAria", "Editor actions")'>
@@ -270,9 +287,9 @@
                     <span class="utf-status__dot"></span>@GetUnsavedStatusText()
                 </span>
                 <div class="public-page-editor-bottom-actions__buttons">
-                    <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content/pages")"
+                    <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content")"
                                       Disabled="@_isSavingPage">
-                        @Localizer[nameof(Language.Pages_Command_Content_Pages_BackToList)]
+                        @T("Pages_Command_Content_BackToHub", "Content overview")
                     </UtfCommandButton>
                     <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl($"command/content/pages/{Slug}")"
                                       Disabled="@_isSavingPage">
@@ -314,7 +331,17 @@
     private bool _isLoading;
     private bool _isSavingPage;
     private string? _loadError;
-    private string? _formError;
+    private EditorField? _invalidField;
+
+    private ElementReference _titleInput;
+    private ElementReference _summaryInput;
+    private ElementReference _heroKickerInput;
+    private ElementReference _heroTitleInput;
+    private ElementReference _heroDescriptionInput;
+    private ElementReference _markdownInput;
+    private ElementReference _commentInput;
+    private GalleryImagePicker? _galleryPicker;
+    private GdprPageContentEditor? _gdprEditor;
 
     private string _pageTitle = string.Empty;
     private string _pageSummary = string.Empty;
@@ -375,9 +402,14 @@
         if (!CanManagePages || _isSavingPage)
             return;
 
-        _formError = ValidatePage();
-        if (_formError is not null)
+        var validation = ValidatePage();
+        if (validation is not null)
+        {
+            _invalidField = validation.Field;
+            ToastService.ShowError(validation.Message);
+            await FocusInvalidFieldAsync(validation.Field).ConfigureAwait(false);
             return;
+        }
 
         _isSavingPage = true;
         try
@@ -390,7 +422,6 @@
         }
         catch (Exception ex)
         {
-            _formError = UserFacingError.Message(ex);
             ToastService.ShowError(UserFacingError.Message(ex));
         }
         finally
@@ -431,6 +462,7 @@
 
     private void OnGalleryAssetSelected(MediaAssetInfo? asset)
     {
+        ClearValidation();
         if (asset is null)
         {
             _pageHeroImageAssetFk = null;
@@ -445,34 +477,43 @@
         ToastService.ShowSuccess(T("Pages_Command_Content_PageGallerySelectedToast", "Gallery image selected."));
     }
 
-    private string? ValidatePage()
+    private ValidationFailure? ValidatePage()
     {
         var revisionMarkdown = GetRevisionMarkdown();
         var contentJson = GetRevisionContentJson();
 
         if (string.IsNullOrWhiteSpace(_pageTitle) || _pageTitle.Trim().Length > MaximumTitleLength)
-            return Localizer[nameof(Language.Pages_Command_Content_PageValidationTitle)].Value;
+            return Failure(EditorField.Title, nameof(Language.Pages_Command_Content_PageValidationTitle));
         if (_pageSummary.Trim().Length > MaximumSummaryLength)
-            return Localizer[nameof(Language.Pages_Command_Content_PageValidationSummary)].Value;
+            return Failure(EditorField.Summary, nameof(Language.Pages_Command_Content_PageValidationSummary));
         if (_pageHeroKicker.Trim().Length > MaximumHeroKickerLength)
-            return Localizer[nameof(Language.Pages_Command_Content_PageValidationHeroKicker)].Value;
+            return Failure(EditorField.HeroKicker, nameof(Language.Pages_Command_Content_PageValidationHeroKicker));
         if (string.IsNullOrWhiteSpace(_pageHeroTitle) || _pageHeroTitle.Trim().Length > MaximumHeroTitleLength)
-            return Localizer[nameof(Language.Pages_Command_Content_PageValidationHeroTitle)].Value;
+            return Failure(EditorField.HeroTitle, nameof(Language.Pages_Command_Content_PageValidationHeroTitle));
         if (_pageHeroDescription.Trim().Length > MaximumHeroDescriptionLength)
-            return Localizer[nameof(Language.Pages_Command_Content_PageValidationHeroDescription)].Value;
+            return Failure(EditorField.HeroDescription, nameof(Language.Pages_Command_Content_PageValidationHeroDescription));
         if (_pageHeroImageAssetFk is null)
-            return Localizer[nameof(Language.Pages_Command_Content_PageValidationHeroImagePath)].Value;
+            return Failure(EditorField.HeroImage, nameof(Language.Pages_Command_Content_PageValidationHeroImagePath));
         if (string.IsNullOrWhiteSpace(revisionMarkdown) || revisionMarkdown.Trim().Length > MaximumMarkdownLength)
-            return Localizer[nameof(Language.Pages_Command_Content_PageValidationMarkdown)].Value;
+            return Failure(
+                IsGdprPage ? EditorField.StructuredContent : EditorField.Markdown,
+                nameof(Language.Pages_Command_Content_PageValidationMarkdown)
+            );
         if (IsGdprPage && _preserveLegacyGdprMarkdown)
-            return T(
-                "Pages_Command_Content_Gdpr_LegacyMarkdownSaveBlocked",
-                "This GDPR revision has markdown but no valid structured content. Edit the GDPR template before saving a structured revision."
+            return new ValidationFailure(
+                EditorField.StructuredContent,
+                T(
+                    "Pages_Command_Content_Gdpr_LegacyMarkdownSaveBlocked",
+                    "This GDPR revision has markdown but no valid structured content. Edit the GDPR template before saving a structured revision."
+                )
             );
         if (contentJson.Length > MaximumContentJsonLength)
-            return T("Pages_Command_Content_Gdpr_ContentValidationTooLarge", "The structured GDPR content is too large.");
+            return new ValidationFailure(
+                EditorField.StructuredContent,
+                T("Pages_Command_Content_Gdpr_ContentValidationTooLarge", "The structured GDPR content is too large.")
+            );
         if (_pageComment.Trim().Length > MaximumCommentLength)
-            return Localizer[nameof(Language.Pages_Command_Content_PageValidationComment)].Value;
+            return Failure(EditorField.Comment, nameof(Language.Pages_Command_Content_PageValidationComment));
         return null;
     }
 
@@ -484,7 +525,7 @@
             HeroKicker      = _pageHeroKicker.Trim(),
             HeroTitle       = _pageHeroTitle.Trim(),
             HeroDescription = _pageHeroDescription.Trim(),
-            HeroImageAssetFk = _pageHeroImageAssetFk.Value,
+            HeroImageAssetFk = _pageHeroImageAssetFk.GetValueOrDefault(),
             Markdown        = GetRevisionMarkdown().Trim(),
             ContentJson     = GetRevisionContentJson(),
             Comment         = _pageComment.Trim(),
@@ -528,7 +569,74 @@
             : string.Empty;
 
     private void HandleGdprContentChanged()
-        => _preserveLegacyGdprMarkdown = false;
+    {
+        _preserveLegacyGdprMarkdown = false;
+        ClearValidation();
+    }
+
+    private ValidationFailure Failure(EditorField field, string resourceKey)
+        => new(field, Localizer[resourceKey].Value);
+
+    private bool IsInvalid(EditorField field)
+        => _invalidField == field;
+
+    private string GetInputClass(EditorField field, string? additionalClass = null)
+    {
+        var className = IsInvalid(field)
+            ? "utf-command-input public-page-editor-field--invalid"
+            : "utf-command-input";
+        return string.IsNullOrWhiteSpace(additionalClass) ? className : $"{className} {additionalClass}";
+    }
+
+    private void ClearValidation()
+        => _invalidField = null;
+
+    private async Task FocusInvalidFieldAsync(EditorField field)
+    {
+        switch (field)
+        {
+            case EditorField.Title:
+                await _titleInput.FocusAsync().ConfigureAwait(false);
+                break;
+            case EditorField.Summary:
+                await _summaryInput.FocusAsync().ConfigureAwait(false);
+                break;
+            case EditorField.HeroKicker:
+                await _heroKickerInput.FocusAsync().ConfigureAwait(false);
+                break;
+            case EditorField.HeroTitle:
+                await _heroTitleInput.FocusAsync().ConfigureAwait(false);
+                break;
+            case EditorField.HeroDescription:
+                await _heroDescriptionInput.FocusAsync().ConfigureAwait(false);
+                break;
+            case EditorField.HeroImage when _galleryPicker is not null:
+                await _galleryPicker.FocusAsync().ConfigureAwait(false);
+                break;
+            case EditorField.Markdown:
+                await _markdownInput.FocusAsync().ConfigureAwait(false);
+                break;
+            case EditorField.StructuredContent when _gdprEditor is not null:
+                await _gdprEditor.FocusAsync().ConfigureAwait(false);
+                break;
+            case EditorField.Comment:
+                await _commentInput.FocusAsync().ConfigureAwait(false);
+                break;
+        }
+    }
+
+    private async Task ConfirmInternalNavigationAsync(LocationChangingContext context)
+    {
+        if (!HasUnsavedChanges || _isSavingPage)
+            return;
+
+        var confirmed = await JsRuntime.InvokeAsync<bool>(
+            "confirm",
+            T("Pages_Command_Content_PageEditorLeaveConfirmation", "Discard the unsaved changes and leave this editor?")
+        ).ConfigureAwait(false);
+        if (!confirmed)
+            context.PreventNavigation();
+    }
 
     private EditorSnapshot CreateSnapshot()
         => new(
@@ -630,4 +738,19 @@
         string Comment,
         bool Publish,
         bool PreserveLegacyGdprMarkdown);
+
+    private sealed record ValidationFailure(EditorField Field, string Message);
+
+    private enum EditorField
+    {
+        Title,
+        Summary,
+        HeroKicker,
+        HeroTitle,
+        HeroDescription,
+        HeroImage,
+        Markdown,
+        StructuredContent,
+        Comment,
+    }
 }

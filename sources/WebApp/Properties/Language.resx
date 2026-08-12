@@ -15212,4 +15212,26 @@
   <data name="HostingFinance_LedgerKind_DeploymentCostCorrectionCredit" xml:space="preserve"><value>Cost correction credit</value></data>
   <data name="HostingFinance_LedgerKind_DeploymentCostCorrectionDebit" xml:space="preserve"><value>Cost correction debit</value></data>
   <data name="HostingFinance_LedgerKind_LedgerReversal" xml:space="preserve"><value>Reversal</value></data>
+  <data name="Shared_CommandCenter_Nav_ContentAndDocuments" xml:space="preserve"><value>Content &amp; documents</value></data>
+  <data name="Pages_Command_Content_HubTitle" xml:space="preserve"><value>Content and documents</value></data>
+  <data name="Pages_Command_Content_HubDescription" xml:space="preserve"><value>Choose the type of content you want to maintain. Website pages and official association records remain deliberately separate.</value></data>
+  <data name="Pages_Command_Content_HubAria" xml:space="preserve"><value>Content areas</value></data>
+  <data name="Pages_Command_Content_HubWebsiteKicker" xml:space="preserve"><value>Website</value></data>
+  <data name="Pages_Command_Content_HubWebsiteTitle" xml:space="preserve"><value>Public website pages</value></data>
+  <data name="Pages_Command_Content_HubWebsiteDescription" xml:space="preserve"><value>Editorial pages such as the privacy notice. Changes are revisioned and published to a fixed website route.</value></data>
+  <data name="Pages_Command_Content_HubWebsiteScope" xml:space="preserve"><value>Page copy, hero content and presentation</value></data>
+  <data name="Pages_Command_Content_HubWebsiteRoute" xml:space="preserve"><value>Public route: /gdpr</value></data>
+  <data name="Pages_Command_Content_HubWebsiteAction" xml:space="preserve"><value>Manage website pages</value></data>
+  <data name="Pages_Command_Content_HubRecordsKicker" xml:space="preserve"><value>Association records</value></data>
+  <data name="Pages_Command_Content_HubRecordsTitle" xml:space="preserve"><value>Official association documents</value></data>
+  <data name="Pages_Command_Content_HubRecordsDescription" xml:space="preserve"><value>Statutes, resolutions and meeting minutes. These are governed records, not website page content.</value></data>
+  <data name="Pages_Command_Content_HubRecordsScope" xml:space="preserve"><value>Document revisions, publication and audit history</value></data>
+  <data name="Pages_Command_Content_HubRecordsRoute" xml:space="preserve"><value>Public routes: /verein/satzung and /verein/beschluesse</value></data>
+  <data name="Pages_Command_Content_HubRecordsAction" xml:space="preserve"><value>Manage association documents</value></data>
+  <data name="Pages_Command_Content_HubNoAccessTitle" xml:space="preserve"><value>No content area available</value></data>
+  <data name="Pages_Command_Content_HubNoAccessDescription" xml:space="preserve"><value>You do not have permission to manage website pages or association documents.</value></data>
+  <data name="Pages_Command_Content_BackToHub" xml:space="preserve"><value>Content overview</value></data>
+  <data name="Pages_Command_Content_PageEditorLeaveConfirmation" xml:space="preserve"><value>Discard the unsaved changes and leave this editor?</value></data>
+  <data name="Pages_Command_Content_Gdpr_TemplatePreviewShow" xml:space="preserve"><value>Show preview</value></data>
+  <data name="Pages_Command_Content_Gdpr_TemplatePreviewHide" xml:space="preserve"><value>Hide preview</value></data>
 </root>

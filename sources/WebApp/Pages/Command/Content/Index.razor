@@ -1,0 +1,83 @@
+@page "/command/content"
+@layout CommandCenterLayout
+@using X39.UnitedTacticalForces.WebApp.Services
+@inject MeService Me
+@inject BaseUrl BaseUrl
+@inject IStringLocalizer<Language> Localizer
+
+<PageTitle>@T("Pages_Command_Content_HubTitle", "Content and documents")</PageTitle>
+
+<div class="content-hub-page">
+    <UtfCommandPageHeader Title='@T("Pages_Command_Content_HubTitle", "Content and documents")'
+                          Description='@T("Pages_Command_Content_HubDescription", "Choose the type of content you want to maintain. Website pages and official association records remain deliberately separate.")'/>
+
+    <section class="content-hub-grid" aria-label='@T("Pages_Command_Content_HubAria", "Content areas")'>
+        @if (CanManagePublicPages)
+        {
+            <article class="utf-panel content-hub-card">
+                <div class="content-hub-card__icon" aria-hidden="true">
+                    <FluentIcon Value="@(new Icons.Regular.Size24.Home())"/>
+                </div>
+                <div class="content-hub-card__copy">
+                    <span class="utf-kicker">@T("Pages_Command_Content_HubWebsiteKicker", "Website")</span>
+                    <h2>@T("Pages_Command_Content_HubWebsiteTitle", "Public website pages")</h2>
+                    <p>@T("Pages_Command_Content_HubWebsiteDescription", "Editorial pages such as the privacy notice. Changes are revisioned and published to a fixed website route.")</p>
+                    <ul>
+                        <li>@T("Pages_Command_Content_HubWebsiteScope", "Page copy, hero content and presentation")</li>
+                        <li>@T("Pages_Command_Content_HubWebsiteRoute", "Public route: /gdpr")</li>
+                    </ul>
+                </div>
+                <div class="content-hub-card__actions">
+                    <UtfCommandButton Variant="primary" Href="@BaseUrl.ResolveSelfUrl("command/content/pages")">
+                        @T("Pages_Command_Content_HubWebsiteAction", "Manage website pages")
+                    </UtfCommandButton>
+                </div>
+            </article>
+        }
+
+        @if (CanManageVereinDocuments)
+        {
+            <article class="utf-panel content-hub-card">
+                <div class="content-hub-card__icon" aria-hidden="true">
+                    <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                </div>
+                <div class="content-hub-card__copy">
+                    <span class="utf-kicker">@T("Pages_Command_Content_HubRecordsKicker", "Association records")</span>
+                    <h2>@T("Pages_Command_Content_HubRecordsTitle", "Official association documents")</h2>
+                    <p>@T("Pages_Command_Content_HubRecordsDescription", "Statutes, resolutions and meeting minutes. These are governed records, not website page content.")</p>
+                    <ul>
+                        <li>@T("Pages_Command_Content_HubRecordsScope", "Document revisions, publication and audit history")</li>
+                        <li>@T("Pages_Command_Content_HubRecordsRoute", "Public routes: /verein/satzung and /verein/beschluesse")</li>
+                    </ul>
+                </div>
+                <div class="content-hub-card__actions">
+                    <UtfCommandButton Variant="primary" Href="@BaseUrl.ResolveSelfUrl("command/verein/documents")">
+                        @T("Pages_Command_Content_HubRecordsAction", "Manage association documents")
+                    </UtfCommandButton>
+                </div>
+            </article>
+        }
+    </section>
+
+    @if (!CanManagePublicPages && !CanManageVereinDocuments)
+    {
+        <section class="utf-empty-state">
+            <h2>@T("Pages_Command_Content_HubNoAccessTitle", "No content area available")</h2>
+            <p>@T("Pages_Command_Content_HubNoAccessDescription", "You do not have permission to manage website pages or association documents.")</p>
+        </section>
+    }
+</div>
+
+@code {
+    private bool CanManagePublicPages
+        => Me.HasClaim(Claims.Administrative.All) || Me.HasBaseClaim(Claims.Content.Pages);
+
+    private bool CanManageVereinDocuments
+        => Me.HasBaseClaimOrVereinAdmin(Claims.Verein.All, Claims.Verein.Documents);
+
+    private string T(string key, string fallback)
+    {
+        var value = Localizer[key].Value;
+        return string.Equals(value, key, StringComparison.Ordinal) ? fallback : value;
+    }
+}

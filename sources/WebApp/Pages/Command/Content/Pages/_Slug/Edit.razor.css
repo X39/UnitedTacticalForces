@@ -136,6 +136,13 @@
     grid-template-columns: 1fr;
 }
 
+.public-page-editor-field--invalid,
+.public-page-editor-form [aria-invalid="true"] {
+    border-color: var(--utf-danger) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--utf-danger) 18%, transparent) !important;
+    outline: none;
+}
+
 .public-page-editor-markdown {
     font-family: "Cascadia Code", "Consolas", monospace;
     line-height: 1.55;
@@ -218,6 +225,7 @@
 }
 
 .public-page-command-check .utf-command-checkbox {
+    appearance: checkbox;
     accent-color: var(--utf-gold);
     block-size: 1rem;
     inline-size: 1rem;

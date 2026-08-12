@@ -49,12 +49,17 @@ public class PublicPagesBoundaryTests
     }
 
     [Fact]
-    public void PublicPageEditor_ValidatesRequiredFieldsAndShowsMarkdownAndGdprTemplatePreviews()
+    public void PublicPageEditor_ValidatesFieldsWithToastsAndUsesFocusedCollapsiblePreviews()
     {
         var source = ReadRepoFile("sources/WebApp/Pages/Command/Content/Pages/_Slug/Edit.razor");
 
         Assert.Contains("@page \"/command/content/pages/{Slug}/edit\"", source, StringComparison.Ordinal);
         Assert.Contains("ValidatePage()", source, StringComparison.Ordinal);
+        Assert.Contains("ToastService.ShowError(validation.Message)", source, StringComparison.Ordinal);
+        Assert.Contains("FocusInvalidFieldAsync", source, StringComparison.Ordinal);
+        Assert.Contains("aria-invalid", source, StringComparison.Ordinal);
+        Assert.Contains("NavigationLock", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("_formError", source, StringComparison.Ordinal);
         Assert.Contains("PageValidationTitle", source, StringComparison.Ordinal);
         Assert.Contains("PageValidationMarkdown", source, StringComparison.Ordinal);
         Assert.Contains("@bind=\"_pageMarkdown\"", source, StringComparison.Ordinal);
@@ -71,6 +76,10 @@ public class PublicPagesBoundaryTests
         Assert.Contains("_preserveLegacyGdprMarkdown", source, StringComparison.Ordinal);
         Assert.Contains("OnContentChanged=\"HandleGdprContentChanged\"", source, StringComparison.Ordinal);
         Assert.Contains("LegacyMarkdownSaveBlocked", source, StringComparison.Ordinal);
+
+        var gdprEditor = ReadRepoFile("sources/WebApp/Pages/Command/Content/Pages/_Slug/GdprPageContentEditor.razor");
+        Assert.Contains("TogglePreview", gdprEditor, StringComparison.Ordinal);
+        Assert.Contains("_showPreview", gdprEditor, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -85,17 +94,24 @@ public class PublicPagesBoundaryTests
     }
 
     [Fact]
-    public void CommandCenter_ExposesPublicPagesForContentClaim()
+    public void CommandCenter_UsesOneStructuredEntryPointForPagesAndAssociationDocuments()
     {
         var layout = ReadRepoFile("sources/WebApp/Shared/CommandCenterLayout.razor");
         var overview = ReadRepoFile("sources/WebApp/Pages/Command/Index.razor");
+        var hub = ReadRepoFile("sources/WebApp/Pages/Command/Content/Index.razor");
 
         Assert.Contains("Claims.Content.Pages", layout, StringComparison.Ordinal);
-        Assert.Contains("command/content/pages", layout, StringComparison.Ordinal);
-        Assert.Contains("Shared_CommandCenter_Nav_PublicPages", layout, StringComparison.Ordinal);
+        Assert.Contains("command/content", layout, StringComparison.Ordinal);
+        Assert.Contains("Shared_CommandCenter_Nav_ContentAndDocuments", layout, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"@BaseUrl.ResolveSelfUrl(\"command/content/pages\")\"", layout, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"@BaseUrl.ResolveSelfUrl(\"command/verein/documents\")\"", layout, StringComparison.Ordinal);
         Assert.Contains("Claims.Content.Pages", overview, StringComparison.Ordinal);
-        Assert.Contains("command/content/pages", overview, StringComparison.Ordinal);
-        Assert.Contains("Pages_Command_Content_Pages_PageTitle", overview, StringComparison.Ordinal);
+        Assert.Contains("command/content", overview, StringComparison.Ordinal);
+        Assert.Contains("@page \"/command/content\"", hub, StringComparison.Ordinal);
+        Assert.Contains("command/content/pages", hub, StringComparison.Ordinal);
+        Assert.Contains("command/verein/documents", hub, StringComparison.Ordinal);
+        Assert.Contains("CanManagePublicPages", hub, StringComparison.Ordinal);
+        Assert.Contains("CanManageVereinDocuments", hub, StringComparison.Ordinal);
     }
 
     private static string ReadRepoFile(string relativePath)

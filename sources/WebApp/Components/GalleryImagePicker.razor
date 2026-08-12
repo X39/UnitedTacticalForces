@@ -4,7 +4,11 @@
 @inject BaseUrl BaseUrl
 @inject IStringLocalizer<Language> Localizer
 
-<section class="@CssClass" aria-label="@T("Components_GalleryImagePicker_Aria", "Gallery image picker")">
+<section class="@CssClass"
+         aria-label="@T("Components_GalleryImagePicker_Aria", "Gallery image picker")"
+         aria-invalid="@Invalid"
+         tabindex="-1"
+         @ref="_root">
     @if (ShowPreview)
     {
         <div class="gallery-image-picker__preview">
@@ -60,6 +64,9 @@
     public MediaAssetFilterInfo? InitialFilter { get; set; }
 
     [Parameter]
+    public bool Invalid { get; set; }
+
+    [Parameter]
     public Guid? SelectedAssetId { get; set; }
 
     [Parameter]
@@ -76,6 +83,11 @@
 
     [Parameter]
     public string[] UploadTags { get; set; } = [];
+
+    private ElementReference _root;
+
+    public ValueTask FocusAsync()
+        => _root.FocusAsync();
 
     private string CssClass
     {
@@ -143,8 +155,8 @@
                 ShowDismiss = true,
                 PrimaryAction = T("Components_GalleryImagePicker_DialogApply", "Apply"),
                 SecondaryAction = T("Components_GalleryImagePicker_DialogCancel", "Cancel"),
-                Width = "min(92vw, 1040px)",
-                Height = "min(86vh, 760px)",
+                Width = "min(94vw, 1240px)",
+                Height = "min(88vh, 820px)",
                 TrapFocus = true,
                 PreventScroll = true,
                 DialogBodyStyle = "overflow: hidden; background: var(--utf-bg-elevated); color: var(--utf-text); padding: 0;",

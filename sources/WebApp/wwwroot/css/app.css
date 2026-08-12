@@ -856,7 +856,10 @@ button.utf-command-metric:focus-visible,
     flex-direction: row;
 }
 
-.utf-command-check input {
+.utf-command-check input[type="checkbox"] {
+    appearance: checkbox;
+    accent-color: var(--utf-gold);
+    cursor: pointer;
     min-height: auto;
     width: auto;
 }

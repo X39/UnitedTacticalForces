@@ -15185,4 +15185,26 @@
   <data name="HostingFinance_LedgerKind_DeploymentCostCorrectionCredit" xml:space="preserve"><value>Kostengutschrift</value></data>
   <data name="HostingFinance_LedgerKind_DeploymentCostCorrectionDebit" xml:space="preserve"><value>Kostennachbelastung</value></data>
   <data name="HostingFinance_LedgerKind_LedgerReversal" xml:space="preserve"><value>Stornierung</value></data>
+  <data name="Shared_CommandCenter_Nav_ContentAndDocuments" xml:space="preserve"><value>Inhalte &amp; Dokumente</value></data>
+  <data name="Pages_Command_Content_HubTitle" xml:space="preserve"><value>Inhalte und Dokumente</value></data>
+  <data name="Pages_Command_Content_HubDescription" xml:space="preserve"><value>Wähle, welche Art von Inhalt du pflegen möchtest. Webseiten und offizielle Vereinsunterlagen bleiben bewusst getrennt.</value></data>
+  <data name="Pages_Command_Content_HubAria" xml:space="preserve"><value>Inhaltsbereiche</value></data>
+  <data name="Pages_Command_Content_HubWebsiteKicker" xml:space="preserve"><value>Website</value></data>
+  <data name="Pages_Command_Content_HubWebsiteTitle" xml:space="preserve"><value>Öffentliche Webseiten</value></data>
+  <data name="Pages_Command_Content_HubWebsiteDescription" xml:space="preserve"><value>Redaktionelle Seiten wie die Datenschutzerklärung. Änderungen werden versioniert und auf einer festen Webadresse veröffentlicht.</value></data>
+  <data name="Pages_Command_Content_HubWebsiteScope" xml:space="preserve"><value>Seitentexte, Hero-Inhalte und Darstellung</value></data>
+  <data name="Pages_Command_Content_HubWebsiteRoute" xml:space="preserve"><value>Öffentliche Adresse: /gdpr</value></data>
+  <data name="Pages_Command_Content_HubWebsiteAction" xml:space="preserve"><value>Webseiten verwalten</value></data>
+  <data name="Pages_Command_Content_HubRecordsKicker" xml:space="preserve"><value>Vereinsunterlagen</value></data>
+  <data name="Pages_Command_Content_HubRecordsTitle" xml:space="preserve"><value>Offizielle Vereinsdokumente</value></data>
+  <data name="Pages_Command_Content_HubRecordsDescription" xml:space="preserve"><value>Satzung, Beschlüsse und Protokolle. Das sind geregelte Vereinsunterlagen und keine redaktionellen Webseiten.</value></data>
+  <data name="Pages_Command_Content_HubRecordsScope" xml:space="preserve"><value>Dokumentrevisionen, Veröffentlichung und Auditverlauf</value></data>
+  <data name="Pages_Command_Content_HubRecordsRoute" xml:space="preserve"><value>Öffentliche Adressen: /verein/satzung und /verein/beschluesse</value></data>
+  <data name="Pages_Command_Content_HubRecordsAction" xml:space="preserve"><value>Vereinsdokumente verwalten</value></data>
+  <data name="Pages_Command_Content_HubNoAccessTitle" xml:space="preserve"><value>Kein Inhaltsbereich verfügbar</value></data>
+  <data name="Pages_Command_Content_HubNoAccessDescription" xml:space="preserve"><value>Du darfst weder Webseiten noch Vereinsdokumente verwalten.</value></data>
+  <data name="Pages_Command_Content_BackToHub" xml:space="preserve"><value>Inhaltsübersicht</value></data>
+  <data name="Pages_Command_Content_PageEditorLeaveConfirmation" xml:space="preserve"><value>Ungespeicherte Änderungen verwerfen und den Editor verlassen?</value></data>
+  <data name="Pages_Command_Content_Gdpr_TemplatePreviewShow" xml:space="preserve"><value>Vorschau anzeigen</value></data>
+  <data name="Pages_Command_Content_Gdpr_TemplatePreviewHide" xml:space="preserve"><value>Vorschau ausblenden</value></data>
 </root>

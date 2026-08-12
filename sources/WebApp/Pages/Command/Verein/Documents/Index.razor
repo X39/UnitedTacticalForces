@@ -16,6 +16,9 @@
     <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsPageTitle)])"
                           Description="@(Localizer[nameof(Language.Pages_Command_Verein_DocumentsPageDescription)])">
         <Actions>
+            <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/content")">
+                @Localizer["Pages_Command_Content_BackToHub"]
+            </UtfCommandButton>
             <UtfCommandButton Disabled="@_isLoading" OnClick="RefreshAsync">
                 <Icon>
                     <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSyncCircle())"/>

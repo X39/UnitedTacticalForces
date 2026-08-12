@@ -132,11 +132,13 @@
             {
                 <div class="utf-command-nav__group">
                     <div class="utf-command-nav__label">@Localizer[nameof(Language.Shared_CommandCenter_Group_Governance)]</div>
-                    @if (CanManageContentPages)
+                    @if (CanManageEditorialContent)
                     {
-                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/content/pages")">
+                        <NavLink class="utf-command-link"
+                                 href="@BaseUrl.ResolveSelfUrl("command/content")"
+                                 Match="NavLinkMatch.All">
                             <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
-                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_PublicPages)]</span>
+                            <span>@Localizer["Shared_CommandCenter_Nav_ContentAndDocuments"]</span>
                         </NavLink>
                     }
                     @if (CanManageVereinMemberships)
@@ -148,13 +150,6 @@
                         <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/verein/settings")">
                             <FluentIcon Value="@(new Icons.Regular.Size24.Settings())"/>
                             <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_VereinSettings)]</span>
-                        </NavLink>
-                    }
-                    @if (CanManageVereinDocuments)
-                    {
-                        <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/verein/documents")">
-                            <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
-                            <span>@Localizer[nameof(Language.Shared_CommandCenter_Nav_VereinDocuments)]</span>
                         </NavLink>
                     }
                     @if (CanManageVereinKassenbuch)
@@ -258,6 +253,9 @@
     private bool CanManageGovernance
         => CanManageVerein || CanManageContentPages;
 
+    private bool CanManageEditorialContent
+        => CanManageContentPages || CanManageVereinDocuments;
+
     private bool CanManageContentPages
         => Me.HasClaim(Claims.Administrative.All) || Me.HasBaseClaim(Claims.Content.Pages);
 
@@ -324,6 +322,7 @@
                 "command/roles"         => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Roles)].Value,
                 _ when path.StartsWith("command/roles/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Roles)].Value,
                 "command/claims"        => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Claims)].Value,
+                "command/content"       => Localizer["Shared_CommandCenter_Nav_ContentAndDocuments"].Value,
                 "command/content/pages" => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_PublicPages)].Value,
                 _ when path.StartsWith("command/content/pages/", StringComparison.Ordinal)
                        && path.EndsWith("/edit", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EditPublicPage)].Value,

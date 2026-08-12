@@ -74,6 +74,8 @@ public class GalleryBoundaryTests
         AssertContains(repositoryInterface, "GetAssetPageAsync", "gallery repository interface", failures);
         AssertContains(repository, "GetAssetPageAsync", "gallery repository", failures);
         AssertContains(picker, "ShowDialogAsync<GalleryImagePickerDialog, GalleryImagePickerDialog.Data>", "gallery picker", failures);
+        AssertContains(picker, "Invalid", "gallery picker", failures);
+        AssertContains(pickerDialogStyles, "grid-auto-rows: max-content", "gallery picker dialog styles", failures);
         AssertContains(pickerDialog, "PageSize = 48", "gallery picker dialog", failures);
         AssertContains(pickerDialog, "GetAssetPageAsync", "gallery picker dialog", failures);
         AssertContains(pickerDialog, "ImageSource.NormalizeMimeType", "gallery picker dialog", failures);
