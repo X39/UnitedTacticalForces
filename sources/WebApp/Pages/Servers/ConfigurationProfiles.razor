@@ -1,139 +1,491 @@
 @page "/command/configuration-profiles"
 @attribute [Authorize]
 @layout CommandCenterLayout
-@using System.Text.Json
 @using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
 @inject IGameServerRepository Repository
 
 <PageTitle>Configuration profiles</PageTitle>
 
-<div class="hosting-page">
+<div class="configuration-profiles-page">
     <UtfCommandPageHeader Title="Configuration profiles"
-                          Description="Reusable immutable game-configuration baselines, revision history, and scoped access."/>
-    @if (_error is not null) { <UtfAlert Intent="MessageIntent.Error">@_error</UtfAlert> }
-    <div class="hosting-create-grid">
-        <section class="utf-panel">
-            <h2>Profiles</h2>
-            @foreach (var profile in _profiles)
-            {
-                <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => SelectAsync(profile.PrimaryKey))">
-                    @profile.Title · @profile.GameIdentifier · r@profile.LatestRevisionNumber
-                </button>
-            }
-            <h3>Create profile</h3>
-            <label class="hosting-field"><span>Title</span><input @bind="_title"/></label>
-            <label class="hosting-field"><span>Game identifier</span><input @bind="_game"/></label>
-            <label class="hosting-field"><span>Complete values (JSON object keyed by definition key)</span><textarea rows="10" @bind="_valuesJson"></textarea></label>
-            <button class="utf-button utf-button--primary" type="button" @onclick="CreateAsync">Create</button>
+                          Description="Create reusable game-server settings, publish immutable revisions, and control who may use or maintain them."/>
+
+    @if (_error is not null)
+    {
+        <UtfAlert Intent="MessageIntent.Error">@_error</UtfAlert>
+    }
+    @if (_success is not null)
+    {
+        <UtfAlert Intent="MessageIntent.Success">@_success</UtfAlert>
+    }
+
+    @if (_loading)
+    {
+        <section class="configuration-loading utf-panel" aria-live="polite">
+            <span class="configuration-spinner" aria-hidden="true"></span>
+            <p>Loading configuration profiles...</p>
         </section>
-        @if (_selected is { } selected)
-        {
-            <section class="utf-panel">
-                <h2>@selected.Profile.Title</h2>
-                <p>@selected.Profile.GameIdentifier · @(selected.Profile.IsArchived ? "Archived" : "Active")</p>
-                <h3>Revision history</h3>
-                @foreach (var revision in selected.Revisions.OrderByDescending(q => q.RevisionNumber))
-                {
-                    <details>
-                        <summary>Revision @revision.RevisionNumber · @revision.TimeStampCreated</summary>
-                        <pre>@JsonSerializer.Serialize(revision.Values, PrettyJson)</pre>
-                        @if (revision.RedactedKeys.Count > 0) { <p>Redacted: @string.Join(", ", revision.RedactedKeys)</p> }
-                    </details>
-                }
-                <h3>Create immutable revision</h3>
-                <textarea rows="10" @bind="_revisionJson"></textarea>
-                <button class="utf-button utf-button--primary" type="button" @onclick="CreateRevisionAsync">Create revision</button>
-                <h3>Scoped access</h3>
-                <label class="hosting-field"><span>User ID</span><input @bind="_userId"/></label>
-                <label class="hosting-field"><span>Role ID</span><input @bind="_roleId"/></label>
-                <label class="hosting-field"><span>Permission</span><select @bind="_permission">
-                    <option value="cfg">Full</option><option value="cfg:view">View</option><option value="cfg:modify">Modify</option><option value="cfg:manage-access">Manage access</option><option value="cfg:archive">Archive</option>
-                </select></label>
-                <div class="hosting-form-actions">
-                    <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => ChangeAccessAsync(true))">Grant</button>
-                    <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => ChangeAccessAsync(false))">Revoke</button>
-                    <button class="utf-button utf-button--ghost" type="button" @onclick="ArchiveAsync">Archive profile</button>
+    }
+    else
+    {
+        <div class="configuration-workspace">
+            <aside class="configuration-profile-browser utf-panel" aria-label="Configuration profiles">
+                <div class="configuration-browser-heading">
+                    <div>
+                        <span class="utf-kicker">Library</span>
+                        <h2>Profiles</h2>
+                    </div>
+                    @if (_catalog.CanCreate)
+                    {
+                        <button class="utf-button utf-button--primary" type="button" @onclick="StartCreate">
+                            New profile
+                        </button>
+                    }
                 </div>
-            </section>
-        }
-    </div>
+
+                @if (_profiles.Count == 0)
+                {
+                    <div class="configuration-empty">
+                        <strong>No profiles yet</strong>
+                        <p>Create the first reusable server configuration from the guided form.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="configuration-profile-list">
+                        @foreach (var profile in _profiles)
+                        {
+                            <button class="@ProfileButtonClass(profile)"
+                                    type="button"
+                                    @onclick="@(() => SelectAsync(profile.PrimaryKey))">
+                                <span>
+                                    <strong>@profile.Title</strong>
+                                    <small>@GameLabel(profile.GameIdentifier) · Revision @profile.LatestRevisionNumber</small>
+                                </span>
+                                <UtfStatusBadge Intent="@(profile.IsArchived ? "warning" : "success")">
+                                    @(profile.IsArchived ? "Archived" : "Active")
+                                </UtfStatusBadge>
+                            </button>
+                        }
+                    </div>
+                }
+            </aside>
+
+            <main class="configuration-editor">
+                @if (_selected is null)
+                {
+                    <section class="configuration-panel utf-panel">
+                        <div class="configuration-panel-heading">
+                            <div>
+                                <span class="utf-kicker">New baseline</span>
+                                <h2>Create configuration profile</h2>
+                                <p>Choose a game and fill in its supported settings. Defaults are pre-filled and can be adjusted before publishing revision 1.</p>
+                            </div>
+                        </div>
+
+                        @if (!_catalog.CanCreate)
+                        {
+                            <div class="configuration-empty">
+                                <strong>You can view profiles, but cannot create one.</strong>
+                                <p>Ask an administrator for the configuration-profile creation permission.</p>
+                            </div>
+                        }
+                        else if (_catalog.Games.Count == 0)
+                        {
+                            <div class="configuration-empty">
+                                <strong>No configurable games are registered.</strong>
+                                <p>A game implementation must expose configuration definitions before profiles can be created.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="configuration-profile-meta">
+                                <label class="configuration-field">
+                                    <span>Profile title</span>
+                                    <input value="@_title"
+                                           maxlength="256"
+                                           placeholder="e.g. Public operation server"
+                                           @oninput="@(args => _title = args.Value?.ToString() ?? string.Empty)"/>
+                                    <small>Use a name operators will recognize when assigning this profile to a server.</small>
+                                </label>
+                                <label class="configuration-field">
+                                    <span>Game</span>
+                                    <select value="@_game" @onchange="ChangeGame">
+                                        @foreach (var game in _catalog.Games)
+                                        {
+                                            <option value="@game.GameIdentifier">@GameLabel(game.GameIdentifier)</option>
+                                        }
+                                    </select>
+                                    <small>The game controls which settings and validation rules are available.</small>
+                                </label>
+                            </div>
+
+                            <ConfigurationProfileFields Definitions="@CurrentDefinitions" Values="@_draftValues"/>
+
+                            <div class="configuration-actions">
+                                <span>@CurrentDefinitions.Count setting definitions</span>
+                                <button class="utf-button utf-button--primary"
+                                        type="button"
+                                        disabled="@(_submitting || string.IsNullOrWhiteSpace(_title))"
+                                        @onclick="CreateAsync">
+                                    @(_submitting ? "Creating..." : "Create profile")
+                                </button>
+                            </div>
+                        }
+                    </section>
+                }
+                else
+                {
+                    <section class="configuration-panel utf-panel">
+                        <div class="configuration-panel-heading configuration-panel-heading--profile">
+                            <div>
+                                <span class="utf-kicker">@GameLabel(_selected.Profile.GameIdentifier)</span>
+                                <h2>@_selected.Profile.Title</h2>
+                                <p>Revision @_selected.Profile.LatestRevisionNumber · @(_selected.Profile.IsArchived ? "Archived" : "Active")</p>
+                            </div>
+                            @if (_selected.CanArchive && !_selected.Profile.IsArchived)
+                            {
+                                @if (_confirmArchive)
+                                {
+                                    <div class="configuration-archive-confirm">
+                                        <span>Archive this profile?</span>
+                                        <button class="utf-button utf-button--danger" type="button" @onclick="ArchiveAsync">Confirm</button>
+                                        <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => _confirmArchive = false)">Cancel</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => _confirmArchive = true)">Archive</button>
+                                }
+                            }
+                        </div>
+
+                        @if (_selected.Profile.IsArchived)
+                        {
+                            <div class="configuration-empty">
+                                <strong>This profile is archived.</strong>
+                                <p>Its revision history remains available, but no new revisions can be published.</p>
+                            </div>
+                        }
+                        else if (_selected.CanModify)
+                        {
+                            <div class="configuration-section-heading">
+                                <div>
+                                    <span class="utf-kicker">Draft</span>
+                                    <h3>Publish a new revision</h3>
+                                </div>
+                                <p>The latest revision is loaded below. Changes create a new immutable revision; existing servers following “latest” will receive it.</p>
+                            </div>
+                            <ConfigurationProfileFields Definitions="@_selected.Definitions" Values="@_draftValues"/>
+                            <div class="configuration-actions">
+                                <span>Based on revision @_selected.Profile.LatestRevisionNumber</span>
+                                <button class="utf-button utf-button--primary"
+                                        type="button"
+                                        disabled="@_submitting"
+                                        @onclick="CreateRevisionAsync">
+                                    @(_submitting ? "Publishing..." : "Publish revision")
+                                </button>
+                            </div>
+                        }
+
+                        <div class="configuration-history">
+                            <div class="configuration-section-heading">
+                                <div>
+                                    <span class="utf-kicker">Audit trail</span>
+                                    <h3>Revision history</h3>
+                                </div>
+                                <p>@_selected.Revisions.Count immutable revision(s)</p>
+                            </div>
+                            @foreach (var revision in _selected.Revisions.OrderByDescending(q => q.RevisionNumber))
+                            {
+                                <details class="configuration-revision" open="@(revision.RevisionNumber == _selected.Profile.LatestRevisionNumber)">
+                                    <summary>
+                                        <span>
+                                            <strong>Revision @revision.RevisionNumber</strong>
+                                            <small>@revision.TimeStampCreated.ToLocalTime().ToString("g")</small>
+                                        </span>
+                                        <span>@revision.Values.Count values</span>
+                                    </summary>
+                                    <dl>
+                                        @foreach (var definition in _selected.Definitions.Where(q => revision.Values.ContainsKey(q.Key)))
+                                        {
+                                            <div>
+                                                <dt>@definition.DisplayName</dt>
+                                                <dd>@RevisionValue(revision, definition)</dd>
+                                            </div>
+                                        }
+                                    </dl>
+                                    @if (revision.RedactedKeys.Count > 0)
+                                    {
+                                        <p class="configuration-redacted">Sensitive values are hidden unless you can modify this profile.</p>
+                                    }
+                                </details>
+                            }
+                        </div>
+                    </section>
+
+                    @if (_selected.CanManageAccess)
+                    {
+                        <section class="configuration-panel configuration-access utf-panel">
+                            <div class="configuration-section-heading">
+                                <div>
+                                    <span class="utf-kicker">Permissions</span>
+                                    <h3>Scoped access</h3>
+                                </div>
+                                <p>Grant or revoke one permission for a user or role.</p>
+                            </div>
+                            <div class="configuration-access-grid">
+                                <label class="configuration-field">
+                                    <span>User ID</span>
+                                    <input @bind="_userId" placeholder="User GUID"/>
+                                </label>
+                                <span class="configuration-access-or">or</span>
+                                <label class="configuration-field">
+                                    <span>Role ID</span>
+                                    <input @bind="_roleId" inputmode="numeric" placeholder="Role number"/>
+                                </label>
+                                <label class="configuration-field configuration-access-permission">
+                                    <span>Permission</span>
+                                    <select @bind="_permission">
+                                        <option value="cfg">Full control</option>
+                                        <option value="cfg:view">View</option>
+                                        <option value="cfg:modify">Modify</option>
+                                        <option value="cfg:manage-access">Manage access</option>
+                                        <option value="cfg:archive">Archive</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="configuration-actions">
+                                <span>Enter either a user ID or role ID.</span>
+                                <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => ChangeAccessAsync(false))">Revoke</button>
+                                <button class="utf-button utf-button--primary" type="button" @onclick="@(() => ChangeAccessAsync(true))">Grant</button>
+                            </div>
+                        </section>
+                    }
+                }
+            </main>
+        </div>
+    }
 </div>
 
 @code {
-    private static readonly JsonSerializerOptions PrettyJson = new() { WriteIndented = true };
     private IReadOnlyList<ConfigurationProfileInfo> _profiles = [];
+    private ConfigurationProfileDefinitionCatalogInfo _catalog = new();
     private ConfigurationProfileDetailsInfo? _selected;
+    private readonly Dictionary<string, string> _draftValues = new(StringComparer.Ordinal);
     private string _title = string.Empty;
-    private string _game = "arma3";
-    private string _valuesJson = "{}";
-    private string _revisionJson = "{}";
+    private string _game = string.Empty;
     private string _userId = string.Empty;
     private string _roleId = string.Empty;
     private string _permission = "cfg";
     private string? _error;
+    private string? _success;
+    private bool _loading = true;
+    private bool _submitting;
+    private bool _confirmArchive;
 
-    protected override Task OnInitializedAsync() => RefreshAsync();
+    private IReadOnlyList<GameConfigurationDefinitionInfo> CurrentDefinitions
+        => _catalog.Games.FirstOrDefault(q => q.GameIdentifier == _game)?.Definitions ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var profilesTask = Repository.GetConfigurationProfilesAsync();
+            var definitionsTask = Repository.GetConfigurationProfileDefinitionsAsync();
+            await Task.WhenAll(profilesTask, definitionsTask);
+            _profiles = await profilesTask;
+            _catalog = await definitionsTask;
+            _game = _catalog.Games.FirstOrDefault()?.GameIdentifier ?? string.Empty;
+            ResetDraft(CurrentDefinitions);
+        }
+        catch (Exception exception)
+        {
+            _error = UserFacingError.Message(exception, "Configuration profiles could not be loaded.");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void StartCreate()
+    {
+        _selected = null;
+        _title = string.Empty;
+        _confirmArchive = false;
+        _error = null;
+        _success = null;
+        if (string.IsNullOrWhiteSpace(_game))
+            _game = _catalog.Games.FirstOrDefault()?.GameIdentifier ?? string.Empty;
+        ResetDraft(CurrentDefinitions);
+    }
+
+    private void ChangeGame(ChangeEventArgs args)
+    {
+        _game = args.Value?.ToString() ?? string.Empty;
+        ResetDraft(CurrentDefinitions);
+    }
 
     private async Task RefreshAsync() => _profiles = await Repository.GetConfigurationProfilesAsync();
-    private async Task SelectAsync(Guid id) => _selected = await Repository.GetConfigurationProfileAsync(id);
 
-    private async Task CreateAsync()
+    private async Task SelectAsync(Guid id)
     {
         await RunAsync(async () =>
         {
-            var created = await Repository.CreateConfigurationProfileAsync(_title, _game, ParseValues(_valuesJson));
+            _selected = await Repository.GetConfigurationProfileAsync(id);
+            _confirmArchive = false;
+            ResetDraft(_selected.Definitions, _selected.Revisions.FirstOrDefault()?.Values);
+        });
+    }
+
+    private async Task CreateAsync()
+    {
+        await RunSubmittingAsync(async () =>
+        {
+            var created = await Repository.CreateConfigurationProfileAsync(
+                _title.Trim(),
+                _game,
+                BuildValues(CurrentDefinitions));
             await RefreshAsync();
             await SelectAsync(created.PrimaryKey);
+            _success = $"{created.Title} was created with revision 1.";
         });
     }
 
     private async Task CreateRevisionAsync()
     {
-        if (_selected is null) return;
-        await RunAsync(async () =>
+        if (_selected is null)
+            return;
+        var profileId = _selected.Profile.PrimaryKey;
+        await RunSubmittingAsync(async () =>
         {
-            await Repository.CreateConfigurationProfileRevisionAsync(_selected.Profile.PrimaryKey, ParseValues(_revisionJson));
-            await SelectAsync(_selected.Profile.PrimaryKey);
+            await Repository.CreateConfigurationProfileRevisionAsync(
+                profileId,
+                BuildValues(_selected.Definitions));
+            await SelectAsync(profileId);
+            _success = $"Revision {_selected?.Profile.LatestRevisionNumber} was published.";
         });
     }
 
     private async Task ChangeAccessAsync(bool grant)
     {
-        if (_selected is null) return;
+        if (_selected is null)
+            return;
         await RunAsync(async () =>
         {
-            if (Guid.TryParse(_userId, out var userId))
-                await Repository.ChangeConfigurationProfileUserAccessAsync(_selected.Profile.PrimaryKey, userId, _permission, grant);
-            if (long.TryParse(_roleId, out var roleId))
-                await Repository.ChangeConfigurationProfileRoleAccessAsync(_selected.Profile.PrimaryKey, roleId, _permission, grant);
+            if (Guid.TryParse(_userId, out var userId) && string.IsNullOrWhiteSpace(_roleId))
+                await Repository.ChangeConfigurationProfileUserAccessAsync(
+                    _selected.Profile.PrimaryKey, userId, _permission, grant);
+            else if (long.TryParse(_roleId, out var roleId) && string.IsNullOrWhiteSpace(_userId))
+                await Repository.ChangeConfigurationProfileRoleAccessAsync(
+                    _selected.Profile.PrimaryKey, roleId, _permission, grant);
+            else
+                throw new InvalidOperationException("Enter exactly one valid user ID or role ID.");
+
+            _success = grant ? "Access was granted." : "Access was revoked.";
         });
     }
 
     private async Task ArchiveAsync()
     {
-        if (_selected is null) return;
+        if (_selected is null)
+            return;
+        var profileId = _selected.Profile.PrimaryKey;
         await RunAsync(async () =>
         {
-            await Repository.ArchiveConfigurationProfileAsync(_selected.Profile.PrimaryKey);
+            await Repository.ArchiveConfigurationProfileAsync(profileId);
             await RefreshAsync();
-            await SelectAsync(_selected.Profile.PrimaryKey);
+            await SelectAsync(profileId);
+            _success = "The configuration profile was archived.";
         });
     }
 
-    private static IReadOnlyList<ConfigurationValueUpdateInfo> ParseValues(string json)
+    private void ResetDraft(
+        IReadOnlyList<GameConfigurationDefinitionInfo> definitions,
+        IReadOnlyDictionary<string, System.Text.Json.JsonElement?>? values = null)
     {
-        using var document = JsonDocument.Parse(json);
-        if (document.RootElement.ValueKind != JsonValueKind.Object)
-            throw new JsonException("Values must be a JSON object.");
-        return document.RootElement.EnumerateObject()
-            .Select(q => new ConfigurationValueUpdateInfo(q.Name, q.Value.Clone()))
+        _draftValues.Clear();
+        foreach (var definition in definitions)
+        {
+            if (definition.DefaultValue is { } defaultValue)
+                _draftValues[definition.Key] = defaultValue.GetRawText();
+        }
+        if (values is null)
+            return;
+        foreach (var (key, value) in values)
+        {
+            if (value is { } actualValue)
+                _draftValues[key] = actualValue.GetRawText();
+        }
+    }
+
+    private IReadOnlyList<ConfigurationValueUpdateInfo> BuildValues(
+        IReadOnlyList<GameConfigurationDefinitionInfo> definitions)
+    {
+        var missing = definitions
+            .Where(q => q.Required && !_draftValues.ContainsKey(q.Key))
+            .Select(q => q.DisplayName)
             .ToArray();
+        if (missing.Length > 0)
+            throw new InvalidOperationException($"Complete the required settings: {string.Join(", ", missing)}.");
+
+        return _draftValues.Select(q =>
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(q.Value);
+            return new ConfigurationValueUpdateInfo(q.Key, document.RootElement.Clone());
+        }).ToArray();
+    }
+
+    private static string RevisionValue(
+        ConfigurationProfileRevisionInfo revision,
+        GameConfigurationDefinitionInfo definition)
+    {
+        if (revision.RedactedKeys.Contains(definition.Key, StringComparer.Ordinal))
+            return "Stored securely";
+        if (!revision.Values.TryGetValue(definition.Key, out var value) || value is null)
+            return "Not set";
+        if (definition.Sensitive)
+            return "••••••••";
+        if (value.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
+            return string.Join(", ", value.Value.EnumerateArray().Select(q => q.GetString()));
+        return value.Value.ValueKind == System.Text.Json.JsonValueKind.String
+            ? value.Value.GetString() ?? string.Empty
+            : value.Value.GetRawText();
+    }
+
+    private string ProfileButtonClass(ConfigurationProfileInfo profile)
+        => _selected?.Profile.PrimaryKey == profile.PrimaryKey
+            ? "configuration-profile-card configuration-profile-card--selected"
+            : "configuration-profile-card";
+
+    private static string GameLabel(string identifier)
+        => identifier.Equals("arma3", StringComparison.OrdinalIgnoreCase) ? "Arma 3" : identifier;
+
+    private async Task RunSubmittingAsync(Func<Task> action)
+    {
+        _submitting = true;
+        try
+        {
+            await RunAsync(action);
+        }
+        finally
+        {
+            _submitting = false;
+        }
     }
 
     private async Task RunAsync(Func<Task> action)
     {
         _error = null;
-        try { await action(); }
-        catch (Exception exception) { _error = UserFacingError.Message(exception, "The configuration-profile operation failed."); }
+        _success = null;
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            _error = UserFacingError.Message(exception, "The configuration-profile operation failed.");
+        }
     }
 }

@@ -1,0 +1,200 @@
+.configuration-definition-groups {
+    display: grid;
+    gap: 1rem;
+}
+
+.configuration-target {
+    background: var(--utf-bg);
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-sm);
+    display: grid;
+    overflow: hidden;
+}
+
+.configuration-target-heading {
+    align-items: center;
+    background: var(--utf-surface-2);
+    border-bottom: 1px solid var(--utf-stroke);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+}
+
+.configuration-target-heading span {
+    color: var(--utf-text-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.configuration-target-heading code {
+    color: var(--utf-gold-strong);
+    overflow-wrap: anywhere;
+}
+
+.configuration-group {
+    border: 0;
+    margin: 0;
+    min-width: 0;
+    padding: 1rem;
+}
+
+.configuration-group + .configuration-group {
+    border-top: 1px solid var(--utf-stroke);
+}
+
+.configuration-group legend {
+    font-size: 1rem;
+    font-weight: 800;
+    padding: 0 0.25rem;
+}
+
+.configuration-fields {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.configuration-field {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--utf-stroke);
+    border-left: 3px solid var(--utf-stroke-strong);
+    border-radius: var(--utf-radius-sm);
+    display: grid;
+    gap: 0.6rem;
+    min-width: 0;
+    padding: 0.85rem;
+}
+
+.configuration-field--set {
+    border-left-color: var(--utf-gold-strong);
+}
+
+.configuration-field-heading,
+.configuration-field-meta {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+}
+
+.configuration-field-heading label {
+    font-weight: 800;
+}
+
+.configuration-field-heading span {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.configuration-field-heading strong {
+    background: var(--utf-gold-muted);
+    border-radius: 999px;
+    color: var(--utf-gold-strong);
+    font-size: 0.65rem;
+    padding: 0.2rem 0.4rem;
+    text-transform: uppercase;
+}
+
+.configuration-control {
+    background: var(--utf-surface);
+    border: 1px solid var(--utf-stroke-strong);
+    border-radius: var(--utf-radius-sm);
+    box-sizing: border-box;
+    color: var(--utf-text);
+    font: inherit;
+    min-height: 2.55rem;
+    padding: 0.5rem 0.65rem;
+    width: 100%;
+}
+
+.configuration-control--multiline {
+    min-height: 5rem;
+    resize: vertical;
+}
+
+.configuration-control:focus {
+    border-color: var(--utf-gold-strong);
+    outline: 2px solid rgba(212, 173, 84, 0.15);
+}
+
+.configuration-field-meta {
+    align-items: flex-start;
+}
+
+.configuration-field-meta small {
+    color: var(--utf-text-muted);
+    line-height: 1.4;
+}
+
+.configuration-field-meta button {
+    background: transparent;
+    border: 0;
+    color: var(--utf-gold-strong);
+    cursor: pointer;
+    flex: 0 0 auto;
+    font: inherit;
+    font-size: 0.75rem;
+    padding: 0;
+}
+
+.configuration-toggle {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 0.65rem;
+}
+
+.configuration-toggle input {
+    height: 1px;
+    opacity: 0;
+    position: absolute;
+    width: 1px;
+}
+
+.configuration-toggle > span {
+    background: var(--utf-stroke-strong);
+    border-radius: 999px;
+    height: 1.4rem;
+    position: relative;
+    transition: background 120ms ease;
+    width: 2.5rem;
+}
+
+.configuration-toggle > span::after {
+    background: var(--utf-text);
+    border-radius: 50%;
+    content: "";
+    height: 1rem;
+    left: 0.2rem;
+    position: absolute;
+    top: 0.2rem;
+    transition: transform 120ms ease;
+    width: 1rem;
+}
+
+.configuration-toggle input:checked + span {
+    background: var(--utf-gold-strong);
+}
+
+.configuration-toggle input:checked + span::after {
+    transform: translateX(1.1rem);
+}
+
+.configuration-toggle input:focus-visible + span {
+    outline: 2px solid var(--utf-gold-strong);
+    outline-offset: 2px;
+}
+
+.configuration-toggle strong {
+    font-size: 0.84rem;
+}
+
+@media (max-width: 700px) {
+    .configuration-fields {
+        grid-template-columns: 1fr;
+    }
+}

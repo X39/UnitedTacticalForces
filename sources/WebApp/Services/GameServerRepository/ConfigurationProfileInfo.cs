@@ -14,8 +14,40 @@ public sealed record ConfigurationProfileInfo
 public sealed record ConfigurationProfileDetailsInfo
 {
     public ConfigurationProfileInfo Profile { get; init; } = new();
-    public JsonElement Definitions { get; init; }
+    public bool CanModify { get; init; }
+    public bool CanManageAccess { get; init; }
+    public bool CanArchive { get; init; }
+    public IReadOnlyList<GameConfigurationDefinitionInfo> Definitions { get; init; } = [];
     public IReadOnlyList<ConfigurationProfileRevisionInfo> Revisions { get; init; } = [];
+}
+
+public sealed record ConfigurationProfileDefinitionCatalogInfo
+{
+    public bool CanCreate { get; init; }
+    public IReadOnlyList<GameConfigurationDefinitionSetInfo> Games { get; init; } = [];
+}
+
+public sealed record GameConfigurationDefinitionSetInfo
+{
+    public string GameIdentifier { get; init; } = string.Empty;
+    public IReadOnlyList<GameConfigurationDefinitionInfo> Definitions { get; init; } = [];
+}
+
+public sealed record GameConfigurationDefinitionInfo
+{
+    public string Key { get; init; } = string.Empty;
+    public string TargetPath { get; init; } = string.Empty;
+    public string Group { get; init; } = string.Empty;
+    public string DisplayName { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public string Kind { get; init; } = string.Empty;
+    public bool Required { get; init; }
+    public bool Sensitive { get; init; }
+    public int Order { get; init; }
+    public JsonElement? DefaultValue { get; init; }
+    public decimal? Minimum { get; init; }
+    public decimal? Maximum { get; init; }
+    public IReadOnlyList<string> AllowedValues { get; init; } = [];
 }
 
 public sealed record ConfigurationProfileRevisionInfo

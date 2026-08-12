@@ -23,6 +23,22 @@ public sealed class ConfigurationProfilesController(
     IGameServerConfigurationService configurationService,
     IHostingAuditWriter auditWriter) : ControllerBase
 {
+    [HttpGet("definitions")]
+    public IActionResult GetDefinitions()
+        => Ok(new ConfigurationProfileDefinitionCatalogDto
+        {
+            CanCreate = User.HasClaim(Claims.Creation.ConfigurationProfile, string.Empty)
+                        || IsAdministrator(User),
+            Games = GameConfigurationImplementations.All
+                .OrderBy(q => q.GameIdentifier)
+                .Select(q => new GameConfigurationDefinitionSetDto
+                {
+                    GameIdentifier = q.GameIdentifier,
+                    Definitions = q.Definitions.OrderBy(d => d.Order).ToArray(),
+                })
+                .ToArray(),
+        });
+
     [HttpGet("options")]
     public async Task<IActionResult> GetOptionsAsync(
         [FromQuery] string gameIdentifier,
@@ -105,6 +121,12 @@ public sealed class ConfigurationProfilesController(
                 LatestRevisionNumber = profile.Revisions.Max(q => (int?) q.RevisionNumber) ?? 0,
                 TimeStampUpdated = profile.TimeStampUpdated,
             },
+            CanModify = HasPermission(User, profileId, Claims.ResourceBased.ConfigurationProfile.Modify),
+            CanManageAccess = HasPermission(
+                User,
+                profileId,
+                Claims.ResourceBased.ConfigurationProfile.ManageAccess),
+            CanArchive = HasPermission(User, profileId, Claims.ResourceBased.ConfigurationProfile.Archive),
             Definitions = GameConfigurationImplementations.Get(profile.GameIdentifier).Definitions,
             Revisions = profile.Revisions.OrderByDescending(q => q.RevisionNumber).Select(q => new
             {

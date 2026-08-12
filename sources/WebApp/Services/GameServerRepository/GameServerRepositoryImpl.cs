@@ -68,6 +68,13 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
         => await GetFromJsonAsync<ConfigurationProfileInfo[]>("configuration-profiles", cancellationToken)
             .ConfigureAwait(false) ?? [];
 
+    public async Task<ConfigurationProfileDefinitionCatalogInfo> GetConfigurationProfileDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<ConfigurationProfileDefinitionCatalogInfo>(
+                "configuration-profiles/definitions", cancellationToken)
+            .ConfigureAwait(false)
+           ?? throw new InvalidOperationException("Configuration definitions returned no response body.");
+
     public async Task<ConfigurationProfileDetailsInfo> GetConfigurationProfileAsync(
         Guid profileId,
         CancellationToken cancellationToken = default)
@@ -87,7 +94,7 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
                 new { Title = title, GameIdentifier = gameIdentifier, Values = values },
                 cancellationToken)
             .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        await EnsureConfigurationProfileSuccessAsync(response, cancellationToken).ConfigureAwait(false);
         return await ReadRequiredAsync<ConfigurationProfileInfo>(response, "Profile creation", cancellationToken)
             .ConfigureAwait(false);
     }
@@ -102,7 +109,7 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
                 new { Values = values },
                 cancellationToken)
             .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        await EnsureConfigurationProfileSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task ArchiveConfigurationProfileAsync(Guid profileId, CancellationToken cancellationToken = default)
@@ -110,7 +117,7 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
         var response = await HttpClient.PostAsync(
                 BaseUrl.ResolveApiUrl($"configuration-profiles/{profileId}/archive"), null, cancellationToken)
             .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        await EnsureConfigurationProfileSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
 
     public Task ChangeConfigurationProfileUserAccessAsync(
@@ -133,7 +140,7 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
                 payload,
                 cancellationToken)
             .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        await EnsureConfigurationProfileSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<GameConfigurationInfo> GetConfigurationAsync(
@@ -497,6 +504,35 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
                    .ConfigureAwait(false)
                ?? throw new InvalidOperationException($"{operation} returned no response body.");
     }
+
+    private static async Task EnsureConfigurationProfileSuccessAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+            return;
+
+        try
+        {
+            var error = await ReadFromJsonAsync<ErrorResponse>(response, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(error?.Error))
+                throw new InvalidOperationException(error.Error);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Fall through to the status-specific message below.
+        }
+
+        throw new InvalidOperationException(response.StatusCode switch
+        {
+            HttpStatusCode.Forbidden => "You do not have permission to perform this configuration-profile action.",
+            HttpStatusCode.Unauthorized => "Your session has expired. Sign in and try again.",
+            HttpStatusCode.NotFound => "The configuration profile no longer exists.",
+            _ => $"The configuration-profile request failed ({(int) response.StatusCode}).",
+        });
+    }
+
+    private sealed record ErrorResponse(string? Error);
 
     private sealed record DirectoryCreationRequest
     {

@@ -1,0 +1,298 @@
+.configuration-profiles-page {
+    color: var(--utf-text);
+    display: grid;
+    gap: 1rem;
+    padding: clamp(1rem, 2.5vw, 2rem);
+}
+
+.configuration-workspace {
+    align-items: start;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(240px, 0.32fr) minmax(0, 1fr);
+}
+
+.configuration-profile-browser,
+.configuration-panel,
+.configuration-loading {
+    padding: clamp(1rem, 2vw, 1.4rem);
+}
+
+.configuration-profile-browser {
+    display: grid;
+    gap: 1rem;
+    position: sticky;
+    top: 1rem;
+}
+
+.configuration-browser-heading,
+.configuration-panel-heading,
+.configuration-section-heading,
+.configuration-actions,
+.configuration-archive-confirm {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.configuration-browser-heading h2,
+.configuration-panel-heading h2,
+.configuration-section-heading h3 {
+    margin: 0.2rem 0 0;
+}
+
+.configuration-profile-list,
+.configuration-editor,
+.configuration-panel,
+.configuration-history,
+.configuration-access {
+    display: grid;
+    gap: 1rem;
+}
+
+.configuration-profile-card {
+    align-items: center;
+    background: var(--utf-bg);
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-sm);
+    color: var(--utf-text);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    gap: 0.75rem;
+    justify-content: space-between;
+    padding: 0.85rem;
+    text-align: left;
+    transition: border-color 120ms ease, background 120ms ease;
+    width: 100%;
+}
+
+.configuration-profile-card:hover,
+.configuration-profile-card--selected {
+    background: var(--utf-surface-2);
+    border-color: var(--utf-gold-strong);
+}
+
+.configuration-profile-card > span:first-child {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.configuration-profile-card strong,
+.configuration-profile-card small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.configuration-profile-card small,
+.configuration-panel-heading p,
+.configuration-section-heading p,
+.configuration-actions > span,
+.configuration-field small,
+.configuration-empty p {
+    color: var(--utf-text-muted);
+}
+
+.configuration-panel-heading {
+    align-items: flex-start;
+    border-bottom: 1px solid var(--utf-stroke);
+    padding-bottom: 1rem;
+}
+
+.configuration-panel-heading p,
+.configuration-section-heading p,
+.configuration-empty p {
+    line-height: 1.5;
+    margin: 0.35rem 0 0;
+}
+
+.configuration-profile-meta {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.configuration-field {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.configuration-field > span {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.configuration-field input,
+.configuration-field select {
+    background: var(--utf-bg);
+    border: 1px solid var(--utf-stroke-strong);
+    border-radius: var(--utf-radius-sm);
+    box-sizing: border-box;
+    color: var(--utf-text);
+    font: inherit;
+    min-height: 2.65rem;
+    padding: 0.55rem 0.7rem;
+    width: 100%;
+}
+
+.configuration-actions {
+    border-top: 1px solid var(--utf-stroke);
+    justify-content: flex-end;
+    padding-top: 1rem;
+}
+
+.configuration-actions > span {
+    margin-right: auto;
+}
+
+.configuration-section-heading {
+    align-items: flex-end;
+}
+
+.configuration-empty {
+    background: rgba(212, 173, 84, 0.07);
+    border: 1px solid rgba(212, 173, 84, 0.28);
+    border-radius: var(--utf-radius-sm);
+    padding: 1rem;
+}
+
+.configuration-revision {
+    background: var(--utf-bg);
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-sm);
+    overflow: hidden;
+}
+
+.configuration-revision summary {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+}
+
+.configuration-revision summary > span:first-child {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.configuration-revision summary small,
+.configuration-revision summary > span:last-child {
+    color: var(--utf-text-muted);
+}
+
+.configuration-revision dl {
+    border-top: 1px solid var(--utf-stroke);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    padding: 0.5rem 1rem 1rem;
+}
+
+.configuration-revision dl > div {
+    border-bottom: 1px solid var(--utf-stroke);
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.65rem 0;
+}
+
+.configuration-revision dt {
+    color: var(--utf-text-muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.configuration-revision dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.configuration-redacted {
+    color: var(--utf-text-muted);
+    margin: 0;
+    padding: 0 1rem 1rem;
+}
+
+.configuration-access-grid {
+    align-items: end;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(180px, 0.7fr);
+}
+
+.configuration-access-or {
+    color: var(--utf-text-muted);
+    padding-bottom: 0.75rem;
+}
+
+.configuration-loading {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.configuration-loading p {
+    margin: 0;
+}
+
+.configuration-spinner {
+    animation: configuration-spin 800ms linear infinite;
+    border: 2px solid var(--utf-stroke-strong);
+    border-radius: 999px;
+    border-top-color: var(--utf-gold-strong);
+    height: 1rem;
+    width: 1rem;
+}
+
+@keyframes configuration-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 980px) {
+    .configuration-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .configuration-profile-browser {
+        position: static;
+    }
+
+    .configuration-profile-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .configuration-access-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .configuration-access-or {
+        display: none;
+    }
+}
+
+@media (max-width: 650px) {
+    .configuration-profile-list,
+    .configuration-profile-meta,
+    .configuration-revision dl {
+        grid-template-columns: 1fr;
+    }
+
+    .configuration-browser-heading,
+    .configuration-panel-heading,
+    .configuration-section-heading,
+    .configuration-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .configuration-actions > span {
+        margin-right: 0;
+    }
+}

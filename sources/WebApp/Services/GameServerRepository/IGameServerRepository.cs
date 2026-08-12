@@ -19,6 +19,9 @@ public interface IGameServerRepository
     Task<IReadOnlyList<ConfigurationProfileInfo>> GetConfigurationProfilesAsync(
         CancellationToken cancellationToken = default);
 
+    Task<ConfigurationProfileDefinitionCatalogInfo> GetConfigurationProfileDefinitionsAsync(
+        CancellationToken cancellationToken = default);
+
     Task<ConfigurationProfileDetailsInfo> GetConfigurationProfileAsync(
         Guid profileId,
         CancellationToken cancellationToken = default);

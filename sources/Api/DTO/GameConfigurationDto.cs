@@ -52,3 +52,15 @@ public sealed record ConfigurationProfileRevisionDto
     public IReadOnlyDictionary<string, JsonElement> Values { get; init; } =
         new Dictionary<string, JsonElement>(StringComparer.Ordinal);
 }
+
+public sealed record ConfigurationProfileDefinitionCatalogDto
+{
+    public bool CanCreate { get; init; }
+    public IReadOnlyList<GameConfigurationDefinitionSetDto> Games { get; init; } = [];
+}
+
+public sealed record GameConfigurationDefinitionSetDto
+{
+    public string GameIdentifier { get; init; } = string.Empty;
+    public IReadOnlyList<GameConfigurationDefinition> Definitions { get; init; } = [];
+}

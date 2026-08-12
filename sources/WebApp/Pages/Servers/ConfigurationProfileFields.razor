@@ -1,0 +1,204 @@
+@using System.Globalization
+@using System.Text.Json
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+
+<div class="configuration-definition-groups">
+    @foreach (var target in Definitions.GroupBy(q => q.TargetPath))
+    {
+        <section class="configuration-target">
+            <div class="configuration-target-heading">
+                <span>Generated file</span>
+                <code>@target.Key</code>
+            </div>
+            @foreach (var group in target.GroupBy(q => q.Group))
+            {
+                <fieldset class="configuration-group">
+                    <legend>@group.Key</legend>
+                    <div class="configuration-fields">
+                        @foreach (var definition in group.OrderBy(q => q.Order))
+                        {
+                            <div class="@FieldClass(definition)">
+                                <div class="configuration-field-heading">
+                                    <label for="@FieldId(definition)">@definition.DisplayName</label>
+                                    <span>
+                                        @if (definition.Required)
+                                        {
+                                            <strong>Required</strong>
+                                        }
+                                        @if (definition.Sensitive)
+                                        {
+                                            <strong>Sensitive</strong>
+                                        }
+                                    </span>
+                                </div>
+                                @switch (definition.Kind)
+                                {
+                                    case "Boolean":
+                                        <label class="configuration-toggle" for="@FieldId(definition)">
+                                            <input id="@FieldId(definition)"
+                                                   type="checkbox"
+                                                   checked="@BooleanValue(definition)"
+                                                   disabled="@Disabled"
+                                                   @onchange="@(args => SetBoolean(definition.Key, args.Value))"/>
+                                            <span aria-hidden="true"></span>
+                                            <strong>@(BooleanValue(definition) ? "Enabled" : "Disabled")</strong>
+                                        </label>
+                                        break;
+                                    case "Integer":
+                                    case "Number":
+                                        <input id="@FieldId(definition)"
+                                               class="configuration-control"
+                                               type="number"
+                                               value="@NumberValue(definition)"
+                                               min="@Limit(definition.Minimum)"
+                                               max="@Limit(definition.Maximum)"
+                                               step="@(definition.Kind == "Integer" ? "1" : "any")"
+                                               required="@definition.Required"
+                                               disabled="@Disabled"
+                                               @oninput="@(args => SetNumber(definition, args.Value?.ToString()))"/>
+                                        break;
+                                    case "Selection":
+                                        <select id="@FieldId(definition)"
+                                                class="configuration-control"
+                                                value="@StringValue(definition)"
+                                                required="@definition.Required"
+                                                disabled="@Disabled"
+                                                @onchange="@(args => SetString(definition, args.Value?.ToString()))">
+                                            @if (!definition.Required)
+                                            {
+                                                <option value="">Not set</option>
+                                            }
+                                            @foreach (var option in definition.AllowedValues)
+                                            {
+                                                <option value="@option">@option</option>
+                                            }
+                                        </select>
+                                        break;
+                                    case "StringArray":
+                                        <textarea id="@FieldId(definition)"
+                                                  class="configuration-control configuration-control--multiline"
+                                                  rows="3"
+                                                  placeholder="Enter one value per line"
+                                                  disabled="@Disabled"
+                                                  @oninput="@(args => SetArray(definition, args.Value?.ToString()))">@ArrayValue(definition)</textarea>
+                                        break;
+                                    default:
+                                        <input id="@FieldId(definition)"
+                                               class="configuration-control"
+                                               type="@(definition.Sensitive ? "password" : "text")"
+                                               value="@StringValue(definition)"
+                                               placeholder="@(definition.Required ? "Required" : "Not set")"
+                                               autocomplete="@(definition.Sensitive ? "new-password" : "off")"
+                                               required="@definition.Required"
+                                               disabled="@Disabled"
+                                               @oninput="@(args => SetString(definition, args.Value?.ToString()))"/>
+                                        break;
+                                }
+                                <div class="configuration-field-meta">
+                                    <small>@definition.Description</small>
+                                    @if (!definition.Required && Values.ContainsKey(definition.Key))
+                                    {
+                                        <button type="button" disabled="@Disabled" @onclick="@(() => Clear(definition.Key))">Clear value</button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </fieldset>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<GameConfigurationDefinitionInfo> Definitions { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public Dictionary<string, string> Values { get; set; } = new(StringComparer.Ordinal);
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private string RawValue(GameConfigurationDefinitionInfo definition)
+        => Values.TryGetValue(definition.Key, out var value) ? value : string.Empty;
+
+    private string StringValue(GameConfigurationDefinitionInfo definition)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(RawValue(definition));
+            return document.RootElement.ValueKind == JsonValueKind.String
+                ? document.RootElement.GetString() ?? string.Empty
+                : string.Empty;
+        }
+        catch (JsonException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private string NumberValue(GameConfigurationDefinitionInfo definition)
+        => Values.TryGetValue(definition.Key, out var value) ? value : string.Empty;
+
+    private bool BooleanValue(GameConfigurationDefinitionInfo definition)
+        => bool.TryParse(RawValue(definition), out var value) && value;
+
+    private string ArrayValue(GameConfigurationDefinitionInfo definition)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(RawValue(definition));
+            return document.RootElement.ValueKind == JsonValueKind.Array
+                ? string.Join(Environment.NewLine, document.RootElement.EnumerateArray()
+                    .Where(q => q.ValueKind == JsonValueKind.String)
+                    .Select(q => q.GetString()))
+                : string.Empty;
+        }
+        catch (JsonException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private void SetString(GameConfigurationDefinitionInfo definition, string? value)
+    {
+        if (!definition.Required && string.IsNullOrWhiteSpace(value))
+            Values.Remove(definition.Key);
+        else
+            Values[definition.Key] = JsonSerializer.Serialize(value ?? string.Empty);
+    }
+
+    private void SetNumber(GameConfigurationDefinitionInfo definition, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            Values.Remove(definition.Key);
+        else
+            Values[definition.Key] = value;
+    }
+
+    private void SetBoolean(string key, object? value)
+        => Values[key] = value is true ? "true" : "false";
+
+    private void SetArray(GameConfigurationDefinitionInfo definition, string? value)
+    {
+        var items = (value ?? string.Empty)
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (!definition.Required && items.Length == 0)
+            Values.Remove(definition.Key);
+        else
+            Values[definition.Key] = JsonSerializer.Serialize(items);
+    }
+
+    private void Clear(string key) => Values.Remove(key);
+
+    private string FieldClass(GameConfigurationDefinitionInfo definition)
+        => Values.ContainsKey(definition.Key)
+            ? "configuration-field configuration-field--set"
+            : "configuration-field";
+
+    private static string FieldId(GameConfigurationDefinitionInfo definition)
+        => $"profile-{string.Concat(definition.Key.Select(q => char.IsLetterOrDigit(q) ? char.ToLowerInvariant(q) : '-'))}";
+
+    private static string? Limit(decimal? value) => value?.ToString(CultureInfo.InvariantCulture);
+}
