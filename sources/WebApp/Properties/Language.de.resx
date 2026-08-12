@@ -4916,7 +4916,7 @@
         <value>Es ist noch kein veröffentlichtes Satzungsdokument verfügbar.</value>
     </data>
   <data name="Pages_Unit_Satzung_Index_NotFoundTitle" xml:space="preserve">
-        <value>The Vereinssatzung exists as a database-backed Dokument Typ, but Keine public revision has been veröffentlicht yet.</value>
+        <value>Noch keine Vereinssatzung veröffentlicht</value>
     </data>
   <data name="Pages_Unit_Satzung_Index_PageTitle" xml:space="preserve">
         <value>Vereinssatzung - United Tactical Forces</value>
