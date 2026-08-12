@@ -194,6 +194,267 @@
     max-width: 72ch;
 }
 
+.hosting-configuration-panel {
+    display: grid;
+    gap: 24px;
+    min-width: 0;
+    padding: 24px;
+}
+
+.hosting-configuration-profile {
+    display: grid;
+    grid-template-columns: minmax(260px, 560px) auto;
+    align-items: end;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 8px;
+    background: var(--utf-bg);
+}
+
+.hosting-configuration-profile .hosting-form-actions {
+    justify-content: flex-end;
+}
+
+.hosting-configuration-targets {
+    display: grid;
+    gap: 20px;
+}
+
+.hosting-configuration-target {
+    display: grid;
+    gap: 20px;
+    overflow: hidden;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 8px;
+    background: var(--utf-bg);
+}
+
+.hosting-configuration-target > header {
+    display: grid;
+    gap: 4px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--utf-stroke);
+    background: var(--utf-surface);
+}
+
+.hosting-configuration-target > header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.hosting-configuration-target > fluent-message-bar {
+    margin-inline: 20px;
+}
+
+.hosting-configuration-group {
+    display: grid;
+    gap: 12px;
+    padding: 0 20px 20px;
+}
+
+.hosting-configuration-group + .hosting-configuration-group {
+    padding-top: 20px;
+    border-top: 1px solid var(--utf-stroke);
+}
+
+.hosting-configuration-group h4 {
+    margin: 0;
+    color: var(--utf-text);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.hosting-configuration-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.hosting-configuration-field {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 6px;
+    background: var(--utf-surface);
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.hosting-configuration-field:focus-within {
+    border-color: var(--utf-gold);
+    box-shadow: 0 0 0 1px var(--utf-gold);
+}
+
+.hosting-configuration-field--dirty {
+    border-left: 4px solid var(--utf-gold);
+    padding-left: 13px;
+}
+
+.hosting-configuration-field-heading,
+.hosting-configuration-field-meta,
+.hosting-configuration-savebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hosting-configuration-field-heading {
+    justify-content: space-between;
+}
+
+.hosting-configuration-field-heading label {
+    color: var(--utf-text);
+    font-weight: 700;
+}
+
+.hosting-configuration-source {
+    flex: 0 0 auto;
+    padding: 2px 7px;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 999px;
+    color: var(--utf-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.hosting-configuration-control {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 4px;
+    outline: 0;
+    color: var(--utf-text);
+    background: var(--utf-bg);
+    font: inherit;
+}
+
+.hosting-configuration-control:hover:not(:disabled) {
+    border-color: var(--utf-text-muted);
+}
+
+.hosting-configuration-control:focus {
+    border-color: var(--utf-gold);
+}
+
+.hosting-configuration-control:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.hosting-configuration-control--multiline {
+    min-height: 88px;
+    resize: vertical;
+}
+
+.hosting-configuration-toggle {
+    display: inline-flex;
+    width: max-content;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    cursor: pointer;
+}
+
+.hosting-configuration-toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+}
+
+.hosting-configuration-toggle > span {
+    position: relative;
+    width: 38px;
+    height: 20px;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 999px;
+    background: var(--utf-bg);
+    transition: background 120ms ease, border-color 120ms ease;
+}
+
+.hosting-configuration-toggle > span::after {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--utf-text-muted);
+    content: "";
+    transition: transform 120ms ease, background 120ms ease;
+}
+
+.hosting-configuration-toggle input:checked + span {
+    border-color: var(--utf-gold);
+    background: color-mix(in srgb, var(--utf-gold) 25%, var(--utf-bg));
+}
+
+.hosting-configuration-toggle input:checked + span::after {
+    background: var(--utf-gold);
+    transform: translateX(18px);
+}
+
+.hosting-configuration-toggle input:focus-visible + span {
+    outline: 2px solid var(--utf-gold);
+    outline-offset: 2px;
+}
+
+.hosting-configuration-toggle input:disabled + span,
+.hosting-configuration-toggle input:disabled ~ strong {
+    opacity: 0.65;
+}
+
+.hosting-configuration-field-meta {
+    flex-wrap: wrap;
+    align-items: baseline;
+    color: var(--utf-text-muted);
+}
+
+.hosting-configuration-field-meta > small:first-child {
+    flex: 1 1 240px;
+}
+
+.hosting-configuration-warning {
+    width: 100%;
+    color: var(--utf-warning);
+}
+
+.hosting-configuration-reset {
+    padding: 0;
+    border: 0;
+    color: var(--utf-gold);
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.hosting-configuration-reset:hover {
+    text-decoration: underline;
+}
+
+.hosting-configuration-savebar {
+    position: sticky;
+    z-index: 3;
+    bottom: 16px;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border: 1px solid var(--utf-stroke);
+    border-radius: 8px;
+    color: var(--utf-text-muted);
+    background: var(--utf-bg);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+}
+
 .utf-kicker,
 .hosting-facts dt,
 .hosting-action-group h3,
@@ -1010,6 +1271,7 @@
     .hosting-command-strip,
     .hosting-detail-overview,
     .hosting-cloud-grid,
+    .hosting-configuration-fields,
     .hosting-modpack-editor,
     .hosting-file-mutations,
     .hosting-preservation-grid {
@@ -1043,6 +1305,7 @@
     }
 
     .hosting-command-strip,
+    .hosting-configuration-panel,
     .hosting-fact-panel,
     .hosting-operations-panel,
     .hosting-actions-panel,
@@ -1054,6 +1317,27 @@
     .hosting-deployment-panel,
     .hosting-logs-panel {
         padding: 16px;
+    }
+
+    .hosting-configuration-profile {
+        grid-template-columns: 1fr;
+        padding: 16px;
+    }
+
+    .hosting-configuration-profile .hosting-form-actions,
+    .hosting-configuration-savebar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .hosting-configuration-profile .utf-button,
+    .hosting-configuration-savebar .utf-button {
+        width: 100%;
+    }
+
+    .hosting-configuration-target > header,
+    .hosting-configuration-group {
+        padding-inline: 16px;
     }
 
     .hosting-primary-action,

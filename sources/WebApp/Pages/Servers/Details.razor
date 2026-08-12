@@ -144,7 +144,7 @@
 
         @if (_activeSection == "configuration")
         {
-            <section class="utf-panel">
+            <section class="utf-panel hosting-configuration-panel">
                 <div class="hosting-section-heading">
                     <span class="utf-kicker">Effective game configuration</span>
                     <h2>Structured settings</h2>
@@ -160,59 +160,148 @@
                 }
                 else if (_configuration is { } configuration)
                 {
-                    <label class="hosting-field">
-                        <span>Configuration profile</span>
-                        <select value="@(configuration.ProfileId?.ToString() ?? string.Empty)" @onchange="ChangeConfigurationProfileAsync">
-                            <option value="">Game defaults only</option>
-                            @foreach (var profile in _configurationProfileOptions)
-                            {
-                                <option value="@profile.PrimaryKey">@profile.Title</option>
-                            }
-                        </select>
-                    </label>
-                    @if (configuration.ProfileId is not null)
-                    {
-                        <div class="hosting-form-actions">
-                            <button class="utf-button utf-button--ghost" type="button" @onclick="FollowLatestProfileAsync">Follow latest</button>
-                            <button class="utf-button utf-button--ghost" type="button" disabled="@(configuration.ProfileRevisionId is null)" @onclick="PinCurrentProfileAsync">Pin revision @configuration.ProfileRevisionNumber</button>
-                        </div>
-                    }
+                    <div class="hosting-configuration-profile">
+                        <label class="hosting-field">
+                            <span>Configuration profile</span>
+                            <select value="@(configuration.ProfileId?.ToString() ?? string.Empty)"
+                                    disabled="@(!_server.CanModify)"
+                                    @onchange="ChangeConfigurationProfileAsync">
+                                <option value="">Game defaults only</option>
+                                @foreach (var profile in _configurationProfileOptions)
+                                {
+                                    <option value="@profile.PrimaryKey">@profile.Title</option>
+                                }
+                            </select>
+                            <small>Choose a reusable baseline, then override only the settings that differ for this server.</small>
+                        </label>
+                        @if (configuration.ProfileId is not null)
+                        {
+                            <div class="hosting-form-actions">
+                                <button class="utf-button utf-button--ghost" type="button" disabled="@(!_server.CanModify)" @onclick="FollowLatestProfileAsync">Follow latest</button>
+                                <button class="utf-button utf-button--ghost" type="button" disabled="@(!_server.CanModify || configuration.ProfileRevisionId is null)" @onclick="PinCurrentProfileAsync">Pin revision @configuration.ProfileRevisionNumber</button>
+                            </div>
+                        }
+                    </div>
                     @if (!configuration.IsComplete)
                     {
                         <UtfAlert Intent="MessageIntent.Warning">Required values are missing or invalid. The generated targets remain visible, but Start and generated downloads are blocked.</UtfAlert>
                     }
+                    <div class="hosting-configuration-targets">
                     @foreach (var target in configuration.Entries.GroupBy(q => q.TargetPath))
                     {
-                        <section class="hosting-file-mutations">
-                            <div>
-                                <h3>@target.Key</h3>
-                                @if (_configurationOverriddenTargets.Contains(target.Key))
+                        <section class="hosting-configuration-target">
+                            <header>
+                                <span class="utf-kicker">Generated target</span>
+                                <h3><code>@target.Key</code></h3>
+                            </header>
+                            @if (_configurationOverriddenTargets.Contains(target.Key))
+                            {
+                                <UtfAlert Intent="MessageIntent.Warning">A physical persistent file is effective at this target. Structured settings are hidden until that override is deleted in Files.</UtfAlert>
+                            }
+                            else
+                            {
+                                @foreach (var group in target.GroupBy(q => q.Group))
                                 {
-                                    <UtfAlert Intent="MessageIntent.Warning">A physical persistent file is effective at this target. Structured settings are hidden until that override is deleted in Files.</UtfAlert>
+                                    <section class="hosting-configuration-group" aria-labelledby="@ConfigurationGroupId(target.Key, group.Key)">
+                                        <h4 id="@ConfigurationGroupId(target.Key, group.Key)">@group.Key</h4>
+                                        <div class="hosting-configuration-fields">
+                                        @foreach (var entry in group.OrderBy(q => q.Order))
+                                        {
+                                            <div class="@ConfigurationFieldClass(entry)">
+                                                <div class="hosting-configuration-field-heading">
+                                                    <label for="@ConfigurationFieldId(entry)">@entry.DisplayName</label>
+                                                    <span class="hosting-configuration-source">@ConfigurationSourceLabel(entry)</span>
+                                                </div>
+                                                @switch (entry.Kind)
+                                                {
+                                                    case "Boolean":
+                                                        <label class="hosting-configuration-toggle" for="@ConfigurationFieldId(entry)">
+                                                            <input id="@ConfigurationFieldId(entry)"
+                                                                   type="checkbox"
+                                                                   checked="@ConfigurationBooleanValue(entry)"
+                                                                   disabled="@(!_server.CanModify)"
+                                                                   @onchange="@(args => SetConfigurationBooleanEdit(entry.Key, args.Value))"/>
+                                                            <span aria-hidden="true"></span>
+                                                            <strong>@(ConfigurationBooleanValue(entry) ? "Enabled" : "Disabled")</strong>
+                                                        </label>
+                                                        break;
+                                                    case "Integer":
+                                                    case "Number":
+                                                        <input id="@ConfigurationFieldId(entry)"
+                                                               class="hosting-configuration-control"
+                                                               type="number"
+                                                               value="@ConfigurationNumberValue(entry)"
+                                                               min="@ConfigurationLimit(entry.Minimum)"
+                                                               max="@ConfigurationLimit(entry.Maximum)"
+                                                               step="@(entry.Kind == "Integer" ? "1" : "any")"
+                                                               required="@entry.Required"
+                                                               disabled="@(!_server.CanModify)"
+                                                               @onchange="@(args => SetConfigurationNumberEdit(entry.Key, args.Value?.ToString()))"/>
+                                                        break;
+                                                    case "Selection":
+                                                        <select id="@ConfigurationFieldId(entry)"
+                                                                class="hosting-configuration-control"
+                                                                value="@ConfigurationStringValue(entry)"
+                                                                disabled="@(!_server.CanModify)"
+                                                                @onchange="@(args => SetConfigurationStringEdit(entry.Key, args.Value?.ToString()))">
+                                                            @if (!entry.Required && string.IsNullOrEmpty(ConfigurationStringValue(entry)))
+                                                            {
+                                                                <option value="">Not set</option>
+                                                            }
+                                                            @foreach (var option in entry.AllowedValues)
+                                                            {
+                                                                <option value="@option">@option</option>
+                                                            }
+                                                        </select>
+                                                        break;
+                                                    case "StringArray":
+                                                        <textarea id="@ConfigurationFieldId(entry)"
+                                                                  class="hosting-configuration-control hosting-configuration-control--multiline"
+                                                                  rows="3"
+                                                                  placeholder="Enter one value per line"
+                                                                  disabled="@(!_server.CanModify)"
+                                                                  @onchange="@(args => SetConfigurationArrayEdit(entry.Key, args.Value?.ToString()))">@ConfigurationArrayValue(entry)</textarea>
+                                                        break;
+                                                    default:
+                                                        <input id="@ConfigurationFieldId(entry)"
+                                                               class="hosting-configuration-control"
+                                                               type="@(entry.Sensitive ? "password" : "text")"
+                                                               value="@ConfigurationStringValue(entry)"
+                                                               placeholder="@(entry.IsRedacted ? "Stored value - enter a replacement" : entry.Required ? "Required" : "Not set")"
+                                                               required="@(entry.Required && !entry.IsRedacted)"
+                                                               autocomplete="@(entry.Sensitive ? "new-password" : "off")"
+                                                               disabled="@(!_server.CanModify)"
+                                                               @onchange="@(args => SetConfigurationStringEdit(entry.Key, args.Value?.ToString()))"/>
+                                                        break;
+                                                }
+                                                <div class="hosting-configuration-field-meta">
+                                                    <small>@entry.Description</small>
+                                                    @if (!string.IsNullOrWhiteSpace(entry.Warning))
+                                                    {
+                                                        <small class="hosting-configuration-warning">@entry.Warning</small>
+                                                    }
+                                                    @if (_server.CanModify && entry.Source == "Server")
+                                                    {
+                                                        <button class="hosting-configuration-reset" type="button" @onclick="@(() => ResetConfigurationEntryAsync(entry.Key))">Reset to inherited</button>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        </div>
+                                    </section>
                                 }
-                                else
-                                {
-                                @foreach (var entry in target.GroupBy(q => q.Group).SelectMany(q => q))
-                                {
-                                    <label class="hosting-field">
-                                        <span>@entry.DisplayName <small>from @entry.Source</small></span>
-                                        <textarea disabled="@(!_server.CanModify || entry.Sensitive && entry.Value is null)"
-                                                  value="@ConfigurationEditValue(entry)"
-                                                  @onchange="@(args => SetConfigurationEdit(entry.Key, args.Value?.ToString()))"></textarea>
-                                        <small>@entry.Description @entry.Warning</small>
-                                    </label>
-                                    @if (_server.CanModify && entry.Source == "Server")
-                                    {
-                                        <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => ResetConfigurationEntryAsync(entry.Key))">Reset to inherited value</button>
-                                    }
-                                }
-                                }
-                            </div>
+                            }
                         </section>
                     }
+                    </div>
                     @if (_server.CanModify)
                     {
-                        <button class="utf-button utf-button--primary" type="button" disabled="@(_configurationSaving || _configurationEdits.Count == 0)" @onclick="SaveConfigurationAsync">Save overrides</button>
+                        <div class="hosting-configuration-savebar">
+                            <span>@(_configurationEdits.Count == 0 ? "No unsaved overrides" : $"{_configurationEdits.Count} unsaved override(s)")</span>
+                            <button class="utf-button utf-button--primary" type="button" disabled="@(_configurationSaving || _configurationEdits.Count == 0)" @onclick="SaveConfigurationAsync">
+                                @(_configurationSaving ? "Saving..." : "Save overrides")
+                            </button>
+                        </div>
                     }
                 }
             </section>
@@ -1904,13 +1993,87 @@
         }
     }
 
-    private string ConfigurationEditValue(GameConfigurationEntryInfo entry)
+    private string ConfigurationJsonValue(GameConfigurationEntryInfo entry)
         => _configurationEdits.TryGetValue(entry.Key, out var value)
             ? value
-            : entry.Value?.GetRawText() ?? string.Empty;
+            : entry.Value?.GetRawText() ?? "null";
 
-    private void SetConfigurationEdit(string key, string? value)
-        => _configurationEdits[key] = value ?? "null";
+    private string ConfigurationStringValue(GameConfigurationEntryInfo entry)
+    {
+        if (entry.IsRedacted && !_configurationEdits.ContainsKey(entry.Key))
+            return string.Empty;
+
+        try
+        {
+            using var document = JsonDocument.Parse(ConfigurationJsonValue(entry));
+            return document.RootElement.ValueKind == JsonValueKind.String
+                ? document.RootElement.GetString() ?? string.Empty
+                : string.Empty;
+        }
+        catch (JsonException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private string ConfigurationNumberValue(GameConfigurationEntryInfo entry)
+    {
+        var value = ConfigurationJsonValue(entry);
+        return value == "null" ? string.Empty : value;
+    }
+
+    private bool ConfigurationBooleanValue(GameConfigurationEntryInfo entry)
+        => bool.TryParse(ConfigurationJsonValue(entry), out var value) && value;
+
+    private string ConfigurationArrayValue(GameConfigurationEntryInfo entry)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(ConfigurationJsonValue(entry));
+            return document.RootElement.ValueKind == JsonValueKind.Array
+                ? string.Join(Environment.NewLine, document.RootElement.EnumerateArray()
+                    .Where(q => q.ValueKind == JsonValueKind.String)
+                    .Select(q => q.GetString()))
+                : string.Empty;
+        }
+        catch (JsonException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string? ConfigurationLimit(decimal? value)
+        => value?.ToString(CultureInfo.InvariantCulture);
+
+    private static string ConfigurationFieldId(GameConfigurationEntryInfo entry)
+        => $"configuration-{SanitizeHtmlId(entry.TargetPath)}-{SanitizeHtmlId(entry.Key)}";
+
+    private static string ConfigurationGroupId(string target, string group)
+        => $"configuration-group-{SanitizeHtmlId(target)}-{SanitizeHtmlId(group)}";
+
+    private static string SanitizeHtmlId(string value)
+        => string.Concat(value.Select(q => char.IsLetterOrDigit(q) ? char.ToLowerInvariant(q) : '-'));
+
+    private string ConfigurationFieldClass(GameConfigurationEntryInfo entry)
+        => _configurationEdits.ContainsKey(entry.Key)
+            ? "hosting-configuration-field hosting-configuration-field--dirty"
+            : "hosting-configuration-field";
+
+    private static string ConfigurationSourceLabel(GameConfigurationEntryInfo entry)
+        => entry.IsRedacted ? $"{entry.Source} - stored" : $"From {entry.Source}";
+
+    private void SetConfigurationStringEdit(string key, string? value)
+        => _configurationEdits[key] = JsonSerializer.Serialize(value ?? string.Empty);
+
+    private void SetConfigurationNumberEdit(string key, string? value)
+        => _configurationEdits[key] = string.IsNullOrWhiteSpace(value) ? "null" : value;
+
+    private void SetConfigurationBooleanEdit(string key, object? value)
+        => _configurationEdits[key] = value is true ? "true" : "false";
+
+    private void SetConfigurationArrayEdit(string key, string? value)
+        => _configurationEdits[key] = JsonSerializer.Serialize((value ?? string.Empty)
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
     private async Task SaveConfigurationAsync()
     {

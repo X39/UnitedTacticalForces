@@ -22,9 +22,14 @@ public sealed record GameConfigurationEntryInfo
     public string Kind { get; init; } = string.Empty;
     public bool Required { get; init; }
     public bool Sensitive { get; init; }
+    public int Order { get; init; }
+    public decimal? Minimum { get; init; }
+    public decimal? Maximum { get; init; }
+    public IReadOnlyList<string> AllowedValues { get; init; } = [];
     public JsonElement? Value { get; init; }
     public string Source { get; init; } = string.Empty;
     public bool IsCompatible { get; init; }
+    public bool IsRedacted { get; init; }
     public string? Warning { get; init; }
 }
 
