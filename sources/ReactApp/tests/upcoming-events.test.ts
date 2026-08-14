@@ -1,5 +1,8 @@
 import type { UpcomingEvent } from "@/api/types";
 import {
+  eventAttendance,
+  eventReadiness,
+  eventSlotProgress,
   formatEventSlotCount,
   matchesUpcomingEventFilter,
   normalizeEventAcceptance,
@@ -46,6 +49,20 @@ describe("upcoming event parity", () => {
 
   it("keeps the configured minimum visible when attendance exceeds it", () => {
     expect(formatEventSlotCount(event("Accepted"))).toBe("18 / 12");
+  });
+
+  it("keeps operational readiness separate from the current user's attendance", () => {
+    const lowAttendance = event("Accepted");
+    lowAttendance.acceptedCount = 4;
+    lowAttendance.minimumAccepted = 12;
+
+    expect(eventReadiness(lowAttendance)).toBe("needs-signups");
+    expect(eventAttendance(lowAttendance)).toBe("Accepted");
+    expect(eventSlotProgress(lowAttendance)).toBeCloseTo(33.333, 2);
+
+    const unassigned = event(null);
+    expect(eventReadiness(unassigned)).toBe("ready");
+    expect(eventAttendance(unassigned)).toBe("Unassigned");
   });
 
   it("derives calendar dates in UTC", () => {

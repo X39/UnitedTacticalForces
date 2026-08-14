@@ -21,6 +21,7 @@ import {
   currentUserSlot,
   eventAttendanceProgress,
   eventHasStarted,
+  extractBriefingObjectives,
   formatEventTimeRemaining,
   groupEventSlots,
   isEventId,
@@ -30,7 +31,7 @@ import {
   slotSideKey,
 } from "./eventModel";
 import { eventsMemberQueryKeys, eventsMemberService, saveBlob } from "./services";
-import type { EventSlot, EventSlotRow } from "./types";
+import type { EventAssignee, EventSlot, EventSlotRow } from "./types";
 
 export function EventDetailPage() {
   const { t, i18n } = useTranslation();
@@ -112,6 +113,10 @@ export function EventDetailPage() {
       ),
     [i18n.resolvedLanguage, slots, t],
   );
+  const briefingObjectives = useMemo(
+    () => extractBriefingObjectives(event?.description),
+    [event?.description],
+  );
   useDocumentTitle(event?.title ?? t("Pages_Events_Detail_PageTitleFallback"));
 
   if (!validEventId) return <NotFoundPage />;
@@ -185,69 +190,92 @@ export function EventDetailPage() {
   };
 
   return (
-    <div className="page-wrap em-event-page">
+    <div className="em-event-page public-page">
       <section
-        className="em-event-hero"
-        style={{ "--em-event-image": `url("${image.replaceAll('"', "%22")}")` } as CSSProperties}
+        className="public-hero editorial-hero em-event-hero"
+        style={{ "--hero-image": `url("${image.replaceAll('"', "%22")}")` } as CSSProperties}
       >
-        <Link className="button button--glass button--small" to="/events/upcoming">
-          <ArrowLeft20Regular /> {t("Auto_BackToEvents_6f92c820")}
-        </Link>
-        <span className="kicker">{t("Operation")}</span>
-        <h1>{event.title || t("Pages_Events_Detail_UntitledOperation")}</h1>
-        <dl className="em-event-meta" aria-label={t("Auto_MissionMetadata_384bdc08")}>
-          <div>
-            <dt>{t("Date")}</dt>
-            <dd>
-              {event.scheduledFor
-                ? formatDate(event.scheduledFor, { dateStyle: "full" })
-                : t("Pages_Events_Detail_Status_DatePending")}
-            </dd>
+        <div className="public-hero__inner em-event-hero__inner">
+          <div className="public-hero__copy">
+            <Link className="em-event-hero__back" to="/events/upcoming">
+              <ArrowLeft20Regular /> {t("Auto_BackToEvents_6f92c820")}
+            </Link>
+            <span className="kicker">{t("Operation")}</span>
+            <h1>{event.title || t("Pages_Events_Detail_UntitledOperation")}</h1>
+            <div className="em-event-hero__status">
+              <StatusBadge tone={attendanceProgress.needsMoreSignups ? "warning" : "success"}>
+                {t(
+                  attendanceProgress.needsMoreSignups
+                    ? "Pages_Events_Detail_Status_NeedsMoreSignups"
+                    : "Pages_Events_Detail_Status_MinimumMet",
+                )}
+              </StatusBadge>
+              <span>
+                {timeRemaining === "tbd"
+                  ? t("Pages_Events_Detail_Status_ToBeDetermined")
+                  : timeRemaining === "started"
+                    ? t("Pages_Events_Detail_Status_Started")
+                    : `${t("Auto_TimeRemaining_864927fe")}: ${timeRemaining}`}
+              </span>
+            </div>
           </div>
-          <div>
-            <dt>{t("Time")}</dt>
-            <dd>
-              {event.scheduledFor
-                ? formatUtcDateTime(event.scheduledFor)
-                : t("Pages_Events_Detail_Status_TimePending")}
-            </dd>
-            <small>
-              {event.scheduledFor
-                ? formatResource(
-                    t("Pages_Events_Detail_Format_LocalTime"),
-                    formatDateTime(event.scheduledFor),
-                  )
-                : t("Pages_Events_Detail_Status_LocalTimePending")}
-            </small>
-          </div>
-          <div>
-            <dt>{t("Terrain")}</dt>
-            <dd>{event.terrainTitle || t("Pages_Events_Detail_Status_TerrainPending")}</dd>
-          </div>
-          <div>
-            <dt>{t("Modpack")}</dt>
-            <dd>
-              {event.modPackDefinitionTitle || t("Pages_Events_Detail_Status_ModPackPending")}
-            </dd>
-            <small>
-              {event.modPackRevisionPrimaryKey == null
-                ? t("Pages_Events_Detail_Status_LatestRevision")
-                : formatResource(
-                    t("Pages_Events_Detail_Count_Revision"),
-                    event.modPackRevisionPrimaryKey,
-                  )}
-            </small>
-          </div>
-          <div>
-            <dt>{t("Host")}</dt>
-            <dd>{event.hostedBy.nickname || t("Pages_Events_Detail_Status_HostPending")}</dd>
-          </div>
-        </dl>
+          <dl
+            className="public-hero__panel em-event-meta"
+            aria-label={t("Auto_MissionMetadata_384bdc08")}
+          >
+            <div>
+              <dt>{t("Date")}</dt>
+              <dd>
+                {event.scheduledFor
+                  ? formatDate(event.scheduledFor, { dateStyle: "full" })
+                  : t("Pages_Events_Detail_Status_DatePending")}
+              </dd>
+            </div>
+            <div>
+              <dt>{t("Time")}</dt>
+              <dd>
+                {event.scheduledFor
+                  ? formatUtcDateTime(event.scheduledFor)
+                  : t("Pages_Events_Detail_Status_TimePending")}
+              </dd>
+              <small>
+                {event.scheduledFor
+                  ? formatResource(
+                      t("Pages_Events_Detail_Format_LocalTime"),
+                      formatDateTime(event.scheduledFor),
+                    )
+                  : t("Pages_Events_Detail_Status_LocalTimePending")}
+              </small>
+            </div>
+            <div>
+              <dt>{t("Terrain")}</dt>
+              <dd>{event.terrainTitle || t("Pages_Events_Detail_Status_TerrainPending")}</dd>
+            </div>
+            <div>
+              <dt>{t("Modpack")}</dt>
+              <dd>
+                {event.modPackDefinitionTitle || t("Pages_Events_Detail_Status_ModPackPending")}
+              </dd>
+              <small>
+                {event.modPackRevisionPrimaryKey == null
+                  ? t("Pages_Events_Detail_Status_LatestRevision")
+                  : formatResource(
+                      t("Pages_Events_Detail_Count_Revision"),
+                      event.modPackRevisionPrimaryKey,
+                    )}
+              </small>
+            </div>
+            <div>
+              <dt>{t("Host")}</dt>
+              <dd>{event.hostedBy.nickname || t("Pages_Events_Detail_Status_HostPending")}</dd>
+            </div>
+          </dl>
+        </div>
       </section>
 
-      <div className="em-event-workspace">
+      <div className="content-section public-section em-event-workspace">
         <div className="em-event-main">
-          <section className="content-section em-panel">
+          <section className="em-panel em-briefing-panel">
             <header className="page-header">
               <div>
                 <span className="kicker">{t("Auto_FullBriefing_8df6347a")}</span>
@@ -255,7 +283,26 @@ export function EventDetailPage() {
               </div>
             </header>
             {event.description ? (
-              <Markdown>{event.description}</Markdown>
+              <>
+                {briefingObjectives.length > 0 && (
+                  <ol
+                    className="em-briefing-objectives"
+                    aria-label={t("Auto_PublicBriefingHighlights_dd5597fe")}
+                  >
+                    {briefingObjectives.map((objective, index) => (
+                      <li key={`${objective.icon}-${index}`}>
+                        <span data-icon={objective.icon} aria-hidden="true">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <p>{objective.text}</p>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                <div className="em-briefing-notes">
+                  <Markdown>{event.description}</Markdown>
+                </div>
+              </>
             ) : (
               <StatePanel kind="empty">
                 {t("Auto_NoFullBriefingHasBeenPostedForThisOperation_574adb11")}
@@ -263,7 +310,7 @@ export function EventDetailPage() {
             )}
           </section>
 
-          <section className="content-section em-panel" aria-labelledby="slot-register-title">
+          <section className="em-panel" aria-labelledby="slot-register-title">
             <header className="page-header">
               <div>
                 <h2 id="slot-register-title">{t("Auto_SlotRegister_20eeba00")}</h2>
@@ -526,6 +573,25 @@ function AttendanceButton({
   );
 }
 
+function assigneeAvatarSource(user: EventAssignee): string | undefined {
+  if (!user.avatar) return undefined;
+  const mimeType = user.avatarMimeType?.split(";", 1)[0]?.trim().toLocaleLowerCase();
+  const safeMimeType =
+    mimeType && /^image\/(?:png|jpe?g|gif|webp)$/.test(mimeType) ? mimeType : "image/png";
+  return `data:${safeMimeType};base64,${user.avatar}`;
+}
+
+function assigneeInitials(name: string): string {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => Array.from(part)[0]?.toLocaleUpperCase() ?? "")
+      .join("") || "?"
+  );
+}
+
 function SlotRow({
   row,
   event,
@@ -537,7 +603,7 @@ function SlotRow({
 }: {
   row: EventSlotRow;
   event: FullEvent;
-  assignees: Map<string, { primaryKey: string; nickname: string }>;
+  assignees: Map<string, EventAssignee>;
   user: FullUser | undefined;
   isAuthenticated: boolean;
   assigningSlotNumber: number | undefined;
@@ -547,9 +613,15 @@ function SlotRow({
   const mine = row.slots.some((slot) => slot.assignedToFk === user?.primaryKey);
   const action = slotRowAction(row, isAuthenticated ? user : undefined, event, assigningSlotNumber);
   const mutationPending = assigningSlotNumber != null;
-  const assignedNames = row.slots
-    .map((slot) => (slot.assignedToFk ? assignees.get(slot.assignedToFk)?.nickname : undefined))
-    .filter((name): name is string => Boolean(name));
+  const assignedUsers = [
+    ...new Map(
+      row.slots
+        .map((slot) => (slot.assignedToFk ? assignees.get(slot.assignedToFk) : undefined))
+        .filter((assignee): assignee is EventAssignee => Boolean(assignee))
+        .map((assignee) => [assignee.primaryKey, assignee]),
+    ).values(),
+  ];
+  const assignedNames = assignedUsers.map((assignee) => assignee.nickname);
   const assignedLabel =
     assignedNames.length <= 1
       ? assignedNames[0]
@@ -557,6 +629,33 @@ function SlotRow({
   const slotNumbers = row.slots.map((slot) => slot.slotNumber).join(", ");
   const sideKey = slotSideKey(row.side);
   const isHidden = row.slots.every((slot) => slot.isVisible === false);
+  const rowStatus = isHidden
+    ? { label: t("Pages_Events_Detail_Status_Hidden"), tone: "neutral" as const }
+    : mine
+      ? { label: t("Pages_Events_Detail_Status_YourSlot"), tone: "info" as const }
+      : action.kind === "locked"
+        ? { label: t("Pages_Events_Detail_Status_Locked"), tone: "warning" as const }
+        : action.kind === "closed"
+          ? { label: t("Pages_Events_Detail_Status_Closed"), tone: "warning" as const }
+          : row.assignedCount > 1
+            ? {
+                label: t("Pages_Events_Detail_Status_ConfirmedTeam"),
+                tone: "success" as const,
+              }
+            : row.assignedCount === 1
+              ? {
+                  label: t("Pages_Events_Detail_Status_ConfirmedMember"),
+                  tone: "success" as const,
+                }
+              : row.openCount > 0
+                ? {
+                    label: t("Pages_Events_Detail_Status_Available"),
+                    tone: "neutral" as const,
+                  }
+                : {
+                    label: t("Pages_Events_Detail_Status_Assigned"),
+                    tone: "neutral" as const,
+                  };
   const actionLabel = {
     assign: t("Pages_EventView_AssignToSelf"),
     "claim-role": t("Pages_Events_Detail_ActionClaimRole"),
@@ -585,29 +684,42 @@ function SlotRow({
           )}
         </small>
       </div>
-      <div>
-        <strong>
-          {isHidden
-            ? t("Pages_Events_Detail_Status_Hidden")
-            : assignedLabel
-              ? assignedLabel
-              : row.assignedCount > 0
-                ? formatResource(t("Pages_Events_Detail_Count_AssignedMembers"), row.assignedCount)
-                : t("Auto_OpenSlot_00336ce6")}
-        </strong>
-        <small>
-          {isHidden
-            ? t("Pages_Events_Detail_Status_Hidden")
-            : mine
-              ? t("Pages_Events_Detail_Status_YourSlot")
-              : row.assignedCount > 1
-                ? t("Pages_Events_Detail_Status_ConfirmedTeam")
-                : row.assignedCount === 1
-                  ? t("Pages_Events_Detail_Status_ConfirmedMember")
-                  : row.openCount > 0
-                    ? t("Pages_Events_Detail_Status_Available")
-                    : t("Pages_Events_Detail_Status_Assigned")}
-        </small>
+      <div className="em-slot-assignees">
+        {assignedUsers.length > 0 && (
+          <div className="em-slot-avatars" aria-hidden="true">
+            {assignedUsers.slice(0, 3).map((assignee) => {
+              const avatar = assigneeAvatarSource(assignee);
+              return avatar ? (
+                <img key={assignee.primaryKey} src={avatar} alt="" />
+              ) : (
+                <span key={assignee.primaryKey}>{assigneeInitials(assignee.nickname)}</span>
+              );
+            })}
+          </div>
+        )}
+        <div>
+          <strong>
+            {isHidden
+              ? t("Pages_Events_Detail_Status_Hidden")
+              : assignedLabel
+                ? assignedLabel
+                : row.assignedCount > 0
+                  ? formatResource(
+                      t("Pages_Events_Detail_Count_AssignedMembers"),
+                      row.assignedCount,
+                    )
+                  : t("Auto_OpenSlot_00336ce6")}
+          </strong>
+          <small>
+            {row.assignedCount > 0
+              ? formatResource(t("Pages_Events_Detail_Count_AssignedMembers"), row.assignedCount)
+              : `${row.openCount} ${t("Auto_OpenSlots_183c44b6")}`}
+          </small>
+        </div>
+      </div>
+      <div className="em-slot-status">
+        <StatusBadge tone={rowStatus.tone}>{rowStatus.label}</StatusBadge>
+        <small>{actionLabel}</small>
       </div>
       <button
         className="button button--ghost button--small"

@@ -75,10 +75,13 @@ export function CommunityLayout({ configuration }: { configuration: PublicConfig
       </a>
       <header className="site-header">
         <Link className="brand" to="/" aria-label={t("Shared_CommunityNav_Home")}>
-          <img src="/Insignia-48px.png" alt="" width="42" height="42" />
-          <span>
-            <strong>UNITED</strong>
-            <span>TACTICAL FORCES</span>
+          <img src="/Insignia-48px.png" alt="" width="44" height="44" />
+          <span className="brand__utf">UTF</span>
+          <span className="brand__divider" aria-hidden="true" />
+          <span className="brand__stack">
+            <span>{t("Shared_CommunityBrand_NamePart1")}</span>
+            <span>{t("Shared_CommunityBrand_NamePart2")}</span>
+            <span>{t("Shared_CommunityBrand_NamePart3")}</span>
           </span>
         </Link>
         <button

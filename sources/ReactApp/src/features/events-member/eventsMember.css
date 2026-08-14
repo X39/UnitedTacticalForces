@@ -4,7 +4,6 @@
   background: var(--color-panel, rgba(12, 18, 24, 0.92));
 }
 
-.em-event-hero,
 .em-ledger-hero {
   position: relative;
   overflow: hidden;
@@ -16,10 +15,363 @@
     var(--em-event-image) center / cover;
 }
 
-.em-event-hero h1 {
+.em-ledger-hero h1 {
   max-width: 20ch;
   margin-block: 0.75rem 1.5rem;
   font-size: clamp(2rem, 5vw, 4.5rem);
+}
+
+/* Public event detail deliberately follows the cinematic community shell instead of the
+   rounded command/settings surfaces that share this stylesheet. */
+.em-event-page .em-event-hero {
+  --hero-position: center 38%;
+}
+
+.em-event-hero__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 2rem;
+  color: #e4e6e9;
+  font:
+    600 0.72rem "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.em-event-hero__back:hover,
+.em-event-hero__back:focus-visible {
+  color: var(--gold-bright);
+}
+
+.em-event-hero__status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.4rem;
+}
+
+.em-event-hero__status > span:last-child {
+  color: #d7dade;
+  font:
+    600 0.72rem "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.em-event-page .em-event-meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  max-width: none;
+  margin: 0;
+}
+
+.em-event-page .em-event-meta > div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.72rem 0;
+  border: 0;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 0;
+  background: transparent;
+}
+
+.em-event-page .em-event-meta > div:last-child {
+  border-bottom: 0;
+}
+
+.em-event-page .em-event-meta dt {
+  color: var(--quiet);
+  font:
+    600 0.65rem "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.em-event-page .em-event-meta dd {
+  margin: 0;
+  font:
+    600 0.95rem/1.4 "Barlow Condensed",
+    sans-serif;
+}
+
+.em-event-page .em-event-meta small {
+  margin: 0;
+  color: var(--quiet);
+  font-size: 0.68rem;
+}
+
+.em-event-page .em-event-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 350px);
+  gap: 1.25rem;
+  margin-top: 0;
+}
+
+.em-event-page .em-event-main,
+.em-event-page .em-event-aside {
+  gap: 1.25rem;
+}
+
+.em-event-page .em-event-aside {
+  position: sticky;
+  top: 5.5rem;
+}
+
+.em-event-page .em-panel,
+.em-event-page .em-side-card {
+  border: 1px solid var(--stroke);
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 14%);
+}
+
+.em-event-page .em-panel {
+  min-width: 0;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.em-event-page .em-panel > .page-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--stroke);
+}
+
+.em-event-page .em-panel > .page-header h2 {
+  margin: 0;
+  font:
+    650 clamp(1.8rem, 4vw, 2.7rem)/1 "Barlow Condensed",
+    sans-serif;
+  text-transform: uppercase;
+}
+
+.em-briefing-objectives {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0 0 2rem;
+  padding: 0;
+  border: 1px solid var(--stroke);
+  background: var(--stroke);
+  list-style: none;
+}
+
+.em-briefing-objectives li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  gap: 0.8rem;
+  min-height: 8.5rem;
+  padding: 1rem;
+  background: var(--canvas);
+}
+
+.em-briefing-objectives li > span {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+  border: 1px solid rgb(186 160 90 / 40%);
+  color: var(--gold-bright);
+  font:
+    700 0.72rem "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.06em;
+}
+
+.em-briefing-objectives p {
+  margin: 0;
+  color: #d6d9dd;
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+
+.em-briefing-notes {
+  min-width: 0;
+  padding-top: 0.4rem;
+}
+
+.em-event-page .em-slot-group > header {
+  padding: 0.8rem 0;
+  border-color: var(--stroke);
+}
+
+.em-event-page .em-slot-group > header h3 {
+  font:
+    650 1.2rem "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.em-event-page .em-slot-group > header span {
+  color: var(--quiet);
+  font-size: 0.72rem;
+}
+
+.em-event-page .em-slot-row {
+  grid-template-columns:
+    minmax(150px, 1.05fr) minmax(180px, 1fr) minmax(120px, 0.68fr)
+    auto;
+  gap: 1rem;
+  padding: 0.9rem;
+  border-color: var(--stroke);
+  border-radius: 0;
+  background: rgb(255 255 255 / 2%);
+}
+
+.em-event-page .em-slot-row--mine {
+  border-color: rgb(186 160 90 / 58%);
+  box-shadow: inset 3px 0 var(--gold);
+  background: rgb(186 160 90 / 8%);
+}
+
+.em-event-page .em-slot-row > div:first-child h4 {
+  font:
+    650 1rem "Barlow Condensed",
+    sans-serif;
+  text-transform: uppercase;
+}
+
+.em-event-page .em-slot-row small {
+  color: var(--quiet);
+  font-size: 0.68rem;
+}
+
+.em-event-page .em-slot-assignees {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.em-slot-assignees > div:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.em-slot-assignees strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.em-event-page .em-slot-avatars {
+  display: flex;
+  flex: 0 0 auto;
+  padding-left: 0.45rem;
+}
+
+.em-slot-avatars :is(img, span) {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  margin-left: -0.45rem;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: #242b33;
+  color: var(--gold-bright);
+  object-fit: cover;
+  font:
+    700 0.6rem "Barlow Condensed",
+    sans-serif;
+}
+
+.em-event-page .em-slot-status {
+  display: grid;
+  justify-items: start;
+  gap: 0.35rem;
+}
+
+.em-event-page .em-slot-row > .button {
+  min-width: 7rem;
+}
+
+.em-event-page .em-side-card {
+  padding: 1.1rem;
+}
+
+.em-event-page .em-side-card h2 {
+  font:
+    650 1.25rem "Barlow Condensed",
+    sans-serif;
+  text-transform: uppercase;
+}
+
+.em-event-page .em-attendance-actions button {
+  border-color: var(--stroke);
+  border-radius: 0;
+  background: var(--canvas);
+}
+
+.em-event-page .em-slot-meter {
+  border-radius: 0;
+  background: rgb(255 255 255 / 7%);
+}
+
+.em-event-page .em-slot-meter span {
+  border-radius: 0;
+  background: linear-gradient(90deg, #8b7439, var(--gold-bright));
+}
+
+@media (max-width: 1080px) {
+  .em-event-page .em-event-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .em-event-page .em-event-aside {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .em-event-page .em-event-aside,
+  .em-briefing-objectives {
+    grid-template-columns: 1fr;
+  }
+
+  .em-briefing-objectives li {
+    min-height: 0;
+  }
+
+  .em-event-page .em-slot-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .em-event-page .em-slot-assignees,
+  .em-event-page .em-slot-status {
+    grid-column: 1 / -1;
+  }
+
+  .em-event-page .em-slot-status {
+    display: flex;
+    align-items: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .em-event-hero__back {
+    margin-bottom: 1.4rem;
+  }
+
+  .em-event-page .em-slot-row {
+    grid-template-columns: 1fr;
+  }
+
+  .em-event-page .em-slot-row > .button,
+  .em-event-page .em-slot-assignees,
+  .em-event-page .em-slot-status {
+    width: 100%;
+    grid-column: 1;
+  }
 }
 
 .em-event-meta {

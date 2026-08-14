@@ -5,6 +5,7 @@ import {
   currentUserSlot,
   eventAttendanceProgress,
   eventHasStarted,
+  extractBriefingObjectives,
   formatEventTimeRemaining,
   groupEventSlots,
   isEventId,
@@ -224,5 +225,38 @@ describe("event detail parity model", () => {
     expect(slotSideKey(1)).toBe("East");
     expect(slotSideKey("AmbientLife")).toBe("Ambient");
     expect(slotSideKey("Empty")).toBeUndefined();
+  });
+
+  it("extracts concise briefing objectives without leaking markdown decoration", () => {
+    expect(
+      extractBriefingObjectives(`
+# Mission briefing
+
+## Objectives
+- :objective: **Secure** the [radio tower](https://example.test/map).
+- :medical: Establish a casualty collection point.
+- :radio: Report extraction readiness on \`long-range\`.
+
+| Unit | Callsign |
+| --- | --- |
+| Alpha | One |
+`),
+    ).toEqual([
+      { icon: "objective", text: "Secure the radio tower." },
+      { icon: "medical", text: "Establish a casualty collection point." },
+      { icon: "radio", text: "Report extraction readiness on long-range." },
+    ]);
+  });
+
+  it("falls back to briefing sentences when prose has no objective list", () => {
+    expect(
+      extractBriefingObjectives(
+        "Recon the western approach. Avoid contact until the support element is ready! Extract before dawn.",
+      ),
+    ).toEqual([
+      { icon: "objective", text: "Recon the western approach." },
+      { icon: "warning", text: "Avoid contact until the support element is ready!" },
+      { icon: "radio", text: "Extract before dawn." },
+    ]);
   });
 });

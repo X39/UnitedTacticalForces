@@ -1,6 +1,8 @@
 import type { UpcomingEvent } from "@/api/types";
 
 export type UpcomingEventFilter = "all" | "confirmed" | "needs-signups" | "open";
+export type OperationReadiness = "ready" | "needs-signups";
+export type UpcomingAttendance = "Accepted" | "Maybe" | "Rejected" | "Unassigned";
 
 export function normalizeEventAcceptance(
   value: UpcomingEvent["metaAcceptance"],
@@ -22,6 +24,19 @@ export function normalizeEventAcceptance(
 
 export function eventNeedsSignups(event: UpcomingEvent): boolean {
   return event.minimumAccepted > 0 && event.acceptedCount < event.minimumAccepted;
+}
+
+export function eventReadiness(event: UpcomingEvent): OperationReadiness {
+  return eventNeedsSignups(event) ? "needs-signups" : "ready";
+}
+
+export function eventAttendance(event: UpcomingEvent): UpcomingAttendance {
+  return normalizeEventAcceptance(event.metaAcceptance) ?? "Unassigned";
+}
+
+export function eventSlotProgress(event: UpcomingEvent): number {
+  if (event.minimumAccepted <= 0) return event.acceptedCount > 0 ? 100 : 0;
+  return Math.min(100, Math.max(0, (event.acceptedCount / event.minimumAccepted) * 100));
 }
 
 export function matchesUpcomingEventFilter(

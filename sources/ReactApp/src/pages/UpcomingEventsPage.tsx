@@ -4,10 +4,9 @@ import {
   ChevronLeft20Regular,
   ChevronRight20Regular,
   Grid24Regular,
-  Search20Regular,
 } from "@fluentui/react-icons";
-import type { TFunction } from "i18next";
 import { useQuery } from "@tanstack/react-query";
+import type { TFunction } from "i18next";
 import { useMemo, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
@@ -18,14 +17,16 @@ import { currentLocale, plainText } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useSiteImage } from "@/app/siteImages";
 import {
-  eventNeedsSignups,
+  eventAttendance,
+  eventReadiness,
+  eventSlotProgress,
   formatEventSlotCount,
   matchesUpcomingEventFilter,
-  normalizeEventAcceptance,
   utcDateKey,
   type UpcomingEventFilter,
 } from "@/app/upcomingEvents";
-import { PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { StatePanel, StatusBadge } from "@/components/primitives";
+import "./publicEvents.css";
 
 type ViewMode = "board" | "calendar";
 const preferenceKey = "UpcomingOperations.ViewMode";
@@ -111,25 +112,76 @@ function buildCalendarDays(month: Date, events: UpcomingEvent[]): CalendarDay[] 
   });
 }
 
+function buildWeekStrip(selectedDate: string, events: UpcomingEvent[]): CalendarDay[] {
+  const selected = new Date(`${selectedDate}T00:00:00Z`);
+  const mondayOffset = (selected.getUTCDay() + 6) % 7;
+  const monday = new Date(selected);
+  monday.setUTCDate(selected.getUTCDate() - mondayOffset);
+  const today = utcDateKey(new Date());
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setUTCDate(monday.getUTCDate() + index);
+    const key = utcDateKey(date)!;
+    return {
+      date,
+      key,
+      inMonth: true,
+      isToday: key === today,
+      events: events.filter((event) => utcDateKey(event.scheduledFor) === key),
+    };
+  });
+}
+
 function monthSummary(count: number, t: TFunction): string {
   if (count === 0) return t("Pages_Events_Upcoming_CountNoScheduled");
   if (count === 1) return t("Pages_Events_Upcoming_CountOneScheduled");
   return formatResource(t("Pages_Events_Upcoming_CountScheduled"), count);
 }
 
+function readinessLabel(event: UpcomingEvent, t: TFunction): string {
+  return eventReadiness(event) === "needs-signups"
+    ? t("Pages_Events_Upcoming_StatusLowSlots")
+    : t("Pages_Events_Upcoming_StatusConfirmed");
+}
+
 function attendanceLabel(event: UpcomingEvent, t: TFunction): string {
-  switch (normalizeEventAcceptance(event.metaAcceptance)) {
+  switch (eventAttendance(event)) {
     case "Accepted":
-      return t("Pages_Events_Upcoming_StatusConfirmed");
+      return t("Pages_Public_Home_UserStatusConfirmed");
     case "Rejected":
-      return t("Pages_Events_Upcoming_StatusDeclined");
+      return t("Pages_Public_Home_UserStatusDeclined");
     case "Maybe":
-      return t("Pages_Events_Upcoming_StatusMaybe");
+      return t("Pages_Public_Home_UserStatusMaybe");
     default:
-      return eventNeedsSignups(event)
-        ? t("Pages_Events_Upcoming_StatusLowSlots")
-        : t("Pages_Events_Upcoming_StatusOpenSlots");
+      return t("Pages_Public_Home_UserStatusUnassigned");
   }
+}
+
+function attendanceTone(event: UpcomingEvent): "success" | "danger" | "warning" | "neutral" {
+  switch (eventAttendance(event)) {
+    case "Accepted":
+      return "success";
+    case "Rejected":
+      return "danger";
+    case "Maybe":
+      return "warning";
+    default:
+      return "neutral";
+  }
+}
+
+function ReadinessBadge({ event }: { event: UpcomingEvent }) {
+  const { t } = useTranslation();
+  return (
+    <StatusBadge tone={eventReadiness(event) === "needs-signups" ? "warning" : "success"}>
+      {readinessLabel(event, t)}
+    </StatusBadge>
+  );
+}
+
+function AttendanceBadge({ event }: { event: UpcomingEvent }) {
+  const { t } = useTranslation();
+  return <StatusBadge tone={attendanceTone(event)}>{attendanceLabel(event, t)}</StatusBadge>;
 }
 
 export function Component() {
@@ -148,7 +200,6 @@ export function Component() {
   });
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [filter, setFilter] = useState<UpcomingEventFilter>("all");
-  const [search, setSearch] = useState("");
   const [displayedMonth, setDisplayedMonth] = useState(currentUtcMonth);
   const [selectedDate, setSelectedDate] = useState<string>();
   const [selectedEventId, setSelectedEventId] = useState<string>();
@@ -162,15 +213,8 @@ export function Component() {
     [query.data],
   );
   const boardEvents = useMemo(
-    () =>
-      sortedEvents.filter(
-        (event) =>
-          matchesUpcomingEventFilter(event, filter) &&
-          `${event.title} ${event.terrainTitle} ${event.modPackDefinitionTitle}`
-            .toLocaleLowerCase()
-            .includes(search.trim().toLocaleLowerCase()),
-      ),
-    [filter, search, sortedEvents],
+    () => sortedEvents.filter((event) => matchesUpcomingEventFilter(event, filter)),
+    [filter, sortedEvents],
   );
   const displayedEvents = useMemo(
     () => sortedEvents.filter((event) => isInMonth(utcDateKey(event.scheduledFor), displayedMonth)),
@@ -222,16 +266,24 @@ export function Component() {
 
   return (
     <div
-      className="page-wrap operations-page"
+      className="operations-page public-page"
       style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
     >
-      <PageHeader
-        kicker={t("Shared_CommunityNav_Operations")}
-        title={t("Auto_UpcomingOperations_f2355c40")}
-        description={t(
-          "Auto_FindPlannedMissionsTrainingWindowsTerrainRequirementsModSets_8b14be0c",
-        )}
-        actions={
+      <section className="public-hero public-hero--compact editorial-hero operations-hero">
+        <div className="public-hero__inner public-hero__inner--single">
+          <div className="public-hero__copy">
+            <Link className="operations-hero__back" to="/">
+              <ChevronLeft20Regular /> {t("Auto_BackToHome_76c5505f")}
+            </Link>
+            <span className="kicker">{t("Shared_CommunityNav_Operations")}</span>
+            <h1>{t("Auto_UpcomingOperations_f2355c40")}</h1>
+            <p>{t("Auto_FindPlannedMissionsTrainingWindowsTerrainRequirementsModSets_8b14be0c")}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="content-section public-section operations-workspace">
+        <div className="operations-commandbar">
           <div
             className="view-toggle"
             role="tablist"
@@ -256,100 +308,107 @@ export function Component() {
               <Grid24Regular /> {t("Board")}
             </button>
           </div>
-        }
-      />
-
-      {view === "board" ? (
-        <div className="toolbar">
-          <label className="search-field">
-            <Search20Regular />
-            <span className="sr-only">{t("React_UI_SearchOperations")}</span>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("React_UI_SearchOperations")}
-            />
-          </label>
-          <div className="filter-chips" role="group" aria-label={t("React_UI_StatusFilter")}>
-            {(["all", "confirmed", "needs-signups", "open"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={filter === value ? "active" : ""}
-                onClick={() => setFilter(value)}
-              >
-                {value === "all"
-                  ? t("Pages_Events_Upcoming_FilterAll")
-                  : value === "confirmed"
-                    ? t("Pages_Events_Upcoming_FilterConfirmed")
-                    : value === "needs-signups"
-                      ? t("Pages_Events_Upcoming_FilterNeedsSignups")
-                      : t("Pages_Events_Upcoming_FilterOpen")}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="calendar-toolbar">
-          <span>{t("Auto_AllTimesInUTC_3b1ff9db")}</span>
-          <button
-            className="button button--ghost button--small"
-            type="button"
-            onClick={() => void query.refetch()}
-          >
-            <ArrowSync20Regular /> {t("Common_Refresh")}
-          </button>
-        </div>
-      )}
-
-      {query.isLoading && (
-        <StatePanel kind="loading">{t("Pages_Public_Home_OperationsLoading")}</StatePanel>
-      )}
-      {query.isError && (
-        <StatePanel
-          kind="error"
-          action={
+          <div className="operations-commandbar__meta">
+            <span>{t("Auto_AllTimesInUTC_3b1ff9db")}</span>
             <button
-              className="button button--ghost"
+              className="button button--ghost button--small"
               type="button"
               onClick={() => void query.refetch()}
             >
-              {t("React_UI_Retry")}
+              <ArrowSync20Regular /> {t("Common_Refresh")}
             </button>
-          }
-        >
-          {t("Pages_Events_Upcoming_ErrorLoadFailed")}
-        </StatePanel>
-      )}
-      {!query.isLoading &&
-        !query.isError &&
-        view === "board" &&
-        (boardEvents.length ? (
-          <div className="operation-board">
-            {boardEvents.map((event) => (
-              <OperationCard event={event} fallbackImage={cardImage} key={event.primaryKey} />
-            ))}
           </div>
-        ) : (
-          <StatePanel kind="empty" title={t("Pages_Events_Upcoming_CountNoScheduled")}>
-            {t("Auto_NoOperationsMatchTheSelectedFilter_eaf9aeab")}
+        </div>
+
+        {view === "board" && (
+          <div className="operations-filters">
+            <span className="kicker">{t("React_UI_StatusFilter")}</span>
+            <div className="filter-chips" role="group" aria-label={t("React_UI_StatusFilter")}>
+              {(["all", "confirmed", "needs-signups", "open"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={filter === value ? "active" : ""}
+                  aria-pressed={filter === value}
+                  onClick={() => setFilter(value)}
+                >
+                  {value === "all"
+                    ? t("Pages_Events_Upcoming_FilterAll")
+                    : value === "confirmed"
+                      ? t("Pages_Events_Upcoming_FilterConfirmed")
+                      : value === "needs-signups"
+                        ? t("Pages_Events_Upcoming_FilterNeedsSignups")
+                        : t("Pages_Events_Upcoming_FilterOpen")}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {query.isLoading && <OperationsSkeleton view={view} />}
+        {query.isError && (
+          <StatePanel
+            kind="error"
+            action={
+              <button
+                className="button button--ghost"
+                type="button"
+                onClick={() => void query.refetch()}
+              >
+                {t("React_UI_Retry")}
+              </button>
+            }
+          >
+            {t("Pages_Events_Upcoming_ErrorLoadFailed")}
           </StatePanel>
-        ))}
-      {!query.isLoading && !query.isError && view === "calendar" && (
-        <CalendarWorkspace
-          month={displayedMonth}
-          events={displayedEvents}
-          days={calendarDays}
-          weekdayLabels={weekdayLabels}
-          selectedDate={effectiveSelectedDate}
-          selectedEvent={selectedEvent}
-          agendaGroups={agendaGroups}
-          onPrevious={() => showMonth(-1)}
-          onNext={() => showMonth(1)}
-          onSelectDate={selectDate}
-          onSelectEvent={selectEvent}
-        />
-      )}
+        )}
+        {!query.isLoading &&
+          !query.isError &&
+          view === "board" &&
+          (boardEvents.length ? (
+            <div className="operation-board">
+              {boardEvents.map((event, index) => (
+                <OperationCard
+                  event={event}
+                  fallbackImage={cardImage}
+                  featured={index === 0}
+                  key={event.primaryKey}
+                />
+              ))}
+            </div>
+          ) : (
+            <StatePanel kind="empty" title={t("Pages_Events_Upcoming_CountNoScheduled")}>
+              {t("Auto_NoOperationsMatchTheSelectedFilter_eaf9aeab")}
+            </StatePanel>
+          ))}
+        {!query.isLoading && !query.isError && view === "calendar" && (
+          <CalendarWorkspace
+            month={displayedMonth}
+            events={displayedEvents}
+            days={calendarDays}
+            weekdayLabels={weekdayLabels}
+            selectedDate={effectiveSelectedDate}
+            selectedEvent={selectedEvent}
+            agendaGroups={agendaGroups}
+            onPrevious={() => showMonth(-1)}
+            onNext={() => showMonth(1)}
+            onSelectDate={selectDate}
+            onSelectEvent={selectEvent}
+          />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function OperationsSkeleton({ view }: { view: ViewMode }) {
+  const { t } = useTranslation();
+  return (
+    <div className={`operations-skeleton operations-skeleton--${view}`} role="status">
+      <span className="sr-only">{t("Pages_Public_Home_OperationsLoading")}</span>
+      {Array.from({ length: view === "board" ? 4 : 3 }, (_, index) => (
+        <span aria-hidden="true" key={index} />
+      ))}
     </div>
   );
 }
@@ -382,6 +441,7 @@ function CalendarWorkspace({
   const { t } = useTranslation();
   const label = monthLabel(month);
   const summary = monthSummary(events.length, t);
+  const weekDays = buildWeekStrip(selectedDate, events);
   return (
     <section className="calendar-workspace" aria-label={t("Auto_OperationsCalendar_aaaf0488")}>
       <div className="calendar-main">
@@ -396,6 +456,22 @@ function CalendarWorkspace({
           <button type="button" aria-label={t("Auto_NextMonth_74e53211")} onClick={onNext}>
             <ChevronRight20Regular />
           </button>
+        </div>
+
+        <div className="calendar-week-strip" aria-label={dateLabel(selectedDate)}>
+          {weekDays.map((day) => (
+            <button
+              className={`${day.key === selectedDate ? "selected" : ""}${day.isToday ? " today" : ""}`}
+              type="button"
+              aria-pressed={day.key === selectedDate}
+              onClick={() => onSelectDate(day.key)}
+              key={day.key}
+            >
+              <span>{formatUtc(day.date, { weekday: "short" })}</span>
+              <strong>{day.date.getUTCDate()}</strong>
+              <i className={day.events.length ? "has-events" : ""} aria-hidden="true" />
+            </button>
+          ))}
         </div>
 
         <div className="calendar-overview">
@@ -429,7 +505,7 @@ function CalendarWorkspace({
                 {day.events.slice(0, 3).map((event) => (
                   <button
                     type="button"
-                    className={event.primaryKey === selectedEvent?.primaryKey ? "active" : ""}
+                    className={`${event.primaryKey === selectedEvent?.primaryKey ? "active" : ""} ${eventReadiness(event) === "needs-signups" ? "needs-signups" : "ready"}`}
                     aria-pressed={event.primaryKey === selectedEvent?.primaryKey}
                     onClick={() => onSelectEvent(event)}
                     key={event.primaryKey}
@@ -466,10 +542,18 @@ function CalendarWorkspace({
                     <span>{eventTime(event.scheduledFor)}</span>
                     <strong>{event.title}</strong>
                   </button>
-                  <span>{event.terrainTitle || t("Pages_Events_Upcoming_TerrainPending")}</span>
-                  <span>
-                    {formatEventSlotCount(event)} {t("Pages_Events_Upcoming_SlotsLabel")}
-                  </span>
+                  <div className="calendar-agenda__status">
+                    <ReadinessBadge event={event} />
+                    <AttendanceBadge event={event} />
+                  </div>
+                  <div className="calendar-agenda__slots">
+                    <span>
+                      {formatEventSlotCount(event)} {t("Pages_Events_Upcoming_SlotsLabel")}
+                    </span>
+                    <div className="slot-meter" aria-label={formatEventSlotCount(event)}>
+                      <span style={{ width: `${eventSlotProgress(event)}%` }} />
+                    </div>
+                  </div>
                   <Link
                     className="button button--ghost button--small"
                     to={`/events/${event.primaryKey}`}
@@ -485,13 +569,18 @@ function CalendarWorkspace({
       <aside className="calendar-detail" aria-label={t("Auto_SelectedOperation_3716235b")}>
         {selectedEvent ? (
           <>
-            <div className="calendar-detail__heading">
-              <span className="kicker">{t("Auto_SelectedOperation_3716235b")}</span>
-              <StatusBadge tone={eventNeedsSignups(selectedEvent) ? "warning" : "success"}>
-                {attendanceLabel(selectedEvent, t)}
-              </StatusBadge>
-            </div>
+            <span className="kicker">{t("Auto_SelectedOperation_3716235b")}</span>
             <h2>{selectedEvent.title}</h2>
+            <div className="calendar-detail__statuses">
+              <div>
+                <small>{t("Auto_SignupReadiness_bde4bfc8")}</small>
+                <ReadinessBadge event={selectedEvent} />
+              </div>
+              <div>
+                <small>{t("Auto_YourAttendance_71dff290")}</small>
+                <AttendanceBadge event={selectedEvent} />
+              </div>
+            </div>
             <dl>
               <div>
                 <dt>{t("Date")}</dt>
@@ -521,11 +610,7 @@ function CalendarWorkspace({
               <span>{t("Auto_SlotProgress_ef2c2303")}</span>
               <strong>{formatEventSlotCount(selectedEvent)}</strong>
               <div className="slot-meter" aria-label={formatEventSlotCount(selectedEvent)}>
-                <span
-                  style={{
-                    width: `${selectedEvent.minimumAccepted > 0 ? Math.min(100, (selectedEvent.acceptedCount / selectedEvent.minimumAccepted) * 100) : selectedEvent.acceptedCount > 0 ? 100 : 0}%`,
-                  }}
-                />
+                <span style={{ width: `${eventSlotProgress(selectedEvent)}%` }} />
               </div>
               <small>{formatResource(t("Auto_Pending_7948f853"), selectedEvent.maybeCount)}</small>
             </div>
@@ -546,26 +631,46 @@ function CalendarWorkspace({
   );
 }
 
-function OperationCard({ event, fallbackImage }: { event: UpcomingEvent; fallbackImage: string }) {
+function OperationCard({
+  event,
+  fallbackImage,
+  featured,
+}: {
+  event: UpcomingEvent;
+  fallbackImage: string;
+  featured: boolean;
+}) {
   const { t } = useTranslation();
+  const resolvedImage = resolveImageUrl(event.imagePath) ?? fallbackImage;
   return (
-    <article className="operation-board-card">
+    <article className={`operation-board-card${featured ? " operation-board-card--featured" : ""}`}>
       <div
         className="operation-board-card__media"
-        style={{ backgroundImage: `url("${resolveImageUrl(event.imagePath) ?? fallbackImage}")` }}
+        style={{ backgroundImage: `url("${resolvedImage.replaceAll('"', "%22")}")` }}
       >
-        <StatusBadge tone={eventNeedsSignups(event) ? "warning" : "success"}>
-          {attendanceLabel(event, t)}
-        </StatusBadge>
+        <div className="operation-board-card__statuses">
+          <ReadinessBadge event={event} />
+          <span className="operation-board-card__slot-count">
+            {formatEventSlotCount(event)} {t("Pages_Events_Upcoming_SlotsLabel")}
+          </span>
+        </div>
         <time dateTime={event.scheduledFor}>
           {dateLabel(event.scheduledFor)} · {eventTime(event.scheduledFor)}
         </time>
       </div>
       <div className="operation-board-card__body">
-        <span className="kicker">{t("Pages_Events_Upcoming_TypeOperation")}</span>
-        <h2>
-          <Link to={`/events/${event.primaryKey}`}>{event.title}</Link>
-        </h2>
+        <div className="operation-board-card__heading">
+          <div>
+            <span className="kicker">{t("Pages_Events_Upcoming_TypeOperation")}</span>
+            <h2>
+              <Link to={`/events/${event.primaryKey}`}>{event.title}</Link>
+            </h2>
+          </div>
+          <div className="operation-board-card__attendance">
+            <small>{t("Auto_YourAttendance_71dff290")}</small>
+            <AttendanceBadge event={event} />
+          </div>
+        </div>
         <p>{plainText(event.description) || t("Pages_Events_Upcoming_NoBriefingSummary")}</p>
         <dl>
           <div>
@@ -581,10 +686,15 @@ function OperationCard({ event, fallbackImage }: { event: UpcomingEvent; fallbac
             <dd>{event.hostedBy.nickname || t("Pages_Events_Upcoming_HostPending")}</dd>
           </div>
         </dl>
+        <div className="operation-board-card__progress">
+          <span>{t("Auto_SlotProgress_ef2c2303")}</span>
+          <strong>{formatEventSlotCount(event)}</strong>
+          <div className="slot-meter" aria-label={formatEventSlotCount(event)}>
+            <span style={{ width: `${eventSlotProgress(event)}%` }} />
+          </div>
+        </div>
         <div className="card-footer">
-          <span>
-            {t("Pages_Events_Upcoming_SlotsLabel")}: {formatEventSlotCount(event)}
-          </span>
+          <span>{eventTime(event.scheduledFor)}</span>
           <Link className="button button--ghost button--small" to={`/events/${event.primaryKey}`}>
             {t("Pages_Events_Upcoming_ActionViewSlots")}
           </Link>

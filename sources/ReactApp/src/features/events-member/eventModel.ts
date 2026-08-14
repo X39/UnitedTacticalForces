@@ -2,12 +2,132 @@ import type { FullEvent, FullUser } from "@/api/types";
 import type { EventSlot, EventSlotGroup, EventSlotRow, SlotSide } from "./types";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const briefingIconPattern = /^:(?<icon>[a-z0-9-]+):\s*/i;
+const listPrefixPattern = /^\s*(?:[-*+]\s+|\d+[.)]\s+)/;
+const supportedBriefingIcons = new Set([
+  "document",
+  "extract",
+  "host",
+  "intel",
+  "map",
+  "medical",
+  "modpack",
+  "objective",
+  "radio",
+  "rally",
+  "slot",
+  "stealth",
+  "support",
+  "time",
+  "warning",
+]);
+const fallbackBriefingIcons = ["objective", "warning", "radio"] as const;
+
+export interface BriefingObjective {
+  icon: string;
+  text: string;
+}
 
 export type SlotRowAction =
   | { kind: "assign" | "claim-role"; slot: EventSlot }
   | {
       kind: "assigned" | "assigning" | "closed" | "current" | "hidden" | "locked" | "sign-in";
     };
+
+function normalizeBriefingText(value: string): string {
+  return value
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/:[a-z0-9-]+:/gi, "")
+    .replace(/[*_~>#]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncateBriefingText(value: string): string {
+  return value.length <= 150 ? value : `${value.slice(0, 147).trimEnd()}...`;
+}
+
+function normalizeBriefingProse(value: string): string {
+  let insideFence = false;
+  const lines = value.replace(/\r\n?/g, "\n").split("\n");
+  return normalizeBriefingText(
+    lines
+      .filter((line) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("```")) {
+          insideFence = !insideFence;
+          return false;
+        }
+        return !insideFence && !trimmed.startsWith("#") && !trimmed.startsWith("|");
+      })
+      .join(" "),
+  );
+}
+
+function fallbackObjectives(description: string): BriefingObjective[] {
+  return normalizeBriefingProse(description)
+    .split(/(?<=[.!?])\s+/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((text, index) => ({
+      icon: fallbackBriefingIcons[index % fallbackBriefingIcons.length]!,
+      text: truncateBriefingText(text),
+    }));
+}
+
+/**
+ * Builds the compact objective rail used above the full briefing. The extraction mirrors the
+ * classic client: explicit supported icon shortcodes win, list entries become objectives, and a
+ * short sentence fallback keeps prose-only briefings useful.
+ */
+export function extractBriefingObjectives(
+  description: string | null | undefined,
+): BriefingObjective[] {
+  if (!description?.trim()) return [];
+
+  const objectives: BriefingObjective[] = [];
+  let insideFence = false;
+
+  for (const sourceLine of description.replace(/\r\n?/g, "\n").split("\n")) {
+    const trimmed = sourceLine.trim();
+    if (trimmed.startsWith("```")) {
+      insideFence = !insideFence;
+      continue;
+    }
+    if (!trimmed || insideFence || trimmed.startsWith("#") || trimmed.startsWith("|")) continue;
+
+    const listMatch = listPrefixPattern.exec(sourceLine);
+    const candidate = listMatch ? sourceLine.slice(listMatch[0].length) : trimmed;
+    const iconMatch = briefingIconPattern.exec(candidate);
+    const icon = iconMatch?.groups?.icon?.toLocaleLowerCase();
+    const supportedIcon = icon && supportedBriefingIcons.has(icon) ? icon : undefined;
+    if (!listMatch && !supportedIcon) continue;
+    const normalized = normalizeBriefingText(candidate);
+
+    const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+    const looksLikeShortHeading =
+      !supportedIcon &&
+      !listMatch &&
+      normalized.length <= 42 &&
+      wordCount <= 4 &&
+      !/[.,:]/.test(normalized);
+    if (!normalized || looksLikeShortHeading) continue;
+
+    objectives.push({
+      icon:
+        supportedIcon ?? fallbackBriefingIcons[objectives.length % fallbackBriefingIcons.length]!,
+      text: truncateBriefingText(normalized),
+    });
+    if (objectives.length === 3) return objectives;
+  }
+
+  if (objectives.length > 0) return objectives;
+
+  return fallbackObjectives(description);
+}
 
 export function isEventId(value: string): boolean {
   return uuidPattern.test(value);

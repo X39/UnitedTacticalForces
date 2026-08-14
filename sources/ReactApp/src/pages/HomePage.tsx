@@ -105,7 +105,7 @@ export function Component() {
   const hasCommunityChannels = Boolean(configuration.Urls.Discord || configuration.Urls.TeamSpeak3);
 
   return (
-    <>
+    <div className="home-page public-page">
       <section
         className="public-hero public-hero--home home-hero"
         style={{ "--hero-image": `url("${primaryImage.replaceAll('"', "%22")}")` } as CSSProperties}
@@ -394,6 +394,6 @@ export function Component() {
           ))}
         </div>
       </section>
-    </>
+    </div>
   );
 }

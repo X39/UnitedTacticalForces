@@ -10,6 +10,9 @@ const configuration = {
 const user = {
   primaryKey: userId,
   nickname: "Player One",
+  avatar:
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  avatarMimeType: "image/png",
   isBanned: false,
   isVerified: true,
   isDeleted: false,
@@ -20,7 +23,8 @@ const user = {
 const operation = {
   primaryKey: eventId,
   title: "Operation Copper Trail",
-  description: "## Situation\nCoordinate the reconnaissance team.",
+  description:
+    "## Situation\n- :objective: Coordinate the reconnaissance team.\n- :radio: Report extraction readiness.",
   terrainPrimaryKey: 1,
   terrainTitle: "Altis",
   terrainImagePath: "",
@@ -102,6 +106,14 @@ test("renders the event workflow and confirms attendance changes that release a 
 
   await expect(page.getByRole("heading", { name: operation.title })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Slot register" })).toBeVisible();
+  await expect(page.locator(".em-briefing-objectives")).toContainText(
+    "Coordinate the reconnaissance team.",
+  );
+  await expect(page.locator(".em-slot-avatars img")).toHaveAttribute(
+    "src",
+    `data:image/png;base64,${user.avatar}`,
+  );
+  await expect(page.locator(".em-slot-status").first()).toContainText("Your slot");
   await expect(page.getByRole("button", { name: "Your slot" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Assign slot" })).toBeEnabled();
 
@@ -118,4 +130,13 @@ test("renders the event workflow and confirms attendance changes that release a 
   await expect
     .poll(() => mutationPaths)
     .toEqual([`/api/events/${eventId}/maybe`, `/api/events/${eventId}/slotting/2/assign`]);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      ),
+    )
+    .toBe(0);
 });
