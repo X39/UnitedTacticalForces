@@ -36,6 +36,21 @@ import {
 type WorkspaceTab =
   "overview" | "runtime" | "cloud" | "logs" | "files" | "configuration" | "jobs" | "audit";
 
+const workspaceTabIds: readonly WorkspaceTab[] = [
+  "overview",
+  "runtime",
+  "cloud",
+  "logs",
+  "files",
+  "configuration",
+  "jobs",
+  "audit",
+];
+
+export function workspaceTabFromSearch(value: string | null): WorkspaceTab {
+  return workspaceTabIds.includes(value as WorkspaceTab) ? (value as WorkspaceTab) : "overview";
+}
+
 function JobList({
   jobs,
   busy,
@@ -357,10 +372,20 @@ export function ServerWorkspaceView({
 }) {
   const c = useHostingCopy();
   const { t } = useTranslation();
-  const [tab, setTab] = useState<WorkspaceTab>("overview");
+  const [workspaceSearch, setWorkspaceSearch] = useSearchParams();
+  const tab = workspaceTabFromSearch(workspaceSearch.get("tab"));
   const [selectedAction, setSelectedAction] = useState<ServerAction | null>(null);
   const [selectedActionError, setSelectedActionError] = useState<string>();
   const primary = primaryServerAction(server.actions, server.deployment?.possibleCost ?? false);
+  const secondaryActions = server.actions.filter(
+    (action) => action.id !== "collect-logs" && action.id !== primary?.id,
+  );
+  const selectTab = (nextTab: WorkspaceTab) => {
+    const next = new URLSearchParams(workspaceSearch);
+    if (nextTab === "overview") next.delete("tab");
+    else next.set("tab", nextTab);
+    setWorkspaceSearch(next);
+  };
   const tabs: [WorkspaceTab, string][] = [
     ["overview", c.overview],
     ["runtime", c.runtimeTab],
@@ -382,7 +407,7 @@ export function ServerWorkspaceView({
             className={
               tab === id ? "next-hosting-tab next-hosting-tab--active" : "next-hosting-tab"
             }
-            onClick={() => setTab(id)}
+            onClick={() => selectTab(id)}
           >
             {label}
           </button>
@@ -487,15 +512,17 @@ export function ServerWorkspaceView({
               )}
             </section>
           </div>
-          <section className="next-hosting-panel">
-            <span className="kicker">{t("Hosting_Detail_ActionsKicker")}</span>
-            <h2>{t("Hosting_Detail_ActionsTitle")}</h2>
-            <ServerActions
-              actions={server.actions.filter((action) => action.id !== "collect-logs")}
-              busy={actionBusy}
-              onExecute={onExecuteAction}
-            />
-          </section>
+          {secondaryActions.length > 0 && (
+            <section className="next-hosting-panel">
+              <span className="kicker">{t("Hosting_Detail_ActionsKicker")}</span>
+              <h2>{t("Hosting_Detail_ActionsTitle")}</h2>
+              <ServerActions
+                actions={secondaryActions}
+                busy={actionBusy}
+                onExecute={onExecuteAction}
+              />
+            </section>
+          )}
           <section className="next-hosting-panel">
             <span className="kicker">{t("React_ServerWorkspace_RecentActivity")}</span>
             <h2>{t("Hosting_Detail_OperationsTitle")}</h2>

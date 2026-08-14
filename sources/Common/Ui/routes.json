@@ -276,14 +276,14 @@
       "id": "field-report",
       "canonical": "/field-reports/{Slug}",
       "aliases": ["/media/{Slug}"],
-      "certified": true,
+      "certified": false,
       "shell": "community"
     },
     {
       "id": "gdpr",
       "canonical": "/gdpr",
       "aliases": [],
-      "certified": true,
+      "certified": false,
       "shell": "community"
     },
     {
@@ -360,7 +360,7 @@
       "id": "verein-ledger",
       "canonical": "/verein/kassenbuch",
       "aliases": ["/unit/kassenbuch"],
-      "certified": true,
+      "certified": false,
       "shell": "community"
     },
     {

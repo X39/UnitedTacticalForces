@@ -8,6 +8,7 @@ import {
   routeManifest,
   routePatternToRegExp,
 } from "@/app/routes";
+import { shouldFallBackToClassic } from "@/app/RouteCertificationGate";
 import { implementedReactRoutePatterns } from "@/app/App";
 
 function collectBlazorRoutes(directory: string): string[] {
@@ -94,12 +95,20 @@ describe("route manifest", () => {
     expect(matchRoute("/field-reports")?.certified).toBe(true);
   });
 
-  it("implements every and only certified manifest pattern", () => {
+  it("implements every certified manifest pattern without treating implementation as certification", () => {
     const certifiedPatterns = routeManifest.routes
       .filter((route) => route.certified)
       .flatMap((route) => [route.canonical, ...route.aliases]);
-    expect(new Set(implementedReactRoutePatterns)).toEqual(new Set(certifiedPatterns));
+    const implementedPatterns = new Set(implementedReactRoutePatterns);
+    for (const pattern of certifiedPatterns) expect(implementedPatterns).toContain(pattern);
     expect(implementedReactRoutePatterns).toHaveLength(new Set(implementedReactRoutePatterns).size);
+  });
+
+  it("falls back only for known routes whose certification has been reopened", () => {
+    expect(shouldFallBackToClassic("/gdpr")).toBe(true);
+    expect(shouldFallBackToClassic("/field-reports/after-action")).toBe(true);
+    expect(shouldFallBackToClassic("/join")).toBe(false);
+    expect(shouldFallBackToClassic("/not-a-real-route")).toBe(false);
   });
 
   it("preserves the path, query, and hash while switching variants", () => {

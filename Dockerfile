@@ -36,6 +36,7 @@ COPY sources/WebApp/Properties/Language.resx sources/WebApp/Properties/Language.
 COPY sources/Common/Ui/routes.json ./sources/Common/Ui/routes.json
 WORKDIR /src/sources/ReactApp
 RUN npm run build
+RUN UTF_REACT_BASE_PATH=/ npm run build:assets
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
@@ -66,6 +67,7 @@ FROM nginx:1.29-alpine AS web
 COPY deploy/nginx.conf /etc/nginx/nginx.conf
 COPY --from=web-publish /out/web/wwwroot/ /usr/share/nginx/html/
 COPY --from=react-build /src/sources/ReactApp/dist/ /usr/share/nginx/html/next/
+COPY --from=react-build /src/sources/ReactApp/dist-root/ /usr/share/nginx/html/canary/
 COPY deploy/webapp.appsettings.json /usr/share/nginx/html/appsettings.json
 
 # Runtime configuration is mounted over appsettings.json in production. Remove

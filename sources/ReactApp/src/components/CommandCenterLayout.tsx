@@ -1,144 +1,21 @@
-import {
-  ArrowExit20Regular,
-  Dismiss24Regular,
-  Navigation24Regular,
-  Person20Regular,
-} from "@fluentui/react-icons";
+import { ArrowExit20Regular, Dismiss24Regular, Navigation24Regular } from "@fluentui/react-icons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, NavLink, Outlet, useLocation } from "react-router";
+import { Link, Outlet, useLocation } from "react-router";
 import type { PublicConfiguration } from "@/app/config";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { setCulture } from "@/app/i18n";
-import type { TranslationKey } from "@/app/localizationTypes";
 import { matchRoute, switchToClassic } from "@/app/routes";
 import { useAuth } from "@/auth/auth";
+import { canAccessCommandCenter } from "@/auth/claims";
 import {
-  canAccessCommandCenter,
-  canAccessConfigurationProfiles,
-  canAccessGameServers,
-  canManageAuthority,
-  canManageContent,
-  canManageEvents,
-  canManageModPacks,
-  canManagePublicPages,
-  canManageTerrains,
-  canManageVereinLedger,
-  canReadFieldReports,
-  hasBaseClaim,
-  hasClaim,
-} from "@/auth/claims";
+  getCommandNavigationContext,
+  getCommandNavigationGroups,
+  isCommandNavigationItemActive,
+} from "@/components/commandNavigation";
 import { StatePanel } from "@/components/primitives";
-
-interface CommandLink {
-  to: string;
-  labelKey: TranslationKey;
-}
-
-interface CommandGroup {
-  labelKey: TranslationKey;
-  links: CommandLink[];
-}
-
-function commandNavigation(user: ReturnType<typeof useAuth>["user"]): CommandGroup[] {
-  const operations: CommandLink[] = [];
-  if (canAccessGameServers(user))
-    operations.push({ to: "/command/servers", labelKey: "Hosting_Nav_Servers" });
-  if (canAccessConfigurationProfiles(user))
-    operations.push({
-      to: "/command/configuration-profiles",
-      labelKey: "Shared_CommandCenter_Nav_CloudConfiguration",
-    });
-  if (canManageEvents(user))
-    operations.push({ to: "/command/events", labelKey: "Shared_CommandCenter_Nav_Events" });
-
-  const assets: CommandLink[] = [];
-  if (canManageModPacks(user))
-    assets.push({ to: "/command/mod-packs", labelKey: "Shared_CommandCenter_Nav_ModPacks" });
-  if (canManageTerrains(user))
-    assets.push({ to: "/command/terrains", labelKey: "Shared_CommandCenter_Nav_Terrains" });
-  const canManageWikiMedia = canReadFieldReports(user);
-  const canManagePages = canManagePublicPages(user);
-  if (canManageWikiMedia)
-    assets.push({
-      to: "/command/field-reports",
-      labelKey: "Shared_CommandCenter_Nav_FieldReports",
-    });
-  if (canManageWikiMedia || canManagePages)
-    assets.push({
-      to: "/command/content/gallery",
-      labelKey: "Shared_CommandCenter_Nav_Gallery",
-    });
-  if (canManagePages)
-    assets.push({
-      to: "/command/content/images/home",
-      labelKey: "Shared_CommandCenter_Nav_PublicImages",
-    });
-
-  const community: CommandLink[] = [];
-  if (
-    hasClaim(user, "adm", "adm:usr", "adm:verein") ||
-    hasBaseClaim(user, "usr", "verein", "verein:members")
-  )
-    community.push({ to: "/command/members", labelKey: "Shared_CommandCenter_Nav_Members" });
-  if (canManageAuthority(user)) {
-    community.push(
-      { to: "/command/roles", labelKey: "Shared_CommandCenter_Nav_Roles" },
-      { to: "/command/claims", labelKey: "Shared_CommandCenter_Nav_Claims" },
-    );
-  }
-
-  const governance: CommandLink[] = [];
-  if (canManageContent(user))
-    governance.push({
-      to: "/command/content",
-      labelKey: "Shared_CommandCenter_Nav_ContentAndDocuments",
-    });
-  if (
-    hasClaim(user, "adm", "adm:usr", "adm:verein") ||
-    hasBaseClaim(user, "usr", "verein", "verein:members")
-  ) {
-    governance.push(
-      {
-        to: "/command/verein/membership-requests",
-        labelKey: "Shared_CommandCenter_Nav_VereinMembershipRequests",
-      },
-      {
-        to: "/command/verein/settings",
-        labelKey: "Shared_CommandCenter_Nav_VereinSettings",
-      },
-    );
-  }
-  if (canManageVereinLedger(user))
-    governance.push({
-      to: "/command/verein/kassenbuch",
-      labelKey: "Shared_CommandCenter_Nav_VereinKassenbuch",
-    });
-  if (governance.length)
-    governance.push({ to: "/command/settings", labelKey: "Shared_CommandCenter_Nav_Settings" });
-
-  const finance: CommandLink[] = hasBaseClaim(user, "fin", "fin:view-all")
-    ? [
-        {
-          to: "/command/hosting-finance",
-          labelKey: "Shared_CommandCenter_Nav_HostingFinance",
-        },
-      ]
-    : [];
-
-  const groups: CommandGroup[] = [
-    {
-      labelKey: "Shared_CommandCenter_Group_CommandCenter",
-      links: [{ to: "/command", labelKey: "Shared_CommandCenter_Nav_Overview" }],
-    },
-    { labelKey: "Shared_CommandCenter_Group_Operations", links: operations },
-    { labelKey: "Shared_CommandCenter_Group_Finance", links: finance },
-    { labelKey: "Shared_CommandCenter_Group_Assets", links: assets },
-    { labelKey: "Shared_CommandCenter_Group_Community", links: community },
-    { labelKey: "Shared_CommandCenter_Group_Governance", links: governance },
-  ];
-  return groups.filter((group) => group.links.length > 0);
-}
+import { ProfileMenu } from "@/components/ProfileMenu";
+import "@/components/commandCenter.css";
 
 export function CommandCenterLayout({ configuration }: { configuration: PublicConfiguration }) {
   const { t, i18n } = useTranslation();
@@ -146,38 +23,8 @@ export function CommandCenterLayout({ configuration }: { configuration: PublicCo
   const location = useLocation();
   const currentRouteIsCertified = matchRoute(location.pathname)?.certified === true;
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const commandPath = location.pathname.toLocaleLowerCase();
-  const currentAreaKey =
-    commandPath === "/command/settings"
-      ? "Shared_CommandCenter_CurrentArea_Settings"
-      : commandPath === "/command/claims"
-        ? "Shared_CommandCenter_CurrentArea_Claims"
-        : commandPath.startsWith("/command/members")
-          ? "Shared_CommandCenter_Nav_Members"
-          : commandPath === "/command/hosting-finance"
-            ? "Shared_CommandCenter_Nav_HostingFinance"
-            : commandPath === "/command/configuration-profiles"
-              ? "Shared_CommandCenter_Nav_CloudConfiguration"
-              : commandPath === "/command/servers"
-                ? "Hosting_Nav_Servers"
-                : commandPath.startsWith("/command/field-reports") ||
-                    commandPath === "/command/wiki-media"
-                  ? "Shared_CommandCenter_Nav_FieldReports"
-                  : commandPath.startsWith("/command/events") || commandPath === "/events/all"
-                    ? "Shared_CommandCenter_Nav_Events"
-                    : commandPath.startsWith("/command/mod-packs") ||
-                        commandPath.startsWith("/data/mod-packs")
-                      ? commandPath === "/command/mod-packs" ||
-                        commandPath.endsWith("/all") ||
-                        commandPath.endsWith("/create")
-                        ? "Shared_CommandCenter_CurrentArea_ModPacks"
-                        : "Shared_CommandCenter_CurrentArea_ModPackDetail"
-                      : commandPath.startsWith("/command/terrains") ||
-                          commandPath.startsWith("/data/terrains")
-                        ? "Shared_CommandCenter_CurrentArea_Terrains"
-                        : commandPath.startsWith("/command/content")
-                          ? "Shared_CommandCenter_Nav_ContentAndDocuments"
-                          : "Shared_CommandCenter_CurrentArea_Overview";
+  const currentContext = getCommandNavigationContext(location.pathname);
+  const currentAreaKey = currentContext?.titleKey ?? "Shared_CommandCenter_CurrentArea_Overview";
   useDocumentTitle(t(currentAreaKey));
 
   if (auth.isLoading)
@@ -199,7 +46,8 @@ export function CommandCenterLayout({ configuration }: { configuration: PublicCo
       </main>
     );
 
-  const groups = commandNavigation(auth.user);
+  const groups = getCommandNavigationGroups(auth.user);
+  const CurrentAreaIcon = currentContext?.item.icon;
   return (
     <div className="command-shell">
       <a className="skip-link" href="#command-content">
@@ -226,18 +74,23 @@ export function CommandCenterLayout({ configuration }: { configuration: PublicCo
         </div>
         <nav aria-label={t("Shared_CommandCenter_NavigationAria")}>
           {groups.map((group) => (
-            <section key={group.labelKey} className="command-nav__group">
-              <span>{t(group.labelKey)}</span>
-              {group.links.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.to === "/command"}
-                  onClick={() => setDrawerOpen(false)}
-                >
-                  {t(link.labelKey)}
-                </NavLink>
-              ))}
+            <section key={group.id} className="command-nav__group">
+              <span className="command-nav__group-label">{t(group.labelKey)}</span>
+              {group.items.map((item) => {
+                const active = isCommandNavigationItemActive(item, location.pathname);
+                const ItemIcon = item.icon;
+                return (
+                  <Link
+                    key={item.id}
+                    to={item.to}
+                    {...(active ? { className: "active", "aria-current": "page" as const } : {})}
+                    onClick={() => setDrawerOpen(false)}
+                  >
+                    <ItemIcon aria-hidden="true" />
+                    <span>{t(item.labelKey)}</span>
+                  </Link>
+                );
+              })}
             </section>
           ))}
         </nav>
@@ -262,6 +115,11 @@ export function CommandCenterLayout({ configuration }: { configuration: PublicCo
           >
             <Navigation24Regular />
           </button>
+          {CurrentAreaIcon && (
+            <span className="command-topbar__area-icon" aria-hidden="true">
+              <CurrentAreaIcon />
+            </span>
+          )}
           <div className="command-topbar__title">
             <span>{t("Shared_CommandCenter_HeaderTitle")}</span>
             <strong>{t(currentAreaKey)}</strong>
@@ -286,20 +144,10 @@ export function CommandCenterLayout({ configuration }: { configuration: PublicCo
                 {t("React_UI_UseClassic")}
               </button>
             )}
-            <Link className="button button--ghost button--small" to="/">
-              <ArrowExit20Regular /> {t("Shared_CommandCenter_BackToSite")}
+            <Link className="button button--ghost button--small command-topbar__site-link" to="/">
+              <ArrowExit20Regular /> <span>{t("Shared_CommandCenter_BackToSite")}</span>
             </Link>
-            <details className="profile-menu command-profile-menu">
-              <summary>
-                <Person20Regular /> <span>{auth.user?.nickname}</span>
-              </summary>
-              <div>
-                <Link to="/settings">{t("Shared_NavMenu_UserSettings")}</Link>
-                <button type="button" onClick={() => auth.logout()}>
-                  {t("Shared_NavMenu_Logout")}
-                </button>
-              </div>
-            </details>
+            <ProfileMenu mode="command" />
           </div>
         </header>
         <main id="command-content" className="command-content" tabIndex={-1}>

@@ -113,18 +113,19 @@ const job = {
   ],
 } as unknown as LifecycleJob;
 
-function renderWorkspace(element: ReactNode) {
+function renderWorkspace(element: ReactNode, initialEntry = "/command") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  const router = createMemoryRouter([{ path: "*", element }], { initialEntries: ["/command"] });
-  return render(
+  const router = createMemoryRouter([{ path: "*", element }], { initialEntries: [initialEntry] });
+  const result = render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
       </QueryClientProvider>
     </I18nextProvider>,
   );
+  return { ...result, router };
 }
 
 describe("certified server workspace", () => {
@@ -165,7 +166,7 @@ describe("certified server workspace", () => {
       />,
     );
 
-    await user.click(screen.getAllByRole("button", { name: "Start" })[0]!);
+    await user.click(screen.getByRole("button", { name: "Start" }));
     const dialog = screen.getByRole("dialog");
     await user.type(within(dialog).getByRole("textbox"), "START");
     await user.click(within(dialog).getByRole("button", { name: "Start" }));
@@ -463,5 +464,28 @@ describe("certified server workspace", () => {
     expect(screen.getByRole("button", { name: "Dateien" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Konfiguration" })).toBeVisible();
     expect(screen.getByText("Serverdaten")).toBeVisible();
+  });
+
+  it("deep-links workspace tabs and preserves unrelated action parameters", async () => {
+    const user = userEvent.setup();
+    const { router } = renderWorkspace(
+      <ServerWorkspaceView
+        server={server}
+        jobs={[job]}
+        operations={[]}
+        actionBusy={false}
+        jobBusy={false}
+        onExecuteAction={vi.fn().mockResolvedValue(undefined)}
+        onRetryJob={vi.fn()}
+        onSkipJob={vi.fn()}
+      />,
+      "/command/servers/server-1?tab=jobs&action=start",
+    );
+
+    expect(screen.getByText(/Steam did not answer\./)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Audit" }));
+    expect(router.state.location.search).toBe("?tab=audit&action=start");
+    await user.click(screen.getByRole("button", { name: "Overview" }));
+    expect(router.state.location.search).toBe("?action=start");
   });
 });

@@ -31,6 +31,15 @@ export function VereinPage() {
     queryKey: queryKeys.vereinSettings,
     queryFn: ({ signal }) => vereinService.settings(signal),
   });
+  const statutes = useQuery({
+    queryKey: queryKeys.vereinStatutes,
+    queryFn: ({ signal }) => vereinService.statutes(signal),
+    retry: false,
+  });
+  const minutes = useQuery({
+    queryKey: queryKeys.vereinMinutes,
+    queryFn: ({ signal }) => vereinService.minutes(signal),
+  });
   const request = useQuery({
     queryKey: queryKeys.membershipRequest,
     queryFn: ({ signal }) => vereinService.myMembershipRequest(signal),
@@ -39,28 +48,95 @@ export function VereinPage() {
   const contributionText = i18n.resolvedLanguage?.startsWith("de")
     ? settings.data?.membershipContributionPublicTextDe
     : settings.data?.membershipContributionPublicTextEn;
+  const canReadLedger = canAccessVereinLedger(auth.user);
+  const membershipStatus = !auth.isAuthenticated
+    ? t("Pages_Verein_Index_SignInForStatus")
+    : isVereinMember(auth.user)
+      ? auth.user?.vereinMemberNumber
+        ? formatResource(t("Pages_Verein_Index_ActiveMemberNumber"), auth.user.vereinMemberNumber)
+        : t("Pages_Verein_Index_ActiveMember")
+      : request.data
+        ? t(membershipStatusTranslationKey(request.data.status))
+        : t("Pages_Verein_Index_NoRequest");
+  const membershipDetail = isVereinMember(auth.user)
+    ? t("Pages_Verein_Index_MembershipActiveBody")
+    : request.data
+      ? formatResource(
+          t("Pages_Verein_Index_MembershipRequestBody"),
+          formatDate(request.data.timeStampUpdated),
+        )
+      : t("Pages_Verein_Index_MembershipOpenBody");
   return (
-    <div className="verein-page">
+    <div className="verein-page public-page">
       <section
-        className="editorial-hero editorial-hero--verein"
+        className="public-hero editorial-hero"
         style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
       >
-        <div>
-          <span className="kicker">{t("Pages_Verein_Index_Kicker")}</span>
-          <h1>{t("Pages_Verein_Index_Title")}</h1>
-          <p>{t("Pages_Verein_Index_Subtitle")}</p>
-          <div>
-            <Link className="button button--gold" to="/verein/satzung">
-              {t("Pages_Verein_Index_ReadSatzung")}
-            </Link>
-            <Link className="button button--glass" to="/verein/beschluesse">
-              {t("Pages_Verein_Index_OpenArchive")}
-            </Link>
+        <div className="public-hero__inner">
+          <div className="public-hero__copy">
+            <span className="kicker">{t("Pages_Verein_Index_Kicker")}</span>
+            <h1>{t("Pages_Verein_Index_Title")}</h1>
+            <p>{t("Pages_Verein_Index_Subtitle")}</p>
+            <div className="public-hero__actions">
+              <Link className="button button--gold" to="/join">
+                {t("Pages_Verein_Index_MembershipRequest")}
+              </Link>
+              <Link className="button button--glass" to="/verein/satzung">
+                {t("Pages_Verein_Index_ReadSatzung")}
+              </Link>
+            </div>
           </div>
+          <aside
+            className="public-hero__panel verein-status-panel"
+            aria-label={t("Pages_Verein_Index_StatusAria")}
+          >
+            <div className="public-hero__panel-heading">
+              <BookOpen24Regular />
+              <div>
+                <span>{t("Pages_Verein_Index_StatusKicker")}</span>
+                <strong>{membershipStatus}</strong>
+              </div>
+            </div>
+            <dl className="public-hero__status-list">
+              <div>
+                <dt>{t("Pages_Verein_Index_ProfileStatus")}</dt>
+                <dd>
+                  {!auth.isAuthenticated
+                    ? t("Pages_Verein_Index_SignInDetail")
+                    : isVereinMember(auth.user)
+                      ? t("Pages_Verein_Index_ActiveMemberDetail")
+                      : request.data
+                        ? formatResource(
+                            t("Pages_Verein_Index_RequestUpdated"),
+                            formatDate(request.data.timeStampUpdated),
+                          )
+                        : t("Pages_Verein_Index_NoRequestDetail")}
+                </dd>
+              </div>
+              <div>
+                <dt>{t("Pages_Verein_Index_DocumentsStatus")}</dt>
+                <dd>
+                  {formatResource(
+                    t("Pages_Verein_Index_DocumentsStatusValue"),
+                    statutes.data ? 1 : 0,
+                    minutes.data?.length ?? 0,
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>{t("Pages_Verein_Index_LedgerStatus")}</dt>
+                <dd>
+                  {canReadLedger
+                    ? t("Pages_Verein_Index_LedgerAccessible")
+                    : t("Pages_Verein_Index_LedgerRestricted")}
+                </dd>
+              </div>
+            </dl>
+          </aside>
         </div>
       </section>
       <section
-        className="content-section status-overview"
+        className="content-section public-section status-overview"
         aria-label={t("Pages_Verein_Index_StatusAria")}
       >
         <div>
@@ -152,13 +228,14 @@ export function VereinPage() {
           <StatePanel kind="warning">{t("React_Verein_LoadError")}</StatePanel>
         </div>
       )}
-      <section className="content-section">
+      <section className="content-section public-section">
         <PageHeader
           kicker={t("Pages_Verein_Index_WorkspaceKicker")}
           title={t("Pages_Verein_Index_WorkspaceTitle")}
           description={t("Pages_Verein_Index_WorkspaceNote")}
+          headingLevel={2}
         />
-        <div className="resource-links resource-links--three">
+        <div className="resource-links">
           <Link to="/verein/satzung">
             <BookOpen24Regular />
             <h3>{t("Pages_Verein_Index_SatzungTitle")}</h3>
@@ -175,11 +252,24 @@ export function VereinPage() {
             <Money24Regular />
             <h3>{t("Pages_Verein_Index_KassenbuchTitle")}</h3>
             <p>{t("Pages_Verein_Index_KassenbuchBody")}</p>
-            <StatusBadge tone={canAccessVereinLedger(auth.user) ? "success" : "neutral"}>
-              {canAccessVereinLedger(auth.user)
+            <StatusBadge tone={canReadLedger ? "success" : "neutral"}>
+              {canReadLedger
                 ? t("Pages_Verein_Index_LedgerAccessible")
                 : t("Pages_Verein_Index_LedgerRestricted")}
             </StatusBadge>
+          </Link>
+          <Link to={isVereinMember(auth.user) ? "/settings" : "/join"}>
+            <PeopleCommunity24Regular />
+            <StatusBadge tone={isVereinMember(auth.user) ? "success" : "info"}>
+              {isVereinMember(auth.user)
+                ? t("Pages_Verein_Index_MemberState")
+                : request.data
+                  ? t(membershipStatusTranslationKey(request.data.status))
+                  : t("Pages_Verein_Index_RequestStateOpen")}
+            </StatusBadge>
+            <h3>{t("Pages_Verein_Index_MembershipTitle")}</h3>
+            <p>{membershipDetail}</p>
+            <ArrowRight20Regular />
           </Link>
         </div>
       </section>

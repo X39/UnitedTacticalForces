@@ -29,7 +29,7 @@ const publicConfigurationSchema = z.object({
       ReactBasePath: z
         .string()
         .refine((value) => {
-          if (value === "/next") return true;
+          if (value === "/next" || value === "/") return true;
           try {
             const url = new URL(value);
             return (
@@ -41,10 +41,13 @@ const publicConfigurationSchema = z.object({
           }
         })
         .optional()
-        .default("/next"),
+        .default(import.meta.env.BASE_URL === "/" ? "/" : "/next"),
     })
     .optional()
-    .default({ ReactVariantEnabled: false, ReactBasePath: "/next" }),
+    .default({
+      ReactVariantEnabled: false,
+      ReactBasePath: import.meta.env.BASE_URL === "/" ? "/" : "/next",
+    }),
 });
 
 export type PublicConfiguration = z.infer<typeof publicConfigurationSchema>;

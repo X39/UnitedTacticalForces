@@ -1,6 +1,8 @@
 import {
   ArrowRight20Regular,
   BookOpen24Regular,
+  CalendarLtr24Regular,
+  CheckmarkCircle24Regular,
   CloudArrowUp24Regular,
   PeopleCommunity24Regular,
   ShieldTask24Regular,
@@ -15,42 +17,151 @@ export function Component() {
   const { t } = useTranslation();
   const heroImage = useSiteImage("unit-hero", "/media/generated/unit-training-assembly-hero.jpg");
   const values = [1, 2, 3, 4] as const;
+  const process = [
+    {
+      icon: <CalendarLtr24Regular />,
+      title: t("Pages_Unit_Index_GovernanceStep1Label"),
+      body: t("Pages_Unit_Index_GovernanceStep1Body"),
+    },
+    {
+      icon: <PeopleCommunity24Regular />,
+      title: t("Pages_Unit_Index_GovernanceStep2Label"),
+      body: t("Pages_Unit_Index_GovernanceStep2Body"),
+    },
+    {
+      icon: <CheckmarkCircle24Regular />,
+      title: t("Pages_Unit_Index_GovernanceStep3Label"),
+      body: t("Pages_Unit_Index_GovernanceStep3Body"),
+    },
+  ];
+
   return (
-    <div className="unit-page">
+    <div className="unit-page public-page">
       <section
-        className="editorial-hero editorial-hero--unit"
+        className="public-hero editorial-hero"
         style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
       >
-        <div>
-          <span className="kicker">{t("Pages_Unit_Index_Kicker")}</span>
-          <h1>{t("Pages_Unit_Index_Title")}</h1>
-          <p>{t("Pages_Unit_Index_HeroText")}</p>
-          <div>
-            <Link className="button button--gold" to="/join">
-              {t("Pages_Unit_Index_JoinCommunity")}
-            </Link>
-            <Link className="button button--glass" to="/events/upcoming">
-              {t("Pages_Unit_Index_SeeCurrentOperations")}
-            </Link>
+        <div className="public-hero__inner">
+          <div className="public-hero__copy">
+            <span className="kicker">{t("Pages_Unit_Index_Kicker")}</span>
+            <h1>{t("Pages_Unit_Index_Title")}</h1>
+            <p>{t("Pages_Unit_Index_HeroText")}</p>
+            <div className="public-hero__actions">
+              <Link className="button button--gold" to="/events/upcoming">
+                {t("Pages_Unit_Index_ViewOperations")}
+              </Link>
+              <Link className="button button--glass" to="/join">
+                {t("Pages_Unit_Index_JoinCommunity")}
+              </Link>
+            </div>
           </div>
+          <aside
+            className="public-hero__panel operating-model-panel"
+            aria-label={t("Pages_Unit_Index_OperatingModelLabel")}
+          >
+            <div className="public-hero__panel-heading">
+              <PeopleCommunity24Regular />
+              <div>
+                <span>{t("Pages_Unit_Index_OperatingModel")}</span>
+                <strong>{t("Pages_Unit_Index_OperatingModelValue")}</strong>
+              </div>
+            </div>
+            <dl className="public-hero__status-list">
+              <div>
+                <dt>{t("Pages_Unit_Index_MissionAccessLabel")}</dt>
+                <dd>{t("Pages_Unit_Index_MissionAccessValue")}</dd>
+              </div>
+              <div>
+                <dt>{t("Pages_Unit_Index_CommunityCommsLabel")}</dt>
+                <dd>{t("Pages_Unit_Index_CommunityCommsValue")}</dd>
+              </div>
+              <div>
+                <dt>{t("Pages_Unit_Index_OnboardingLabel")}</dt>
+                <dd>{t("Pages_Unit_Index_OnboardingValue")}</dd>
+              </div>
+            </dl>
+          </aside>
         </div>
       </section>
-      <section className="content-section">
+
+      <section className="content-section public-section operating-model-section">
+        <PageHeader
+          kicker={t("Pages_Unit_Index_HowUtfWorks")}
+          title={t("Pages_Unit_Index_OpenOperations")}
+          headingLevel={2}
+        />
+        <div className="operating-model-grid">
+          <article className="operating-model-statement">
+            <h3>{t("Pages_Unit_Index_ParticipationHeadline")}</h3>
+            <p>{t("Pages_Unit_Index_ParticipationBody1")}</p>
+            <p>{t("Pages_Unit_Index_ParticipationBody2")}</p>
+          </article>
+          <ol className="public-process" aria-label={t("Pages_Unit_Index_GovernanceFlowLabel")}>
+            {process.map((step, index) => (
+              <li key={step.title}>
+                <span className="public-process__number">0{index + 1}</span>
+                <span className="public-process__icon" aria-hidden="true">
+                  {step.icon}
+                </span>
+                <div>
+                  <strong>{step.title}</strong>
+                  <p>{step.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="content-section public-section">
+        <PageHeader
+          kicker={t("Pages_Unit_Index_CommunityResourcesKicker")}
+          title={t("Pages_Unit_Index_CommunityResourcesTitle")}
+          headingLevel={2}
+        />
+        <div className="resource-links resource-links--three">
+          <Link to="/events/upcoming">
+            <CalendarLtr24Regular />
+            <StatusBadge tone="success">{t("Pages_Unit_Index_StateActive")}</StatusBadge>
+            <h3>{t("Pages_Unit_Index_OperationsBoardTitle")}</h3>
+            <p>{t("Pages_Unit_Index_OperationsBoardBody")}</p>
+            <ArrowRight20Regular />
+          </Link>
+          <Link to="/field-reports">
+            <ShieldTask24Regular />
+            <StatusBadge tone="success">{t("Pages_Unit_Index_StateActive")}</StatusBadge>
+            <h3>{t("Pages_Unit_Index_FieldReportsTitle")}</h3>
+            <p>{t("Pages_Unit_Index_FieldReportsBody")}</p>
+            <ArrowRight20Regular />
+          </Link>
+          <Link to="/wiki">
+            <BookOpen24Regular />
+            <StatusBadge tone="success">{t("Pages_Unit_Index_StateActive")}</StatusBadge>
+            <h3>{t("Pages_Unit_Index_WikiTitle")}</h3>
+            <p>{t("Pages_Unit_Index_WikiBody")}</p>
+            <ArrowRight20Regular />
+          </Link>
+        </div>
+      </section>
+
+      <section className="content-section public-section values-section">
         <PageHeader
           kicker={t("Pages_Unit_Index_ValuesKicker")}
           title={t("Pages_Unit_Index_ValuesTitle")}
+          headingLevel={2}
         />
         <div className="value-cards value-cards--four">
           {values.map((value) => (
             <article key={value}>
               <span className="number-marker">0{value}</span>
-              <h2>{t(`Pages_Unit_Index_Value${value}Title`)}</h2>
+              <h3>{t(`Pages_Unit_Index_Value${value}Title`)}</h3>
               <p>{t(`Pages_Unit_Index_Value${value}Body`)}</p>
             </article>
           ))}
         </div>
       </section>
-      <section className="content-section split-feature">
+
+      <section className="content-section public-section split-feature">
         <div>
           <span className="kicker">{t("Pages_Unit_Index_InfrastructureKicker")}</span>
           <h2>{t("Pages_Unit_Index_InfrastructureTitle")}</h2>
@@ -79,35 +190,6 @@ export function Component() {
               <p>{t("Pages_Unit_Index_InfrastructureCardSubCommunitiesBody")}</p>
             </div>
           </article>
-        </div>
-      </section>
-      <section className="content-section">
-        <PageHeader
-          kicker={t("Pages_Unit_Index_CommunityResourcesKicker")}
-          title={t("Pages_Unit_Index_CommunityResourcesTitle")}
-        />
-        <div className="resource-links">
-          <Link to="/events/upcoming">
-            <h3>{t("Pages_Unit_Index_OperationsBoardTitle")}</h3>
-            <p>{t("Pages_Unit_Index_OperationsBoardBody")}</p>
-            <ArrowRight20Regular />
-          </Link>
-          <Link to="/wiki">
-            <h3>{t("Pages_Unit_Index_WikiTitle")}</h3>
-            <p>{t("Pages_Unit_Index_WikiBody")}</p>
-            <ArrowRight20Regular />
-          </Link>
-          <Link to="/field-reports">
-            <h3>{t("Pages_Unit_Index_FieldReportsTitle")}</h3>
-            <p>{t("Pages_Unit_Index_FieldReportsBody")}</p>
-            <ArrowRight20Regular />
-          </Link>
-          <Link to="/verein/satzung">
-            <BookOpen24Regular />
-            <h3>{t("Pages_Verein_Index_SatzungTitle")}</h3>
-            <p>{t("Pages_Verein_Index_SatzungBody")}</p>
-            <ArrowRight20Regular />
-          </Link>
         </div>
       </section>
     </div>

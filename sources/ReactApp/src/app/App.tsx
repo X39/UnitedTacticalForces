@@ -4,6 +4,7 @@ import { useMemo, type ComponentType } from "react";
 import { createBrowserRouter, RouterProvider, type RouteObject } from "react-router";
 import type { PublicConfiguration } from "@/app/config";
 import { routeManifest } from "@/app/routes";
+import { RouteCertificationGate } from "@/app/RouteCertificationGate";
 import { SiteImagesProvider } from "@/app/siteImages";
 import { AuthProvider } from "@/auth/auth";
 import { NotFoundPage } from "@/components/NotFoundPage";
@@ -568,7 +569,11 @@ function createRoutes(configuration: PublicConfiguration): RouteObject[] {
   return [
     {
       path: "/",
-      element: <CommunityLayout configuration={configuration} />,
+      element: (
+        <RouteCertificationGate>
+          <CommunityLayout configuration={configuration} />
+        </RouteCertificationGate>
+      ),
       children: [
         ...communityRouteDefinitions.map(({ route }) => route),
         { path: "*", element: <NotFoundPage /> },
@@ -576,12 +581,20 @@ function createRoutes(configuration: PublicConfiguration): RouteObject[] {
     },
     {
       path: "command",
-      element: <CommandCenterLayout configuration={configuration} />,
+      element: (
+        <RouteCertificationGate>
+          <CommandCenterLayout configuration={configuration} />
+        </RouteCertificationGate>
+      ),
       children: commandRouteDefinitions.map(({ route }) => route),
     },
     ...commandAliasRouteDefinitions.map(({ path, route }) => ({
       path,
-      element: <CommandCenterLayout configuration={configuration} />,
+      element: (
+        <RouteCertificationGate>
+          <CommandCenterLayout configuration={configuration} />
+        </RouteCertificationGate>
+      ),
       children: [route],
     })),
     { path: "command/*", element: <NotFoundPage /> },

@@ -29,6 +29,7 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/users/authentication-providers", (route) =>
     route.fulfill({ json: { steam: true, discord: true } }),
   );
+  await page.route("**/api/game-servers/notifications", (route) => route.fulfill({ json: [] }));
   await page.route("**/api/site-image-settings", (route) => route.fulfill({ json: [] }));
 });
 

@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { z } from "zod";
 import { identityService, queryKeys, vereinService } from "@/api/services";
-import type { VereinMembershipRequestPayload } from "@/api/types";
+import type { VereinMembershipRequest, VereinMembershipRequestPayload } from "@/api/types";
 import { formatDate } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { isOpenMembershipStatus, membershipStatusTranslationKey } from "@/app/membership";
@@ -116,69 +116,101 @@ export function Component() {
     create.mutate({ ...values, addressLine2: values.addressLine2 || null }),
   );
   return (
-    <div className="join-page">
+    <div className="join-page public-page">
       <section
-        className="editorial-hero editorial-hero--join"
+        className="public-hero editorial-hero"
         style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
       >
-        <div>
-          <span className="kicker">{t("Pages_Public_Join_Kicker")}</span>
-          <h1>{t("Pages_Public_Join_Title")}</h1>
-          <p>{t("Pages_Public_Join_Subtitle")}</p>
-          <Link className="button button--glass" to="/events/upcoming">
-            {t("Pages_Public_Join_ViewOperations")}
-          </Link>
+        <div className="public-hero__inner">
+          <div className="public-hero__copy">
+            <span className="kicker">{t("Pages_Public_Join_Kicker")}</span>
+            <h1>{t("Pages_Public_Join_Title")}</h1>
+            <p>{t("Pages_Public_Join_Subtitle")}</p>
+            <div className="public-hero__actions">
+              <Link className="button button--gold" to="/events/upcoming">
+                {t("Pages_Public_Join_ViewOperations")}
+              </Link>
+              <Link className="button button--glass" to="/verein">
+                {t("Pages_Public_Join_OpenVerein")}
+              </Link>
+            </div>
+          </div>
+          <aside
+            className="public-hero__panel join-process-panel"
+            aria-label={t("Pages_Public_Join_ProcessAria")}
+          >
+            <div className="public-hero__panel-heading">
+              <PeopleAdd24Regular />
+              <div>
+                <span>{t("Pages_Public_Join_ProcessKicker")}</span>
+                <strong>{t("Pages_Public_Join_ProcessTitle")}</strong>
+              </div>
+            </div>
+            <ol className="join-mini-steps">
+              <li>{t("Pages_Public_Join_MiniStep1")}</li>
+              <li>{t("Pages_Public_Join_MiniStep2")}</li>
+              <li>{t("Pages_Public_Join_MiniStep3")}</li>
+            </ol>
+          </aside>
         </div>
       </section>
-      <section className="content-section join-paths">
-        <article>
-          <PeopleAdd24Regular />
-          <span className="kicker">{t("React_Join_CommunityKicker")}</span>
-          <h2>{t("Pages_Public_Join_StartHere")}</h2>
-          <p>{t("Pages_Public_Join_OperationsBoardBody")}</p>
-          <Link className="text-link" to="/events/upcoming">
-            {t("Pages_Public_Join_Access")}
-            <ArrowRight20Regular />
-          </Link>
-        </article>
-        <article>
-          <ShieldLock24Regular />
-          <span className="kicker">{t("React_Join_IdentityKicker")}</span>
-          <h2>{t("Pages_Public_Join_AccountAccessTitle")}</h2>
-          <p>{t("Pages_Public_Join_LoginHint")}</p>
-          {auth.isAuthenticated ? (
-            <StatusBadge tone="success">
-              {t("Pages_Public_Join_LoggedInAs")} {auth.user?.nickname}
-            </StatusBadge>
-          ) : (
-            <div className="login-options">
-              {auth.providers.steam && (
-                <button
-                  type="button"
-                  className="identity-button identity-button--steam"
-                  onClick={() => auth.login("steam")}
-                >
-                  {t("Pages_Public_Join_UseSteamIdentity")}
-                </button>
-              )}
-              {auth.providers.discord && (
-                <button
-                  type="button"
-                  className="identity-button identity-button--discord"
-                  onClick={() => auth.login("discord")}
-                >
-                  {t("Pages_Public_Join_UseDiscordIdentity")}
-                </button>
-              )}
-            </div>
-          )}
-        </article>
-      </section>
-      <section className="content-section membership-application">
+      <section className="content-section public-section join-path-section">
         <PageHeader
-          kicker={t("React_Join_Form_Kicker")}
-          title={t("React_Join_Form_Title")}
-          description={t("React_Join_Form_Description")}
+          kicker={t("Pages_Public_Join_StepperKicker")}
+          title={t("Pages_Public_Join_StepperTitle")}
+          headingLevel={2}
+        />
+        <div className="join-paths">
+          <article>
+            <div className="join-paths__heading">
+              <PeopleAdd24Regular />
+              <StatusBadge tone="success">{t("Pages_Public_Join_GuestPathState")}</StatusBadge>
+            </div>
+            <h3>{t("Pages_Public_Join_GuestPathTitle")}</h3>
+            <p>{t("Pages_Public_Join_GuestPathBody")}</p>
+            <ol className="join-stepper">
+              {([1, 2, 3] as const).map((step) => (
+                <li key={step}>
+                  <span>0{step}</span>
+                  <div>
+                    <strong>{t(`Pages_Public_Join_GuestStep${step}`)}</strong>
+                    <p>{t(`Pages_Public_Join_GuestStep${step}Body`)}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <Link className="text-link" to="/events/upcoming">
+              {t("Pages_Public_Join_Access")}
+              <ArrowRight20Regular />
+            </Link>
+          </article>
+          <article>
+            <div className="join-paths__heading">
+              <ShieldLock24Regular />
+              <StatusBadge tone="info">{t("Pages_Public_Join_VereinPathState")}</StatusBadge>
+            </div>
+            <h3>{t("Pages_Public_Join_VereinPathTitle")}</h3>
+            <p>{t("Pages_Public_Join_VereinPathBody")}</p>
+            <ol className="join-stepper">
+              {([1, 2, 3, 4, 5] as const).map((step) => (
+                <li key={step}>
+                  <span>0{step}</span>
+                  <div>
+                    <strong>{t(`Pages_Public_Join_VereinStep${step}`)}</strong>
+                    <p>{t(`Pages_Public_Join_VereinStep${step}Body`)}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </article>
+        </div>
+      </section>
+      <section className="content-section public-section membership-application">
+        <PageHeader
+          kicker={t("Pages_Public_Join_RequestKicker")}
+          title={t("Pages_Public_Join_RequestTitle")}
+          description={t("Pages_Public_Join_FormBody")}
+          headingLevel={2}
         />
         <div className="join-contribution">
           <StatusBadge
@@ -214,13 +246,43 @@ export function Component() {
           <StatePanel kind="warning">{t("React_Join_SettingsError")}</StatePanel>
         )}
         {!auth.isAuthenticated && (
-          <StatePanel kind="forbidden" title={t("React_Join_SignInRequired_Title")}>
-            {t("React_Join_SignInRequired_Body")}
-          </StatePanel>
+          <div className="join-sign-in-panel">
+            <StatePanel kind="forbidden" title={t("Pages_Public_Join_LoginRequiredTitle")}>
+              {t("Pages_Public_Join_LoginHint")}
+            </StatePanel>
+            <div className="login-options" aria-label={t("Pages_Public_Join_AccountAccessTitle")}>
+              {auth.providers.steam && (
+                <button
+                  type="button"
+                  className="identity-button identity-button--steam"
+                  onClick={() => auth.login("steam")}
+                >
+                  {t("Pages_Public_Join_UseSteamIdentity")}
+                </button>
+              )}
+              {auth.providers.discord && (
+                <button
+                  type="button"
+                  className="identity-button identity-button--discord"
+                  onClick={() => auth.login("discord")}
+                >
+                  {t("Pages_Public_Join_UseDiscordIdentity")}
+                </button>
+              )}
+            </div>
+          </div>
         )}
         {isVereinMember(auth.user) && (
           <StatePanel kind="success" title={t("Pages_Verein_Index_ActiveMember")}>
             <p>{t("Pages_Verein_Index_ActiveMemberDetail")}</p>
+            <div className="inline-actions">
+              <Link className="text-link" to="/verein">
+                {t("Pages_Public_Join_OpenVerein")}
+              </Link>
+              <Link className="text-link" to="/settings">
+                {t("Pages_Public_Join_OpenSettings")}
+              </Link>
+            </div>
           </StatePanel>
         )}
         {request.isLoading && auth.isAuthenticated && (
@@ -260,12 +322,7 @@ export function Component() {
               </button>
             }
           >
-            <p>
-              {formatResource(
-                t("Pages_Verein_Index_RequestUpdated"),
-                formatDate(request.data.timeStampUpdated),
-              )}
-            </p>
+            <MembershipRequestMeta request={request.data} />
             <StatusBadge tone="warning">
               {t(membershipStatusTranslationKey(request.data.status))}
             </StatusBadge>
@@ -274,12 +331,7 @@ export function Component() {
         )}
         {request.data && !isOpenMembershipStatus(request.data.status) && (
           <StatePanel kind="info" title={t(membershipStatusTranslationKey(request.data.status))}>
-            <p>
-              {formatResource(
-                t("Pages_Verein_Index_RequestUpdated"),
-                formatDate(request.data.timeStampUpdated),
-              )}
-            </p>
+            <MembershipRequestMeta request={request.data} />
             {request.data.decisionReason && <p>{request.data.decisionReason}</p>}
           </StatePanel>
         )}
@@ -393,7 +445,7 @@ export function Component() {
             </form>
           )}
       </section>
-      <section className="content-section join-assurance">
+      <section className="content-section public-section join-assurance">
         <CheckmarkCircle24Regular />
         <div>
           <h2>{t("Pages_Public_Join_CommunityChannelsTitle")}</h2>
@@ -401,6 +453,28 @@ export function Component() {
         </div>
       </section>
     </div>
+  );
+}
+
+function MembershipRequestMeta({ request }: { request: VereinMembershipRequest }) {
+  const { t } = useTranslation();
+  return (
+    <dl className="membership-request-meta">
+      <div>
+        <dt>{t("Pages_Public_Join_RequestSubmitted")}</dt>
+        <dd>{formatDate(request.timeStampCreated)}</dd>
+      </div>
+      <div>
+        <dt>{t("Pages_Public_Join_RequestUpdated")}</dt>
+        <dd>{formatDate(request.timeStampUpdated)}</dd>
+      </div>
+      <div>
+        <dt>{t("Pages_Public_Join_RequestApplicant")}</dt>
+        <dd>
+          {request.firstName} {request.lastName}
+        </dd>
+      </div>
+    </dl>
   );
 }
 

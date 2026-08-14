@@ -1,4 +1,4 @@
-import { Navigation24Regular, Person24Regular, ShieldLock24Regular } from "@fluentui/react-icons";
+import { Navigation24Regular, ShieldLock24Regular } from "@fluentui/react-icons";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
@@ -8,6 +8,7 @@ import { setCulture } from "@/app/i18n";
 import { matchRoute, switchToClassic } from "@/app/routes";
 import { canAccessCommandCenter } from "@/auth/claims";
 import { useAuth } from "@/auth/auth";
+import { ProfileMenu } from "@/components/ProfileMenu";
 
 const navigation = [
   ["/", "Shared_CommunityNav_Home"],
@@ -113,18 +114,7 @@ export function CommunityLayout({ configuration }: { configuration: PublicConfig
             </select>
           </label>
           {auth.isAuthenticated ? (
-            <details className="profile-menu">
-              <summary>
-                <Person24Regular />
-                <span>{auth.user?.nickname}</span>
-              </summary>
-              <div>
-                <Link to="/settings">{t("Shared_NavMenu_UserSettings")}</Link>
-                <button type="button" onClick={() => auth.logout()}>
-                  {t("Shared_NavMenu_Logout")}
-                </button>
-              </div>
-            </details>
+            <ProfileMenu mode="community" />
           ) : (
             <button
               className="button button--small button--gold"

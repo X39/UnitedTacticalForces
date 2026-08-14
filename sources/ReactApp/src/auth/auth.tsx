@@ -4,6 +4,7 @@ import { getApiClient } from "@/api/client";
 import { identityService, queryKeys } from "@/api/services";
 import type { AuthenticationProviders, FullUser } from "@/api/types";
 import { isAuthenticated } from "@/auth/claims";
+import { routeManifest } from "@/app/routes";
 
 interface AuthContextValue {
   user: FullUser | undefined;
@@ -35,7 +36,9 @@ export function localReactReturnPath(value?: string | null, fallback = currentLo
   try {
     const candidate = new URL(value, window.location.origin);
     if (candidate.origin !== window.location.origin) return fallback;
-    if (candidate.pathname !== "/next" && !candidate.pathname.startsWith("/next/")) return fallback;
+    const base = routeManifest.reactBasePath;
+    if (base !== "/" && candidate.pathname !== base && !candidate.pathname.startsWith(`${base}/`))
+      return fallback;
     return `${candidate.pathname}${candidate.search}${candidate.hash}`;
   } catch {
     return fallback;

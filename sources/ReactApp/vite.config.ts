@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
     "https://localhost:7086";
 
   return {
-    base: "/next/",
+    base: env.UTF_REACT_BASE_PATH ?? "/next/",
     plugins: [react()],
     resolve: {
       alias: {
@@ -105,7 +105,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      outDir: "dist",
+      outDir: env.UTF_REACT_BASE_PATH === "/" ? "dist-root" : "dist",
       sourcemap: true,
       manifest: true,
     },

@@ -29,17 +29,20 @@ export function PageHeader({
   title,
   description,
   actions,
+  headingLevel = 1,
 }: {
   kicker?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
+  headingLevel?: 1 | 2 | 3;
 }) {
+  const Heading = headingLevel === 1 ? "h1" : headingLevel === 2 ? "h2" : "h3";
   return (
     <header className="page-header">
       <div>
         {kicker && <span className="kicker">{kicker}</span>}
-        <h1>{title}</h1>
+        <Heading>{title}</Heading>
         {description && <p>{description}</p>}
       </div>
       {actions && <div className="page-header__actions">{actions}</div>}

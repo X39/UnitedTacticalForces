@@ -15882,4 +15882,13 @@ Start writing here.</value>
   <data name="React_ServerWorkspace_PersistentOverride" xml:space="preserve"><value>Persistent override</value></data>
   <data name="React_ServerWorkspace_GeneratedIncomplete" xml:space="preserve"><value>Generated · incomplete</value></data>
   <data name="React_ServerWorkspace_Deleting" xml:space="preserve"><value>Deleting…</value></data>
+  <data name="React_CommandOverview_Description" xml:space="preserve"><value>Live operational posture, outstanding work, and every control surface you are authorized to use.</value></data>
+  <data name="React_CommandOverview_OperationalSnapshot" xml:space="preserve"><value>Operational hosting snapshot</value></data>
+  <data name="React_CommandOverview_ActiveDeployments" xml:space="preserve"><value>Active deployments</value></data>
+  <data name="React_CommandOverview_AttentionKicker" xml:space="preserve"><value>Requires attention</value></data>
+  <data name="React_CommandOverview_AttentionTitle" xml:space="preserve"><value>Operational queue</value></data>
+  <data name="React_CommandOverview_AllClearTitle" xml:space="preserve"><value>No immediate intervention required</value></data>
+  <data name="React_CommandOverview_AllClearDescription" xml:space="preserve"><value>No visible server reports possible provider cost or pending lifecycle work.</value></data>
+  <data name="React_CommandOverview_WorkAreasKicker" xml:space="preserve"><value>Authorized control surfaces</value></data>
+  <data name="React_CommandOverview_WorkAreasTitle" xml:space="preserve"><value>Your work areas</value></data>
 </root>

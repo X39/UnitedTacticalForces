@@ -15,7 +15,13 @@ export interface RouteManifest {
   routes: RouteManifestEntry[];
 }
 
-export const routeManifest = manifestJson as RouteManifest;
+export const routeManifest = {
+  ...(manifestJson as RouteManifest),
+  reactBasePath:
+    import.meta.env.BASE_URL === "/" && !import.meta.env.VITEST
+      ? "/"
+      : (manifestJson as RouteManifest).reactBasePath,
+} satisfies RouteManifest;
 
 function segmentPattern(segment: string): string {
   const parameter = /^\{([^}:]+)(?::([^}]+))?\}$/.exec(segment);
@@ -64,7 +70,9 @@ export function currentReactUrl(): string {
     window.location.pathname.startsWith(`${routeManifest.reactBasePath}/`);
   const path = isReactPath
     ? window.location.pathname
-    : `${routeManifest.reactBasePath}${window.location.pathname === "/" ? "/" : window.location.pathname}`;
+    : routeManifest.reactBasePath === "/"
+      ? window.location.pathname
+      : `${routeManifest.reactBasePath}${window.location.pathname === "/" ? "/" : window.location.pathname}`;
   return `${path}${window.location.search}${window.location.hash}`;
 }
 

@@ -1,4 +1,5 @@
 dist/
+dist-root/
 playwright-report/
 test-results/
 .vite/

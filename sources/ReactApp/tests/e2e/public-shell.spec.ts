@@ -1,5 +1,24 @@
 import { expect, test } from "@playwright/test";
 import { Buffer } from "node:buffer";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const webAssetRoot = fileURLToPath(new URL("../../../WebApp/wwwroot/", import.meta.url));
+const publicImageAssets = new Map<string, Buffer>(
+  [
+    "/Insignia-48px.png",
+    "/gdpr-privacy-hero.png",
+    "/media/generated/operations-convoy-hero.jpg",
+    "/media/generated/unit-training-assembly-hero.jpg",
+    "/media/generated/verein-governance-table-hero.jpg",
+    "/media/generated/join-recruitment-staging-hero.jpg",
+    "/media/generated/field-reports-table-hero.jpg",
+  ].map((pathname): [string, Buffer] => [
+    pathname,
+    readFileSync(resolve(webAssetRoot, pathname.slice(1))),
+  ]),
+);
 
 const config = {
   Api: { BaseUrl: "/api/" },
@@ -81,9 +100,26 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route("**/appsettings.json", (route) => route.fulfill({ json: config }));
   await page.route("**/Insignia-48px.png", (route) =>
-    route.fulfill({ status: 200, contentType: "image/png", body: "" }),
+    route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: publicImageAssets.get("/Insignia-48px.png")!,
+    }),
   );
-  await page.route("**/media/**", (route) => route.fulfill({ status: 404, body: "" }));
+  await page.route("**/gdpr-privacy-hero.png", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: publicImageAssets.get("/gdpr-privacy-hero.png")!,
+    }),
+  );
+  await page.route("**/media/**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const body = publicImageAssets.get(pathname);
+    return body
+      ? route.fulfill({ status: 200, contentType: "image/jpeg", body })
+      : route.fulfill({ status: 404, body: "" });
+  });
   await page.route("**/api/media-assets/*/content", (route) =>
     route.fulfill({ status: 200, contentType: "image/webp", body: "" }),
   );
@@ -91,23 +127,41 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/users/authentication-providers", (route) =>
     route.fulfill({ json: { steam: true, discord: true } }),
   );
+  await page.route("**/api/game-servers/notifications", (route) => route.fulfill({ json: [] }));
+  await page.route("**/api/game-servers", (route) => route.fulfill({ json: [] }));
   await page.route("**/api/site-image-settings", (route) => route.fulfill({ json: [] }));
   await page.route("**/api/events/upcoming", (route) => route.fulfill({ json: [event] }));
   await page.route("**/api/field-reports?**", (route) => route.fulfill({ json: [] }));
 });
 
 test("loads the beta shell at a deep link", async ({ page }) => {
-  await page.goto("events/upcoming?mode=board");
+  await page.goto("field-reports");
   await expect(page.getByRole("banner")).toBeVisible();
   await expect(page.getByRole("main")).toBeVisible();
   await expect(page.getByText("Beta", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: event.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Field reports" })).toBeVisible();
+});
+
+test("returns a reopened route to its classic equivalent", async ({ page }) => {
+  await page.addInitScript(() => {
+    document.cookie = "utf_ui_variant=react; Path=/; SameSite=Lax";
+  });
+  await page.goto("gdpr?section=cookies#functional-preferences");
+
+  await expect(page.getByTestId("classic-shell")).toBeVisible();
+  await expect(page).toHaveURL(/\/gdpr\?section=cookies#functional-preferences$/);
+  await expect
+    .poll(
+      async () =>
+        (await page.context().cookies()).find((cookie) => cookie.name === "utf_ui_variant")?.value,
+    )
+    .toBe("react");
 });
 
 test("keeps the public shell usable on a narrow keyboard viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("events/upcoming?mode=board");
+  await page.goto("field-reports");
 
   const navigation = page.getByRole("navigation", { name: "Community navigation" });
   const toggle = page.getByRole("button", { name: "Toggle navigation" });
@@ -117,6 +171,105 @@ test("keeps the public shell usable on a narrow keyboard viewport", async ({ pag
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
   await expect(navigation.getByRole("link", { name: "Operations" })).toBeVisible();
   await expect(page.locator("body")).toHaveJSProperty("scrollWidth", 390);
+});
+
+test("keeps the German Join journey inside a narrow viewport", async ({ page }) => {
+  await page.route("**/api/verein/settings", (route) =>
+    route.fulfill({
+      json: {
+        membershipContributionMonthlyAmount: 5,
+        membershipContributionAnnualAmount: 60,
+        membershipContributionCurrency: "EUR",
+        membershipContributionPublicTextDe: "Der Beitrag finanziert die Infrastruktur.",
+        membershipContributionPublicTextEn: "The contribution funds infrastructure.",
+        timeStampUpdated: "2026-08-14T10:00:00Z",
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("join");
+  await page.getByLabel("Language").selectOption("de");
+
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Anmelden" })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      ),
+    )
+    .toBe(0);
+});
+
+test("keeps identity and operational attention in the signed-in shell", async ({ page }) => {
+  await page.unroute("**/api/users/me");
+  await page.route("**/api/users/me", (route) =>
+    route.fulfill({
+      json: {
+        primaryKey: "00000000-0000-4000-8000-000000000001",
+        nickname: "Falcon One",
+        eMail: "falcon@example.test",
+        avatar: "AQIDBA==",
+        avatarMimeType: "image/jpeg",
+        isBanned: false,
+        isVerified: true,
+        isDeleted: false,
+        isVereinMember: true,
+        vereinMembershipStatus: "Active",
+        vereinMemberNumber: "UTF-42",
+        steamId64: "76561198012345678",
+        discordId: "123456789",
+        discordUsername: "falcon.discord",
+        claims: [
+          {
+            primaryKey: 1,
+            category: "Administration",
+            title: "Global administration",
+            identifier: "adm",
+            description: "",
+            isPrefix: false,
+            value: null,
+            valueType: null,
+          },
+        ],
+        roles: [
+          {
+            primaryKey: 1,
+            title: "Operations Lead",
+            description: "Hosts community operations",
+            claims: [],
+          },
+        ],
+      },
+    }),
+  );
+  await page.unroute("**/api/game-servers/notifications");
+  await page.route("**/api/game-servers/notifications", (route) =>
+    route.fulfill({
+      json: [
+        {
+          serverId: fleetServer.primaryKey,
+          title: "Profile Server",
+          statusLabel: "Running",
+          possibleCost: true,
+          canOperate: true,
+          costStopAction: null,
+        },
+      ],
+    }),
+  );
+
+  await page.goto("field-reports");
+  const trigger = page.locator(".account-profile__trigger");
+  await expect(trigger.locator("img")).toHaveAttribute("src", "data:image/jpeg;base64,AQIDBA==");
+  await trigger.click();
+
+  const profile = page.locator(".account-profile__popover");
+  await expect(profile).toBeVisible();
+  await expect(profile).toContainText("Operations Lead");
+  await expect(profile).toContainText("Profile Server");
+  await expect(profile).toContainText("7656...5678");
+  await expect(trigger.locator(".account-profile__attention-badge")).toHaveText("1");
 });
 
 test("reads a public Wiki article without requesting protected history", async ({ page }) => {

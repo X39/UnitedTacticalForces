@@ -15859,4 +15859,13 @@ Beginne hier mit dem Schreiben.</value>
   <data name="React_ServerWorkspace_PersistentOverride" xml:space="preserve"><value>Persistente Überschreibung</value></data>
   <data name="React_ServerWorkspace_GeneratedIncomplete" xml:space="preserve"><value>Generiert · unvollständig</value></data>
   <data name="React_ServerWorkspace_Deleting" xml:space="preserve"><value>Wird gelöscht…</value></data>
+  <data name="React_CommandOverview_Description" xml:space="preserve"><value>Aktuelle Betriebslage, offene Arbeit und alle Steuerungsbereiche, für die du berechtigt bist.</value></data>
+  <data name="React_CommandOverview_OperationalSnapshot" xml:space="preserve"><value>Operative Hosting-Übersicht</value></data>
+  <data name="React_CommandOverview_ActiveDeployments" xml:space="preserve"><value>Aktive Bereitstellungen</value></data>
+  <data name="React_CommandOverview_AttentionKicker" xml:space="preserve"><value>Handlungsbedarf</value></data>
+  <data name="React_CommandOverview_AttentionTitle" xml:space="preserve"><value>Operative Warteschlange</value></data>
+  <data name="React_CommandOverview_AllClearTitle" xml:space="preserve"><value>Kein unmittelbarer Eingriff erforderlich</value></data>
+  <data name="React_CommandOverview_AllClearDescription" xml:space="preserve"><value>Kein sichtbarer Server meldet mögliche Providerkosten oder ausstehende Lebenszyklusarbeiten.</value></data>
+  <data name="React_CommandOverview_WorkAreasKicker" xml:space="preserve"><value>Berechtigte Steuerungsbereiche</value></data>
+  <data name="React_CommandOverview_WorkAreasTitle" xml:space="preserve"><value>Deine Arbeitsbereiche</value></data>
 </root>

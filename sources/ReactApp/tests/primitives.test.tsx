@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import i18n, { i18nReady } from "@/app/i18n";
-import { ConfirmDialog, Markdown } from "@/components/primitives";
+import { ConfirmDialog, Markdown, PageHeader } from "@/components/primitives";
 
 describe("shared UI primitives", () => {
   beforeAll(async () => {
@@ -26,6 +26,13 @@ describe("shared UI primitives", () => {
   it("keeps safe relative Markdown links", () => {
     render(<Markdown>{"[map](briefing/map)"}</Markdown>);
     expect(screen.getByRole("link", { name: "map" })).toHaveAttribute("href", "briefing/map");
+  });
+
+  it("uses the requested heading level when a page already owns the h1", () => {
+    render(<PageHeader title="Community resources" headingLevel={2} />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Community resources" })).toBeVisible();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
   });
 
   it("renders stable heading anchors, footnotes, definitions, and alerts", () => {
