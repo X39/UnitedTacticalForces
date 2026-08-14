@@ -24,7 +24,7 @@
         @Content.CancelLabel
     </UtfCommandButton>
     <UtfCommandButton Variant="danger"
-                      Disabled="@(!ChallengeMatches)"
+                      Disabled="@(!ChallengeMatches || _submissionInProgress)"
                       OnClick="ConfirmAsync">
         @Content.ConfirmLabel
     </UtfCommandButton>
@@ -32,6 +32,7 @@
 
 @code {
     private ElementReference _confirmationInputElement;
+    private bool _submissionInProgress;
 
     [CascadingParameter]
     public FluentDialog Dialog { get; set; } = default!;
@@ -51,8 +52,25 @@
     private Task CancelAsync()
         => Dialog.CancelAsync();
 
-    private Task ConfirmAsync()
-        => ChallengeMatches ? Dialog.CloseAsync(Content) : Task.CompletedTask;
+    private async Task ConfirmAsync()
+    {
+        if (!ChallengeMatches || _submissionInProgress)
+            return;
+
+        _submissionInProgress = true;
+        try
+        {
+            if (Content.OnConfirmAsync is not null
+                && !await Content.OnConfirmAsync(Content.Confirmation))
+                return;
+
+            await Dialog.CloseAsync(Content);
+        }
+        finally
+        {
+            _submissionInProgress = false;
+        }
+    }
 
     public sealed class Data
     {
@@ -63,5 +81,6 @@
         public string ConfirmLabel { get; init; } = string.Empty;
         public string CancelLabel { get; init; } = string.Empty;
         public string Confirmation { get; set; } = string.Empty;
+        public Func<string, Task<bool>>? OnConfirmAsync { get; init; }
     }
 }

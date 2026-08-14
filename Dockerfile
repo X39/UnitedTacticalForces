@@ -23,6 +23,20 @@ RUN dotnet publish sources/WebApp/WebApp.csproj \
     --output /out/web \
     /p:UseAppHost=false
 
+FROM node:24.11.1-alpine AS react-build
+WORKDIR /src
+
+COPY sources/ReactApp/package.json sources/ReactApp/package-lock.json sources/ReactApp/.npmrc ./sources/ReactApp/
+WORKDIR /src/sources/ReactApp
+RUN npm ci
+
+WORKDIR /src
+COPY sources/ReactApp/ ./sources/ReactApp/
+COPY sources/WebApp/Properties/Language.resx sources/WebApp/Properties/Language.de.resx ./sources/WebApp/Properties/
+COPY sources/Common/Ui/routes.json ./sources/Common/Ui/routes.json
+WORKDIR /src/sources/ReactApp
+RUN npm run build
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
 
@@ -51,6 +65,7 @@ FROM nginx:1.29-alpine AS web
 
 COPY deploy/nginx.conf /etc/nginx/nginx.conf
 COPY --from=web-publish /out/web/wwwroot/ /usr/share/nginx/html/
+COPY --from=react-build /src/sources/ReactApp/dist/ /usr/share/nginx/html/next/
 COPY deploy/webapp.appsettings.json /usr/share/nginx/html/appsettings.json
 
 # Runtime configuration is mounted over appsettings.json in production. Remove

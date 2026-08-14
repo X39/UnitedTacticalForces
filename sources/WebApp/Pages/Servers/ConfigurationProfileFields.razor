@@ -1,13 +1,14 @@
 @using System.Globalization
 @using System.Text.Json
 @using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@inject IStringLocalizer<Language> Localizer
 
 <div class="configuration-definition-groups">
     @foreach (var target in Definitions.GroupBy(q => q.TargetPath))
     {
         <section class="configuration-target">
             <div class="configuration-target-heading">
-                <span>Generated file</span>
+                <span>@Localizer["Hosting_ConfigurationProfiles_GeneratedFile"]</span>
                 <code>@target.Key</code>
             </div>
             @foreach (var group in target.GroupBy(q => q.Group))
@@ -23,11 +24,11 @@
                                     <span>
                                         @if (definition.Required)
                                         {
-                                            <strong>Required</strong>
+                                            <strong>@Localizer["Hosting_ConfigurationProfiles_Required"]</strong>
                                         }
                                         @if (definition.Sensitive)
                                         {
-                                            <strong>Sensitive</strong>
+                                            <strong>@Localizer["Hosting_ConfigurationProfiles_Sensitive"]</strong>
                                         }
                                     </span>
                                 </div>
@@ -41,7 +42,9 @@
                                                    disabled="@Disabled"
                                                    @onchange="@(args => SetBoolean(definition.Key, args.Value))"/>
                                             <span aria-hidden="true"></span>
-                                            <strong>@(BooleanValue(definition) ? "Enabled" : "Disabled")</strong>
+                                            <strong>@(BooleanValue(definition)
+                                                ? Localizer["Hosting_ConfigurationProfiles_Enabled"]
+                                                : Localizer["Hosting_ConfigurationProfiles_Disabled"])</strong>
                                         </label>
                                         break;
                                     case "Integer":
@@ -66,7 +69,7 @@
                                                 @onchange="@(args => SetString(definition, args.Value?.ToString()))">
                                             @if (!definition.Required)
                                             {
-                                                <option value="">Not set</option>
+                                                <option value="">@Localizer["Hosting_ConfigurationProfiles_NotSet"]</option>
                                             }
                                             @foreach (var option in definition.AllowedValues)
                                             {
@@ -78,7 +81,7 @@
                                         <textarea id="@FieldId(definition)"
                                                   class="configuration-control configuration-control--multiline"
                                                   rows="3"
-                                                  placeholder="Enter one value per line"
+                                                  placeholder="@(Localizer["Hosting_ConfigurationProfiles_EnterOnePerLine"])"
                                                   disabled="@Disabled"
                                                   @oninput="@(args => SetArray(definition, args.Value?.ToString()))">@ArrayValue(definition)</textarea>
                                         break;
@@ -87,7 +90,9 @@
                                                class="configuration-control"
                                                type="@(definition.Sensitive ? "password" : "text")"
                                                value="@StringValue(definition)"
-                                               placeholder="@(definition.Required ? "Required" : "Not set")"
+                                               placeholder="@(definition.Required
+                                                   ? Localizer["Hosting_ConfigurationProfiles_Required"]
+                                                   : Localizer["Hosting_ConfigurationProfiles_NotSet"])"
                                                autocomplete="@(definition.Sensitive ? "new-password" : "off")"
                                                required="@definition.Required"
                                                disabled="@Disabled"
@@ -98,7 +103,9 @@
                                     <small>@definition.Description</small>
                                     @if (!definition.Required && Values.ContainsKey(definition.Key))
                                     {
-                                        <button type="button" disabled="@Disabled" @onclick="@(() => Clear(definition.Key))">Clear value</button>
+                                        <button type="button" disabled="@Disabled" @onclick="@(() => Clear(definition.Key))">
+                                            @Localizer["Hosting_ConfigurationProfiles_ClearValue"]
+                                        </button>
                                     }
                                 </div>
                             </div>

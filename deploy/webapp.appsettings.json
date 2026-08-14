@@ -1,0 +1,13 @@
+{
+  "Api": {
+    "BaseUrl": "/api/"
+  },
+  "Urls": {
+    "TeamSpeak3": "",
+    "Discord": ""
+  },
+  "Ui": {
+    "ReactVariantEnabled": false,
+    "ReactBasePath": "/next"
+  }
+}

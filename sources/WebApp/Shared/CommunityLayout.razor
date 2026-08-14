@@ -177,6 +177,7 @@
                 <FluentIcon Value="@(new Icons.Regular.Size24.Shield())"/>
                 <span>@Localizer[nameof(Language.Shared_NavMenu_GDPR)]</span>
             </NavLink>
+            <UiVariantSwitch/>
         </nav>
     </footer>
 </div>
@@ -191,6 +192,7 @@
     private bool CanAccessCommandCenter
         => Me.HasClaimOrEventAdmin(Claims.Creation.Events)
            || Me.CanAccessGameServers()
+           || Me.CanAccessConfigurationProfiles()
            || Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All)
            || Me.HasBaseClaimOrTerrainAdmin(Claims.Creation.Terrain, Claims.ResourceBased.Terrain.All)
            || Me.HasBaseClaimOrUserAdmin(Claims.User.All)

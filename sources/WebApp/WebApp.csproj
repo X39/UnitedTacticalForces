@@ -103,4 +103,10 @@
     <_ContentIncludedByDefault Remove="Old\Shared\NavMenu.razor" />
     <_ContentIncludedByDefault Remove="UtfApi\kiota-lock.json" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\Common\Ui\routes.json"
+             Link="wwwroot\ui-routes.json"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

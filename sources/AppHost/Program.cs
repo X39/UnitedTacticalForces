@@ -11,6 +11,12 @@ var api = builder.AddProject<Projects.Api>("api")
     .WaitFor(db);
 var app = builder.AddProject<Projects.WebApp>("app")
     .WaitFor(api);
+builder.AddViteApp("react-app", "../ReactApp")
+    .WithNpm(installCommand: "ci")
+    .WithReference(api)
+    .WithReference(app)
+    .WaitFor(api)
+    .WaitFor(app);
 
 AddDevelopmentCloudWorker(builder, api);
 

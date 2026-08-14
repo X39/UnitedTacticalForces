@@ -26,6 +26,10 @@ public interface IGameServerRepository
         Guid profileId,
         CancellationToken cancellationToken = default);
 
+    Task<ConfigurationProfileAccessInfo> GetConfigurationProfileAccessAsync(
+        Guid profileId,
+        CancellationToken cancellationToken = default);
+
     Task<ConfigurationProfileInfo> CreateConfigurationProfileAsync(
         string title,
         string gameIdentifier,
@@ -65,6 +69,9 @@ public interface IGameServerRepository
 
     Task<IReadOnlyList<GameServerModPackOptionInfo>> GetCreationModPackOptionsAsync(
         string gameIdentifier,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<GameServerCostOwnerOptionInfo>> GetCreationCostOwnerOptionsAsync(
         CancellationToken cancellationToken = default);
 
     Task<StorageDemandInfo> EstimateStorageDemandAsync(

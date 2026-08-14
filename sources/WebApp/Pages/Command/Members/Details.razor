@@ -13,6 +13,7 @@
 @inject IUserRepository UserRepository
 @inject IVereinRepository VereinRepository
 @inject IToastService ToastService
+@inject IDialogService DialogService
 @inject MeService Me
 @inject BaseUrl BaseUrl
 @inject IStringLocalizer<Language> Localizer
@@ -679,6 +680,14 @@
         if (_user is null || !CanSaveProfile)
             return;
 
+        if (_isBanned && _user.IsBanned is not true
+            && !await ConfirmProtectedChangeAsync(
+                    Localizer["Pages_Command_Member_ConfirmBanTitle"],
+                    Localizer["Pages_Command_Member_ConfirmBanDescription"],
+                    Localizer["Pages_Command_Member_ConfirmBanAction"])
+                .ConfigureAwait(false))
+            return;
+
         _isSavingProfile = true;
         try
         {
@@ -708,6 +717,15 @@
     private async Task SaveMembershipAsync()
     {
         if (_user is null || !CanManageVereinMemberships)
+            return;
+
+        if (_membershipStatus is VereinMembershipStatus.Ended
+            && _membership?.Status is not VereinMembershipStatus.Ended
+            && !await ConfirmProtectedChangeAsync(
+                    Localizer["Pages_Command_Member_ConfirmEndMembershipTitle"],
+                    Localizer["Pages_Command_Member_ConfirmEndMembershipDescription"],
+                    Localizer["Pages_Command_Member_ConfirmEndMembershipAction"])
+                .ConfigureAwait(false))
             return;
 
         _isSavingMembership = true;
@@ -933,4 +951,21 @@
 
     private static string FormatNullable(string? value, string fallback)
         => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+    private async Task<bool> ConfirmProtectedChangeAsync(string title, string message, string confirmLabel)
+    {
+        var challenge = FormatNullable(_user?.Nickname, UserId.ToString());
+        return await DialogService.ShowUtfChallengeConfirmationAsync(
+                title,
+                message,
+                challenge,
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    Localizer["Pages_Command_Member_ConfirmChallenge"].Value,
+                    challenge),
+                confirmLabel,
+                Localizer["Common_Cancel"],
+                kicker: Localizer["Pages_Command_Member_ConfirmKicker"])
+            .ConfigureAwait(false) is not null;
+    }
 }

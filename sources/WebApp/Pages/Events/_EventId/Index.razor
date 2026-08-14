@@ -18,6 +18,7 @@
 @inject BaseUrl BaseUrl
 @inject IStringLocalizer<Language> Localizer
 @inject MeService Me
+@inject IDialogService DialogService
 
 <PageTitle>@(_event?.Title ?? Localizer[nameof(Language.Pages_Events_Detail_PageTitleFallback)].Value)</PageTitle>
 
@@ -647,7 +648,7 @@
                 .ConfigureAwait(false);
             if (tmp is null)
             {
-                _loadError = "The requested operation could not be found.";
+                _loadError = Localizer["Pages_Events_Detail_Error_NotFound"].Value;
                 return;
             }
 
@@ -666,7 +667,7 @@
         catch
         {
             _slotGroups = [];
-            _loadError = "Operation details could not be loaded. Check the API connection and try again.";
+            _loadError = Localizer["Pages_Events_Detail_Error_Load"].Value;
         }
         finally
         {
@@ -721,6 +722,19 @@
         if (!CanSetAttendance || _event?.PrimaryKey is not { } eventId)
             return;
 
+        if (acceptance is not Common.Event.EEventAcceptance.Accepted && CurrentUserSlotCount > 0)
+        {
+            var confirmed = await DialogService.ShowUtfConfirmationAsync(
+                    Localizer[nameof(Language.Dialogs_ConfirmSlotLoss_ConfirmSlotLossOnAcceptanceChange)].Value,
+                    Localizer[nameof(Language.Dialogs_ConfirmSlotLoss_SelectingSlotWillRemoveSlotSelection)].Value,
+                    Localizer[nameof(Language.Dialogs_ConfirmSlotSelection_ConfirmAcceptanceStatusChange)].Value,
+                    Localizer[nameof(Language.Common_Cancel)].Value,
+                    destructive: true)
+                .ConfigureAwait(false);
+            if (!confirmed)
+                return;
+        }
+
         _attendanceUpdating = true;
         _pendingAcceptance = acceptance;
         _actionError = null;
@@ -733,7 +747,7 @@
         }
         catch
         {
-            _actionError = "Attendance could not be updated. Check the API connection and try again.";
+            _actionError = Localizer["Pages_Events_Detail_Error_Attendance"].Value;
         }
         finally
         {
@@ -758,7 +772,7 @@
         }
         catch
         {
-            _actionError = "The slot could not be assigned. Check the API connection and try again.";
+            _actionError = Localizer["Pages_Events_Detail_Error_Slot"].Value;
         }
         finally
         {

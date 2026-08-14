@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://united-tactical-forces.example/schemas/ui-route-manifest.schema.json",
+  "type": "object",
+  "required": ["version", "reactBasePath", "routes"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "reactBasePath": { "type": "string", "pattern": "^/[^/]*$" },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "canonical", "aliases", "certified", "shell"],
+        "properties": {
+          "id": { "type": "string" },
+          "canonical": { "type": "string", "pattern": "^/" },
+          "aliases": { "type": "array", "items": { "type": "string", "pattern": "^/" } },
+          "certified": { "type": "boolean" },
+          "shell": { "enum": ["community", "command"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

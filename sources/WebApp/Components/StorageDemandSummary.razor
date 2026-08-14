@@ -1,68 +1,66 @@
 @using System.Globalization
 @using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@inject IStringLocalizer<Language> Localizer
 
 <section class="utf-panel storage-demand" aria-labelledby="storage-demand-title">
     <div class="hosting-section-heading">
-        <span class="utf-kicker">Storage preflight</span>
-        <h2 id="storage-demand-title">Content storage demand</h2>
-        <p>Estimated installed usage and the recommended capacity while content is downloaded or updated.</p>
+        <span class="utf-kicker">@Localizer["Hosting_Create_StoragePreflight"]</span>
+        <h2 id="storage-demand-title">@Localizer["Hosting_Create_StorageDemandTitle"]</h2>
+        <p>@Localizer["Hosting_Create_StorageDemandDescription"]</p>
     </div>
 
     <dl class="storage-demand__totals">
-        <div><dt>Steady-state usage</dt><dd>@FormatBytes(Demand.SteadyStateRequiredBytes)</dd></div>
-        <div><dt>Preparation workspace</dt><dd>@FormatBytes(Demand.PreparationWorkspaceBytes)</dd></div>
-        <div><dt>Safety margin (@Demand.SafetyMarginPercent.ToString("0.#", CultureInfo.CurrentCulture)%)</dt><dd>@FormatBytes(Demand.SafetyMarginBytes)</dd></div>
-        <div><dt>Recommended peak capacity</dt><dd>@FormatBytes(Demand.PeakPreparationRequiredBytes)</dd></div>
+        <div><dt>@Localizer["Hosting_Create_SteadyStateUsage"]</dt><dd>@FormatBytes(Demand.SteadyStateRequiredBytes)</dd></div>
+        <div><dt>@Localizer["Hosting_Create_PreparationWorkspace"]</dt><dd>@FormatBytes(Demand.PreparationWorkspaceBytes)</dd></div>
+        <div><dt>@Localizer["Hosting_Create_SafetyMargin", Demand.SafetyMarginPercent.ToString("0.#", CultureInfo.CurrentCulture)]</dt><dd>@FormatBytes(Demand.SafetyMarginBytes)</dd></div>
+        <div><dt>@Localizer["Hosting_Create_RecommendedPeak"]</dt><dd>@FormatBytes(Demand.PeakPreparationRequiredBytes)</dd></div>
     </dl>
 
     <p class="storage-demand__status">
-        <strong>Confidence:</strong> @StatusText(Demand.Status).
+        <strong>@Localizer["Hosting_Create_Confidence"]</strong> @StatusText(Demand.Status).
         @if (Demand.MeasurementTimestamp is { } measuredAt)
         {
-            <span> Latest filesystem measurement: @measuredAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture).</span>
+            <span> @Localizer["Hosting_Create_LatestMeasurement", measuredAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)]</span>
         }
     </p>
 
     @if (Demand.MissingComponents.Count > 0)
     {
         <UtfAlert Intent="MessageIntent.Warning">
-            This estimate uses conservative fallbacks for: @string.Join(", ", Demand.MissingComponents).
+            @Localizer["Hosting_Create_MissingComponents", string.Join(", ", Demand.MissingComponents)]
         </UtfAlert>
     }
 
     @if (SelectedFit is { IsSufficient: false })
     {
         <UtfAlert Intent="MessageIntent.Warning">
-            The selected profile is insufficient for the recommended peak capacity. Choose a larger profile or
-            provide external storage. Provisioning remains available, but preparation will not start without enough
-            mounted free space.
+            @Localizer["Hosting_Create_SelectedProfileInsufficient"]
         </UtfAlert>
     }
     else if (SelectedFit is { IsSufficient: null })
     {
         <UtfAlert Intent="MessageIntent.Warning">
-            The selected profile's capacity is unknown. External storage may be required; mounted capacity is checked
-            before content preparation.
+            @Localizer["Hosting_Create_SelectedProfileUnknown"]
         </UtfAlert>
     }
 
-    <h3>Selected runtime profile capacity</h3>
+    <h3>@Localizer["Hosting_Create_SelectedProfileCapacity"]</h3>
     @if (SelectedFit is { } selectedFit)
     {
         <article class="storage-demand__profile">
             <strong>@selectedFit.DisplayName</strong>
-            <span>Included: @FormatOptionalBytes(selectedFit.IncludedCapacityBytes)</span>
-            <span>Usable after system reserve: @FormatOptionalBytes(selectedFit.UsableCapacityBytes)</span>
+            <span>@Localizer["Hosting_Create_IncludedCapacity"]: @FormatOptionalBytes(selectedFit.IncludedCapacityBytes)</span>
+            <span>@Localizer["Hosting_Create_UsableCapacity"]: @FormatOptionalBytes(selectedFit.UsableCapacityBytes)</span>
             <span><strong>@FitText(selectedFit.IsSufficient)</strong></span>
         </article>
     }
     else
     {
-        <p class="storage-demand__status">Capacity information is unavailable for the selected runtime profile.</p>
+        <p class="storage-demand__status">@Localizer["Hosting_Create_ProfileCapacityUnavailable"]</p>
     }
 
     <details>
-        <summary>Component breakdown</summary>
+        <summary>@Localizer["Hosting_Create_ComponentBreakdown"]</summary>
         <ul class="storage-demand__components">
             @foreach (var component in Demand.Components)
             {
@@ -88,25 +86,27 @@
             SelectedProfileIdentifier,
             StringComparison.OrdinalIgnoreCase));
 
-    private static string StatusText(string status)
+    private string StatusText(string status)
         => status.Trim().ToLowerInvariant() switch
         {
-            "measured" => "measured",
-            "estimated" => "estimated",
-            "incomplete" => "incomplete",
-            _ => "unavailable",
+            "measured" => Localizer["Hosting_Create_StorageStatusMeasured"].Value,
+            "estimated" => Localizer["Hosting_Create_StorageStatusEstimated"].Value,
+            "incomplete" => Localizer["Hosting_Create_StorageStatusIncomplete"].Value,
+            _ => Localizer["Hosting_Create_StorageStatusUnavailable"].Value,
         };
 
-    private static string FitText(bool? sufficient)
+    private string FitText(bool? sufficient)
         => sufficient switch
         {
-            true => "Sufficient",
-            false => "Insufficient — external storage or a larger profile is required",
-            null => "Capacity unknown — external storage may be required",
+            true => Localizer["Hosting_Create_FitSufficient"].Value,
+            false => Localizer["Hosting_Create_FitInsufficient"].Value,
+            null => Localizer["Hosting_Create_FitUnknown"].Value,
         };
 
-    private static string FormatOptionalBytes(long? bytes)
-        => bytes is { } value ? FormatBytes(value) : "unknown";
+    private string FormatOptionalBytes(long? bytes)
+        => bytes is { } value
+            ? FormatBytes(value)
+            : Localizer["Hosting_Create_StorageStatusUnavailable"].Value;
 
     private static string FormatBytes(long bytes)
     {

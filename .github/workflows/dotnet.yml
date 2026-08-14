@@ -5,40 +5,115 @@ name: .NET
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
+  schedule:
+    - cron: "23 3 * * 1"
+  workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
-  build:
+  react:
+    name: React frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sources/ReactApp
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: sources/ReactApp/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Check generated contracts and localization
+        run: npm run contracts:check && npm run locales:check
+      - name: Check formatting
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit and component tests
+        run: npm test
+      - name: Production build
+        run: npm run build:assets
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser tests
+        run: npm run test:e2e
+      - name: Upload React frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "Frontend-React"
+          path: "sources/ReactApp/dist"
 
+  react-browser-matrix:
+    name: React full browser matrix
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    needs: react
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sources/ReactApp
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: sources/ReactApp/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Install browser matrix
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run Chromium, Firefox, and WebKit journeys
+        run: npm run test:e2e
+        env:
+          UTF_FULL_BROWSER_MATRIX: "true"
+
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 10.0.201
-    - name: Restore dependencies
-      run: dotnet restore X39.UnitedTacticalForces.slnx
-    - name: Build
-      run: dotnet build X39.UnitedTacticalForces.slnx --no-restore
-    - name: Test
-      run: dotnet test X39.UnitedTacticalForces.slnx --no-build --verbosity normal
-    - name: Publish Backend
-      run: dotnet publish sources/Api/Api.csproj -c Release --no-restore
-    - name: Upload backend artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: "Backend"
-        path: "sources/Api/bin/Release/net10.0/publish"
-    - name: Publish frontend
-      run: dotnet publish sources/WebApp/WebApp.csproj -c Release --no-restore
-    - name: Upload frontend artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: "Frontend"
-        path: "sources/WebApp/bin/Release/net10.0/publish"
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.201
+      - name: Restore dependencies
+        run: dotnet restore X39.UnitedTacticalForces.slnx
+      - name: Build
+        run: dotnet build X39.UnitedTacticalForces.slnx --no-restore
+      - name: Verify React OpenAPI snapshot
+        run: |
+          dotnet run --project sources/Api/Api.csproj --no-build -- --export-openapi "$RUNNER_TEMP/utf-api.json"
+          cmp --silent sources/ReactApp/openapi/utf-api.json "$RUNNER_TEMP/utf-api.json"
+      - name: Test
+        run: dotnet test X39.UnitedTacticalForces.slnx --no-build --verbosity normal
+      - name: Publish Backend
+        run: dotnet publish sources/Api/Api.csproj -c Release --no-restore
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "Backend"
+          path: "sources/Api/bin/Release/net10.0/publish"
+      - name: Publish frontend
+        run: dotnet publish sources/WebApp/WebApp.csproj -c Release --no-restore
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "Frontend"
+          path: "sources/WebApp/bin/Release/net10.0/publish"

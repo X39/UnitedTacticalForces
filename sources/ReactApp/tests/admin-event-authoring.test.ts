@@ -1,0 +1,140 @@
+import { ApiClient, initializeApiClient } from "@/api/client";
+import type { PublicConfiguration } from "@/app/config";
+import {
+  applyEventObjectives,
+  createEventForm,
+  createEventFormSchema,
+  createSlotDraft,
+  defaultScheduledForLocal,
+  eventAuthoringService,
+  normalizeArmaSide,
+  parseEventObjectives,
+  removeObjectiveBlock,
+  validateSlot,
+} from "@/features/admin/eventAuthoring";
+
+const configuration: PublicConfiguration = {
+  Api: { BaseUrl: "/api/" },
+  Urls: { TeamSpeak3: "", Discord: "" },
+  Ui: { ReactVariantEnabled: true, ReactBasePath: "/next" },
+};
+
+describe("event authoring model", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("chooses the next local 20:00 operation window", () => {
+    expect(defaultScheduledForLocal(new Date(2026, 7, 14, 10, 30))).toBe("2026-08-14T20:00");
+    expect(defaultScheduledForLocal(new Date(2026, 7, 14, 21, 30))).toBe("2026-08-15T20:00");
+    expect(createEventForm(new Date(2026, 7, 14, 10, 30))).toMatchObject({
+      scheduledForLocal: "2026-08-14T20:00",
+      isVisible: true,
+      minimumAccepted: 0,
+    });
+  });
+
+  it("validates event and slot requirements with localized messages", () => {
+    const schema = createEventFormSchema(
+      {
+        titleRequired: "title",
+        titleTooLong: "long",
+        briefingRequired: "briefing",
+        scheduleRequired: "schedule",
+        hostRequired: "host",
+        terrainRequired: "terrain",
+        modPackRequired: "modpack",
+        imageRequired: "image",
+        minimumInvalid: "minimum",
+      },
+      true,
+    );
+    const result = schema.safeParse({
+      ...createEventForm(new Date(2026, 7, 14, 10, 30)),
+      scheduledForLocal: "",
+      minimumAccepted: -1,
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toEqual(
+      expect.arrayContaining([
+        "title",
+        "briefing",
+        "schedule",
+        "host",
+        "terrain",
+        "modpack",
+        "image",
+        "minimum",
+      ]),
+    );
+
+    const slot = { ...createSlotDraft(), group: " ", title: "" };
+    expect(validateSlot(slot, { groupRequired: "group", titleRequired: "role" })).toEqual([
+      "group",
+      "role",
+    ]);
+  });
+
+  it("parses and rewrites the leading mission-objective block without losing briefing content", () => {
+    const markdown =
+      "## Mission objectives\n- :intel: Locate the convoy\n- :medical: Stabilize casualties\n\n## Execution\nMove at dusk.";
+    const objectives = parseEventObjectives(markdown);
+    expect(objectives.map(({ icon, text }) => ({ icon, text }))).toEqual([
+      { icon: "intel", text: "Locate the convoy" },
+      { icon: "medical", text: "Stabilize casualties" },
+    ]);
+    expect(removeObjectiveBlock(markdown)).toBe("## Execution\nMove at dusk.");
+    expect(
+      applyEventObjectives(markdown, [
+        { ...objectives[0]!, icon: "map", text: "Secure the bridge" },
+      ]),
+    ).toBe("## Mission objectives\n- :map: Secure the bridge\n\n## Execution\nMove at dusk.");
+  });
+
+  it("normalizes legacy numeric and string Arma sides", () => {
+    expect(normalizeArmaSide(2)).toBe("West");
+    expect(normalizeArmaSide(5)).toBe("AmbientLife");
+    expect(normalizeArmaSide("Resistance")).toBe("Resistance");
+    expect(normalizeArmaSide(99)).toBe("Empty");
+  });
+
+  it("sends typed event and slot mutations through the shared adapter", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ primaryKey: "83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    initializeApiClient(configuration);
+
+    const values = {
+      ...createEventForm(new Date(2026, 7, 14, 10, 30)),
+      title: "Operation Northstar",
+      description: "Briefing",
+      hostedByFk: "2fdd4802-e081-4baa-9120-f1873653a057",
+      terrainFk: 3,
+      terrainGameIdentifier: "arma3",
+      modPackRevisionFk: 8,
+      imageAssetFk: "4a7e2d42-50b0-4a7d-a381-a4f20a1f5dc2",
+    };
+    await expect(eventAuthoringService.create(values)).resolves.toBe(
+      "83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f",
+    );
+    await eventAuthoringService.update("83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f", values);
+
+    const [createUrl, createInit] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(createUrl.pathname).toBe("/api/events/create");
+    expect(createInit.method).toBe("POST");
+    expect(JSON.parse(String(createInit.body))).toMatchObject({
+      title: "Operation Northstar",
+      terrainFk: 3,
+      modPackRevisionFk: 8,
+      imageAssetFk: "4a7e2d42-50b0-4a7d-a381-a4f20a1f5dc2",
+    });
+    const [updateUrl] = fetchMock.mock.calls[1] as [URL, RequestInit];
+    expect(updateUrl.pathname).toBe("/api/events/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f/update");
+    expect(new ApiClient(configuration)).toBeInstanceOf(ApiClient);
+  });
+});

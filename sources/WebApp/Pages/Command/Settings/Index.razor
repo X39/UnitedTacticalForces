@@ -104,7 +104,7 @@
                                     @onclick="@(() => SelectFeature(feature))">
                                     <td>
                                         <strong>@feature.Area</strong>
-                                        <span>@feature.Detail</span>
+                                        <span>@GetFeatureDetail(feature)</span>
                                     </td>
                                     <td>
                                         <span class="@GetFeatureStatusClass(feature)">
@@ -113,7 +113,7 @@
                                     </td>
                                     <td>@(feature.IsEnabled ? Localizer[nameof(Language.Pages_Command_Settings_ValueEnabled)] : Localizer[nameof(Language.Pages_Command_Settings_ValueDisabled)])</td>
                                     <td>@(feature.IsConfigured ? Localizer[nameof(Language.Pages_Command_Settings_ValueConfigured)] : Localizer[nameof(Language.Pages_Command_Settings_ValueMissing)])</td>
-                                    <td>@feature.Detail</td>
+                                    <td>@GetFeatureDetail(feature)</td>
                                 </tr>
                             }
                                 </tbody>
@@ -145,7 +145,7 @@
                             <dt>@Localizer[nameof(Language.Pages_Command_Settings_DetailConfigured)]</dt>
                             <dd>@(_selectedFeature.IsConfigured ? Localizer[nameof(Language.Pages_Command_Settings_ValueYes)] : Localizer[nameof(Language.Pages_Command_Settings_ValueNo)])</dd>
                             <dt>@Localizer[nameof(Language.Pages_Command_Settings_DetailLabel)]</dt>
-                            <dd>@_selectedFeature.Detail</dd>
+                            <dd>@GetFeatureDetail(_selectedFeature)</dd>
                         </dl>
 
                         <section class="authority-stack" aria-label="@(Localizer[nameof(Language.Pages_Command_Settings_RedactionPolicyTitle)])">
@@ -251,6 +251,16 @@
             return Localizer[nameof(Language.Pages_Command_Settings_StatusDisabled)];
         return feature.IsConfigured ? Localizer[nameof(Language.Pages_Command_Settings_StatusReady)] : Localizer[nameof(Language.Pages_Command_Settings_StatusNeedsConfig)];
     }
+
+    private string GetFeatureDetail(CommandCenterSettingsFeatureInfo feature)
+        => feature.Area switch
+        {
+            "Steam" => Localizer["Pages_Command_Settings_Feature_Steam_Detail"],
+            "Discord OAuth" => Localizer["Pages_Command_Settings_Feature_DiscordOAuth_Detail"],
+            "Discord Bot" => Localizer["Pages_Command_Settings_Feature_DiscordBot_Detail"],
+            "TeamSpeak" => Localizer["Pages_Command_Settings_Feature_TeamSpeak_Detail"],
+            _ => feature.Detail,
+        };
 
     private static string FormatCount(long value, string singularText, string pluralText)
         => value is 1

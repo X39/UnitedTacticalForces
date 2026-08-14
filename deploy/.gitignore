@@ -1,0 +1,4 @@
+*
+!.gitignore
+!nginx.conf
+!webapp.appsettings.json

@@ -10,12 +10,14 @@ public sealed class IncludeCookiesHttpMessageHandler : DelegatingHandler
     )
     {
         request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+        request.Headers.TryAddWithoutValidation("X-UTF-UI-Variant", "classic");
         return base.SendAsync(request, cancellationToken);
     }
 
     protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+        request.Headers.TryAddWithoutValidation("X-UTF-UI-Variant", "classic");
         return base.Send(request, cancellationToken);
     }
 }

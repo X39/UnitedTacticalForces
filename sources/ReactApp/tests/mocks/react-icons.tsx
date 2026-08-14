@@ -1,0 +1,26 @@
+const Icon = () => null;
+
+export const ArrowLeft20Regular = Icon;
+export const ArrowRight20Regular = Icon;
+export const ArrowSync20Regular = Icon;
+export const BookOpen24Regular = Icon;
+export const CalendarLtr24Regular = Icon;
+export const CalendarMonth24Regular = Icon;
+export const CheckmarkCircle20Regular = Icon;
+export const CheckmarkCircle24Regular = Icon;
+export const ChevronLeft20Regular = Icon;
+export const ChevronRight20Regular = Icon;
+export const CloudArrowUp24Regular = Icon;
+export const DismissCircle20Regular = Icon;
+export const Grid24Regular = Icon;
+export const Info20Regular = Icon;
+export const Money24Regular = Icon;
+export const Navigation24Regular = Icon;
+export const PeopleAdd24Regular = Icon;
+export const PeopleCommunity24Regular = Icon;
+export const PeopleTeam24Regular = Icon;
+export const Person24Regular = Icon;
+export const Search20Regular = Icon;
+export const ShieldLock24Regular = Icon;
+export const ShieldTask24Regular = Icon;
+export const Warning20Regular = Icon;

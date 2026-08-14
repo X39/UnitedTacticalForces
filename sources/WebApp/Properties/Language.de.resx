@@ -2710,6 +2710,18 @@
   <data name="Pages_Command_Settings_FeatureRowsTitle" xml:space="preserve">
         <value>Funktionsbereitschaft</value>
     </data>
+  <data name="Pages_Command_Settings_Feature_Steam_Detail" xml:space="preserve">
+        <value>Die Steam-Authentifizierungsbereitschaft wird ohne Zugangsdaten angezeigt.</value>
+    </data>
+  <data name="Pages_Command_Settings_Feature_DiscordOAuth_Detail" xml:space="preserve">
+        <value>OAuth-Clientzugangsdaten werden ausgeblendet; angezeigt wird nur die Bereitschaft.</value>
+    </data>
+  <data name="Pages_Command_Settings_Feature_DiscordBot_Detail" xml:space="preserve">
+        <value>Bot-Token und Kennungen werden ausgeblendet; angezeigt wird nur die Bereitschaft.</value>
+    </data>
+  <data name="Pages_Command_Settings_Feature_TeamSpeak_Detail" xml:space="preserve">
+        <value>Die Bereitschaft von Host und Port wird ohne Passwortwerte angezeigt.</value>
+    </data>
   <data name="Pages_Command_Settings_HeaderConfigured" xml:space="preserve">
         <value>Konfiguriert</value>
     </data>
@@ -2733,6 +2745,9 @@
     </data>
   <data name="Pages_Command_Settings_Loading" xml:space="preserve">
         <value>Einstellungen werden geladen</value>
+    </data>
+  <data name="Pages_Command_Settings_LoadError" xml:space="preserve">
+        <value>Die Betriebseinstellungen konnten nicht geladen werden. Prüfe die API-Verbindung und versuche es erneut.</value>
     </data>
   <data name="Pages_Command_Settings_MetricReadinessDescription" xml:space="preserve">
         <value>{0:N0} aktivierte Funktionen benötigen Konfiguration</value>
@@ -3161,7 +3176,7 @@
         <value>Zugriff auf Veranstaltungsverwaltung erforderlich</value>
     </data>
   <data name="Pages_Events_All_ActionCreate" xml:space="preserve">
-        <value>Erstellen Veranstaltung</value>
+        <value>Event erstellen</value>
     </data>
   <data name="Pages_Events_All_ActionRefresh" xml:space="preserve">
         <value>Aktualisieren</value>
@@ -3170,13 +3185,13 @@
         <value>Character Anzahl</value>
     </data>
   <data name="Pages_Events_All_EventCountLoaded" xml:space="preserve">
-        <value>Events geladen</value>
+        <value>{0} Events geladen</value>
     </data>
   <data name="Pages_Events_All_EventCountLoading" xml:space="preserve">
-        <value>Veranstaltungen wird geladen</value>
+        <value>Events werden geladen</value>
     </data>
   <data name="Pages_Events_All_EventsLoaded" xml:space="preserve">
-        <value>Veranstaltungen Geladen</value>
+        <value>Alle {0} Events geladen</value>
     </data>
   <data name="Pages_Events_All_EventsLoadedOf" xml:space="preserve">
         <value>{0} von {1} Events geladen</value>
@@ -3209,19 +3224,19 @@
         <value>Anstehend</value>
     </data>
   <data name="Pages_Events_All_Kicker" xml:space="preserve">
-        <value>Operation Ledger</value>
+        <value>Operationsübersicht</value>
     </data>
   <data name="Pages_Events_All_LoadError" xml:space="preserve">
         <value>Eventdaten konnten nicht geladen werden. Prüfe die API-Verbindung und versuche es erneut.</value>
     </data>
   <data name="Pages_Events_All_LoadMore" xml:space="preserve">
-        <value>mehr wird geladen</value>
+        <value>Mehr laden</value>
     </data>
   <data name="Pages_Events_All_LoadingMore" xml:space="preserve">
-        <value>mehr wird geladen</value>
+        <value>Weitere Events werden geladen</value>
     </data>
   <data name="Pages_Events_All_LoadingState" xml:space="preserve">
-        <value>Veranstaltung Verwaltung Archiv wird geladen</value>
+        <value>Eventverwaltung wird geladen</value>
     </data>
   <data name="Pages_Events_All_MetricDescriptionHidden" xml:space="preserve">
         <value>Ausgeblendete Einträge im zurückgegebenen Verwaltungsfenster</value>
@@ -3245,22 +3260,22 @@
         <value>Sichtbarkeit</value>
     </data>
   <data name="Pages_Events_All_MetricValueBelowMinimum" xml:space="preserve">
-        <value>Metrik Wert Below Minimum</value>
+        <value>{0} unter Minimum</value>
     </data>
   <data name="Pages_Events_All_MetricValueHiddenEvents" xml:space="preserve">
-        <value>Metrik Wert Ausgeblendet Veranstaltungen</value>
+        <value>{0} ausgeblendet</value>
     </data>
   <data name="Pages_Events_All_MetricValueUpcoming" xml:space="preserve">
-        <value>Anstehend</value>
+        <value>{0} anstehend</value>
     </data>
   <data name="Pages_Events_All_MetricsAria" xml:space="preserve">
-        <value>Veranstaltung Verwaltung Zusammenfassung</value>
+        <value>Zusammenfassung der Eventverwaltung</value>
     </data>
   <data name="Pages_Events_All_NoBriefing" xml:space="preserve">
-        <value>Keine briefing</value>
+        <value>Kein Briefing</value>
     </data>
   <data name="Pages_Events_All_NoDescriptionProvided" xml:space="preserve">
-        <value>Keine veranstaltung beschreibung was provided.</value>
+        <value>Keine Eventbeschreibung vorhanden.</value>
     </data>
   <data name="Pages_Events_All_NoEventsMatch" xml:space="preserve">
         <value>Keine Events passen zum aktuellen Filter.</value>
@@ -3275,13 +3290,13 @@
         <value>Veranstaltungsverwaltung</value>
     </data>
   <data name="Pages_Events_All_ParticipantBreakdown" xml:space="preserve">
-        <value>{0} maybe / {1} rejected</value>
+        <value>{0} vielleicht / {1} abgelehnt</value>
     </data>
   <data name="Pages_Events_All_SchedulePending" xml:space="preserve">
-        <value>Schedule ausstehend</value>
+        <value>Termin ausstehend</value>
     </data>
   <data name="Pages_Events_All_SlotReadiness" xml:space="preserve">
-        <value>{0} / {1} accepted</value>
+        <value>{0} / {1} angenommen</value>
     </data>
   <data name="Pages_Events_All_StatusArchived" xml:space="preserve">
         <value>Archiviert</value>
@@ -3302,10 +3317,10 @@
         <value>Assets</value>
     </data>
   <data name="Pages_Events_All_TableHeaderHostOwner" xml:space="preserve">
-        <value>Tabelle Kopfzeile Host Besitzer</value>
+        <value>Host / Besitzer</value>
     </data>
   <data name="Pages_Events_All_TableHeaderOperation" xml:space="preserve">
-        <value>Aktionen</value>
+        <value>Operation</value>
     </data>
   <data name="Pages_Events_All_TableHeaderSchedule" xml:space="preserve">
         <value>Zeitplan</value>
@@ -3329,19 +3344,19 @@
         <value>in {0} Std</value>
     </data>
   <data name="Pages_Events_All_TitleAll" xml:space="preserve">
-        <value>Titel Alle</value>
+        <value>Alle Events</value>
     </data>
   <data name="Pages_Events_All_TitleArchived" xml:space="preserve">
-        <value>Titel Archiviert</value>
+        <value>Archivierte Events</value>
     </data>
   <data name="Pages_Events_All_TitleHidden" xml:space="preserve">
-        <value>Titel Ausgeblendet</value>
+        <value>Ausgeblendete Events</value>
     </data>
   <data name="Pages_Events_All_TitleNeedsSlots" xml:space="preserve">
         <value>Benötigt Slots</value>
     </data>
   <data name="Pages_Events_All_TitleUpcoming" xml:space="preserve">
-        <value>Veranstaltung Archiv</value>
+        <value>Anstehende Events</value>
     </data>
   <data name="Pages_Events_All_UntitledEvent" xml:space="preserve">
         <value>Unbenanntes Event</value>
@@ -3650,7 +3665,7 @@
         <value>GDPR Partners Titel</value>
     </data>
   <data name="Pages_Public_GDPR_Reference_Body" xml:space="preserve">
-        <value>GDPR Reference Text</value>
+        <value>Unabhängige Anlaufstellen zum Verständnis und zur Ausübung deiner Datenschutzrechte.</value>
     </data>
   <data name="Pages_Public_GDPR_Reference_EDPB" xml:space="preserve">
         <value>EDPB rights guide</value>
@@ -3662,7 +3677,7 @@
         <value>legal framework; this Seite explains how this project currently behaves in practice.</value>
     </data>
   <data name="Pages_Public_GDPR_Reference_Title" xml:space="preserve">
-        <value>GDPR Reference Titel</value>
+        <value>Weiterführende Informationen</value>
     </data>
   <data name="Pages_Public_GDPR_Responsibilities_Body_1" xml:space="preserve">
         <value>GDPR Responsibilities Text 1</value>
@@ -3818,10 +3833,10 @@
         <value>-- Karte</value>
     </data>
   <data name="Pages_Public_Home_OpenCommunityStructureBody" xml:space="preserve">
-        <value>Open Community Structure Text</value>
+        <value>Neue Spieler erhalten vor größeren Missionen Unterstützung bei Mod-Setup, Abläufen und Slot-Erwartungen.</value>
     </data>
   <data name="Pages_Public_Home_OpenCommunityStructureTitle" xml:space="preserve">
-        <value>Neu players get help with Mod setup, procedures, and Slot expectations before stepping into larger missions.</value>
+        <value>Offen organisiert</value>
     </data>
   <data name="Pages_Public_Home_OperationMetadataAria" xml:space="preserve">
         <value>Operationsmetadaten</value>
@@ -3938,19 +3953,19 @@
         <value>Hier starten</value>
     </data>
   <data name="Pages_Public_Join_AccountAccessTitle" xml:space="preserve">
-        <value>Konto Zugriff</value>
+        <value>Kontozugang</value>
     </data>
   <data name="Pages_Public_Join_CommunityChannelsBody" xml:space="preserve">
-        <value>Community Channels Text</value>
+        <value>Nutze die konfigurierten Community-Links für Einrichtungsfragen, Koordination und Sprachkommunikation.</value>
     </data>
   <data name="Pages_Public_Join_CommunityChannelsTitle" xml:space="preserve">
-        <value>Use the configured Community links for setup questions, coordination, and voice comms.</value>
+        <value>Community-Kanäle</value>
     </data>
   <data name="Pages_Public_Join_Kicker" xml:space="preserve">
         <value>UTF beitreten</value>
     </data>
   <data name="Pages_Public_Join_LoggedInAs" xml:space="preserve">
-        <value>You are logged in as .</value>
+        <value>Angemeldet als</value>
     </data>
   <data name="Pages_Public_Join_LoginHint" xml:space="preserve">
         <value>Melde dich mit dem Identitätsanbieter an, der mit deinem UTF-Profil verbunden ist.</value>
@@ -3959,7 +3974,7 @@
         <value>Mitglied guide</value>
     </data>
   <data name="Pages_Public_Join_OperationsBoardBody" xml:space="preserve">
-        <value>Operationen Board Text</value>
+        <value>Sieh dir zuerst kommende Operationen an; für Missionsteilnahme ist keine formale Vereinsmitgliedschaft nötig.</value>
     </data>
   <data name="Pages_Public_Join_OperationsBoardTitle" xml:space="preserve">
         <value>Prüfung anstehend Veranstaltungen, Aktuell Slot Status, Karte, Mod pack requirements, and Host information.</value>
@@ -4619,7 +4634,7 @@
         <value>Beschluesse and minutes</value>
     </data>
   <data name="Pages_Unit_Index_ControlPlaneFoundation" xml:space="preserve">
-        <value>Control-plane foundation</value>
+        <value>Grundlage der Steuerungsebene</value>
     </data>
   <data name="Pages_Unit_Index_FormalDecisionsLabel" xml:space="preserve">
         <value>Democratic Vereinsarbeit</value>
@@ -4661,34 +4676,34 @@
         <value>So funktioniert UTF</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureBody" xml:space="preserve">
-        <value>infrastructure without turning every guest into a Vereinsmitglied.</value>
+        <value>UTF verbindet klare Missionsplanung mit langlebiger Serverinfrastruktur und trennt Community-Teilnahme von formaler Vereinsmitgliedschaft.</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureCapabilitiesLabel" xml:space="preserve">
         <value>Infrastructure capabilities</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureCardJobs" xml:space="preserve">
-        <value>Persistent Worker-backed Server actions are the first step toward Cloud-capable Hosting.</value>
+        <value>Langlebige Serverabläufe</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureCardJobsBody" xml:space="preserve">
-        <value>Index Infrastructure Card Jobs Text</value>
+        <value>Persistente, Worker-gestützte Serveraktionen bilden die Grundlage für cloudfähiges Hosting.</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureCardOperations" xml:space="preserve">
-        <value>Veröffentlicht missions, Slot planning, Mod requirements, and clear Veranstaltung ownership.</value>
+        <value>Missionsplanung</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureCardOperationsBody" xml:space="preserve">
-        <value>Index Infrastructure Card Operationen Text</value>
+        <value>Veröffentlichte Missionen bündeln Slotplanung, Mod-Anforderungen und klare Veranstaltungsverantwortung.</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureCardSubCommunities" xml:space="preserve">
-        <value>Guest-Community Hosting is a product direction, nicht a finished API capability yet.</value>
+        <value>Partner-Communities</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureCardSubCommunitiesBody" xml:space="preserve">
-        <value>Index Infrastructure Card Sub Communities Text</value>
+        <value>Hosting für Gast-Communities bleibt eine Zukunftsrichtung; aktuelle Operationen konzentrieren sich auf UTF.</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureKicker" xml:space="preserve">
-        <value>Built for UTF Operationen first, prepared for partner communities later</value>
+        <value>Operative Infrastruktur</value>
     </data>
   <data name="Pages_Unit_Index_InfrastructureTitle" xml:space="preserve">
-        <value>Index Infrastructure Titel</value>
+        <value>Bereit für verlässliche Operationen</value>
     </data>
   <data name="Pages_Unit_Index_JoinCommunity" xml:space="preserve">
         <value>Community beitreten</value>
@@ -4928,196 +4943,198 @@
         <value>Version @_document.Revision.Version</value>
     </data>
   <data name="Pages_Wiki_Index_ArchivePage" xml:space="preserve">
-        <value>Archiv Seite</value>
+        <value>Seite archivieren</value>
     </data>
   <data name="Pages_Wiki_Index_ArchivedNotice" xml:space="preserve">
-        <value>Archiviert Notice</value>
+        <value>Diese Seite ist archiviert und in der öffentlichen Navigation ausgeblendet.</value>
     </data>
   <data name="Pages_Wiki_Index_ArticleDetailsAria" xml:space="preserve">
-        <value>Article Details ARIA</value>
+        <value>Artikeldetails und Verlauf</value>
     </data>
   <data name="Pages_Wiki_Index_ArticleDetailsTitle" xml:space="preserve">
-        <value>Article Details Titel</value>
+        <value>Artikeldetails</value>
     </data>
   <data name="Pages_Wiki_Index_ArticleSummaryPlaceholder" xml:space="preserve">
-        <value>Artikelzusammenfassung</value>
+        <value>Für diesen Artikel ist keine Zusammenfassung verfügbar.</value>
     </data>
   <data name="Pages_Wiki_Index_By" xml:space="preserve">
-        <value>By</value>
+        <value>Von {0}</value>
     </data>
   <data name="Pages_Wiki_Index_Cancel" xml:space="preserve">
         <value>Abbrechen</value>
     </data>
   <data name="Pages_Wiki_Index_CloseEditor" xml:space="preserve">
-        <value>Schließen Editor</value>
+        <value>Editor schließen</value>
     </data>
   <data name="Pages_Wiki_Index_ConfirmArchive" xml:space="preserve">
-        <value>Bestätigen Archiv</value>
+        <value>Seite archivieren</value>
     </data>
   <data name="Pages_Wiki_Index_ContributeWithPermissions" xml:space="preserve">
-        <value>Contribute With Permissions</value>
+        <value>Mit deinen Berechtigungen kannst du zu dieser Wissensdatenbank beitragen.</value>
     </data>
   <data name="Pages_Wiki_Index_CreateArticleSubtitle" xml:space="preserve">
-        <value>Erstellen Article Subtitle</value>
+        <value>Erstelle einen kategorisierten Artikel mit einem Titel wie Ausbildung/Funkverfahren.</value>
     </data>
   <data name="Pages_Wiki_Index_DefaultMarkdownTemplate" xml:space="preserve">
-        <value>Default Markdown Template</value>
+        <value># Neuer Artikel
+
+Beginne hier mit dem Schreiben.</value>
     </data>
   <data name="Pages_Wiki_Index_DeleteNotice" xml:space="preserve">
-        <value>Delete Notice</value>
+        <value>Dadurch wird die Seite aus der öffentlichen Navigation entfernt. Ein Wiki-Administrator kann sie später wiederherstellen.</value>
     </data>
   <data name="Pages_Wiki_Index_Detail_Author" xml:space="preserve">
-        <value>Detail Author</value>
+        <value>Autor</value>
     </data>
   <data name="Pages_Wiki_Index_Detail_Created" xml:space="preserve">
-        <value>Detail Erstellt</value>
+        <value>Erstellt</value>
     </data>
   <data name="Pages_Wiki_Index_Detail_LatestRevision" xml:space="preserve">
-        <value>Detail Neueste Revision</value>
+        <value>Neueste Revision</value>
     </data>
   <data name="Pages_Wiki_Index_Detail_Status" xml:space="preserve">
-        <value>Detail Status</value>
+        <value>Status</value>
     </data>
   <data name="Pages_Wiki_Index_Detail_Title" xml:space="preserve">
-        <value>Detail Titel</value>
+        <value>Vollständiger Titel</value>
     </data>
   <data name="Pages_Wiki_Index_DetailsTab" xml:space="preserve">
-        <value>Details Tab</value>
+        <value>Details</value>
     </data>
   <data name="Pages_Wiki_Index_Edit" xml:space="preserve">
         <value>Bearbeiten</value>
     </data>
   <data name="Pages_Wiki_Index_EditArticle" xml:space="preserve">
-        <value>Bearbeiten Article</value>
+        <value>Artikel bearbeiten</value>
     </data>
   <data name="Pages_Wiki_Index_EditorValidationMissingRequiredFields" xml:space="preserve">
-        <value>Editor Validation Fehlend Erforderlich Fields</value>
+        <value>Fülle vor dem Speichern alle Pflichtfelder aus.</value>
     </data>
   <data name="Pages_Wiki_Index_EditorValidationValid" xml:space="preserve">
-        <value>Editor Validation Valid</value>
+        <value>Der Artikel kann gespeichert werden.</value>
     </data>
   <data name="Pages_Wiki_Index_Editor_CommentLabel" xml:space="preserve">
-        <value>Editor Comment Beschriftung</value>
+        <value>Revisionskommentar</value>
     </data>
   <data name="Pages_Wiki_Index_Editor_PreviewPlaceholder" xml:space="preserve">
         <value>Die Vorschau erscheint hier</value>
     </data>
   <data name="Pages_Wiki_Index_Editor_Tab_Markdown" xml:space="preserve">
-        <value>Editor Tab Markdown</value>
+        <value>Markdown</value>
     </data>
   <data name="Pages_Wiki_Index_Editor_Tab_Preview" xml:space="preserve">
-        <value>Editor Tab Vorschau</value>
+        <value>Vorschau</value>
     </data>
   <data name="Pages_Wiki_Index_Editor_TitleLabel" xml:space="preserve">
-        <value>Editor Titel Beschriftung</value>
+        <value>Artikeltitel</value>
     </data>
   <data name="Pages_Wiki_Index_Error_DeleteFailed" xml:space="preserve">
-        <value>Fehler Delete Fehlgeschlagen</value>
+        <value>Die Seite konnte nicht archiviert werden. Prüfe deine Berechtigungen und versuche es erneut.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_EditorNotOpen" xml:space="preserve">
-        <value>Editor ist nicht geöffnet</value>
+        <value>Der Artikeleditor ist nicht geöffnet.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_LoadHeadersFailed" xml:space="preserve">
-        <value>Fehler Laden Headers Fehlgeschlagen</value>
+        <value>Der Wiki-Index konnte nicht geladen werden. Prüfe die Verbindung und versuche es erneut.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_LoadPageFailed" xml:space="preserve">
-        <value>Fehler Laden Seite Fehlgeschlagen</value>
+        <value>Der Wiki-Artikel konnte nicht geladen werden. Prüfe die Verbindung und versuche es erneut.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_MarkdownRequired" xml:space="preserve">
-        <value>Fehler Markdown Erforderlich</value>
+        <value>Der Artikelinhalt ist erforderlich.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_NoChanges" xml:space="preserve">
-        <value>Fehler Keine Changes</value>
+        <value>Ändere vor dem Speichern den Titel oder den Artikelinhalt.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_NoPermissionCreate" xml:space="preserve">
-        <value>Fehler Keine Permission Erstellen</value>
+        <value>Du bist nicht berechtigt, Wiki-Seiten zu erstellen.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_NoPermissionEdit" xml:space="preserve">
-        <value>Fehler Keine Permission Bearbeiten</value>
+        <value>Du bist nicht berechtigt, Artikelinhalte zu ändern.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_NoPermissionRename" xml:space="preserve">
-        <value>Fehler Keine Permission Rename</value>
+        <value>Du bist nicht berechtigt, Wiki-Seiten umzubenennen.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_RestoreFailed" xml:space="preserve">
-        <value>Fehler Restore Fehlgeschlagen</value>
+        <value>Die Seite konnte nicht wiederhergestellt werden. Prüfe deine Berechtigungen und versuche es erneut.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_RevisionCommentRequired" xml:space="preserve">
-        <value>Fehler Revision Comment Erforderlich</value>
+        <value>Ein Revisionskommentar ist erforderlich.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_SaveFailed" xml:space="preserve">
-        <value>Fehler Speichern Fehlgeschlagen</value>
+        <value>Der Artikel konnte nicht gespeichert werden. Prüfe deine Berechtigungen und versuche es erneut.</value>
     </data>
   <data name="Pages_Wiki_Index_Error_TitleRequired" xml:space="preserve">
-        <value>Titel erforderlich</value>
+        <value>Ein Artikeltitel ist erforderlich.</value>
     </data>
   <data name="Pages_Wiki_Index_KnowledgeBase" xml:space="preserve">
-        <value>Knowledge Base</value>
+        <value>Wissensdatenbank</value>
     </data>
   <data name="Pages_Wiki_Index_LoadingArticle" xml:space="preserve">
-        <value>article wird geladen</value>
+        <value>Artikel wird geladen…</value>
     </data>
   <data name="Pages_Wiki_Index_LoadingIndex" xml:space="preserve">
-        <value>Index wird geladen</value>
+        <value>Wiki-Index wird geladen…</value>
     </data>
   <data name="Pages_Wiki_Index_MobileTabsAria" xml:space="preserve">
-        <value>Mobile Tabs ARIA</value>
+        <value>Wiki-Arbeitsbereich</value>
     </data>
   <data name="Pages_Wiki_Index_NavigationAria" xml:space="preserve">
-        <value>Navigation ARIA</value>
+        <value>Wiki-Navigation</value>
     </data>
   <data name="Pages_Wiki_Index_NewPage" xml:space="preserve">
-        <value>Neu Seite</value>
+        <value>Neue Seite</value>
     </data>
   <data name="Pages_Wiki_Index_NoMarkdownContent" xml:space="preserve">
-        <value>Keine markdown content</value>
+        <value>Dieser Artikel enthält noch keinen Inhalt.</value>
     </data>
   <data name="Pages_Wiki_Index_NoPagesDescription" xml:space="preserve">
-        <value>Keine beschreibung</value>
+        <value>Die Wissensdatenbank enthält noch keine sichtbaren Seiten.</value>
     </data>
   <data name="Pages_Wiki_Index_NoPagesMatchSearch" xml:space="preserve">
         <value>Keine Seiten passen zur Suche</value>
     </data>
   <data name="Pages_Wiki_Index_NoPagesYet" xml:space="preserve">
-        <value>Keine yet</value>
+        <value>Noch keine Wiki-Seiten</value>
     </data>
   <data name="Pages_Wiki_Index_NoRevisions" xml:space="preserve">
         <value>Keine Revisionen</value>
     </data>
   <data name="Pages_Wiki_Index_NoRevisionsForPage" xml:space="preserve">
-        <value>Keine revisions for seite</value>
+        <value>Für diese Seite ist kein Revisionsverlauf verfügbar.</value>
     </data>
   <data name="Pages_Wiki_Index_NotRecorded" xml:space="preserve">
-        <value>Nicht Recorded</value>
+        <value>Nicht erfasst</value>
     </data>
   <data name="Pages_Wiki_Index_PageState" xml:space="preserve">
-        <value>Seite Status</value>
+        <value>Seitenstatus</value>
     </data>
   <data name="Pages_Wiki_Index_PageTitle" xml:space="preserve">
-        <value>Wiki</value>
+        <value>Wiki - United Tactical Forces</value>
     </data>
   <data name="Pages_Wiki_Index_Pages" xml:space="preserve">
-        <value>Pages</value>
+        <value>Seiten</value>
     </data>
   <data name="Pages_Wiki_Index_ReadOnlyAccessMessage" xml:space="preserve">
-        <value>Read Only Zugriff Nachricht</value>
+        <value>Du kannst diesen Artikel lesen. Bearbeitungsfunktionen stehen nur berechtigten Mitwirkenden zur Verfügung.</value>
     </data>
   <data name="Pages_Wiki_Index_ReadOnlyAccessNotice" xml:space="preserve">
-        <value>Read Only Zugriff Notice</value>
+        <value>Du hast Lesezugriff auf die Wissensdatenbank.</value>
     </data>
   <data name="Pages_Wiki_Index_ReadOnlyAccessTitle" xml:space="preserve">
-        <value>Read Only Zugriff Titel</value>
+        <value>Schreibgeschützter Zugriff</value>
     </data>
   <data name="Pages_Wiki_Index_RelatedPages" xml:space="preserve">
-        <value>Related</value>
+        <value>Verwandte Seiten</value>
     </data>
   <data name="Pages_Wiki_Index_RestorePage" xml:space="preserve">
-        <value>Restore Seite</value>
+        <value>Seite wiederherstellen</value>
     </data>
   <data name="Pages_Wiki_Index_RevisionVersion" xml:space="preserve">
-        <value>Revision Version</value>
+        <value>Revisionen: {0}</value>
     </data>
   <data name="Pages_Wiki_Index_RevisionWithoutComment" xml:space="preserve">
-        <value>Revision Without Comment</value>
+        <value>Kein Revisionskommentar</value>
     </data>
   <data name="Pages_Wiki_Index_SaveChanges" xml:space="preserve">
         <value>Änderungen speichern</value>
@@ -5126,19 +5143,19 @@
         <value>Wird gespeichert</value>
     </data>
   <data name="Pages_Wiki_Index_SearchLabel" xml:space="preserve">
-        <value>Suche Beschriftung</value>
+        <value>Artikel durchsuchen</value>
     </data>
   <data name="Pages_Wiki_Index_SearchPlaceholder" xml:space="preserve">
         <value>Wiki durchsuchen</value>
     </data>
   <data name="Pages_Wiki_Index_SelectPageForDetails" xml:space="preserve">
-        <value>Select Seite For Details</value>
+        <value>Wähle eine Wiki-Seite aus, um ihre Details anzuzeigen.</value>
     </data>
   <data name="Pages_Wiki_Index_SelectPageForRevisions" xml:space="preserve">
-        <value>Select Seite For Revisions</value>
+        <value>Wähle eine Wiki-Seite aus, um ihren Revisionsverlauf anzuzeigen.</value>
     </data>
   <data name="Pages_Wiki_Index_SelectedPageFallback" xml:space="preserve">
-        <value>Ausgewählt Seite Fallback</value>
+        <value>Ausgewählter Artikel</value>
     </data>
   <data name="Pages_Wiki_Index_StatusArchived" xml:space="preserve">
         <value>Archiviert</value>
@@ -5147,28 +5164,28 @@
         <value>Verifiziert</value>
     </data>
   <data name="Pages_Wiki_Index_Subtitle" xml:space="preserve">
-        <value>Subtitle</value>
+        <value>Feldhandbücher, Verfahren und gemeinsames Einsatzwissen.</value>
     </data>
   <data name="Pages_Wiki_Index_Tab_Article" xml:space="preserve">
-        <value>Tab Article</value>
+        <value>Artikel</value>
     </data>
   <data name="Pages_Wiki_Index_Tab_History" xml:space="preserve">
-        <value>Tab History</value>
+        <value>Verlauf</value>
     </data>
   <data name="Pages_Wiki_Index_Tab_Pages" xml:space="preserve">
-        <value>Tab</value>
+        <value>Seiten</value>
     </data>
   <data name="Pages_Wiki_Index_Title" xml:space="preserve">
-        <value>Titel</value>
+        <value>Wissensdatenbank</value>
     </data>
   <data name="Pages_Wiki_Index_UnknownAuthor" xml:space="preserve">
-        <value>Unbekannt Author</value>
+        <value>Unbekannter Autor</value>
     </data>
   <data name="Pages_Wiki_Index_UntitledPage" xml:space="preserve">
         <value>Unbenannte Seite</value>
     </data>
   <data name="Pages_Wiki_Index_UpdatedAt" xml:space="preserve">
-        <value>Aktualisiert At</value>
+        <value>Aktualisiert {0}</value>
     </data>
   <data name="Shared_CommandCenter_BackToSite" xml:space="preserve">
         <value>Zurück zur Website</value>
@@ -5354,10 +5371,10 @@
         <value>Steam-Community-Identität verwenden</value>
     </data>
   <data name="Shared_CommunityFooterLinksAria" xml:space="preserve">
-        <value>Community links</value>
+        <value>Community-Links</value>
     </data>
   <data name="Shared_CommunityNav_Aria" xml:space="preserve">
-        <value>Community Navigation</value>
+        <value>Community-Navigation</value>
     </data>
   <data name="Shared_CommunityNav_CommandCenter" xml:space="preserve">
         <value>Command Center</value>
@@ -5372,7 +5389,7 @@
         <value>Beitreten</value>
     </data>
   <data name="Shared_CommunityNav_Login" xml:space="preserve">
-        <value>Login</value>
+        <value>Anmelden</value>
     </data>
   <data name="Shared_CommunityNav_Management" xml:space="preserve">
         <value>Verwaltung</value>
@@ -5384,7 +5401,7 @@
         <value>Operationen</value>
     </data>
   <data name="Shared_CommunityNav_ToggleNavigationAria" xml:space="preserve">
-        <value>Toggle Navigation</value>
+        <value>Navigation ein- oder ausblenden</value>
     </data>
   <data name="Shared_CommunityNav_Unit" xml:space="preserve">
         <value>Einheit</value>
@@ -9416,7 +9433,7 @@
     <value>Die Hero-Beschreibung darf maximal 512 Zeichen enthalten.</value>
   </data>
   <data xml:space="preserve" name="Pages_Command_Content_PageValidationHeroImagePath">
-    <value>Der Hero-Bildpfad darf maximal 256 Zeichen enthalten.</value>
+    <value>Wähle ein Hero-Bild aus der Galerie aus.</value>
   </data>
   <data xml:space="preserve" name="Pages_Command_Content_PageValidationMarkdown">
     <value>Gib Markdown-Inhalt mit maximal 60000 Zeichen ein.</value>
@@ -11911,6 +11928,33 @@
   <data name="Pages_Events_Detail_PageTitleFallback" xml:space="preserve">
     <value>Unbenannte Operation</value>
   </data>
+  <data name="Pages_Events_Detail_Error_NotFound" xml:space="preserve">
+    <value>Die angeforderte Operation wurde nicht gefunden oder ist für dich nicht sichtbar.</value>
+  </data>
+  <data name="Pages_Events_Detail_Error_Load" xml:space="preserve">
+    <value>Die Operationsdetails konnten nicht geladen werden. Prüfe die API-Verbindung und versuche es erneut.</value>
+  </data>
+  <data name="Pages_Events_Detail_Error_Attendance" xml:space="preserve">
+    <value>Dein Teilnahmestatus konnte nicht aktualisiert werden. Prüfe die API-Verbindung und versuche es erneut.</value>
+  </data>
+  <data name="Pages_Events_Detail_Error_Slot" xml:space="preserve">
+    <value>Der Slot konnte nicht zugewiesen werden. Prüfe die API-Verbindung und versuche es erneut.</value>
+  </data>
+  <data name="Pages_Events_Detail_Error_Download" xml:space="preserve">
+    <value>Der Modpack-Download konnte nicht gestartet werden. Prüfe die API-Verbindung und versuche es erneut.</value>
+  </data>
+  <data name="Pages_Events_Detail_Error_SessionExpired" xml:space="preserve">
+    <value>Deine Sitzung ist abgelaufen. Melde dich erneut an, bevor du diese Aktion wiederholst.</value>
+  </data>
+  <data name="Pages_Events_Detail_Error_Forbidden" xml:space="preserve">
+    <value>Du hast keine Berechtigung mehr, diese Aktion auszuführen.</value>
+  </data>
+  <data name="Pages_Events_Detail_Error_Conflict" xml:space="preserve">
+    <value>Die Operation wurde zwischenzeitlich geändert. Lade sie neu und versuche es erneut.</value>
+  </data>
+  <data name="Pages_Events_Detail_Error_RateLimited" xml:space="preserve">
+    <value>Es wurden zu viele Anfragen gesendet. Warte kurz und versuche es erneut.</value>
+  </data>
   <data name="Pages_Events_Detail_UntitledOperation" xml:space="preserve">
     <value>Unbenannte Operation</value>
   </data>
@@ -11987,10 +12031,10 @@
     <value>{0} angenommen</value>
   </data>
   <data name="Pages_Events_Detail_Status_NeedsMoreSignups" xml:space="preserve">
-    <value>Minimum met</value>
+    <value>Weitere Zusagen erforderlich</value>
   </data>
   <data name="Pages_Events_Detail_Status_MinimumMet" xml:space="preserve">
-    <value>Minimum met</value>
+    <value>Mindeststärke erreicht</value>
   </data>
   <data name="Pages_Events_Detail_Status_AssignedUser" xml:space="preserve">
     <value>Zugewiesener Benutzer</value>
@@ -12035,10 +12079,10 @@
     <value>Operation gestartet</value>
   </data>
   <data name="Pages_Events_Detail_ActionAssignSlot" xml:space="preserve">
-    <value>Keine Öffnen slots</value>
+    <value>Slot auswählen</value>
   </data>
   <data name="Pages_Events_Detail_Status_NoOpenSlots" xml:space="preserve">
-    <value>Keine Öffnen slots</value>
+    <value>Keine offenen Slots</value>
   </data>
   <data name="Pages_Events_Detail_Status_Unavailable" xml:space="preserve">
     <value>Nicht verfügbar</value>
@@ -12113,7 +12157,7 @@
     <value>Icon-Name für das Ziel.</value>
   </data>
   <data name="Pages_Events_Edit_LabelObjective" xml:space="preserve">
-    <value>Ziel</value>
+    <value>Ziel {0}</value>
   </data>
   <data name="Pages_Events_Edit_Placeholder_Objective" xml:space="preserve">
     <value>Missionsziel</value>
@@ -12197,13 +12241,13 @@
     <value>{0} Zeichen</value>
   </data>
   <data name="Pages_Events_Edit_Count_AssignedSlots" xml:space="preserve">
-    <value>{0} zugewiesene Slots</value>
+    <value>{0} / {1} Slots zugewiesen</value>
   </data>
   <data name="Pages_Events_Edit_Status_UnassignedNewSlot" xml:space="preserve">
     <value>Neuer nicht zugewiesener Slot</value>
   </data>
   <data name="Pages_Events_Edit_Status_SlotUnassigned" xml:space="preserve">
-    <value>Slot nicht zugewiesen</value>
+    <value>Slot {0} nicht zugewiesen</value>
   </data>
   <data name="Pages_Events_Edit_Count_GroupAssigned" xml:space="preserve">
     <value>{0} / {1} zugewiesen</value>
@@ -12254,7 +12298,7 @@
     <value>Slotplan konfiguriert</value>
   </data>
   <data name="Pages_Events_Create_ActionEdit" xml:space="preserve">
-    <value>@(() =&gt; SetStep(1))</value>
+    <value>Bearbeiten</value>
   </data>
   <data name="Pages_Events_Create_Status_HostPending" xml:space="preserve">
     <value>Host ausstehend</value>
@@ -12269,10 +12313,10 @@
     <value>Event konnte nicht erstellt werden. Prüfe die API-Verbindung und versuche es erneut.</value>
   </data>
   <data name="Pages_Events_Create_Status_NoBriefing" xml:space="preserve">
-    <value>{0} characters</value>
+    <value>Kein Briefing</value>
   </data>
   <data name="Pages_Events_Create_Count_Characters" xml:space="preserve">
-    <value>{0} characters</value>
+    <value>{0} Zeichen</value>
   </data>
   <data name="Pages_Events_Create_UntitledOperation" xml:space="preserve">
     <value>Unbenannte Operation</value>
@@ -12314,7 +12358,7 @@
     <value>Slotplan konfiguriert</value>
   </data>
   <data name="Pages_Events_Create_Status_SchedulePending" xml:space="preserve">
-    <value>Schedule ausstehend</value>
+    <value>Termin ausstehend</value>
   </data>
   <data name="Deactivate" xml:space="preserve">
     <value>Deaktivieren</value>
@@ -13151,7 +13195,7 @@
     <value>Prüfung erforderlich</value>
   </data>
   <data name="Pages_Events_Create_ActionCreatingEvent" xml:space="preserve">
-    <value>Veranstaltung erstellen</value>
+    <value>Veranstaltung wird erstellt…</value>
   </data>
   <data name="Pages_Events_Create_ActionCreateEvent" xml:space="preserve">
     <value>Veranstaltung erstellen</value>
@@ -15207,4 +15251,612 @@
   <data name="Pages_Command_Content_PageEditorLeaveConfirmation" xml:space="preserve"><value>Ungespeicherte Änderungen verwerfen und den Editor verlassen?</value></data>
   <data name="Pages_Command_Content_Gdpr_TemplatePreviewShow" xml:space="preserve"><value>Vorschau anzeigen</value></data>
   <data name="Pages_Command_Content_Gdpr_TemplatePreviewHide" xml:space="preserve"><value>Vorschau ausblenden</value></data>
+  <data name="Pages_Public_GDPR_FunctionalCookies_Title" xml:space="preserve"><value>Funktionale Oberflächen-Einstellungen</value></data>
+  <data name="Pages_Public_GDPR_FunctionalCookies_Body" xml:space="preserve"><value>Das funktionale Cookie utf_ui_variant speichert, ob dieser Browser die klassische oder die React-Oberfläche bevorzugt. Es bleibt 180 Tage gespeichert, nutzt SameSite=Lax, wird unter HTTPS abgesichert, enthält weder Identitätsdaten noch Verhaltensanalysen und verändert niemals die Berechtigungen.</value></data>
+  <data name="React_UI_UseClassic" xml:space="preserve"><value>Klassische Oberfläche verwenden</value></data>
+  <data name="React_UI_TryNew" xml:space="preserve"><value>Neue Oberfläche testen</value></data>
+  <data name="React_UI_Beta" xml:space="preserve"><value>Beta</value></data>
+  <data name="React_UI_SkipContent" xml:space="preserve"><value>Zum Inhalt springen</value></data>
+  <data name="React_UI_Language" xml:space="preserve"><value>Sprache</value></data>
+  <data name="React_UI_NoIdentityProviders" xml:space="preserve"><value>Derzeit ist kein Identitätsanbieter verfügbar.</value></data>
+  <data name="React_UI_FooterTagline" xml:space="preserve"><value>Gemeinschaftseinsätze, offen koordiniert.</value></data>
+  <data name="React_UI_Retry" xml:space="preserve"><value>Erneut versuchen</value></data>
+  <data name="React_UI_SearchOperations" xml:space="preserve"><value>Einsätze durchsuchen</value></data>
+  <data name="React_UI_Board" xml:space="preserve"><value>Übersicht</value></data>
+  <data name="React_UI_Calendar" xml:space="preserve"><value>Kalender</value></data>
+  <data name="React_UI_ViewMode" xml:space="preserve"><value>Ansicht</value></data>
+  <data name="React_UI_Schedule" xml:space="preserve"><value>Zeitplan</value></data>
+  <data name="React_UI_Terrain" xml:space="preserve"><value>Karte</value></data>
+  <data name="React_UI_ModPack" xml:space="preserve"><value>Modpaket</value></data>
+  <data name="React_UI_Host" xml:space="preserve"><value>Leitung</value></data>
+  <data name="React_UI_AfterAction" xml:space="preserve"><value>Nach dem Einsatz</value></data>
+  <data name="React_Fallback_Title" xml:space="preserve"><value>Dieser Arbeitsablauf wird in der klassischen Oberfläche geöffnet</value></data>
+  <data name="React_Fallback_Body" xml:space="preserve"><value>Diese Route bleibt geschützt, bis ihre React-Paritätsprüfung vollständig ist. Weiterleitung in {0}…</value></data>
+  <data name="React_Fallback_Continue" xml:space="preserve"><value>Jetzt fortfahren</value></data>
+  <data name="React_NotFound_Title" xml:space="preserve"><value>Route nicht gefunden</value></data>
+  <data name="React_NotFound_Body" xml:space="preserve"><value>Die angeforderte Seite gehört zu keiner der beiden Oberflächen.</value></data>
+  <data name="React_NotFound_Home" xml:space="preserve"><value>Zur Startseite</value></data>
+  <data name="React_Bootstrap_Title" xml:space="preserve"><value>Oberfläche nicht verfügbar</value></data>
+  <data name="React_Bootstrap_Classic" xml:space="preserve"><value>Klassische Oberfläche öffnen</value></data>
+  <data name="React_Verein_Contribution" xml:space="preserve"><value>Mitgliedsbeitrag</value></data>
+  <data name="React_Verein_PerMonth" xml:space="preserve"><value>pro Monat</value></data>
+  <data name="React_Verein_PerYear" xml:space="preserve"><value>pro Jahr</value></data>
+  <data name="React_Verein_PublishedRecord" xml:space="preserve"><value>Veröffentlichte Vereinsunterlage</value></data>
+  <data name="React_Verein_Version" xml:space="preserve"><value>Version</value></data>
+  <data name="React_Join_Form_Kicker" xml:space="preserve"><value>Formale Mitgliedschaft</value></data>
+  <data name="React_Join_Form_Title" xml:space="preserve"><value>Vereinsmitgliedschaft beantragen</value></data>
+  <data name="React_Join_Form_Description" xml:space="preserve"><value>Die formale Vereinsmitgliedschaft ist von Community- und Missionszugang getrennt. Übermittle die Angaben, die der Verein zur Prüfung deines Antrags benötigt.</value></data>
+  <data name="React_Join_SignInRequired_Title" xml:space="preserve"><value>Zum Beantragen anmelden</value></data>
+  <data name="React_Join_SignInRequired_Body" xml:space="preserve"><value>Dein Antrag muss mit einer verifizierten Community-Identität verknüpft sein.</value></data>
+  <data name="React_Join_Withdraw" xml:space="preserve"><value>Antrag zurückziehen</value></data>
+  <data name="React_Join_Identity_Legend" xml:space="preserve"><value>Identität und Kontakt</value></data>
+  <data name="React_Join_Address_Legend" xml:space="preserve"><value>Postanschrift</value></data>
+  <data name="React_Join_Motivation_Legend" xml:space="preserve"><value>Kontext des Antrags</value></data>
+  <data name="React_Join_Acknowledgements_Legend" xml:space="preserve"><value>Bestätigungen</value></data>
+  <data name="React_Join_FirstName" xml:space="preserve"><value>Vorname</value></data>
+  <data name="React_Join_LastName" xml:space="preserve"><value>Nachname</value></data>
+  <data name="React_Join_DateOfBirth" xml:space="preserve"><value>Geburtsdatum</value></data>
+  <data name="React_Join_Email" xml:space="preserve"><value>E-Mail</value></data>
+  <data name="React_Join_Phone" xml:space="preserve"><value>Telefonnummer</value></data>
+  <data name="React_Join_Address1" xml:space="preserve"><value>Anschrift, Zeile 1</value></data>
+  <data name="React_Join_Address2" xml:space="preserve"><value>Anschrift, Zeile 2 (optional)</value></data>
+  <data name="React_Join_PostalCode" xml:space="preserve"><value>Postleitzahl</value></data>
+  <data name="React_Join_City" xml:space="preserve"><value>Ort</value></data>
+  <data name="React_Join_Country" xml:space="preserve"><value>Land</value></data>
+  <data name="React_Join_Motivation" xml:space="preserve"><value>Warum möchtest du Mitglied werden?</value></data>
+  <data name="React_Join_AcknowledgeSeparation" xml:space="preserve"><value>Ich verstehe, dass die Vereinsmitgliedschaft vom Missionszugang getrennt ist.</value></data>
+  <data name="React_Join_AcknowledgeData" xml:space="preserve"><value>Ich stimme der Verarbeitung meiner personenbezogenen Daten für die Vereinsverwaltung zu.</value></data>
+  <data name="React_Join_AcknowledgeStatutes" xml:space="preserve"><value>Ich habe die aktuelle Satzung gelesen und akzeptiere sie.</value></data>
+  <data name="React_Join_Submit" xml:space="preserve"><value>Mitgliedsantrag einreichen</value></data>
+  <data name="React_Join_Submitting" xml:space="preserve"><value>Wird eingereicht…</value></data>
+  <data name="React_Join_SubmitError" xml:space="preserve"><value>Der Mitgliedsantrag konnte nicht eingereicht werden.</value></data>
+  <data name="React_UI_StatusFilter" xml:space="preserve"><value>Filter für Einsatzstatus</value></data>
+  <data name="React_Join_CommunityKicker" xml:space="preserve"><value>Community</value></data>
+  <data name="React_Join_IdentityKicker" xml:space="preserve"><value>Identität</value></data>
+  <data name="React_Confirm_Kicker" xml:space="preserve"><value>Bestätigung erforderlich</value></data>
+  <data name="React_Confirm_TypePrefix" xml:space="preserve"><value>Gib</value></data>
+  <data name="React_Confirm_TypeSuffix" xml:space="preserve"><value>ein, um fortzufahren</value></data>
+  <data name="React_Gdpr_Loading" xml:space="preserve"><value>Die veröffentlichte Datenschutzerklärung wird geladen…</value></data>
+  <data name="React_Gdpr_ErrorTitle" xml:space="preserve"><value>Datenschutzerklärung nicht verfügbar</value></data>
+  <data name="React_Gdpr_ErrorBody" xml:space="preserve"><value>Die veröffentlichte Datenschutzerklärung konnte nicht geladen werden.</value></data>
+  <data name="React_Gdpr_UnavailableTitle" xml:space="preserve"><value>Datenschutzerklärung nicht verfügbar</value></data>
+  <data name="React_Gdpr_UnavailableBody" xml:space="preserve"><value>Die DSGVO-Seite wurde noch nicht im Command Center veröffentlicht.</value></data>
+  <data name="React_Join_DefaultCountry" xml:space="preserve"><value>Deutschland</value></data>
+  <data name="React_Join_InvalidField" xml:space="preserve"><value>Prüfe dieses Feld und gib einen gültigen Wert ein.</value></data>
+  <data name="React_Markdown_Copy" xml:space="preserve"><value>Kopieren</value></data>
+  <data name="React_Markdown_Copied" xml:space="preserve"><value>Kopiert!</value></data>
+  <data name="React_Markdown_CopyFailed" xml:space="preserve"><value>Kopieren fehlgeschlagen</value></data>
+  <data name="React_UnsavedChanges" xml:space="preserve"><value>Es gibt ungespeicherte Änderungen. Seite verlassen?</value></data>
+  <data name="React_Join_SettingsError" xml:space="preserve"><value>Der aktuelle Vereinsbeitrag konnte nicht geladen werden.</value></data>
+  <data name="React_Join_LoadError" xml:space="preserve"><value>Dein Mitgliedsantrag konnte nicht geladen werden.</value></data>
+  <data name="React_Join_ProfileError" xml:space="preserve"><value>Deine gespeicherten Profildaten konnten nicht geladen werden. Du kannst das Formular weiterhin manuell ausfüllen.</value></data>
+  <data name="React_Join_WithdrawError" xml:space="preserve"><value>Der Mitgliedsantrag konnte nicht zurückgezogen werden.</value></data>
+  <data name="React_Verein_LoadError" xml:space="preserve"><value>Die aktuellen Vereinseinstellungen konnten nicht geladen werden.</value></data>
+  <data name="Shared_CommandCenter_Nav_PublicImages" xml:space="preserve"><value>Öffentliche Bilder</value></data>
+  <data name="React_Settings_EMailInvalid" xml:space="preserve"><value>Gib eine gültige E-Mail-Adresse ein.</value></data>
+  <data name="React_Settings_SaveError" xml:space="preserve"><value>Die Profiländerungen konnten nicht gespeichert werden: {0}</value></data>
+  <data name="Hosting_Common_Queue" xml:space="preserve"><value>Warteschlange</value></data>
+  <data name="Hosting_Servers_CostWarning" xml:space="preserve"><value>Diese Bereitstellung kann weiterhin Kosten verursachen.</value></data>
+  <data name="Hosting_Servers_LoadError" xml:space="preserve"><value>Die Spielserver konnten nicht geladen werden.</value></data>
+  <data name="Hosting_Servers_Summary" xml:space="preserve"><value>Serverübersicht</value></data>
+  <data name="HostingFinance_AuditDetails" xml:space="preserve"><value>Prüfdetails</value></data>
+  <data name="HostingFinance_ColumnActions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="HostingFinance_CorrectionAmount" xml:space="preserve"><value>Zu verschiebende Anbieterkosten (EUR)</value></data>
+  <data name="HostingFinance_CorrectionConfirmDescription" xml:space="preserve"><value>{0} erfasste Anbieterkosten von {1} auf den Kostenträger {2} verschieben. Dadurch wird ein ausgeglichener Prüfvorgang angehängt, der nicht bearbeitet werden kann.</value></data>
+  <data name="HostingFinance_CorrectionConfirmTitle" xml:space="preserve"><value>Kostenträgerkorrektur bestätigen</value></data>
+  <data name="HostingFinance_CorrectionDescription" xml:space="preserve"><value>Erfasste Anbieterkosten einer vollständig abgeschlossenen, nicht mehr kostenpflichtigen Bereitstellung von diesem Quellkonto auf das richtige Konto verschieben.</value></data>
+  <data name="HostingFinance_CorrectionKicker" xml:space="preserve"><value>Ausgeglichene Korrektur</value></data>
+  <data name="HostingFinance_CorrectionSaved" xml:space="preserve"><value>Die Anbieterkostenkorrektur wurde an beide Konten angehängt.</value></data>
+  <data name="HostingFinance_CorrectionTitle" xml:space="preserve"><value>Kostenträger der Bereitstellung korrigieren</value></data>
+  <data name="HostingFinance_CorrectionValidation" xml:space="preserve"><value>Gib eine Bereitstellungs-ID, eine andere Ziel-Kostenträger-ID, einen positiven Betrag und eine Prüfbegründung ein.</value></data>
+  <data name="HostingFinance_CorrectOwnerId" xml:space="preserve"><value>Richtige Ziel-Kostenträger-ID</value></data>
+  <data name="HostingFinance_DeploymentId" xml:space="preserve"><value>Bereitstellungs-ID</value></data>
+  <data name="HostingFinance_EntryId" xml:space="preserve"><value>Buchungs-ID</value></data>
+  <data name="HostingFinance_ErrorConflict" xml:space="preserve"><value>Der Finanzdatensatz wurde geändert oder der Vorgang wurde bereits ausgeführt. Aktualisiere das Konto und prüfe das Prüfprotokoll, bevor du es erneut versuchst.</value></data>
+  <data name="HostingFinance_ErrorForbidden" xml:space="preserve"><value>Du bist nicht berechtigt, diese Finanzaktion auszuführen.</value></data>
+  <data name="HostingFinance_ErrorInvalid" xml:space="preserve"><value>Die Finanzaktion wurde abgelehnt. Prüfe die Werte sowie den aktuellen Konto- oder Bereitstellungsstatus.</value></data>
+  <data name="HostingFinance_ErrorNetwork" xml:space="preserve"><value>Der Finanzdienst konnte nicht erreicht werden. Prüfe die Verbindung und versuche es erneut.</value></data>
+  <data name="HostingFinance_ErrorNotFound" xml:space="preserve"><value>Das ausgewählte Konto, die Bereitstellung oder die Buchung ist nicht mehr vorhanden.</value></data>
+  <data name="HostingFinance_ErrorRateLimited" xml:space="preserve"><value>Es wurden zu viele Finanzanfragen gesendet. Warte kurz und versuche es erneut.</value></data>
+  <data name="HostingFinance_ErrorServer" xml:space="preserve"><value>Der Finanzdienst konnte die Anfrage nicht abschließen. Es wurde nicht automatisch erneut versucht.</value></data>
+  <data name="HostingFinance_ErrorUnexpected" xml:space="preserve"><value>Die Finanzaktion konnte nicht abgeschlossen werden.</value></data>
+  <data name="HostingFinance_FinanceOperation" xml:space="preserve"><value>Finanzvorgangs-ID</value></data>
+  <data name="HostingFinance_FrozenNotice" xml:space="preserve"><value>Dieser Kostenträger ist gesperrt. Vorhandene Buchungsdaten bleiben sichtbar; Verfügbarkeitsprüfungen können neue Hosting-Ausgaben ablehnen.</value></data>
+  <data name="HostingFinance_NewAllowance" xml:space="preserve"><value>Neuer Verfügungsrahmen</value></data>
+  <data name="HostingFinance_NotAvailable" xml:space="preserve"><value>Nicht verfügbar</value></data>
+  <data name="HostingFinance_NotReversible" xml:space="preserve"><value>Diese Buchung kann hier nicht storniert werden oder wurde bereits storniert. Anbieterkosten erfordern eine Bereitstellungskorrektur; Fehler beim Verfügungsrahmen erfordern eine weitere Änderung.</value></data>
+  <data name="HostingFinance_OwnerId" xml:space="preserve"><value>Kostenträger-ID</value></data>
+  <data name="HostingFinance_OwnerUpdated" xml:space="preserve"><value>Kontostand aktualisiert {0}</value></data>
+  <data name="HostingFinance_PaginationAria" xml:space="preserve"><value>Ergebnisseiten der Kostenträger</value></data>
+  <data name="HostingFinance_PolicyUpdated" xml:space="preserve"><value>Zuletzt geändert {0} von Benutzer {1}</value></data>
+  <data name="HostingFinance_PolicyValidation" xml:space="preserve"><value>Die geschützte Reserve muss mindestens null sein und das Reservierungsintervall eine ganze Zahl zwischen 1 und 1.440 Minuten.</value></data>
+  <data name="HostingFinance_PreviousAllowance" xml:space="preserve"><value>Vorheriger Verfügungsrahmen</value></data>
+  <data name="HostingFinance_ReadOnly" xml:space="preserve"><value>Schreibgeschützt</value></data>
+  <data name="HostingFinance_RecordCorrection" xml:space="preserve"><value>Korrektur erfassen</value></data>
+  <data name="HostingFinance_Recorded" xml:space="preserve"><value>Erfasst</value></data>
+  <data name="HostingFinance_RecordedBy" xml:space="preserve"><value>Erfasst von Benutzer</value></data>
+  <data name="HostingFinance_RecordIdentifier" xml:space="preserve"><value>Datensatzkennung</value></data>
+  <data name="HostingFinance_RecordRefund" xml:space="preserve"><value>Erstattung erfassen</value></data>
+  <data name="HostingFinance_RefundConfirmDescription" xml:space="preserve"><value>Die extern abgeschlossene Erstattung über {0} für {1} erfassen. Dadurch wird das Vorauszahlungsguthaben sofort belastet; die Buchung kann nicht bearbeitet werden.</value></data>
+  <data name="HostingFinance_RefundConfirmTitle" xml:space="preserve"><value>Abgeschlossene Erstattung bestätigen</value></data>
+  <data name="HostingFinance_RefundDescription" xml:space="preserve"><value>Guthaben erst belasten, nachdem die ausgehende Überweisung oder Auszahlung außerhalb dieser Anwendung abgeschlossen wurde.</value></data>
+  <data name="HostingFinance_RefundKicker" xml:space="preserve"><value>Ausgehende Mittel</value></data>
+  <data name="HostingFinance_RefundSaved" xml:space="preserve"><value>Die extern abgeschlossene Erstattung wurde erfasst.</value></data>
+  <data name="HostingFinance_RefundTitle" xml:space="preserve"><value>Abgeschlossene Erstattung erfassen</value></data>
+  <data name="HostingFinance_RefundValidation" xml:space="preserve"><value>Gib einen positiven Betrag, eine externe Überweisungsreferenz und eine Prüfbegründung ein.</value></data>
+  <data name="HostingFinance_ReversalConfirmDescription" xml:space="preserve"><value>Eine Ausgleichsbuchung für die Buchung {0} anhängen. Verknüpfte Korrekturvorgänge werden als eine ausgeglichene Einheit storniert.</value></data>
+  <data name="HostingFinance_ReversalConfirmTitle" xml:space="preserve"><value>Buchungsstornierung bestätigen</value></data>
+  <data name="HostingFinance_ReversalDescription" xml:space="preserve"><value>Eine Ausgleichsbuchung für die Buchung {0} anhängen. Der ursprüngliche Prüfdatensatz bleibt unverändert.</value></data>
+  <data name="HostingFinance_ReversalKicker" xml:space="preserve"><value>Unveränderliche Reparatur</value></data>
+  <data name="HostingFinance_ReversalSaved" xml:space="preserve"><value>Die verknüpfte Ausgleichsbuchung wurde angehängt.</value></data>
+  <data name="HostingFinance_ReversalTitle" xml:space="preserve"><value>Ausgewählten Buchungsvorgang stornieren</value></data>
+  <data name="HostingFinance_ReversalValidation" xml:space="preserve"><value>Wähle eine stornierbare Buchung aus und gib eine Prüfbegründung ein.</value></data>
+  <data name="HostingFinance_ReversedEntry" xml:space="preserve"><value>Stornierte Buchungs-ID</value></data>
+  <data name="HostingFinance_ReverseEntry" xml:space="preserve"><value>Buchung stornieren</value></data>
+  <data name="Hosting_ConfigurationProfiles_Title" xml:space="preserve"><value>Konfigurationsprofile</value></data>
+  <data name="Hosting_ConfigurationProfiles_Description" xml:space="preserve"><value>Wiederverwendbare Spielserver-Einstellungen erstellen, unveränderliche Revisionen veröffentlichen und Zugriffe verwalten.</value></data>
+  <data name="Hosting_ConfigurationProfiles_Loading" xml:space="preserve"><value>Konfigurationsprofile werden geladen…</value></data>
+  <data name="Hosting_ConfigurationProfiles_LoadError" xml:space="preserve"><value>Konfigurationsprofile konnten nicht geladen werden: {0}</value></data>
+  <data name="Hosting_ConfigurationProfiles_ProfileLoadError" xml:space="preserve"><value>Das Konfigurationsprofil konnte nicht geladen werden: {0}</value></data>
+  <data name="Hosting_ConfigurationProfiles_OperationFailed" xml:space="preserve"><value>Die Konfigurationsprofil-Aktion ist fehlgeschlagen: {0}</value></data>
+  <data name="Hosting_ConfigurationProfiles_Retry" xml:space="preserve"><value>Erneut versuchen</value></data>
+  <data name="Hosting_ConfigurationProfiles_Library" xml:space="preserve"><value>Bibliothek</value></data>
+  <data name="Hosting_ConfigurationProfiles_Profiles" xml:space="preserve"><value>Profile</value></data>
+  <data name="Hosting_ConfigurationProfiles_NewProfile" xml:space="preserve"><value>Neues Profil</value></data>
+  <data name="Hosting_ConfigurationProfiles_NoProfilesTitle" xml:space="preserve"><value>Noch keine Profile</value></data>
+  <data name="Hosting_ConfigurationProfiles_NoProfilesDescription" xml:space="preserve"><value>Erstelle die erste wiederverwendbare Serverkonfiguration mit dem geführten Formular.</value></data>
+  <data name="Hosting_ConfigurationProfiles_NewBaseline" xml:space="preserve"><value>Neue Basis</value></data>
+  <data name="Hosting_ConfigurationProfiles_CreateTitle" xml:space="preserve"><value>Konfigurationsprofil erstellen</value></data>
+  <data name="Hosting_ConfigurationProfiles_CreateDescription" xml:space="preserve"><value>Wähle ein Spiel und fülle die unterstützten Einstellungen aus. Standardwerte sind für Revision 1 vorausgefüllt.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ViewOnlyTitle" xml:space="preserve"><value>Du kannst Profile ansehen, aber keines erstellen.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ViewOnlyDescription" xml:space="preserve"><value>Bitte eine Administration um die Berechtigung zum Erstellen von Konfigurationsprofilen.</value></data>
+  <data name="Hosting_ConfigurationProfiles_NoGamesTitle" xml:space="preserve"><value>Keine konfigurierbaren Spiele registriert.</value></data>
+  <data name="Hosting_ConfigurationProfiles_NoGamesDescription" xml:space="preserve"><value>Eine Spielimplementierung muss Konfigurationsdefinitionen bereitstellen, bevor Profile erstellt werden können.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ProfileTitle" xml:space="preserve"><value>Profilname</value></data>
+  <data name="Hosting_ConfigurationProfiles_ProfileTitlePlaceholder" xml:space="preserve"><value>z. B. Öffentlicher Operationsserver</value></data>
+  <data name="Hosting_ConfigurationProfiles_ProfileTitleHint" xml:space="preserve"><value>Verwende einen Namen, den Operatoren beim Zuweisen zu einem Server erkennen.</value></data>
+  <data name="Hosting_ConfigurationProfiles_Game" xml:space="preserve"><value>Spiel</value></data>
+  <data name="Hosting_ConfigurationProfiles_GameHint" xml:space="preserve"><value>Das Spiel bestimmt die verfügbaren Einstellungen und Validierungsregeln.</value></data>
+  <data name="Hosting_ConfigurationProfiles_SettingCount" xml:space="preserve"><value>{0} Einstellungsdefinitionen</value></data>
+  <data name="Hosting_ConfigurationProfiles_Create" xml:space="preserve"><value>Profil erstellen</value></data>
+  <data name="Hosting_ConfigurationProfiles_Creating" xml:space="preserve"><value>Wird erstellt…</value></data>
+  <data name="Hosting_ConfigurationProfiles_Created" xml:space="preserve"><value>{0} wurde mit Revision 1 erstellt.</value></data>
+  <data name="Hosting_ConfigurationProfiles_Revision" xml:space="preserve"><value>Revision</value></data>
+  <data name="Hosting_ConfigurationProfiles_Active" xml:space="preserve"><value>Aktiv</value></data>
+  <data name="Hosting_ConfigurationProfiles_Archived" xml:space="preserve"><value>Archiviert</value></data>
+  <data name="Hosting_ConfigurationProfiles_Archive" xml:space="preserve"><value>Profil archivieren</value></data>
+  <data name="Hosting_ConfigurationProfiles_Archiving" xml:space="preserve"><value>Wird archiviert…</value></data>
+  <data name="Hosting_ConfigurationProfiles_ArchivedTitle" xml:space="preserve"><value>Dieses Profil ist archiviert.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ArchiveDescription" xml:space="preserve"><value>Der Revisionsverlauf bleibt verfügbar, neue Revisionen können jedoch nicht veröffentlicht werden.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ArchivedSuccess" xml:space="preserve"><value>Das Konfigurationsprofil wurde archiviert.</value></data>
+  <data name="Hosting_ConfigurationProfiles_Draft" xml:space="preserve"><value>Entwurf</value></data>
+  <data name="Hosting_ConfigurationProfiles_PublishTitle" xml:space="preserve"><value>Neue Revision veröffentlichen</value></data>
+  <data name="Hosting_ConfigurationProfiles_PublishDescription" xml:space="preserve"><value>Die neueste Revision ist unten geladen. Änderungen erzeugen eine unveränderliche Revision; Server mit „Neueste“ übernehmen sie.</value></data>
+  <data name="Hosting_ConfigurationProfiles_BasedOnRevision" xml:space="preserve"><value>Basiert auf Revision {0}</value></data>
+  <data name="Hosting_ConfigurationProfiles_Publish" xml:space="preserve"><value>Revision veröffentlichen</value></data>
+  <data name="Hosting_ConfigurationProfiles_Publishing" xml:space="preserve"><value>Wird veröffentlicht…</value></data>
+  <data name="Hosting_ConfigurationProfiles_Published" xml:space="preserve"><value>Die neue Revision wurde veröffentlicht.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ReadOnlyTitle" xml:space="preserve"><value>Profil ist schreibgeschützt</value></data>
+  <data name="Hosting_ConfigurationProfiles_ReadOnlyDescription" xml:space="preserve"><value>Du kannst dieses Profil und seinen unveränderlichen Verlauf ansehen, aber keine Revision veröffentlichen.</value></data>
+  <data name="Hosting_ConfigurationProfiles_AuditTrail" xml:space="preserve"><value>Audit-Verlauf</value></data>
+  <data name="Hosting_ConfigurationProfiles_RevisionHistory" xml:space="preserve"><value>Revisionsverlauf</value></data>
+  <data name="Hosting_ConfigurationProfiles_RevisionCount" xml:space="preserve"><value>{0} unveränderliche Revision(en)</value></data>
+  <data name="Hosting_ConfigurationProfiles_ValueCount" xml:space="preserve"><value>{0} Werte</value></data>
+  <data name="Hosting_ConfigurationProfiles_StoredSecurely" xml:space="preserve"><value>Sicher gespeichert</value></data>
+  <data name="Hosting_ConfigurationProfiles_RedactedNotice" xml:space="preserve"><value>Sensible Werte bleiben verborgen, solange du dieses Profil nicht ändern darfst.</value></data>
+  <data name="Hosting_ConfigurationProfiles_NotSet" xml:space="preserve"><value>Nicht gesetzt</value></data>
+  <data name="Hosting_ConfigurationProfiles_NotFoundTitle" xml:space="preserve"><value>Profil nicht verfügbar</value></data>
+  <data name="Hosting_ConfigurationProfiles_NotFoundDescription" xml:space="preserve"><value>Dieses Profil existiert nicht oder ist für dich nicht mehr sichtbar.</value></data>
+  <data name="Hosting_ConfigurationProfiles_GeneratedFile" xml:space="preserve"><value>Erzeugte Datei</value></data>
+  <data name="Hosting_ConfigurationProfiles_General" xml:space="preserve"><value>Allgemein</value></data>
+  <data name="Hosting_ConfigurationProfiles_Required" xml:space="preserve"><value>Erforderlich</value></data>
+  <data name="Hosting_ConfigurationProfiles_Sensitive" xml:space="preserve"><value>Sensibel</value></data>
+  <data name="Hosting_ConfigurationProfiles_Enabled" xml:space="preserve"><value>Aktiviert</value></data>
+  <data name="Hosting_ConfigurationProfiles_Disabled" xml:space="preserve"><value>Deaktiviert</value></data>
+  <data name="Hosting_ConfigurationProfiles_EnterOnePerLine" xml:space="preserve"><value>Einen Wert pro Zeile eingeben</value></data>
+  <data name="Hosting_ConfigurationProfiles_ClearValue" xml:space="preserve"><value>Wert löschen</value></data>
+  <data name="Hosting_ConfigurationProfiles_ValidationRequired" xml:space="preserve"><value>{0} ist erforderlich.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ValidationInteger" xml:space="preserve"><value>{0} muss eine ganze Zahl sein.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ValidationNumber" xml:space="preserve"><value>{0} muss eine Zahl sein.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ValidationMinimum" xml:space="preserve"><value>{0} muss mindestens {1} sein.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ValidationMaximum" xml:space="preserve"><value>{0} darf höchstens {1} sein.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ValidationSelection" xml:space="preserve"><value>Wähle für {0} einen erlaubten Wert.</value></data>
+  <data name="Hosting_ConfigurationProfiles_Permissions" xml:space="preserve"><value>Berechtigungen</value></data>
+  <data name="Hosting_ConfigurationProfiles_ScopedAccess" xml:space="preserve"><value>Begrenzter Zugriff</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessDescription" xml:space="preserve"><value>Gewähre oder entziehe einer Person oder Rolle genau eine Berechtigung. Die API bleibt maßgeblich.</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessLoading" xml:space="preserve"><value>Direkte Zugriffsrechte werden geladen…</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessLoadError" xml:space="preserve"><value>Direkte Zugriffsrechte konnten nicht geladen werden.</value></data>
+  <data name="Hosting_ConfigurationProfiles_SubjectType" xml:space="preserve"><value>Zugriff für</value></data>
+  <data name="Hosting_ConfigurationProfiles_User" xml:space="preserve"><value>Person</value></data>
+  <data name="Hosting_ConfigurationProfiles_Role" xml:space="preserve"><value>Rolle</value></data>
+  <data name="Hosting_ConfigurationProfiles_UserId" xml:space="preserve"><value>Benutzer-ID</value></data>
+  <data name="Hosting_ConfigurationProfiles_RoleId" xml:space="preserve"><value>Rollen-ID</value></data>
+  <data name="Hosting_ConfigurationProfiles_Permission" xml:space="preserve"><value>Berechtigung</value></data>
+  <data name="Hosting_ConfigurationProfiles_PermissionFullControl" xml:space="preserve"><value>Vollzugriff</value></data>
+  <data name="Hosting_ConfigurationProfiles_PermissionView" xml:space="preserve"><value>Ansehen</value></data>
+  <data name="Hosting_ConfigurationProfiles_PermissionModify" xml:space="preserve"><value>Ändern</value></data>
+  <data name="Hosting_ConfigurationProfiles_PermissionManageAccess" xml:space="preserve"><value>Zugriff verwalten</value></data>
+  <data name="Hosting_ConfigurationProfiles_PermissionArchive" xml:space="preserve"><value>Archivieren</value></data>
+  <data name="Hosting_ConfigurationProfiles_Grant" xml:space="preserve"><value>Gewähren</value></data>
+  <data name="Hosting_ConfigurationProfiles_Revoke" xml:space="preserve"><value>Entziehen</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessGranted" xml:space="preserve"><value>Der Zugriff wurde gewährt.</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessRevoked" xml:space="preserve"><value>Der Zugriff wurde entzogen.</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessInvalidUser" xml:space="preserve"><value>Gib eine gültige Benutzer-GUID ein.</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessInvalidRole" xml:space="preserve"><value>Gib eine gültige positive Rollennummer ein.</value></data>
+  <data name="Hosting_ConfigurationProfiles_NoDirectAccess" xml:space="preserve"><value>Für dieses Profil gibt es keine direkten Benutzer- oder Rollenzugriffe.</value></data>
+  <data name="Hosting_ConfigurationProfiles_DirectUsers" xml:space="preserve"><value>Direkte Benutzerzugriffe</value></data>
+  <data name="Hosting_ConfigurationProfiles_DirectRoles" xml:space="preserve"><value>Direkte Rollenzugriffe</value></data>
+  <data name="Hosting_ConfigurationProfiles_RevokeNamed" xml:space="preserve"><value>{0} von {1} entziehen</value></data>
+  <data name="HostingFinance_ConfirmChallenge" xml:space="preserve"><value>„{0}“ zur Bestätigung eingeben</value></data>
+  <data name="Hosting_Create_ValidationNameRequired" xml:space="preserve"><value>Gib einen Servernamen ein.</value></data>
+  <data name="Hosting_Create_ValidationNameTooLong" xml:space="preserve"><value>Der Servername darf höchstens 256 Zeichen lang sein.</value></data>
+  <data name="Hosting_Create_ValidationSelectionRequired" xml:space="preserve"><value>Wähle eine verfügbare Option aus.</value></data>
+  <data name="Hosting_Create_ValidationCapacity" xml:space="preserve"><value>Gib eine gültige positive ganzzahlige Kapazität ein.</value></data>
+  <data name="Hosting_Create_ValidationIdentifier" xml:space="preserve"><value>Die ausgewählte Kennung ist ungültig.</value></data>
+  <data name="Hosting_Create_ModPack" xml:space="preserve"><value>Modpack (optional)</value></data>
+  <data name="Hosting_Create_ModPackNone" xml:space="preserve"><value>Kein Modpack</value></data>
+  <data name="Hosting_Create_ModPackHint" xml:space="preserve"><value>Die wirksame verschachtelte Auswahl wird abgeflacht; wiederholte Workshop-Inhalte zählen nur einmal.</value></data>
+  <data name="Hosting_Create_ConfigurationProfile" xml:space="preserve"><value>Konfigurationsprofil (optional)</value></data>
+  <data name="Hosting_Create_ConfigurationProfileDefault" xml:space="preserve"><value>Spielstandardwerte</value></data>
+  <data name="Hosting_Create_ConfigurationProfileOption" xml:space="preserve"><value>{0} (neueste Revision {1})</value></data>
+  <data name="Hosting_Create_ConfigurationProfileHint" xml:space="preserve"><value>Der Server folgt der neuesten unveränderlichen Revision. Das Profil kann später angeheftet oder entfernt werden.</value></data>
+  <data name="Hosting_Create_LoadingSelections" xml:space="preserve"><value>Modpacks und Konfigurationsprofile werden geladen…</value></data>
+  <data name="Hosting_Create_SelectionLoadErrorTitle" xml:space="preserve"><value>Server-Einrichtungsoptionen nicht verfügbar</value></data>
+  <data name="Hosting_Create_SelectionLoadError" xml:space="preserve"><value>Modpacks oder Konfigurationsprofile konnten nicht geladen werden.</value></data>
+  <data name="Hosting_Create_Retry" xml:space="preserve"><value>Erneut versuchen</value></data>
+  <data name="Hosting_Create_CostOwnerSelf" xml:space="preserve"><value>Mein Kostenträger (Standard)</value></data>
+  <data name="Hosting_Create_CostOwnerSelfExisting" xml:space="preserve"><value>Mein Kostenträger — {0} (Standard)</value></data>
+  <data name="Hosting_Create_CostOwnerFrozen" xml:space="preserve"><value>gesperrt</value></data>
+  <data name="Hosting_Create_CostOwnerHint" xml:space="preserve"><value>Jeder Hosting-Datensatz hat einen verantwortlichen Kostenträger. Es werden nur nutzbare Kostenträger angezeigt.</value></data>
+  <data name="Hosting_Create_CostOwnersLoading" xml:space="preserve"><value>Berechtigte Kostenträger werden geladen…</value></data>
+  <data name="Hosting_Create_CostOwnerLoadWarning" xml:space="preserve"><value>Berechtigte Kostenträger konnten nicht geladen werden. Versuche es vor dem Erstellen erneut.</value></data>
+  <data name="Hosting_Create_CostOwnerFrozenError" xml:space="preserve"><value>Der ausgewählte Kostenträger ist gesperrt und kann keinen neuen Server übernehmen.</value></data>
+  <data name="Hosting_Create_PriceUnavailable" xml:space="preserve"><value>Preis nicht verfügbar</value></data>
+  <data name="Hosting_Create_Hour" xml:space="preserve"><value>Stunde</value></data>
+  <data name="Hosting_Create_StorageKicker" xml:space="preserve"><value>Bereitstellungsspeicher</value></data>
+  <data name="Hosting_Create_StorageTitle" xml:space="preserve"><value>Speicher für {0}</value></data>
+  <data name="Hosting_Create_StorageDescription" xml:space="preserve"><value>Spiel, Workshop, Szenario und Vorbereitungsverzeichnis nutzen ein gemeinsames Dateisystem.</value></data>
+  <data name="Hosting_Create_StorageStrategy" xml:space="preserve"><value>Speicherstrategie</value></data>
+  <data name="Hosting_Create_StorageIncluded" xml:space="preserve"><value>Nur enthaltene Profildisk</value></data>
+  <data name="Hosting_Create_StorageAutomatic" xml:space="preserve"><value>Automatisch dimensionierter externer Speicher</value></data>
+  <data name="Hosting_Create_StorageFixed" xml:space="preserve"><value>Explizit dimensionierter externer Speicher</value></data>
+  <data name="Hosting_Create_ExternalCapacity" xml:space="preserve"><value>Externe Kapazität (GiB)</value></data>
+  <data name="Hosting_Create_IncludedProfileDisk" xml:space="preserve"><value>Enthaltener Profilspeicher</value></data>
+  <data name="Hosting_Create_EstimatedPeakRequirement" xml:space="preserve"><value>Geschätzter Spitzenbedarf</value></data>
+  <data name="Hosting_Create_SelectedDeploymentCapacity" xml:space="preserve"><value>Ausgewählte Bereitstellungskapazität</value></data>
+  <data name="Hosting_Create_CombinedPrice" xml:space="preserve"><value>Geschätzter Gesamtpreis</value></data>
+  <data name="Hosting_Create_CombinedPriceValue" xml:space="preserve"><value>{0}/Stunde · {1}/Monat</value></data>
+  <data name="Hosting_Create_Calculating" xml:space="preserve"><value>Wird berechnet…</value></data>
+  <data name="Hosting_Create_FilesystemIncluded" xml:space="preserve"><value>Bereitstellungsinhalte nutzen das enthaltene Server-Stammdateisystem.</value></data>
+  <data name="Hosting_Create_FilesystemExternal" xml:space="preserve"><value>Bereitstellungsinhalte nutzen das geprüfte externe Dateisystem unter {0}.</value></data>
+  <data name="Hosting_Create_ExternalStorageWarning" xml:space="preserve"><value>Externer Bereitstellungsspeicher ist flüchtig und wird bei vollständigem Kostenstopp oder Beendigung gelöscht.</value></data>
+  <data name="Hosting_Create_EstimateLoading" xml:space="preserve"><value>Speicherbedarf wird berechnet…</value></data>
+  <data name="Hosting_Create_EstimateUnavailable" xml:space="preserve"><value>Speicherschätzung nicht verfügbar. {0}</value></data>
+  <data name="Hosting_Create_EstimateFallback" xml:space="preserve"><value>Die Schätzung konnte nicht aktualisiert werden.</value></data>
+  <data name="Hosting_Create_InvalidStorage" xml:space="preserve"><value>Der ausgewählte Speicher erfüllt den geschätzten Spitzenbedarf oder die Anbietergrenzen nicht.</value></data>
+  <data name="Hosting_Create_StoragePreflight" xml:space="preserve"><value>Speicher-Vorprüfung</value></data>
+  <data name="Hosting_Create_StorageDemandTitle" xml:space="preserve"><value>Speicherbedarf der Inhalte</value></data>
+  <data name="Hosting_Create_StorageDemandDescription" xml:space="preserve"><value>Geschätzte installierte Nutzung und empfohlene Kapazität beim Herunterladen oder Aktualisieren von Inhalten.</value></data>
+  <data name="Hosting_Create_SteadyStateUsage" xml:space="preserve"><value>Nutzung im Regelbetrieb</value></data>
+  <data name="Hosting_Create_PreparationWorkspace" xml:space="preserve"><value>Vorbereitungsarbeitsbereich</value></data>
+  <data name="Hosting_Create_SafetyMargin" xml:space="preserve"><value>Sicherheitszuschlag ({0} %)</value></data>
+  <data name="Hosting_Create_RecommendedPeak" xml:space="preserve"><value>Empfohlene Spitzenkapazität</value></data>
+  <data name="Hosting_Create_Confidence" xml:space="preserve"><value>Verlässlichkeit:</value></data>
+  <data name="Hosting_Create_StorageStatusMeasured" xml:space="preserve"><value>gemessen</value></data>
+  <data name="Hosting_Create_StorageStatusEstimated" xml:space="preserve"><value>geschätzt</value></data>
+  <data name="Hosting_Create_StorageStatusIncomplete" xml:space="preserve"><value>unvollständig</value></data>
+  <data name="Hosting_Create_StorageStatusUnavailable" xml:space="preserve"><value>nicht verfügbar</value></data>
+  <data name="Hosting_Create_LatestMeasurement" xml:space="preserve"><value>Letzte Dateisystemmessung: {0}.</value></data>
+  <data name="Hosting_Create_MissingComponents" xml:space="preserve"><value>Diese Schätzung nutzt konservative Ersatzwerte für: {0}.</value></data>
+  <data name="Hosting_Create_SelectedProfileInsufficient" xml:space="preserve"><value>Das ausgewählte Profil reicht für die empfohlene Spitzenkapazität nicht aus. Wähle ein größeres Profil oder externen Speicher.</value></data>
+  <data name="Hosting_Create_SelectedProfileUnknown" xml:space="preserve"><value>Die Kapazität des ausgewählten Profils ist unbekannt. Externer Speicher kann erforderlich sein.</value></data>
+  <data name="Hosting_Create_SelectedProfileCapacity" xml:space="preserve"><value>Kapazität des ausgewählten Laufzeitprofils</value></data>
+  <data name="Hosting_Create_IncludedCapacity" xml:space="preserve"><value>Enthalten</value></data>
+  <data name="Hosting_Create_UsableCapacity" xml:space="preserve"><value>Nach Systemreserve nutzbar</value></data>
+  <data name="Hosting_Create_FitSufficient" xml:space="preserve"><value>Ausreichend</value></data>
+  <data name="Hosting_Create_FitInsufficient" xml:space="preserve"><value>Unzureichend — externer Speicher oder ein größeres Profil ist erforderlich</value></data>
+  <data name="Hosting_Create_FitUnknown" xml:space="preserve"><value>Kapazität unbekannt — externer Speicher kann erforderlich sein</value></data>
+  <data name="Hosting_Create_ProfileCapacityUnavailable" xml:space="preserve"><value>Für das ausgewählte Laufzeitprofil sind keine Kapazitätsinformationen verfügbar.</value></data>
+  <data name="Hosting_Create_ComponentBreakdown" xml:space="preserve"><value>Komponentenübersicht</value></data>
+  <data name="Hosting_ConfigurationProfiles_ForbiddenTitle" xml:space="preserve"><value>Zugriff auf Konfigurationsprofile erforderlich</value></data>
+  <data name="Hosting_ConfigurationProfiles_ForbiddenDescription" xml:space="preserve"><value>Du hast keine Berechtigung, Konfigurationsprofile anzusehen.</value></data>
+  <data name="Hosting_ConfigurationProfiles_ArchiveQuestion" xml:space="preserve"><value>Dieses Profil archivieren?</value></data>
+  <data name="Hosting_ConfigurationProfiles_UserPlaceholder" xml:space="preserve"><value>Benutzer-GUID</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessOr" xml:space="preserve"><value>oder</value></data>
+  <data name="Hosting_ConfigurationProfiles_RolePlaceholder" xml:space="preserve"><value>Rollennummer</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessEitherHint" xml:space="preserve"><value>Gib entweder eine Benutzer-ID oder eine Rollen-ID ein.</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessPermissionInvalid" xml:space="preserve"><value>Wähle eine zuweisbare Profilberechtigung.</value></data>
+  <data name="Hosting_ConfigurationProfiles_AccessInvalidSubject" xml:space="preserve"><value>Gib genau eine gültige Benutzer-ID oder positive Rollennummer ein.</value></data>
+  <data name="Pages_Command_SiteImages_TitleFormat" xml:space="preserve"><value>Bilder: {0}</value></data>
+  <data name="Pages_Command_SiteImages_Description" xml:space="preserve"><value>Wiederverwendbare öffentliche Bildplätze für diesen Seitenbereich bearbeiten.</value></data>
+  <data name="Pages_Command_SiteImages_OpenGallery" xml:space="preserve"><value>Galerie öffnen</value></data>
+  <data name="Pages_Command_SiteImages_AccessRequiredTitle" xml:space="preserve"><value>Zugriff erforderlich</value></data>
+  <data name="Pages_Command_SiteImages_AccessRequiredDescription" xml:space="preserve"><value>Du benötigst Inhaltsverwaltungsrechte, um öffentliche Bildplätze zu bearbeiten.</value></data>
+  <data name="Pages_Command_SiteImages_Loading" xml:space="preserve"><value>Bildplätze werden geladen...</value></data>
+  <data name="Pages_Command_SiteImages_GroupNavigationAria" xml:space="preserve"><value>Öffentliche Bildgruppen</value></data>
+  <data name="Pages_Command_SiteImages_EmptyTitle" xml:space="preserve"><value>Keine Bildplätze</value></data>
+  <data name="Pages_Command_SiteImages_EmptyDescription" xml:space="preserve"><value>Für diesen Bereich sind keine öffentlichen Bildplätze konfiguriert.</value></data>
+  <data name="Pages_Command_SiteImages_ListKicker" xml:space="preserve"><value>Öffentliche Bildwelt</value></data>
+  <data name="Pages_Command_SiteImages_CountSingular" xml:space="preserve"><value>1 Platz</value></data>
+  <data name="Pages_Command_SiteImages_CountPlural" xml:space="preserve"><value>{0} Plätze</value></data>
+  <data name="Pages_Command_SiteImages_Saving" xml:space="preserve"><value>Wird gespeichert...</value></data>
+  <data name="Pages_Command_SiteImages_Save" xml:space="preserve"><value>Speichern</value></data>
+  <data name="Pages_Command_SiteImages_Reset" xml:space="preserve"><value>Zurücksetzen</value></data>
+  <data name="Pages_Command_SiteImages_SavedToast" xml:space="preserve"><value>Bildplatz aktualisiert.</value></data>
+  <data name="Pages_Command_SiteImages_PendingSelection" xml:space="preserve"><value>Neues Galeriebild ausgewählt; speichere, um die Zuordnung zu veröffentlichen.</value></data>
+  <data name="Pages_Command_SiteImages_Unsaved" xml:space="preserve"><value>Einige Bildzuordnungen wurden noch nicht gespeichert.</value></data>
+  <data name="Pages_Command_SiteImages_ResetAll" xml:space="preserve"><value>Alle Änderungen zurücksetzen</value></data>
+  <data name="Pages_Command_SiteImages_Group_Home" xml:space="preserve"><value>Startseite</value></data>
+  <data name="Pages_Command_SiteImages_Group_Media" xml:space="preserve"><value>Medien</value></data>
+  <data name="Pages_Command_SiteImages_Group_Wiki" xml:space="preserve"><value>Wiki</value></data>
+  <data name="Pages_Command_SiteImages_Group_Join" xml:space="preserve"><value>Beitritt</value></data>
+  <data name="Pages_Command_SiteImages_Group_Unit" xml:space="preserve"><value>Einheit</value></data>
+  <data name="Pages_Command_SiteImages_Group_Verein" xml:space="preserve"><value>Verein</value></data>
+  <data name="Pages_Command_SiteImages_Group_Statutes" xml:space="preserve"><value>Satzung</value></data>
+  <data name="Pages_Command_SiteImages_Group_Minutes" xml:space="preserve"><value>Beschlüsse</value></data>
+  <data name="Pages_Command_SiteImages_Group_Ledger" xml:space="preserve"><value>Kassenbuch</value></data>
+  <data name="Pages_Command_SiteImages_Group_Gdpr" xml:space="preserve"><value>Datenschutz</value></data>
+  <data name="Pages_Command_SiteImages_Group_PublicPages" xml:space="preserve"><value>Öffentliche Seiten</value></data>
+  <data name="Pages_Command_FieldReports_Edit_Validation_TitleTooLong" xml:space="preserve">
+    <value>Der Titel darf höchstens 150 Zeichen lang sein.</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_Validation_SlugTooLong" xml:space="preserve">
+    <value>Der Slug darf höchstens 120 Zeichen lang sein.</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_Validation_ExcerptTooLong" xml:space="preserve">
+    <value>Der Auszug darf höchstens 320 Zeichen lang sein.</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_Validation_CategoryTooLong" xml:space="preserve">
+    <value>Die Kategorie darf höchstens 64 Zeichen lang sein.</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_Validation_BodyTooLong" xml:space="preserve">
+    <value>Der Bericht darf höchstens 20.000 Zeichen lang sein.</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_Validation_HeroAltTooLong" xml:space="preserve">
+    <value>Die Bildbeschreibung darf höchstens 200 Zeichen lang sein.</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_Validation_SortOrderInvalid" xml:space="preserve">
+    <value>Die Sortierung muss eine ganze Zahl sein.</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_ReadOnlyTitle" xml:space="preserve">
+    <value>Bericht mit Lesezugriff</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_ReadOnlyMessage" xml:space="preserve">
+    <value>Du kannst diesen Bericht prüfen, aber dein Konto darf ihn nicht ändern.</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_UnsavedActionMessage" xml:space="preserve">
+    <value>Speichere oder verwirf deine Änderungen, bevor du den Workflow-Status änderst.</value>
+  </data>
+  <data name="Pages_Command_Member_ConfirmBanTitle" xml:space="preserve">
+    <value>Mitglied sperren</value>
+  </data>
+  <data name="Pages_Command_Member_ConfirmBanDescription" xml:space="preserve">
+    <value>Die Sperre blockiert den Zugriff dieses Mitglieds sofort. Gib zur Bestätigung den Nickname des Mitglieds ein.</value>
+  </data>
+  <data name="Pages_Command_Member_ConfirmBanAction" xml:space="preserve">
+    <value>Mitglied sperren</value>
+  </data>
+  <data name="Pages_Command_Member_ConfirmEndMembershipTitle" xml:space="preserve">
+    <value>Vereinsmitgliedschaft beenden</value>
+  </data>
+  <data name="Pages_Command_Member_ConfirmEndMembershipDescription" xml:space="preserve">
+    <value>Das Beenden entzieht den Mitgliederzugriff und protokolliert den Audit-Grund. Gib zur Bestätigung den Nickname des Mitglieds ein.</value>
+  </data>
+  <data name="Pages_Command_Member_ConfirmEndMembershipAction" xml:space="preserve">
+    <value>Mitgliedschaft beenden</value>
+  </data>
+  <data name="Pages_Command_Member_ConfirmChallenge" xml:space="preserve">
+    <value>Gib zur Bestätigung &quot;{0}&quot; ein.</value>
+  </data>
+  <data name="Pages_Command_Member_ConfirmKicker" xml:space="preserve">
+    <value>Geschützte Änderung</value>
+  </data>
+  <data name="React_PublicPageEditor_HeroImageRequired" xml:space="preserve">
+    <value>Wähle ein Hero-Bild aus der Galerie aus.</value>
+  </data>
+  <data name="React_PublicPageEditor_SaveError" xml:space="preserve">
+    <value>Die Revision der öffentlichen Seite konnte nicht gespeichert werden: {0}</value>
+  </data>
+  <data name="React_PublicPageEditor_Conflict" xml:space="preserve">
+    <value>Die Seite wurde während deiner Bearbeitung geändert. Prüfe vor einem erneuten Speichern die neueste Revision.</value>
+  </data>
+  <data name="React_PublicPageEditor_NotFound" xml:space="preserve">
+    <value>Die Seite oder das ausgewählte Galeriebild existiert nicht mehr. Lade den Editor neu und prüfe deine Auswahl.</value>
+  </data>
+  <data name="React_PublicPageEditor_GalleryEmpty" xml:space="preserve">
+    <value>Kein Hero-Bild ausgewählt</value>
+  </data>
+  <data name="React_PublicPageEditor_ImagePreviewAlt" xml:space="preserve">
+    <value>Vorschau des ausgewählten Hero-Bildes der öffentlichen Seite</value>
+  </data>
+  <data name="React_PublicPageEditor_RemoveImage" xml:space="preserve">
+    <value>Bild entfernen</value>
+  </data>
+  <data name="Pages_Command_FieldReports_Edit_ErrorConflict" xml:space="preserve">
+    <value>Der Feldbericht wurde zwischenzeitlich geändert. Lade ihn neu, bevor du es erneut versuchst.</value>
+  </data>
+  <data name="React_Terrains_TitleTooLong" xml:space="preserve">
+    <value>Der Titel darf höchstens 1.024 Zeichen lang sein.</value>
+  </data>
+  <data name="React_Terrains_Conflict" xml:space="preserve">
+    <value>Das Gelände wurde zwischenzeitlich geändert. Lade es neu, bevor du es erneut versuchst.</value>
+  </data>
+  <data name="React_Terrains_GameRequired" xml:space="preserve">
+    <value>Wähle ein registriertes Spiel aus.</value>
+  </data>
+  <data name="React_Terrains_GameLabel" xml:space="preserve">
+    <value>Spiel</value>
+  </data>
+  <data name="React_EventAuthoring_TitleRequired" xml:space="preserve">
+    <value>Gib einen Operationstitel ein.</value>
+  </data>
+  <data name="React_EventAuthoring_TitleTooLong" xml:space="preserve">
+    <value>Der Titel darf höchstens 1.024 Zeichen lang sein.</value>
+  </data>
+  <data name="React_EventAuthoring_BriefingRequired" xml:space="preserve">
+    <value>Füge ein Operationsbriefing hinzu.</value>
+  </data>
+  <data name="React_EventAuthoring_ScheduleRequired" xml:space="preserve">
+    <value>Lege Datum und Uhrzeit der Operation fest.</value>
+  </data>
+  <data name="React_EventAuthoring_HostRequired" xml:space="preserve">
+    <value>Wähle einen Host für die Operation aus.</value>
+  </data>
+  <data name="React_EventAuthoring_TerrainRequired" xml:space="preserve">
+    <value>Wähle ein Gelände aus.</value>
+  </data>
+  <data name="React_EventAuthoring_ModPackRequired" xml:space="preserve">
+    <value>Wähle eine aktive Modpack-Revision aus.</value>
+  </data>
+  <data name="React_EventAuthoring_ImageRequired" xml:space="preserve">
+    <value>Wähle ein Missionsbild aus.</value>
+  </data>
+  <data name="React_EventAuthoring_MinimumInvalid" xml:space="preserve">
+    <value>Die Mindestanzahl angenommener Teilnehmer muss null oder größer sein.</value>
+  </data>
+  <data name="React_EventAuthoring_SlotGroupRequired" xml:space="preserve">
+    <value>Jeder Slot benötigt eine Gruppe.</value>
+  </data>
+  <data name="React_EventAuthoring_SlotTitleRequired" xml:space="preserve">
+    <value>Jeder Slot benötigt einen Rollentitel.</value>
+  </data>
+  <data name="React_EventAuthoring_AtLeastOneSlot" xml:space="preserve">
+    <value>Füge vor dem Erstellen der Veranstaltung mindestens einen Slot hinzu.</value>
+  </data>
+  <data name="React_EventAuthoring_ValidationTitle" xml:space="preserve">
+    <value>Operationspaket prüfen</value>
+  </data>
+  <data name="React_EventAuthoring_SelectorLoading" xml:space="preserve">
+    <value>Optionen werden geladen…</value>
+  </data>
+  <data name="React_EventAuthoring_SelectorEmpty" xml:space="preserve">
+    <value>Keine passenden Optionen.</value>
+  </data>
+  <data name="React_EventAuthoring_SelectorError" xml:space="preserve">
+    <value>Optionen konnten nicht geladen werden.</value>
+  </data>
+  <data name="React_EventAuthoring_SelectTerrainFirst" xml:space="preserve">
+    <value>Zuerst ein Gelände auswählen</value>
+  </data>
+  <data name="React_EventAuthoring_ModPackNoRevision" xml:space="preserve">
+    <value>Dieses Modpack hat keine aktive Revision und kann nicht ausgewählt werden.</value>
+  </data>
+  <data name="React_EventAuthoring_RemoveSlotTitle" xml:space="preserve">
+    <value>Slot entfernen?</value>
+  </data>
+  <data name="React_EventAuthoring_RemoveSlotDescription" xml:space="preserve">
+    <value>Der Slot und seine aktuelle Zuweisung werden beim Speichern des Slotplans entfernt.</value>
+  </data>
+  <data name="React_EventAuthoring_RemoveObjectiveTitle" xml:space="preserve">
+    <value>Ziel entfernen?</value>
+  </data>
+  <data name="React_EventAuthoring_PartialSlotFailure" xml:space="preserve">
+    <value>Die Veranstaltung wurde erstellt, aber mindestens ein Start-Slot konnte nicht angelegt werden. Prüfe und speichere den Slotplan.</value>
+  </data>
+  <data name="React_EventAuthoring_SaveSuccess" xml:space="preserve">
+    <value>Veranstaltungsänderungen und Slotplan wurden gespeichert.</value>
+  </data>
+  <data name="React_EventAuthoring_SaveError" xml:space="preserve">
+    <value>Die Veranstaltungsänderungen konnten nicht gespeichert werden: {0}</value>
+  </data>
+  <data name="React_EventAuthoring_LoadError" xml:space="preserve">
+    <value>Der Veranstaltungseditor konnte nicht geladen werden: {0}</value>
+  </data>
+  <data name="React_EventAuthoring_NotFoundTitle" xml:space="preserve">
+    <value>Veranstaltung nicht gefunden</value>
+  </data>
+  <data name="React_EventAuthoring_EditorTabs" xml:space="preserve">
+    <value>Bereiche des Veranstaltungseditors</value>
+  </data>
+  <data name="React_EventAuthoring_SelectImage" xml:space="preserve">
+    <value>Bild auswählen</value>
+  </data>
+  <data name="React_ServerWorkspace_Configuration" xml:space="preserve"><value>Konfiguration</value></data>
+  <data name="React_ServerWorkspace_EffectiveConfiguration" xml:space="preserve"><value>Wirksame Spielkonfiguration</value></data>
+  <data name="React_ServerWorkspace_StructuredSettings" xml:space="preserve"><value>Strukturierte Einstellungen</value></data>
+  <data name="React_ServerWorkspace_StructuredDescription" xml:space="preserve"><value>Standardwerte, die gewählte Profilrevision und wenige Serverüberschreibungen werden hier zusammengeführt. Physische Dateien an generierten Zielen haben zur Laufzeit Vorrang.</value></data>
+  <data name="React_ServerWorkspace_LoadingConfiguration" xml:space="preserve"><value>Konfiguration wird geladen…</value></data>
+  <data name="React_ServerWorkspace_ConfigurationProfile" xml:space="preserve"><value>Konfigurationsprofil</value></data>
+  <data name="React_ServerWorkspace_GameDefaultsOnly" xml:space="preserve"><value>Nur Spielstandardwerte</value></data>
+  <data name="React_ServerWorkspace_FollowLatest" xml:space="preserve"><value>Neuester Revision folgen</value></data>
+  <data name="React_ServerWorkspace_PinRevision" xml:space="preserve"><value>Revision {0} anheften</value></data>
+  <data name="React_ServerWorkspace_ConfigurationIncomplete" xml:space="preserve"><value>Erforderliche Werte fehlen oder sind ungültig. Start und generierte Downloads bleiben gesperrt.</value></data>
+  <data name="React_ServerWorkspace_GeneratedTarget" xml:space="preserve"><value>Generiertes Ziel</value></data>
+  <data name="React_ServerWorkspace_PhysicalOverride" xml:space="preserve"><value>Hier ist eine physische persistente Datei wirksam. Lösche diese Überschreibung unter Dateien, um die strukturierte Bearbeitung wiederherzustellen.</value></data>
+  <data name="React_ServerWorkspace_FromSource" xml:space="preserve"><value>Aus {0}</value></data>
+  <data name="React_ServerWorkspace_Enabled" xml:space="preserve"><value>Aktiviert</value></data>
+  <data name="React_ServerWorkspace_Disabled" xml:space="preserve"><value>Deaktiviert</value></data>
+  <data name="React_ServerWorkspace_NotSet" xml:space="preserve"><value>Nicht gesetzt</value></data>
+  <data name="React_ServerWorkspace_StoredReplacement" xml:space="preserve"><value>Wert gespeichert — Ersatz eingeben</value></data>
+  <data name="React_ServerWorkspace_ResetInherited" xml:space="preserve"><value>Auf geerbten Wert zurücksetzen</value></data>
+  <data name="React_ServerWorkspace_UnsavedOverrides" xml:space="preserve"><value>{0} ungespeicherte Überschreibung(en)</value></data>
+  <data name="React_ServerWorkspace_NoUnsavedOverrides" xml:space="preserve"><value>Keine ungespeicherten Überschreibungen</value></data>
+  <data name="React_ServerWorkspace_Saving" xml:space="preserve"><value>Wird gespeichert…</value></data>
+  <data name="React_ServerWorkspace_SaveOverrides" xml:space="preserve"><value>Überschreibungen speichern</value></data>
+  <data name="React_ServerWorkspace_ConfigurationInvalid" xml:space="preserve"><value>Mindestens ein Konfigurationswert ist ungültig.</value></data>
+  <data name="React_ServerWorkspace_RuntimeCatalogUnavailable" xml:space="preserve"><value>Der Laufzeitprovider-Katalog ist nicht verfügbar.</value></data>
+  <data name="React_ServerWorkspace_ProfileNextDeployment" xml:space="preserve"><value>Profil für die nächste Bereitstellung</value></data>
+  <data name="React_ServerWorkspace_LoadingRuntimeProfiles" xml:space="preserve"><value>Laufzeitprofile werden geladen…</value></data>
+  <data name="React_ServerWorkspace_IncludedDisk" xml:space="preserve"><value>Enthaltener Profilspeicher</value></data>
+  <data name="React_ServerWorkspace_HourlyEstimate" xml:space="preserve"><value>Stundenschätzung</value></data>
+  <data name="React_ServerWorkspace_MonthlyEstimate" xml:space="preserve"><value>Monatsschätzung</value></data>
+  <data name="React_ServerWorkspace_ProfileAppliesNext" xml:space="preserve"><value>Diese Änderung gilt für die nächste Bereitstellung; die aktive Bereitstellung wird nicht skaliert.</value></data>
+  <data name="React_ServerWorkspace_StorageKicker" xml:space="preserve"><value>Bereitstellungsspeicher</value></data>
+  <data name="React_ServerWorkspace_StorageConfigurationTitle" xml:space="preserve"><value>Einheitliches Bereitstellungsdateisystem</value></data>
+  <data name="React_ServerWorkspace_StorageStrategy" xml:space="preserve"><value>Speicherstrategie</value></data>
+  <data name="React_ServerWorkspace_IncludedDiskOnly" xml:space="preserve"><value>Nur enthaltener Profilspeicher</value></data>
+  <data name="React_ServerWorkspace_AutomaticExternal" xml:space="preserve"><value>Automatisch dimensionierter externer Speicher</value></data>
+  <data name="React_ServerWorkspace_FixedExternal" xml:space="preserve"><value>Explizite externe Kapazität</value></data>
+  <data name="React_ServerWorkspace_ExternalCapacity" xml:space="preserve"><value>Externe Kapazität (GiB)</value></data>
+  <data name="React_ServerWorkspace_PeakRequirement" xml:space="preserve"><value>Spitzenbedarf der Vorbereitung</value></data>
+  <data name="React_ServerWorkspace_SelectedCapacity" xml:space="preserve"><value>Gewählte Kapazität</value></data>
+  <data name="React_ServerWorkspace_MountPath" xml:space="preserve"><value>Einhängepfad</value></data>
+  <data name="React_ServerWorkspace_Strategy" xml:space="preserve"><value>Strategie</value></data>
+  <data name="React_ServerWorkspace_ExternalStorageDeleted" xml:space="preserve"><value>Externer Bereitstellungsspeicher wird bei vollständigem Kostenstopp oder Terminierung gelöscht.</value></data>
+  <data name="React_ServerWorkspace_StorageAppliesNext" xml:space="preserve"><value>Speicheränderungen gelten für die nächste Bereitstellung.</value></data>
+  <data name="React_ServerWorkspace_InvalidCapacity" xml:space="preserve"><value>Die gewählte Kapazität erfüllt die Providergrenzen nicht.</value></data>
+  <data name="React_ServerWorkspace_SaveStorage" xml:space="preserve"><value>Bereitstellungsspeicher speichern</value></data>
+  <data name="React_ServerWorkspace_NoModPack" xml:space="preserve"><value>Kein Modpack</value></data>
+  <data name="React_ServerWorkspace_NoPreservation" xml:space="preserve"><value>Es sind keine Erhaltungspfade ausgewählt.</value></data>
+  <data name="React_ServerWorkspace_GameSeededCannotRemove" xml:space="preserve"><value>Vom Spiel vorgegebene Auswahlen können nicht entfernt werden.</value></data>
+  <data name="React_ServerWorkspace_FileMaximum" xml:space="preserve"><value>Datei (maximal 16 MiB)</value></data>
+  <data name="React_ServerWorkspace_FileTooLarge" xml:space="preserve"><value>Die ausgewählte Datei überschreitet die Grenze von 16 MiB.</value></data>
+  <data name="React_ServerWorkspace_CreateGeneratedOverride" xml:space="preserve"><value>Persistente Überschreibung dieses generierten Ziels erstellen</value></data>
+  <data name="React_ServerWorkspace_PersistentShort" xml:space="preserve"><value>Persistent</value></data>
+  <data name="React_ServerWorkspace_LiveShort" xml:space="preserve"><value>Live</value></data>
+  <data name="React_ServerWorkspace_DeleteFile" xml:space="preserve"><value>Datei löschen</value></data>
+  <data name="React_ServerWorkspace_DurableIdentity" xml:space="preserve"><value>Dauerhafte Identität</value></data>
+  <data name="React_ServerWorkspace_GameDefaults" xml:space="preserve"><value>Spielstandardwerte</value></data>
+  <data name="React_ServerWorkspace_None" xml:space="preserve"><value>Keine</value></data>
+  <data name="React_ServerWorkspace_Created" xml:space="preserve"><value>Erstellt</value></data>
+  <data name="React_ServerWorkspace_CurrentRuntime" xml:space="preserve"><value>Aktuelle Laufzeit</value></data>
+  <data name="React_ServerWorkspace_Offline" xml:space="preserve"><value>Offline</value></data>
+  <data name="React_ServerWorkspace_RecentActivity" xml:space="preserve"><value>Letzte Aktivität</value></data>
+  <data name="React_ServerWorkspace_RecommendedAction" xml:space="preserve"><value>Empfohlene Aktion</value></data>
+  <data name="React_ServerWorkspace_Logs" xml:space="preserve"><value>Protokolle</value></data>
+  <data name="React_ServerWorkspace_Files" xml:space="preserve"><value>Dateien</value></data>
+  <data name="React_ServerWorkspace_CloudComputeEstimate" xml:space="preserve"><value>Compute-Schätzung</value></data>
+  <data name="React_ServerWorkspace_CloudStorageEstimate" xml:space="preserve"><value>Speicherschätzung</value></data>
+  <data name="React_ServerWorkspace_DeploymentFilesystem" xml:space="preserve"><value>Bereitstellungsdateisystem</value></data>
+  <data name="React_ServerWorkspace_ProvisionedStorage" xml:space="preserve"><value>Bereitgestellter Speicher</value></data>
+  <data name="React_ServerWorkspace_WorkerDiskTelemetry" xml:space="preserve"><value>Worker-Datenträgertelemetrie</value></data>
+  <data name="React_ServerWorkspace_Used" xml:space="preserve"><value>Verwendet</value></data>
+  <data name="React_ServerWorkspace_Available" xml:space="preserve"><value>Verfügbar</value></data>
+  <data name="React_ServerWorkspace_Total" xml:space="preserve"><value>Gesamt</value></data>
+  <data name="React_ServerWorkspace_Observed" xml:space="preserve"><value>Beobachtet</value></data>
+  <data name="React_ServerWorkspace_NoProviderResources" xml:space="preserve"><value>Derzeit sind keine Providerressourcen zugeordnet.</value></data>
+  <data name="React_ServerWorkspace_WorkerDiagnostics" xml:space="preserve"><value>Worker-Fehlerdiagnose</value></data>
+  <data name="React_ServerWorkspace_LogsAndProtocols" xml:space="preserve"><value>Logs und Befehlsprotokolle</value></data>
+  <data name="React_ServerWorkspace_DownloadProtocol" xml:space="preserve"><value>Protokoll herunterladen</value></data>
+  <data name="React_ServerWorkspace_JobId" xml:space="preserve"><value>Auftrags-ID</value></data>
+  <data name="React_ServerWorkspace_CommandId" xml:space="preserve"><value>Befehls-ID</value></data>
+  <data name="React_ServerWorkspace_FailureCode" xml:space="preserve"><value>Fehlercode</value></data>
+  <data name="React_ServerWorkspace_Started" xml:space="preserve"><value>Gestartet</value></data>
+  <data name="React_ServerWorkspace_Completed" xml:space="preserve"><value>Abgeschlossen</value></data>
+  <data name="React_ServerWorkspace_NoDiagnostic" xml:space="preserve"><value>Es wurde keine Diagnoseausgabe gemeldet.</value></data>
+  <data name="React_ServerWorkspace_ArchiveRecord" xml:space="preserve"><value>Diesen dauerhaften Serverdatensatz archivieren</value></data>
+  <data name="React_ServerWorkspace_SelectFile" xml:space="preserve"><value>Wähle zuerst eine Datei aus.</value></data>
+  <data name="React_ServerWorkspace_PersistentOverride" xml:space="preserve"><value>Persistente Überschreibung</value></data>
+  <data name="React_ServerWorkspace_GeneratedIncomplete" xml:space="preserve"><value>Generiert · unvollständig</value></data>
+  <data name="React_ServerWorkspace_Deleting" xml:space="preserve"><value>Wird gelöscht…</value></data>
 </root>

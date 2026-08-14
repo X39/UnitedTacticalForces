@@ -35,6 +35,14 @@
 .hosting-finance-check input { height: 1rem; width: 1rem; }
 .hosting-finance-negative { color: var(--error); font-weight: 650; }
 .hosting-finance-positive { color: var(--success); font-weight: 650; }
+.hosting-finance-audit-details { margin-top: .45rem; max-width: 34rem; }
+.hosting-finance-audit-details summary { color: var(--accent-foreground-rest); cursor: pointer; font-size: .78rem; }
+.hosting-finance-audit-details dl { display: grid; gap: .35rem; margin: .65rem 0 0; }
+.hosting-finance-audit-details dl > div { display: grid; grid-template-columns: minmax(8rem, .7fr) minmax(10rem, 1fr); gap: .5rem; }
+.hosting-finance-audit-details dt { color: var(--neutral-foreground-hint); }
+.hosting-finance-audit-details dd { margin: 0; overflow-wrap: anywhere; }
+.hosting-finance-reversal { max-width: 48rem; }
+.hosting-finance-reversal-actions { display: flex; flex-wrap: wrap; gap: .65rem; justify-content: flex-end; }
 
 @media (max-width: 1050px) {
     .hosting-finance-workspace { grid-template-columns: 1fr; }

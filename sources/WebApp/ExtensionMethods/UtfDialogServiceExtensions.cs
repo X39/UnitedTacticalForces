@@ -13,6 +13,7 @@ public static class UtfDialogServiceExtensions
         string challengeLabel,
         string confirmLabel,
         string cancelLabel,
+        Func<string, Task<bool>>? onConfirmAsync = null,
         string? kicker = null)
     {
         var content = new UtfChallengeConfirmationDialog.Data
@@ -23,6 +24,7 @@ public static class UtfDialogServiceExtensions
             ChallengeLabel = challengeLabel,
             ConfirmLabel = confirmLabel,
             CancelLabel = cancelLabel,
+            OnConfirmAsync = onConfirmAsync,
         };
         var dialogReference = await dialogService
             .ShowDialogAsync<UtfChallengeConfirmationDialog, UtfChallengeConfirmationDialog.Data>(

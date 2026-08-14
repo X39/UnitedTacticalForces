@@ -91,7 +91,9 @@ Hence, follow both steps carefully:
 ### Linux-NGINX with SSL
 
 1. Create a new folder at `/var/www/utf-frontend`
-2. Paste the [latest frontent artifacts](https://github.com/X39/UnitedTacticalForces/actions) flat in here
+2. Download the latest `Frontend` and `Frontend-React` artifacts from
+   [GitHub Actions](https://github.com/X39/UnitedTacticalForces/actions). Extract `Frontend` into this directory, then
+   extract the contents of `Frontend-React` into `wwwroot/next/` so both interfaces are served side by side.
 3. Setup SSL certificate for your domain (in this case: `subdomain.yourdomain.xx`)
 4. Add a file with the following contents to `/etc/nginx/sites-available/utf.webapp`:
    ```
@@ -107,9 +109,10 @@ Hence, follow both steps carefully:
    
    # HTTPS server configuration
    server {
-   listen      443 ssl http2;
-   listen [::]:443 ssl http2;
-   server_name subdomain.yourdomain.xx;
+    listen      443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name subdomain.yourdomain.xx;
+    root /var/www/utf-frontend/wwwroot;
    
        # SSL settings
        ssl_certificate /path/to/certificate.cer;
@@ -137,11 +140,26 @@ Hence, follow both steps carefully:
            proxy_busy_buffers_size   24k;
            proxy_max_temp_file_size 0;
         }
+
+       # React beta assets and SPA deep-link fallback
+       location = /next {
+           return 301 /next/$is_args$args;
+       }
+
+       location ^~ /next/assets/ {
+           try_files $uri =404;
+           expires 1y;
+           add_header Cache-Control "public, max-age=31536000, immutable" always;
+       }
+
+       location /next/ {
+           try_files $uri $uri/ /next/index.html;
+           add_header Cache-Control "no-cache" always;
+       }
    
-        # Blazor WebAssembly app location
-        location / {
-            root /var/www/utf-frontend/wwwroot;
-            try_files $uri $uri/ /index.html =404;
+         # Blazor WebAssembly app location
+         location / {
+             try_files $uri $uri/ /index.html =404;
    
             # WebSockets settings (if needed)
             include /etc/nginx/mime.types;

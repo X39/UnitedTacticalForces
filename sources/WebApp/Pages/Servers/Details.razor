@@ -2186,17 +2186,16 @@
 
         if (!string.IsNullOrWhiteSpace(action.ConfirmationChallenge))
         {
-            var confirmation = await DialogService.ShowUtfChallengeConfirmationAsync(
+            await DialogService.ShowUtfChallengeConfirmationAsync(
                 ActionLabel(action),
                 LocalizeServerMessage(action.ConfirmationText),
                 action.ConfirmationChallenge,
                 Localizer["Hosting_Detail_TypeChallenge", action.ConfirmationChallenge].Value,
                 ActionLabel(action),
                 Localizer["Hosting_Common_Cancel"].Value,
+                onConfirmAsync: confirmation => ExecuteActionAsync(action, confirmation),
                 kicker: Localizer["Hosting_Detail_ConfirmationKicker"].Value
             );
-            if (confirmation is not null)
-                _ = await ExecuteActionAsync(action, confirmation);
             return;
         }
 

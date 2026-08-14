@@ -1,0 +1,7 @@
+dist
+coverage
+playwright-report
+src/generated/api.ts
+src/generated/locales/*.json
+package-lock.json
+openapi/*.json

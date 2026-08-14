@@ -25,7 +25,7 @@
                 </NavLink>
             </div>
 
-            @if (CanManageOperations || Me.CanAccessGameServers())
+            @if (CanManageOperations || Me.CanAccessGameServers() || Me.CanAccessConfigurationProfiles())
             {
                 <div class="utf-command-nav__group">
                     <div class="utf-command-nav__label">@Localizer[nameof(Language.Shared_CommandCenter_Group_Operations)]</div>
@@ -35,9 +35,12 @@
                             <FluentIcon Value="@(new Icons.Regular.Size24.Settings())"/>
                             <span>@Localizer["Hosting_Nav_Servers"]</span>
                         </NavLink>
+                    }
+                    @if (Me.CanAccessConfigurationProfiles())
+                    {
                         <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/configuration-profiles")">
                             <FluentIcon Value="@(new Icons.Regular.Size24.Settings())"/>
-                            <span>Configuration profiles</span>
+                            <span>@Localizer["Hosting_ConfigurationProfiles_Title"]</span>
                         </NavLink>
                     }
                     @if (Me.HasClaimOrEventAdmin(Claims.Creation.Events))
@@ -97,7 +100,7 @@
                     {
                         <NavLink class="utf-command-link" href="@BaseUrl.ResolveSelfUrl("command/content/images/home")">
                             <FluentIcon Value="@(new Icons.Regular.Size24.Image())"/>
-                            <span>Public images</span>
+                            <span>@Localizer["Shared_CommandCenter_Nav_PublicImages"]</span>
                         </NavLink>
                     }
                 </div>
@@ -194,6 +197,7 @@
             </div>
 
             <div class="utf-command-topbar__actions">
+                <UiVariantSwitch/>
                 <SectionOutlet SectionName="@MainLayout.FooterSection"/>
                 <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("")" Match="NavLinkMatch.All">
                     @Localizer[nameof(Language.Shared_CommandCenter_BackToSite)]
@@ -221,7 +225,8 @@
 
     private bool CanManageOperations
         => Me.HasClaimOrEventAdmin(Claims.Creation.Events)
-           || Me.CanCreateGameServers();
+           || Me.CanCreateGameServers()
+           || Me.CanCreateConfigurationProfiles();
 
     private bool CanManageAssets
         => Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All)
@@ -230,12 +235,12 @@
            || CanManageMediaGallery;
 
     private bool CanManageFinance
-        => Me.HasClaim(
+        => Me.HasBaseClaim(
             Claims.Finance.All,
             Claims.Finance.ViewAll);
 
     private bool CanManageWikiMedia
-        => Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All);
+        => Me.HasBaseClaim(Claims.Administrative.Wiki, Claims.Creation.Wiki, Claims.Wiki.All);
 
     private bool CanManageMediaGallery
         => CanManageWikiMedia || CanManageContentPages;
@@ -277,7 +282,8 @@
            || CanManageAssets
            || CanManageCommunity
            || CanManageGovernance
-           || CanManageFinance;
+           || CanManageFinance
+           || Me.CanAccessConfigurationProfiles();
 
     private string CurrentArea
     {
@@ -294,7 +300,7 @@
                 "command"               => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Overview)].Value,
                 "command/servers"        => Localizer["Hosting_Nav_Servers"].Value,
                 "command/servers/create" => Localizer["Hosting_Create_Title"].Value,
-                "command/configuration-profiles" => "Configuration profiles",
+                "command/configuration-profiles" => Localizer["Hosting_ConfigurationProfiles_Title"].Value,
                 "command/hosting-finance" => Localizer["Shared_CommandCenter_Nav_HostingFinance"].Value,
                 _ when path.StartsWith("command/servers/", StringComparison.Ordinal) => Localizer["Hosting_Detail_Title"].Value,
                 "events/all"            => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EventAdministration)].Value,
@@ -315,8 +321,8 @@
                 _ when path.StartsWith("command/field-reports/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_EditFieldReport)].Value,
                 "command/wiki-media"    => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_FieldReports)].Value,
                 "command/content/gallery" => Localizer["Shared_CommandCenter_CurrentArea_Gallery"].Value,
-                "command/content/images" => "Public images",
-                _ when path.StartsWith("command/content/images/", StringComparison.Ordinal) => "Public images",
+                "command/content/images" => Localizer["Shared_CommandCenter_Nav_PublicImages"].Value,
+                _ when path.StartsWith("command/content/images/", StringComparison.Ordinal) => Localizer["Shared_CommandCenter_Nav_PublicImages"].Value,
                 "command/members"       => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Members)].Value,
                 _ when path.StartsWith("command/members/", StringComparison.Ordinal) => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_MemberDetail)].Value,
                 "command/roles"         => Localizer[nameof(Language.Shared_CommandCenter_CurrentArea_Roles)].Value,

@@ -3,12 +3,17 @@
 @layout CommandCenterLayout
 @using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
 @inject IGameServerRepository Repository
+@inject IStringLocalizer<Language> Localizer
+@inject IJSRuntime JsRuntime
 
-<PageTitle>Configuration profiles</PageTitle>
+<PageTitle>@Localizer["Hosting_ConfigurationProfiles_Title"]</PageTitle>
+
+<NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges"
+                OnBeforeInternalNavigation="ConfirmInternalNavigationAsync"/>
 
 <div class="configuration-profiles-page">
-    <UtfCommandPageHeader Title="Configuration profiles"
-                          Description="Create reusable game-server settings, publish immutable revisions, and control who may use or maintain them."/>
+    <UtfCommandPageHeader Title="@(Localizer["Hosting_ConfigurationProfiles_Title"])"
+                          Description="@(Localizer["Hosting_ConfigurationProfiles_Description"])"/>
 
     @if (_error is not null)
     {
@@ -23,22 +28,23 @@
     {
         <section class="configuration-loading utf-panel" aria-live="polite">
             <span class="configuration-spinner" aria-hidden="true"></span>
-            <p>Loading configuration profiles...</p>
+            <p>@Localizer["Hosting_ConfigurationProfiles_Loading"]</p>
         </section>
     }
     else
     {
         <div class="configuration-workspace">
-            <aside class="configuration-profile-browser utf-panel" aria-label="Configuration profiles">
+            <aside class="configuration-profile-browser utf-panel"
+                   aria-label="@(Localizer["Hosting_ConfigurationProfiles_Title"])">
                 <div class="configuration-browser-heading">
                     <div>
-                        <span class="utf-kicker">Library</span>
-                        <h2>Profiles</h2>
+                        <span class="utf-kicker">@Localizer["Hosting_ConfigurationProfiles_Library"]</span>
+                        <h2>@Localizer["Hosting_ConfigurationProfiles_Profiles"]</h2>
                     </div>
                     @if (_catalog.CanCreate)
                     {
-                        <button class="utf-button utf-button--primary" type="button" @onclick="StartCreate">
-                            New profile
+                        <button class="utf-button utf-button--primary" type="button" @onclick="StartCreateAsync">
+                            @Localizer["Hosting_ConfigurationProfiles_NewProfile"]
                         </button>
                     }
                 </div>
@@ -46,8 +52,8 @@
                 @if (_profiles.Count == 0)
                 {
                     <div class="configuration-empty">
-                        <strong>No profiles yet</strong>
-                        <p>Create the first reusable server configuration from the guided form.</p>
+                        <strong>@Localizer["Hosting_ConfigurationProfiles_NoProfilesTitle"]</strong>
+                        <p>@Localizer["Hosting_ConfigurationProfiles_NoProfilesDescription"]</p>
                     </div>
                 }
                 else
@@ -57,13 +63,15 @@
                         {
                             <button class="@ProfileButtonClass(profile)"
                                     type="button"
-                                    @onclick="@(() => SelectAsync(profile.PrimaryKey))">
+                                    @onclick="@(() => SelectWithConfirmationAsync(profile.PrimaryKey))">
                                 <span>
                                     <strong>@profile.Title</strong>
-                                    <small>@GameLabel(profile.GameIdentifier) · Revision @profile.LatestRevisionNumber</small>
+                                    <small>@GameLabel(profile.GameIdentifier) · @Localizer["Hosting_ConfigurationProfiles_Revision"] @profile.LatestRevisionNumber</small>
                                 </span>
                                 <UtfStatusBadge Intent="@(profile.IsArchived ? "warning" : "success")">
-                                    @(profile.IsArchived ? "Archived" : "Active")
+                                    @(profile.IsArchived
+                                        ? Localizer["Hosting_ConfigurationProfiles_Archived"]
+                                        : Localizer["Hosting_ConfigurationProfiles_Active"])
                                 </UtfStatusBadge>
                             </button>
                         }
@@ -77,58 +85,60 @@
                     <section class="configuration-panel utf-panel">
                         <div class="configuration-panel-heading">
                             <div>
-                                <span class="utf-kicker">New baseline</span>
-                                <h2>Create configuration profile</h2>
-                                <p>Choose a game and fill in its supported settings. Defaults are pre-filled and can be adjusted before publishing revision 1.</p>
+                                <span class="utf-kicker">@Localizer["Hosting_ConfigurationProfiles_NewBaseline"]</span>
+                                <h2>@Localizer["Hosting_ConfigurationProfiles_CreateTitle"]</h2>
+                                <p>@Localizer["Hosting_ConfigurationProfiles_CreateDescription"]</p>
                             </div>
                         </div>
 
                         @if (!_catalog.CanCreate)
                         {
                             <div class="configuration-empty">
-                                <strong>You can view profiles, but cannot create one.</strong>
-                                <p>Ask an administrator for the configuration-profile creation permission.</p>
+                                <strong>@Localizer["Hosting_ConfigurationProfiles_ViewOnlyTitle"]</strong>
+                                <p>@Localizer["Hosting_ConfigurationProfiles_ViewOnlyDescription"]</p>
                             </div>
                         }
                         else if (_catalog.Games.Count == 0)
                         {
                             <div class="configuration-empty">
-                                <strong>No configurable games are registered.</strong>
-                                <p>A game implementation must expose configuration definitions before profiles can be created.</p>
+                                <strong>@Localizer["Hosting_ConfigurationProfiles_NoGamesTitle"]</strong>
+                                <p>@Localizer["Hosting_ConfigurationProfiles_NoGamesDescription"]</p>
                             </div>
                         }
                         else
                         {
                             <div class="configuration-profile-meta">
                                 <label class="configuration-field">
-                                    <span>Profile title</span>
+                                    <span>@Localizer["Hosting_ConfigurationProfiles_ProfileTitle"]</span>
                                     <input value="@_title"
                                            maxlength="256"
-                                           placeholder="e.g. Public operation server"
+                                           placeholder="@(Localizer["Hosting_ConfigurationProfiles_ProfileTitlePlaceholder"])"
                                            @oninput="@(args => _title = args.Value?.ToString() ?? string.Empty)"/>
-                                    <small>Use a name operators will recognize when assigning this profile to a server.</small>
+                                    <small>@Localizer["Hosting_ConfigurationProfiles_ProfileTitleHint"]</small>
                                 </label>
                                 <label class="configuration-field">
-                                    <span>Game</span>
+                                    <span>@Localizer["Hosting_ConfigurationProfiles_Game"]</span>
                                     <select value="@_game" @onchange="ChangeGame">
                                         @foreach (var game in _catalog.Games)
                                         {
                                             <option value="@game.GameIdentifier">@GameLabel(game.GameIdentifier)</option>
                                         }
                                     </select>
-                                    <small>The game controls which settings and validation rules are available.</small>
+                                    <small>@Localizer["Hosting_ConfigurationProfiles_GameHint"]</small>
                                 </label>
                             </div>
 
                             <ConfigurationProfileFields Definitions="@CurrentDefinitions" Values="@_draftValues"/>
 
                             <div class="configuration-actions">
-                                <span>@CurrentDefinitions.Count setting definitions</span>
+                                <span>@Localizer["Hosting_ConfigurationProfiles_SettingCount", CurrentDefinitions.Count]</span>
                                 <button class="utf-button utf-button--primary"
                                         type="button"
                                         disabled="@(_submitting || string.IsNullOrWhiteSpace(_title))"
                                         @onclick="CreateAsync">
-                                    @(_submitting ? "Creating..." : "Create profile")
+                                    @(_submitting
+                                        ? Localizer["Hosting_ConfigurationProfiles_Creating"]
+                                        : Localizer["Hosting_ConfigurationProfiles_Create"])
                                 </button>
                             </div>
                         }
@@ -141,21 +151,32 @@
                             <div>
                                 <span class="utf-kicker">@GameLabel(_selected.Profile.GameIdentifier)</span>
                                 <h2>@_selected.Profile.Title</h2>
-                                <p>Revision @_selected.Profile.LatestRevisionNumber · @(_selected.Profile.IsArchived ? "Archived" : "Active")</p>
+                                <p>
+                                    @Localizer["Hosting_ConfigurationProfiles_Revision"] @_selected.Profile.LatestRevisionNumber ·
+                                    @(_selected.Profile.IsArchived
+                                        ? Localizer["Hosting_ConfigurationProfiles_Archived"]
+                                        : Localizer["Hosting_ConfigurationProfiles_Active"])
+                                </p>
                             </div>
                             @if (_selected.CanArchive && !_selected.Profile.IsArchived)
                             {
                                 @if (_confirmArchive)
                                 {
                                     <div class="configuration-archive-confirm">
-                                        <span>Archive this profile?</span>
-                                        <button class="utf-button utf-button--danger" type="button" @onclick="ArchiveAsync">Confirm</button>
-                                        <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => _confirmArchive = false)">Cancel</button>
+                                        <span>@Localizer["Hosting_ConfigurationProfiles_ArchiveQuestion"]</span>
+                                        <button class="utf-button utf-button--danger" type="button" @onclick="ArchiveAsync">
+                                            @Localizer["Common_Confirm"]
+                                        </button>
+                                        <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => _confirmArchive = false)">
+                                            @Localizer["Common_Cancel"]
+                                        </button>
                                     </div>
                                 }
                                 else
                                 {
-                                    <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => _confirmArchive = true)">Archive</button>
+                                    <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => _confirmArchive = true)">
+                                        @Localizer["Hosting_ConfigurationProfiles_Archive"]
+                                    </button>
                                 }
                             }
                         </div>
@@ -163,48 +184,57 @@
                         @if (_selected.Profile.IsArchived)
                         {
                             <div class="configuration-empty">
-                                <strong>This profile is archived.</strong>
-                                <p>Its revision history remains available, but no new revisions can be published.</p>
+                                <strong>@Localizer["Hosting_ConfigurationProfiles_ArchivedTitle"]</strong>
+                                <p>@Localizer["Hosting_ConfigurationProfiles_ArchiveDescription"]</p>
                             </div>
                         }
                         else if (_selected.CanModify)
                         {
                             <div class="configuration-section-heading">
                                 <div>
-                                    <span class="utf-kicker">Draft</span>
-                                    <h3>Publish a new revision</h3>
+                                    <span class="utf-kicker">@Localizer["Hosting_ConfigurationProfiles_Draft"]</span>
+                                    <h3>@Localizer["Hosting_ConfigurationProfiles_PublishTitle"]</h3>
                                 </div>
-                                <p>The latest revision is loaded below. Changes create a new immutable revision; existing servers following “latest” will receive it.</p>
+                                <p>@Localizer["Hosting_ConfigurationProfiles_PublishDescription"]</p>
                             </div>
                             <ConfigurationProfileFields Definitions="@_selected.Definitions" Values="@_draftValues"/>
                             <div class="configuration-actions">
-                                <span>Based on revision @_selected.Profile.LatestRevisionNumber</span>
+                                <span>@Localizer["Hosting_ConfigurationProfiles_BasedOnRevision", _selected.Profile.LatestRevisionNumber]</span>
                                 <button class="utf-button utf-button--primary"
                                         type="button"
                                         disabled="@_submitting"
                                         @onclick="CreateRevisionAsync">
-                                    @(_submitting ? "Publishing..." : "Publish revision")
+                                    @(_submitting
+                                        ? Localizer["Hosting_ConfigurationProfiles_Publishing"]
+                                        : Localizer["Hosting_ConfigurationProfiles_Publish"])
                                 </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="configuration-empty">
+                                <strong>@Localizer["Hosting_ConfigurationProfiles_ReadOnlyTitle"]</strong>
+                                <p>@Localizer["Hosting_ConfigurationProfiles_ReadOnlyDescription"]</p>
                             </div>
                         }
 
                         <div class="configuration-history">
                             <div class="configuration-section-heading">
                                 <div>
-                                    <span class="utf-kicker">Audit trail</span>
-                                    <h3>Revision history</h3>
+                                    <span class="utf-kicker">@Localizer["Hosting_ConfigurationProfiles_AuditTrail"]</span>
+                                    <h3>@Localizer["Hosting_ConfigurationProfiles_RevisionHistory"]</h3>
                                 </div>
-                                <p>@_selected.Revisions.Count immutable revision(s)</p>
+                                <p>@Localizer["Hosting_ConfigurationProfiles_RevisionCount", _selected.Revisions.Count]</p>
                             </div>
                             @foreach (var revision in _selected.Revisions.OrderByDescending(q => q.RevisionNumber))
                             {
                                 <details class="configuration-revision" open="@(revision.RevisionNumber == _selected.Profile.LatestRevisionNumber)">
                                     <summary>
                                         <span>
-                                            <strong>Revision @revision.RevisionNumber</strong>
+                                            <strong>@Localizer["Hosting_ConfigurationProfiles_Revision"] @revision.RevisionNumber</strong>
                                             <small>@revision.TimeStampCreated.ToLocalTime().ToString("g")</small>
                                         </span>
-                                        <span>@revision.Values.Count values</span>
+                                        <span>@Localizer["Hosting_ConfigurationProfiles_ValueCount", revision.Values.Count]</span>
                                     </summary>
                                     <dl>
                                         @foreach (var definition in _selected.Definitions.Where(q => revision.Values.ContainsKey(q.Key)))
@@ -217,7 +247,7 @@
                                     </dl>
                                     @if (revision.RedactedKeys.Count > 0)
                                     {
-                                        <p class="configuration-redacted">Sensitive values are hidden unless you can modify this profile.</p>
+                                        <p class="configuration-redacted">@Localizer["Hosting_ConfigurationProfiles_RedactedNotice"]</p>
                                     }
                                 </details>
                             }
@@ -229,37 +259,141 @@
                         <section class="configuration-panel configuration-access utf-panel">
                             <div class="configuration-section-heading">
                                 <div>
-                                    <span class="utf-kicker">Permissions</span>
-                                    <h3>Scoped access</h3>
+                                    <span class="utf-kicker">@Localizer["Hosting_ConfigurationProfiles_Permissions"]</span>
+                                    <h3>@Localizer["Hosting_ConfigurationProfiles_ScopedAccess"]</h3>
                                 </div>
-                                <p>Grant or revoke one permission for a user or role.</p>
+                                <p>@Localizer["Hosting_ConfigurationProfiles_AccessDescription"]</p>
                             </div>
-                            <div class="configuration-access-grid">
-                                <label class="configuration-field">
-                                    <span>User ID</span>
-                                    <input @bind="_userId" placeholder="User GUID"/>
-                                </label>
-                                <span class="configuration-access-or">or</span>
-                                <label class="configuration-field">
-                                    <span>Role ID</span>
-                                    <input @bind="_roleId" inputmode="numeric" placeholder="Role number"/>
-                                </label>
-                                <label class="configuration-field configuration-access-permission">
-                                    <span>Permission</span>
-                                    <select @bind="_permission">
-                                        <option value="cfg">Full control</option>
-                                        <option value="cfg:view">View</option>
-                                        <option value="cfg:modify">Modify</option>
-                                        <option value="cfg:manage-access">Manage access</option>
-                                        <option value="cfg:archive">Archive</option>
-                                    </select>
-                                </label>
-                            </div>
-                            <div class="configuration-actions">
-                                <span>Enter either a user ID or role ID.</span>
-                                <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => ChangeAccessAsync(false))">Revoke</button>
-                                <button class="utf-button utf-button--primary" type="button" @onclick="@(() => ChangeAccessAsync(true))">Grant</button>
-                            </div>
+                            @if (_accessLoading)
+                            {
+                                <div class="configuration-empty" aria-live="polite">
+                                    <p>@Localizer["Hosting_ConfigurationProfiles_AccessLoading"]</p>
+                                </div>
+                            }
+                            else if (_accessError is not null)
+                            {
+                                <UtfAlert Intent="MessageIntent.Error">@_accessError</UtfAlert>
+                                <button class="utf-button utf-button--ghost"
+                                        type="button"
+                                        @onclick="@(() => LoadAccessAsync(_selected.Profile.PrimaryKey))">
+                                    @Localizer["Hosting_ConfigurationProfiles_Retry"]
+                                </button>
+                            }
+                            else if (_access is not null)
+                            {
+                                <div class="configuration-access-grid">
+                                    <label class="configuration-field">
+                                        <span>@Localizer["Hosting_ConfigurationProfiles_UserId"]</span>
+                                        <input @bind="_userId"
+                                               placeholder="@(Localizer["Hosting_ConfigurationProfiles_UserPlaceholder"])"
+                                               autocomplete="off"/>
+                                    </label>
+                                    <span class="configuration-access-or">@Localizer["Hosting_ConfigurationProfiles_AccessOr"]</span>
+                                    <label class="configuration-field">
+                                        <span>@Localizer["Hosting_ConfigurationProfiles_RoleId"]</span>
+                                        <input @bind="_roleId"
+                                               inputmode="numeric"
+                                               placeholder="@(Localizer["Hosting_ConfigurationProfiles_RolePlaceholder"])"
+                                               autocomplete="off"/>
+                                    </label>
+                                    <label class="configuration-field configuration-access-permission">
+                                        <span>@Localizer["Hosting_ConfigurationProfiles_Permission"]</span>
+                                        <select @bind="_permission">
+                                            @foreach (var permission in _access.AllowedPermissions)
+                                            {
+                                                <option value="@permission">@PermissionLabel(permission)</option>
+                                            }
+                                        </select>
+                                    </label>
+                                </div>
+                                <div class="configuration-actions">
+                                    <span>@Localizer["Hosting_ConfigurationProfiles_AccessEitherHint"]</span>
+                                    <button class="utf-button utf-button--ghost"
+                                            type="button"
+                                            disabled="@_accessSubmitting"
+                                            @onclick="@(() => ChangeAccessAsync(false))">
+                                        @Localizer["Hosting_ConfigurationProfiles_Revoke"]
+                                    </button>
+                                    <button class="utf-button utf-button--primary"
+                                            type="button"
+                                            disabled="@_accessSubmitting"
+                                            @onclick="@(() => ChangeAccessAsync(true))">
+                                        @Localizer["Hosting_ConfigurationProfiles_Grant"]
+                                    </button>
+                                </div>
+
+                                @if (_access.Users.Count == 0 && _access.Roles.Count == 0)
+                                {
+                                    <div class="configuration-empty">
+                                        <p>@Localizer["Hosting_ConfigurationProfiles_NoDirectAccess"]</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="configuration-access-grants">
+                                        @if (_access.Users.Count > 0)
+                                        {
+                                            <section>
+                                                <h4>@Localizer["Hosting_ConfigurationProfiles_DirectUsers"]</h4>
+                                                @foreach (var user in _access.Users)
+                                                {
+                                                    <article>
+                                                        <div>
+                                                            <strong>@user.Nickname</strong>
+                                                            <small>@user.UserId</small>
+                                                        </div>
+                                                        <ul>
+                                                            @foreach (var permission in user.Permissions)
+                                                            {
+                                                                <li>
+                                                                    <span>@PermissionLabel(permission)</span>
+                                                                    <button class="utf-button utf-button--ghost"
+                                                                            type="button"
+                                                                            disabled="@_accessSubmitting"
+                                                                            aria-label="@(Localizer["Hosting_ConfigurationProfiles_RevokeNamed", PermissionLabel(permission), user.Nickname])"
+                                                                            @onclick="@(() => ChangeUserAccessAsync(user.UserId, permission, false))">
+                                                                        @Localizer["Hosting_ConfigurationProfiles_Revoke"]
+                                                                    </button>
+                                                                </li>
+                                                            }
+                                                        </ul>
+                                                    </article>
+                                                }
+                                            </section>
+                                        }
+                                        @if (_access.Roles.Count > 0)
+                                        {
+                                            <section>
+                                                <h4>@Localizer["Hosting_ConfigurationProfiles_DirectRoles"]</h4>
+                                                @foreach (var role in _access.Roles)
+                                                {
+                                                    <article>
+                                                        <div>
+                                                            <strong>@role.Title</strong>
+                                                            <small>@role.Description</small>
+                                                        </div>
+                                                        <ul>
+                                                            @foreach (var permission in role.Permissions)
+                                                            {
+                                                                <li>
+                                                                    <span>@PermissionLabel(permission)</span>
+                                                                    <button class="utf-button utf-button--ghost"
+                                                                            type="button"
+                                                                            disabled="@_accessSubmitting"
+                                                                            aria-label="@(Localizer["Hosting_ConfigurationProfiles_RevokeNamed", PermissionLabel(permission), role.Title])"
+                                                                            @onclick="@(() => ChangeRoleAccessAsync(role.RoleId, permission, false))">
+                                                                        @Localizer["Hosting_ConfigurationProfiles_Revoke"]
+                                                                    </button>
+                                                                </li>
+                                                            }
+                                                        </ul>
+                                                    </article>
+                                                }
+                                            </section>
+                                        }
+                                    </div>
+                                }
+                            }
                         </section>
                     }
                 }
@@ -272,6 +406,7 @@
     private IReadOnlyList<ConfigurationProfileInfo> _profiles = [];
     private ConfigurationProfileDefinitionCatalogInfo _catalog = new();
     private ConfigurationProfileDetailsInfo? _selected;
+    private ConfigurationProfileAccessInfo? _access;
     private readonly Dictionary<string, string> _draftValues = new(StringComparer.Ordinal);
     private string _title = string.Empty;
     private string _game = string.Empty;
@@ -280,9 +415,13 @@
     private string _permission = "cfg";
     private string? _error;
     private string? _success;
+    private string? _accessError;
     private bool _loading = true;
     private bool _submitting;
+    private bool _accessLoading;
+    private bool _accessSubmitting;
     private bool _confirmArchive;
+    private bool _discardingDraft;
 
     private IReadOnlyList<GameConfigurationDefinitionInfo> CurrentDefinitions
         => _catalog.Games.FirstOrDefault(q => q.GameIdentifier == _game)?.Definitions ?? [];
@@ -301,7 +440,9 @@
         }
         catch (Exception exception)
         {
-            _error = UserFacingError.Message(exception, "Configuration profiles could not be loaded.");
+            _error = UserFacingError.Message(
+                exception,
+                Localizer["Hosting_ConfigurationProfiles_LoadError", string.Empty].Value.TrimEnd(':', ' '));
         }
         finally
         {
@@ -309,16 +450,28 @@
         }
     }
 
-    private void StartCreate()
+    private async Task StartCreateAsync()
     {
-        _selected = null;
-        _title = string.Empty;
-        _confirmArchive = false;
-        _error = null;
-        _success = null;
-        if (string.IsNullOrWhiteSpace(_game))
-            _game = _catalog.Games.FirstOrDefault()?.GameIdentifier ?? string.Empty;
-        ResetDraft(CurrentDefinitions);
+        if (!await ConfirmDiscardAsync())
+            return;
+        _discardingDraft = true;
+        try
+        {
+            _selected = null;
+            _access = null;
+            _accessError = null;
+            _title = string.Empty;
+            _confirmArchive = false;
+            _error = null;
+            _success = null;
+            if (string.IsNullOrWhiteSpace(_game))
+                _game = _catalog.Games.FirstOrDefault()?.GameIdentifier ?? string.Empty;
+            ResetDraft(CurrentDefinitions);
+        }
+        finally
+        {
+            _discardingDraft = false;
+        }
     }
 
     private void ChangeGame(ChangeEventArgs args)
@@ -329,6 +482,22 @@
 
     private async Task RefreshAsync() => _profiles = await Repository.GetConfigurationProfilesAsync();
 
+    private async Task SelectWithConfirmationAsync(Guid id)
+    {
+        if (await ConfirmDiscardAsync())
+        {
+            _discardingDraft = true;
+            try
+            {
+                await SelectAsync(id);
+            }
+            finally
+            {
+                _discardingDraft = false;
+            }
+        }
+    }
+
     private async Task SelectAsync(Guid id)
     {
         await RunAsync(async () =>
@@ -336,6 +505,8 @@
             _selected = await Repository.GetConfigurationProfileAsync(id);
             _confirmArchive = false;
             ResetDraft(_selected.Definitions, _selected.Revisions.FirstOrDefault()?.Values);
+            if (_selected.CanManageAccess)
+                await LoadAccessAsync(id);
         });
     }
 
@@ -349,7 +520,7 @@
                 BuildValues(CurrentDefinitions));
             await RefreshAsync();
             await SelectAsync(created.PrimaryKey);
-            _success = $"{created.Title} was created with revision 1.";
+            _success = Localizer["Hosting_ConfigurationProfiles_Created", created.Title].Value;
         });
     }
 
@@ -364,7 +535,7 @@
                 profileId,
                 BuildValues(_selected.Definitions));
             await SelectAsync(profileId);
-            _success = $"Revision {_selected?.Profile.LatestRevisionNumber} was published.";
+            _success = Localizer["Hosting_ConfigurationProfiles_Published"].Value;
         });
     }
 
@@ -372,19 +543,78 @@
     {
         if (_selected is null)
             return;
-        await RunAsync(async () =>
+        if (_access is null || !_access.AllowedPermissions.Contains(_permission, StringComparer.Ordinal))
         {
-            if (Guid.TryParse(_userId, out var userId) && string.IsNullOrWhiteSpace(_roleId))
-                await Repository.ChangeConfigurationProfileUserAccessAsync(
-                    _selected.Profile.PrimaryKey, userId, _permission, grant);
-            else if (long.TryParse(_roleId, out var roleId) && string.IsNullOrWhiteSpace(_userId))
-                await Repository.ChangeConfigurationProfileRoleAccessAsync(
-                    _selected.Profile.PrimaryKey, roleId, _permission, grant);
-            else
-                throw new InvalidOperationException("Enter exactly one valid user ID or role ID.");
+            _error = Localizer["Hosting_ConfigurationProfiles_AccessPermissionInvalid"].Value;
+            return;
+        }
+        if (Guid.TryParse(_userId, out var userId) && string.IsNullOrWhiteSpace(_roleId))
+            await ChangeUserAccessAsync(userId, _permission, grant);
+        else if (long.TryParse(_roleId, out var roleId)
+                 && roleId > 0
+                 && string.IsNullOrWhiteSpace(_userId))
+            await ChangeRoleAccessAsync(roleId, _permission, grant);
+        else
+            _error = Localizer["Hosting_ConfigurationProfiles_AccessInvalidSubject"].Value;
+    }
 
-            _success = grant ? "Access was granted." : "Access was revoked.";
-        });
+    private Task ChangeUserAccessAsync(Guid userId, string permission, bool grant)
+        => RunAccessChangeAsync(
+            () => Repository.ChangeConfigurationProfileUserAccessAsync(
+                _selected!.Profile.PrimaryKey, userId, permission, grant),
+            grant);
+
+    private Task ChangeRoleAccessAsync(long roleId, string permission, bool grant)
+        => RunAccessChangeAsync(
+            () => Repository.ChangeConfigurationProfileRoleAccessAsync(
+                _selected!.Profile.PrimaryKey, roleId, permission, grant),
+            grant);
+
+    private async Task RunAccessChangeAsync(Func<Task> action, bool grant)
+    {
+        if (_selected is null || _accessSubmitting)
+            return;
+        _accessSubmitting = true;
+        try
+        {
+            await RunAsync(async () =>
+            {
+                await action();
+                await LoadAccessAsync(_selected.Profile.PrimaryKey);
+                _userId = string.Empty;
+                _roleId = string.Empty;
+                _success = grant
+                    ? Localizer["Hosting_ConfigurationProfiles_AccessGranted"].Value
+                    : Localizer["Hosting_ConfigurationProfiles_AccessRevoked"].Value;
+            });
+        }
+        finally
+        {
+            _accessSubmitting = false;
+        }
+    }
+
+    private async Task LoadAccessAsync(Guid profileId)
+    {
+        _accessLoading = true;
+        _accessError = null;
+        try
+        {
+            _access = await Repository.GetConfigurationProfileAccessAsync(profileId);
+            if (!_access.AllowedPermissions.Contains(_permission, StringComparer.Ordinal))
+                _permission = _access.AllowedPermissions.FirstOrDefault() ?? string.Empty;
+        }
+        catch (Exception exception)
+        {
+            _access = null;
+            _accessError = UserFacingError.Message(
+                exception,
+                Localizer["Hosting_ConfigurationProfiles_AccessLoadError"]);
+        }
+        finally
+        {
+            _accessLoading = false;
+        }
     }
 
     private async Task ArchiveAsync()
@@ -397,7 +627,7 @@
             await Repository.ArchiveConfigurationProfileAsync(profileId);
             await RefreshAsync();
             await SelectAsync(profileId);
-            _success = "The configuration profile was archived.";
+            _success = Localizer["Hosting_ConfigurationProfiles_ArchivedSuccess"].Value;
         });
     }
 
@@ -437,14 +667,14 @@
         }).ToArray();
     }
 
-    private static string RevisionValue(
+    private string RevisionValue(
         ConfigurationProfileRevisionInfo revision,
         GameConfigurationDefinitionInfo definition)
     {
         if (revision.RedactedKeys.Contains(definition.Key, StringComparer.Ordinal))
-            return "Stored securely";
+            return Localizer["Hosting_ConfigurationProfiles_StoredSecurely"];
         if (!revision.Values.TryGetValue(definition.Key, out var value) || value is null)
-            return "Not set";
+            return Localizer["Hosting_ConfigurationProfiles_NotSet"];
         if (definition.Sensitive)
             return "••••••••";
         if (value.Value.ValueKind == System.Text.Json.JsonValueKind.Array)
@@ -453,6 +683,17 @@
             ? value.Value.GetString() ?? string.Empty
             : value.Value.GetRawText();
     }
+
+    private string PermissionLabel(string permission)
+        => permission switch
+        {
+            "cfg"               => Localizer["Hosting_ConfigurationProfiles_PermissionFullControl"],
+            "cfg:view"          => Localizer["Hosting_ConfigurationProfiles_PermissionView"],
+            "cfg:modify"        => Localizer["Hosting_ConfigurationProfiles_PermissionModify"],
+            "cfg:manage-access" => Localizer["Hosting_ConfigurationProfiles_PermissionManageAccess"],
+            "cfg:archive"       => Localizer["Hosting_ConfigurationProfiles_PermissionArchive"],
+            _                   => permission,
+        };
 
     private string ProfileButtonClass(ConfigurationProfileInfo profile)
         => _selected?.Profile.PrimaryKey == profile.PrimaryKey
@@ -485,7 +726,56 @@
         }
         catch (Exception exception)
         {
-            _error = UserFacingError.Message(exception, "The configuration-profile operation failed.");
+            _error = UserFacingError.Message(
+                exception,
+                Localizer["Hosting_ConfigurationProfiles_OperationFailed", string.Empty].Value.TrimEnd(':', ' '));
         }
+    }
+
+    private bool HasUnsavedChanges
+    {
+        get
+        {
+            if (_submitting || _discardingDraft)
+                return false;
+            if (_selected is null)
+                return !string.IsNullOrWhiteSpace(_title)
+                       || !DraftMatches(CurrentDefinitions, null);
+            return _selected.CanModify
+                   && !DraftMatches(_selected.Definitions, _selected.Revisions.FirstOrDefault()?.Values);
+        }
+    }
+
+    private bool DraftMatches(
+        IReadOnlyList<GameConfigurationDefinitionInfo> definitions,
+        IReadOnlyDictionary<string, System.Text.Json.JsonElement?>? values)
+    {
+        var baseline = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var definition in definitions)
+        {
+            if (definition.DefaultValue is { } defaultValue)
+                baseline[definition.Key] = defaultValue.GetRawText();
+        }
+        if (values is not null)
+        {
+            foreach (var (key, value) in values)
+            {
+                if (value is { } actualValue)
+                    baseline[key] = actualValue.GetRawText();
+            }
+        }
+        return baseline.Count == _draftValues.Count
+               && baseline.All(q => _draftValues.TryGetValue(q.Key, out var value) && value == q.Value);
+    }
+
+    private async Task<bool> ConfirmDiscardAsync()
+        => !HasUnsavedChanges
+           || await JsRuntime.InvokeAsync<bool>("confirm", Localizer["React_UnsavedChanges"].Value)
+               .ConfigureAwait(false);
+
+    private async Task ConfirmInternalNavigationAsync(LocationChangingContext context)
+    {
+        if (!await ConfirmDiscardAsync())
+            context.PreventNavigation();
     }
 }

@@ -20,6 +20,7 @@ public partial class CloudRuntimeProfileUiBoundaryTests
         DetailsPath,
         EditorPath,
         SummaryPath,
+        StorageSummaryPath,
     ];
 
     [Fact]
@@ -161,19 +162,20 @@ public partial class CloudRuntimeProfileUiBoundaryTests
         var create = ReadRepositoryFile(CreatePath);
         var details = ReadRepositoryFile(DetailsPath);
 
-        Assert.Contains("Steady-state usage", summary, StringComparison.Ordinal);
-        Assert.Contains("Recommended peak capacity", summary, StringComparison.Ordinal);
-        Assert.Contains("Sufficient", summary, StringComparison.Ordinal);
-        Assert.Contains("Insufficient", summary, StringComparison.Ordinal);
-        Assert.Contains("Capacity unknown", summary, StringComparison.Ordinal);
-        Assert.Contains("external storage", summary, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("conservative fallbacks", summary, StringComparison.Ordinal);
-        Assert.Contains("Selected runtime profile capacity", summary, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_SteadyStateUsage", summary, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_RecommendedPeak", summary, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_FitSufficient", summary, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_FitInsufficient", summary, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_FitUnknown", summary, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_SelectedProfileInsufficient", summary, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_SelectedProfileUnknown", summary, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_MissingComponents", summary, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_SelectedProfileCapacity", summary, StringComparison.Ordinal);
         Assert.Contains("@if (SelectedFit is { } selectedFit)", summary, StringComparison.Ordinal);
         Assert.DoesNotContain("@foreach (var profile in Demand.RuntimeProfiles)", summary, StringComparison.Ordinal);
         Assert.Contains("<StorageDemandSummary", create, StringComparison.Ordinal);
         Assert.Contains("<StorageDemandSummary", details, StringComparison.Ordinal);
-        Assert.Contains("Modpack (optional)", create, StringComparison.Ordinal);
+        Assert.Contains("Hosting_Create_ModPack", create, StringComparison.Ordinal);
     }
 
     [Fact]

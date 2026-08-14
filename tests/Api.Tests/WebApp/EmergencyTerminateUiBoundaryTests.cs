@@ -9,20 +9,26 @@ public sealed class EmergencyTerminateUiBoundaryTests
     {
         var profileMenu = ReadRepositoryFile("sources/WebApp/Components/UtfProfileMenu.razor");
         var details = ReadRepositoryFile("sources/WebApp/Pages/Servers/Details.razor");
+        var challengeDialog = ReadRepositoryFile("sources/WebApp/Components/UtfChallengeConfirmationDialog.razor");
 
         Assert.Contains("?action={Uri.EscapeDataString(action.Id)}", profileMenu, StringComparison.Ordinal);
         Assert.Contains("[SupplyParameterFromQuery(Name = \"action\")]", details, StringComparison.Ordinal);
-        Assert.Contains("_challengedAction = requestedAction;", details, StringComparison.Ordinal);
-        Assert.Contains("_confirmationInputElement.FocusAsync()", details, StringComparison.Ordinal);
+        Assert.Contains("await RequestActionAsync(requestedAction);", details, StringComparison.Ordinal);
+        Assert.Contains("_confirmationInputElement.FocusAsync()", challengeDialog, StringComparison.Ordinal);
     }
 
     [Fact]
     public void FailedTerminateSubmission_KeepsTheChallengeOpen()
     {
         var details = ReadRepositoryFile("sources/WebApp/Pages/Servers/Details.razor");
+        var challengeDialog = ReadRepositoryFile("sources/WebApp/Components/UtfChallengeConfirmationDialog.razor");
 
         Assert.Contains("private async Task<bool> ExecuteActionAsync", details, StringComparison.Ordinal);
-        Assert.Contains("if (await ExecuteActionAsync(action, _confirmationInput))", details, StringComparison.Ordinal);
+        Assert.Contains(
+            "onConfirmAsync: confirmation => ExecuteActionAsync(action, confirmation)",
+            details,
+            StringComparison.Ordinal);
+        Assert.Contains("&& !await Content.OnConfirmAsync(Content.Confirmation)", challengeDialog, StringComparison.Ordinal);
         Assert.Contains("return false;", details, StringComparison.Ordinal);
     }
 

@@ -5,7 +5,9 @@ using AspNet.Security.OAuth.Discord;
 using AspNet.Security.OpenId.Steam;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using X39.UnitedTacticalForces.Api.Authentication;
 using X39.UnitedTacticalForces.Api.Authorization.Abstraction;
@@ -15,6 +17,7 @@ using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.HostedServices;
 using X39.UnitedTacticalForces.Api.ModelBinding;
+using X39.UnitedTacticalForces.Api.Middleware;
 using X39.UnitedTacticalForces.Api.OpenApi;
 using X39.UnitedTacticalForces.Api.Services;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
@@ -52,10 +55,13 @@ internal class Program
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         var app = builder.Build();
-        await MigrateAndSeedDataAsync(app);
+        var openApiOutputPath = GetOptionValue(args, "--export-openapi");
+        if (openApiOutputPath is null)
+            await MigrateAndSeedDataAsync(app);
         app.UseForwardedHeaders();
         app.UsePathBase(app.Configuration[Constants.Configuration.General.BasePath]);
         UseRestrictedCors(app);
+        app.UseUiVariantAttribution();
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
@@ -80,7 +86,33 @@ internal class Program
         app.MapDefaultEndpoints();
         app.MapControllers();
 
+        if (openApiOutputPath is not null)
+        {
+            await ExportOpenApiAsync(app, openApiOutputPath).ConfigureAwait(false);
+            return;
+        }
+
         await app.RunAsync().ConfigureAwait(false);
+    }
+
+    private static string? GetOptionValue(string[] args, string option)
+    {
+        var optionIndex = Array.FindIndex(args, value => string.Equals(value, option, StringComparison.Ordinal));
+        if (optionIndex < 0)
+            return null;
+        if (optionIndex == args.Length - 1 || string.IsNullOrWhiteSpace(args[optionIndex + 1]))
+            throw new ArgumentException($"{option} requires an output path.", nameof(args));
+        return args[optionIndex + 1];
+    }
+
+    private static async Task ExportOpenApiAsync(WebApplication app, string outputPath)
+    {
+        var provider = app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
+        var document = await provider.GetOpenApiDocumentAsync().ConfigureAwait(false);
+        var json = await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_1).ConfigureAwait(false);
+        var fullPath = Path.GetFullPath(outputPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        await File.WriteAllTextAsync(fullPath, json).ConfigureAwait(false);
     }
 
     private static async Task MigrateAndSeedDataAsync(WebApplication app)
@@ -105,6 +137,7 @@ internal class Program
         builder.Services.AddOpenApi(options =>
             {
                 options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+                options.AddOperationTransformer<UniqueOperationIdTransformer>();
                 options.AddOperationTransformer<XAnonymousAnnotationOperationTransformer>();
                 options.AddSchemaTransformer<FixEnumsSchemaTransformer>();
                 options.AddSchemaTransformer<NodaTimeSchemaTransformer>();

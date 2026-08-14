@@ -70,6 +70,31 @@ internal sealed class HostingFinanceRepositoryImpl(IHttpClientFactory httpClient
         return await GetCostOwnerAsync(costOwnerId, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<HostingCostOwnerInfo> RecordRefundAsync(
+        Guid costOwnerId,
+        decimal amount,
+        DateTimeOffset effectiveAt,
+        string reference,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsJsonAsync(
+                $"cost-owners/{costOwnerId}/refunds",
+                new
+                {
+                    RecordIdentifier = Guid.NewGuid(),
+                    Amount = amount,
+                    Currency = "EUR",
+                    TimeStampEffective = effectiveAt,
+                    ExternalReference = reference,
+                    Reason = reason,
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await GetCostOwnerAsync(costOwnerId, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<HostingCostOwnerInfo> ChangeAllowanceAsync(
         Guid costOwnerId,
         decimal? allowance,
@@ -79,6 +104,53 @@ internal sealed class HostingFinanceRepositoryImpl(IHttpClientFactory httpClient
         var response = await PutAsJsonAsync(
                 $"cost-owners/{costOwnerId}/allowance",
                 new { RecordIdentifier = Guid.NewGuid(), Allowance = allowance, Reason = reason },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await GetCostOwnerAsync(costOwnerId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<HostingCostOwnerInfo> CorrectDeploymentCostOwnerAsync(
+        Guid sourceCostOwnerId,
+        Guid deploymentId,
+        Guid correctCostOwnerId,
+        decimal amount,
+        DateTimeOffset effectiveAt,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsJsonAsync(
+                $"cost-owners/{sourceCostOwnerId}/deployments/{deploymentId}/corrections",
+                new
+                {
+                    OperationIdentifier = Guid.NewGuid(),
+                    CorrectCostOwnerId = correctCostOwnerId,
+                    Amount = amount,
+                    Currency = "EUR",
+                    TimeStampEffective = effectiveAt,
+                    Reason = reason,
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await GetCostOwnerAsync(sourceCostOwnerId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<HostingCostOwnerInfo> ReverseLedgerEntryAsync(
+        Guid costOwnerId,
+        Guid ledgerEntryId,
+        DateTimeOffset effectiveAt,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsJsonAsync(
+                $"cost-owners/{costOwnerId}/ledger-entries/{ledgerEntryId}/reversals",
+                new
+                {
+                    OperationIdentifier = Guid.NewGuid(),
+                    TimeStampEffective = effectiveAt,
+                    Reason = reason,
+                },
                 cancellationToken)
             .ConfigureAwait(false);
         response.EnsureSuccessStatusCode();

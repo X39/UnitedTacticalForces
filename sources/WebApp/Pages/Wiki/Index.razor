@@ -47,11 +47,14 @@
                 @onclick="@(() => SetMobileView(WikiMobileView.Article))">
             @Localizer[nameof(Language.Pages_Wiki_Index_Tab_Article)]
         </button>
-        <button class="@GetMobileTabClass(WikiMobileView.History)"
-                type="button"
-                @onclick="@(() => SetMobileView(WikiMobileView.History))">
-            @Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]
-        </button>
+        @if (CanViewWikiHistory)
+        {
+            <button class="@GetMobileTabClass(WikiMobileView.History)"
+                    type="button"
+                    @onclick="@(() => SetMobileView(WikiMobileView.History))">
+                @Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]
+            </button>
+        }
     </nav>
 
     <section class="@WorkspaceClass">
@@ -184,14 +187,17 @@
                             @Localizer[nameof(Language.Pages_Wiki_Index_Edit)]
                         </button>
                     }
-                    <button class="utf-button utf-button--ghost"
-                            type="button"
-                            @onclick="@(() => ShowPanel(WikiPanelMode.History))">
-                        <span class="utf-button__icon">
-                            <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
-                        </span>
-                        @Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]
-                    </button>
+                    @if (CanViewWikiHistory)
+                    {
+                        <button class="utf-button utf-button--ghost"
+                                type="button"
+                                @onclick="@(() => ShowPanel(WikiPanelMode.History))">
+                            <span class="utf-button__icon">
+                                <FluentIcon Value="@(new Icons.Regular.Size24.DocumentBulletListClock())"/>
+                            </span>
+                            @Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]
+                        </button>
+                    }
                 </div>
 
                 @if (_selectedPage.IsDeleted is true)
@@ -222,11 +228,14 @@
                         @onclick="@(() => ShowPanel(WikiPanelMode.Details))">
                     @Localizer[nameof(Language.Pages_Wiki_Index_DetailsTab)]
                 </button>
-                <button class="@GetPanelTabClass(WikiPanelMode.History)"
-                        type="button"
-                        @onclick="@(() => ShowPanel(WikiPanelMode.History))">
-                    @Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]
-                </button>
+                @if (CanViewWikiHistory)
+                {
+                    <button class="@GetPanelTabClass(WikiPanelMode.History)"
+                            type="button"
+                            @onclick="@(() => ShowPanel(WikiPanelMode.History))">
+                        @Localizer[nameof(Language.Pages_Wiki_Index_Tab_History)]
+                    </button>
+                }
                 @if (CanEditSelectedPage || CanCreateWiki)
                 {
                     <button class="@GetPanelTabClass(WikiPanelMode.Edit)"
@@ -495,6 +504,14 @@
     private bool CanRestoreDeletedPages
         => Me.HasClaimOrWikiAdmin();
 
+    private bool CanViewWikiHistory
+        => Me.HasBaseClaimOrWikiAdmin(
+            Claims.Wiki.All,
+            Claims.Wiki.Modify,
+            Claims.Wiki.Rename,
+            Claims.Wiki.Delete
+        );
+
     private bool CanEditSelectedPage
         => _selectedPage is not null
            && _selectedPage.IsDeleted is not true
@@ -651,7 +668,8 @@
         {
             _selectedPage = await WikiRepository.GetWikiPageAsync(pageId);
             _revisionHeaders.Clear();
-            _revisionHeaders.AddRange(await WikiRepository.GetWikiPageRevisionHeadersAsync(pageId));
+            if (CanViewWikiHistory)
+                _revisionHeaders.AddRange(await WikiRepository.GetWikiPageRevisionHeadersAsync(pageId));
             _loadedPageId = pageId;
         }
         catch

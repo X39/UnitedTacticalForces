@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Configuration;
 using SecurityClaim = System.Security.Claims.Claim;
 using AuthorityClaim = X39.UnitedTacticalForces.Database.Authority.Claim;
 using X39.UnitedTacticalForces;
@@ -200,6 +201,75 @@ public class RoleAdministrationControllerTests
             .Include(q => q.Claims)
             .SingleAsync(q => q.PrimaryKey == role.PrimaryKey);
         Assert.Empty(roleWithoutClaim.Claims ?? []);
+    }
+
+    [Fact]
+    public async Task GetAuthorityRoleMembersAsync_SeparatesAssignedAndAvailableMembers()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var dbContext = await CreateDbContextAsync(connection);
+        var actor = CreateUser("role-admin");
+        var assigned = CreateUser("Assigned member");
+        var available = CreateUser("Available member");
+        var role = new Role
+        {
+            PrimaryKey  = 50,
+            Title       = "Operations",
+            Description = "Coordinates operations",
+            Users       = [assigned],
+        };
+        dbContext.Users.AddRange(actor, assigned, available);
+        dbContext.Roles.Add(role);
+        await dbContext.SaveChangesAsync();
+        var controller = new CommandCenterController(dbContext, new ConfigurationBuilder().Build())
+        {
+            ControllerContext = CreateControllerContext(
+                CreatePrincipal(actor, (Claims.Administrative.Role, string.Empty))
+            ),
+        };
+
+        var result = await controller.GetAuthorityRoleMembersAsync(
+            role.PrimaryKey,
+            take: 20,
+            search: null,
+            CancellationToken.None
+        );
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var snapshot = Assert.IsType<CommandCenterAuthorityRoleMembersDto>(ok.Value);
+        Assert.Equal(role.PrimaryKey, snapshot.Role.PrimaryKey);
+        Assert.Equal(1, snapshot.AssignedMemberCount);
+        Assert.Equal(2, snapshot.AvailableMemberCount);
+        Assert.Equal(assigned.PrimaryKey, Assert.Single(snapshot.AssignedMembers).PrimaryKey);
+        Assert.Contains(snapshot.AvailableMembers, q => q.PrimaryKey == available.PrimaryKey);
+    }
+
+    [Fact]
+    public async Task GetCommunitySnapshotAsync_AllowsRoleAdministratorForClassicMemberParity()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var dbContext = await CreateDbContextAsync(connection);
+        var actor = CreateUser("role-admin");
+        dbContext.Users.Add(actor);
+        await dbContext.SaveChangesAsync();
+        var controller = new CommandCenterController(dbContext, new ConfigurationBuilder().Build())
+        {
+            ControllerContext = CreateControllerContext(
+                CreatePrincipal(actor, (Claims.Administrative.Role, string.Empty))
+            ),
+        };
+
+        var result = await controller.GetCommunitySnapshotAsync(
+            take: 20,
+            search: null,
+            CancellationToken.None
+        );
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var snapshot = Assert.IsType<CommandCenterCommunitySnapshotDto>(ok.Value);
+        Assert.Equal(actor.PrimaryKey, Assert.Single(snapshot.Members).PrimaryKey);
     }
 
     private static RolesController CreateRolesController(DatabaseContext dbContext, ClaimsPrincipal user)

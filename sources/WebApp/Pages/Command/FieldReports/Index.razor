@@ -22,7 +22,7 @@
                     @Localizer[nameof(Language.Pages_Command_FieldReports_Refresh)]
                 </ChildContent>
             </UtfCommandButton>
-            @if (CanManageFieldReports)
+            @if (CanCreateFieldReports)
             {
                 <UtfCommandButton Variant="primary"
                                   Href="@BaseUrl.ResolveSelfUrl("command/field-reports/create")">
@@ -38,7 +38,7 @@
         </Actions>
     </UtfCommandPageHeader>
 
-    @if (!CanManageFieldReports)
+    @if (!CanReadFieldReports)
     {
         <section class="utf-empty-state">
             <h2>@Localizer[nameof(Language.Pages_Command_FieldReports_NoAccessTitle)]</h2>
@@ -203,8 +203,11 @@
     private bool _isLoading;
     private string? _loadError;
 
-    private bool CanManageFieldReports
-        => Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All);
+    private bool CanReadFieldReports
+        => Me.HasBaseClaim(Claims.Administrative.Wiki, Claims.Creation.Wiki, Claims.Wiki.All);
+
+    private bool CanCreateFieldReports
+        => CanReadFieldReports;
 
     private IEnumerable<CommandCenterFieldReportInfo> VisibleReports
         => _reports
@@ -217,13 +220,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (CanManageFieldReports)
+        if (CanReadFieldReports)
             await LoadAsync().ConfigureAwait(false);
     }
 
     private async Task LoadAsync()
     {
-        if (!CanManageFieldReports)
+        if (!CanReadFieldReports)
             return;
 
         _isLoading = true;

@@ -59,3 +59,25 @@ public sealed record ConfigurationProfileRevisionInfo
         = new Dictionary<string, JsonElement?>(StringComparer.Ordinal);
     public IReadOnlyList<string> RedactedKeys { get; init; } = [];
 }
+
+public sealed record ConfigurationProfileAccessInfo
+{
+    public IReadOnlyList<string> AllowedPermissions { get; init; } = [];
+    public IReadOnlyList<ConfigurationProfileUserAccessGrantInfo> Users { get; init; } = [];
+    public IReadOnlyList<ConfigurationProfileRoleAccessGrantInfo> Roles { get; init; } = [];
+}
+
+public sealed record ConfigurationProfileUserAccessGrantInfo
+{
+    public Guid UserId { get; init; }
+    public string Nickname { get; init; } = string.Empty;
+    public IReadOnlyList<string> Permissions { get; init; } = [];
+}
+
+public sealed record ConfigurationProfileRoleAccessGrantInfo
+{
+    public long RoleId { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public IReadOnlyList<string> Permissions { get; init; } = [];
+}

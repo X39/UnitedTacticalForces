@@ -6,6 +6,7 @@
 @using X39.UnitedTacticalForces.WebApp.Services.HostingFinanceRepository
 @inject IHostingFinanceRepository FinanceRepository
 @inject IToastService ToastService
+@inject IDialogService DialogService
 @inject MeService Me
 @inject IStringLocalizer<Language> Localizer
 
@@ -179,6 +180,20 @@
 
                         <section class="utf-panel hosting-finance-action-card">
                             <div>
+                                <span class="utf-kicker">@Localizer["HostingFinance_RefundKicker"]</span>
+                                <h3>@Localizer["HostingFinance_RefundTitle"]</h3>
+                                <p>@Localizer["HostingFinance_RefundDescription"]</p>
+                            </div>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_Amount"]</span><input class="utf-command-input" type="number" min="0.01" step="0.01" @bind="_refundAmount"/></label>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_Reference"]</span><input class="utf-command-input" maxlength="128" @bind="_refundReference"/></label>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_Reason"]</span><textarea class="utf-command-input" rows="3" maxlength="512" @bind="_refundReason"></textarea></label>
+                            <UtfCommandButton Variant="danger" Disabled="@(!CanRecordRefund || _isSavingOwner)" OnClick="RecordRefundAsync">
+                                @Localizer["HostingFinance_RecordRefund"]
+                            </UtfCommandButton>
+                        </section>
+
+                        <section class="utf-panel hosting-finance-action-card">
+                            <div>
                                 <span class="utf-kicker">@Localizer["HostingFinance_AllowanceKicker"]</span>
                                 <h3>@Localizer["HostingFinance_AllowanceTitle"]</h3>
                                 <p>@Localizer["HostingFinance_AllowanceDescription"]</p>
@@ -188,6 +203,21 @@
                             <label class="utf-command-field"><span>@Localizer["HostingFinance_Reason"]</span><textarea class="utf-command-input" rows="3" maxlength="512" @bind="_allowanceReason"></textarea></label>
                             <UtfCommandButton Variant="primary" Disabled="@(!CanManageAllowance || _isSavingOwner)" OnClick="SaveAllowanceAsync">
                                 @Localizer["HostingFinance_SaveAllowance"]
+                            </UtfCommandButton>
+                        </section>
+
+                        <section class="utf-panel hosting-finance-action-card">
+                            <div>
+                                <span class="utf-kicker">@Localizer["HostingFinance_CorrectionKicker"]</span>
+                                <h3>@Localizer["HostingFinance_CorrectionTitle"]</h3>
+                                <p>@Localizer["HostingFinance_CorrectionDescription"]</p>
+                            </div>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_DeploymentId"]</span><input class="utf-command-input" autocomplete="off" @bind="_deploymentId"/></label>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_CorrectOwnerId"]</span><input class="utf-command-input" autocomplete="off" @bind="_correctOwnerId"/></label>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_CorrectionAmount"]</span><input class="utf-command-input" type="number" min="0.01" step="0.01" @bind="_correctionAmount"/></label>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_Reason"]</span><textarea class="utf-command-input" rows="3" maxlength="512" @bind="_correctionReason"></textarea></label>
+                            <UtfCommandButton Variant="danger" Disabled="@(!CanCorrectLedger || _isSavingOwner)" OnClick="CorrectDeploymentCostOwnerAsync">
+                                @Localizer["HostingFinance_RecordCorrection"]
                             </UtfCommandButton>
                         </section>
                     </div>
@@ -207,16 +237,55 @@
                         {
                             <div class="utf-command-table-scroll">
                                 <table class="utf-command-table">
-                                    <thead><tr><th>@Localizer["HostingFinance_ColumnEffective"]</th><th>@Localizer["HostingFinance_ColumnKind"]</th><th>@Localizer["HostingFinance_ColumnAmount"]</th><th>@Localizer["HostingFinance_ColumnBalance"]</th><th>@Localizer["HostingFinance_ColumnContext"]</th></tr></thead>
+                                    <thead>
+                                    <tr>
+                                        <th>@Localizer["HostingFinance_ColumnEffective"]</th>
+                                        <th>@Localizer["HostingFinance_ColumnKind"]</th>
+                                        <th>@Localizer["HostingFinance_ColumnAmount"]</th>
+                                        <th>@Localizer["HostingFinance_ColumnBalance"]</th>
+                                        <th>@Localizer["HostingFinance_ColumnContext"]</th>
+                                        @if (CanCorrectLedger)
+                                        {
+                                            <th>@Localizer["HostingFinance_ColumnActions"]</th>
+                                        }
+                                    </tr>
+                                    </thead>
                                     <tbody>
                                     @foreach (var entry in owner.RecentLedgerEntries)
                                     {
+                                        var context = string.Join(
+                                            " · ",
+                                            new[] { entry.ExternalReference, entry.Reason }
+                                                .Where(q => !string.IsNullOrWhiteSpace(q)));
                                         <tr>
                                             <td>@entry.TimeStampEffective.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</td>
                                             <td>@FormatLedgerKind(entry.Kind)</td>
                                             <td class="@(entry.Amount < 0 ? "hosting-finance-negative" : "hosting-finance-positive")">@FormatMoney(entry.Amount, entry.Currency)</td>
                                             <td>@FormatMoney(entry.BalanceAfter, entry.Currency)</td>
-                                            <td>@string.Join(" · ", new[] { entry.ExternalReference, entry.Reason }.Where(q => !string.IsNullOrWhiteSpace(q)))</td>
+                                            <td>
+                                                <span>@(string.IsNullOrWhiteSpace(context) ? Localizer["HostingFinance_NotAvailable"] : context)</span>
+                                                <details class="hosting-finance-audit-details">
+                                                    <summary>@Localizer["HostingFinance_AuditDetails"]</summary>
+                                                    <dl>
+                                                        <div><dt>@Localizer["HostingFinance_EntryId"]</dt><dd><code>@entry.Id</code></dd></div>
+                                                        <div><dt>@Localizer["HostingFinance_Recorded"]</dt><dd>@entry.TimeStampRecorded.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</dd></div>
+                                                        <div><dt>@Localizer["HostingFinance_RecordedBy"]</dt><dd>@FormatIdentifier(entry.RecordedById)</dd></div>
+                                                        <div><dt>@Localizer["HostingFinance_RecordIdentifier"]</dt><dd>@FormatIdentifier(entry.RecordIdentifier)</dd></div>
+                                                        <div><dt>@Localizer["HostingFinance_FinanceOperation"]</dt><dd>@FormatIdentifier(entry.FinanceOperationId)</dd></div>
+                                                        <div><dt>@Localizer["HostingFinance_DeploymentId"]</dt><dd>@FormatIdentifier(entry.DeploymentId)</dd></div>
+                                                        <div><dt>@Localizer["HostingFinance_ReversedEntry"]</dt><dd>@FormatIdentifier(entry.ReversedEntryId)</dd></div>
+                                                    </dl>
+                                                </details>
+                                            </td>
+                                            @if (CanCorrectLedger)
+                                            {
+                                                <td>
+                                                    <UtfCommandButton Disabled="@(!CanReverseEntry(entry) || _isSavingOwner)"
+                                                                      OnClick="@(() => SelectReversalTarget(entry))">
+                                                        @Localizer["HostingFinance_ReverseEntry"]
+                                                    </UtfCommandButton>
+                                                </td>
+                                            }
                                         </tr>
                                     }
                                     </tbody>
@@ -224,6 +293,26 @@
                             </div>
                         }
                     </section>
+
+                    @if (_reversalTarget is { } reversalTarget)
+                    {
+                        <section class="utf-panel hosting-finance-action-card hosting-finance-reversal">
+                            <div>
+                                <span class="utf-kicker">@Localizer["HostingFinance_ReversalKicker"]</span>
+                                <h3>@Localizer["HostingFinance_ReversalTitle"]</h3>
+                                <p>@string.Format(CultureInfo.CurrentCulture, Localizer["HostingFinance_ReversalDescription"].Value, reversalTarget.Id)</p>
+                            </div>
+                            <label class="utf-command-field"><span>@Localizer["HostingFinance_Reason"]</span><textarea class="utf-command-input" rows="3" maxlength="512" @bind="_reversalReason"></textarea></label>
+                            <div class="hosting-finance-reversal-actions">
+                                <UtfCommandButton Disabled="@_isSavingOwner" OnClick="CancelReversal">
+                                    @Localizer["Common_Cancel"]
+                                </UtfCommandButton>
+                                <UtfCommandButton Variant="danger" Disabled="@_isSavingOwner" OnClick="ReverseLedgerEntryAsync">
+                                    @Localizer["HostingFinance_ReverseEntry"]
+                                </UtfCommandButton>
+                            </div>
+                        </section>
+                    }
                 }
             </main>
         </div>
@@ -243,19 +332,30 @@
     private decimal _paymentAmount;
     private string _paymentReference = string.Empty;
     private string? _paymentReason;
+    private decimal _refundAmount;
+    private string _refundReference = string.Empty;
+    private string _refundReason = string.Empty;
     private decimal _allowance;
     private bool _revokeAllowance;
     private string _allowanceReason = string.Empty;
+    private string _deploymentId = string.Empty;
+    private string _correctOwnerId = string.Empty;
+    private decimal _correctionAmount;
+    private string _correctionReason = string.Empty;
+    private HostingLedgerEntryInfo? _reversalTarget;
+    private string _reversalReason = string.Empty;
     private bool _isLoading;
     private bool _isLoadingOwners;
     private bool _isSavingPolicy;
     private bool _isSavingOwner;
     private string? _loadError;
 
-    private bool CanViewFinance => Me.HasClaim(Claims.Finance.All, Claims.Finance.ViewAll);
-    private bool CanRecordPayment => Me.HasClaim(Claims.Finance.All, Claims.Finance.RecordPayment);
-    private bool CanManageAllowance => Me.HasClaim(Claims.Finance.All, Claims.Finance.ManageAllowance);
-    private bool CanManagePolicy => Me.HasClaim(Claims.Finance.All, Claims.Finance.ManagePolicy);
+    private bool CanViewFinance => Me.HasBaseClaim(Claims.Finance.All, Claims.Finance.ViewAll);
+    private bool CanRecordPayment => Me.HasBaseClaim(Claims.Finance.All, Claims.Finance.RecordPayment);
+    private bool CanRecordRefund => Me.HasBaseClaim(Claims.Finance.All, Claims.Finance.RecordRefund);
+    private bool CanManageAllowance => Me.HasBaseClaim(Claims.Finance.All, Claims.Finance.ManageAllowance);
+    private bool CanCorrectLedger => Me.HasBaseClaim(Claims.Finance.All, Claims.Finance.CorrectLedger);
+    private bool CanManagePolicy => Me.HasBaseClaim(Claims.Finance.All, Claims.Finance.ManagePolicy);
     private bool HasNextPage => (_pageIndex + 1L) * PageSize < _totalOwnerCount;
     private HostingCostOwnerInfo? SelectedOwner => _owners.FirstOrDefault(q => q.CostOwnerId == _selectedOwnerId);
 
@@ -312,6 +412,15 @@
         _paymentAmount = 0m;
         _paymentReference = string.Empty;
         _paymentReason = null;
+        _refundAmount = 0m;
+        _refundReference = string.Empty;
+        _refundReason = string.Empty;
+        _deploymentId = string.Empty;
+        _correctOwnerId = string.Empty;
+        _correctionAmount = 0m;
+        _correctionReason = string.Empty;
+        _reversalTarget = null;
+        _reversalReason = string.Empty;
     }
 
     private async Task SavePolicyAsync()
@@ -349,7 +458,7 @@
     private async Task SaveAllowanceAsync()
     {
         if (!CanManageAllowance || SelectedOwner is not { } owner) return;
-        if (string.IsNullOrWhiteSpace(_allowanceReason))
+        if (string.IsNullOrWhiteSpace(_allowanceReason) || (!_revokeAllowance && _allowance < 0))
         {
             ToastService.ShowError(Localizer["HostingFinance_AllowanceValidation"]);
             return;
@@ -365,7 +474,174 @@
         finally { _isSavingOwner = false; }
     }
 
+    private async Task RecordRefundAsync()
+    {
+        if (!CanRecordRefund || SelectedOwner is not { } owner)
+            return;
+        if (_refundAmount <= 0
+            || string.IsNullOrWhiteSpace(_refundReference)
+            || string.IsNullOrWhiteSpace(_refundReason))
+        {
+            ToastService.ShowError(Localizer["HostingFinance_RefundValidation"]);
+            return;
+        }
+
+        var confirmed = await ConfirmFinanceActionAsync(
+                Localizer["HostingFinance_RefundConfirmTitle"],
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    Localizer["HostingFinance_RefundConfirmDescription"].Value,
+                    FormatMoney(_refundAmount, owner.Currency),
+                    owner.DisplayName),
+                owner.DisplayName,
+                Localizer["HostingFinance_RecordRefund"])
+            .ConfigureAwait(false);
+        if (!confirmed)
+            return;
+
+        _isSavingOwner = true;
+        try
+        {
+            await FinanceRepository.RecordRefundAsync(
+                    owner.CostOwnerId,
+                    _refundAmount,
+                    DateTimeOffset.UtcNow,
+                    _refundReference.Trim(),
+                    _refundReason.Trim())
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["HostingFinance_RefundSaved"]);
+            await LoadOwnersAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) { ToastService.ShowError(UserFacingError.Message(ex)); }
+        finally { _isSavingOwner = false; }
+    }
+
+    private async Task CorrectDeploymentCostOwnerAsync()
+    {
+        if (!CanCorrectLedger || SelectedOwner is not { } owner)
+            return;
+        if (!Guid.TryParse(_deploymentId, out var deploymentId)
+            || !Guid.TryParse(_correctOwnerId, out var correctOwnerId)
+            || correctOwnerId == owner.CostOwnerId
+            || _correctionAmount <= 0
+            || string.IsNullOrWhiteSpace(_correctionReason))
+        {
+            ToastService.ShowError(Localizer["HostingFinance_CorrectionValidation"]);
+            return;
+        }
+
+        var confirmed = await ConfirmFinanceActionAsync(
+                Localizer["HostingFinance_CorrectionConfirmTitle"],
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    Localizer["HostingFinance_CorrectionConfirmDescription"].Value,
+                    FormatMoney(_correctionAmount, owner.Currency),
+                    owner.DisplayName,
+                    correctOwnerId),
+                owner.DisplayName,
+                Localizer["HostingFinance_RecordCorrection"])
+            .ConfigureAwait(false);
+        if (!confirmed)
+            return;
+
+        _isSavingOwner = true;
+        try
+        {
+            await FinanceRepository.CorrectDeploymentCostOwnerAsync(
+                    owner.CostOwnerId,
+                    deploymentId,
+                    correctOwnerId,
+                    _correctionAmount,
+                    DateTimeOffset.UtcNow,
+                    _correctionReason.Trim())
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["HostingFinance_CorrectionSaved"]);
+            await LoadOwnersAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) { ToastService.ShowError(UserFacingError.Message(ex)); }
+        finally { _isSavingOwner = false; }
+    }
+
+    private void SelectReversalTarget(HostingLedgerEntryInfo entry)
+    {
+        if (!CanReverseEntry(entry))
+            return;
+        _reversalTarget = entry;
+        _reversalReason = string.Empty;
+    }
+
+    private void CancelReversal()
+    {
+        _reversalTarget = null;
+        _reversalReason = string.Empty;
+    }
+
+    private async Task ReverseLedgerEntryAsync()
+    {
+        if (!CanCorrectLedger
+            || SelectedOwner is not { } owner
+            || _reversalTarget is not { } target
+            || !CanReverseEntry(target)
+            || string.IsNullOrWhiteSpace(_reversalReason))
+        {
+            ToastService.ShowError(Localizer["HostingFinance_ReversalValidation"]);
+            return;
+        }
+
+        var confirmed = await ConfirmFinanceActionAsync(
+                Localizer["HostingFinance_ReversalConfirmTitle"],
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    Localizer["HostingFinance_ReversalConfirmDescription"].Value,
+                    target.Id),
+                owner.DisplayName,
+                Localizer["HostingFinance_ReverseEntry"])
+            .ConfigureAwait(false);
+        if (!confirmed)
+            return;
+
+        _isSavingOwner = true;
+        try
+        {
+            await FinanceRepository.ReverseLedgerEntryAsync(
+                    owner.CostOwnerId,
+                    target.Id,
+                    DateTimeOffset.UtcNow,
+                    _reversalReason.Trim())
+                .ConfigureAwait(false);
+            ToastService.ShowSuccess(Localizer["HostingFinance_ReversalSaved"]);
+            await LoadOwnersAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) { ToastService.ShowError(UserFacingError.Message(ex)); }
+        finally { _isSavingOwner = false; }
+    }
+
+    private async Task<bool> ConfirmFinanceActionAsync(
+        string title,
+        string message,
+        string challenge,
+        string confirmLabel)
+        => await DialogService.ShowUtfChallengeConfirmationAsync(
+                title,
+                message,
+                challenge,
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    Localizer["HostingFinance_ConfirmChallenge"].Value,
+                    challenge),
+                confirmLabel,
+                Localizer["Common_Cancel"],
+                kicker: Localizer["HostingFinance_LedgerKicker"])
+            .ConfigureAwait(false) is not null;
+
+    private bool CanReverseEntry(HostingLedgerEntryInfo entry)
+        => entry.Kind is not EHostingLedgerEntryKind.ProviderCostSlice
+           and not EHostingLedgerEntryKind.AllowanceChanged
+           && SelectedOwner?.RecentLedgerEntries.All(q => q.ReversedEntryId != entry.Id) == true;
+
     private static string FormatMoney(decimal value, string currency) => $"{value:N2} {currency}";
+    private string FormatIdentifier(Guid? identifier)
+        => identifier?.ToString() ?? Localizer["HostingFinance_NotAvailable"];
     private string FormatPageLabel() => string.Format(CultureInfo.CurrentCulture, Localizer["HostingFinance_PageLabel"].Value, _pageIndex + 1, Math.Max(1, (int)Math.Ceiling(_totalOwnerCount / (double)PageSize)));
     private string GetOwnerButtonClass(HostingCostOwnerInfo owner) => owner.CostOwnerId == _selectedOwnerId ? "hosting-finance-owner hosting-finance-owner--selected" : "hosting-finance-owner";
     private static string GetInitials(string value) => string.Concat(value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(q => char.ToUpperInvariant(q[0])));

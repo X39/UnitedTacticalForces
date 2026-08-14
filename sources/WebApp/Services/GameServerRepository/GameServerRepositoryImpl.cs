@@ -83,6 +83,14 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
             .ConfigureAwait(false)
            ?? throw new InvalidOperationException("Configuration profile returned no response body.");
 
+    public async Task<ConfigurationProfileAccessInfo> GetConfigurationProfileAccessAsync(
+        Guid profileId,
+        CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<ConfigurationProfileAccessInfo>(
+                $"configuration-profiles/{profileId}/access", cancellationToken)
+            .ConfigureAwait(false)
+           ?? throw new InvalidOperationException("Configuration-profile access returned no response body.");
+
     public async Task<ConfigurationProfileInfo> CreateConfigurationProfileAsync(
         string title,
         string gameIdentifier,
@@ -188,6 +196,16 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
     {
         var options = await GetFromJsonAsync<GameServerModPackOptionInfo[]>(
                 $"game-servers/creation/mod-pack-options?gameIdentifier={Uri.EscapeDataString(gameIdentifier)}",
+                cancellationToken)
+            .ConfigureAwait(false);
+        return options ?? [];
+    }
+
+    public async Task<IReadOnlyList<GameServerCostOwnerOptionInfo>> GetCreationCostOwnerOptionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var options = await GetFromJsonAsync<GameServerCostOwnerOptionInfo[]>(
+                "game-servers/creation/cost-owner-options",
                 cancellationToken)
             .ConfigureAwait(false);
         return options ?? [];

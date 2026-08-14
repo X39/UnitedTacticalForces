@@ -10,11 +10,15 @@
 @inject IDialogService DialogService
 @inject IToastService ToastService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
 @inject MeService Me
 @inject BaseUrl BaseUrl
 @inject IStringLocalizer<Language> Localizer
 
 <PageTitle>@GetPageTitle()</PageTitle>
+
+<NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges"
+                OnBeforeInternalNavigation="ConfirmInternalNavigationAsync"/>
 
 <div class="field-report-editor-page">
     <UtfCommandPageHeader Title="@GetPageTitle()"
@@ -23,7 +27,7 @@
             <UtfCommandButton Href="@BaseUrl.ResolveSelfUrl("command/field-reports")">
                 @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_BackToLedger)]
             </UtfCommandButton>
-            @if (CanManageFieldReports && _editor is not null)
+            @if (CanEditCurrentReport && _editor is not null)
             {
                 <UtfCommandButton Variant="primary"
                                   Disabled="@_isSaving"
@@ -38,7 +42,7 @@
         </Actions>
     </UtfCommandPageHeader>
 
-    @if (!CanManageFieldReports)
+    @if (!CanOpenCurrentReport)
     {
         <section class="utf-empty-state">
             <h2>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_NoAccessTitle)]</h2>
@@ -60,6 +64,13 @@
     }
     else if (_editor is { } editor)
     {
+        @if (!CanEditCurrentReport)
+        {
+            <div class="utf-state-panel" role="status">
+                <strong>@T("Pages_Command_FieldReports_Edit_ReadOnlyTitle")</strong>
+                <span>@T("Pages_Command_FieldReports_Edit_ReadOnlyMessage")</span>
+            </div>
+        }
         <section class="utf-panel field-report-editor-shell">
             <div class="field-report-editor-shell__header">
                 <div>
@@ -74,29 +85,29 @@
             <section class="field-report-command__form field-report-editor-form" aria-label="@(Localizer[nameof(Language.Pages_Command_FieldReports_Edit_FormAria)])">
                 <label>
                     <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelTitle)]</span>
-                    <input class="utf-command-input" type="text" maxlength="150" @bind="editor.Title"/>
+                    <input class="utf-command-input" type="text" maxlength="150" disabled="@(!CanEditCurrentReport)" @bind="editor.Title"/>
                 </label>
                 <label>
                     <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelSlug)]</span>
-                    <input class="utf-command-input" type="text" maxlength="120" placeholder="@GetSlugPlaceholder(editor)" @bind="editor.Slug"/>
+                    <input class="utf-command-input" type="text" maxlength="120" disabled="@(!CanEditCurrentReport)" placeholder="@GetSlugPlaceholder(editor)" @bind="editor.Slug"/>
                 </label>
                 <label class="field-report-command__field--wide">
                     <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelExcerpt)]</span>
-                    <textarea class="utf-command-input" rows="3" maxlength="320" @bind="editor.Excerpt"></textarea>
+                    <textarea class="utf-command-input" rows="3" maxlength="320" disabled="@(!CanEditCurrentReport)" @bind="editor.Excerpt"></textarea>
                 </label>
                 <div class="field-report-command__form-grid field-report-command__field--wide">
                     <label>
                         <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelCategory)]</span>
-                        <input class="utf-command-input" type="text" maxlength="64" @bind="editor.Category"/>
+                        <input class="utf-command-input" type="text" maxlength="64" disabled="@(!CanEditCurrentReport)" @bind="editor.Category"/>
                     </label>
                     <label>
                         <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelSortOrder)]</span>
-                        <input class="utf-command-input" type="number" @bind="editor.SortOrder"/>
+                        <input class="utf-command-input" type="number" disabled="@(!CanEditCurrentReport)" @bind="editor.SortOrder"/>
                     </label>
                 </div>
                 <label>
                     <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelHeroImageAlt)]</span>
-                    <input class="utf-command-input" type="text" maxlength="200" @bind="editor.HeroImageAlt"/>
+                    <input class="utf-command-input" type="text" maxlength="200" disabled="@(!CanEditCurrentReport)" @bind="editor.HeroImageAlt"/>
                 </label>
                 <section class="field-report-command__image-panel field-report-command__field--wide"
                          aria-label="@(T("Pages_Command_FieldReports_Edit_ImageUploadAria"))">
@@ -125,7 +136,7 @@
                                                     SelectedFileName="@GetHeroImageFileName(editor)"
                                                     UploadTags="@FieldReportUploadTags"
                                                     AllowClear="true"
-                                                    Disabled="@_isSaving"
+                                                    Disabled="@(_isSaving || !CanEditCurrentReport)"
                                                     SelectedAssetChanged="OnGalleryAssetSelected"/>
                             </section>
                         </div>
@@ -155,21 +166,22 @@
                     <input class="utf-command-input"
                            type="datetime-local"
                            value="@_publicationInput"
+                           disabled="@(!CanEditCurrentReport)"
                            @onchange="OnPublicationInputChanged"/>
                 </label>
                 <div class="field-report-command__checks">
                     <label>
-                        <input type="checkbox" @bind="editor.IsFeatured"/>
+                        <input type="checkbox" disabled="@(!CanEditCurrentReport)" @bind="editor.IsFeatured"/>
                         <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelFeatured)]</span>
                     </label>
                     <label>
-                        <input type="checkbox" @bind="editor.IsPublished"/>
+                        <input type="checkbox" disabled="@(!CanEditCurrentReport)" @bind="editor.IsPublished"/>
                         <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelPublished)]</span>
                     </label>
                 </div>
                 <label class="field-report-command__field--wide">
                     <span>@Localizer[nameof(Language.Pages_Command_FieldReports_Edit_LabelMarkdown)]</span>
-                    <textarea class="utf-command-input" rows="18" @bind="editor.Markdown"></textarea>
+                    <textarea class="utf-command-input" rows="18" disabled="@(!CanEditCurrentReport)" @bind="editor.Markdown"></textarea>
                 </label>
             </section>
 
@@ -197,35 +209,38 @@
             </section>
 
             <div class="field-report-editor-actions">
-                <UtfCommandButton Variant="primary"
-                                  Disabled="@_isSaving"
-                                  OnClick="SaveAsync">
-                    @(_isSaving
-                        ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonSaving)]
-                        : Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonSave)])
-                </UtfCommandButton>
-                @if (editor.PrimaryKey is not null && !editor.IsPublished && !editor.IsDeleted)
+                @if (CanEditCurrentReport)
+                {
+                    <UtfCommandButton Variant="primary"
+                                      Disabled="@_isSaving"
+                                      OnClick="SaveAsync">
+                        @(_isSaving
+                            ? Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonSaving)]
+                            : Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonSave)])
+                    </UtfCommandButton>
+                }
+                @if (CanModifyFieldReports && editor.PrimaryKey is not null && !editor.IsPublished && !editor.IsDeleted)
                 {
                     <UtfCommandButton Disabled="@_isSaving"
                                       OnClick="PublishAsync">
                         @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonPublish)]
                     </UtfCommandButton>
                 }
-                @if (editor.PrimaryKey is not null && editor.IsPublished && !editor.IsDeleted)
+                @if (CanModifyFieldReports && editor.PrimaryKey is not null && editor.IsPublished && !editor.IsDeleted)
                 {
                     <UtfCommandButton Disabled="@_isSaving"
                                       OnClick="UnpublishAsync">
                         @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonUnpublish)]
                     </UtfCommandButton>
                 }
-                @if (editor.PrimaryKey is not null && !editor.IsDeleted)
+                @if (CanDeleteFieldReports && editor.PrimaryKey is not null && !editor.IsDeleted)
                 {
                     <UtfCommandButton Disabled="@_isSaving"
                                       OnClick="DeleteAsync">
                         @Localizer[nameof(Language.Pages_Command_FieldReports_Edit_ButtonDelete)]
                     </UtfCommandButton>
                 }
-                @if (editor.PrimaryKey is not null && editor.IsDeleted)
+                @if (CanDeleteFieldReports && editor.PrimaryKey is not null && editor.IsDeleted)
                 {
                     <UtfCommandButton Disabled="@_isSaving"
                                       OnClick="RestoreAsync">
@@ -249,22 +264,38 @@
     private bool _isSaving;
     private bool _isPreviewVisible = true;
     private string? _loadError;
+    private EditorSnapshot? _loadedSnapshot;
 
     [Parameter]
     public Guid? ReportId { get; set; }
 
-    private bool CanManageFieldReports
-        => Me.HasBaseClaimOrWikiAdmin(Claims.Creation.Wiki, Claims.Wiki.All);
+    private bool CanReadFieldReports
+        => Me.HasBaseClaim(Claims.Administrative.Wiki, Claims.Creation.Wiki, Claims.Wiki.All);
+
+    private bool CanCreateFieldReports
+        => CanReadFieldReports;
+
+    private bool CanModifyFieldReports
+        => Me.HasBaseClaim(Claims.Administrative.Wiki, Claims.Wiki.Modify, Claims.Wiki.All);
+
+    private bool CanDeleteFieldReports
+        => Me.HasBaseClaim(Claims.Administrative.Wiki, Claims.Wiki.Delete, Claims.Wiki.All);
+
+    private bool CanOpenCurrentReport
+        => ReportId is null ? CanCreateFieldReports : CanReadFieldReports;
+
+    private bool CanEditCurrentReport
+        => ReportId is null ? CanCreateFieldReports : CanModifyFieldReports;
 
     protected override async Task OnInitializedAsync()
     {
-        if (CanManageFieldReports)
+        if (CanOpenCurrentReport)
             await LoadAsync().ConfigureAwait(false);
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        if (CanManageFieldReports && _editor is not null && _editor.PrimaryKey != ReportId)
+        if (CanOpenCurrentReport && _editor is not null && _editor.PrimaryKey != ReportId)
             await LoadAsync().ConfigureAwait(false);
     }
 
@@ -280,6 +311,7 @@
                 _publicationInput = FormatPublicationInput(DateTimeOffset.Now);
                 _isPreviewVisible = true;
                 ClearHeroImageMetadata();
+                _loadedSnapshot = CreateSnapshot();
                 return;
             }
 
@@ -314,6 +346,7 @@
             : string.Empty;
         _isPreviewVisible = true;
         ClearHeroImageMetadata();
+        _loadedSnapshot = CreateSnapshot();
     }
 
     private void OnPublicationInputChanged(ChangeEventArgs args)
@@ -331,7 +364,7 @@
 
     private void OnGalleryAssetSelected(MediaAssetInfo? asset)
     {
-        if (_editor is null)
+        if (_editor is null || !CanEditCurrentReport)
             return;
 
         if (asset is null)
@@ -354,7 +387,7 @@
 
     private async Task SaveAsync()
     {
-        if (_editor is null || _isSaving)
+        if (_editor is null || _isSaving || !CanEditCurrentReport)
             return;
 
         var validationError = ValidateEditor(_editor);
@@ -389,8 +422,13 @@
 
     private async Task PublishAsync()
     {
-        if (_editor?.PrimaryKey is not { } reportId || _isSaving)
+        if (_editor?.PrimaryKey is not { } reportId || _isSaving || !CanModifyFieldReports)
             return;
+        if (HasUnsavedChanges)
+        {
+            ToastService.ShowWarning(T("Pages_Command_FieldReports_Edit_UnsavedActionMessage"));
+            return;
+        }
 
         _isSaving = true;
         try
@@ -411,8 +449,13 @@
 
     private async Task UnpublishAsync()
     {
-        if (_editor?.PrimaryKey is not { } reportId || _isSaving)
+        if (_editor?.PrimaryKey is not { } reportId || _isSaving || !CanModifyFieldReports)
             return;
+        if (HasUnsavedChanges)
+        {
+            ToastService.ShowWarning(T("Pages_Command_FieldReports_Edit_UnsavedActionMessage"));
+            return;
+        }
 
         _isSaving = true;
         try
@@ -433,8 +476,13 @@
 
     private async Task DeleteAsync()
     {
-        if (_editor?.PrimaryKey is not { } reportId || _isSaving)
+        if (_editor?.PrimaryKey is not { } reportId || _isSaving || !CanDeleteFieldReports)
             return;
+        if (HasUnsavedChanges)
+        {
+            ToastService.ShowWarning(T("Pages_Command_FieldReports_Edit_UnsavedActionMessage"));
+            return;
+        }
 
         var confirmed = await DialogService.ShowUtfConfirmationAsync(
             Localizer[nameof(Language.Pages_Command_FieldReports_Edit_DeleteTitle)].Value,
@@ -465,8 +513,13 @@
 
     private async Task RestoreAsync()
     {
-        if (_editor?.PrimaryKey is not { } reportId || _isSaving)
+        if (_editor?.PrimaryKey is not { } reportId || _isSaving || !CanDeleteFieldReports)
             return;
+        if (HasUnsavedChanges)
+        {
+            ToastService.ShowWarning(T("Pages_Command_FieldReports_Edit_UnsavedActionMessage"));
+            return;
+        }
 
         _isSaving = true;
         try
@@ -611,6 +664,42 @@
     private string CreateTemplateMarkdown()
         => Localizer[nameof(Language.Pages_Command_FieldReports_Edit_TemplateMarkdown)].Value;
 
+    private bool HasUnsavedChanges
+        => !_isSaving
+           && _editor is not null
+           && _loadedSnapshot is not null
+           && !_loadedSnapshot.Equals(CreateSnapshot());
+
+    private EditorSnapshot? CreateSnapshot()
+        => _editor is null
+            ? null
+            : new EditorSnapshot(
+                _editor.Slug,
+                _editor.Title,
+                _editor.Excerpt,
+                _editor.Category,
+                _editor.Markdown,
+                _editor.HeroImageAssetFk,
+                _editor.HeroImagePath,
+                _editor.HeroImageAlt,
+                _editor.IsFeatured,
+                _editor.SortOrder,
+                _editor.IsPublished,
+                _publicationInput
+            );
+
+    private async Task ConfirmInternalNavigationAsync(LocationChangingContext context)
+    {
+        if (!HasUnsavedChanges)
+            return;
+
+        var confirmed = await JsRuntime
+            .InvokeAsync<bool>("confirm", Localizer["React_UnsavedChanges"].Value)
+            .ConfigureAwait(false);
+        if (!confirmed)
+            context.PreventNavigation();
+    }
+
     private string T(string key)
         => Localizer[key].Value;
 
@@ -697,4 +786,18 @@
                 IsDeleted         = report.IsDeleted,
             };
     }
+
+    private sealed record EditorSnapshot(
+        string Slug,
+        string Title,
+        string Excerpt,
+        string Category,
+        string Markdown,
+        Guid? HeroImageAssetFk,
+        string HeroImagePath,
+        string HeroImageAlt,
+        bool IsFeatured,
+        int SortOrder,
+        bool IsPublished,
+        string PublicationInput);
 }

@@ -28,6 +28,10 @@ public interface IGameServerProjectionService
         string gameIdentifier,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<GameServerCostOwnerOptionDto>> GetCreationCostOwnerOptionsAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
+
     Task<StorageDemandDto?> GetStorageDemandAsync(
         Guid gameServerId,
         ClaimsPrincipal principal,

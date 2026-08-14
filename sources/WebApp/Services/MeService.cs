@@ -182,6 +182,18 @@ public class MeService(IUserRepository userRepository)
         => CanCreateGameServers()
            || HasClaim(Claims.ResourceBased.Server.All, Claims.ResourceBased.Server.View);
 
+    public bool CanCreateConfigurationProfiles()
+        => IsGlobalAdministrator
+           || HasExactEmptyClaim(Claims.Creation.ConfigurationProfile)
+           || HasExactEmptyClaim(Claims.Administrative.Server)
+           || HasExactEmptyClaim(Claims.Administrative.Hosting);
+
+    public bool CanAccessConfigurationProfiles()
+        => CanCreateConfigurationProfiles()
+           || HasClaim(
+               Claims.ResourceBased.ConfigurationProfile.All,
+               Claims.ResourceBased.ConfigurationProfile.View);
+
     private bool HasExactEmptyClaim(string claim)
         => User.Claims?.Any((q) => q.Identifier == claim && (q.Value is null || q.Value == string.Empty)) ?? false;
 

@@ -7,6 +7,10 @@
 
 sources/**/bin/
 sources/**/obj/
+sources/ReactApp/node_modules/
+sources/ReactApp/dist/
+sources/ReactApp/playwright-report/
+sources/ReactApp/test-results/
 sources/Api/App_Data/
 sources/Api/.local/
 sources/Api/appsettings.secret.json

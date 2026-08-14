@@ -82,29 +82,55 @@
                 </label>
 
                 <label class="hosting-field">
-                    <span>Modpack (optional)</span>
+                    <span>@Localizer["Hosting_Create_ModPack"]</span>
                     <select value="@(_modPackDefinitionId?.ToString(CultureInfo.InvariantCulture) ?? string.Empty)"
                             @onchange="ChangeModPackAsync">
-                        <option value="">No Modpack</option>
+                        <option value="">@Localizer["Hosting_Create_ModPackNone"]</option>
                         @foreach (var modPack in _modPackOptions)
                         {
                             <option value="@modPack.PrimaryKey">@modPack.Title</option>
                         }
                     </select>
-                    <small>The effective nested selection is flattened and repeated Workshop items count once.</small>
+                    <small>@Localizer["Hosting_Create_ModPackHint"]</small>
                 </label>
 
                 <label class="hosting-field">
-                    <span>Configuration profile (optional)</span>
+                    <span>@Localizer["Hosting_Create_ConfigurationProfile"]</span>
                     <select @bind="_configurationProfileId">
-                        <option value="">Game defaults</option>
+                        <option value="">@Localizer["Hosting_Create_ConfigurationProfileDefault"]</option>
                         @foreach (var profile in _configurationProfileOptions)
                         {
-                            <option value="@profile.PrimaryKey">@profile.Title (latest revision @profile.LatestRevisionNumber)</option>
+                            <option value="@profile.PrimaryKey">
+                                @Localizer["Hosting_Create_ConfigurationProfileOption", profile.Title, profile.LatestRevisionNumber]
+                            </option>
                         }
                     </select>
-                    <small>The server follows the latest immutable revision. It can be pinned or cleared later.</small>
+                    <small>@Localizer["Hosting_Create_ConfigurationProfileHint"]</small>
                 </label>
+
+                <label class="hosting-field">
+                    <span>@Localizer["Hosting_Common_CostOwner"]</span>
+                    <select @bind="_costOwnerId">
+                        <option value="" disabled="@(CurrentUserCostOwner?.IsFrozen == true)">
+                            @(CurrentUserCostOwner is { } currentUserOwner
+                                ? Localizer["Hosting_Create_CostOwnerSelfExisting", currentUserOwner.DisplayName]
+                                : Localizer["Hosting_Create_CostOwnerSelf"])
+                        </option>
+                        @foreach (var owner in _costOwnerOptions.Where(q => !q.IsCurrentUser))
+                        {
+                            <option value="@owner.CostOwnerId" disabled="@owner.IsFrozen">
+                                @owner.DisplayName@(owner.IsFrozen ? $" — {Localizer["Hosting_Create_CostOwnerFrozen"]}" : string.Empty)
+                            </option>
+                        }
+                    </select>
+                    <small>@Localizer["Hosting_Create_CostOwnerHint"]</small>
+                </label>
+                @if (!SelectedCostOwnerIsValid)
+                {
+                    <UtfAlert Intent="MessageIntent.Error">
+                        @Localizer["Hosting_Create_CostOwnerFrozenError"]
+                    </UtfAlert>
+                }
 
                 <label class="hosting-field">
                     <span>@Localizer["Hosting_Create_Runtime"]</span>
@@ -146,25 +172,25 @@
                 {
                     <section class="hosting-storage-configuration" aria-labelledby="create-storage-title">
                         <div class="hosting-section-heading">
-                            <span class="utf-kicker">Deployment storage</span>
-                            <h3 id="create-storage-title">Storage for @SelectedProfile.DisplayName</h3>
-                            <p>The game, Workshop, Scenario, and preparation root uses one filesystem.</p>
+                            <span class="utf-kicker">@Localizer["Hosting_Create_StorageKicker"]</span>
+                            <h3 id="create-storage-title">@Localizer["Hosting_Create_StorageTitle", SelectedProfile.DisplayName]</h3>
+                            <p>@Localizer["Hosting_Create_StorageDescription"]</p>
                         </div>
                         <label class="hosting-field">
-                            <span>Storage strategy</span>
+                            <span>@Localizer["Hosting_Create_StorageStrategy"]</span>
                             <select value="@_runtimeStorageStrategy" @onchange="ChangeStorageStrategy">
-                                <option value="IncludedDisk">Included profile disk only</option>
+                                <option value="IncludedDisk">@Localizer["Hosting_Create_StorageIncluded"]</option>
                                 @if (SelectedProvider?.Storage?.SupportsExternalBlockStorage is true)
                                 {
-                                    <option value="AutomaticExternal">Automatically sized external storage</option>
-                                    <option value="FixedExternal">Explicitly sized external storage</option>
+                                    <option value="AutomaticExternal">@Localizer["Hosting_Create_StorageAutomatic"]</option>
+                                    <option value="FixedExternal">@Localizer["Hosting_Create_StorageFixed"]</option>
                                 }
                             </select>
                         </label>
                         @if (_runtimeStorageStrategy == "FixedExternal" && SelectedProvider?.Storage is { } storage)
                         {
                             <label class="hosting-field">
-                                <span>External capacity (GiB)</span>
+                                <span>@Localizer["Hosting_Create_ExternalCapacity"]</span>
                                 <input type="number"
                                        min="@storage.MinimumCapacityGiB"
                                        max="@storage.MaximumCapacityGiB"
@@ -173,16 +199,16 @@
                             </label>
                         }
                         <dl class="hosting-storage-selection-facts">
-                            <div><dt>Included profile disk</dt><dd>@(SelectedProfile.DiskGiB?.ToString(CultureInfo.CurrentCulture) ?? "—") GiB</dd></div>
-                            <div><dt>Estimated peak requirement</dt><dd>@(_storageDemand is { } demand ? FormatBytes(demand.PeakPreparationRequiredBytes) : "Calculating…")</dd></div>
-                            <div><dt>Selected deployment capacity</dt><dd>@FormatBytes(SelectedStorageBytes())</dd></div>
-                            <div><dt>Combined estimated price</dt><dd>@FormatCombinedPrice()</dd></div>
+                            <div><dt>@Localizer["Hosting_Create_IncludedProfileDisk"]</dt><dd>@(SelectedProfile.DiskGiB?.ToString(CultureInfo.CurrentCulture) ?? "—") GiB</dd></div>
+                            <div><dt>@Localizer["Hosting_Create_EstimatedPeakRequirement"]</dt><dd>@(_storageDemand is { } demand ? FormatBytes(demand.PeakPreparationRequiredBytes) : Localizer["Hosting_Create_Calculating"])</dd></div>
+                            <div><dt>@Localizer["Hosting_Create_SelectedDeploymentCapacity"]</dt><dd>@FormatBytes(SelectedStorageBytes())</dd></div>
+                            <div><dt>@Localizer["Hosting_Create_CombinedPrice"]</dt><dd>@FormatCombinedPrice()</dd></div>
                         </dl>
                         <p class="hosting-storage-filesystem">@StorageFilesystemDescription()</p>
                         @if (_runtimeStorageStrategy != "IncludedDisk")
                         {
                             <UtfAlert Intent="MessageIntent.Warning">
-                                External deployment storage is ephemeral and is deleted during full cost-stop or termination.
+                                @Localizer["Hosting_Create_ExternalStorageWarning"]
                             </UtfAlert>
                         }
                     </section>
@@ -190,11 +216,11 @@
 
                 @if (_isEstimateLoading)
                 {
-                    <div class="utf-state-panel" role="status">Calculating storage demand…</div>
+                    <div class="utf-state-panel" role="status">@Localizer["Hosting_Create_EstimateLoading"]</div>
                 }
                 else if (_estimateError is not null)
                 {
-                    <UtfAlert Intent="MessageIntent.Warning">Storage estimate unavailable: @_estimateError</UtfAlert>
+                    <UtfAlert Intent="MessageIntent.Warning">@Localizer["Hosting_Create_EstimateUnavailable", _estimateError]</UtfAlert>
                 }
                 else if (_storageDemand is { } storageDemand)
                 {
@@ -283,6 +309,8 @@
     private long? _modPackDefinitionId;
     private IReadOnlyList<ConfigurationProfileOptionInfo> _configurationProfileOptions = [];
     private Guid? _configurationProfileId;
+    private IReadOnlyList<GameServerCostOwnerOptionInfo> _costOwnerOptions = [];
+    private Guid? _costOwnerId;
     private StorageDemandInfo? _storageDemand;
     private bool _isEstimateLoading;
     private string? _estimateError;
@@ -334,7 +362,16 @@
            && SelectedProvider is not null
            && IsProviderAvailable(SelectedProvider)
            && SelectedProfile is not null
+           && SelectedCostOwnerIsValid
            && IsStorageSelectionValid();
+
+    private GameServerCostOwnerOptionInfo? CurrentUserCostOwner
+        => _costOwnerOptions.FirstOrDefault(q => q.IsCurrentUser);
+
+    private bool SelectedCostOwnerIsValid
+        => _costOwnerId is { } ownerId
+            ? _costOwnerOptions.Any(q => q.CostOwnerId == ownerId && !q.IsFrozen)
+            : CurrentUserCostOwner?.IsFrozen != true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -354,6 +391,7 @@
         try
         {
             _capabilities = await GameServerRepository.GetCapabilitiesAsync();
+            _costOwnerOptions = await GameServerRepository.GetCreationCostOwnerOptionsAsync();
             if (_capabilities.FirstOrDefault() is { } capability)
             {
                 _gameIdentifier = capability.GameIdentifier;
@@ -449,7 +487,9 @@
         catch (Exception exception)
         {
             _storageDemand = null;
-            _estimateError = UserFacingError.Message(exception, "The estimate could not be refreshed.");
+            _estimateError = UserFacingError.Message(
+                exception,
+                Localizer["Hosting_Create_EstimateFallback"].Value);
         }
         finally
         {
@@ -478,6 +518,7 @@
                     : null,
                 ModPackDefinitionId = _modPackDefinitionId,
                 ConfigurationProfileId = _configurationProfileId,
+                CostOwnerId = _costOwnerId,
                 IsLaunchDisabled = _isLaunchDisabled,
             });
             NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/servers/{server.PrimaryKey}"));
@@ -567,22 +608,29 @@
 
     private string StorageFilesystemDescription()
         => _runtimeStorageStrategy == "IncludedDisk"
-            ? "Deployment content uses the included server-root filesystem."
-            : $"Deployment content uses the verified external filesystem at {SelectedProvider?.Storage?.DeploymentMountPath}.";
+            ? Localizer["Hosting_Create_FilesystemIncluded"].Value
+            : Localizer[
+                "Hosting_Create_FilesystemExternal",
+                SelectedProvider?.Storage?.DeploymentMountPath ?? "—"].Value;
 
     private string FormatCombinedPrice()
     {
         if (SelectedProfile?.EstimatedHourlyCostEur is not { } compute)
-            return "Unavailable";
+            return Localizer["Hosting_Create_PriceUnavailable"].Value;
         var storage = _runtimeStorageStrategy == "IncludedDisk"
             ? 0m
             : (SelectedStorageBytes() ?? 0) / 1_073_741_824m
               * (SelectedProvider?.Storage?.EstimatedHourlyCostPerGiBEur ?? 0m);
-        return $"{compute + storage:C6}/hour · {(compute + storage) * 730m:C2}/month";
+        return Localizer[
+            "Hosting_Create_CombinedPriceValue",
+            (compute + storage).ToString("C6", CultureInfo.CurrentCulture),
+            ((compute + storage) * 730m).ToString("C2", CultureInfo.CurrentCulture)].Value;
     }
 
-    private static string FormatBytes(long? bytes)
-        => bytes.HasValue ? $"{bytes.Value / 1_073_741_824m:0.##} GiB" : "Unavailable";
+    private string FormatBytes(long? bytes)
+        => bytes.HasValue
+            ? $"{bytes.Value / 1_073_741_824m:0.##} GiB"
+            : Localizer["Hosting_Create_StorageStatusUnavailable"].Value;
 
     private string ProviderUnavailableDescription(RuntimeProviderInfo provider)
         => provider.AvailabilityStatus.Trim().ToLowerInvariant() switch

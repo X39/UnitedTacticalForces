@@ -106,6 +106,14 @@ public sealed class GameServersController(
             .GetCreationModPackOptionsAsync(gameIdentifier, cancellationToken)
             .ConfigureAwait(false));
 
+    [HttpGet("creation/cost-owner-options")]
+    [Authorize(Claims.Creation.Server)]
+    [ProducesResponseType<IReadOnlyCollection<GameServerCostOwnerOptionDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCreationCostOwnerOptionsAsync(CancellationToken cancellationToken)
+        => Ok(await projectionService
+            .GetCreationCostOwnerOptionsAsync(User, cancellationToken)
+            .ConfigureAwait(false));
+
     [HttpPost("storage-demand-estimate")]
     [Authorize(Claims.Creation.Server)]
     [ProducesResponseType<StorageDemandDto>(StatusCodes.Status200OK)]

@@ -210,6 +210,44 @@ internal sealed class GameServerProjectionService(
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyCollection<GameServerCostOwnerOptionDto>> GetCreationCostOwnerOptionsAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        if (!principal.TryGetUserId(out var userId))
+            return [];
+
+        var canUseEveryOwner = principal.HasAnyEmptyClaim(
+            Claims.Administrative.All,
+            Claims.Administrative.Server,
+            Claims.Administrative.Hosting);
+        var grantedOwnerIds = principal.Claims
+            .Where(q => q.Type == Claims.ResourceBased.CostOwner.Use)
+            .Select(q => Guid.TryParse(q.Value, out var ownerId)
+                         && string.Equals(q.Value, ownerId.ToString(), StringComparison.Ordinal)
+                ? ownerId
+                : Guid.Empty)
+            .Where(q => q != Guid.Empty)
+            .Distinct()
+            .ToArray();
+
+        return await dbContext.CostOwners
+            .AsNoTracking()
+            .Where(q => canUseEveryOwner || q.UserFk == userId || grantedOwnerIds.Contains(q.PrimaryKey))
+            .OrderByDescending(q => q.UserFk == userId)
+            .ThenBy(q => q.DisplayName)
+            .ThenBy(q => q.PrimaryKey)
+            .Select(q => new GameServerCostOwnerOptionDto
+            {
+                CostOwnerId = q.PrimaryKey,
+                DisplayName = q.DisplayName,
+                IsFrozen = q.IsFrozen,
+                IsCurrentUser = q.UserFk == userId,
+            })
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task<StorageDemandDto?> GetStorageDemandAsync(
         Guid gameServerId,
         ClaimsPrincipal principal,

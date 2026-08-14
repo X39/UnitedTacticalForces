@@ -1,0 +1,544 @@
+.modpacks-page,
+.modpack-create-page,
+.modpack-workspace-page {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.modpacks-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.modpacks-metrics > button {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.modpacks-metrics > button:hover,
+.modpacks-metrics > button:focus-visible,
+.modpacks-metrics > button.active {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, rgb(186 160 90 / 10%), transparent 60%), var(--surface);
+}
+
+.modpacks-toolbar {
+  justify-content: flex-start;
+}
+
+.modpacks-ledger__header,
+.modpack-workspace__section > .command-panel__header,
+.modpack-overview .command-panel__header,
+.modpack-ledger > .command-panel__header,
+.modpack-wizard__section > header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.modpacks-ledger__header > div,
+.modpack-workspace__section > .command-panel__header > div,
+.modpack-overview .command-panel__header > div,
+.modpack-ledger > .command-panel__header > div,
+.modpack-wizard__section > header > :not(.status-badge) {
+  grid-column: 1;
+}
+
+.modpacks-ledger__header > .status-badge,
+.modpack-workspace__section > .command-panel__header > .status-badge,
+.modpack-overview .command-panel__header > .status-badge,
+.modpack-ledger > .command-panel__header > .status-badge,
+.modpack-wizard__section > header > .status-badge {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.modpacks-table {
+  min-width: 900px;
+}
+
+.modpacks-table td strong,
+.modpacks-table td > span {
+  display: block;
+}
+
+.modpacks-table td > span:not(.status-badge) {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.modpacks-ledger__footer,
+.modpack-wizard__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.modpack-wizard {
+  display: grid;
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--line);
+  list-style: none;
+}
+
+.stepper li {
+  border-right: 1px solid var(--line);
+}
+
+.stepper li:last-child {
+  border-right: 0;
+}
+
+.stepper button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.stepper button > span {
+  display: grid;
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+
+.stepper li.active button,
+.stepper li.complete button {
+  color: var(--text);
+}
+
+.stepper li.active button > span {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: #10141a;
+}
+
+.stepper li.complete button > span {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.modpack-wizard__body {
+  min-height: 410px;
+  padding: 1.25rem;
+}
+
+.modpack-wizard__section {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.modpack-wizard__section > header {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.modpack-wizard__section > header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+.modpack-kind-grid,
+.modpack-review-grid,
+.modpack-overview__grid,
+.modpack-ledger-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.modpack-kind-grid > button,
+.modpack-review-grid > article {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-raised);
+  color: var(--text);
+  text-align: left;
+}
+
+.modpack-kind-grid > button {
+  cursor: pointer;
+}
+
+.modpack-kind-grid > button:hover,
+.modpack-kind-grid > button:focus-visible,
+.modpack-kind-grid > button.active {
+  border-color: var(--gold);
+  background:
+    linear-gradient(135deg, rgb(186 160 90 / 12%), transparent 70%), var(--surface-raised);
+}
+
+.modpack-kind-grid small,
+.modpack-review-grid dt,
+.modpack-selector > small,
+.modpack-html-upload > small {
+  color: var(--muted);
+}
+
+.modpack-review-grid dl,
+.modpack-metadata dl {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+  gap: 0.65rem 1rem;
+  margin: 0;
+}
+
+.modpack-review-grid dt,
+.modpack-metadata dt {
+  color: var(--muted);
+}
+
+.modpack-review-grid dd,
+.modpack-metadata dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.modpack-readiness {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.modpack-readiness > div {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 2%);
+}
+
+.modpack-readiness > div > span {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.modpack-readiness > div.complete > span {
+  background: var(--success);
+}
+
+.modpack-wizard__footer > div,
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.modpack-wizard__footer > div:first-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.file-drop {
+  position: relative;
+  display: grid;
+  min-height: 150px;
+  place-content: center;
+  gap: 0.35rem;
+  padding: 1.5rem;
+  border: 1px dashed var(--line);
+  border-radius: 5px;
+  background: rgb(186 160 90 / 4%);
+  text-align: center;
+  cursor: pointer;
+}
+
+.file-drop:hover,
+.file-drop:focus-within {
+  border-color: var(--gold);
+}
+
+.file-drop input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.modpack-html-upload,
+.modpack-selector,
+.modpack-edit-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.modpack-html-upload iframe,
+.modpack-preview {
+  width: 100%;
+  min-height: 480px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #fff;
+}
+
+.modpack-preview.compact {
+  min-height: 280px;
+}
+
+.modpack-selector__options {
+  display: grid;
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.modpack-selector__option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.modpack-selector__option:last-child {
+  border-bottom: 0;
+}
+
+.modpack-selector__option:hover,
+.modpack-selector__option:focus-within {
+  background: rgb(186 160 90 / 8%);
+}
+
+.modpack-selector__option > span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.modpack-selector__option small {
+  color: var(--muted);
+}
+
+.modpack-workspace {
+  display: grid;
+}
+
+.modpack-workspace__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.modpack-workspace__summary > div {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.modpack-workspace__summary > div > strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.modpack-workspace__summary > div > span:last-child {
+  color: var(--muted);
+}
+
+.modpack-workspace__summary dl {
+  display: flex;
+  gap: 1.25rem;
+  margin: 0;
+}
+
+.modpack-workspace__summary dl > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.modpack-workspace__summary dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.modpack-workspace__summary dd {
+  margin: 0;
+  text-align: right;
+}
+
+.workspace-tabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+}
+
+.workspace-tabs a {
+  padding: 0.85rem 1rem;
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.workspace-tabs a:hover,
+.workspace-tabs a:focus-visible,
+.workspace-tabs a.active {
+  background: rgb(186 160 90 / 8%);
+  color: var(--gold-light);
+}
+
+.workspace-tabs a.danger {
+  color: #efb0a8;
+}
+
+.modpack-workspace > .state-panel,
+.modpack-workspace__section,
+.modpack-overview {
+  margin: 1.25rem;
+}
+
+.modpack-overview {
+  display: grid;
+  gap: 1rem;
+}
+
+.modpack-overview > .command-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.modpack-overview > .command-metrics > .metric {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-raised);
+}
+
+.modpack-overview__grid {
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.75fr);
+  align-items: start;
+}
+
+.modpack-overview .command-panel__header,
+.modpack-workspace__section > .command-panel__header,
+.modpack-ledger > .command-panel__header {
+  display: grid;
+}
+
+.modpack-overview .command-panel__header > .button,
+.modpack-workspace__section > .command-panel__header > .button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.modpack-overview .command-panel > .command-table-scroll,
+.modpack-workspace__section > .command-table-scroll,
+.modpack-ledger > .command-table-scroll,
+.modpack-metadata > dl,
+.modpack-edit-form,
+.danger-panel > p,
+.danger-panel > .button {
+  margin: 1rem;
+}
+
+.modpack-ledger-grid {
+  align-items: start;
+}
+
+.modpack-ledger .command-table {
+  min-width: 620px;
+}
+
+.modpack-ledger .command-table td strong,
+.modpack-ledger .command-table td span {
+  display: block;
+}
+
+.danger-panel {
+  border-color: rgb(190 75 63 / 48%);
+}
+
+@media (max-width: 1050px) {
+  .modpacks-metrics,
+  .modpack-overview > .command-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modpack-overview__grid,
+  .modpack-ledger-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .modpacks-metrics,
+  .modpack-kind-grid,
+  .modpack-review-grid,
+  .modpack-overview > .command-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .stepper {
+    grid-template-columns: 1fr;
+  }
+
+  .stepper li {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .modpack-workspace__summary,
+  .modpacks-ledger__footer,
+  .modpack-wizard__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .modpack-workspace__summary > div,
+  .modpack-workspace__summary dl {
+    flex-wrap: wrap;
+  }
+
+  .modpack-workspace > .state-panel,
+  .modpack-workspace__section,
+  .modpack-overview {
+    margin: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modpacks-page *,
+  .modpack-create-page *,
+  .modpack-workspace-page * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

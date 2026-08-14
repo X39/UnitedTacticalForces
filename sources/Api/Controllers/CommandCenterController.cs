@@ -137,6 +137,47 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
     }
 
     /// <summary>
+    /// Returns the members assigned to, and available for, one authority role.
+    /// </summary>
+    [ProducesResponseType<CommandCenterAuthorityRoleMembersDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(void), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(void), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
+    [HttpGet("authority-role/{roleId:long}/members", Name = nameof(GetAuthorityRoleMembersAsync))]
+    public async Task<IActionResult> GetAuthorityRoleMembersAsync(
+        [FromRoute] long roleId,
+        [FromQuery] int take = 160,
+        [FromQuery] string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (take is < 1 or > 500)
+            return BadRequest();
+        if (!CanManageAuthority)
+            return Forbid();
+
+        var role = await apiDbContext.Roles.AsNoTracking()
+            .SingleOrDefaultAsync(q => q.PrimaryKey == roleId, cancellationToken);
+        if (role is null)
+            return NotFound();
+
+        var users = ApplySearch(IncludeRoleMemberReferences(apiDbContext.Users.AsNoTracking()), search);
+        var assignedUsers = users.Where(q => q.Roles!.Any(roleEntry => roleEntry.PrimaryKey == roleId));
+        var availableUsers = users.Where(q => !q.Roles!.Any(roleEntry => roleEntry.PrimaryKey == roleId));
+
+        var assignedMembers = await assignedUsers.OrderBy(q => q.Nickname).Take(take).ToArrayAsync(cancellationToken);
+        var availableMembers = await availableUsers.OrderBy(q => q.Nickname).Take(take).ToArrayAsync(cancellationToken);
+
+        return Ok(new CommandCenterAuthorityRoleMembersDto
+        {
+            Role                 = role.ToPlainDto(),
+            AssignedMemberCount = await assignedUsers.LongCountAsync(cancellationToken),
+            AvailableMemberCount = await availableUsers.LongCountAsync(cancellationToken),
+            AssignedMembers     = assignedMembers.Select(q => CreateCommunityMemberDto(q, null)).ToArray(),
+            AvailableMembers    = availableMembers.Select(q => CreateCommunityMemberDto(q, null)).ToArray(),
+        });
+    }
+
+    /// <summary>
     /// Returns the aggregate wiki/media administration snapshot.
     /// </summary>
     [ProducesResponseType<CommandCenterWikiMediaSnapshotDto>(StatusCodes.Status200OK)]
@@ -316,7 +357,11 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
 
     private bool CanManageMembers
         => HasBaseClaim(Claims.User.All) || HasBaseClaim(Claims.Verein.All) || HasBaseClaim(Claims.Verein.Members)
-           || HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.User, Claims.Administrative.Verein);
+           || HasAnyEmptyClaim(
+               Claims.Administrative.All,
+               Claims.Administrative.User,
+               Claims.Administrative.Role,
+               Claims.Administrative.Verein);
 
     private bool CanManageAuthority
         => HasAnyEmptyClaim(Claims.Administrative.All, Claims.Administrative.Role);

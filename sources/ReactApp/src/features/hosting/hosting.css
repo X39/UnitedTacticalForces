@@ -1,0 +1,903 @@
+.next-hosting-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.next-hosting-panel {
+  min-width: 0;
+  padding: 1.2rem;
+  border: 1px solid var(--colorNeutralStroke1, #2a3442);
+  border-radius: 0.75rem;
+  background: linear-gradient(145deg, rgb(24 31 43 / 96%), rgb(14 19 28 / 96%));
+  box-shadow: 0 1rem 2.8rem rgb(0 0 0 / 18%);
+}
+
+.next-hosting-panel h2,
+.next-hosting-panel h3,
+.next-hosting-server-card h2 {
+  margin-block: 0.25rem 0.6rem;
+}
+
+.next-hosting-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.next-hosting-dashboard-grid,
+.next-hosting-workspace-grid,
+.next-hosting-form-grid,
+.next-hosting-profile-workspace,
+.next-hosting-finance-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.next-hosting-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+}
+
+.next-hosting-server-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.15rem;
+  border: 1px solid #2d3949;
+  border-radius: 0.75rem;
+  background: #141b26;
+}
+
+.next-hosting-server-card > header,
+.next-hosting-server-card > footer,
+.next-hosting-section-heading,
+.next-hosting-job > header,
+.next-hosting-audit-list header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.next-hosting-server-card > footer {
+  align-items: center;
+}
+
+.next-hosting-server-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.next-hosting-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.next-hosting-facts--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.next-hosting-facts div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem;
+  border: 1px solid #293546;
+  border-radius: 0.5rem;
+  background: rgb(8 12 18 / 40%);
+}
+
+.next-hosting-facts dt,
+.next-hosting-muted,
+.next-hosting-panel small {
+  color: #aeb7c4;
+}
+
+.next-hosting-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.next-hosting-cost-warning,
+.next-hosting-inline-error {
+  padding: 0.65rem 0.8rem;
+  border-left: 3px solid #d1ae58;
+  background: rgb(209 174 88 / 12%);
+}
+
+.next-hosting-inline-error {
+  border-color: #dc6969;
+  color: #ffb3b3;
+}
+
+.next-hosting-shortcuts {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.next-hosting-shortcuts a {
+  padding: 0.75rem;
+  border: 1px solid #2d3949;
+  border-radius: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.next-hosting-attention-list,
+.next-hosting-command-list {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0;
+  list-style: none;
+}
+
+.next-hosting-attention-list li,
+.next-hosting-resource-grid article {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem;
+  border: 1px solid #2a3442;
+  border-radius: 0.5rem;
+}
+
+.next-hosting-attention-list a,
+.next-hosting-attention-list a span {
+  display: grid;
+  color: inherit;
+  text-decoration: none;
+}
+
+.next-hosting-tabs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid #2a3442;
+}
+
+.next-hosting-tab {
+  padding: 0.8rem 1rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #adb7c5;
+  white-space: nowrap;
+}
+
+.next-hosting-tab--active {
+  border-color: #d1b665;
+  color: #f6e7b4;
+}
+
+.next-hosting-action-grid,
+.next-hosting-job-list,
+.next-hosting-resource-grid,
+.next-hosting-profile-history {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.next-hosting-action-card,
+.next-hosting-job {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  padding: 0.85rem;
+  border: 1px solid #2b3747;
+  border-radius: 0.55rem;
+}
+
+.next-hosting-job {
+  grid-template-columns: 1fr;
+}
+
+.next-hosting-job header div,
+.next-hosting-job-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.next-hosting-job header div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.next-hosting-job progress {
+  width: 100%;
+  accent-color: #c8ab5d;
+}
+
+.next-hosting-audit-list {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.next-hosting-audit-list li {
+  display: grid;
+  grid-template-columns: 1rem 1fr;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+}
+
+.next-hosting-audit-marker {
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-top: 0.35rem;
+  border-radius: 50%;
+  background: #c6aa5f;
+  box-shadow: 0 0 0 4px rgb(198 170 95 / 12%);
+}
+
+.next-hosting-form,
+.next-hosting-estimate,
+.next-hosting-profile-editor {
+  display: grid;
+  gap: 1rem;
+}
+
+.next-hosting-back-link {
+  width: fit-content;
+  color: #dcc879;
+  text-decoration: none;
+}
+
+.next-hosting-back-link:hover {
+  text-decoration: underline;
+}
+
+.next-hosting-create-aside {
+  display: grid;
+  gap: 1rem;
+}
+
+.next-hosting-create-aside > * {
+  min-width: 0;
+}
+
+.next-hosting-profile-summary,
+.next-hosting-storage-configuration,
+.next-hosting-storage-demand,
+.next-hosting-create-boundary {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #2b3748;
+  border-radius: 0.55rem;
+  background: rgb(8 12 18 / 38%);
+}
+
+.next-hosting-profile-summary > header,
+.next-hosting-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.next-hosting-profile-summary > header div,
+.next-hosting-section-heading {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.next-hosting-profile-summary code {
+  overflow-wrap: anywhere;
+}
+
+.next-hosting-field-error {
+  color: #ffb3b3 !important;
+}
+
+.next-hosting-provider-empty {
+  padding: 0.7rem;
+  border: 1px dashed #465468;
+  border-radius: 0.45rem;
+  color: #aeb7c4;
+}
+
+.next-hosting-provider-statuses,
+.next-hosting-capability-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.next-hosting-provider-statuses article,
+.next-hosting-storage-fit,
+.next-hosting-component-list li {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.7rem;
+  border: 1px solid #2b3748;
+  border-radius: 0.45rem;
+}
+
+.next-hosting-capability-actions {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
+.next-hosting-capability-actions span {
+  padding: 0.55rem;
+  border: 1px solid #334154;
+  border-radius: 999px;
+  text-align: center;
+}
+
+.next-hosting-component-list {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.next-hosting-component-list li span:last-child {
+  color: #aeb7c4;
+}
+
+.next-hosting-form .field,
+.next-hosting-profile-editor .field,
+.next-hosting-policy-fields .field,
+.next-hosting-owner-browser .field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.next-hosting-form input,
+.next-hosting-form select,
+.next-hosting-form textarea,
+.next-hosting-profile-editor input,
+.next-hosting-profile-editor select,
+.next-hosting-profile-editor textarea,
+.next-hosting-policy-fields input,
+.next-hosting-owner-browser input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem;
+  border: 1px solid #344255;
+  border-radius: 0.45rem;
+  background: #0b1119;
+  color: inherit;
+}
+
+.next-hosting-check,
+.next-hosting-form-actions,
+.next-hosting-policy-fields,
+.next-hosting-pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.next-hosting-form-actions {
+  justify-content: flex-end;
+}
+
+.next-hosting-profile-workspace,
+.next-hosting-finance-workspace {
+  grid-template-columns: minmax(17rem, 0.8fr) minmax(0, 2fr);
+}
+
+.next-hosting-profile-browser,
+.next-hosting-owner-browser {
+  position: sticky;
+  top: 1rem;
+}
+
+.next-hosting-profile-list,
+.next-hosting-owner-list {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.next-hosting-profile-list button,
+.next-hosting-owner-list button {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid #2e3a4b;
+  border-radius: 0.45rem;
+  background: #111822;
+  color: inherit;
+  text-align: left;
+}
+
+.next-hosting-profile-list button[aria-selected="true"],
+.next-hosting-owner-list button[aria-selected="true"] {
+  border-color: #c4a95d;
+  background: rgb(196 169 93 / 12%);
+}
+
+.next-hosting-profile-list button span,
+.next-hosting-owner-list button span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.next-hosting-profile-meta,
+.next-hosting-policy-fields,
+.next-hosting-finance-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.next-hosting-configuration-groups {
+  display: grid;
+  gap: 1rem;
+}
+
+.next-hosting-configuration-groups fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid #2b3748;
+  border-radius: 0.55rem;
+}
+
+.next-hosting-configuration-target {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.next-hosting-configuration-target > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #9da8b7;
+}
+
+.next-hosting-configuration-target > header code {
+  overflow-wrap: anywhere;
+  color: #dec982;
+}
+
+.next-hosting-configuration-field-heading,
+.next-hosting-configuration-field-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.next-hosting-configuration-field-heading > span {
+  display: flex;
+  gap: 0.35rem;
+  color: #dec982;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.next-hosting-configuration-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.5rem;
+}
+
+.next-hosting-configuration-toggle input {
+  width: auto;
+}
+
+.next-hosting-field-error {
+  color: #ffaaa4;
+}
+
+.next-hosting-profile-history {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.next-hosting-profile-history details {
+  padding: 0.8rem;
+  border: 1px solid #2b3748;
+  border-radius: 0.5rem;
+}
+
+.next-hosting-profile-history summary {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.next-hosting-profile-history summary > span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.next-hosting-profile-access,
+.next-hosting-access-grants,
+.next-hosting-access-grants > section {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.next-hosting-access-form {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.7fr) minmax(14rem, 1fr) minmax(12rem, 0.8fr);
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.next-hosting-access-form fieldset {
+  display: flex;
+  gap: 0.8rem;
+  padding: 0.65rem;
+  border: 1px solid #344255;
+  border-radius: 0.45rem;
+}
+
+.next-hosting-access-form fieldset label {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.next-hosting-access-form fieldset input {
+  width: auto;
+}
+
+.next-hosting-access-form .next-hosting-form-actions,
+.next-hosting-access-form .next-hosting-inline-error {
+  grid-column: 1 / -1;
+}
+
+.next-hosting-access-grants article {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.65fr) minmax(0, 1.35fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #2b3748;
+  border-radius: 0.5rem;
+}
+
+.next-hosting-access-grants article > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.next-hosting-access-grants ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.next-hosting-access-grants li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.55rem;
+  border: 1px solid #344255;
+  border-radius: 999px;
+}
+
+.next-hosting-finance-detail {
+  display: grid;
+  gap: 1rem;
+}
+
+.next-hosting-owner-browser form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.next-hosting-owner-browser form .field {
+  flex: 1;
+}
+
+.next-hosting-pagination {
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
+.next-hosting-table-scroll {
+  overflow-x: auto;
+}
+
+.next-hosting-table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.next-hosting-table-scroll th,
+.next-hosting-table-scroll td {
+  padding: 0.65rem;
+  border-bottom: 1px solid #2a3544;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.next-hosting-ledger-context {
+  min-width: 18rem;
+  white-space: normal !important;
+}
+
+.next-hosting-audit-details {
+  margin-top: 0.45rem;
+  max-width: 34rem;
+}
+
+.next-hosting-audit-details summary {
+  color: #dec982;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.next-hosting-audit-details dl {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.65rem 0 0;
+}
+
+.next-hosting-audit-details dl > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.7fr) minmax(10rem, 1fr);
+  gap: 0.5rem;
+}
+
+.next-hosting-audit-details dt {
+  color: #9ca9b8;
+}
+
+.next-hosting-audit-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.next-hosting-reversal {
+  max-width: 48rem;
+}
+
+.next-hosting-positive {
+  color: #79d69b;
+}
+.next-hosting-negative {
+  color: #f29393;
+}
+
+.next-hosting-runtime-stack,
+.next-hosting-configuration-panel,
+.next-hosting-files-panel,
+.next-hosting-preservation-panel,
+.next-hosting-logs-panel,
+.next-hosting-protocol-list,
+.next-hosting-protocol-body,
+.next-hosting-file-mutations,
+.next-hosting-preservation-grid,
+.next-hosting-selection-list,
+.next-hosting-selection-list article,
+.next-hosting-diagnostics,
+.next-hosting-storage-telemetry {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.next-hosting-panel .field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.next-hosting-panel .field > input,
+.next-hosting-panel .field > select,
+.next-hosting-panel .field > textarea,
+.next-hosting-configuration-panel fieldset input,
+.next-hosting-configuration-panel fieldset select,
+.next-hosting-configuration-panel fieldset textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem;
+  border: 1px solid #344255;
+  border-radius: 0.45rem;
+  background: #0b1119;
+  color: inherit;
+}
+
+.next-hosting-primary-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-color: #8b7845;
+}
+
+.next-hosting-configuration-savebar,
+.next-hosting-file-toolbar,
+.next-hosting-file-contexts,
+.next-hosting-file-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.next-hosting-file-contexts {
+  justify-content: flex-start;
+}
+
+.next-hosting-file-contexts button,
+.next-hosting-file-toolbar nav button,
+.next-hosting-file-name,
+.next-hosting-table-scroll th button {
+  padding: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.next-hosting-file-contexts button {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #344255;
+  border-radius: 0.45rem;
+}
+
+.next-hosting-file-contexts button[aria-selected="true"] {
+  border-color: #c4a95d;
+  background: rgb(196 169 93 / 12%);
+}
+
+.next-hosting-file-toolbar nav {
+  min-width: 12rem;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.next-hosting-file-name {
+  font-weight: 700;
+}
+
+.next-hosting-table-scroll td:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.next-hosting-table-scroll td:first-child small {
+  color: #d8bd6c;
+}
+
+.next-hosting-file-mutations,
+.next-hosting-preservation-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.next-hosting-file-mutations > section,
+.next-hosting-preservation-grid > *,
+.next-hosting-selection-list article,
+.next-hosting-protocol-list details,
+.next-hosting-diagnostics {
+  padding: 0.85rem;
+  border: 1px solid #2b3748;
+  border-radius: 0.55rem;
+  background: rgb(8 12 18 / 35%);
+}
+
+.next-hosting-selection-list article {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.next-hosting-selection-list article > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.next-hosting-protocol-list summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.8rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.next-hosting-protocol-list summary > span,
+.next-hosting-resource-grid article code,
+.next-hosting-audit-list li > div {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.next-hosting-protocol-body pre,
+.next-hosting-command-list pre {
+  max-height: 30rem;
+  overflow: auto;
+  padding: 0.8rem;
+  border-radius: 0.45rem;
+  background: #080c12;
+  color: #d9e0e8;
+  white-space: pre-wrap;
+}
+
+.next-hosting-storage-telemetry progress {
+  width: 100%;
+  accent-color: #c8ab5d;
+}
+
+.next-hosting-diagnostics code,
+.next-hosting-resource-grid code,
+.next-hosting-audit-list code {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .next-hosting-metrics,
+  .next-hosting-dashboard-grid,
+  .next-hosting-workspace-grid,
+  .next-hosting-form-grid,
+  .next-hosting-profile-workspace,
+  .next-hosting-finance-workspace,
+  .next-hosting-profile-meta,
+  .next-hosting-policy-fields,
+  .next-hosting-finance-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .next-hosting-profile-browser,
+  .next-hosting-owner-browser {
+    position: static;
+  }
+
+  .next-hosting-action-card {
+    grid-template-columns: 1fr;
+  }
+
+  .next-hosting-server-card > footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .next-hosting-server-card-actions {
+    justify-content: stretch;
+  }
+
+  .next-hosting-server-card-actions .button {
+    flex: 1 1 auto;
+  }
+
+  .next-hosting-access-form,
+  .next-hosting-access-grants article {
+    grid-template-columns: 1fr;
+  }
+
+  .next-hosting-file-mutations,
+  .next-hosting-preservation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .next-hosting-primary-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .next-hosting-protocol-list summary {
+    grid-template-columns: 1fr;
+  }
+
+  .next-hosting-profile-summary > header,
+  .next-hosting-section-heading {
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next-hosting-page * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
