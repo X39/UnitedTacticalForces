@@ -5,6 +5,16 @@ namespace Api.Tests.WebApp;
 public class AuthStateBoundaryTests
 {
     [Fact]
+    public void ConfigurationProfileAuthorization_GuardsAnonymousUsers()
+    {
+        var meService = ReadRepositoryFile("sources/WebApp/Services/MeService.cs");
+
+        Assert.Matches(
+            @"public bool CanCreateConfigurationProfiles\(\)\s*=> IsAuthenticated\s*&& \(IsGlobalAdministrator",
+            meService);
+    }
+
+    [Fact]
     public void SteamAuthProvider_NotifiesWhenMeServiceCurrentUserChanges()
     {
         var meService = ReadRepositoryFile("sources/WebApp/Services/MeService.cs");

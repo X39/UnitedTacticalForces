@@ -183,10 +183,11 @@ public class MeService(IUserRepository userRepository)
            || HasClaim(Claims.ResourceBased.Server.All, Claims.ResourceBased.Server.View);
 
     public bool CanCreateConfigurationProfiles()
-        => IsGlobalAdministrator
-           || HasExactEmptyClaim(Claims.Creation.ConfigurationProfile)
-           || HasExactEmptyClaim(Claims.Administrative.Server)
-           || HasExactEmptyClaim(Claims.Administrative.Hosting);
+        => IsAuthenticated
+           && (IsGlobalAdministrator
+               || HasExactEmptyClaim(Claims.Creation.ConfigurationProfile)
+               || HasExactEmptyClaim(Claims.Administrative.Server)
+               || HasExactEmptyClaim(Claims.Administrative.Hosting));
 
     public bool CanAccessConfigurationProfiles()
         => CanCreateConfigurationProfiles()
