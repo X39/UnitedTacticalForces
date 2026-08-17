@@ -7,6 +7,7 @@ import {
   createSlotDraft,
   defaultScheduledForLocal,
   eventAuthoringService,
+  isGuid,
   normalizeArmaSide,
   parseEventObjectives,
   removeObjectiveBlock,
@@ -32,20 +33,25 @@ describe("event authoring model", () => {
     });
   });
 
+  it("accepts canonical .NET Guid event identifiers, including UUIDv7", () => {
+    expect(isGuid("01a0102f-3f75-7c4a-bd99-ed6273e83565")).toBe(true);
+    expect(isGuid("83D25DDD-9FF5-4D09-99AB-4F49D91A7C3F")).toBe(true);
+    expect(isGuid("01a0102f-3f75-7c4a-bd99-ed6273e8356")).toBe(false);
+    expect(isGuid("01a0102f-3f75-xc4a-bd99-ed6273e83565")).toBe(false);
+  });
+
   it("validates core event fields while allowing optional assets and slots", () => {
-    const schema = createEventFormSchema(
-      {
-        titleRequired: "title",
-        titleTooLong: "long",
-        briefingRequired: "briefing",
-        scheduleRequired: "schedule",
-        hostRequired: "host",
-        terrainRequired: "terrain",
-        modPackRequired: "modpack",
-        imageRequired: "image",
-        minimumInvalid: "minimum",
-      },
-    );
+    const schema = createEventFormSchema({
+      titleRequired: "title",
+      titleTooLong: "long",
+      briefingRequired: "briefing",
+      scheduleRequired: "schedule",
+      hostRequired: "host",
+      terrainRequired: "terrain",
+      modPackRequired: "modpack",
+      imageRequired: "image",
+      minimumInvalid: "minimum",
+    });
     const result = schema.safeParse({
       ...createEventForm(new Date(2026, 7, 14, 10, 30)),
       scheduledForLocal: "",

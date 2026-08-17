@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const eventId = "16979a3f-57bc-49ea-8f93-c22ecfbd6eb2";
+const eventId = "01a0102f-3f75-7c4a-bd99-ed6273e83565";
 const operatorId = "00000000-0000-0000-0000-000000000001";
 const hostId = "2fdd4802-e081-4baa-9120-f1873653a057";
 const assetId = "4a7e2d42-50b0-4a7d-a381-a4f20a1f5dc2";

@@ -35,6 +35,9 @@ describe("route manifest", () => {
   });
 
   it("matches constrained identifiers and aliases", () => {
+    expect(matchRoute("/command/events/01a0102f-3f75-7c4a-bd99-ed6273e83565")?.certified).toBe(
+      true,
+    );
     expect(matchRoute("/command/servers/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f")?.id).toBe("server");
     expect(matchRoute("/media/after-action-report")?.id).toBe("field-report");
     expect(matchRoute("/wiki/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f")?.certified).toBe(true);
