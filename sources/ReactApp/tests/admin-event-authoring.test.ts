@@ -32,7 +32,7 @@ describe("event authoring model", () => {
     });
   });
 
-  it("validates event and slot requirements with localized messages", () => {
+  it("validates core event fields while allowing optional assets and slots", () => {
     const schema = createEventFormSchema(
       {
         titleRequired: "title",
@@ -45,7 +45,6 @@ describe("event authoring model", () => {
         imageRequired: "image",
         minimumInvalid: "minimum",
       },
-      true,
     );
     const result = schema.safeParse({
       ...createEventForm(new Date(2026, 7, 14, 10, 30)),
@@ -54,17 +53,20 @@ describe("event authoring model", () => {
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues.map((issue) => issue.message)).toEqual(
-      expect.arrayContaining([
-        "title",
-        "briefing",
-        "schedule",
-        "host",
-        "terrain",
-        "modpack",
-        "image",
-        "minimum",
-      ]),
+      expect.arrayContaining(["title", "briefing", "schedule", "host", "minimum"]),
     );
+    expect(result.error?.issues.map((issue) => issue.message)).not.toEqual(
+      expect.arrayContaining(["terrain", "modpack", "image"]),
+    );
+
+    expect(
+      schema.safeParse({
+        ...createEventForm(new Date(2026, 7, 14, 10, 30)),
+        title: "Asset-free operation",
+        description: "Briefing",
+        hostedByFk: "2fdd4802-e081-4baa-9120-f1873653a057",
+      }).success,
+    ).toBe(true);
 
     const slot = { ...createSlotDraft(), group: " ", title: "" };
     expect(validateSlot(slot, { groupRequired: "group", titleRequired: "role" })).toEqual([
@@ -136,5 +138,42 @@ describe("event authoring model", () => {
     const [updateUrl] = fetchMock.mock.calls[1] as [URL, RequestInit];
     expect(updateUrl.pathname).toBe("/api/events/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f/update");
     expect(new ApiClient(configuration)).toBeInstanceOf(ApiClient);
+  });
+
+  it("serializes absent assets as null and explicit update clears", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ primaryKey: "83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    initializeApiClient(configuration);
+    const values = {
+      ...createEventForm(new Date(2026, 7, 14, 10, 30)),
+      title: "Asset-free operation",
+      description: "Briefing",
+      hostedByFk: "2fdd4802-e081-4baa-9120-f1873653a057",
+    };
+
+    await eventAuthoringService.create(values);
+    await eventAuthoringService.update("83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f", values);
+
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toMatchObject({
+      terrainFk: null,
+      modPackRevisionFk: null,
+      imageAssetFk: null,
+    });
+    expect(JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body))).toMatchObject({
+      terrainFk: null,
+      clearTerrain: true,
+      modPackRevisionFk: null,
+      clearModPackRevision: true,
+      imageAssetFk: null,
+      clearImageAsset: true,
+    });
   });
 });

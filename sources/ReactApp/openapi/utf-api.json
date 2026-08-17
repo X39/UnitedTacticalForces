@@ -14729,10 +14729,17 @@
             "description": "Provides a detailed textual explanation or summary of the event."
           },
           "terrainFk": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "References the unique identifier of the associated terrain in the system.",
-            "format": "int64"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "References the unique identifier of the associated terrain in the system.",
+                "format": "int64"
+              }
+            ]
           },
           "terrainVersionFk": {
             "oneOf": [
@@ -14781,9 +14788,16 @@
             ]
           },
           "imageAssetFk": {
-            "type": "string",
-            "description": "Gallery media asset used as event cover image.",
-            "format": "uuid"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gallery media asset used as event cover image.",
+                "format": "uuid"
+              }
+            ]
           },
           "scheduledFor": {
             "description": "Indicates the date and time when the event is scheduled to occur.",
@@ -14946,6 +14960,9 @@
               }
             ]
           },
+          "clearTerrain": {
+            "type": "boolean"
+          },
           "terrainVersionFk": {
             "oneOf": [
               {
@@ -14992,6 +15009,9 @@
               }
             ]
           },
+          "clearModPackRevision": {
+            "type": "boolean"
+          },
           "imageAssetFk": {
             "oneOf": [
               {
@@ -15003,6 +15023,9 @@
                 "format": "uuid"
               }
             ]
+          },
+          "clearImageAsset": {
+            "type": "boolean"
           },
           "scheduledFor": {
             "oneOf": [
@@ -15592,13 +15615,27 @@
             "description": "Provides a detailed textual explanation or summary of the event."
           },
           "terrainPrimaryKey": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "Represents the primary key of an entity within the context of the application's data model.\r\nThis property is used as a unique identifier for the associated record in the database.",
-            "format": "int64"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Represents the primary key of an entity within the context of the application's data model.\r\nThis property is used as a unique identifier for the associated record in the database.",
+                "format": "int64"
+              }
+            ]
           },
           "terrainGameIdentifier": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
           },
           "terrainVersionFk": {
             "oneOf": [
@@ -15775,13 +15812,27 @@
             "description": "Whether this modpack is a composition of multiple modpack revisions\r\nor not."
           },
           "imageAssetFk": {
-            "type": "string",
-            "description": "Gallery media asset used as event cover image.",
-            "format": "uuid"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gallery media asset used as event cover image.",
+                "format": "uuid"
+              }
+            ]
           },
           "imagePath": {
-            "type": "string",
-            "description": "API-relative render path for the event cover image."
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "API-relative render path for the event cover image."
+              }
+            ]
           },
           "scheduledForOriginal": {
             "description": "Represents the original scheduled date and time for the event before any modifications.",
@@ -19230,10 +19281,17 @@
             "description": "Provides a detailed textual explanation or summary of the event."
           },
           "terrainFk": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "References the unique identifier of the associated terrain in the system.",
-            "format": "int64"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "References the unique identifier of the associated terrain in the system.",
+                "format": "int64"
+              }
+            ]
           },
           "terrainVersionFk": {
             "oneOf": [
@@ -19282,13 +19340,27 @@
             ]
           },
           "imageAssetFk": {
-            "type": "string",
-            "description": "Gallery media asset used as event cover image.",
-            "format": "uuid"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gallery media asset used as event cover image.",
+                "format": "uuid"
+              }
+            ]
           },
           "imagePath": {
-            "type": "string",
-            "description": "API-relative render path for the event cover image."
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "API-relative render path for the event cover image."
+              }
+            ]
           },
           "scheduledForOriginal": {
             "description": "Represents the original scheduled date and time for the event before any modifications.",
@@ -21022,13 +21094,27 @@
             "description": "Whether this modpack is a composition of multiple modpack revisions\r\nor not."
           },
           "imageAssetFk": {
-            "type": "string",
-            "description": "Gallery media asset used as event cover image.",
-            "format": "uuid"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gallery media asset used as event cover image.",
+                "format": "uuid"
+              }
+            ]
           },
           "imagePath": {
-            "type": "string",
-            "description": "API-relative render path for the event cover image."
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "API-relative render path for the event cover image."
+              }
+            ]
           },
           "scheduledForOriginal": {
             "description": "The original scheduled date and time for the event.",

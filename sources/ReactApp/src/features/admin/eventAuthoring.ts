@@ -156,8 +156,8 @@ export function isGuid(value: string | undefined): value is string {
   );
 }
 
-export function createEventFormSchema(messages: EventValidationMessages, requireImage: boolean) {
-  const schema = z.object({
+export function createEventFormSchema(messages: EventValidationMessages) {
+  return z.object({
     title: z.string().trim().min(1, messages.titleRequired).max(1024, messages.titleTooLong),
     description: z.string().trim().min(1, messages.briefingRequired),
     scheduledForLocal: z.string().min(1, messages.scheduleRequired),
@@ -172,24 +172,6 @@ export function createEventFormSchema(messages: EventValidationMessages, require
     imagePath: z.string(),
     minimumAccepted: z.number().int().min(0, messages.minimumInvalid),
     isVisible: z.boolean(),
-  });
-  return schema.superRefine((value, context) => {
-    if (value.terrainFk == null)
-      context.addIssue({ code: "custom", path: ["terrainFk"], message: messages.terrainRequired });
-    if (value.scenarioRequired && value.scenarioFk == null)
-      context.addIssue({ code: "custom", path: ["scenarioFk"], message: messages.terrainRequired });
-    if (value.modPackRequired && value.modPackRevisionFk == null)
-      context.addIssue({
-        code: "custom",
-        path: ["modPackRevisionFk"],
-        message: messages.modPackRequired,
-      });
-    if (requireImage && !value.imageAssetFk)
-      context.addIssue({
-        code: "custom",
-        path: ["imageAssetFk"],
-        message: messages.imageRequired,
-      });
   });
 }
 
@@ -217,7 +199,7 @@ export function createEventForm(now = new Date()): EventFormValues {
     terrainGameIdentifier: "",
     scenarioFk: null,
     scenarioRequired: false,
-    modPackRequired: true,
+    modPackRequired: false,
     modPackRevisionFk: null,
     imageAssetFk: "",
     imagePath: "",
@@ -389,7 +371,7 @@ function normalizeEvent(event: FullEventDto): EventAuthoringRecord | undefined {
     description: event.description ?? "",
     terrainPrimaryKey: event.terrainPrimaryKey ?? null,
     terrainTitle: event.terrainTitle ?? "",
-    terrainGameIdentifier: "",
+    terrainGameIdentifier: event.terrainGameIdentifier ?? "",
     scenarioPrimaryKey: event.scenarioFk ?? null,
     scenarioTitle: event.scenarioTitle ?? "",
     modPackRevisionPrimaryKey: event.modPackRevisionPrimaryKey ?? null,
@@ -427,23 +409,36 @@ function normalizeSlot(slot: PlainEventSlotDto): EventSlotDraft {
 }
 
 function toCreationPayload(values: EventFormValues): EventCreationPayload {
-  if (values.terrainFk == null) throw new Error("Terrain is required.");
   return {
     title: values.title.trim(),
     description: values.description.trim(),
     scheduledFor: new Date(values.scheduledForLocal).toISOString(),
     hostedByFk: values.hostedByFk,
-    terrainFk: values.terrainFk,
+    terrainFk: values.terrainFk ?? null,
     scenarioFk: values.scenarioFk,
-    modPackRevisionFk: values.modPackRevisionFk,
-    imageAssetFk: values.imageAssetFk,
+    modPackRevisionFk: values.modPackRevisionFk ?? null,
+    imageAssetFk: values.imageAssetFk || null,
     minimumAccepted: values.minimumAccepted,
     isVisible: values.isVisible,
   };
 }
 
 function toUpdatePayload(values: EventFormValues): EventUpdate {
-  return toCreationPayload(values);
+  return {
+    title: values.title.trim(),
+    description: values.description.trim(),
+    scheduledFor: new Date(values.scheduledForLocal).toISOString(),
+    hostedByFk: values.hostedByFk,
+    terrainFk: values.terrainFk,
+    clearTerrain: values.terrainFk == null,
+    scenarioFk: values.scenarioFk,
+    modPackRevisionFk: values.modPackRevisionFk,
+    clearModPackRevision: values.modPackRevisionFk == null,
+    imageAssetFk: values.imageAssetFk || null,
+    clearImageAsset: !values.imageAssetFk,
+    minimumAccepted: values.minimumAccepted,
+    isVisible: values.isVisible,
+  };
 }
 
 function toSlotCreationPayload(slot: EventSlotDraft): EventSlotCreationPayload {

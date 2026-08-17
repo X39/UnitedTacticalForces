@@ -23,8 +23,8 @@ public record FullEventDto
     /// Represents the primary key of an entity within the context of the application's data model.
     /// This property is used as a unique identifier for the associated record in the database.
     /// </summary>
-    public long TerrainPrimaryKey { get; init; }
-    public string TerrainGameIdentifier { get; init; } = string.Empty;
+    public long? TerrainPrimaryKey { get; init; }
+    public string? TerrainGameIdentifier { get; init; }
     public Guid? TerrainVersionFk { get; init; }
     public Guid? ScenarioFk { get; init; }
     public string? ScenarioTitle { get; init; }
@@ -134,12 +134,12 @@ public record FullEventDto
     /// <summary>
     /// Gallery media asset used as event cover image.
     /// </summary>
-    public Guid ImageAssetFk { get; init; }
+    public Guid? ImageAssetFk { get; init; }
 
     /// <summary>
     /// API-relative render path for the event cover image.
     /// </summary>
-    public string ImagePath { get; init; } = string.Empty;
+    public string? ImagePath { get; init; }
 
     /// <summary>
     /// Represents the original scheduled date and time for the event before any modifications.

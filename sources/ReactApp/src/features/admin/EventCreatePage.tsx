@@ -62,7 +62,6 @@ export function Component() {
           imageRequired: t("React_EventAuthoring_ImageRequired"),
           minimumInvalid: t("React_EventAuthoring_MinimumInvalid"),
         },
-        true,
       ),
     [t],
   );
@@ -139,7 +138,6 @@ export function Component() {
         titleRequired: t("React_EventAuthoring_SlotTitleRequired"),
       }),
     );
-    if (!slots.length) errors.push(t("React_EventAuthoring_AtLeastOneSlot"));
     setSlotErrors([...new Set(errors)]);
     if (errors.length) {
       setStep(5);
@@ -172,16 +170,11 @@ export function Component() {
       case 2:
         return Boolean(watched.scheduledForLocal && watched.hostedByFk);
       case 3:
-        return Boolean(
-          watched.terrainFk &&
-          (!watched.scenarioRequired || watched.scenarioFk) &&
-          (!watched.modPackRequired || watched.modPackRevisionFk) &&
-          watched.imageAssetFk,
-        );
+        return true;
       case 4:
         return Boolean(watched.description?.trim());
       case 5:
-        return slots.length > 0 && slots.every((slot) => slot.group.trim() && slot.title.trim());
+        return slots.every((slot) => slot.group.trim() && slot.title.trim());
       default:
         return [1, 2, 3, 4, 5].every(isComplete);
     }
@@ -375,6 +368,26 @@ export function Component() {
                     form.setValue("modPackRevisionFk", null, { shouldDirty: true });
                   }}
                 />
+                {terrain && (
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setTerrain(null);
+                      setScenario(null);
+                      setModPack(null);
+                      form.setValue("terrainFk", null, { shouldDirty: true });
+                      form.setValue("terrainGameIdentifier", "", { shouldDirty: true });
+                      form.setValue("scenarioFk", null, { shouldDirty: true });
+                      form.setValue("scenarioRequired", false);
+                      form.setValue("modPackRevisionFk", null, { shouldDirty: true });
+                      form.setValue("modPackRequired", false);
+                    }}
+                  >
+                    {t("Remove")}
+                  </button>
+                )}
                 {watched.scenarioRequired && terrain && (
                   <EventEntityPicker<GameContentOption>
                     label="Scenario"
@@ -401,50 +414,60 @@ export function Component() {
                     }}
                   />
                 )}
-                {watched.modPackRequired && (
-                  <EventEntityPicker<FullModPackDefinition>
-                    label={t("Auto_ModPackRevision_d199668f")}
-                    placeholder={
-                      terrain
-                        ? t("Auto_SearchModPack_33ce4302")
-                        : t("React_EventAuthoring_SelectTerrainFirst")
+                <EventEntityPicker<FullModPackDefinition>
+                  label={t("Auto_ModPackRevision_d199668f")}
+                  placeholder={t("Auto_SearchModPack_33ce4302")}
+                  selected={modPack}
+                  disabled={busy}
+                  queryKey={`create-modpack-${terrain?.gameIdentifier ?? "all"}`}
+                  load={(search, signal) =>
+                    modPackService.list(
+                      {
+                        skip: 0,
+                        take: 20,
+                        myModPacksOnly: false,
+                        ...(search ? { search } : {}),
+                        ...(terrain?.gameIdentifier
+                          ? { gameIdentifier: terrain.gameIdentifier }
+                          : {}),
+                      },
+                      signal,
+                    )
+                  }
+                  getKey={(item) => String(item.primaryKey ?? item.title)}
+                  getLabel={selectedModPackLabel}
+                  loadingLabel={t("React_EventAuthoring_SelectorLoading")}
+                  emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
+                  errorLabel={t("React_EventAuthoring_SelectorError")}
+                  onSelect={(item) => {
+                    const revision = latestActiveRevision(item);
+                    if (revision?.primaryKey == null) {
+                      setNotice(t("React_EventAuthoring_ModPackNoRevision"));
+                      return;
                     }
-                    selected={modPack}
-                    disabled={busy || !terrain}
-                    queryKey={`create-modpack-${terrain?.gameIdentifier ?? "none"}`}
-                    load={(search, signal) =>
-                      modPackService.list(
-                        {
-                          skip: 0,
-                          take: 20,
-                          myModPacksOnly: false,
-                          ...(search ? { search } : {}),
-                          ...(terrain?.gameIdentifier
-                            ? { gameIdentifier: terrain.gameIdentifier }
-                            : {}),
-                        },
-                        signal,
-                      )
-                    }
-                    getKey={(item) => String(item.primaryKey ?? item.title)}
-                    getLabel={selectedModPackLabel}
-                    loadingLabel={t("React_EventAuthoring_SelectorLoading")}
-                    emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
-                    errorLabel={t("React_EventAuthoring_SelectorError")}
-                    onSelect={(item) => {
-                      const revision = latestActiveRevision(item);
-                      if (revision?.primaryKey == null) {
-                        setNotice(t("React_EventAuthoring_ModPackNoRevision"));
-                        return;
-                      }
-                      setNotice(undefined);
-                      setModPack(item);
-                      form.setValue("modPackRevisionFk", revision.primaryKey, {
+                    setNotice(undefined);
+                    setModPack(item);
+                    form.setValue("modPackRevisionFk", revision.primaryKey, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                />
+                {modPack && (
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setModPack(null);
+                      form.setValue("modPackRevisionFk", null, {
                         shouldDirty: true,
                         shouldValidate: true,
                       });
                     }}
-                  />
+                  >
+                    {t("Remove")}
+                  </button>
                 )}
               </div>
               <div className="event-authoring-image-grid">

@@ -17,10 +17,8 @@ public sealed class EventAuthoringModel
     [Required]
     public Guid? HostedByFk { get; set; }
 
-    [Required]
     public long? TerrainFk { get; set; }
 
-    [Required]
     public long? ModPackRevisionFk { get; set; }
 
     [Required]
@@ -71,7 +69,7 @@ public sealed class EventAuthoringModel
             ModPackRevisionFk = ModPackRevisionFk,
             MinimumAccepted   = MinimumAccepted,
             IsVisible         = IsVisible,
-            ImageAssetFk      = ImageAssetFk ?? default,
+            ImageAssetFk      = ImageAssetFk,
         };
     }
 
@@ -89,6 +87,9 @@ public sealed class EventAuthoringModel
             IsVisible         = IsVisible,
             ImageAssetFk      = ImageAssetFk,
         };
+        payload.AdditionalData["clearTerrain"]         = TerrainFk is null;
+        payload.AdditionalData["clearModPackRevision"] = ModPackRevisionFk is null;
+        payload.AdditionalData["clearImageAsset"]      = ImageAssetFk is null;
 
         return payload;
     }
@@ -103,16 +104,10 @@ public sealed class EventAuthoringModel
             errors.Add("Schedule is required.");
         if (HostedByFk is null)
             errors.Add("Host is required.");
-        if (TerrainFk is null)
-            errors.Add("Terrain is required.");
-        if (ModPackRevisionFk is null)
-            errors.Add("Mod pack revision is required.");
         if (MinimumAccepted is null or < 0)
             errors.Add("Minimum accepted must be zero or greater.");
         if (string.IsNullOrWhiteSpace(Description))
             errors.Add("Briefing is required.");
-        if (requireImage && ImageAssetFk is null)
-            errors.Add("Mission image is required.");
 
         return errors;
     }

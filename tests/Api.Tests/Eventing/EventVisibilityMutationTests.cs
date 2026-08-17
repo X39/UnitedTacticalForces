@@ -168,7 +168,7 @@ public class EventVisibilityMutationTests
     {
         dbContext.MediaAssets.AddRange(
             Api.Tests.MediaAssetTestData.Create(appEvent.Terrain!.ImageAssetFk!.Value),
-            Api.Tests.MediaAssetTestData.Create(appEvent.ImageAssetFk)
+            Api.Tests.MediaAssetTestData.Create(appEvent.ImageAssetFk!.Value)
         );
     }
 

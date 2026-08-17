@@ -22,7 +22,7 @@ public record EventCreationPayload
     /// <summary>
     /// References the unique identifier of the associated terrain in the system.
     /// </summary>
-    public long TerrainFk { get; init; }
+    public long? TerrainFk { get; init; }
     public Guid? TerrainVersionFk { get; init; }
     public Guid? ScenarioFk { get; init; }
     public Guid? ScenarioVersionFk { get; init; }
@@ -35,7 +35,7 @@ public record EventCreationPayload
     /// <summary>
     /// Gallery media asset used as event cover image.
     /// </summary>
-    public Guid ImageAssetFk { get; init; }
+    public Guid? ImageAssetFk { get; init; }
 
     /// <summary>
     /// Indicates the date and time when the event is scheduled to occur.

@@ -306,7 +306,7 @@ public sealed class MediaAssetService(
 
         var eventUsages = await apiDbContext.Events
             .AsNoTracking()
-            .Where(q => assetIds.Contains(q.ImageAssetFk))
+            .Where(q => q.ImageAssetFk.HasValue && assetIds.Contains(q.ImageAssetFk.Value))
             .Select(q => new
             {
                 q.PrimaryKey,
@@ -317,7 +317,7 @@ public sealed class MediaAssetService(
             .ConfigureAwait(false);
         foreach (var usage in eventUsages)
         {
-            usageByAsset[usage.ImageAssetFk].Add(new MediaAssetUsageDto
+            usageByAsset[usage.ImageAssetFk!.Value].Add(new MediaAssetUsageDto
             {
                 Domain      = "event",
                 DomainKey   = usage.PrimaryKey.ToString("D"),

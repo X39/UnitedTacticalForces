@@ -83,11 +83,13 @@ public class EventsController : ControllerBase
                         PrimaryKey                     = e.PrimaryKey,
                         Title                          = e.Title,
                         Description                    = e.Description,
-                        TerrainTitle                   = e.Terrain!.Title,
-                        ModPackDefinitionTitle         = e.ModPackRevision!.Definition!.Title,
-                        ModPackDefinitionIsComposition = e.ModPackRevision.Definition.IsComposition,
+                        TerrainTitle                   = e.Terrain == null ? string.Empty : e.Terrain.Title,
+                        ModPackDefinitionTitle         = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Definition!.Title,
+                        ModPackDefinitionIsComposition = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsComposition,
                         ImageAssetFk                   = e.ImageAssetFk,
-                        ImagePath                      = IMediaAssetService.CreateImagePath(e.ImageAssetFk),
+                        ImagePath                      = e.ImageAssetFk == null
+                            ? null
+                            : IMediaAssetService.CreateImagePath(e.ImageAssetFk.Value),
                         ScheduledForOriginal           = e.ScheduledForOriginal,
                         ScheduledFor                   = e.ScheduledFor,
                         TimeStampCreated               = e.TimeStampCreated,
@@ -96,7 +98,9 @@ public class EventsController : ControllerBase
                         MaybeCount                     = e.MaybeCount,
                         MinimumAccepted                = e.MinimumAccepted,
                         ModPackRevisionTimeStampDownloaded =
-                            e.ModPackRevision!.UserMetas!
+                            e.ModPackRevision == null
+                                ? null
+                                : e.ModPackRevision.UserMetas!
                                 .Where(meta => meta.UserFk == userId)
                                 .Select(meta => (Instant?)meta.TimeStampDownloaded)
                                 .OrderByDescending(timeStampDownloaded => timeStampDownloaded)
@@ -126,11 +130,13 @@ public class EventsController : ControllerBase
                         PrimaryKey                         = e.PrimaryKey,
                         Title                              = e.Title,
                         Description                        = e.Description,
-                        TerrainTitle                       = e.Terrain!.Title,
-                        ModPackDefinitionTitle             = e.ModPackRevision!.Definition!.Title,
-                        ModPackDefinitionIsComposition     = e.ModPackRevision.Definition.IsComposition,
+                        TerrainTitle                       = e.Terrain == null ? string.Empty : e.Terrain.Title,
+                        ModPackDefinitionTitle             = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Definition!.Title,
+                        ModPackDefinitionIsComposition     = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsComposition,
                         ImageAssetFk                       = e.ImageAssetFk,
-                        ImagePath                          = IMediaAssetService.CreateImagePath(e.ImageAssetFk),
+                        ImagePath                          = e.ImageAssetFk == null
+                            ? null
+                            : IMediaAssetService.CreateImagePath(e.ImageAssetFk.Value),
                         ScheduledForOriginal               = e.ScheduledForOriginal,
                         ScheduledFor                       = e.ScheduledFor,
                         TimeStampCreated                   = e.TimeStampCreated,
@@ -217,7 +223,9 @@ public class EventsController : ControllerBase
                     TerrainFk            = e.TerrainFk,
                     ModPackRevisionFk    = e.ModPackRevisionFk,
                     ImageAssetFk         = e.ImageAssetFk,
-                    ImagePath            = IMediaAssetService.CreateImagePath(e.ImageAssetFk),
+                    ImagePath            = e.ImageAssetFk == null
+                        ? null
+                        : IMediaAssetService.CreateImagePath(e.ImageAssetFk.Value),
                     ScheduledForOriginal = e.ScheduledForOriginal,
                     ScheduledFor         = e.ScheduledFor,
                     TimeStampCreated     = e.TimeStampCreated,
@@ -293,18 +301,18 @@ public class EventsController : ControllerBase
                         PrimaryKey                        = e.PrimaryKey,
                         Title                             = e.Title,
                         Description                       = e.Description,
-                        TerrainPrimaryKey                 = e.Terrain!.PrimaryKey,
-                        TerrainGameIdentifier             = e.Terrain.GameIdentifier,
+                        TerrainPrimaryKey                 = e.TerrainFk,
+                        TerrainGameIdentifier             = e.Terrain == null ? null : e.Terrain.GameIdentifier,
                         TerrainVersionFk                  = e.PinnedTerrainVersionFk,
                         ScenarioFk                        = e.ScenarioFk,
                         ScenarioTitle                     = e.Scenario == null ? null : e.Scenario.Title,
                         ScenarioVersionFk                 = e.PinnedScenarioVersionFk,
-                        TerrainTitle                      = e.Terrain!.Title,
-                        TerrainImageAssetFk               = e.Terrain!.ImageAssetFk,
-                        TerrainImagePath                  = e.Terrain!.ImageAssetFk == null
+                        TerrainTitle                      = e.Terrain == null ? string.Empty : e.Terrain.Title,
+                        TerrainImageAssetFk               = e.Terrain == null ? null : e.Terrain.ImageAssetFk,
+                        TerrainImagePath                  = e.Terrain == null || e.Terrain.ImageAssetFk == null
                             ? null
                             : IMediaAssetService.CreateImagePath(e.Terrain.ImageAssetFk.Value),
-                        TerrainIsActive                   = e.Terrain!.IsActive,
+                        TerrainIsActive                   = e.Terrain != null && e.Terrain.IsActive,
                         ModPackRevisionPrimaryKey         = e.ModPackRevisionFk,
                         ModPackRevisionTimeStampCreated   = e.ModPackRevision == null ? null : e.ModPackRevision.TimeStampCreated,
                         ModPackRevisionHtml               = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Html,
@@ -315,7 +323,9 @@ public class EventsController : ControllerBase
                         ModPackDefinitionIsActive         = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsActive,
                         ModPackDefinitionIsComposition    = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsComposition,
                         ImageAssetFk                      = e.ImageAssetFk,
-                        ImagePath                         = IMediaAssetService.CreateImagePath(e.ImageAssetFk),
+                        ImagePath                         = e.ImageAssetFk == null
+                            ? null
+                            : IMediaAssetService.CreateImagePath(e.ImageAssetFk.Value),
                         ScheduledForOriginal              = e.ScheduledForOriginal,
                         ScheduledFor                      = e.ScheduledFor,
                         TimeStampCreated                  = e.TimeStampCreated,
@@ -370,18 +380,18 @@ public class EventsController : ControllerBase
                         PrimaryKey                        = e.PrimaryKey,
                         Title                             = e.Title,
                         Description                       = e.Description,
-                        TerrainPrimaryKey                 = e.Terrain!.PrimaryKey,
-                        TerrainGameIdentifier             = e.Terrain.GameIdentifier,
+                        TerrainPrimaryKey                 = e.TerrainFk,
+                        TerrainGameIdentifier             = e.Terrain == null ? null : e.Terrain.GameIdentifier,
                         TerrainVersionFk                  = e.PinnedTerrainVersionFk,
                         ScenarioFk                        = e.ScenarioFk,
                         ScenarioTitle                     = e.Scenario == null ? null : e.Scenario.Title,
                         ScenarioVersionFk                 = e.PinnedScenarioVersionFk,
-                        TerrainTitle                      = e.Terrain!.Title,
-                        TerrainImageAssetFk               = e.Terrain!.ImageAssetFk,
-                        TerrainImagePath                  = e.Terrain!.ImageAssetFk == null
+                        TerrainTitle                      = e.Terrain == null ? string.Empty : e.Terrain.Title,
+                        TerrainImageAssetFk               = e.Terrain == null ? null : e.Terrain.ImageAssetFk,
+                        TerrainImagePath                  = e.Terrain == null || e.Terrain.ImageAssetFk == null
                             ? null
                             : IMediaAssetService.CreateImagePath(e.Terrain.ImageAssetFk.Value),
-                        TerrainIsActive                   = e.Terrain!.IsActive,
+                        TerrainIsActive                   = e.Terrain != null && e.Terrain.IsActive,
                         ModPackRevisionPrimaryKey         = e.ModPackRevisionFk,
                         ModPackRevisionTimeStampCreated   = e.ModPackRevision == null ? null : e.ModPackRevision.TimeStampCreated,
                         ModPackRevisionHtml               = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Html,
@@ -392,7 +402,9 @@ public class EventsController : ControllerBase
                         ModPackDefinitionIsActive         = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsActive,
                         ModPackDefinitionIsComposition    = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsComposition,
                         ImageAssetFk                      = e.ImageAssetFk,
-                        ImagePath                         = IMediaAssetService.CreateImagePath(e.ImageAssetFk),
+                        ImagePath                         = e.ImageAssetFk == null
+                            ? null
+                            : IMediaAssetService.CreateImagePath(e.ImageAssetFk.Value),
                         ScheduledForOriginal              = e.ScheduledForOriginal,
                         ScheduledFor                      = e.ScheduledFor,
                         TimeStampCreated                  = e.TimeStampCreated,
@@ -548,7 +560,8 @@ public class EventsController : ControllerBase
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
-        if (!await MediaAssetExistsAsync(payload.ImageAssetFk, cancellationToken).ConfigureAwait(false))
+        if (payload.ImageAssetFk is { } imageAssetFk
+            && !await MediaAssetExistsAsync(imageAssetFk, cancellationToken).ConfigureAwait(false))
             return BadRequest("Image asset does not exist.");
         if (!await HaveMatchingGameScopeAsync(
                 payload.TerrainFk,
@@ -590,7 +603,7 @@ public class EventsController : ControllerBase
 
         var entity = await _apiDbContext.Events.AddAsync(newEvent, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
-        await CreateOrUpdateDiscordEventAsync(newEvent, true)
+        await CreateOrUpdateDiscordEventAsync(newEvent, newEvent.ImageAssetFk is not null)
             .ConfigureAwait(false);
         await _updateStreamService.SendUpdateAsync(
                 $"{Constants.Routes.Events}/{newEvent.PrimaryKey}",
@@ -612,7 +625,9 @@ public class EventsController : ControllerBase
                 ScenarioVersionFk = entity.Entity.PinnedScenarioVersionFk,
                 ModPackRevisionFk    = entity.Entity.ModPackRevisionFk,
                 ImageAssetFk         = entity.Entity.ImageAssetFk,
-                ImagePath            = IMediaAssetService.CreateImagePath(entity.Entity.ImageAssetFk),
+                ImagePath            = entity.Entity.ImageAssetFk is { } createdImageAssetFk
+                    ? IMediaAssetService.CreateImagePath(createdImageAssetFk)
+                    : null,
                 ScheduledForOriginal = entity.Entity.ScheduledForOriginal,
                 ScheduledFor         = entity.Entity.ScheduledFor,
                 TimeStampCreated     = entity.Entity.TimeStampCreated,
@@ -663,11 +678,24 @@ public class EventsController : ControllerBase
             && !User.HasClaim(Claims.Administrative.All, string.Empty)
             && !User.HasClaim(Claims.Administrative.Event, string.Empty))
             return Forbid();
-        var terrainFk = payload.TerrainFk ?? existingEvent.TerrainFk;
-        var modPackRevisionFk = payload.ModPackRevisionFk ?? existingEvent.ModPackRevisionFk;
+        if ((payload.ClearTerrain && payload.TerrainFk is not null)
+            || (payload.ClearModPackRevision && payload.ModPackRevisionFk is not null)
+            || (payload.ClearImageAsset && payload.ImageAssetFk is not null))
+            return BadRequest("An event asset cannot be set and cleared in the same request.");
+
+        var terrainFk = payload.ClearTerrain ? null : payload.TerrainFk ?? existingEvent.TerrainFk;
+        var modPackRevisionFk = payload.ClearModPackRevision
+            ? null
+            : payload.ModPackRevisionFk ?? existingEvent.ModPackRevisionFk;
         var scenarioFk = payload.ScenarioFk ?? existingEvent.ScenarioFk;
-        var terrainVersionFk = payload.TerrainVersionFk ?? existingEvent.PinnedTerrainVersionFk;
-        var scenarioVersionFk = payload.ScenarioVersionFk ?? existingEvent.PinnedScenarioVersionFk;
+        var terrainVersionFk = payload.ClearTerrain
+            ? null
+            : payload.TerrainFk is not null && payload.TerrainFk != existingEvent.TerrainFk
+                ? payload.TerrainVersionFk
+                : payload.TerrainVersionFk ?? existingEvent.PinnedTerrainVersionFk;
+        var scenarioVersionFk = payload.ScenarioFk is not null && payload.ScenarioFk != existingEvent.ScenarioFk
+            ? payload.ScenarioVersionFk
+            : payload.ScenarioVersionFk ?? existingEvent.PinnedScenarioVersionFk;
         if (!await HaveMatchingGameScopeAsync(terrainFk, modPackRevisionFk, terrainVersionFk, scenarioFk,
                 scenarioVersionFk, cancellationToken).ConfigureAwait(false))
             return BadRequest("Terrain, Scenario, and mod pack selections must exist and belong to the same game.");
@@ -681,12 +709,15 @@ public class EventsController : ControllerBase
             existingEvent.ScheduledFor = payload.ScheduledFor.Value;
         if (payload.HostedByFk is not null)
             existingEvent.HostedByFk = payload.HostedByFk.Value;
-        if (payload.ModPackRevisionFk is not null)
-            existingEvent.ModPackRevisionFk = payload.ModPackRevisionFk.Value;
-        if (payload.TerrainFk is not null)
-            existingEvent.TerrainFk = payload.TerrainFk.Value;
-        if (payload.TerrainVersionFk is not null)
-            existingEvent.PinnedTerrainVersionFk = payload.TerrainVersionFk;
+        if (payload.ModPackRevisionFk is not null || payload.ClearModPackRevision)
+            existingEvent.ModPackRevisionFk = modPackRevisionFk;
+        if (payload.TerrainFk is not null || payload.ClearTerrain)
+        {
+            existingEvent.TerrainFk              = terrainFk;
+            existingEvent.PinnedTerrainVersionFk = terrainVersionFk;
+        }
+        else if (payload.TerrainVersionFk is not null)
+            existingEvent.PinnedTerrainVersionFk = terrainVersionFk;
         if (payload.ScenarioFk is not null)
             existingEvent.ScenarioFk = payload.ScenarioFk;
         if (payload.ScenarioVersionFk is not null)
@@ -695,7 +726,12 @@ public class EventsController : ControllerBase
             existingEvent.MinimumAccepted = payload.MinimumAccepted.Value;
         if (payload.IsVisible is not null)
             existingEvent.IsVisible = payload.IsVisible.Value;
-        if (payload.ImageAssetFk is not null && payload.ImageAssetFk != existingEvent.ImageAssetFk)
+        if (payload.ClearImageAsset && existingEvent.ImageAssetFk is not null)
+        {
+            existingEvent.ImageAssetFk = null;
+            imageChanged               = true;
+        }
+        else if (payload.ImageAssetFk is not null && payload.ImageAssetFk != existingEvent.ImageAssetFk)
         {
             if (!await MediaAssetExistsAsync(payload.ImageAssetFk.Value, cancellationToken).ConfigureAwait(false))
                 return BadRequest("Image asset does not exist.");
@@ -719,7 +755,9 @@ public class EventsController : ControllerBase
                     MinimumAccepted   = existingEvent.MinimumAccepted,
                     IsVisible         = existingEvent.IsVisible,
                     ImageAssetFk      = imageChanged ? existingEvent.ImageAssetFk : null,
-                    ImagePath         = imageChanged ? IMediaAssetService.CreateImagePath(existingEvent.ImageAssetFk) : null,
+                    ImagePath         = imageChanged && existingEvent.ImageAssetFk is { } updatedImageAssetFk
+                        ? IMediaAssetService.CreateImagePath(updatedImageAssetFk)
+                        : null,
                     EventId           = existingEvent.PrimaryKey,
                 }
             )
@@ -834,21 +872,31 @@ public class EventsController : ControllerBase
                .ConfigureAwait(false);
 
     private async Task<bool> HaveMatchingGameScopeAsync(
-        long terrainFk,
+        long? terrainFk,
         long? modPackRevisionFk,
         Guid? terrainVersionFk,
         Guid? scenarioFk,
         Guid? scenarioVersionFk,
         CancellationToken cancellationToken)
     {
-        var terrainGameIdentifier = await _apiDbContext.Terrains
-            .AsNoTracking()
-            .Where(q => q.PrimaryKey == terrainFk)
-            .Select(q => q.GameIdentifier)
-            .SingleOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        if (terrainGameIdentifier is null)
+        var gameIdentifiers = new List<string>(3);
+        if (terrainFk is { } selectedTerrain)
+        {
+            var terrainGameIdentifier = await _apiDbContext.Terrains
+                .AsNoTracking()
+                .Where(q => q.PrimaryKey == selectedTerrain)
+                .Select(q => q.GameIdentifier)
+                .SingleOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (terrainGameIdentifier is null)
+                return false;
+            gameIdentifiers.Add(terrainGameIdentifier);
+        }
+        else if (terrainVersionFk is not null)
+        {
             return false;
+        }
+
         if (modPackRevisionFk is { } selectedModPackRevision)
         {
             var modPackGameIdentifier = await _apiDbContext.ModPackRevisions
@@ -857,24 +905,44 @@ public class EventsController : ControllerBase
                 .Select(q => q.Definition!.GameIdentifier)
                 .SingleOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
-            if (!string.Equals(terrainGameIdentifier, modPackGameIdentifier, StringComparison.Ordinal)) return false;
+            if (modPackGameIdentifier is null)
+                return false;
+            gameIdentifiers.Add(modPackGameIdentifier);
         }
         if (terrainVersionFk is { } terrainVersion
-            && !await _apiDbContext.TerrainVersions.AnyAsync(q => q.PrimaryKey == terrainVersion && q.TerrainFk == terrainFk, cancellationToken))
+            && !await _apiDbContext.TerrainVersions.AnyAsync(
+                q => q.PrimaryKey == terrainVersion && q.TerrainFk == terrainFk,
+                cancellationToken))
             return false;
-        if (scenarioFk is not { } selectedScenario) return scenarioVersionFk is null;
-        var scenarioGame = await _apiDbContext.Scenarios.Where(q => q.PrimaryKey == selectedScenario)
-            .Select(q => q.GameIdentifier).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-        if (!string.Equals(terrainGameIdentifier, scenarioGame, StringComparison.Ordinal)) return false;
-        return scenarioVersionFk is not { } selectedVersion
-               || await _apiDbContext.ScenarioVersions.AnyAsync(
-                   q => q.PrimaryKey == selectedVersion && q.ScenarioFk == selectedScenario, cancellationToken);
+        if (scenarioFk is { } selectedScenario)
+        {
+            var scenarioGame = await _apiDbContext.Scenarios
+                .AsNoTracking()
+                .Where(q => q.PrimaryKey == selectedScenario)
+                .Select(q => q.GameIdentifier)
+                .SingleOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (scenarioGame is null)
+                return false;
+            gameIdentifiers.Add(scenarioGame);
+            if (scenarioVersionFk is { } selectedVersion
+                && !await _apiDbContext.ScenarioVersions.AnyAsync(
+                    q => q.PrimaryKey == selectedVersion && q.ScenarioFk == selectedScenario,
+                    cancellationToken))
+                return false;
+        }
+        else if (scenarioVersionFk is not null)
+        {
+            return false;
+        }
+
+        return gameIdentifiers.Distinct(StringComparer.Ordinal).Take(2).Count() <= 1;
     }
 
     private async Task CreateOrUpdateDiscordEventAsync(Event appEvent, bool imageChanged)
     {
-        var coverImageBytes = imageChanged
-            ? await ReadEventCoverImageBytesAsync(appEvent.ImageAssetFk).ConfigureAwait(false)
+        var coverImageBytes = imageChanged && appEvent.ImageAssetFk is { } imageAssetFk
+            ? await ReadEventCoverImageBytesAsync(imageAssetFk).ConfigureAwait(false)
             : null;
 
         await (_discordBot?.WithDiscordAsync(async client =>
@@ -903,8 +971,10 @@ public class EventsController : ControllerBase
                                            properties.EndTime   = scheduledEnd;
                                        }
 
-                                       if (coverImageBytes is { Length: > 0 })
-                                           properties.CoverImage = new Image(new MemoryStream(coverImageBytes));
+                                       if (imageChanged)
+                                           properties.CoverImage = coverImageBytes is { Length: > 0 }
+                                               ? new Image(new MemoryStream(coverImageBytes))
+                                               : null;
                                    }
                                );
                            }

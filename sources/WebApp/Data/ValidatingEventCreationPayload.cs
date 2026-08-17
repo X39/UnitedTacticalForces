@@ -18,10 +18,8 @@ public sealed class ValidatingEventCreationPayload
 
     public sealed class Part2Impl
     {
-        [Required]
         public long? ModPackRevisionFk { get; set; }
 
-        [Required]
         public long? TerrainFk { get; set; }
     }
 
@@ -53,7 +51,7 @@ public sealed class ValidatingEventCreationPayload
         {
             Description       = payload.Part3.Description,
             HostedByFk        = payload.Part4.HostedByFk,
-            ImageAssetFk      = payload.Part1.ImageAssetFk ?? default,
+            ImageAssetFk      = payload.Part1.ImageAssetFk,
             IsVisible         = payload.Part4.IsVisible,
             MinimumAccepted   = payload.Part4.MinimumAccepted,
             ModPackRevisionFk = payload.Part2.ModPackRevisionFk,

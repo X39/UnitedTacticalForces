@@ -83,8 +83,11 @@ public class EventAuthoringBoundaryTests
         AssertContains(source, "public Guid? ImageAssetFk", file, "media asset image reference", failures);
         AssertContains(source, "public string? ImagePath", file, "computed image render path", failures);
         AssertContains(source, "ImageAssetFk      = eventItem.ImageAssetFk", file, "media asset image reference", failures);
-        AssertContains(source, "ImageAssetFk      = ImageAssetFk ?? default", file, "creation media asset payload", failures);
+        AssertContains(source, "ImageAssetFk      = ImageAssetFk", file, "creation media asset payload", failures);
         AssertContains(source, "ImageAssetFk      = ImageAssetFk", file, "update media asset payload", failures);
+        AssertContains(source, "payload.AdditionalData[\"clearTerrain\"]", file, "explicit terrain clear", failures);
+        AssertContains(source, "payload.AdditionalData[\"clearModPackRevision\"]", file, "explicit mod pack clear", failures);
+        AssertContains(source, "payload.AdditionalData[\"clearImageAsset\"]", file, "explicit image clear", failures);
         AssertDoesNotContain(source, "ImageMimeType", file, "raw image field removal marker", failures);
         AssertDoesNotContain(source, "byte[]", file, "raw image field removal marker", failures);
         AssertDoesNotContain(source, "OwnerFk", file, "server-owned field absence marker", failures);

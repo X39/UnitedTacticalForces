@@ -613,7 +613,9 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
             TerrainFk            = e.TerrainFk,
             ModPackRevisionFk    = e.ModPackRevisionFk,
             ImageAssetFk         = e.ImageAssetFk,
-            ImagePath            = IMediaAssetService.CreateImagePath(e.ImageAssetFk),
+            ImagePath            = e.ImageAssetFk is { } imageAssetFk
+                ? IMediaAssetService.CreateImagePath(imageAssetFk)
+                : null,
             ScheduledForOriginal = e.ScheduledForOriginal,
             ScheduledFor         = e.ScheduledFor,
             TimeStampCreated     = e.TimeStampCreated,
@@ -636,11 +638,13 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
             PrimaryKey                         = e.PrimaryKey,
             Title                              = e.Title,
             Description                        = e.Description,
-            TerrainTitle                       = e.Terrain!.Title,
-            ModPackDefinitionTitle             = e.ModPackRevision!.Definition!.Title,
-            ModPackDefinitionIsComposition     = e.ModPackRevision.Definition.IsComposition,
+            TerrainTitle                       = e.Terrain?.Title ?? string.Empty,
+            ModPackDefinitionTitle             = e.ModPackRevision?.Definition?.Title ?? string.Empty,
+            ModPackDefinitionIsComposition     = e.ModPackRevision?.Definition?.IsComposition ?? false,
             ImageAssetFk                       = e.ImageAssetFk,
-            ImagePath                          = IMediaAssetService.CreateImagePath(e.ImageAssetFk),
+            ImagePath                          = e.ImageAssetFk is { } imageAssetFk
+                ? IMediaAssetService.CreateImagePath(imageAssetFk)
+                : null,
             ScheduledForOriginal               = e.ScheduledForOriginal,
             ScheduledFor                       = e.ScheduledFor,
             TimeStampCreated                   = e.TimeStampCreated,
@@ -648,7 +652,9 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
             RejectedCount                      = e.RejectedCount,
             MaybeCount                         = e.MaybeCount,
             MinimumAccepted                    = e.MinimumAccepted,
-            ModPackRevisionTimeStampDownloaded = e.ModPackRevision.UserMetas!
+            ModPackRevisionTimeStampDownloaded = e.ModPackRevision == null
+                ? null
+                : e.ModPackRevision.UserMetas!
                 .Where(meta => meta.UserFk == userId)
                 .Select(meta => (Instant?)meta.TimeStampDownloaded)
                 .OrderByDescending(timeStampDownloaded => timeStampDownloaded)

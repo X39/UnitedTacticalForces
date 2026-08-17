@@ -64,7 +64,7 @@ public class Event
     /// `Terrain`.
     /// The value should contain the primary key of the related `Terrain`
     /// entity.
-    public long TerrainFk { get; set; }
+    public long? TerrainFk { get; set; }
 
     [ForeignKey(nameof(PinnedTerrainVersionFk))]
     [DeleteBehavior(DeleteBehavior.SetNull)]
@@ -108,7 +108,7 @@ public class Event
     /// <summary>
     /// Foreign key to <see cref="ImageAsset"/>.
     /// </summary>
-    public Guid ImageAssetFk { get; set; }
+    public Guid? ImageAssetFk { get; set; }
 
     /// Represents the original scheduled date and time for an event.
     /// This property captures the event's planned schedule without modifications

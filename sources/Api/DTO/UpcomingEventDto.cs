@@ -63,12 +63,12 @@ public record UpcomingEventDto
     /// <summary>
     /// Gallery media asset used as event cover image.
     /// </summary>
-    public Guid ImageAssetFk { get; init; }
+    public Guid? ImageAssetFk { get; init; }
 
     /// <summary>
     /// API-relative render path for the event cover image.
     /// </summary>
-    public string ImagePath { get; init; } = string.Empty;
+    public string? ImagePath { get; init; }
 
     /// <summary>
     /// The original scheduled date and time for the event.

@@ -17,6 +17,7 @@ public record EventUpdate
     /// References the unique identifier of the associated terrain in the system.
     /// </summary>
     public long? TerrainFk { get; init; }
+    public bool ClearTerrain { get; init; }
     public Guid? TerrainVersionFk { get; init; }
     public Guid? ScenarioFk { get; init; }
     public Guid? ScenarioVersionFk { get; init; }
@@ -25,11 +26,13 @@ public record EventUpdate
     /// Represents a reference to the associated mod pack revision.
     /// </summary>
     public long? ModPackRevisionFk { get; init; }
+    public bool ClearModPackRevision { get; init; }
 
     /// <summary>
     /// Gallery media asset used as event cover image.
     /// </summary>
     public Guid? ImageAssetFk { get; init; }
+    public bool ClearImageAsset { get; init; }
 
     /// <summary>
     /// Indicates the date and time when the event is scheduled to occur.

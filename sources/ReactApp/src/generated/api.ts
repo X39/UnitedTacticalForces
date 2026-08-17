@@ -6208,20 +6208,12 @@ export interface components {
             title?: string;
             /** @description Provides a detailed textual explanation or summary of the event. */
             description?: string;
-            /**
-             * Format: int64
-             * @description References the unique identifier of the associated terrain in the system.
-             */
-            terrainFk?: number;
+            terrainFk?: null | number;
             terrainVersionFk?: null | string;
             scenarioFk?: null | string;
             scenarioVersionFk?: null | string;
             modPackRevisionFk?: null | number;
-            /**
-             * Format: uuid
-             * @description Gallery media asset used as event cover image.
-             */
-            imageAssetFk?: string;
+            imageAssetFk?: null | string;
             /** @description Indicates the date and time when the event is scheduled to occur. */
             scheduledFor?: components["schemas"]["Instant"];
             /** @description Indicates whether the event is visible to users. */
@@ -6266,11 +6258,14 @@ export interface components {
             title?: null | string;
             description?: null | string;
             terrainFk?: null | number;
+            clearTerrain?: boolean;
             terrainVersionFk?: null | string;
             scenarioFk?: null | string;
             scenarioVersionFk?: null | string;
             modPackRevisionFk?: null | number;
+            clearModPackRevision?: boolean;
             imageAssetFk?: null | string;
+            clearImageAsset?: boolean;
             scheduledFor?: null | components["schemas"]["Instant"];
             isVisible?: null | boolean;
             minimumAccepted?: null | number;
@@ -6397,13 +6392,8 @@ export interface components {
             title?: string;
             /** @description Provides a detailed textual explanation or summary of the event. */
             description?: string;
-            /**
-             * Format: int64
-             * @description Represents the primary key of an entity within the context of the application's data model.
-             *     This property is used as a unique identifier for the associated record in the database.
-             */
-            terrainPrimaryKey?: number;
-            terrainGameIdentifier?: string;
+            terrainPrimaryKey?: null | number;
+            terrainGameIdentifier?: null | string;
             terrainVersionFk?: null | string;
             scenarioFk?: null | string;
             scenarioTitle?: null | string;
@@ -6433,13 +6423,8 @@ export interface components {
              *     or not.
              */
             modPackDefinitionIsComposition?: boolean;
-            /**
-             * Format: uuid
-             * @description Gallery media asset used as event cover image.
-             */
-            imageAssetFk?: string;
-            /** @description API-relative render path for the event cover image. */
-            imagePath?: string;
+            imageAssetFk?: null | string;
+            imagePath?: null | string;
             /** @description Represents the original scheduled date and time for the event before any modifications. */
             scheduledForOriginal?: components["schemas"]["Instant"];
             /** @description Indicates the date and time when the event is scheduled to occur. */
@@ -7350,22 +7335,13 @@ export interface components {
             title?: string;
             /** @description Provides a detailed textual explanation or summary of the event. */
             description?: string;
-            /**
-             * Format: int64
-             * @description References the unique identifier of the associated terrain in the system.
-             */
-            terrainFk?: number;
+            terrainFk?: null | number;
             terrainVersionFk?: null | string;
             scenarioFk?: null | string;
             scenarioVersionFk?: null | string;
             modPackRevisionFk?: null | number;
-            /**
-             * Format: uuid
-             * @description Gallery media asset used as event cover image.
-             */
-            imageAssetFk?: string;
-            /** @description API-relative render path for the event cover image. */
-            imagePath?: string;
+            imageAssetFk?: null | string;
+            imagePath?: null | string;
             /** @description Represents the original scheduled date and time for the event before any modifications. */
             scheduledForOriginal?: components["schemas"]["Instant"];
             /** @description Indicates the date and time when the event is scheduled to occur. */
@@ -7954,13 +7930,8 @@ export interface components {
              *     or not.
              */
             modPackDefinitionIsComposition?: boolean;
-            /**
-             * Format: uuid
-             * @description Gallery media asset used as event cover image.
-             */
-            imageAssetFk?: string;
-            /** @description API-relative render path for the event cover image. */
-            imagePath?: string;
+            imageAssetFk?: null | string;
+            imagePath?: null | string;
             /** @description The original scheduled date and time for the event. */
             scheduledForOriginal?: components["schemas"]["Instant"];
             /** @description Specifies the scheduled date and time when the event is set to occur. */

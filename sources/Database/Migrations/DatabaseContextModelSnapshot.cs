@@ -1300,7 +1300,7 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Guid>("HostedByFk")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("ImageAssetFk")
+                    b.Property<Guid?>("ImageAssetFk")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsVisible")
@@ -1336,7 +1336,7 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Instant>("ScheduledForOriginal")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("TerrainFk")
+                    b.Property<long?>("TerrainFk")
                         .HasColumnType("bigint");
 
                     b.Property<Instant>("TimeStampCreated")
@@ -4212,8 +4212,7 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.HasOne("X39.UnitedTacticalForces.Database.Media.MediaAsset", "ImageAsset")
                         .WithMany()
                         .HasForeignKey("ImageAssetFk")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackRevision", "ModPackRevision")
                         .WithMany()
@@ -4242,9 +4241,7 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.HasOne("X39.UnitedTacticalForces.Database.Core.Terrain", "Terrain")
                         .WithMany()
-                        .HasForeignKey("TerrainFk")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("TerrainFk");
 
                     b.Navigation("HostedBy");
 

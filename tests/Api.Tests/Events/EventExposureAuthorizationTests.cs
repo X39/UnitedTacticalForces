@@ -270,8 +270,8 @@ public class EventExposureAuthorizationTests
         dbContext.Users.AddRange(host, participant, admin);
         dbContext.MediaAssets.AddRange(
             Api.Tests.MediaAssetTestData.Create(terrainImageAssetId),
-            Api.Tests.MediaAssetTestData.Create(hiddenEvent.ImageAssetFk),
-            Api.Tests.MediaAssetTestData.Create(visibleEvent.ImageAssetFk)
+            Api.Tests.MediaAssetTestData.Create(hiddenEvent.ImageAssetFk!.Value),
+            Api.Tests.MediaAssetTestData.Create(visibleEvent.ImageAssetFk!.Value)
         );
         dbContext.Terrains.Add(terrain);
         dbContext.ModPackDefinitions.Add(modPackDefinition);
