@@ -25,6 +25,31 @@ namespace Api.Tests.Eventing;
 public class EventOptionalAssetsTests
 {
     [Fact]
+    public async Task CreateEvent_PublicVisibilityPersistsAndIsExposedToAnonymousUpcomingQuery()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var dbContext = await CreateDbContextAsync(connection);
+        var host = CreateUser("event-host");
+        dbContext.Users.Add(host);
+        await dbContext.SaveChangesAsync();
+
+        var createResult = await CreateController(dbContext, host)
+            .CreateEventAsync(CreatePayload(host.PrimaryKey) with { IsVisible = true }, default);
+        var created = Assert.IsType<PlainEventDto>(Assert.IsType<OkObjectResult>(createResult).Value);
+
+        Assert.True(await dbContext.Events
+            .Where(q => q.PrimaryKey == created.PrimaryKey)
+            .Select(q => q.IsVisible)
+            .SingleAsync());
+        dbContext.ChangeTracker.Clear();
+
+        var upcomingResult = await CreateAnonymousController(dbContext).GetUpcomingEventsAsync(default);
+        var upcoming = Assert.IsType<UpcomingEventDto[]>(Assert.IsType<OkObjectResult>(upcomingResult).Value);
+        Assert.Contains(upcoming, q => q.PrimaryKey == created.PrimaryKey);
+    }
+
+    [Fact]
     public async Task CreateEvent_AllowsNoTerrainModPackImageOrSlots_AndProjectsNulls()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
@@ -190,6 +215,21 @@ public class EventOptionalAssetsTests
             ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext { User = CreatePrincipal(user) },
+            },
+        };
+
+    private static EventsController CreateAnonymousController(DatabaseContext dbContext)
+        => new(
+            NullLogger<EventsController>.Instance,
+            dbContext,
+            null,
+            new NoopUpdateStreamService(),
+            new BaseUrl("https://api.example/", "https://client.example/"),
+            new MediaAssetService(dbContext))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) },
             },
         };
 

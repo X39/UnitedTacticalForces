@@ -21,6 +21,7 @@ import {
   createEventForm,
   createEventFormSchema,
   eventAuthoringService,
+  normalizeEventVisibility,
   validateSlot,
   type EventFormValues,
   type EventPerson,
@@ -50,19 +51,17 @@ export function Component() {
   const defaults = useMemo(() => createEventForm(), []);
   const schema = useMemo(
     () =>
-      createEventFormSchema(
-        {
-          titleRequired: t("React_EventAuthoring_TitleRequired"),
-          titleTooLong: t("React_EventAuthoring_TitleTooLong"),
-          briefingRequired: t("React_EventAuthoring_BriefingRequired"),
-          scheduleRequired: t("React_EventAuthoring_ScheduleRequired"),
-          hostRequired: t("React_EventAuthoring_HostRequired"),
-          terrainRequired: t("React_EventAuthoring_TerrainRequired"),
-          modPackRequired: t("React_EventAuthoring_ModPackRequired"),
-          imageRequired: t("React_EventAuthoring_ImageRequired"),
-          minimumInvalid: t("React_EventAuthoring_MinimumInvalid"),
-        },
-      ),
+      createEventFormSchema({
+        titleRequired: t("React_EventAuthoring_TitleRequired"),
+        titleTooLong: t("React_EventAuthoring_TitleTooLong"),
+        briefingRequired: t("React_EventAuthoring_BriefingRequired"),
+        scheduleRequired: t("React_EventAuthoring_ScheduleRequired"),
+        hostRequired: t("React_EventAuthoring_HostRequired"),
+        terrainRequired: t("React_EventAuthoring_TerrainRequired"),
+        modPackRequired: t("React_EventAuthoring_ModPackRequired"),
+        imageRequired: t("React_EventAuthoring_ImageRequired"),
+        minimumInvalid: t("React_EventAuthoring_MinimumInvalid"),
+      }),
     [t],
   );
   const form = useForm<EventFormValues>({
@@ -264,9 +263,7 @@ export function Component() {
                 </label>
                 <label>
                   <span>{t("Visibility")}</span>
-                  <select
-                    {...form.register("isVisible", { setValueAs: (value) => value === "true" })}
-                  >
+                  <select {...form.register("isVisible", { setValueAs: normalizeEventVisibility })}>
                     <option value="true">{t("Public")}</option>
                     <option value="false">{t("Hidden")}</option>
                   </select>
@@ -562,9 +559,7 @@ export function Component() {
                 </label>
                 <label>
                   <span>{t("Visibility")}</span>
-                  <select
-                    {...form.register("isVisible", { setValueAs: (value) => value === "true" })}
-                  >
+                  <select {...form.register("isVisible", { setValueAs: normalizeEventVisibility })}>
                     <option value="true">{t("Public")}</option>
                     <option value="false">{t("Hidden")}</option>
                   </select>

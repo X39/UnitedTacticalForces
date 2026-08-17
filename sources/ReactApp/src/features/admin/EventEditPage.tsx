@@ -29,6 +29,7 @@ import {
   eventObjectiveIcons,
   eventToForm,
   isGuid,
+  normalizeEventVisibility,
   parseEventObjectives,
   validateSlot,
   type EventAuthoringSnapshot,
@@ -104,19 +105,17 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
   const eventId = snapshot.event.primaryKey;
   const schema = useMemo(
     () =>
-      createEventFormSchema(
-        {
-          titleRequired: t("React_EventAuthoring_TitleRequired"),
-          titleTooLong: t("React_EventAuthoring_TitleTooLong"),
-          briefingRequired: t("React_EventAuthoring_BriefingRequired"),
-          scheduleRequired: t("React_EventAuthoring_ScheduleRequired"),
-          hostRequired: t("React_EventAuthoring_HostRequired"),
-          terrainRequired: t("React_EventAuthoring_TerrainRequired"),
-          modPackRequired: t("React_EventAuthoring_ModPackRequired"),
-          imageRequired: t("React_EventAuthoring_ImageRequired"),
-          minimumInvalid: t("React_EventAuthoring_MinimumInvalid"),
-        },
-      ),
+      createEventFormSchema({
+        titleRequired: t("React_EventAuthoring_TitleRequired"),
+        titleTooLong: t("React_EventAuthoring_TitleTooLong"),
+        briefingRequired: t("React_EventAuthoring_BriefingRequired"),
+        scheduleRequired: t("React_EventAuthoring_ScheduleRequired"),
+        hostRequired: t("React_EventAuthoring_HostRequired"),
+        terrainRequired: t("React_EventAuthoring_TerrainRequired"),
+        modPackRequired: t("React_EventAuthoring_ModPackRequired"),
+        imageRequired: t("React_EventAuthoring_ImageRequired"),
+        minimumInvalid: t("React_EventAuthoring_MinimumInvalid"),
+      }),
     [t],
   );
   const form = useForm<EventFormValues>({
@@ -449,7 +448,7 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                 <label>
                   <span>{t("Visibility")}</span>
                   <select
-                    {...form.register("isVisible", { setValueAs: (value) => value === "true" })}
+                    {...form.register("isVisible", { setValueAs: normalizeEventVisibility })}
                     disabled={busy}
                   >
                     <option value="true">{t("Public")}</option>

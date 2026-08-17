@@ -8,6 +8,7 @@ import {
   defaultScheduledForLocal,
   eventAuthoringService,
   isGuid,
+  normalizeEventVisibility,
   normalizeArmaSide,
   parseEventObjectives,
   removeObjectiveBlock,
@@ -31,6 +32,13 @@ describe("event authoring model", () => {
       isVisible: true,
       minimumAccepted: 0,
     });
+  });
+
+  it("preserves public visibility for typed defaults and native select values", () => {
+    expect(normalizeEventVisibility(true)).toBe(true);
+    expect(normalizeEventVisibility("true")).toBe(true);
+    expect(normalizeEventVisibility(false)).toBe(false);
+    expect(normalizeEventVisibility("false")).toBe(false);
   });
 
   it("accepts canonical .NET Guid event identifiers, including UUIDv7", () => {
@@ -140,10 +148,34 @@ describe("event authoring model", () => {
       terrainFk: 3,
       modPackRevisionFk: 8,
       imageAssetFk: "4a7e2d42-50b0-4a7d-a381-a4f20a1f5dc2",
+      isVisible: true,
     });
     const [updateUrl] = fetchMock.mock.calls[1] as [URL, RequestInit];
     expect(updateUrl.pathname).toBe("/api/events/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f/update");
     expect(new ApiClient(configuration)).toBeInstanceOf(ApiClient);
+  });
+
+  it("sends hidden only when an author explicitly selects it", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ primaryKey: "83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    initializeApiClient(configuration);
+
+    await eventAuthoringService.create({
+      ...createEventForm(new Date(2026, 7, 14, 10, 30)),
+      title: "Hidden operation",
+      description: "Briefing",
+      hostedByFk: "2fdd4802-e081-4baa-9120-f1873653a057",
+      isVisible: normalizeEventVisibility("false"),
+    });
+
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toMatchObject({
+      isVisible: false,
+    });
   });
 
   it("serializes absent assets as null and explicit update clears", async () => {

@@ -155,6 +155,14 @@ export function isGuid(value: string | undefined): value is string {
   );
 }
 
+/**
+ * Wizard steps can remount with a typed React Hook Form default, whereas a
+ * native select emits strings. Keep both representations of the public state.
+ */
+export function normalizeEventVisibility(value: unknown): boolean {
+  return value === true || value === "true";
+}
+
 export function createEventFormSchema(messages: EventValidationMessages) {
   return z.object({
     title: z.string().trim().min(1, messages.titleRequired).max(1024, messages.titleTooLong),
