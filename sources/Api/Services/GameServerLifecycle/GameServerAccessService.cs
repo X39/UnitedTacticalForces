@@ -22,6 +22,8 @@ internal sealed class GameServerAccessService(
         Claims.ResourceBased.Server.Modify,
         Claims.ResourceBased.Server.ManageAccess,
         Claims.ResourceBased.Server.DeleteData,
+        Claims.ResourceBased.Server.ManageSecrets,
+        Claims.ResourceBased.Server.RevealSecrets,
     ];
 
     private static readonly IReadOnlyCollection<string> PermissionAllowlistView

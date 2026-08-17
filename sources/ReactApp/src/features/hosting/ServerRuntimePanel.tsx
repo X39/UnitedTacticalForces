@@ -18,15 +18,30 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
     queryKey: hostingQueryKeys.storageDemand(server.primaryKey),
     queryFn: ({ signal }) => hostingService.storageDemand(server.primaryKey, signal),
   });
+  const capability = capabilities.data?.find(
+    (item) => item.gameIdentifier.toLowerCase() === server.gameIdentifier.toLowerCase(),
+  );
   const modPacks = useQuery({
     queryKey: hostingQueryKeys.modPackOptions(server.primaryKey),
     queryFn: ({ signal }) => hostingService.modPackOptions(server.primaryKey, signal),
-    enabled: server.gameIdentifier.toLowerCase() === "arma3",
+    enabled: Boolean(capability) && capability?.supportsModPacks !== false,
+  });
+  const terrains = useQuery({
+    queryKey: hostingQueryKeys.terrains(server.gameIdentifier),
+    queryFn: ({ signal }) => hostingService.terrains(server.gameIdentifier, signal),
+    enabled: capability?.requiresTerrain === true,
+  });
+  const scenarios = useQuery({
+    queryKey: hostingQueryKeys.scenarios(server.gameIdentifier),
+    queryFn: ({ signal }) => hostingService.scenarios(server.gameIdentifier, signal),
+    enabled: capability?.requiresScenario === true,
   });
   const [profileId, setProfileId] = useState(server.runtimeProfileIdentifier);
   const [strategy, setStrategy] = useState(server.runtimeStorageStrategy);
   const [capacity, setCapacity] = useState<number | null>(server.externalStorageSizeGiB);
   const [modPackId, setModPackId] = useState<number | null>(server.selectedModPackDefinitionId);
+  const [terrainId, setTerrainId] = useState<number | null>(server.selectedTerrainId);
+  const [scenarioId, setScenarioId] = useState<string | null>(server.selectedScenarioId);
   const provider = useMemo(
     () =>
       capabilities.data
@@ -77,13 +92,19 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
       });
     },
   });
+  const contentMutation = useMutation({
+    mutationFn: () =>
+      hostingService.changeContentSelection(server.primaryKey, terrainId, scenarioId),
+    onSuccess: refresh,
+  });
   const error =
     capabilities.error?.message ??
     demand.error?.message ??
     modPacks.error?.message ??
     profileMutation.error?.message ??
     storageMutation.error?.message ??
-    modPackMutation.error?.message;
+    modPackMutation.error?.message ??
+    contentMutation.error?.message;
 
   return (
     <div className="next-hosting-runtime-stack">
@@ -277,7 +298,70 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
           )}
         </section>
       )}
-      {server.gameIdentifier.toLowerCase() === "arma3" && (
+      {(capability?.requiresTerrain || capability?.requiresScenario) && (
+        <section className="next-hosting-panel">
+          <header className="next-hosting-section-heading">
+            <div>
+              <span className="kicker">Content</span>
+              <h2>Terrain and scenario</h2>
+            </div>
+          </header>
+          {capability.requiresTerrain && (
+            <label className="field">
+              <span>{capability.terrainLabel ?? "Terrain"}</span>
+              <select
+                value={terrainId ?? ""}
+                disabled={!server.canModify || terrains.isLoading}
+                onChange={(event) =>
+                  setTerrainId(event.target.value ? Number(event.target.value) : null)
+                }
+              >
+                {(terrains.data ?? []).map((item) => (
+                  <option key={item.primaryKey} value={item.primaryKey}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {capability.requiresScenario && (
+            <label className="field">
+              <span>{capability.scenarioLabel ?? "Scenario"}</span>
+              <select
+                value={scenarioId ?? ""}
+                disabled={!server.canModify || scenarios.isLoading}
+                onChange={(event) => setScenarioId(event.target.value || null)}
+              >
+                {(scenarios.data ?? []).map((item) => (
+                  <option key={item.primaryKey} value={item.primaryKey}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <p className="next-hosting-muted">
+            Unpinned selections follow the latest compatible version.
+          </p>
+          {server.canModify && (
+            <div className="next-hosting-form-actions">
+              <button
+                className="button button--primary"
+                type="button"
+                disabled={
+                  contentMutation.isPending ||
+                  (terrainId === server.selectedTerrainId &&
+                    scenarioId === server.selectedScenarioId)
+                }
+                onClick={() => contentMutation.mutate()}
+              >
+                Save content selection
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+      {capability && capability.supportsModPacks !== false && (
         <section className="next-hosting-panel">
           <header className="next-hosting-section-heading">
             <div>

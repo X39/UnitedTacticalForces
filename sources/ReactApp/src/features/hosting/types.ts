@@ -22,10 +22,33 @@ export type GameServer = Omit<Required<Schema<"GameServerDto">>, "actions" | "de
 };
 export type ServerCapability = Omit<
   Required<Schema<"GameServerCapabilityDto">>,
-  "runtimeProviderProfiles" | "actions"
+  | "runtimeProviderProfiles"
+  | "actions"
+  | "requiresTerrain"
+  | "terrainLabel"
+  | "requiresScenario"
+  | "scenarioLabel"
+  | "supportsModPacks"
+  | "requiresModPack"
+  | "terrainSourceKinds"
+  | "modInstallerIdentifiers"
+  | "secrets"
+  | "defaultTerrainSourceIdentifier"
+  | "defaultScenarioSourceIdentifier"
 > & {
   runtimeProviderProfiles: RuntimeProvider[];
   actions: ServerAction[];
+  requiresTerrain?: boolean;
+  terrainLabel?: string;
+  requiresScenario?: boolean;
+  scenarioLabel?: string;
+  supportsModPacks?: boolean;
+  requiresModPack?: boolean;
+  terrainSourceKinds?: string[];
+  modInstallerIdentifiers?: string[];
+  secrets?: Required<Schema<"GameServerSecretCapabilityDto">>[];
+  defaultTerrainSourceIdentifier?: string | null;
+  defaultScenarioSourceIdentifier?: string | null;
 };
 export type ServerNotification = Omit<
   Required<Schema<"GameServerNotificationDto">>,
@@ -51,6 +74,41 @@ export type HostingFile = Required<Schema<"HostingFileDto">>;
 export type PreservationSelection = Required<Schema<"PreservationSelectionDto">>;
 
 export type HostingFileContext = "persistent" | "live";
+
+export interface GameContentVersionOption {
+  primaryKey: string;
+  versionNumber: number;
+  versionLabel: string;
+  sourceKind: string;
+  sourceIdentifier: string;
+}
+
+export interface GameContentOption {
+  primaryKey: string;
+  gameIdentifier: string;
+  title: string;
+  description?: string | null;
+  versions: GameContentVersionOption[];
+}
+
+export interface GameServerSecretStatus {
+  key: string;
+  displayName: string;
+  requiredForStart: boolean;
+  generated: boolean;
+  revealable: boolean;
+  externalProvider: boolean;
+  isConfigured: boolean;
+  version: number | null;
+  origin: string | null;
+  timeStampCreated: string | null;
+}
+
+export interface GameServerSecretValue {
+  key: string;
+  value: string;
+  version: number;
+}
 
 /**
  * The configuration controller predates the generated OpenAPI response annotations. Keep the

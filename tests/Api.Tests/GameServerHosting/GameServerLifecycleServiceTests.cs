@@ -36,7 +36,8 @@ public sealed class GameServerLifecycleServiceTests
             [new TestRuntimeProvider()],
             new TestStorageDemandService(),
             new HostingAuthorizationService(store.DbContext),
-            new HostingAuditWriter());
+            new HostingAuditWriter(),
+            new TestGameServerSecretService());
 
         var server = await service.CreateAsync(
             new GameServerCreationPayload

@@ -8,6 +8,7 @@ using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.StorageDemand;
+using X39.UnitedTacticalForces.Api.Services.GameServerSecrets;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.Util.DependencyInjection.Attributes;
 
@@ -20,7 +21,8 @@ internal sealed class GameServerLifecycleService(
     IEnumerable<IRuntimeProvider> runtimeProviders,
     IStorageDemandService storageDemandService,
     IHostingAuthorizationService authorizationService,
-    IHostingAuditWriter auditWriter) : IGameServerLifecycleService
+    IHostingAuditWriter auditWriter,
+    IGameServerSecretService secretService) : IGameServerLifecycleService
 {
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
     public async Task<GameServer> CreateAsync(
@@ -64,6 +66,62 @@ internal sealed class GameServerLifecycleService(
             payload.ExternalStorageSizeGiB,
             profile,
             provider.Capabilities.Storage);
+        var selectedTerrainId = payload.TerrainId;
+        var selectedScenarioId = payload.ScenarioId;
+        if (selectedTerrainId is null
+            && capability.ContentCapabilities.DefaultTerrainSourceIdentifier is { } defaultTerrain)
+        {
+            selectedTerrainId = await dbContext.Terrains
+                .Where(q => q.GameIdentifier == capability.GameIdentifier
+                            && q.IsActive
+                            && q.Versions.Any(v => v.SourceIdentifier == defaultTerrain))
+                .Select(q => (long?)q.PrimaryKey)
+                .SingleOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        if (selectedScenarioId is null
+            && capability.ContentCapabilities.DefaultScenarioSourceIdentifier is { } defaultScenario)
+        {
+            selectedScenarioId = await dbContext.Scenarios
+                .Where(q => q.GameIdentifier == capability.GameIdentifier
+                            && q.IsActive
+                            && q.Versions.Any(v => v.SourceIdentifier == defaultScenario))
+                .Select(q => (Guid?)q.PrimaryKey)
+                .SingleOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        if (capability.ContentCapabilities.RequiresTerrain && selectedTerrainId is null)
+            throw new HostingValidationException($"A {capability.ContentCapabilities.TerrainLabel} is required.");
+        if (capability.ContentCapabilities.RequiresScenario && selectedScenarioId is null)
+            throw new HostingValidationException($"A {capability.ContentCapabilities.ScenarioLabel} is required.");
+        if (selectedTerrainId is { } terrainId)
+        {
+            var terrain = await dbContext.Terrains.AsNoTracking()
+                .SingleOrDefaultAsync(q => q.PrimaryKey == terrainId && q.IsActive, cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new HostingValidationException("The selected terrain is unavailable.");
+            if (!string.Equals(terrain.GameIdentifier, capability.GameIdentifier, StringComparison.OrdinalIgnoreCase))
+                throw new HostingValidationException("The selected terrain belongs to a different game.");
+            if (payload.TerrainVersionId is { } terrainVersionId
+                && !await dbContext.TerrainVersions.AnyAsync(
+                    q => q.PrimaryKey == terrainVersionId && q.TerrainFk == terrainId,
+                    cancellationToken).ConfigureAwait(false))
+                throw new HostingValidationException("The pinned terrain version is unavailable.");
+        }
+        if (selectedScenarioId is { } scenarioId)
+        {
+            var scenario = await dbContext.Scenarios.AsNoTracking()
+                .SingleOrDefaultAsync(q => q.PrimaryKey == scenarioId && q.IsActive, cancellationToken)
+                .ConfigureAwait(false)
+                ?? throw new HostingValidationException("The selected scenario is unavailable.");
+            if (!string.Equals(scenario.GameIdentifier, capability.GameIdentifier, StringComparison.OrdinalIgnoreCase))
+                throw new HostingValidationException("The selected scenario belongs to a different game.");
+            if (payload.ScenarioVersionId is { } scenarioVersionId
+                && !await dbContext.ScenarioVersions.AnyAsync(
+                    q => q.PrimaryKey == scenarioVersionId && q.ScenarioFk == scenarioId,
+                    cancellationToken).ConfigureAwait(false))
+                throw new HostingValidationException("The pinned scenario version is unavailable.");
+        }
         if (payload.ModPackDefinitionId is { } selectedModPackId)
         {
             var selectedModPack = await dbContext.ModPackDefinitions
@@ -80,7 +138,14 @@ internal sealed class GameServerLifecycleService(
             {
                 throw new HostingValidationException("The selected mod pack belongs to a different game.");
             }
+            if (payload.ModPackRevisionId is { } modPackRevisionId
+                && !await dbContext.ModPackRevisions.AnyAsync(
+                    q => q.PrimaryKey == modPackRevisionId && q.DefinitionFk == selectedModPackId,
+                    cancellationToken).ConfigureAwait(false))
+                throw new HostingValidationException("The pinned mod pack revision is unavailable.");
         }
+        else if (payload.ModPackRevisionId is not null)
+            throw new HostingValidationException("A pinned mod pack revision requires a selected mod pack.");
         if (payload.ConfigurationProfileId is null && payload.ConfigurationProfileRevisionId is not null)
             throw new HostingValidationException("A pinned configuration revision requires a selected profile.");
         if (payload.ConfigurationProfileId is { } selectedConfigurationProfileId)
@@ -159,6 +224,11 @@ internal sealed class GameServerLifecycleService(
             CurrentCostOwner         = costOwner,
             CurrentCostOwnerFk       = costOwner.PrimaryKey,
             SelectedModPackDefinitionFk = payload.ModPackDefinitionId,
+            PinnedModPackRevisionFk = payload.ModPackRevisionId,
+            SelectedTerrainFk = selectedTerrainId,
+            PinnedTerrainVersionFk = payload.TerrainVersionId,
+            SelectedScenarioFk = selectedScenarioId,
+            PinnedScenarioVersionFk = payload.ScenarioVersionId,
             SelectedConfigurationProfileFk = payload.ConfigurationProfileId,
             PinnedConfigurationProfileRevisionFk = payload.ConfigurationProfileRevisionId,
             IsLaunchDisabled         = payload.IsLaunchDisabled,
@@ -167,6 +237,7 @@ internal sealed class GameServerLifecycleService(
             TimeStampUpdated         = now,
         };
         dbContext.GameServers.Add(server);
+        secretService.EnsureGeneratedSecrets(server, capability, actorId, now);
         dbContext.GameServerCostOwnerAssignments.Add(new GameServerCostOwnerAssignment
         {
             PrimaryKey       = Guid.NewGuid(),
@@ -272,6 +343,7 @@ internal sealed class GameServerLifecycleService(
         GameServerDeployment deployment;
         if (kind is ELifecycleJobKind.Start)
         {
+            _ = await secretService.ResolveRequiredAsync(gameServerId, cancellationToken).ConfigureAwait(false);
             if (server.IsLaunchDisabled)
                 throw new HostingConflictException(server.LaunchDisabledReason ?? "Server launch is disabled.");
             if (server.CurrentCostOwner is null || server.CurrentCostOwner.IsFrozen)
@@ -834,6 +906,59 @@ internal sealed class GameServerLifecycleService(
             server.PrimaryKey,
             details: $"PreviousModPack={previous?.ToString() ?? "none"}; "
                      + $"ModPack={modPackDefinitionId?.ToString() ?? "none"}; AppliesTo=next-preparation-or-update");
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ChangeContentSelectionAsync(
+        Guid gameServerId,
+        long? terrainId,
+        Guid? terrainVersionId,
+        Guid? scenarioId,
+        Guid? scenarioVersionId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        if (!principal.TryGetUserId(out var actorId)
+            || !authorizationService.HasServerPermission(principal, gameServerId, Claims.ResourceBased.Server.Modify))
+            throw new HostingForbiddenException("Server Modify permission is required.");
+        var server = await dbContext.GameServers
+            .SingleOrDefaultAsync(q => q.PrimaryKey == gameServerId && !q.IsArchived, cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new HostingNotFoundException($"Game server {gameServerId} does not exist.");
+        var definition = gameDefinitions.Find(server.GameIdentifier)
+                         ?? throw new HostingValidationException("The server game is unavailable.");
+        if (definition.ContentCapabilities.RequiresTerrain && terrainId is null)
+            throw new HostingValidationException($"A {definition.ContentCapabilities.TerrainLabel} is required.");
+        if (definition.ContentCapabilities.RequiresScenario && scenarioId is null)
+            throw new HostingValidationException($"A {definition.ContentCapabilities.ScenarioLabel} is required.");
+        if (terrainId is { } selectedTerrain
+            && !await dbContext.Terrains.AnyAsync(q => q.PrimaryKey == selectedTerrain && q.IsActive
+                && q.GameIdentifier == server.GameIdentifier, cancellationToken).ConfigureAwait(false))
+            throw new HostingValidationException("The selected terrain is unavailable or incompatible.");
+        if (terrainVersionId is { } selectedTerrainVersion
+            && (terrainId is null || !await dbContext.TerrainVersions.AnyAsync(
+                q => q.PrimaryKey == selectedTerrainVersion && q.TerrainFk == terrainId,
+                cancellationToken).ConfigureAwait(false)))
+            throw new HostingValidationException("The pinned terrain version is unavailable.");
+        if (scenarioId is { } selectedScenario
+            && !await dbContext.Scenarios.AnyAsync(q => q.PrimaryKey == selectedScenario && q.IsActive
+                && q.GameIdentifier == server.GameIdentifier, cancellationToken).ConfigureAwait(false))
+            throw new HostingValidationException("The selected scenario is unavailable or incompatible.");
+        if (scenarioVersionId is { } selectedScenarioVersion
+            && (scenarioId is null || !await dbContext.ScenarioVersions.AnyAsync(
+                q => q.PrimaryKey == selectedScenarioVersion && q.ScenarioFk == scenarioId,
+                cancellationToken).ConfigureAwait(false)))
+            throw new HostingValidationException("The pinned scenario version is unavailable.");
+
+        server.SelectedTerrainFk = terrainId;
+        server.PinnedTerrainVersionFk = terrainVersionId;
+        server.SelectedScenarioFk = scenarioId;
+        server.PinnedScenarioVersionFk = scenarioVersionId;
+        server.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+        auditWriter.Add(dbContext, EHostingAuditEventKind.ServerUpdated, "Server content selection changed.",
+            actorId, server.PrimaryKey,
+            details: $"Terrain={terrainId?.ToString() ?? "none"}; TerrainVersion={terrainVersionId?.ToString() ?? "latest"}; "
+                     + $"Scenario={scenarioId?.ToString() ?? "none"}; ScenarioVersion={scenarioVersionId?.ToString() ?? "latest"}");
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

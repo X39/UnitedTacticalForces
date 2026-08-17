@@ -118,7 +118,8 @@ internal static class HostingTestData
             [new TestRuntimeProvider()],
             new TestStorageDemandService(),
             new HostingAuthorizationService(dbContext),
-            new HostingAuditWriter());
+            new HostingAuditWriter(),
+            new TestGameServerSecretService());
 
     public static GameServerProjectionService CreateProjectionService(
         DatabaseContext dbContext,

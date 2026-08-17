@@ -59,4 +59,10 @@ public sealed class GameServerDefinitionCatalog : IGameServerDefinitionCatalog
     }
 
     public IReadOnlyList<GameServerDefinition> GetDefinitions() => _definitions;
+
+    public GameServerDefinition? Find(string gameIdentifier)
+        => _definitions.FirstOrDefault(q => string.Equals(
+            q.GameIdentifier,
+            gameIdentifier,
+            StringComparison.OrdinalIgnoreCase));
 }

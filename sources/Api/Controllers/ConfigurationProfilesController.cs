@@ -34,7 +34,7 @@ public sealed class ConfigurationProfilesController(
                 .Select(q => new GameConfigurationDefinitionSetDto
                 {
                     GameIdentifier = q.GameIdentifier,
-                    Definitions = q.Definitions.OrderBy(d => d.Order).ToArray(),
+                    Definitions = q.Definitions.Where(d => !d.Sensitive).OrderBy(d => d.Order).ToArray(),
                 })
                 .ToArray(),
         });

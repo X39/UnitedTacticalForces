@@ -7,10 +7,23 @@ public interface IGameServerRepository
     Task<IReadOnlyList<GameServerCapabilityInfo>> GetCapabilitiesAsync(
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<GameContentOptionInfo>> GetTerrainOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<GameContentOptionInfo>> GetScenarioOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<GameServerNotificationInfo>> GetNotificationsAsync(
         CancellationToken cancellationToken = default);
 
     Task<GameServerInfo?> GetServerAsync(Guid serverId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<GameServerSecretInfo>> GetSecretsAsync(Guid serverId, CancellationToken cancellationToken = default);
+    Task SetSecretAsync(Guid serverId, string key, string value, CancellationToken cancellationToken = default);
+    Task RotateSecretAsync(Guid serverId, string key, CancellationToken cancellationToken = default);
+    Task<GameServerSecretValueInfo> RevealSecretAsync(Guid serverId, string key, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ConfigurationProfileOptionInfo>> GetConfigurationProfileOptionsAsync(
         string gameIdentifier,

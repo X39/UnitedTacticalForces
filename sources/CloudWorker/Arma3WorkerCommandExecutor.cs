@@ -89,6 +89,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                     "This worker image does not support the assigned game implementation.");
             }
             var payload = Arma3CommandPayload.Parse(command.Payload);
+            payload = AddSecretConfiguration(payload, command.Secrets);
             payload.ValidateAttribution(_connection, command);
             RememberPayloadSecrets(payload);
             return command.ActionIdentifier.Trim().ToLowerInvariant() switch
@@ -1016,6 +1017,27 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             if (sensitiveKeys.Contains(key))
                 RememberJsonSecrets(value);
         }
+    }
+
+    private Arma3CommandPayload AddSecretConfiguration(
+        Arma3CommandPayload payload,
+        IReadOnlyDictionary<string, string> secrets)
+    {
+        var configuration = payload.Command.Configuration.ToDictionary(q => q.Key, q => q.Value, StringComparer.Ordinal);
+        var mappings = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["join-password"] = "server/server.cfg:password",
+            ["admin-password"] = "server/server.cfg:passwordAdmin",
+            ["server-command-password"] = "server/server.cfg:serverCommandPassword",
+            ["battleye-rcon-password"] = "server/battleye/beserver.cfg:RConPassword",
+        };
+        foreach (var (secretKey, configurationKey) in mappings)
+        {
+            if (!secrets.TryGetValue(secretKey, out var value)) continue;
+            RememberDiagnosticSecret(value);
+            configuration[configurationKey] = JsonSerializer.SerializeToElement(value);
+        }
+        return payload with { Command = payload.Command with { Configuration = configuration } };
     }
 
     private void RememberJsonSecrets(JsonElement value)

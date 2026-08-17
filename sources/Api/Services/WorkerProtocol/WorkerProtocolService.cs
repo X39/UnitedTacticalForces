@@ -6,6 +6,7 @@ using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
+using X39.UnitedTacticalForces.Api.Services.GameServerSecrets;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 using X39.Util.DependencyInjection.Attributes;
@@ -17,6 +18,7 @@ internal sealed class WorkerProtocolService(
     DatabaseContext dbContext,
     IWorkerCredentialService credentialService,
     IHostingAuditWriter auditWriter,
+    IGameServerSecretService secretService,
     IOptions<LifecycleWorkerOptions> options) : IWorkerProtocolService
 {
     private static readonly JsonSerializerOptions CommandJsonOptions = new(JsonSerializerDefaults.Web);
@@ -31,6 +33,10 @@ internal sealed class WorkerProtocolService(
         var identity = request.Identity.Trim();
         if (request.DeploymentId == Guid.Empty || string.IsNullOrWhiteSpace(identity) || identity.Length > 256)
             throw new WorkerProtocolValidationException("A deployment id and bounded worker identity are required.");
+        if (request.ProtocolVersion is < 1 or > 2
+            || request.SupportedGameIdentifiers.Count > 32
+            || request.SupportedGameIdentifiers.Any(q => string.IsNullOrWhiteSpace(q) || q.Length > 128))
+            throw new WorkerProtocolValidationException("Worker protocol capabilities are invalid.");
 
         await using var transaction = await BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
         var worker = await LockWorkerAsync(workerId, request.DeploymentId, cancellationToken).ConfigureAwait(false);
@@ -55,10 +61,24 @@ internal sealed class WorkerProtocolService(
         {
             throw new WorkerProtocolConflictException("The deployment no longer accepts worker registration.");
         }
+        var gameIdentifier = await dbContext.GameServers.AsNoTracking()
+            .Where(q => q.PrimaryKey == worker.Deployment.GameServerFk)
+            .Select(q => q.GameIdentifier)
+            .SingleAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (request.ProtocolVersion >= 2
+            && !request.SupportedGameIdentifiers.Contains(gameIdentifier, StringComparer.OrdinalIgnoreCase))
+            throw new WorkerProtocolConflictException("The worker does not support this deployment's game.");
+        if (string.Equals(gameIdentifier, "cs2", StringComparison.OrdinalIgnoreCase) && request.ProtocolVersion < 2)
+            throw new WorkerProtocolConflictException("Counter-Strike 2 requires worker protocol version 2.");
 
         var isRegistrationRetry = worker.BootstrapCredentialConsumedAt is not null;
         worker.BootstrapCredentialConsumedAt ??= now;
         worker.Identity = identity;
+        worker.ProtocolVersion = request.ProtocolVersion;
+        worker.SupportedGameIdentifiers = JsonSerializer.Serialize(
+            request.SupportedGameIdentifiers.Distinct(StringComparer.OrdinalIgnoreCase).Order(),
+            CommandJsonOptions);
         worker.Status = EWorkerStatus.Online;
         worker.LastHeartbeatAt = now;
         worker.TimeStampRegistered ??= now;
@@ -299,6 +319,7 @@ internal sealed class WorkerProtocolService(
             Sequence = command.Sequence,
             ActionIdentifier = command.ActionIdentifier,
             Payload = command.Payload,
+            Secrets = secretService.UnprotectSnapshot(command.ProtectedSecrets),
             Attempt = command.Attempt,
             LeaseExpiresAt = command.LeaseExpires.Value.ToDateTimeOffset(),
         };

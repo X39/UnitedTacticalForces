@@ -42,6 +42,8 @@ const defaults: ServerCreationFormValues = {
   runtimeStorageStrategy: "IncludedDisk",
   externalStorageSizeGiB: null,
   modPackDefinitionId: null,
+  terrainId: null,
+  scenarioId: null,
   configurationProfileId: null,
   costOwnerId: null,
   isLaunchDisabled: false,
@@ -281,6 +283,8 @@ export function CreateServerPage() {
     storageStrategy,
     externalStorageSizeGiB,
     modPackDefinitionId,
+    terrainId,
+    scenarioId,
     configurationProfileId,
     costOwnerId,
   ] = useWatch({
@@ -292,6 +296,8 @@ export function CreateServerPage() {
       "runtimeStorageStrategy",
       "externalStorageSizeGiB",
       "modPackDefinitionId",
+      "terrainId",
+      "scenarioId",
       "configurationProfileId",
       "costOwnerId",
     ],
@@ -368,7 +374,23 @@ export function CreateServerPage() {
   const modPacks = useQuery({
     queryKey: hostingQueryKeys.creationModPacks(gameIdentifier),
     queryFn: ({ signal }) => hostingService.creationModPacks(gameIdentifier, signal),
-    enabled: permissions.createServers && Boolean(gameIdentifier),
+    enabled:
+      permissions.createServers &&
+      Boolean(gameIdentifier) &&
+      Boolean(capability) &&
+      capability?.supportsModPacks !== false,
+  });
+  const terrains = useQuery({
+    queryKey: hostingQueryKeys.terrains(gameIdentifier),
+    queryFn: ({ signal }) => hostingService.terrains(gameIdentifier, signal),
+    enabled:
+      permissions.createServers && Boolean(gameIdentifier) && capability?.requiresTerrain === true,
+  });
+  const scenarios = useQuery({
+    queryKey: hostingQueryKeys.scenarios(gameIdentifier),
+    queryFn: ({ signal }) => hostingService.scenarios(gameIdentifier, signal),
+    enabled:
+      permissions.createServers && Boolean(gameIdentifier) && capability?.requiresScenario === true,
   });
   const configurationProfiles = useQuery({
     queryKey: hostingQueryKeys.profileOptions(gameIdentifier),
@@ -416,12 +438,18 @@ export function CreateServerPage() {
   const currentUserOwner = costOwners.data?.find((owner) => owner.isCurrentUser);
   const costOwnerValid = isCostOwnerSelectionValid(costOwnerId, costOwners.data);
   const requiredOptionsReady =
-    modPacks.isSuccess && configurationProfiles.isSuccess && costOwners.isSuccess;
+    (capability?.supportsModPacks === false || modPacks.isSuccess) &&
+    (!capability?.requiresTerrain || terrains.isSuccess) &&
+    (!capability?.requiresScenario || scenarios.isSuccess) &&
+    configurationProfiles.isSuccess &&
+    costOwners.isSuccess;
   const canSubmit =
     Boolean(capability && provider && profile) &&
     storageValid &&
     costOwnerValid &&
     requiredOptionsReady &&
+    (!capability?.requiresTerrain || terrainId !== null) &&
+    (!capability?.requiresScenario || scenarioId !== null) &&
     !storageEstimate.isFetching;
 
   const create = useMutation({
@@ -444,6 +472,8 @@ export function CreateServerPage() {
       shouldDirty: true,
     });
     form.setValue("modPackDefinitionId", null, { shouldDirty: true });
+    form.setValue("terrainId", null, { shouldDirty: true });
+    form.setValue("scenarioId", null, { shouldDirty: true });
     form.setValue("configurationProfileId", null, { shouldDirty: true });
     form.setValue(
       "runtimeStorageStrategy",
@@ -452,6 +482,28 @@ export function CreateServerPage() {
     );
     form.setValue("externalStorageSizeGiB", null, { shouldDirty: true });
   };
+
+  useEffect(() => {
+    if (capability?.requiresTerrain && terrainId === null && terrains.data?.length) {
+      const selected =
+        terrains.data.find((item) =>
+          item.versions.some(
+            (version) => version.sourceIdentifier === capability.defaultTerrainSourceIdentifier,
+          ),
+        ) ?? terrains.data[0];
+      if (selected)
+        form.setValue("terrainId", Number(selected.primaryKey), { shouldValidate: true });
+    }
+    if (capability?.requiresScenario && scenarioId === null && scenarios.data?.length) {
+      const selected =
+        scenarios.data.find((item) =>
+          item.versions.some(
+            (version) => version.sourceIdentifier === capability.defaultScenarioSourceIdentifier,
+          ),
+        ) ?? scenarios.data[0];
+      if (selected) form.setValue("scenarioId", selected.primaryKey, { shouldValidate: true });
+    }
+  }, [capability, form, scenarioId, scenarios.data, terrainId, terrains.data]);
 
   const changeProvider = (identifier: string) => {
     const nextProvider = availableProviders.find(
@@ -495,7 +547,12 @@ export function CreateServerPage() {
   });
 
   const retryRequiredOptions = () => {
-    void Promise.all([modPacks.refetch(), configurationProfiles.refetch()]);
+    void Promise.all([
+      capability?.supportsModPacks !== false ? modPacks.refetch() : Promise.resolve(),
+      capability?.requiresTerrain ? terrains.refetch() : Promise.resolve(),
+      capability?.requiresScenario ? scenarios.refetch() : Promise.resolve(),
+      configurationProfiles.refetch(),
+    ]);
   };
 
   return (
@@ -565,28 +622,84 @@ export function CreateServerPage() {
                     ))}
                   </select>
                 </label>
-                <label className="field">
-                  <span>{t("Hosting_Create_ModPack")}</span>
-                  <select
-                    value={modPackDefinitionId ?? ""}
-                    disabled={modPacks.isLoading || modPacks.isError}
-                    onChange={(event) =>
-                      form.setValue(
-                        "modPackDefinitionId",
-                        event.target.value ? Number(event.target.value) : null,
-                        { shouldDirty: true, shouldValidate: true },
-                      )
-                    }
-                  >
-                    <option value="">{t("Hosting_Create_ModPackNone")}</option>
-                    {modPacks.data?.map((item) => (
-                      <option key={item.primaryKey} value={item.primaryKey}>
-                        {item.title}
+                {capability?.requiresTerrain && (
+                  <label className="field">
+                    <span>{capability.terrainLabel ?? "Terrain"}</span>
+                    <select
+                      required
+                      value={terrainId ?? ""}
+                      disabled={terrains.isLoading || terrains.isError}
+                      onChange={(event) =>
+                        form.setValue(
+                          "terrainId",
+                          event.target.value ? Number(event.target.value) : null,
+                          {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                    >
+                      <option value="" disabled>
+                        Select {(capability.terrainLabel ?? "terrain").toLowerCase()}
                       </option>
-                    ))}
-                  </select>
-                  <small>{t("Hosting_Create_ModPackHint")}</small>
-                </label>
+                      {terrains.data?.map((item) => (
+                        <option key={item.primaryKey} value={item.primaryKey}>
+                          {item.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {capability?.requiresScenario && (
+                  <label className="field">
+                    <span>{capability.scenarioLabel ?? "Scenario"}</span>
+                    <select
+                      required
+                      value={scenarioId ?? ""}
+                      disabled={scenarios.isLoading || scenarios.isError}
+                      onChange={(event) =>
+                        form.setValue("scenarioId", event.target.value || null, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    >
+                      <option value="" disabled>
+                        Select {(capability.scenarioLabel ?? "scenario").toLowerCase()}
+                      </option>
+                      {scenarios.data?.map((item) => (
+                        <option key={item.primaryKey} value={item.primaryKey}>
+                          {item.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {capability && capability.supportsModPacks !== false && (
+                  <label className="field">
+                    <span>{t("Hosting_Create_ModPack")}</span>
+                    <select
+                      value={modPackDefinitionId ?? ""}
+                      disabled={modPacks.isLoading || modPacks.isError}
+                      onChange={(event) =>
+                        form.setValue(
+                          "modPackDefinitionId",
+                          event.target.value ? Number(event.target.value) : null,
+                          { shouldDirty: true, shouldValidate: true },
+                        )
+                      }
+                    >
+                      <option value="">{t("Hosting_Create_ModPackNone")}</option>
+                      {modPacks.data?.map((item) => (
+                        <option key={item.primaryKey} value={item.primaryKey}>
+                          {item.title}
+                        </option>
+                      ))}
+                    </select>
+                    <small>{t("Hosting_Create_ModPackHint")}</small>
+                  </label>
+                )}
                 <label className="field">
                   <span>{t("Hosting_Create_ConfigurationProfile")}</span>
                   <select
@@ -612,10 +725,16 @@ export function CreateServerPage() {
                   </select>
                   <small>{t("Hosting_Create_ConfigurationProfileHint")}</small>
                 </label>
-                {(modPacks.isLoading || configurationProfiles.isLoading) && (
+                {((capability?.supportsModPacks !== false && modPacks.isLoading) ||
+                  (capability?.requiresTerrain && terrains.isLoading) ||
+                  (capability?.requiresScenario && scenarios.isLoading) ||
+                  configurationProfiles.isLoading) && (
                   <StatePanel kind="loading">{t("Hosting_Create_LoadingSelections")}</StatePanel>
                 )}
-                {(modPacks.isError || configurationProfiles.isError) && (
+                {((capability?.supportsModPacks !== false && modPacks.isError) ||
+                  (capability?.requiresTerrain && terrains.isError) ||
+                  (capability?.requiresScenario && scenarios.isError) ||
+                  configurationProfiles.isError) && (
                   <StatePanel
                     kind="error"
                     title={t("Hosting_Create_SelectionLoadErrorTitle")}
@@ -630,7 +749,10 @@ export function CreateServerPage() {
                     }
                   >
                     {errorMessage(
-                      modPacks.error ?? configurationProfiles.error,
+                      terrains.error ??
+                        scenarios.error ??
+                        modPacks.error ??
+                        configurationProfiles.error,
                       t("Hosting_Create_SelectionLoadError"),
                     )}
                   </StatePanel>

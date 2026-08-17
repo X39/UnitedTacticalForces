@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -34,6 +34,8 @@ import {
 } from "@/features/admin/modPacks";
 import type { MediaAsset } from "@/features/admin/siteImages";
 import { loadTerrainWindow, type Terrain } from "@/features/admin/terrains";
+import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
+import type { GameContentOption } from "@/features/hosting/types";
 
 const finalStep = 6;
 
@@ -73,6 +75,7 @@ export function Component() {
   const [step, setStep] = useState(1);
   const [host, setHost] = useState<EventPerson | null>(null);
   const [terrain, setTerrain] = useState<Terrain | null>(null);
+  const [scenario, setScenario] = useState<GameContentOption | null>(null);
   const [modPack, setModPack] = useState<FullModPackDefinition | null>(null);
   const [slots, setSlots] = useState<EventSlotDraft[]>([]);
   const [slotsDirty, setSlotsDirty] = useState(false);
@@ -81,6 +84,10 @@ export function Component() {
   const [notice, setNotice] = useState<string>();
   const [slotErrors, setSlotErrors] = useState<string[]>([]);
   const canCreate = canManageEvents(user);
+  const capabilities = useQuery({
+    queryKey: hostingQueryKeys.capabilities,
+    queryFn: ({ signal }) => hostingService.capabilities(signal),
+  });
   const dirty = form.formState.isDirty || slotsDirty;
   useUnsavedChanges(dirty && !form.formState.isSubmitSuccessful);
 
@@ -165,7 +172,12 @@ export function Component() {
       case 2:
         return Boolean(watched.scheduledForLocal && watched.hostedByFk);
       case 3:
-        return Boolean(watched.terrainFk && watched.modPackRevisionFk && watched.imageAssetFk);
+        return Boolean(
+          watched.terrainFk &&
+          (!watched.scenarioRequired || watched.scenarioFk) &&
+          (!watched.modPackRequired || watched.modPackRevisionFk) &&
+          watched.imageAssetFk,
+        );
       case 4:
         return Boolean(watched.description?.trim());
       case 5:
@@ -345,6 +357,7 @@ export function Component() {
                   errorLabel={t("React_EventAuthoring_SelectorError")}
                   onSelect={(item) => {
                     setTerrain(item);
+                    setScenario(null);
                     setModPack(null);
                     form.setValue("terrainFk", item.primaryKey, {
                       shouldDirty: true,
@@ -353,52 +366,86 @@ export function Component() {
                     form.setValue("terrainGameIdentifier", item.gameIdentifier, {
                       shouldDirty: true,
                     });
+                    const capability = capabilities.data?.find(
+                      (candidate) => candidate.gameIdentifier === item.gameIdentifier,
+                    );
+                    form.setValue("scenarioFk", null, { shouldDirty: true });
+                    form.setValue("scenarioRequired", capability?.requiresScenario === true);
+                    form.setValue("modPackRequired", capability?.requiresModPack !== false);
                     form.setValue("modPackRevisionFk", null, { shouldDirty: true });
                   }}
                 />
-                <EventEntityPicker<FullModPackDefinition>
-                  label={t("Auto_ModPackRevision_d199668f")}
-                  placeholder={
-                    terrain
-                      ? t("Auto_SearchModPack_33ce4302")
-                      : t("React_EventAuthoring_SelectTerrainFirst")
-                  }
-                  selected={modPack}
-                  disabled={busy || !terrain}
-                  queryKey={`create-modpack-${terrain?.gameIdentifier ?? "none"}`}
-                  load={(search, signal) =>
-                    modPackService.list(
-                      {
-                        skip: 0,
-                        take: 20,
-                        myModPacksOnly: false,
-                        ...(search ? { search } : {}),
-                        ...(terrain?.gameIdentifier
-                          ? { gameIdentifier: terrain.gameIdentifier }
-                          : {}),
-                      },
-                      signal,
-                    )
-                  }
-                  getKey={(item) => String(item.primaryKey ?? item.title)}
-                  getLabel={selectedModPackLabel}
-                  loadingLabel={t("React_EventAuthoring_SelectorLoading")}
-                  emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
-                  errorLabel={t("React_EventAuthoring_SelectorError")}
-                  onSelect={(item) => {
-                    const revision = latestActiveRevision(item);
-                    if (revision?.primaryKey == null) {
-                      setNotice(t("React_EventAuthoring_ModPackNoRevision"));
-                      return;
+                {watched.scenarioRequired && terrain && (
+                  <EventEntityPicker<GameContentOption>
+                    label="Scenario"
+                    placeholder="Search scenarios"
+                    selected={scenario}
+                    disabled={busy}
+                    queryKey={`create-scenario-${terrain.gameIdentifier}`}
+                    load={async (search, signal) =>
+                      (await hostingService.scenarios(terrain.gameIdentifier, signal)).filter(
+                        (item) => item.title.toLowerCase().includes(search.toLowerCase()),
+                      )
                     }
-                    setNotice(undefined);
-                    setModPack(item);
-                    form.setValue("modPackRevisionFk", revision.primaryKey, {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    });
-                  }}
-                />
+                    getKey={(item) => item.primaryKey}
+                    getLabel={(item) => item.title}
+                    loadingLabel={t("React_EventAuthoring_SelectorLoading")}
+                    emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
+                    errorLabel={t("React_EventAuthoring_SelectorError")}
+                    onSelect={(item) => {
+                      setScenario(item);
+                      form.setValue("scenarioFk", item.primaryKey, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                  />
+                )}
+                {watched.modPackRequired && (
+                  <EventEntityPicker<FullModPackDefinition>
+                    label={t("Auto_ModPackRevision_d199668f")}
+                    placeholder={
+                      terrain
+                        ? t("Auto_SearchModPack_33ce4302")
+                        : t("React_EventAuthoring_SelectTerrainFirst")
+                    }
+                    selected={modPack}
+                    disabled={busy || !terrain}
+                    queryKey={`create-modpack-${terrain?.gameIdentifier ?? "none"}`}
+                    load={(search, signal) =>
+                      modPackService.list(
+                        {
+                          skip: 0,
+                          take: 20,
+                          myModPacksOnly: false,
+                          ...(search ? { search } : {}),
+                          ...(terrain?.gameIdentifier
+                            ? { gameIdentifier: terrain.gameIdentifier }
+                            : {}),
+                        },
+                        signal,
+                      )
+                    }
+                    getKey={(item) => String(item.primaryKey ?? item.title)}
+                    getLabel={selectedModPackLabel}
+                    loadingLabel={t("React_EventAuthoring_SelectorLoading")}
+                    emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
+                    errorLabel={t("React_EventAuthoring_SelectorError")}
+                    onSelect={(item) => {
+                      const revision = latestActiveRevision(item);
+                      if (revision?.primaryKey == null) {
+                        setNotice(t("React_EventAuthoring_ModPackNoRevision"));
+                        return;
+                      }
+                      setNotice(undefined);
+                      setModPack(item);
+                      form.setValue("modPackRevisionFk", revision.primaryKey, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                  />
+                )}
               </div>
               <div className="event-authoring-image-grid">
                 <div className="event-authoring-image-preview">

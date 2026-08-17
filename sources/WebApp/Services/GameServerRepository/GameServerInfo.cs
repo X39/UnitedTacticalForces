@@ -27,6 +27,8 @@ public sealed record GameServerInfo
     public bool IsLaunchDisabled { get; init; }
     public bool IsArchived { get; init; }
     public bool CanModify { get; init; }
+    public bool CanManageSecrets { get; init; }
+    public bool CanRevealSecrets { get; init; }
     public DateTimeOffset TimeStampCreated { get; init; }
     public DateTimeOffset TimeStampUpdated { get; init; }
     public GameServerDeploymentInfo? Deployment { get; init; }

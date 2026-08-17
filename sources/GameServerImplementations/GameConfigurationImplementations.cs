@@ -6,6 +6,7 @@ public static class GameConfigurationImplementations
         new IGameConfigurationImplementation[]
         {
             new Arma3ConfigurationImplementation(),
+            new CounterStrike2ConfigurationImplementation(),
         }.ToDictionary(q => q.GameIdentifier, StringComparer.OrdinalIgnoreCase);
 
     public static IReadOnlyCollection<IGameConfigurationImplementation> All => [.. Implementations.Values];

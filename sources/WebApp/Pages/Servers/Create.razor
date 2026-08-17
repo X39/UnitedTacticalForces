@@ -71,6 +71,34 @@
                            @bind:event="oninput"/>
                 </label>
 
+                @if (SelectedCapability?.RequiresTerrain == true)
+                {
+                    <label class="hosting-field">
+                        <span>@SelectedCapability.TerrainLabel</span>
+                        <select @bind="_terrainId" required>
+                            @foreach (var terrain in _terrainOptions)
+                            {
+                                <option value="@terrain.PrimaryKey">@terrain.Title</option>
+                            }
+                        </select>
+                        <small>The latest compatible version is resolved when the server starts.</small>
+                    </label>
+                }
+
+                @if (SelectedCapability?.RequiresScenario == true)
+                {
+                    <label class="hosting-field">
+                        <span>@SelectedCapability.ScenarioLabel</span>
+                        <select @bind="_scenarioId" required>
+                            @foreach (var scenario in _scenarioOptions)
+                            {
+                                <option value="@scenario.PrimaryKey">@scenario.Title</option>
+                            }
+                        </select>
+                        <small>The latest compatible version is resolved when the server starts.</small>
+                    </label>
+                }
+
                 <label class="hosting-field">
                     <span>@Localizer["Hosting_Create_Game"]</span>
                     <select value="@_gameIdentifier" @onchange="ChangeGameAsync">
@@ -307,6 +335,10 @@
     private long? _externalStorageSizeGiB;
     private IReadOnlyList<GameServerModPackOptionInfo> _modPackOptions = [];
     private long? _modPackDefinitionId;
+    private IReadOnlyList<GameContentOptionInfo> _terrainOptions = [];
+    private long? _terrainId;
+    private IReadOnlyList<GameContentOptionInfo> _scenarioOptions = [];
+    private Guid? _scenarioId;
     private IReadOnlyList<ConfigurationProfileOptionInfo> _configurationProfileOptions = [];
     private Guid? _configurationProfileId;
     private IReadOnlyList<GameServerCostOwnerOptionInfo> _costOwnerOptions = [];
@@ -362,6 +394,8 @@
            && SelectedProvider is not null
            && IsProviderAvailable(SelectedProvider)
            && SelectedProfile is not null
+           && (SelectedCapability.RequiresTerrain == false || _terrainId is not null)
+           && (SelectedCapability.RequiresScenario == false || _scenarioId is not null)
            && SelectedCostOwnerIsValid
            && IsStorageSelectionValid();
 
@@ -413,6 +447,8 @@
     {
         _gameIdentifier = args.Value?.ToString() ?? string.Empty;
         _modPackDefinitionId = null;
+        _terrainId = null;
+        _scenarioId = null;
         _configurationProfileId = null;
         SelectFirstAvailableProvider();
         await RefreshSelectionsAndEstimateAsync();
@@ -463,6 +499,10 @@
     private async Task RefreshSelectionsAndEstimateAsync()
     {
         _modPackOptions = await GameServerRepository.GetCreationModPackOptionsAsync(_gameIdentifier);
+        _terrainOptions = await GameServerRepository.GetTerrainOptionsAsync(_gameIdentifier);
+        _terrainId = long.TryParse(_terrainOptions.FirstOrDefault()?.PrimaryKey, out var terrainId) ? terrainId : null;
+        _scenarioOptions = await GameServerRepository.GetScenarioOptionsAsync(_gameIdentifier);
+        _scenarioId = Guid.TryParse(_scenarioOptions.FirstOrDefault()?.PrimaryKey, out var scenarioId) ? scenarioId : null;
         _configurationProfileOptions = await GameServerRepository
             .GetConfigurationProfileOptionsAsync(_gameIdentifier);
         await RefreshEstimateAsync();
@@ -517,6 +557,8 @@
                     ? _externalStorageSizeGiB
                     : null,
                 ModPackDefinitionId = _modPackDefinitionId,
+                TerrainId = _terrainId,
+                ScenarioId = _scenarioId,
                 ConfigurationProfileId = _configurationProfileId,
                 CostOwnerId = _costOwnerId,
                 IsLaunchDisabled = _isLaunchDisabled,

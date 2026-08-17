@@ -17,6 +17,7 @@ internal sealed class StorageDemandService(
     ISteamWorkshopMetadataClient steamMetadataClient,
     IPersistentStoragePathResolver pathResolver,
     IServerFileLockProvider fileLockProvider,
+    IGameServerDefinitionCatalog gameDefinitions,
     IOptions<StorageDemandOptions> options,
     ILogger<StorageDemandService> logger) : IStorageDemandService
 {
@@ -46,9 +47,20 @@ internal sealed class StorageDemandService(
             .OrderBy(q => q.Identifier, StringComparer.Ordinal)
             .ToArray();
 
-        if (refreshMetadata && workshopReferences.Length > 0)
-            await RefreshSteamMetadataAsync(gameIdentifier, workshopReferences, now, cancellationToken)
+        var gameDefinition = gameDefinitions.Find(gameIdentifier);
+        var runtimeDefinition = gameDefinition?.RuntimeInstallation;
+        if (refreshMetadata
+            && workshopReferences.Length > 0
+            && runtimeDefinition?.WorkshopApplicationIdentifier is { Length: > 0 } workshopApplication)
+        {
+            await RefreshSteamMetadataAsync(
+                    gameIdentifier,
+                    workshopApplication,
+                    workshopReferences,
+                    now,
+                    cancellationToken)
                 .ConfigureAwait(false);
+        }
 
         var observations = await dbContext.ContentStorageObservations
             .AsNoTracking()
@@ -58,28 +70,30 @@ internal sealed class StorageDemandService(
         var components = new List<StorageDemandComponent>();
         var missing = new List<string>();
 
-        if (string.Equals(
-                gameIdentifier,
-                Arma3GameServerDefinitionRegistration.GameIdentifier,
-                StringComparison.OrdinalIgnoreCase))
+        if (runtimeDefinition is not null)
         {
             var runtime = observations.SingleOrDefault(q => q.SourceIdentifier == GameRuntimeSource
-                                                             && q.ApplicationIdentifier == ArmaRuntimeApplication
+                                                             && q.ApplicationIdentifier == runtimeDefinition.ApplicationIdentifier
                                                              && q.ItemIdentifier == RuntimeItem);
             components.Add(SelectComponent(
                 runtime,
-                "runtime:arma3",
-                "Arma 3 dedicated server runtime",
+                $"runtime:{gameIdentifier}",
+                runtimeDefinition.RuntimeDisplayName,
                 "runtime",
-                _options.UnknownArmaRuntimeBytes,
+                runtimeDefinition.UnknownRuntimeBytes,
                 now,
                 _options,
                 missing));
 
             foreach (var reference in workshopReferences)
             {
+                if (runtimeDefinition.WorkshopApplicationIdentifier is not { Length: > 0 } contentApplication)
+                {
+                    missing.Add($"workshop:{reference.Identifier}");
+                    continue;
+                }
                 var observation = observations.SingleOrDefault(q => q.SourceIdentifier == SteamWorkshopSource
-                                                                     && q.ApplicationIdentifier == ArmaWorkshopApplication
+                                                                     && q.ApplicationIdentifier == contentApplication
                                                                      && q.ItemIdentifier == reference.Identifier);
                 components.Add(SelectComponent(
                     observation,
@@ -227,6 +241,7 @@ internal sealed class StorageDemandService(
 
     private async Task RefreshSteamMetadataAsync(
         string gameIdentifier,
+        string workshopApplicationIdentifier,
         IReadOnlyCollection<Hosting.Contracts.WorkerProtocol.WorkerContentReference> references,
         Instant now,
         CancellationToken cancellationToken)
@@ -234,7 +249,7 @@ internal sealed class StorageDemandService(
         var existing = await dbContext.ContentStorageObservations
             .Where(q => q.GameIdentifier == gameIdentifier
                         && q.SourceIdentifier == SteamWorkshopSource
-                        && q.ApplicationIdentifier == ArmaWorkshopApplication)
+                        && q.ApplicationIdentifier == workshopApplicationIdentifier)
             .ToDictionaryAsync(q => q.ItemIdentifier, StringComparer.Ordinal, cancellationToken)
             .ConfigureAwait(false);
         var stale = references
@@ -276,7 +291,7 @@ internal sealed class StorageDemandService(
                         GameIdentifier = gameIdentifier,
                         ComponentKind = "workshop",
                         SourceIdentifier = SteamWorkshopSource,
-                        ApplicationIdentifier = ArmaWorkshopApplication,
+                        ApplicationIdentifier = workshopApplicationIdentifier,
                         ItemIdentifier = item.ItemIdentifier,
                         TimeStampCreated = now,
                     };

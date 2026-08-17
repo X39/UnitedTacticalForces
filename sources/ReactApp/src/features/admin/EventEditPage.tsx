@@ -45,6 +45,8 @@ import {
 } from "@/features/admin/modPacks";
 import type { MediaAsset } from "@/features/admin/siteImages";
 import { loadTerrainWindow, type Terrain } from "@/features/admin/terrains";
+import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
+import type { GameContentOption } from "@/features/hosting/types";
 
 type EditorTab = "details" | "briefing" | "objectives" | "slots";
 type SaveMode = "all" | "slots";
@@ -83,6 +85,18 @@ function syntheticModPack(snapshot: EventAuthoringSnapshot): FullModPackDefiniti
       };
 }
 
+function syntheticScenario(snapshot: EventAuthoringSnapshot): GameContentOption | null {
+  const event = snapshot.event;
+  return event.scenarioPrimaryKey == null
+    ? null
+    : {
+        primaryKey: event.scenarioPrimaryKey,
+        gameIdentifier: event.terrainGameIdentifier,
+        title: event.scenarioTitle,
+        versions: [],
+      };
+}
+
 function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -115,6 +129,9 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
   const [tab, setTab] = useState<EditorTab>("details");
   const [host, setHost] = useState<EventPerson | null>(snapshot.event.hostedBy);
   const [terrain, setTerrain] = useState<Terrain | null>(() => syntheticTerrain(snapshot));
+  const [scenario, setScenario] = useState<GameContentOption | null>(() =>
+    syntheticScenario(snapshot),
+  );
   const [modPack, setModPack] = useState<FullModPackDefinition | null>(() =>
     syntheticModPack(snapshot),
   );
@@ -135,6 +152,10 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
       : null,
   );
   const dirty = form.formState.isDirty || slotsDirty;
+  const capabilities = useQuery({
+    queryKey: hostingQueryKeys.capabilities,
+    queryFn: ({ signal }) => hostingService.capabilities(signal),
+  });
   useUnsavedChanges(dirty);
 
   const updateSlots = (next: EventSlotDraft[]) => {
@@ -271,7 +292,10 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
     ["Pages_Events_Edit_Readiness_ScheduleSet", Boolean(watched.scheduledForLocal)],
     ["Pages_Events_Edit_Readiness_HostAssigned", Boolean(watched.hostedByFk)],
     ["Pages_Events_Edit_Readiness_TerrainSelected", watched.terrainFk != null],
-    ["Pages_Events_Edit_Readiness_ModPackSelected", watched.modPackRevisionFk != null],
+    [
+      "Pages_Events_Edit_Readiness_ModPackSelected",
+      !watched.modPackRequired || watched.modPackRevisionFk != null,
+    ],
     ["Pages_Events_Edit_Readiness_BriefingAdded", Boolean(watched.description?.trim())],
     ["Pages_Events_Edit_Readiness_ObjectivesAdded", objectives.some((item) => item.text.trim())],
     ["Pages_Events_Edit_Readiness_MinimumAcceptedSet", (watched.minimumAccepted ?? -1) >= 0],
@@ -455,6 +479,7 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                   errorLabel={t("React_EventAuthoring_SelectorError")}
                   onSelect={(item) => {
                     setTerrain(item);
+                    setScenario(null);
                     setModPack(null);
                     form.setValue("terrainFk", item.primaryKey, {
                       shouldDirty: true,
@@ -463,50 +488,84 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                     form.setValue("terrainGameIdentifier", item.gameIdentifier, {
                       shouldDirty: true,
                     });
+                    const capability = capabilities.data?.find(
+                      (candidate) => candidate.gameIdentifier === item.gameIdentifier,
+                    );
+                    form.setValue("scenarioFk", null, { shouldDirty: true });
+                    form.setValue("scenarioRequired", capability?.requiresScenario === true);
+                    form.setValue("modPackRequired", capability?.requiresModPack !== false);
                     form.setValue("modPackRevisionFk", null, { shouldDirty: true });
                   }}
                 />
-                <EventEntityPicker<FullModPackDefinition>
-                  label={t("Auto_ModPackRevision_d199668f")}
-                  placeholder={t("Auto_SearchModPack_33ce4302")}
-                  selected={modPack}
-                  disabled={busy}
-                  queryKey={`edit-modpack-${eventId}-${terrain?.gameIdentifier ?? "all"}`}
-                  load={(search, signal) =>
-                    modPackService.list(
-                      {
-                        skip: 0,
-                        take: 20,
-                        myModPacksOnly: false,
-                        ...(search ? { search } : {}),
-                        ...(terrain?.gameIdentifier
-                          ? { gameIdentifier: terrain.gameIdentifier }
-                          : {}),
-                      },
-                      signal,
-                    )
-                  }
-                  getKey={(item) => String(item.primaryKey ?? item.title)}
-                  getLabel={(item) => item.title ?? ""}
-                  loadingLabel={t("React_EventAuthoring_SelectorLoading")}
-                  emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
-                  errorLabel={t("React_EventAuthoring_SelectorError")}
-                  onSelect={(item) => {
-                    const revision = latestActiveRevision(item);
-                    if (revision?.primaryKey == null) {
-                      setNotice({
-                        kind: "warning",
-                        text: t("React_EventAuthoring_ModPackNoRevision"),
-                      });
-                      return;
+                {watched.scenarioRequired && terrain && (
+                  <EventEntityPicker<GameContentOption>
+                    label="Scenario"
+                    placeholder="Search scenarios"
+                    selected={scenario}
+                    disabled={busy}
+                    queryKey={`edit-scenario-${eventId}-${terrain.gameIdentifier}`}
+                    load={async (search, signal) =>
+                      (await hostingService.scenarios(terrain.gameIdentifier, signal)).filter(
+                        (item) => item.title.toLowerCase().includes(search.toLowerCase()),
+                      )
                     }
-                    setModPack(item);
-                    form.setValue("modPackRevisionFk", revision.primaryKey, {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    });
-                  }}
-                />
+                    getKey={(item) => item.primaryKey}
+                    getLabel={(item) => item.title}
+                    loadingLabel={t("React_EventAuthoring_SelectorLoading")}
+                    emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
+                    errorLabel={t("React_EventAuthoring_SelectorError")}
+                    onSelect={(item) => {
+                      setScenario(item);
+                      form.setValue("scenarioFk", item.primaryKey, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                  />
+                )}
+                {watched.modPackRequired && (
+                  <EventEntityPicker<FullModPackDefinition>
+                    label={t("Auto_ModPackRevision_d199668f")}
+                    placeholder={t("Auto_SearchModPack_33ce4302")}
+                    selected={modPack}
+                    disabled={busy}
+                    queryKey={`edit-modpack-${eventId}-${terrain?.gameIdentifier ?? "all"}`}
+                    load={(search, signal) =>
+                      modPackService.list(
+                        {
+                          skip: 0,
+                          take: 20,
+                          myModPacksOnly: false,
+                          ...(search ? { search } : {}),
+                          ...(terrain?.gameIdentifier
+                            ? { gameIdentifier: terrain.gameIdentifier }
+                            : {}),
+                        },
+                        signal,
+                      )
+                    }
+                    getKey={(item) => String(item.primaryKey ?? item.title)}
+                    getLabel={(item) => item.title ?? ""}
+                    loadingLabel={t("React_EventAuthoring_SelectorLoading")}
+                    emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
+                    errorLabel={t("React_EventAuthoring_SelectorError")}
+                    onSelect={(item) => {
+                      const revision = latestActiveRevision(item);
+                      if (revision?.primaryKey == null) {
+                        setNotice({
+                          kind: "warning",
+                          text: t("React_EventAuthoring_ModPackNoRevision"),
+                        });
+                        return;
+                      }
+                      setModPack(item);
+                      form.setValue("modPackRevisionFk", revision.primaryKey, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                  />
+                )}
               </div>
               <section className="event-authoring-resource-panel">
                 <SectionHeading

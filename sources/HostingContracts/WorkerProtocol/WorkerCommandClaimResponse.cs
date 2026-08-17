@@ -22,6 +22,12 @@ public sealed record WorkerCommandClaimResponse
     /// </summary>
     public string Payload { get; init; } = "{}";
 
+    /// <summary>
+    /// Ephemeral deployment-scoped secrets. Workers must not persist these values in command journals.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Secrets { get; init; }
+        = new Dictionary<string, string>(StringComparer.Ordinal);
+
     public int Attempt { get; init; }
 
     public DateTimeOffset LeaseExpiresAt { get; init; }

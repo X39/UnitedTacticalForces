@@ -550,7 +550,8 @@ public class ModPackController : ControllerBase
                 ? 0
                 : await _apiDbContext.Events
                     .AsNoTracking()
-                    .Where(q => representedRevisionIds.Contains(q.ModPackRevisionFk))
+                    .Where(q => q.ModPackRevisionFk.HasValue
+                                && representedRevisionIds.Contains(q.ModPackRevisionFk.Value))
                     .LongCountAsync(cancellationToken),
             DownloadRecordCount = await downloadRecords.LongCountAsync(cancellationToken),
             DownloadUserCount = await downloadRecords

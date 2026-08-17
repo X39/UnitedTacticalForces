@@ -80,4 +80,8 @@ public enum EHostingAuditEventKind
     ConfigurationProfileRevisionCreated = 72,
     ConfigurationProfileArchived = 73,
     HostingFinancePolicyChanged = 74,
+    ServerSecretCreated = 75,
+    ServerSecretRotated = 76,
+    ServerSecretRevealed = 77,
+    ServerSecretUpdated = 78,
 }

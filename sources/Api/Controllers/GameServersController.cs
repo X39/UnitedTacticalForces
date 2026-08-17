@@ -272,6 +272,27 @@ public sealed class GameServersController(
         }
     }
 
+    [HttpPut("{gameServerId:guid}/content-selection")]
+    [Authorize(Claims.ResourceBased.Server.Modify)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ChangeContentSelectionAsync(
+        [FromRoute] Guid gameServerId,
+        [FromBody] GameServerContentSelectionPayload payload,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await lifecycleService.ChangeContentSelectionAsync(gameServerId, payload.TerrainId,
+                payload.TerrainVersionId, payload.ScenarioId, payload.ScenarioVersionId, User, cancellationToken)
+                .ConfigureAwait(false);
+            return NoContent();
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
+    }
+
     [HttpDelete("{gameServerId:guid}")]
     [Authorize(Claims.ResourceBased.Server.Modify)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

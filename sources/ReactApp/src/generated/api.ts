@@ -1802,6 +1802,386 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/game-content/servers/{serverId}/artifacts/{artifactIdentifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    serverId: string;
+                    artifactIdentifier: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        file?: components["schemas"]["IFormFile"];
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/terrains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    gameIdentifier?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ContentIdentityPayload"];
+                    "text/json": components["schemas"]["ContentIdentityPayload"];
+                    "application/*+json": components["schemas"]["ContentIdentityPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/terrains/{terrainId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    terrainId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ContentVersionPayload"];
+                    "text/json": components["schemas"]["ContentVersionPayload"];
+                    "application/*+json": components["schemas"]["ContentVersionPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/scenarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    gameIdentifier?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ScenarioPayload"];
+                    "text/json": components["schemas"]["ScenarioPayload"];
+                    "application/*+json": components["schemas"]["ScenarioPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/scenarios/{scenarioId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    scenarioId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ScenarioVersionPayload"];
+                    "text/json": components["schemas"]["ScenarioVersionPayload"];
+                    "application/*+json": components["schemas"]["ScenarioVersionPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/mods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    gameIdentifier?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ModPayload"];
+                    "text/json": components["schemas"]["ModPayload"];
+                    "application/*+json": components["schemas"]["ModPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/mods/{modId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    modId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ModVersionPayload"];
+                    "text/json": components["schemas"]["ModVersionPayload"];
+                    "application/*+json": components["schemas"]["ModVersionPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/modpacks/{revisionId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    revisionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ModPackMembersPayload"];
+                    "text/json": components["schemas"]["ModPackMembersPayload"];
+                    "application/*+json": components["schemas"]["ModPackMembersPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/game-servers/{gameServerId}/configuration": {
         parameters: {
             query?: never;
@@ -2830,6 +3210,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/game-servers/{gameServerId}/content-selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    gameServerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GameServerContentSelectionPayload"];
+                    "text/json": components["schemas"]["GameServerContentSelectionPayload"];
+                    "application/*+json": components["schemas"]["GameServerContentSelectionPayload"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/game-servers/{gameServerId}/access": {
         parameters: {
             query?: never;
@@ -3035,6 +3456,146 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-servers/{gameServerId}/secrets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    gameServerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GameServerSecretStatusDto"][];
+                        "application/json": components["schemas"]["GameServerSecretStatusDto"][];
+                        "text/json": components["schemas"]["GameServerSecretStatusDto"][];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    gameServerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GameServerSecretValuePayload"];
+                    "text/json": components["schemas"]["GameServerSecretValuePayload"];
+                    "application/*+json": components["schemas"]["GameServerSecretValuePayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-servers/{gameServerId}/secrets/{key}/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    gameServerId: string;
+                    key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-servers/{gameServerId}/secrets/{key}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    gameServerId: string;
+                    key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GameServerSecretValueDto"];
+                        "application/json": components["schemas"]["GameServerSecretValueDto"];
+                        "text/json": components["schemas"]["GameServerSecretValueDto"];
+                    };
                 };
             };
         };
@@ -4330,7 +4891,7 @@ export interface paths {
          * Allows to change the contents of a Terrain.
          * @description Only non-system properties are allowed:
          *             * string Terrain.Title
-         *     * Guid Terrain.ImageAssetFk
+         *     * Guid? Terrain.ImageAssetFk
          */
         post: operations["UpdateTerrainAsync"];
         delete?: never;
@@ -5533,6 +6094,22 @@ export interface components {
             key: string;
             value?: components["schemas"]["JsonElement"];
         };
+        ContentIdentityPayload: {
+            gameIdentifier: string;
+            title: string;
+            imageAssetFk: null | string;
+            version: components["schemas"]["ContentVersionPayload"];
+        };
+        ContentVersionPayload: {
+            sourceKind: components["schemas"]["EContentSourceKind"];
+            sourceIdentifier: string;
+            versionLabel: string;
+            /** @default {} */
+            metadata: string;
+            artifactIdentifier?: null | string;
+            checksumSha256?: null | string;
+            artifactSizeBytes?: null | number;
+        };
         /** @description Retry-safe change to one cost owner's finite spending allowance. A null allowance revokes it. */
         CostOwnerAllowancePayload: {
             /** Format: uuid */
@@ -5582,6 +6159,8 @@ export interface components {
         /** @enum {integer} */
         EConfigurationContentStatus: "NotApplicable" | "Ready" | "Incomplete" | "Conflict";
         /** @enum {integer} */
+        EContentSourceKind: "BuiltIn" | "SteamWorkshop" | "UploadedArtifact";
+        /** @enum {integer} */
         ECostImpact: "NoCostImpact" | "StartsCost" | "StopsCost" | "KeepsCostRunning" | "Unknown";
         /** @enum {integer} */
         ECostOwnerKind: "User" | "Verein" | "ExternalOrganization";
@@ -5596,7 +6175,9 @@ export interface components {
         /** @enum {integer} */
         EFileContext: "Persistent" | "Live";
         /** @enum {integer} */
-        EHostingAuditEventKind: "ServerCreated" | "ServerUpdated" | "ServerArchived" | "ServerLaunchDisabled" | "ServerLaunchEnabled" | "CostOwnerAssigned" | "LifecycleRequested" | "LifecycleStarted" | "LifecycleSucceeded" | "LifecycleFailed" | "LifecycleRetried" | "LifecycleSkipped" | "LifecycleCancelledByCostStop" | "TerminateRequested" | "WorkerRegistered" | "WorkerDegraded" | "WorkerRecovered" | "WorkerStopped" | "WorkerCommandUpdated" | "PreservationSelectionAdded" | "PreservationSelectionUpdated" | "PreservationSelectionRemoved" | "FileCreated" | "FileUpdated" | "FileDeleted" | "DeploymentResourceObserved" | "DeploymentResourceReleased" | "ManualCleanupRecorded" | "CostOwnerChanged" | "DeploymentCreated" | "LifecycleJobQueued" | "LifecycleJobClaimed" | "LifecycleJobSucceeded" | "LifecycleJobRetryPending" | "LifecycleJobFailed" | "LifecycleJobSkipped" | "CommandsCancelledByCostStop" | "WorkerProvisioned" | "WorkerHeartbeat" | "WorkerCommandQueued" | "WorkerCommandSucceeded" | "WorkerCommandFailed" | "DeploymentStopped" | "DeploymentTerminated" | "AccessGranted" | "AccessRevoked" | "FileChanged" | "PreservationPublished" | "PreservationFailed" | "PersistentDataDeleted" | "Recovery" | "ProviderReconciliationDegraded" | "DeploymentResourceAdopted" | "DanglingResourceDetected" | "DanglingResourceCleanupFailed" | "DanglingResourceCleanupSucceeded" | "WorkerCredentialRotationIssued" | "ProviderCostSliceCharged" | "ProviderCostSliceReserved" | "ProviderCostSliceReservationReleased" | "BankTransferPaymentRecorded" | "CostOwnerAllowanceChanged" | "ExternalRefundRecorded" | "DeploymentCostOwnerCorrected" | "HostingLedgerEntryReversed" | "DeploymentResourceProvisioningRequested" | "DeploymentResourceProvisioningFailed" | "DeploymentResourceReleaseRequested" | "DeploymentResourceReleaseFailed" | "ServerConfigurationChanged" | "ServerConfigurationProfileChanged" | "ConfigurationProfileCreated" | "ConfigurationProfileRevisionCreated" | "ConfigurationProfileArchived" | "HostingFinancePolicyChanged";
+        EGameServerSecretOrigin: "Generated" | "UserProvided" | "ExternalProvider";
+        /** @enum {integer} */
+        EHostingAuditEventKind: "ServerCreated" | "ServerUpdated" | "ServerArchived" | "ServerLaunchDisabled" | "ServerLaunchEnabled" | "CostOwnerAssigned" | "LifecycleRequested" | "LifecycleStarted" | "LifecycleSucceeded" | "LifecycleFailed" | "LifecycleRetried" | "LifecycleSkipped" | "LifecycleCancelledByCostStop" | "TerminateRequested" | "WorkerRegistered" | "WorkerDegraded" | "WorkerRecovered" | "WorkerStopped" | "WorkerCommandUpdated" | "PreservationSelectionAdded" | "PreservationSelectionUpdated" | "PreservationSelectionRemoved" | "FileCreated" | "FileUpdated" | "FileDeleted" | "DeploymentResourceObserved" | "DeploymentResourceReleased" | "ManualCleanupRecorded" | "CostOwnerChanged" | "DeploymentCreated" | "LifecycleJobQueued" | "LifecycleJobClaimed" | "LifecycleJobSucceeded" | "LifecycleJobRetryPending" | "LifecycleJobFailed" | "LifecycleJobSkipped" | "CommandsCancelledByCostStop" | "WorkerProvisioned" | "WorkerHeartbeat" | "WorkerCommandQueued" | "WorkerCommandSucceeded" | "WorkerCommandFailed" | "DeploymentStopped" | "DeploymentTerminated" | "AccessGranted" | "AccessRevoked" | "FileChanged" | "PreservationPublished" | "PreservationFailed" | "PersistentDataDeleted" | "Recovery" | "ProviderReconciliationDegraded" | "DeploymentResourceAdopted" | "DanglingResourceDetected" | "DanglingResourceCleanupFailed" | "DanglingResourceCleanupSucceeded" | "WorkerCredentialRotationIssued" | "ProviderCostSliceCharged" | "ProviderCostSliceReserved" | "ProviderCostSliceReservationReleased" | "BankTransferPaymentRecorded" | "CostOwnerAllowanceChanged" | "ExternalRefundRecorded" | "DeploymentCostOwnerCorrected" | "HostingLedgerEntryReversed" | "DeploymentResourceProvisioningRequested" | "DeploymentResourceProvisioningFailed" | "DeploymentResourceReleaseRequested" | "DeploymentResourceReleaseFailed" | "ServerConfigurationChanged" | "ServerConfigurationProfileChanged" | "ConfigurationProfileCreated" | "ConfigurationProfileRevisionCreated" | "ConfigurationProfileArchived" | "HostingFinancePolicyChanged" | "ServerSecretCreated" | "ServerSecretRotated" | "ServerSecretRevealed" | "ServerSecretUpdated";
         /** @enum {integer} */
         EHostingFileModificationMode: "None" | "RawFile" | "StructuredConfiguration";
         /** @enum {integer} */
@@ -5611,6 +6192,8 @@ export interface components {
         ELifecycleJobKind: "Start" | "Stop" | "Terminate" | "Restart" | "Install" | "Update" | "CollectLogs" | "Custom";
         /** @enum {integer} */
         ELifecycleJobStatus: "Queued" | "Running" | "RetryPending" | "WaitingForWorker" | "Succeeded" | "Failed" | "Skipped" | "CancelledByCostStop";
+        /** @enum {integer} */
+        EModUsageRole: "Shared" | "ClientOnly" | "ServerOnly";
         /** @enum {integer} */
         EPreservationMode: "CreateOrUpdate" | "MirrorDeletions";
         /** @enum {integer} */
@@ -5630,11 +6213,10 @@ export interface components {
              * @description References the unique identifier of the associated terrain in the system.
              */
             terrainFk?: number;
-            /**
-             * Format: int64
-             * @description Represents a reference to the associated mod pack revision.
-             */
-            modPackRevisionFk?: number;
+            terrainVersionFk?: null | string;
+            scenarioFk?: null | string;
+            scenarioVersionFk?: null | string;
+            modPackRevisionFk?: null | number;
             /**
              * Format: uuid
              * @description Gallery media asset used as event cover image.
@@ -5684,6 +6266,9 @@ export interface components {
             title?: null | string;
             description?: null | string;
             terrainFk?: null | number;
+            terrainVersionFk?: null | string;
+            scenarioFk?: null | string;
+            scenarioVersionFk?: null | string;
             modPackRevisionFk?: null | number;
             imageAssetFk?: null | string;
             scheduledFor?: null | components["schemas"]["Instant"];
@@ -5818,36 +6403,26 @@ export interface components {
              *     This property is used as a unique identifier for the associated record in the database.
              */
             terrainPrimaryKey?: number;
+            terrainGameIdentifier?: string;
+            terrainVersionFk?: null | string;
+            scenarioFk?: null | string;
+            scenarioTitle?: null | string;
+            scenarioVersionFk?: null | string;
             /** @description Gets or sets the title of the terrain. */
             terrainTitle?: string;
-            /**
-             * Format: uuid
-             * @description Gallery media asset used as terrain image.
-             */
-            terrainImageAssetFk?: string;
-            /** @description API-relative render path for the terrain image. */
-            terrainImagePath?: string;
+            terrainImageAssetFk?: null | string;
+            terrainImagePath?: null | string;
             terrainIsActive?: boolean;
-            /**
-             * Format: int64
-             * @description The primary key of this entity.
-             */
-            modPackRevisionPrimaryKey?: number;
-            /** @description The timestamp when this revision was created. */
-            modPackRevisionTimeStampCreated?: components["schemas"]["Instant"];
+            modPackRevisionPrimaryKey?: null | number;
+            modPackRevisionTimeStampCreated?: null | components["schemas"]["Instant"];
             /** @description The HTML content of this revision. */
             modPackRevisionHtml?: string;
             modPackRevisionUpdatedBy?: null | components["schemas"]["PlainUserDto"];
             /** @description Whether this revision is active or not. */
             modPackRevisionIsActive?: boolean;
             modPackRevisionTimeStampDownloaded?: null | components["schemas"]["Instant"];
-            /**
-             * Format: int64
-             * @description The primary key of this entity.
-             */
-            modPackDefinitionPrimaryKey?: number;
-            /** @description The timestamp when this modpack was created. */
-            modPackDefinitionTimeStampCreated?: components["schemas"]["Instant"];
+            modPackDefinitionPrimaryKey?: null | number;
+            modPackDefinitionTimeStampCreated?: null | components["schemas"]["Instant"];
             /** @description The name of this modpack. */
             modPackDefinitionTitle?: string;
             modPackDefinitionOwner?: null | components["schemas"]["PlainUserDto"];
@@ -6007,10 +6582,27 @@ export interface components {
             runtimeProviders?: string[];
             runtimeProviderProfiles?: components["schemas"]["RuntimeProviderDto"][];
             actions?: components["schemas"]["GameServerActionDto"][];
+            requiresTerrain?: boolean;
+            terrainLabel?: string;
+            requiresScenario?: boolean;
+            scenarioLabel?: string;
+            supportsModPacks?: boolean;
+            requiresModPack?: boolean;
+            terrainSourceKinds?: string[];
+            modInstallerIdentifiers?: string[];
+            defaultTerrainSourceIdentifier?: null | string;
+            defaultScenarioSourceIdentifier?: null | string;
+            secrets?: components["schemas"]["GameServerSecretCapabilityDto"][];
         };
         GameServerConfigurationProfileSelectionPayload: {
             profileId?: null | string;
             pinnedRevisionId?: null | string;
+        };
+        GameServerContentSelectionPayload: {
+            terrainId: null | number;
+            terrainVersionId: null | string;
+            scenarioId: null | string;
+            scenarioVersionId: null | string;
         };
         /** @description A billing owner the current caller may assign while creating a game server. */
         GameServerCostOwnerOptionDto: {
@@ -6045,6 +6637,11 @@ export interface components {
             externalStorageSizeGiB?: null | number;
             costOwnerId?: null | string;
             modPackDefinitionId?: null | number;
+            modPackRevisionId?: null | number;
+            terrainId?: null | number;
+            terrainVersionId?: null | string;
+            scenarioId?: null | string;
+            scenarioVersionId?: null | string;
             configurationProfileId?: null | string;
             configurationProfileRevisionId?: null | string;
             /** @description Whether this record is intentionally unavailable for launch. */
@@ -6119,6 +6716,13 @@ export interface components {
             estimatedMonthlyCostEur?: null | number;
             selectedModPackDefinitionId?: null | number;
             selectedModPackDefinitionTitle?: null | string;
+            pinnedModPackRevisionId?: null | number;
+            selectedTerrainId?: null | number;
+            selectedTerrainTitle?: null | string;
+            pinnedTerrainVersionId?: null | string;
+            selectedScenarioId?: null | string;
+            selectedScenarioTitle?: null | string;
+            pinnedScenarioVersionId?: null | string;
             selectedConfigurationProfileId?: null | string;
             selectedConfigurationProfileTitle?: null | string;
             pinnedConfigurationProfileRevisionId?: null | string;
@@ -6130,6 +6734,8 @@ export interface components {
             isLaunchDisabled?: boolean;
             isArchived?: boolean;
             canModify?: boolean;
+            canManageSecrets?: boolean;
+            canRevealSecrets?: boolean;
             timeStampCreated?: components["schemas"]["Instant"];
             timeStampUpdated?: components["schemas"]["Instant"];
             deployment?: null | components["schemas"]["GameServerDeploymentDto"];
@@ -6187,6 +6793,37 @@ export interface components {
         GameServerRuntimeStorageUpdatePayload: {
             strategy?: components["schemas"]["ERuntimeStorageStrategy"];
             externalStorageSizeGiB?: null | number;
+        };
+        GameServerSecretCapabilityDto: {
+            key: string;
+            displayName: string;
+            requiredForStart: boolean;
+            generated: boolean;
+            revealable: boolean;
+            externalProvider: boolean;
+        };
+        GameServerSecretStatusDto: {
+            key: string;
+            displayName: string;
+            requiredForStart: boolean;
+            generated: boolean;
+            revealable: boolean;
+            externalProvider: boolean;
+            isConfigured: boolean;
+            version: null | number;
+            origin: null | components["schemas"]["EGameServerSecretOrigin"];
+            timeStampCreated: null | components["schemas"]["Instant"];
+        };
+        GameServerSecretValueDto: {
+            key: string;
+            value: string;
+            /** Format: int32 */
+            version: number;
+        };
+        GameServerSecretValuePayload: {
+            key: string;
+            value: string;
+            origin?: components["schemas"]["EGameServerSecretOrigin"];
         };
         /** @description Direct server-scoped permissions assigned to one user. */
         GameServerUserAccessGrantDto: {
@@ -6339,6 +6976,8 @@ export interface components {
             spanId?: null | string;
             timeStampCreated?: components["schemas"]["Instant"];
         };
+        /** Format: binary */
+        IFormFile: string;
         /** Format: date-time */
         Instant: string;
         JsonElement: unknown;
@@ -6492,6 +7131,11 @@ export interface components {
             /** @description Command-center or public route to the using record. */
             path?: string;
         };
+        ModMembershipPayload: {
+            /** Format: uuid */
+            modId: string;
+            pinnedVersionId: null | string;
+        };
         /** @description Represents a payload for composing a ModPack. */
         ModPackCompositionCreationPayload: {
             /** @description Stable identifier of the game this composition belongs to. */
@@ -6571,6 +7215,15 @@ export interface components {
             /** @description The most recent timestamp when this user downloaded this revision through this mod pack definition. */
             timeStampDownloaded?: components["schemas"]["Instant"];
         };
+        ModPackMembersPayload: {
+            mods: components["schemas"]["ModMembershipPayload"][];
+            dependencies: components["schemas"]["ModPackReferencePayload"][];
+        };
+        ModPackReferencePayload: {
+            /** Format: int64 */
+            definitionId: number;
+            pinnedRevisionId: null | number;
+        };
         /** @description Represents a Data Transfer Object (DTO) for a mod pack revision in the system. */
         ModPackRevisionDto: {
             definitionPrimaryKey?: null | number;
@@ -6645,6 +7298,25 @@ export interface components {
             /** @description Whether the current user may view revision and download ledgers. */
             canViewLedgers?: boolean;
         };
+        ModPayload: {
+            gameIdentifier: string;
+            title: string;
+            version: components["schemas"]["ModVersionPayload"];
+        };
+        ModVersionPayload: {
+            usageRole: components["schemas"]["EModUsageRole"];
+            installerIdentifier: string;
+            /** @default {} */
+            installerConfiguration: string;
+            sourceKind: components["schemas"]["EContentSourceKind"];
+            sourceIdentifier: string;
+            versionLabel: string;
+            /** @default {} */
+            metadata: string;
+            artifactIdentifier?: null | string;
+            checksumSha256?: null | string;
+            artifactSizeBytes?: null | number;
+        };
         /** @description Represents a Data Transfer Object (DTO) for a specific claim associated with users or roles. */
         PlainClaimDto: {
             /**
@@ -6683,11 +7355,10 @@ export interface components {
              * @description References the unique identifier of the associated terrain in the system.
              */
             terrainFk?: number;
-            /**
-             * Format: int64
-             * @description Represents a reference to the associated mod pack revision.
-             */
-            modPackRevisionFk?: number;
+            terrainVersionFk?: null | string;
+            scenarioFk?: null | string;
+            scenarioVersionFk?: null | string;
+            modPackRevisionFk?: null | number;
             /**
              * Format: uuid
              * @description Gallery media asset used as event cover image.
@@ -6838,13 +7509,8 @@ export interface components {
             primaryKey?: number;
             /** @description Gets or sets the title of the terrain. */
             title?: string;
-            /**
-             * Format: uuid
-             * @description Gallery media asset used as terrain image.
-             */
-            imageAssetFk?: string;
-            /** @description API-relative render path for the terrain image. */
-            imagePath?: string;
+            imageAssetFk?: null | string;
+            imagePath?: null | string;
             isActive?: boolean;
         };
         PlainUserDto: {
@@ -7165,6 +7831,16 @@ export interface components {
             estimatedHourlyCostPerGiBEur?: number;
             deploymentMountPath?: string;
             readinessFailure?: null | string;
+        };
+        ScenarioPayload: {
+            gameIdentifier: string;
+            title: string;
+            description: null | string;
+            version: components["schemas"]["ContentVersionPayload"];
+        };
+        ScenarioVersionPayload: {
+            version: components["schemas"]["ContentVersionPayload"];
+            requiredModPacks: components["schemas"]["ModPackReferencePayload"][];
         };
         ServerConfigurationUpdatePayload: {
             values?: components["schemas"]["ConfigurationValuePayload"][];

@@ -8,7 +8,10 @@ import type {
   ConfigurationProfileSummary,
   ConfigurationValue,
   GameConfiguration,
+  GameContentOption,
   GameServer,
+  GameServerSecretStatus,
+  GameServerSecretValue,
   HostingFile,
   HostingFileContext,
   HostingOperation,
@@ -70,6 +73,15 @@ function normalizeCapability(capability: ServerCapability): ServerCapability {
     ...capability,
     actions: capability.actions ?? [],
     runtimeProviders: capability.runtimeProviders ?? [],
+    requiresTerrain: capability.requiresTerrain ?? false,
+    terrainLabel: capability.terrainLabel ?? "Terrain",
+    requiresScenario: capability.requiresScenario ?? false,
+    scenarioLabel: capability.scenarioLabel ?? "Scenario",
+    supportsModPacks: capability.supportsModPacks ?? true,
+    requiresModPack: capability.requiresModPack ?? true,
+    terrainSourceKinds: capability.terrainSourceKinds ?? [],
+    modInstallerIdentifiers: capability.modInstallerIdentifiers ?? [],
+    secrets: capability.secrets ?? [],
     runtimeProviderProfiles: (capability.runtimeProviderProfiles ?? []).map((provider) => ({
       ...provider,
       profiles: provider.profiles ?? [],
@@ -108,6 +120,10 @@ export const hostingQueryKeys = {
   modPackOptions: (serverId: string) => ["hosting", "servers", serverId, "mod-packs"] as const,
   creationModPacks: (gameIdentifier: string) =>
     ["hosting", "creation", gameIdentifier, "mod-packs"] as const,
+  terrains: (gameIdentifier: string) => ["hosting", "content", gameIdentifier, "terrains"] as const,
+  scenarios: (gameIdentifier: string) =>
+    ["hosting", "content", gameIdentifier, "scenarios"] as const,
+  secrets: (serverId: string) => ["hosting", "servers", serverId, "secrets"] as const,
   profileOptions: (gameIdentifier: string) =>
     ["hosting", "profiles", "options", gameIdentifier] as const,
   storageEstimate: (gameIdentifier: string, provider: string, modPackId: number | null) =>
@@ -276,6 +292,20 @@ export const hostingService = {
     await getApiClient().request<void>(fillApiPath(path, { gameServerId: serverId }), {
       method: apiMethod(path, "put"),
       body: { modPackDefinitionId },
+      signal,
+    });
+  },
+
+  async changeContentSelection(
+    serverId: string,
+    terrainId: number | null,
+    scenarioId: string | null,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const path = "/game-servers/{gameServerId}/content-selection" as const;
+    await getApiClient().request<void>(fillApiPath(path, { gameServerId: serverId }), {
+      method: apiMethod(path, "put"),
+      body: { terrainId, terrainVersionId: null, scenarioId, scenarioVersionId: null },
       signal,
     });
   },
@@ -463,6 +493,62 @@ export const hostingService = {
       (await getApiClient().request<{ primaryKey: number; title: string }[]>(path, { signal })) ??
       []
     );
+  },
+
+  async terrains(gameIdentifier: string, signal?: AbortSignal): Promise<GameContentOption[]> {
+    const path = apiPathWithQuery(
+      "/game-content/terrains",
+      new URLSearchParams({ gameIdentifier }).toString(),
+    );
+    const result = await getApiClient().request<GameContentOption[]>(path, { signal });
+    return (result ?? []).map((item) => ({ ...item, versions: item.versions ?? [] }));
+  },
+
+  async scenarios(gameIdentifier: string, signal?: AbortSignal): Promise<GameContentOption[]> {
+    const path = apiPathWithQuery(
+      "/game-content/scenarios",
+      new URLSearchParams({ gameIdentifier }).toString(),
+    );
+    const result = await getApiClient().request<GameContentOption[]>(path, { signal });
+    return (result ?? []).map((item) => ({ ...item, versions: item.versions ?? [] }));
+  },
+
+  async secrets(serverId: string, signal?: AbortSignal): Promise<GameServerSecretStatus[]> {
+    return (
+      (await getApiClient().request<GameServerSecretStatus[]>(
+        fillApiPath("/game-servers/{gameServerId}/secrets", { gameServerId: serverId }),
+        { signal },
+      )) ?? []
+    );
+  },
+
+  async setSecret(
+    serverId: string,
+    key: string,
+    value: string,
+    externalProvider: boolean,
+  ): Promise<void> {
+    const path = "/game-servers/{gameServerId}/secrets" as const;
+    await getApiClient().request<void>(fillApiPath(path, { gameServerId: serverId }), {
+      method: apiMethod(path, "put"),
+      body: { key, value, origin: externalProvider ? "ExternalProvider" : "UserProvided" },
+    });
+  },
+
+  async rotateSecret(serverId: string, key: string): Promise<void> {
+    const path = "/game-servers/{gameServerId}/secrets/{key}/rotate" as const;
+    await getApiClient().request<void>(fillApiPath(path, { gameServerId: serverId, key }), {
+      method: apiMethod(path, "post"),
+    });
+  },
+
+  async revealSecret(serverId: string, key: string): Promise<GameServerSecretValue> {
+    const path = "/game-servers/{gameServerId}/secrets/{key}/reveal" as const;
+    const result = await getApiClient().request<GameServerSecretValue>(
+      fillApiPath(path, { gameServerId: serverId, key }),
+      { method: apiMethod(path, "post") },
+    );
+    return required(result, "Secret reveal");
   },
 
   async creationCostOwners(signal?: AbortSignal): Promise<ServerCreationCostOwnerOption[]> {

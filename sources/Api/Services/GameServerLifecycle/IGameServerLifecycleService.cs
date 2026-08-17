@@ -55,6 +55,15 @@ public interface IGameServerLifecycleService
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);
 
+    Task ChangeContentSelectionAsync(
+        Guid gameServerId,
+        long? terrainId,
+        Guid? terrainVersionId,
+        Guid? scenarioId,
+        Guid? scenarioVersionId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
+
     Task ArchiveAsync(
         Guid gameServerId,
         ClaimsPrincipal principal,

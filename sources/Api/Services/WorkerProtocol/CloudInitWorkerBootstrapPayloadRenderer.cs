@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
@@ -14,7 +15,8 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
     IConfiguration configuration,
     IHostEnvironment environment,
     IOptions<WorkerProvisioningOptions> options,
-    AdministrativeSshAccess administrativeSshAccess) : IWorkerBootstrapPayloadRenderer
+    AdministrativeSshAccess administrativeSshAccess,
+    IGameServerDefinitionCatalog? gameDefinitions = null) : IWorkerBootstrapPayloadRenderer
 {
     internal const string ExternalBlockDeviceToken = "__UTF_EXTERNAL_BLOCK_DEVICE__";
     private const int RuntimeGroupId = 10001;
@@ -158,7 +160,11 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
 
     private (string Username, string Password)? ResolveSteamCredentials(string gameIdentifier)
     {
-        if (!string.Equals(gameIdentifier, "arma3", StringComparison.OrdinalIgnoreCase))
+        var requiresCredentials = gameDefinitions?.Find(gameIdentifier)?.RuntimeInstallation
+            ?.RequiresAuthenticatedSteamCmd
+            ?? string.Equals(gameIdentifier, Arma3GameServerDefinitionRegistration.GameIdentifier,
+                StringComparison.OrdinalIgnoreCase);
+        if (!requiresCredentials)
             return null;
 
         var username = configuration["Steam:Username"];
@@ -166,7 +172,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             throw new InvalidOperationException(
-                "Steam:Username and Steam:Password must be configured before an Arma 3 worker can be provisioned.");
+                $"Steam:Username and Steam:Password must be configured before a '{gameIdentifier}' worker can be provisioned.");
         }
         if (username.Length > 128
             || username.Any(q => !char.IsAsciiLetterOrDigit(q) && q is not ('_' or '-' or '.' or '@'))

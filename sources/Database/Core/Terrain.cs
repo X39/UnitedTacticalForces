@@ -46,11 +46,13 @@ public class Terrain : IPrimaryKey<long>
     /// <summary>
     /// Foreign key to <see cref="ImageAsset"/>.
     /// </summary>
-    public Guid ImageAssetFk { get; set; }
+    public Guid? ImageAssetFk { get; set; }
 
     /// Indicates if the terrain is active or not.
     /// A value of `true` means the terrain is currently active and can be used or accessed.
     /// A value of `false` implies the terrain is inactive, typically representing scenarios
     /// such as being marked for deletion or temporarily disabled.
     public bool IsActive { get; set; }
+
+    public ICollection<TerrainVersion> Versions { get; set; } = [];
 }

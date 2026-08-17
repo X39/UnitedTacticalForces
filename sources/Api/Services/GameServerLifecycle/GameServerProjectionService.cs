@@ -116,6 +116,23 @@ internal sealed class GameServerProjectionService(
                     .OrderBy(q => q.Order)
                     .Select(q => ProjectStaticAction(q))
                     .ToArray(),
+                RequiresTerrain = capability.ContentCapabilities.RequiresTerrain,
+                TerrainLabel = capability.ContentCapabilities.TerrainLabel,
+                RequiresScenario = capability.ContentCapabilities.RequiresScenario,
+                ScenarioLabel = capability.ContentCapabilities.ScenarioLabel,
+                SupportsModPacks = capability.ContentCapabilities.SupportsModPacks,
+                RequiresModPack = capability.ContentCapabilities.RequiresModPack,
+                TerrainSourceKinds = capability.ContentCapabilities.TerrainSourceKinds,
+                ModInstallerIdentifiers = capability.ContentCapabilities.ModInstallerIdentifiers,
+                DefaultTerrainSourceIdentifier = capability.ContentCapabilities.DefaultTerrainSourceIdentifier,
+                DefaultScenarioSourceIdentifier = capability.ContentCapabilities.DefaultScenarioSourceIdentifier,
+                Secrets = capability.Secrets.Select(q => new GameServerSecretCapabilityDto(
+                    q.Key,
+                    q.DisplayName,
+                    q.RequiredForStart,
+                    q.Generated,
+                    q.Revealable,
+                    q.ExternalProvider)).ToArray(),
             })
             .ToArray();
     }
@@ -555,6 +572,8 @@ internal sealed class GameServerProjectionService(
             .AsSplitQuery()
             .Include(q => q.CurrentCostOwner)
             .Include(q => q.SelectedModPackDefinition)
+            .Include(q => q.SelectedTerrain)
+            .Include(q => q.SelectedScenario)
             .Include(q => q.SelectedConfigurationProfile)
             .Include(q => q.Deployments)
             .ThenInclude(q => q.Workers)
@@ -687,6 +706,13 @@ internal sealed class GameServerProjectionService(
             EstimatedMonthlyCostEur = server.EstimatedMonthlyCostEur,
             SelectedModPackDefinitionId = server.SelectedModPackDefinitionFk,
             SelectedModPackDefinitionTitle = server.SelectedModPackDefinition?.Title,
+            PinnedModPackRevisionId = server.PinnedModPackRevisionFk,
+            SelectedTerrainId = server.SelectedTerrainFk,
+            SelectedTerrainTitle = server.SelectedTerrain?.Title,
+            PinnedTerrainVersionId = server.PinnedTerrainVersionFk,
+            SelectedScenarioId = server.SelectedScenarioFk,
+            SelectedScenarioTitle = server.SelectedScenario?.Title,
+            PinnedScenarioVersionId = server.PinnedScenarioVersionFk,
             SelectedConfigurationProfileId = server.SelectedConfigurationProfileFk,
             SelectedConfigurationProfileTitle = server.SelectedConfigurationProfile?.Title,
             PinnedConfigurationProfileRevisionId = server.PinnedConfigurationProfileRevisionFk,
@@ -701,6 +727,14 @@ internal sealed class GameServerProjectionService(
                 principal,
                 server.PrimaryKey,
                 Claims.ResourceBased.Server.Modify),
+            CanManageSecrets = authorizationService.HasServerPermission(
+                principal,
+                server.PrimaryKey,
+                Claims.ResourceBased.Server.ManageSecrets),
+            CanRevealSecrets = authorizationService.HasServerPermission(
+                principal,
+                server.PrimaryKey,
+                Claims.ResourceBased.Server.RevealSecrets),
             TimeStampCreated = server.TimeStampCreated,
             TimeStampUpdated = server.TimeStampUpdated,
             PendingJobCount = pending,

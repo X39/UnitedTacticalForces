@@ -19,6 +19,7 @@ import { ServerConfigurationPanel } from "@/features/hosting/ServerConfiguration
 import { ServerFilesPanel } from "@/features/hosting/ServerFilesPanel";
 import { ServerLogsPanel } from "@/features/hosting/ServerLogsPanel";
 import { ServerRuntimePanel } from "@/features/hosting/ServerRuntimePanel";
+import { ServerSecretsPanel } from "@/features/hosting/ServerSecretsPanel";
 import { formatBytes, formatDate, formatMoney, humanizeToken } from "@/features/hosting/model";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
 import type {
@@ -34,7 +35,15 @@ import {
 } from "@/features/hosting/workspaceModel";
 
 type WorkspaceTab =
-  "overview" | "runtime" | "cloud" | "logs" | "files" | "configuration" | "jobs" | "audit";
+  | "overview"
+  | "runtime"
+  | "cloud"
+  | "logs"
+  | "files"
+  | "configuration"
+  | "credentials"
+  | "jobs"
+  | "audit";
 
 const workspaceTabIds: readonly WorkspaceTab[] = [
   "overview",
@@ -43,6 +52,7 @@ const workspaceTabIds: readonly WorkspaceTab[] = [
   "logs",
   "files",
   "configuration",
+  "credentials",
   "jobs",
   "audit",
 ];
@@ -393,6 +403,7 @@ export function ServerWorkspaceView({
     ["logs", t("Hosting_Detail_TabLogs")],
     ["files", t("Hosting_Detail_TabFiles")],
     ["configuration", t("React_ServerWorkspace_Configuration")],
+    ...(server.canManageSecrets ? [["credentials", "Credentials"] as [WorkspaceTab, string]] : []),
     ["jobs", `${c.jobs}${server.pendingJobCount ? ` (${server.pendingJobCount})` : ""}`],
     ["audit", c.audit],
   ];
@@ -484,6 +495,18 @@ export function ServerWorkspaceView({
                     {server.selectedModPackDefinitionTitle ?? t("React_ServerWorkspace_None")}
                   </dd>
                 </div>
+                {server.selectedTerrainTitle && (
+                  <div>
+                    <dt>Terrain</dt>
+                    <dd>{server.selectedTerrainTitle}</dd>
+                  </div>
+                )}
+                {server.selectedScenarioTitle && (
+                  <div>
+                    <dt>Scenario</dt>
+                    <dd>{server.selectedScenarioTitle}</dd>
+                  </div>
+                )}
                 <div>
                   <dt>{t("React_ServerWorkspace_Created")}</dt>
                   <dd>{formatDate(server.timeStampCreated)}</dd>
@@ -544,6 +567,7 @@ export function ServerWorkspaceView({
       {tab === "configuration" && (
         <ServerConfigurationPanel serverId={server.primaryKey} canModify={server.canModify} />
       )}
+      {tab === "credentials" && <ServerSecretsPanel server={server} />}
       {tab === "jobs" && (
         <section className="next-hosting-panel">
           <span className="kicker">{t("Hosting_Detail_QueueKicker")}</span>

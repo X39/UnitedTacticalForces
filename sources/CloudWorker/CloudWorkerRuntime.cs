@@ -35,6 +35,8 @@ public sealed class CloudWorkerRuntime(
                     {
                         DeploymentId = bootstrap.DeploymentId,
                         Identity = $"cloud-{bootstrap.WorkerId:N}",
+                        ProtocolVersion = 2,
+                        SupportedGameIdentifiers = ["arma3", "cs2"],
                     },
                     cancellationToken)
                 .ConfigureAwait(false);

@@ -66,6 +66,24 @@ public class Event
     /// entity.
     public long TerrainFk { get; set; }
 
+    [ForeignKey(nameof(PinnedTerrainVersionFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public TerrainVersion? PinnedTerrainVersion { get; set; }
+
+    public Guid? PinnedTerrainVersionFk { get; set; }
+
+    [ForeignKey(nameof(ScenarioFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public Scenario? Scenario { get; set; }
+
+    public Guid? ScenarioFk { get; set; }
+
+    [ForeignKey(nameof(PinnedScenarioVersionFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public ScenarioVersion? PinnedScenarioVersion { get; set; }
+
+    public Guid? PinnedScenarioVersionFk { get; set; }
+
 
     /// <summary>
     /// Represents the associated ModPackRevision for an event.
@@ -77,7 +95,7 @@ public class Event
     /// Represents the foreign key referencing a ModPackRevision entity.
     /// This property is used to establish the relationship between an Event
     /// and the corresponding ModPackRevision it is associated with.
-    public long ModPackRevisionFk { get; set; }
+    public long? ModPackRevisionFk { get; set; }
 
 
     /// <summary>

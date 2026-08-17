@@ -40,6 +40,15 @@ public class DatabaseContext : DbContext
     public DbSet<ModPackDefinition> ModPackDefinitions { get; set; } = null!;
     public DbSet<ModPackRevision> ModPackRevisions { get; set; } = null!;
     public DbSet<Terrain> Terrains { get; set; } = null!;
+    public DbSet<TerrainVersion> TerrainVersions { get; set; } = null!;
+    public DbSet<Scenario> Scenarios { get; set; } = null!;
+    public DbSet<ScenarioVersion> ScenarioVersions { get; set; } = null!;
+    public DbSet<ScenarioVersionRequiredModPack> ScenarioVersionRequiredModPacks { get; set; } = null!;
+    public DbSet<Mod> Mods { get; set; } = null!;
+    public DbSet<ModVersion> ModVersions { get; set; } = null!;
+    public DbSet<ModPackRevisionMod> ModPackRevisionMods { get; set; } = null!;
+    public DbSet<ModPackRevisionDependency> ModPackRevisionDependencies { get; set; } = null!;
+    public DbSet<ContentBackfillRun> ContentBackfillRuns { get; set; } = null!;
 
     #endregion
 
@@ -67,6 +76,7 @@ public class DatabaseContext : DbContext
     public DbSet<ConfigurationProfileRevision> ConfigurationProfileRevisions { get; set; } = null!;
     public DbSet<ConfigurationProfileValue> ConfigurationProfileValues { get; set; } = null!;
     public DbSet<GameServerConfigurationValue> GameServerConfigurationValues { get; set; } = null!;
+    public DbSet<GameServerSecret> GameServerSecrets { get; set; } = null!;
     public DbSet<HostingAuditRecord> HostingAuditRecords { get; set; } = null!;
     public DbSet<HostingCostLedgerEntry> HostingCostLedgerEntries { get; set; } = null!;
     public DbSet<HostingFinanceOperation> HostingFinanceOperations { get; set; } = null!;
@@ -261,6 +271,31 @@ public class DatabaseContext : DbContext
 
     private static void ConfigureHosting(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<ModPackRevisionDependency>(entity =>
+        {
+            entity.HasOne(q => q.ParentRevision)
+                .WithMany(q => q.Dependencies)
+                .HasForeignKey(q => q.ParentRevisionFk)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(q => q.PinnedChildRevision)
+                .WithMany()
+                .HasForeignKey(q => q.PinnedChildRevisionFk)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+        modelBuilder.Entity<ModPackRevisionMod>()
+            .HasOne(q => q.ModPackRevision)
+            .WithMany(q => q.Mods)
+            .HasForeignKey(q => q.ModPackRevisionFk)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ScenarioVersionRequiredModPack>()
+            .HasOne(q => q.ScenarioVersion)
+            .WithMany(q => q.RequiredModPacks)
+            .HasForeignKey(q => q.ScenarioVersionFk)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<GameServerSecret>()
+            .HasIndex(q => new { q.GameServerFk, q.Key })
+            .IsUnique()
+            .HasFilter("\"IsCurrent\" = TRUE");
         modelBuilder.Entity<GameServer>(entity =>
         {
             entity.HasOne(q => q.CreatedBy)

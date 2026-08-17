@@ -1228,6 +1228,7 @@ public sealed class LifecycleJobExecutorCloudTests
             new HostingAuthorizationService(dbContext),
             costSliceService,
             new HostingAuditWriter(),
+            new TestGameServerSecretService(),
             Options.Create(workerOptions ?? new LifecycleWorkerOptions
             {
                 RegistrationGrace = TimeSpan.FromMinutes(15),

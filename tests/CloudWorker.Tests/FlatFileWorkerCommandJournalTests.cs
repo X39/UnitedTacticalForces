@@ -119,6 +119,19 @@ public class FlatFileWorkerCommandJournalTests
         Assert.Equal("connection rejected value ****************; password policy healthy", sanitized);
     }
 
+    [Fact]
+    public void SecretRedactor_ReplacesCommonEncodedRepresentations()
+    {
+        const string secret = "hunter2!";
+        var encoded = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(secret));
+        var hex = Convert.ToHexString(System.Text.Encoding.UTF8.GetBytes(secret));
+
+        var sanitized = WorkerSecretRedactor.Redact($"base64={encoded}; hex={hex}", [secret]);
+
+        Assert.DoesNotContain(encoded, sanitized, StringComparison.Ordinal);
+        Assert.DoesNotContain(hex, sanitized, StringComparison.Ordinal);
+    }
+
     internal static WorkerCommandClaimResponse CreateCommand(
         Guid? workerId = null,
         Guid? deploymentId = null,

@@ -14,6 +14,8 @@ export interface ServerCreationFormValues {
   runtimeStorageStrategy: "IncludedDisk" | "AutomaticExternal" | "FixedExternal";
   externalStorageSizeGiB: number | null;
   modPackDefinitionId: number | null;
+  terrainId: number | null;
+  scenarioId: string | null;
   configurationProfileId: string | null;
   costOwnerId: string | null;
   isLaunchDisabled: boolean;
@@ -37,6 +39,8 @@ export function createServerCreationSchema(messages: ServerCreationValidationMes
     runtimeStorageStrategy: z.enum(["IncludedDisk", "AutomaticExternal", "FixedExternal"]),
     externalStorageSizeGiB: z.number().int().positive(messages.invalidCapacity).nullable(),
     modPackDefinitionId: z.number().int().positive().nullable(),
+    terrainId: z.number().int().positive().nullable(),
+    scenarioId: z.uuid(messages.invalidIdentifier).nullable(),
     configurationProfileId: z.uuid(messages.invalidIdentifier).nullable(),
     costOwnerId: z.uuid(messages.invalidIdentifier).nullable(),
     isLaunchDisabled: z.boolean(),

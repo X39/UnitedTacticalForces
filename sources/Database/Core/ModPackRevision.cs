@@ -64,4 +64,8 @@ public class ModPackRevision
     /// </summary>
     [InverseProperty(nameof(ModPackDefinition.ModPackRevisions))]
     public ICollection<ModPackDefinition>? ModPackDefinitions { get; set; }
+
+    public ICollection<ModPackRevisionMod> Mods { get; set; } = [];
+
+    public ICollection<ModPackRevisionDependency> Dependencies { get; set; } = [];
 }

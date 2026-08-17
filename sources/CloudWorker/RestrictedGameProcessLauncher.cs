@@ -7,10 +7,19 @@ namespace X39.UnitedTacticalForces.CloudWorker;
 /// </summary>
 public sealed class RestrictedGameProcessLauncher
 {
-    private readonly Arma3WorkerOptions _options;
+    private readonly RestrictedProcessOptions _options;
     private readonly bool _isLinux;
 
     public RestrictedGameProcessLauncher(Arma3WorkerOptions options, bool? isLinux = null)
+        : this(new RestrictedProcessOptions(
+            options.GameUserId,
+            options.GameGroupId,
+            options.PrivilegeDropPath,
+            options.SteamUserId), isLinux)
+    {
+    }
+
+    public RestrictedGameProcessLauncher(RestrictedProcessOptions options, bool? isLinux = null)
     {
         _options = options;
         _isLinux = isLinux ?? OperatingSystem.IsLinux();

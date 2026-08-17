@@ -46,6 +46,16 @@ public sealed record GameServerCreationPayload
     /// </summary>
     public long? ModPackDefinitionId { get; init; }
 
+    public long? ModPackRevisionId { get; init; }
+
+    public long? TerrainId { get; init; }
+
+    public Guid? TerrainVersionId { get; init; }
+
+    public Guid? ScenarioId { get; init; }
+
+    public Guid? ScenarioVersionId { get; init; }
+
     /// <summary>
     /// Optional reusable configuration baseline. Null uses game defaults and server-local values only.
     /// </summary>

@@ -829,6 +829,7 @@ public sealed class WorkerProtocolServiceTests
             store.DbContext,
             credentials,
             new HostingAuditWriter(),
+            new TestGameServerSecretService(),
             options);
         return new ProtocolSeed(service, deployment, worker, job, command, bootstrap);
     }

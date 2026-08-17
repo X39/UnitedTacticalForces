@@ -18,10 +18,13 @@ public sealed class ConfigurationProfilesControllerTests
         var result = Assert.IsType<OkObjectResult>(controller.GetDefinitions());
         var catalog = Assert.IsType<ConfigurationProfileDefinitionCatalogDto>(result.Value);
 
-        var arma = Assert.Single(catalog.Games);
+        Assert.Equal(2, catalog.Games.Count);
+        var arma = Assert.Single(catalog.Games, q => q.GameIdentifier == Arma3ConfigurationImplementation.Identifier);
         Assert.Equal(Arma3ConfigurationImplementation.Identifier, arma.GameIdentifier);
         Assert.NotEmpty(arma.Definitions);
         Assert.Contains(arma.Definitions, q => q.Required && q.DefaultValue.HasValue);
+        var cs2 = Assert.Single(catalog.Games, q => q.GameIdentifier == CounterStrike2ConfigurationImplementation.Identifier);
+        Assert.NotEmpty(cs2.Definitions);
         Assert.False(catalog.CanCreate);
     }
 

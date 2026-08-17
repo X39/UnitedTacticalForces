@@ -124,6 +124,14 @@
                     @onclick="@(() => SelectWorkspaceSection("configuration"))">
                 Configuration
             </button>
+            @if (_server.CanManageSecrets || _server.CanRevealSecrets)
+            {
+                <button class="@WorkspaceTabClass("secrets")" type="button"
+                        aria-current="@(_activeSection == "secrets" ? "page" : null)"
+                        @onclick="@(() => SelectWorkspaceSection("secrets"))">
+                    Credentials
+                </button>
+            }
             <button class="@WorkspaceTabClass("jobs")"
                     type="button"
                     aria-current="@(_activeSection == "jobs" ? "page" : null)"
@@ -301,6 +309,44 @@
                             <button class="utf-button utf-button--primary" type="button" disabled="@(_configurationSaving || _configurationEdits.Count == 0)" @onclick="SaveConfigurationAsync">
                                 @(_configurationSaving ? "Saving..." : "Save overrides")
                             </button>
+                        </div>
+                    }
+                }
+            </section>
+        }
+        else if (_activeSection == "secrets")
+        {
+            <section class="utf-panel hosting-configuration-panel">
+                <div class="hosting-section-heading">
+                    <span class="utf-kicker">Server-scoped credentials</span>
+                    <h2>Secrets</h2>
+                    <p>Values are encrypted at rest. Reveals and rotations are audited; values are never stored in command journals.</p>
+                </div>
+                @if (_secretsLoading) { <div class="utf-state-panel">Loading credentials…</div> }
+                else if (_secretsError is not null) { <UtfAlert Intent="MessageIntent.Error">@_secretsError</UtfAlert> }
+                else
+                {
+                    @foreach (var secret in _secrets)
+                    {
+                        <div class="hosting-field">
+                            <span><strong>@secret.DisplayName</strong> · @(secret.IsPresent ? $"version {secret.Version}" : "missing") @(secret.Required ? "· required" : null)</span>
+                            @if (_server.CanManageSecrets && !secret.Generated)
+                            {
+                                <input type="password" autocomplete="new-password" placeholder="Set a new value" value="@SecretEdit(secret.Key)" @oninput="@(e => _secretEdits[secret.Key] = e.Value?.ToString() ?? string.Empty)" />
+                                <button class="utf-button utf-button--primary" type="button" @onclick="@(() => SaveSecretAsync(secret.Key))">Save</button>
+                            }
+                            @if (_server.CanManageSecrets && secret.Generated)
+                            {
+                                <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => RotateSecretAsync(secret.Key))">Rotate</button>
+                            }
+                            @if (_server.CanRevealSecrets && secret.Revealable && secret.IsPresent)
+                            {
+                                <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => RevealSecretAsync(secret.Key))">Reveal</button>
+                            }
+                            @if (_revealedSecrets.TryGetValue(secret.Key, out var revealed))
+                            {
+                                <code>@revealed</code>
+                            }
                         </div>
                     }
                 }
@@ -1492,6 +1538,11 @@
     private IReadOnlyList<HostingOperationInfo> _operations = [];
     private IReadOnlyList<HostingFileInfo> _files = [];
     private GameConfigurationInfo? _configuration;
+    private IReadOnlyList<GameServerSecretInfo> _secrets = [];
+    private readonly Dictionary<string, string> _secretEdits = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _revealedSecrets = new(StringComparer.Ordinal);
+    private bool _secretsLoading;
+    private string? _secretsError;
     private IReadOnlyList<ConfigurationProfileOptionInfo> _configurationProfileOptions = [];
     private readonly Dictionary<string, string> _configurationEdits = new(StringComparer.Ordinal);
     private readonly HashSet<string> _configurationOverriddenTargets = new(StringComparer.OrdinalIgnoreCase);
@@ -1956,6 +2007,38 @@
             _showAllOperations = true;
         if (section == "configuration" && _configuration is null)
             _ = LoadConfigurationAsync(_cancellationTokenSource.Token);
+        if (section == "secrets" && _secrets.Count == 0)
+            _ = LoadSecretsAsync(_cancellationTokenSource.Token);
+    }
+
+    private string SecretEdit(string key) => _secretEdits.GetValueOrDefault(key, string.Empty);
+
+    private async Task LoadSecretsAsync(CancellationToken cancellationToken = default)
+    {
+        _secretsLoading = true;
+        _secretsError = null;
+        try { _secrets = await GameServerRepository.GetSecretsAsync(ServerId, cancellationToken); }
+        catch (Exception exception) { _secretsError = UserFacingError.Message(exception, "Credentials could not be loaded."); }
+        finally { _secretsLoading = false; await InvokeAsync(StateHasChanged); }
+    }
+
+    private async Task SaveSecretAsync(string key)
+    {
+        if (!_secretEdits.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value)) return;
+        await GameServerRepository.SetSecretAsync(ServerId, key, value, _cancellationTokenSource.Token);
+        _secretEdits.Remove(key); _revealedSecrets.Remove(key); await LoadSecretsAsync(_cancellationTokenSource.Token);
+    }
+
+    private async Task RotateSecretAsync(string key)
+    {
+        await GameServerRepository.RotateSecretAsync(ServerId, key, _cancellationTokenSource.Token);
+        _revealedSecrets.Remove(key); await LoadSecretsAsync(_cancellationTokenSource.Token);
+    }
+
+    private async Task RevealSecretAsync(string key)
+    {
+        var value = await GameServerRepository.RevealSecretAsync(ServerId, key, _cancellationTokenSource.Token);
+        _revealedSecrets[key] = value.Value; StateHasChanged();
     }
 
     private async Task LoadConfigurationAsync(CancellationToken cancellationToken = default)

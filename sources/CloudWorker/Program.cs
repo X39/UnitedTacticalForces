@@ -49,14 +49,17 @@ try
         // Their command/worker cancellation token remains the transfer deadline.
         Timeout = Timeout.InfiniteTimeSpan,
     };
-    var executor = new Arma3WorkerCommandExecutor(
+    var storageTransfer = new CloudWorkerStorageTransfer(
+        storageHttpClient,
+        credentialStore,
         connection,
-        options,
-        storageTransfer: new CloudWorkerStorageTransfer(
-            storageHttpClient,
-            credentialStore,
-            connection,
-            options.StateDirectory));
+        options.StateDirectory);
+    var executorRegistry = new WorkerGameExecutorRegistry(
+    [
+        new("arma3", () => new Arma3WorkerCommandExecutor(connection, options, storageTransfer: storageTransfer)),
+        new("cs2", () => new CounterStrike2WorkerCommandExecutor(connection, options, storage: storageTransfer)),
+    ]);
+    var executor = executorRegistry.Create(connection.GameIdentifier);
     var runtime = new CloudWorkerRuntime(
         new CloudWorkerApiClient(controlHttpClient),
         credentialStore,

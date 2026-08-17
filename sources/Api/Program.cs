@@ -5,6 +5,7 @@ using AspNet.Security.OAuth.Discord;
 using AspNet.Security.OpenId.Steam;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -129,10 +130,27 @@ internal class Program
         if (app.Environment.IsDevelopment())
             await DebugDemoDataSeeder.SeedAsync(dbContext, mediaAssetService).ConfigureAwait(false);
         await HostingFinanceClaimSeeder.SeedAsync(dbContext).ConfigureAwait(false);
+        await Services.GameServerDefinition.GameContentSeeder.SeedAsync(dbContext).ConfigureAwait(false);
+        await Services.GameServerDefinition.NormalizedContentBackfill.ApplyAsync(dbContext).ConfigureAwait(false);
+        await scope.ServiceProvider.GetRequiredService<Services.GameServerSecrets.IGameServerSecretService>()
+            .MigrateLegacyConfigurationSecretsAsync().ConfigureAwait(false);
     }
 
     private static void AddServices(WebApplicationBuilder builder)
     {
+        var keyRingPath = builder.Configuration["Hosting:Secrets:KeyRingPath"];
+        if (!builder.Environment.IsDevelopment()
+            && (string.IsNullOrWhiteSpace(keyRingPath) || !Path.IsPathFullyQualified(keyRingPath)))
+            throw new InvalidOperationException(
+                "Production requires Hosting:Secrets:KeyRingPath to be an absolute path on durable storage.");
+        if (string.IsNullOrWhiteSpace(keyRingPath))
+            keyRingPath = Path.Combine(builder.Environment.ContentRootPath, ".local", "hosting", "key-ring");
+        var keyRingDirectory = Directory.CreateDirectory(Path.GetFullPath(keyRingPath));
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(keyRingDirectory.FullName, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        builder.Services.AddDataProtection()
+            .SetApplicationName("X39.UnitedTacticalForces.Hosting")
+            .PersistKeysToFileSystem(keyRingDirectory);
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddOpenApi(options =>
             {

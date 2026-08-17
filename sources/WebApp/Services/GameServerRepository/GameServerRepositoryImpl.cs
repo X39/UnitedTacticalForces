@@ -26,6 +26,20 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
         return capabilities ?? [];
     }
 
+    public async Task<IReadOnlyList<GameContentOptionInfo>> GetTerrainOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<GameContentOptionInfo[]>(
+                $"game-content/terrains?gameIdentifier={Uri.EscapeDataString(gameIdentifier)}",
+                cancellationToken).ConfigureAwait(false) ?? [];
+
+    public async Task<IReadOnlyList<GameContentOptionInfo>> GetScenarioOptionsAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<GameContentOptionInfo[]>(
+                $"game-content/scenarios?gameIdentifier={Uri.EscapeDataString(gameIdentifier)}",
+                cancellationToken).ConfigureAwait(false) ?? [];
+
     public async Task<IReadOnlyList<GameServerNotificationInfo>> GetNotificationsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -50,6 +64,29 @@ internal sealed class GameServerRepositoryImpl(IHttpClientFactory httpClientFact
         response.EnsureSuccessStatusCode();
         return await ReadFromJsonAsync<GameServerInfo>(response, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<GameServerSecretInfo>> GetSecretsAsync(Guid serverId, CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<GameServerSecretInfo[]>($"game-servers/{serverId}/secrets", cancellationToken)
+            .ConfigureAwait(false) ?? [];
+
+    public async Task SetSecretAsync(Guid serverId, string key, string value, CancellationToken cancellationToken = default)
+    {
+        var response = await PutAsJsonAsync($"game-servers/{serverId}/secrets", new { Key = key, Value = value, Origin = "ExternalProvider" }, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task RotateSecretAsync(Guid serverId, string key, CancellationToken cancellationToken = default)
+    {
+        var response = await HttpClient.PostAsync(BaseUrl.ResolveApiUrl($"game-servers/{serverId}/secrets/{Uri.EscapeDataString(key)}/rotate"), null, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<GameServerSecretValueInfo> RevealSecretAsync(Guid serverId, string key, CancellationToken cancellationToken = default)
+    {
+        var response = await HttpClient.PostAsync(BaseUrl.ResolveApiUrl($"game-servers/{serverId}/secrets/{Uri.EscapeDataString(key)}/reveal"), null, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await ReadRequiredAsync<GameServerSecretValueInfo>(response, "Secret reveal", cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<ConfigurationProfileOptionInfo>> GetConfigurationProfileOptionsAsync(

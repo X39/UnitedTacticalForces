@@ -48,6 +48,8 @@ public sealed class GameServerConfigurationService(DatabaseContext dbContext) : 
         var entries = new List<ResolvedConfigurationValue>(implementation.Definitions.Count);
         foreach (var definition in implementation.Definitions.OrderBy(q => q.Order))
         {
+            if (definition.Sensitive)
+                continue;
             JsonElement? value = definition.DefaultValue?.Clone();
             var source = value.HasValue ? "Default" : "Missing";
             var compatible = true;
@@ -110,6 +112,8 @@ public sealed class GameServerConfigurationService(DatabaseContext dbContext) : 
         var definition = GameConfigurationImplementations.Get(gameIdentifier).Definitions
             .SingleOrDefault(q => string.Equals(q.Key, key, StringComparison.Ordinal))
             ?? throw new ArgumentException($"Unknown configuration key '{key}'.", nameof(key));
+        if (definition.Sensitive)
+            throw new ArgumentException("Secrets must be managed through the server secret API.", nameof(key));
         if (!GameConfigurationValueValidator.IsCompatible(definition, value, out var error))
             throw new ArgumentException(error, nameof(value));
         return value.Clone();

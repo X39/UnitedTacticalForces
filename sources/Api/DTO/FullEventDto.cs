@@ -24,6 +24,11 @@ public record FullEventDto
     /// This property is used as a unique identifier for the associated record in the database.
     /// </summary>
     public long TerrainPrimaryKey { get; init; }
+    public string TerrainGameIdentifier { get; init; } = string.Empty;
+    public Guid? TerrainVersionFk { get; init; }
+    public Guid? ScenarioFk { get; init; }
+    public string? ScenarioTitle { get; init; }
+    public Guid? ScenarioVersionFk { get; init; }
 
     /// <summary>
     /// Gets or sets the title of the terrain.
@@ -37,12 +42,12 @@ public record FullEventDto
     /// <summary>
     /// Gallery media asset used as terrain image.
     /// </summary>
-    public Guid TerrainImageAssetFk { get; init; }
+    public Guid? TerrainImageAssetFk { get; init; }
 
     /// <summary>
     /// API-relative render path for the terrain image.
     /// </summary>
-    public string TerrainImagePath { get; init; } = string.Empty;
+    public string? TerrainImagePath { get; init; }
 
     /// Indicates if the terrain is active or not.
     /// A value of `true` means the terrain is currently active and can be used or accessed.
@@ -58,12 +63,12 @@ public record FullEventDto
     /// <summary>
     /// The primary key of this entity.
     /// </summary>
-    public long ModPackRevisionPrimaryKey { get; init; }
+    public long? ModPackRevisionPrimaryKey { get; init; }
 
     /// <summary>
     /// The timestamp when this revision was created.
     /// </summary>
-    public Instant ModPackRevisionTimeStampCreated { get; init; }
+    public Instant? ModPackRevisionTimeStampCreated { get; init; }
 
     /// <summary>
     /// The HTML content of this revision.
@@ -96,12 +101,12 @@ public record FullEventDto
     /// <summary>
     /// The primary key of this entity.
     /// </summary>
-    public long ModPackDefinitionPrimaryKey { get; init; }
+    public long? ModPackDefinitionPrimaryKey { get; init; }
 
     /// <summary>
     /// The timestamp when this modpack was created.
     /// </summary>
-    public Instant ModPackDefinitionTimeStampCreated { get; init; }
+    public Instant? ModPackDefinitionTimeStampCreated { get; init; }
 
     /// <summary>
     /// The name of this modpack.

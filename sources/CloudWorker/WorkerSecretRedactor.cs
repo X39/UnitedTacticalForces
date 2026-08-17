@@ -1,5 +1,8 @@
 ﻿using System.Text.RegularExpressions;
 
+using System.Net;
+using System.Text;
+
 namespace X39.UnitedTacticalForces.CloudWorker;
 
 internal static class WorkerSecretRedactor
@@ -24,7 +27,8 @@ internal static class WorkerSecretRedactor
                          .Distinct(StringComparer.Ordinal)
                          .OrderByDescending(q => q.Length))
             {
-                sanitized = sanitized.Replace(secret, RedactedValue, StringComparison.Ordinal);
+                foreach (var representation in Representations(secret))
+                    sanitized = sanitized.Replace(representation, RedactedValue, StringComparison.Ordinal);
             }
         }
         var lines = sanitized.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
@@ -32,5 +36,18 @@ internal static class WorkerSecretRedactor
             CredentialShapePattern.IsMatch(line)
                 ? RedactedLine
                 : line));
+    }
+
+    private static IEnumerable<string> Representations(string secret)
+    {
+        yield return secret;
+        if (secret.Length < 4) yield break;
+        var bytes = Encoding.UTF8.GetBytes(secret);
+        var base64 = Convert.ToBase64String(bytes);
+        yield return base64;
+        yield return base64.TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        yield return WebUtility.UrlEncode(secret);
+        yield return Convert.ToHexString(bytes);
+        yield return Convert.ToHexStringLower(bytes);
     }
 }

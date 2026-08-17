@@ -17,6 +17,13 @@ public sealed record GameServerDto
     public decimal? EstimatedMonthlyCostEur { get; init; }
     public long? SelectedModPackDefinitionId { get; init; }
     public string? SelectedModPackDefinitionTitle { get; init; }
+    public long? PinnedModPackRevisionId { get; init; }
+    public long? SelectedTerrainId { get; init; }
+    public string? SelectedTerrainTitle { get; init; }
+    public Guid? PinnedTerrainVersionId { get; init; }
+    public Guid? SelectedScenarioId { get; init; }
+    public string? SelectedScenarioTitle { get; init; }
+    public Guid? PinnedScenarioVersionId { get; init; }
     public Guid? SelectedConfigurationProfileId { get; init; }
     public string? SelectedConfigurationProfileTitle { get; init; }
     public Guid? PinnedConfigurationProfileRevisionId { get; init; }
@@ -26,6 +33,8 @@ public sealed record GameServerDto
     public bool IsLaunchDisabled { get; init; }
     public bool IsArchived { get; init; }
     public bool CanModify { get; init; }
+    public bool CanManageSecrets { get; init; }
+    public bool CanRevealSecrets { get; init; }
     public Instant TimeStampCreated { get; init; }
     public Instant TimeStampUpdated { get; init; }
     public GameServerDeploymentDto? Deployment { get; init; }

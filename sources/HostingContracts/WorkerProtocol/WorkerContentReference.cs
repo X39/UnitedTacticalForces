@@ -19,6 +19,23 @@ public sealed record WorkerContentReference : IValidatableObject
     [MaxLength(128)]
     public string DisplayName { get; init; } = string.Empty;
 
+    [MaxLength(32)]
+    public string UsageRole { get; init; } = "Shared";
+
+    [MaxLength(128)]
+    public string InstallerIdentifier { get; init; } = string.Empty;
+
+    [MaxLength(128)]
+    public string? VersionIdentifier { get; init; }
+
+    [MaxLength(128)]
+    public string? ArtifactIdentifier { get; init; }
+
+    [MaxLength(128)]
+    public string? ChecksumSha256 { get; init; }
+
+    public string InstallerConfiguration { get; init; } = "{}";
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (string.IsNullOrWhiteSpace(Source))

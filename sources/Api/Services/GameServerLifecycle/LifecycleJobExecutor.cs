@@ -11,6 +11,7 @@ using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
+using X39.UnitedTacticalForces.Api.Services.GameServerSecrets;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 using X39.Util.DependencyInjection.Attributes;
@@ -36,6 +37,7 @@ internal sealed class LifecycleJobExecutor(
     IHostingAuthorizationService authorizationService,
     IHostingCostSliceService costSliceService,
     IHostingAuditWriter auditWriter,
+    IGameServerSecretService secretService,
     IOptions<LifecycleWorkerOptions> options) : ILifecycleJobExecutor
 {
     private static readonly JsonSerializerOptions CommandJsonOptions = new(JsonSerializerDefaults.Web);
@@ -312,6 +314,12 @@ internal sealed class LifecycleJobExecutor(
                 deployment.StorageEstimateStatus = storageDemand.Status.ToString();
                 deployment.StorageEstimateCalculatedAt = storageDemand.CalculatedAt;
                 deployment.ContentSnapshot = JsonSerializer.Serialize(storageDemand.EffectiveContent, CommandJsonOptions);
+                deployment.TerrainSnapshot = JsonSerializer.Serialize(
+                    await ResolveTerrainAsync(server, cancellationToken).ConfigureAwait(false),
+                    CommandJsonOptions);
+                deployment.ScenarioSnapshot = JsonSerializer.Serialize(
+                    await ResolveScenarioAsync(server, cancellationToken).ConfigureAwait(false),
+                    CommandJsonOptions);
                 deployment.EstimatedComputeHourlyCostEur = currentProfile.EstimatedHourlyCostEur;
                 deployment.EstimatedStorageHourlyCostEur = storagePlan.EstimatedHourlyCostEur;
                 deployment.EstimatedHourlyCostEur = currentProfile.EstimatedHourlyCostEur is { } computeRate
@@ -1443,6 +1451,13 @@ internal sealed class LifecycleJobExecutor(
             : await contentSnapshotResolver.ResolveAsync(server.PrimaryKey, cancellationToken).ConfigureAwait(false);
         var configuration = await configurationService.ResolveAsync(server.PrimaryKey, cancellationToken)
             .ConfigureAwait(false);
+        var terrain = deployment.TerrainSnapshot is not null
+            ? JsonSerializer.Deserialize<WorkerSelectedContent>(deployment.TerrainSnapshot, CommandJsonOptions)
+            : await ResolveTerrainAsync(server, cancellationToken).ConfigureAwait(false);
+        var scenario = deployment.ScenarioSnapshot is not null
+            ? JsonSerializer.Deserialize<WorkerSelectedContent>(deployment.ScenarioSnapshot, CommandJsonOptions)
+            : await ResolveScenarioAsync(server, cancellationToken).ConfigureAwait(false);
+        var gameDefinition = gameServerDefinitions.Find(server.GameIdentifier);
         var payload = new WorkerCommandPayload
         {
             ServerId                  = server.PrimaryKey,
@@ -1451,10 +1466,12 @@ internal sealed class LifecycleJobExecutor(
             ActionIdentifier          = job.ActionIdentifier,
             GracefulStopAttempts      = server.GracefulStopAttempts,
             GracefulStopTimeoutSeconds = server.GracefulStopTimeoutSeconds,
-            Port                      = null,
+            Port                      = gameDefinition?.PrimaryConnection?.Port,
             Content                   = content,
             Configuration             = configuration.Values,
             PeakStorageRequiredBytes  = deployment.PeakStorageRequiredBytes,
+            Terrain                   = terrain,
+            Scenario                  = scenario,
         };
         var command = new WorkerCommand
         {
@@ -1466,6 +1483,8 @@ internal sealed class LifecycleJobExecutor(
             Priority         = job.Priority,
             ActionIdentifier = job.ActionIdentifier,
             Payload          = JsonSerializer.Serialize(payload, CommandJsonOptions),
+            ProtectedSecrets = await secretService.CreateProtectedSnapshotAsync(server.PrimaryKey, cancellationToken)
+                .ConfigureAwait(false),
             Status           = EWorkerCommandStatus.Queued,
             Stage            = "queued-for-external-worker",
             TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
@@ -1484,6 +1503,66 @@ internal sealed class LifecycleJobExecutor(
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return command;
+    }
+
+    private async Task<WorkerSelectedContent?> ResolveTerrainAsync(
+        GameServer server,
+        CancellationToken cancellationToken)
+    {
+        if (server.SelectedTerrainFk is not { } terrainId)
+            return null;
+        var terrain = await dbContext.Terrains.AsNoTracking()
+            .SingleAsync(q => q.PrimaryKey == terrainId, cancellationToken)
+            .ConfigureAwait(false);
+        var version = server.PinnedTerrainVersionFk is { } pinned
+            ? await dbContext.TerrainVersions.AsNoTracking()
+                .SingleAsync(q => q.PrimaryKey == pinned && q.TerrainFk == terrainId, cancellationToken)
+                .ConfigureAwait(false)
+            : await dbContext.TerrainVersions.AsNoTracking()
+                .Where(q => q.TerrainFk == terrainId)
+                .OrderByDescending(q => q.VersionNumber)
+                .FirstAsync(cancellationToken)
+                .ConfigureAwait(false);
+        return new WorkerSelectedContent
+        {
+            Source = version.SourceKind.ToString(),
+            Identifier = version.SourceIdentifier,
+            DisplayName = terrain.Title,
+            VersionIdentifier = version.VersionLabel,
+            Metadata = version.Metadata,
+            ArtifactIdentifier = version.ArtifactIdentifier,
+            ChecksumSha256 = version.ChecksumSha256,
+        };
+    }
+
+    private async Task<WorkerSelectedContent?> ResolveScenarioAsync(
+        GameServer server,
+        CancellationToken cancellationToken)
+    {
+        if (server.SelectedScenarioFk is not { } scenarioId)
+            return null;
+        var scenario = await dbContext.Scenarios.AsNoTracking()
+            .SingleAsync(q => q.PrimaryKey == scenarioId, cancellationToken)
+            .ConfigureAwait(false);
+        var version = server.PinnedScenarioVersionFk is { } pinned
+            ? await dbContext.ScenarioVersions.AsNoTracking()
+                .SingleAsync(q => q.PrimaryKey == pinned && q.ScenarioFk == scenarioId, cancellationToken)
+                .ConfigureAwait(false)
+            : await dbContext.ScenarioVersions.AsNoTracking()
+                .Where(q => q.ScenarioFk == scenarioId)
+                .OrderByDescending(q => q.VersionNumber)
+                .FirstAsync(cancellationToken)
+                .ConfigureAwait(false);
+        return new WorkerSelectedContent
+        {
+            Source = version.SourceKind.ToString(),
+            Identifier = version.SourceIdentifier,
+            DisplayName = scenario.Title,
+            VersionIdentifier = version.VersionLabel,
+            Metadata = version.Metadata,
+            ArtifactIdentifier = version.ArtifactIdentifier,
+            ChecksumSha256 = version.ChecksumSha256,
+        };
     }
 
     internal async Task WaitForCommandAsync(

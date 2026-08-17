@@ -30,6 +30,8 @@ export interface EventAuthoringRecord {
   terrainPrimaryKey: number | null;
   terrainTitle: string;
   terrainGameIdentifier: string;
+  scenarioPrimaryKey: string | null;
+  scenarioTitle: string;
   modPackRevisionPrimaryKey: number | null;
   modPackDefinitionTitle: string;
   imageAssetFk: string;
@@ -53,6 +55,9 @@ export interface EventFormValues {
   hostedByFk: string;
   terrainFk: number | null;
   terrainGameIdentifier: string;
+  scenarioFk: string | null;
+  scenarioRequired: boolean;
+  modPackRequired: boolean;
   modPackRevisionFk: number | null;
   imageAssetFk: string;
   imagePath: string;
@@ -159,6 +164,9 @@ export function createEventFormSchema(messages: EventValidationMessages, require
     hostedByFk: z.string().uuid(messages.hostRequired),
     terrainFk: z.number().int().positive().nullable(),
     terrainGameIdentifier: z.string(),
+    scenarioFk: z.string().uuid().nullable(),
+    scenarioRequired: z.boolean(),
+    modPackRequired: z.boolean(),
     modPackRevisionFk: z.number().int().positive().nullable(),
     imageAssetFk: z.string(),
     imagePath: z.string(),
@@ -168,7 +176,9 @@ export function createEventFormSchema(messages: EventValidationMessages, require
   return schema.superRefine((value, context) => {
     if (value.terrainFk == null)
       context.addIssue({ code: "custom", path: ["terrainFk"], message: messages.terrainRequired });
-    if (value.modPackRevisionFk == null)
+    if (value.scenarioRequired && value.scenarioFk == null)
+      context.addIssue({ code: "custom", path: ["scenarioFk"], message: messages.terrainRequired });
+    if (value.modPackRequired && value.modPackRevisionFk == null)
       context.addIssue({
         code: "custom",
         path: ["modPackRevisionFk"],
@@ -205,6 +215,9 @@ export function createEventForm(now = new Date()): EventFormValues {
     hostedByFk: "",
     terrainFk: null,
     terrainGameIdentifier: "",
+    scenarioFk: null,
+    scenarioRequired: false,
+    modPackRequired: true,
     modPackRevisionFk: null,
     imageAssetFk: "",
     imagePath: "",
@@ -221,6 +234,9 @@ export function eventToForm(event: EventAuthoringRecord): EventFormValues {
     hostedByFk: event.hostedBy?.primaryKey ?? "",
     terrainFk: event.terrainPrimaryKey,
     terrainGameIdentifier: event.terrainGameIdentifier,
+    scenarioFk: event.scenarioPrimaryKey,
+    scenarioRequired: event.scenarioPrimaryKey !== null,
+    modPackRequired: event.modPackRevisionPrimaryKey !== null,
     modPackRevisionFk: event.modPackRevisionPrimaryKey,
     imageAssetFk: event.imageAssetFk,
     imagePath: event.imagePath,
@@ -374,6 +390,8 @@ function normalizeEvent(event: FullEventDto): EventAuthoringRecord | undefined {
     terrainPrimaryKey: event.terrainPrimaryKey ?? null,
     terrainTitle: event.terrainTitle ?? "",
     terrainGameIdentifier: "",
+    scenarioPrimaryKey: event.scenarioFk ?? null,
+    scenarioTitle: event.scenarioTitle ?? "",
     modPackRevisionPrimaryKey: event.modPackRevisionPrimaryKey ?? null,
     modPackDefinitionTitle: event.modPackDefinitionTitle ?? "",
     imageAssetFk: event.imageAssetFk ?? "",
@@ -409,14 +427,14 @@ function normalizeSlot(slot: PlainEventSlotDto): EventSlotDraft {
 }
 
 function toCreationPayload(values: EventFormValues): EventCreationPayload {
-  if (values.terrainFk == null || values.modPackRevisionFk == null)
-    throw new Error("Terrain and mod-pack revision are required.");
+  if (values.terrainFk == null) throw new Error("Terrain is required.");
   return {
     title: values.title.trim(),
     description: values.description.trim(),
     scheduledFor: new Date(values.scheduledForLocal).toISOString(),
     hostedByFk: values.hostedByFk,
     terrainFk: values.terrainFk,
+    scenarioFk: values.scenarioFk,
     modPackRevisionFk: values.modPackRevisionFk,
     imageAssetFk: values.imageAssetFk,
     minimumAccepted: values.minimumAccepted,

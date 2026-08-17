@@ -3524,6 +3524,379 @@
         "security": [ ]
       }
     },
+    "/game-content/servers/{serverId}/artifacts/{artifactIdentifier}": {
+      "post": {
+        "tags": [
+          "GameContent"
+        ],
+        "parameters": [
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "artifactIdentifier",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/game-content/terrains": {
+      "get": {
+        "tags": [
+          "GameContent"
+        ],
+        "parameters": [
+          {
+            "name": "gameIdentifier",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "GameContent"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentIdentityPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentIdentityPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentIdentityPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/game-content/terrains/{terrainId}/versions": {
+      "post": {
+        "tags": [
+          "GameContent"
+        ],
+        "parameters": [
+          {
+            "name": "terrainId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentVersionPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentVersionPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentVersionPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/game-content/scenarios": {
+      "get": {
+        "tags": [
+          "GameContent"
+        ],
+        "parameters": [
+          {
+            "name": "gameIdentifier",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "GameContent"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/game-content/scenarios/{scenarioId}/versions": {
+      "post": {
+        "tags": [
+          "GameContent"
+        ],
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioVersionPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioVersionPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioVersionPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/game-content/mods": {
+      "get": {
+        "tags": [
+          "GameContent"
+        ],
+        "parameters": [
+          {
+            "name": "gameIdentifier",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "GameContent"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/game-content/mods/{modId}/versions": {
+      "post": {
+        "tags": [
+          "GameContent"
+        ],
+        "parameters": [
+          {
+            "name": "modId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModVersionPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModVersionPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModVersionPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/game-content/modpacks/{revisionId}/members": {
+      "put": {
+        "tags": [
+          "GameContent"
+        ],
+        "parameters": [
+          {
+            "name": "revisionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModPackMembersPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModPackMembersPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModPackMembersPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/game-servers/{gameServerId}/configuration": {
       "get": {
         "tags": [
@@ -4848,6 +5221,49 @@
         }
       }
     },
+    "/game-servers/{gameServerId}/content-selection": {
+      "put": {
+        "tags": [
+          "GameServers"
+        ],
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GameServerContentSelectionPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GameServerContentSelectionPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GameServerContentSelectionPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/game-servers/{gameServerId}/access": {
       "get": {
         "tags": [
@@ -5076,6 +5492,175 @@
         "responses": {
           "204": {
             "description": "No Content"
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/secrets": {
+      "get": {
+        "tags": [
+          "GameServerSecrets"
+        ],
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerSecretStatusDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerSecretStatusDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerSecretStatusDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "GameServerSecrets"
+        ],
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GameServerSecretValuePayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GameServerSecretValuePayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GameServerSecretValuePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/secrets/{key}/rotate": {
+      "post": {
+        "tags": [
+          "GameServerSecrets"
+        ],
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/secrets/{key}/reveal": {
+      "post": {
+        "tags": [
+          "GameServerSecrets"
+        ],
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerSecretValueDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerSecretValueDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerSecretValueDto"
+                }
+              }
+            }
           }
         }
       }
@@ -8148,7 +8733,7 @@
           "Terrain"
         ],
         "summary": "Allows to change the contents of a Terrain.",
-        "description": "        Only non-system properties are allowed:\r\n        * string Terrain.Title\r\n* Guid Terrain.ImageAssetFk",
+        "description": "        Only non-system properties are allowed:\r\n        * string Terrain.Title\r\n* Guid? Terrain.ImageAssetFk",
         "operationId": "UpdateTerrainAsync",
         "parameters": [
           {
@@ -12464,6 +13049,92 @@
           }
         }
       },
+      "ContentIdentityPayload": {
+        "required": [
+          "gameIdentifier",
+          "title",
+          "imageAssetFk",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "gameIdentifier": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "imageAssetFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "version": {
+            "$ref": "#/components/schemas/ContentVersionPayload"
+          }
+        }
+      },
+      "ContentVersionPayload": {
+        "required": [
+          "sourceKind",
+          "sourceIdentifier",
+          "versionLabel"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceKind": {
+            "$ref": "#/components/schemas/EContentSourceKind"
+          },
+          "sourceIdentifier": {
+            "type": "string"
+          },
+          "versionLabel": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "string",
+            "default": "{}"
+          },
+          "artifactIdentifier": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "checksumSha256": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "artifactSizeBytes": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int64"
+              }
+            ]
+          }
+        }
+      },
       "CostOwnerAllowancePayload": {
         "required": [
           "recordIdentifier",
@@ -12721,6 +13392,36 @@
             {
               "name": "Conflict",
               "value": 3,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "EContentSourceKind": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "BuiltIn",
+          "SteamWorkshop",
+          "UploadedArtifact"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EContentSourceKind",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "BuiltIn",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "SteamWorkshop",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "UploadedArtifact",
+              "value": 2,
               "description": ""
             }
           ]
@@ -13062,6 +13763,36 @@
           ]
         }
       },
+      "EGameServerSecretOrigin": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Generated",
+          "UserProvided",
+          "ExternalProvider"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EGameServerSecretOrigin",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Generated",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "UserProvided",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "ExternalProvider",
+              "value": 2,
+              "description": ""
+            }
+          ]
+        }
+      },
       "EHostingAuditEventKind": {
         "$comment": "Applied FixEnumsSchemaTransformer",
         "enum": [
@@ -13139,7 +13870,11 @@
           "ConfigurationProfileCreated",
           "ConfigurationProfileRevisionCreated",
           "ConfigurationProfileArchived",
-          "HostingFinancePolicyChanged"
+          "HostingFinancePolicyChanged",
+          "ServerSecretCreated",
+          "ServerSecretRotated",
+          "ServerSecretRevealed",
+          "ServerSecretUpdated"
         ],
         "type": "integer",
         "x-ms-enum": {
@@ -13520,6 +14255,26 @@
               "name": "HostingFinancePolicyChanged",
               "value": 74,
               "description": ""
+            },
+            {
+              "name": "ServerSecretCreated",
+              "value": 75,
+              "description": ""
+            },
+            {
+              "name": "ServerSecretRotated",
+              "value": 76,
+              "description": ""
+            },
+            {
+              "name": "ServerSecretRevealed",
+              "value": 77,
+              "description": ""
+            },
+            {
+              "name": "ServerSecretUpdated",
+              "value": 78,
+              "description": ""
             }
           ]
         }
@@ -13812,6 +14567,36 @@
           ]
         }
       },
+      "EModUsageRole": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Shared",
+          "ClientOnly",
+          "ServerOnly"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EModUsageRole",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Shared",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "ClientOnly",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "ServerOnly",
+              "value": 2,
+              "description": ""
+            }
+          ]
+        }
+      },
       "EPreservationMode": {
         "$comment": "Applied FixEnumsSchemaTransformer",
         "enum": [
@@ -13949,11 +14734,51 @@
             "description": "References the unique identifier of the associated terrain in the system.",
             "format": "int64"
           },
+          "terrainVersionFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioVersionFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
           "modPackRevisionFk": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "Represents a reference to the associated mod pack revision.",
-            "format": "int64"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Represents a reference to the associated mod pack revision.",
+                "format": "int64"
+              }
+            ]
           },
           "imageAssetFk": {
             "type": "string",
@@ -14118,6 +14943,39 @@
                 "type": "integer",
                 "description": "References the unique identifier of the associated terrain in the system.",
                 "format": "int64"
+              }
+            ]
+          },
+          "terrainVersionFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioVersionFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
               }
             ]
           },
@@ -14739,31 +15597,105 @@
             "description": "Represents the primary key of an entity within the context of the application's data model.\r\nThis property is used as a unique identifier for the associated record in the database.",
             "format": "int64"
           },
+          "terrainGameIdentifier": {
+            "type": "string"
+          },
+          "terrainVersionFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioTitle": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "scenarioVersionFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
           "terrainTitle": {
             "type": "string",
             "description": "Gets or sets the title of the terrain."
           },
           "terrainImageAssetFk": {
-            "type": "string",
-            "description": "Gallery media asset used as terrain image.",
-            "format": "uuid"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gallery media asset used as terrain image.",
+                "format": "uuid"
+              }
+            ]
           },
           "terrainImagePath": {
-            "type": "string",
-            "description": "API-relative render path for the terrain image."
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "API-relative render path for the terrain image."
+              }
+            ]
           },
           "terrainIsActive": {
             "type": "boolean"
           },
           "modPackRevisionPrimaryKey": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The primary key of this entity.",
-            "format": "int64"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "The primary key of this entity.",
+                "format": "int64"
+              }
+            ]
           },
           "modPackRevisionTimeStampCreated": {
-            "description": "The timestamp when this revision was created.",
-            "$ref": "#/components/schemas/Instant"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The timestamp when this revision was created.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
           },
           "modPackRevisionHtml": {
             "type": "string",
@@ -14796,14 +15728,28 @@
             ]
           },
           "modPackDefinitionPrimaryKey": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The primary key of this entity.",
-            "format": "int64"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "The primary key of this entity.",
+                "format": "int64"
+              }
+            ]
           },
           "modPackDefinitionTimeStampCreated": {
-            "description": "The timestamp when this modpack was created.",
-            "$ref": "#/components/schemas/Instant"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The timestamp when this modpack was created.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
           },
           "modPackDefinitionTitle": {
             "type": "string",
@@ -15228,6 +16174,62 @@
             "items": {
               "$ref": "#/components/schemas/GameServerActionDto"
             }
+          },
+          "requiresTerrain": {
+            "type": "boolean"
+          },
+          "terrainLabel": {
+            "type": "string"
+          },
+          "requiresScenario": {
+            "type": "boolean"
+          },
+          "scenarioLabel": {
+            "type": "string"
+          },
+          "supportsModPacks": {
+            "type": "boolean"
+          },
+          "requiresModPack": {
+            "type": "boolean"
+          },
+          "terrainSourceKinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "modInstallerIdentifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "defaultTerrainSourceIdentifier": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "defaultScenarioSourceIdentifier": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "secrets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameServerSecretCapabilityDto"
+            }
           }
         },
         "description": "Game implementation metadata used by the generic creation flow."
@@ -15247,6 +16249,62 @@
             ]
           },
           "pinnedRevisionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          }
+        }
+      },
+      "GameServerContentSelectionPayload": {
+        "required": [
+          "terrainId",
+          "terrainVersionId",
+          "scenarioId",
+          "scenarioVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "terrainId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int64"
+              }
+            ]
+          },
+          "terrainVersionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioVersionId": {
             "oneOf": [
               {
                 "type": "null"
@@ -15361,6 +16419,63 @@
                 "type": "integer",
                 "description": "Optional effective content selection applied to the new server record.",
                 "format": "int64"
+              }
+            ]
+          },
+          "modPackRevisionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int64"
+              }
+            ]
+          },
+          "terrainId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int64"
+              }
+            ]
+          },
+          "terrainVersionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioVersionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
               }
             ]
           },
@@ -15844,6 +16959,83 @@
               }
             ]
           },
+          "pinnedModPackRevisionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int64"
+              }
+            ]
+          },
+          "selectedTerrainId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int64"
+              }
+            ]
+          },
+          "selectedTerrainTitle": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "pinnedTerrainVersionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "selectedScenarioId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "selectedScenarioTitle": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "pinnedScenarioVersionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
           "selectedConfigurationProfileId": {
             "oneOf": [
               {
@@ -15894,6 +17086,12 @@
             "type": "boolean"
           },
           "canModify": {
+            "type": "boolean"
+          },
+          "canManageSecrets": {
+            "type": "boolean"
+          },
+          "canRevealSecrets": {
             "type": "boolean"
           },
           "timeStampCreated": {
@@ -16062,6 +17260,148 @@
                 "format": "int64"
               }
             ]
+          }
+        }
+      },
+      "GameServerSecretCapabilityDto": {
+        "required": [
+          "key",
+          "displayName",
+          "requiredForStart",
+          "generated",
+          "revealable",
+          "externalProvider"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "requiredForStart": {
+            "type": "boolean"
+          },
+          "generated": {
+            "type": "boolean"
+          },
+          "revealable": {
+            "type": "boolean"
+          },
+          "externalProvider": {
+            "type": "boolean"
+          }
+        }
+      },
+      "GameServerSecretStatusDto": {
+        "required": [
+          "key",
+          "displayName",
+          "requiredForStart",
+          "generated",
+          "revealable",
+          "externalProvider",
+          "isConfigured",
+          "version",
+          "origin",
+          "timeStampCreated"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "requiredForStart": {
+            "type": "boolean"
+          },
+          "generated": {
+            "type": "boolean"
+          },
+          "revealable": {
+            "type": "boolean"
+          },
+          "externalProvider": {
+            "type": "boolean"
+          },
+          "isConfigured": {
+            "type": "boolean"
+          },
+          "version": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int32"
+              }
+            ]
+          },
+          "origin": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EGameServerSecretOrigin"
+              }
+            ]
+          },
+          "timeStampCreated": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          }
+        }
+      },
+      "GameServerSecretValueDto": {
+        "required": [
+          "key",
+          "value",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "GameServerSecretValuePayload": {
+        "required": [
+          "key",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/EGameServerSecretOrigin"
           }
         }
       },
@@ -16757,6 +18097,10 @@
         },
         "description": "One provider-neutral operational event for a game-server deployment or resource."
       },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
       "Instant": {
         "type": "string",
         "format": "date-time"
@@ -17164,6 +18508,30 @@
         },
         "description": "Represents one known content usage of a media asset."
       },
+      "ModMembershipPayload": {
+        "required": [
+          "modId",
+          "pinnedVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "modId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pinnedVersionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          }
+        }
+      },
       "ModPackCompositionCreationPayload": {
         "required": [
           "gameIdentifier"
@@ -17401,6 +18769,53 @@
           }
         },
         "description": "Represents one recorded user download of a mod pack revision."
+      },
+      "ModPackMembersPayload": {
+        "required": [
+          "mods",
+          "dependencies"
+        ],
+        "type": "object",
+        "properties": {
+          "mods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModMembershipPayload"
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModPackReferencePayload"
+            }
+          }
+        }
+      },
+      "ModPackReferencePayload": {
+        "required": [
+          "definitionId",
+          "pinnedRevisionId"
+        ],
+        "type": "object",
+        "properties": {
+          "definitionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "format": "int64"
+          },
+          "pinnedRevisionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int64"
+              }
+            ]
+          }
+        }
       },
       "ModPackRevisionDto": {
         "type": "object",
@@ -17658,6 +19073,92 @@
         },
         "description": "Represents the consolidated command-center workspace state for a mod pack."
       },
+      "ModPayload": {
+        "required": [
+          "gameIdentifier",
+          "title",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "gameIdentifier": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "$ref": "#/components/schemas/ModVersionPayload"
+          }
+        }
+      },
+      "ModVersionPayload": {
+        "required": [
+          "usageRole",
+          "installerIdentifier",
+          "sourceKind",
+          "sourceIdentifier",
+          "versionLabel"
+        ],
+        "type": "object",
+        "properties": {
+          "usageRole": {
+            "$ref": "#/components/schemas/EModUsageRole"
+          },
+          "installerIdentifier": {
+            "type": "string"
+          },
+          "installerConfiguration": {
+            "type": "string",
+            "default": "{}"
+          },
+          "sourceKind": {
+            "$ref": "#/components/schemas/EContentSourceKind"
+          },
+          "sourceIdentifier": {
+            "type": "string"
+          },
+          "versionLabel": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "string",
+            "default": "{}"
+          },
+          "artifactIdentifier": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "checksumSha256": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "artifactSizeBytes": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int64"
+              }
+            ]
+          }
+        }
+      },
       "PlainClaimDto": {
         "type": "object",
         "properties": {
@@ -17734,11 +19235,51 @@
             "description": "References the unique identifier of the associated terrain in the system.",
             "format": "int64"
           },
+          "terrainVersionFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "scenarioVersionFk": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
           "modPackRevisionFk": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "Represents a reference to the associated mod pack revision.",
-            "format": "int64"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Represents a reference to the associated mod pack revision.",
+                "format": "int64"
+              }
+            ]
           },
           "imageAssetFk": {
             "type": "string",
@@ -17974,13 +19515,27 @@
             "description": "Gets or sets the title of the terrain."
           },
           "imageAssetFk": {
-            "type": "string",
-            "description": "Gallery media asset used as terrain image.",
-            "format": "uuid"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gallery media asset used as terrain image.",
+                "format": "uuid"
+              }
+            ]
           },
           "imagePath": {
-            "type": "string",
-            "description": "API-relative render path for the terrain image."
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "API-relative render path for the terrain image."
+              }
+            ]
           },
           "isActive": {
             "type": "boolean"
@@ -19102,6 +20657,54 @@
                 "type": "string"
               }
             ]
+          }
+        }
+      },
+      "ScenarioPayload": {
+        "required": [
+          "gameIdentifier",
+          "title",
+          "description",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "gameIdentifier": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "version": {
+            "$ref": "#/components/schemas/ContentVersionPayload"
+          }
+        }
+      },
+      "ScenarioVersionPayload": {
+        "required": [
+          "version",
+          "requiredModPacks"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "$ref": "#/components/schemas/ContentVersionPayload"
+          },
+          "requiredModPacks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModPackReferencePayload"
+            }
           }
         }
       },
@@ -20546,6 +22149,9 @@
       "name": "FieldReports"
     },
     {
+      "name": "GameContent"
+    },
+    {
       "name": "GameServerConfiguration"
     },
     {
@@ -20553,6 +22159,9 @@
     },
     {
       "name": "GameServers"
+    },
+    {
+      "name": "GameServerSecrets"
     },
     {
       "name": "LifecycleJobs"

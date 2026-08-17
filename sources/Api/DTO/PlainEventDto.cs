@@ -26,12 +26,15 @@ public record PlainEventDto
     /// References the unique identifier of the associated terrain in the system.
     /// </summary>
     public long TerrainFk { get; init; }
+    public Guid? TerrainVersionFk { get; init; }
+    public Guid? ScenarioFk { get; init; }
+    public Guid? ScenarioVersionFk { get; init; }
 
 
     /// <summary>
     /// Represents a reference to the associated mod pack revision.
     /// </summary>
-    public long ModPackRevisionFk { get; init; }
+    public long? ModPackRevisionFk { get; init; }
 
 
     /// <summary>

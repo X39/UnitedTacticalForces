@@ -855,6 +855,54 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.ToTable("PublicPageRevisions");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ContentBackfillRun", b =>
+                {
+                    b.Property<string>("Identifier")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ImplementationVersion")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Instant>("TimeStampCompleted")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Identifier");
+
+                    b.ToTable("ContentBackfillRuns");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.Mod", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("GameIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("GameIdentifier", "IsActive");
+
+                    b.ToTable("Mods");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackDefinition", b =>
                 {
                     b.Property<long>("PrimaryKey")
@@ -927,6 +975,226 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.ToTable("ModPackRevisions");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackRevisionDependency", b =>
+                {
+                    b.Property<long>("ParentRevisionFk")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ChildDefinitionFk")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("PinnedChildRevisionFk")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("ParentRevisionFk", "ChildDefinitionFk");
+
+                    b.HasIndex("ChildDefinitionFk");
+
+                    b.HasIndex("PinnedChildRevisionFk");
+
+                    b.ToTable("ModPackRevisionDependencies");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackRevisionMod", b =>
+                {
+                    b.Property<long>("ModPackRevisionFk")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("ModFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("PinnedVersionFk")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ModPackRevisionFk", "ModFk");
+
+                    b.HasIndex("ModFk");
+
+                    b.HasIndex("PinnedVersionFk");
+
+                    b.ToTable("ModPackRevisionMods");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModVersion", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ArtifactIdentifier")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long?>("ArtifactSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ChecksumSha256")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("InstallerConfiguration")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("InstallerIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("ModFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("SourceKind")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UsageRole")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VersionLabel")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("ModFk", "VersionNumber")
+                        .IsUnique();
+
+                    b.HasIndex("ModFk", "SourceKind", "SourceIdentifier");
+
+                    b.ToTable("ModVersions");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.Scenario", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<string>("GameIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("GameIdentifier", "IsActive");
+
+                    b.ToTable("Scenarios");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ScenarioVersion", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ArtifactIdentifier")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long?>("ArtifactSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Changelog")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<string>("ChecksumSha256")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("CreatedByFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("ScenarioFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("SourceKind")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VersionLabel")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("CreatedByFk");
+
+                    b.HasIndex("ScenarioFk", "VersionNumber")
+                        .IsUnique();
+
+                    b.ToTable("ScenarioVersions");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ScenarioVersionRequiredModPack", b =>
+                {
+                    b.Property<Guid>("ScenarioVersionFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("ModPackDefinitionFk")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("PinnedRevisionFk")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("ScenarioVersionFk", "ModPackDefinitionFk");
+
+                    b.HasIndex("ModPackDefinitionFk");
+
+                    b.HasIndex("PinnedRevisionFk");
+
+                    b.ToTable("ScenarioVersionRequiredModPacks");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.Terrain", b =>
                 {
                     b.Property<long>("PrimaryKey")
@@ -940,7 +1208,7 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<Guid>("ImageAssetFk")
+                    b.Property<Guid?>("ImageAssetFk")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsActive")
@@ -958,6 +1226,62 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.HasIndex("ImageAssetFk");
 
                     b.ToTable("Terrains");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.TerrainVersion", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ArtifactIdentifier")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long?>("ArtifactSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ChecksumSha256")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("CreatedByFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("SourceIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("SourceKind")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("TerrainFk")
+                        .HasColumnType("bigint");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VersionLabel")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("CreatedByFk");
+
+                    b.HasIndex("TerrainFk", "VersionNumber")
+                        .IsUnique();
+
+                    b.ToTable("TerrainVersions");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Eventing.Event", b =>
@@ -988,14 +1312,23 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<int>("MinimumAccepted")
                         .HasColumnType("integer");
 
-                    b.Property<long>("ModPackRevisionFk")
+                    b.Property<long?>("ModPackRevisionFk")
                         .HasColumnType("bigint");
 
                     b.Property<Guid>("OwnerFk")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PinnedScenarioVersionFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PinnedTerrainVersionFk")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("RejectedCount")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("ScenarioFk")
+                        .HasColumnType("uuid");
 
                     b.Property<Instant>("ScheduledFor")
                         .HasColumnType("timestamp with time zone");
@@ -1023,6 +1356,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.HasIndex("ModPackRevisionFk");
 
                     b.HasIndex("OwnerFk");
+
+                    b.HasIndex("PinnedScenarioVersionFk");
+
+                    b.HasIndex("PinnedTerrainVersionFk");
+
+                    b.HasIndex("ScenarioFk");
 
                     b.HasIndex("ScheduledFor");
 
@@ -1500,6 +1839,15 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Guid?>("PinnedConfigurationProfileRevisionFk")
                         .HasColumnType("uuid");
 
+                    b.Property<long?>("PinnedModPackRevisionFk")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("PinnedScenarioVersionFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PinnedTerrainVersionFk")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("RuntimeProfileDisplayName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1522,6 +1870,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<long?>("SelectedModPackDefinitionFk")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("SelectedScenarioFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<long?>("SelectedTerrainFk")
                         .HasColumnType("bigint");
 
                     b.Property<Instant?>("TimeStampArchived")
@@ -1548,9 +1902,19 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.HasIndex("PinnedConfigurationProfileRevisionFk");
 
+                    b.HasIndex("PinnedModPackRevisionFk");
+
+                    b.HasIndex("PinnedScenarioVersionFk");
+
+                    b.HasIndex("PinnedTerrainVersionFk");
+
                     b.HasIndex("SelectedConfigurationProfileFk");
 
                     b.HasIndex("SelectedModPackDefinitionFk");
+
+                    b.HasIndex("SelectedScenarioFk");
+
+                    b.HasIndex("SelectedTerrainFk");
 
                     b.HasIndex("IsArchived", "IsLaunchDisabled");
 
@@ -1718,6 +2082,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<int>("RuntimeStorageStrategy")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ScenarioSnapshot")
+                        .HasColumnType("jsonb");
+
                     b.Property<long?>("SelectedExternalStorageBytes")
                         .HasColumnType("bigint");
 
@@ -1736,6 +2103,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<string>("StorageEstimateStatus")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<string>("TerrainSnapshot")
+                        .HasColumnType("jsonb");
 
                     b.Property<Instant>("TimeStampCreated")
                         .HasColumnType("timestamp with time zone");
@@ -1770,6 +2140,56 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         {
                             t.HasCheckConstraint("CK_GameServerDeployments_CostReservation", "(\"CostReservationStartsAt\" IS NULL AND \"CostReservationExpiresAt\" IS NULL AND \"ReservedProviderCostEur\" IS NULL) OR (\"CostReservationStartsAt\" IS NOT NULL AND \"CostReservationExpiresAt\" IS NOT NULL AND \"ReservedProviderCostEur\" > 0 AND \"CostReservationExpiresAt\" > \"CostReservationStartsAt\")");
                         });
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServerSecret", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CreatedByFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("Origin")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProtectedValue")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("TimeStampRetired")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("CreatedByFk");
+
+                    b.HasIndex("GameServerFk", "Key")
+                        .IsUnique()
+                        .HasFilter("\"IsCurrent\" = TRUE");
+
+                    b.HasIndex("GameServerFk", "Key", "Version")
+                        .IsUnique();
+
+                    b.ToTable("GameServerSecrets");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.HostingAuditRecord", b =>
@@ -2290,8 +2710,15 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Instant?>("ProcessStartedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("ProtocolVersion")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SupportedGameIdentifiers")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<Instant>("TimeStampCreated")
                         .HasColumnType("timestamp with time zone");
@@ -2439,6 +2866,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
+
+                    b.Property<string>("ProtectedSecrets")
+                        .HasColumnType("text");
 
                     b.Property<long>("Sequence")
                         .HasColumnType("bigint");
@@ -3636,15 +4066,139 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("UpdatedBy");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackRevisionDependency", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackDefinition", "ChildDefinition")
+                        .WithMany()
+                        .HasForeignKey("ChildDefinitionFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackRevision", "ParentRevision")
+                        .WithMany("Dependencies")
+                        .HasForeignKey("ParentRevisionFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackRevision", "PinnedChildRevision")
+                        .WithMany()
+                        .HasForeignKey("PinnedChildRevisionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ChildDefinition");
+
+                    b.Navigation("ParentRevision");
+
+                    b.Navigation("PinnedChildRevision");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackRevisionMod", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.Mod", "Mod")
+                        .WithMany()
+                        .HasForeignKey("ModFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackRevision", "ModPackRevision")
+                        .WithMany("Mods")
+                        .HasForeignKey("ModPackRevisionFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModVersion", "PinnedVersion")
+                        .WithMany()
+                        .HasForeignKey("PinnedVersionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Mod");
+
+                    b.Navigation("ModPackRevision");
+
+                    b.Navigation("PinnedVersion");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModVersion", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.Mod", "Mod")
+                        .WithMany("Versions")
+                        .HasForeignKey("ModFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mod");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ScenarioVersion", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.Scenario", "Scenario")
+                        .WithMany("Versions")
+                        .HasForeignKey("ScenarioFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Scenario");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ScenarioVersionRequiredModPack", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackDefinition", "ModPackDefinition")
+                        .WithMany()
+                        .HasForeignKey("ModPackDefinitionFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackRevision", "PinnedRevision")
+                        .WithMany()
+                        .HasForeignKey("PinnedRevisionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ScenarioVersion", "ScenarioVersion")
+                        .WithMany("RequiredModPacks")
+                        .HasForeignKey("ScenarioVersionFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ModPackDefinition");
+
+                    b.Navigation("PinnedRevision");
+
+                    b.Navigation("ScenarioVersion");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.Terrain", b =>
                 {
                     b.HasOne("X39.UnitedTacticalForces.Database.Media.MediaAsset", "ImageAsset")
                         .WithMany()
                         .HasForeignKey("ImageAssetFk")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ImageAsset");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.TerrainVersion", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.Terrain", "Terrain")
+                        .WithMany("Versions")
+                        .HasForeignKey("TerrainFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Terrain");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Eventing.Event", b =>
@@ -3663,15 +4217,28 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackRevision", "ModPackRevision")
                         .WithMany()
-                        .HasForeignKey("ModPackRevisionFk")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ModPackRevisionFk");
 
                     b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerFk")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ScenarioVersion", "PinnedScenarioVersion")
+                        .WithMany()
+                        .HasForeignKey("PinnedScenarioVersionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.TerrainVersion", "PinnedTerrainVersion")
+                        .WithMany()
+                        .HasForeignKey("PinnedTerrainVersionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.Scenario", "Scenario")
+                        .WithMany()
+                        .HasForeignKey("ScenarioFk")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("X39.UnitedTacticalForces.Database.Core.Terrain", "Terrain")
                         .WithMany()
@@ -3686,6 +4253,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("ModPackRevision");
 
                     b.Navigation("Owner");
+
+                    b.Navigation("PinnedScenarioVersion");
+
+                    b.Navigation("PinnedTerrainVersion");
+
+                    b.Navigation("Scenario");
 
                     b.Navigation("Terrain");
                 });
@@ -3798,6 +4371,21 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasForeignKey("PinnedConfigurationProfileRevisionFk")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackRevision", "PinnedModPackRevision")
+                        .WithMany()
+                        .HasForeignKey("PinnedModPackRevisionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ScenarioVersion", "PinnedScenarioVersion")
+                        .WithMany()
+                        .HasForeignKey("PinnedScenarioVersionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.TerrainVersion", "PinnedTerrainVersion")
+                        .WithMany()
+                        .HasForeignKey("PinnedTerrainVersionFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfile", "SelectedConfigurationProfile")
                         .WithMany("GameServers")
                         .HasForeignKey("SelectedConfigurationProfileFk")
@@ -3808,15 +4396,35 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasForeignKey("SelectedModPackDefinitionFk")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.Scenario", "SelectedScenario")
+                        .WithMany()
+                        .HasForeignKey("SelectedScenarioFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.Terrain", "SelectedTerrain")
+                        .WithMany()
+                        .HasForeignKey("SelectedTerrainFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CreatedBy");
 
                     b.Navigation("CurrentCostOwner");
 
                     b.Navigation("PinnedConfigurationProfileRevision");
 
+                    b.Navigation("PinnedModPackRevision");
+
+                    b.Navigation("PinnedScenarioVersion");
+
+                    b.Navigation("PinnedTerrainVersion");
+
                     b.Navigation("SelectedConfigurationProfile");
 
                     b.Navigation("SelectedModPackDefinition");
+
+                    b.Navigation("SelectedScenario");
+
+                    b.Navigation("SelectedTerrain");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServerConfigurationValue", b =>
@@ -3887,6 +4495,24 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("CostOwner");
+
+                    b.Navigation("GameServer");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServerSecret", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany("Secrets")
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
 
                     b.Navigation("GameServer");
                 });
@@ -4504,6 +5130,11 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("Revisions");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.Mod", b =>
+                {
+                    b.Navigation("Versions");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackDefinition", b =>
                 {
                     b.Navigation("ModPackRevisionsOwned");
@@ -4511,7 +5142,26 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackRevision", b =>
                 {
+                    b.Navigation("Dependencies");
+
+                    b.Navigation("Mods");
+
                     b.Navigation("UserMetas");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.Scenario", b =>
+                {
+                    b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ScenarioVersion", b =>
+                {
+                    b.Navigation("RequiredModPacks");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.Terrain", b =>
+                {
+                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Eventing.Event", b =>
@@ -4559,6 +5209,8 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("LifecycleJobs");
 
                     b.Navigation("PreservationSelections");
+
+                    b.Navigation("Secrets");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServerDeployment", b =>

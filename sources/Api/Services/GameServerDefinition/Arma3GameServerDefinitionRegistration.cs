@@ -112,5 +112,27 @@ public sealed class Arma3GameServerDefinitionRegistration : IGameServerDefinitio
             ERuntimeNetworkProtocol.Udp,
             2302,
             "Arma 3 game server"),
+        RuntimeInstallation = new(
+            "233780",
+            40L * 1024 * 1024 * 1024,
+            "Arma 3 dedicated server runtime",
+            "107410",
+            true),
+        ContentCapabilities = new(
+            false,
+            "Terrain",
+            false,
+            "Mission",
+            true,
+            true,
+            ["BuiltIn", "SteamWorkshop", "UploadedArtifact"],
+            ["arma3-workshop", "archive-overlay"]),
+        Secrets =
+        [
+            new("admin-password", "Administrator password", false, true, true),
+            new("server-command-password", "Server command password", false, true, true),
+            new("battleye-rcon-password", "BattlEye RCON password", false, true, true),
+            new("join-password", "Join password", false, false, true),
+        ],
     };
 }

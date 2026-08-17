@@ -47,6 +47,9 @@ public class WorkerCommand : IPrimaryKey<Guid>, ITimeStampCreated
     [Column(TypeName = "jsonb")]
     public string Payload { get; set; } = "{}";
 
+    /// <summary>Encrypted, immutable secret snapshot resolved when the command is persisted.</summary>
+    public string? ProtectedSecrets { get; set; }
+
     public EWorkerCommandStatus Status { get; set; }
 
     [MaxLength(128)]

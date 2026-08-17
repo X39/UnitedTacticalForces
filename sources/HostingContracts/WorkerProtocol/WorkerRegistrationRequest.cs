@@ -12,4 +12,8 @@ public sealed record WorkerRegistrationRequest
 
     [Required, MaxLength(256)]
     public string Identity { get; init; } = string.Empty;
+
+    public int ProtocolVersion { get; init; } = 1;
+
+    public IReadOnlyCollection<string> SupportedGameIdentifiers { get; init; } = [];
 }

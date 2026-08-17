@@ -65,6 +65,36 @@ public class GameServer : IPrimaryKey<Guid>, ITimeStampCreated
 
     public long? SelectedModPackDefinitionFk { get; set; }
 
+    [ForeignKey(nameof(PinnedModPackRevisionFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public ModPackRevision? PinnedModPackRevision { get; set; }
+
+    public long? PinnedModPackRevisionFk { get; set; }
+
+    [ForeignKey(nameof(SelectedTerrainFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public Terrain? SelectedTerrain { get; set; }
+
+    public long? SelectedTerrainFk { get; set; }
+
+    [ForeignKey(nameof(PinnedTerrainVersionFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public TerrainVersion? PinnedTerrainVersion { get; set; }
+
+    public Guid? PinnedTerrainVersionFk { get; set; }
+
+    [ForeignKey(nameof(SelectedScenarioFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public Scenario? SelectedScenario { get; set; }
+
+    public Guid? SelectedScenarioFk { get; set; }
+
+    [ForeignKey(nameof(PinnedScenarioVersionFk))]
+    [DeleteBehavior(DeleteBehavior.SetNull)]
+    public ScenarioVersion? PinnedScenarioVersion { get; set; }
+
+    public Guid? PinnedScenarioVersionFk { get; set; }
+
     [ForeignKey(nameof(SelectedConfigurationProfileFk))]
     [DeleteBehavior(DeleteBehavior.SetNull)]
     public ConfigurationProfile? SelectedConfigurationProfile { get; set; }
@@ -106,6 +136,8 @@ public class GameServer : IPrimaryKey<Guid>, ITimeStampCreated
     public ICollection<PreservationSelection> PreservationSelections { get; set; } = [];
 
     public ICollection<GameServerConfigurationValue> ConfigurationValues { get; set; } = [];
+
+    public ICollection<GameServerSecret> Secrets { get; set; } = [];
 
     public ICollection<HostingAuditRecord> AuditRecords { get; set; } = [];
 }

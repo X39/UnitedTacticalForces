@@ -56,7 +56,7 @@ COPY --from=build /out .
 COPY --chown=root:root sources/CloudWorker/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod 0555 /app/docker-entrypoint.sh
 
-# The provider bootstrap and agent state are root-only. Arma runs as UID 10002;
+# The provider bootstrap and agent state are root-only. The selected game runs as UID 10002;
 # SteamCMD uses UID 10003. Both share runtime-only GID 10001.
 # The bootstrap is mounted read-only at UTF_WORKER_BOOTSTRAP_PATH.
 # State and runtime mounts remain separate so command outcomes and exact process

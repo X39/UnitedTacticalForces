@@ -93,6 +93,8 @@ public static class Claims
             public const string Modify       = "sv:modify";
             public const string ManageAccess = "sv:manage-access";
             public const string DeleteData   = "sv:delete-data";
+            public const string ManageSecrets = "sv:manage-secrets";
+            public const string RevealSecrets = "sv:reveal-secrets";
         }
 
         public static class CostOwner

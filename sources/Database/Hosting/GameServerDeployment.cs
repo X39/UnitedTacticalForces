@@ -118,6 +118,12 @@ public class GameServerDeployment : IPrimaryKey<Guid>, ITimeStampCreated
     [Column(TypeName = "jsonb")]
     public string? ContentSnapshot { get; set; }
 
+    [Column(TypeName = "jsonb")]
+    public string? TerrainSnapshot { get; set; }
+
+    [Column(TypeName = "jsonb")]
+    public string? ScenarioSnapshot { get; set; }
+
     public ICollection<DeploymentResource> Resources { get; set; } = [];
 
     public ICollection<LifecycleWorker> Workers { get; set; } = [];

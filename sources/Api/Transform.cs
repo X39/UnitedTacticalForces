@@ -75,7 +75,9 @@ internal static class Transform
             PrimaryKey    = self.PrimaryKey,
             Title         = self.Title,
             ImageAssetFk  = self.ImageAssetFk,
-            ImagePath     = Services.Media.IMediaAssetService.CreateImagePath(self.ImageAssetFk),
+            ImagePath     = self.ImageAssetFk is { } imageAssetFk
+                ? Services.Media.IMediaAssetService.CreateImagePath(imageAssetFk)
+                : null,
             IsActive      = self.IsActive,
         };
 

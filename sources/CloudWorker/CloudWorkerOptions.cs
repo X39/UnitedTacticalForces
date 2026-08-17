@@ -15,6 +15,15 @@ public sealed record CloudWorkerOptions(
     bool AllowInsecureHttp,
     Arma3WorkerOptions Arma3)
 {
+    public CounterStrike2WorkerOptions CounterStrike2 { get; init; } = new("game/bin/linuxsteamrt64/cs2");
+    public SteamCmdWorkerOptions SteamCmd => new(
+        Arma3.SteamCmdPath,
+        Arma3.TemporaryDirectory,
+        Arma3.SteamHomeDirectory,
+        Arma3.GameUserId,
+        Arma3.GameGroupId,
+        Arma3.PrivilegeDropPath,
+        Arma3.SteamUserId);
     public const string DefaultBootstrapPath = "/run/secrets/utf-worker-bootstrap.json";
     public const string DefaultStateDirectory = "/var/lib/united-tactical-forces/worker";
     public const string DefaultRuntimeRoot = "/srv/united-tactical-forces/runtime";
@@ -60,7 +69,10 @@ public sealed record CloudWorkerOptions(
                 getEnvironmentVariable),
             claimOnce,
             allowInsecureHttp,
-            Arma3WorkerOptions.Create(values, getEnvironmentVariable));
+            Arma3WorkerOptions.Create(values, getEnvironmentVariable))
+        {
+            CounterStrike2 = CounterStrike2WorkerOptions.Create(values, getEnvironmentVariable),
+        };
     }
 
     private static string Get(

@@ -23,4 +23,18 @@ public sealed record GameServerDefinition(
     /// User-facing primary endpoint within the declared inbound network plan, when the game exposes one.
     /// </summary>
     public GameServerConnectionDefinition? PrimaryConnection { get; init; }
+
+    public GameRuntimeInstallationDefinition? RuntimeInstallation { get; init; }
+
+    public GameContentCapabilityDefinition ContentCapabilities { get; init; } = new(
+        false,
+        "Terrain",
+        false,
+        "Scenario",
+        false,
+        false,
+        [],
+        []);
+
+    public IReadOnlyList<GameSecretDefinition> Secrets { get; init; } = [];
 }

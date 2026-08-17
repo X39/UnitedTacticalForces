@@ -12,6 +12,11 @@ public sealed record GameServerCreationInfo
     public string RuntimeStorageStrategy { get; init; } = "IncludedDisk";
     public long? ExternalStorageSizeGiB { get; init; }
     public long? ModPackDefinitionId { get; init; }
+    public long? ModPackRevisionId { get; init; }
+    public long? TerrainId { get; init; }
+    public Guid? TerrainVersionId { get; init; }
+    public Guid? ScenarioId { get; init; }
+    public Guid? ScenarioVersionId { get; init; }
     public Guid? ConfigurationProfileId { get; init; }
     public Guid? ConfigurationProfileRevisionId { get; init; }
     public Guid? CostOwnerId { get; init; }

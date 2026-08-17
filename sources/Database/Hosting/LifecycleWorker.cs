@@ -30,6 +30,11 @@ public class LifecycleWorker : IPrimaryKey<Guid>, ITimeStampCreated
     [MaxLength(256)]
     public string Identity { get; set; } = string.Empty;
 
+    public int ProtocolVersion { get; set; } = 1;
+
+    [Column(TypeName = "jsonb")]
+    public string SupportedGameIdentifiers { get; set; } = "[]";
+
     /// <summary>
     /// SHA-256 hash of the short-lived bootstrap credential. Registration may retry it after a
     /// lost response, but it is retired when an issued worker credential first authenticates.

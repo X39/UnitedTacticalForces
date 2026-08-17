@@ -28,12 +28,12 @@ public record PlainTerrainDto
     /// <summary>
     /// Gallery media asset used as terrain image.
     /// </summary>
-    public Guid ImageAssetFk { get; set; }
+    public Guid? ImageAssetFk { get; set; }
 
     /// <summary>
     /// API-relative render path for the terrain image.
     /// </summary>
-    public string ImagePath { get; set; } = string.Empty;
+    public string? ImagePath { get; set; }
 
     /// Indicates if the terrain is active or not.
     /// A value of `true` means the terrain is currently active and can be used or accessed.

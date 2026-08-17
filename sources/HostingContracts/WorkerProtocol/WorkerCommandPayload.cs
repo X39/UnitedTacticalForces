@@ -47,4 +47,8 @@ public sealed record WorkerCommandPayload
     /// Conservative peak bytes snapshotted by the control plane for validation before preparation.
     /// </summary>
     public long? PeakStorageRequiredBytes { get; init; }
+
+    public WorkerSelectedContent? Terrain { get; init; }
+
+    public WorkerSelectedContent? Scenario { get; init; }
 }
