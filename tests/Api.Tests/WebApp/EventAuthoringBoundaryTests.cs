@@ -97,6 +97,20 @@ public class EventAuthoringBoundaryTests
     }
 
     [Fact]
+    public void EventAuthoringModel_SerializesTheLocalScheduleAsDateTimeOffset()
+    {
+        const string file = "sources/WebApp/Data/EventAuthoringModel.cs";
+        var source = ReadRepositoryFile(file);
+        var failures = new List<string>();
+
+        AssertContains(source, "private DateTimeOffset? ToScheduledFor()", file, "offset schedule transport", failures);
+        AssertContains(source, "new DateTimeOffset(ScheduledForLocal.Value)", file, "local offset preservation", failures);
+        AssertContains(source, "ScheduledFor      = ToScheduledFor()", file, "creation and update schedule", failures);
+
+        AssertNoFailures(failures);
+    }
+
+    [Fact]
     public void CommandSearch_CanKeepTokenizedInputStylingInsideCommandContent()
     {
         const string file = "sources/WebApp/wwwroot/css/app.css";

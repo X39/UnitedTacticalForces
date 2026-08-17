@@ -572,6 +572,8 @@ public class EventsController : ControllerBase
                 cancellationToken).ConfigureAwait(false))
             return BadRequest("Terrain, Scenario, and mod pack selections must exist and belong to the same game.");
 
+        var scheduledFor = Instant.FromDateTimeOffset(payload.ScheduledFor);
+
         // ToDo: Log audit
         var newEvent = new Event
         {
@@ -583,7 +585,7 @@ public class EventsController : ControllerBase
             PrimaryKey           = default,
             OwnerFk              = userId,
             TimeStampCreated     = NodaSystemClock.Instance.GetCurrentInstant(),
-            ScheduledFor         = payload.ScheduledFor,
+            ScheduledFor         = scheduledFor,
             Title                = payload.Title,
             Description          = payload.Description,
             IsVisible            = payload.IsVisible,
@@ -591,7 +593,7 @@ public class EventsController : ControllerBase
             RejectedCount        = 0,
             MaybeCount           = 0,
             MinimumAccepted      = payload.MinimumAccepted,
-            ScheduledForOriginal = payload.ScheduledFor,
+            ScheduledForOriginal = scheduledFor,
             HostedByFk           = payload.HostedByFk,
             ModPackRevisionFk    = payload.ModPackRevisionFk,
             ImageAssetFk         = payload.ImageAssetFk,
@@ -706,7 +708,7 @@ public class EventsController : ControllerBase
         if (payload.Description is not null)
             existingEvent.Description = payload.Description;
         if (payload.ScheduledFor is not null)
-            existingEvent.ScheduledFor = payload.ScheduledFor.Value;
+            existingEvent.ScheduledFor = Instant.FromDateTimeOffset(payload.ScheduledFor.Value);
         if (payload.HostedByFk is not null)
             existingEvent.HostedByFk = payload.HostedByFk.Value;
         if (payload.ModPackRevisionFk is not null || payload.ClearModPackRevision)

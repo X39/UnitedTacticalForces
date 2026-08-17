@@ -14800,8 +14800,9 @@
             ]
           },
           "scheduledFor": {
+            "type": "string",
             "description": "Indicates the date and time when the event is scheduled to occur.",
-            "$ref": "#/components/schemas/Instant"
+            "format": "date-time"
           },
           "isVisible": {
             "type": "boolean",
@@ -15033,8 +15034,9 @@
                 "type": "null"
               },
               {
+                "type": "string",
                 "description": "Indicates the date and time when the event is scheduled to occur.",
-                "$ref": "#/components/schemas/Instant"
+                "format": "date-time"
               }
             ]
           },

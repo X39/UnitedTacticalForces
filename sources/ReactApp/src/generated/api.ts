@@ -6214,8 +6214,11 @@ export interface components {
             scenarioVersionFk?: null | string;
             modPackRevisionFk?: null | number;
             imageAssetFk?: null | string;
-            /** @description Indicates the date and time when the event is scheduled to occur. */
-            scheduledFor?: components["schemas"]["Instant"];
+            /**
+             * Format: date-time
+             * @description Indicates the date and time when the event is scheduled to occur.
+             */
+            scheduledFor?: string;
             /** @description Indicates whether the event is visible to users. */
             isVisible?: boolean;
             /**
@@ -6266,7 +6269,7 @@ export interface components {
             clearModPackRevision?: boolean;
             imageAssetFk?: null | string;
             clearImageAsset?: boolean;
-            scheduledFor?: null | components["schemas"]["Instant"];
+            scheduledFor?: null | string;
             isVisible?: null | boolean;
             minimumAccepted?: null | number;
             hostedByFk?: null | string;

@@ -37,7 +37,7 @@ public record EventUpdate
     /// <summary>
     /// Indicates the date and time when the event is scheduled to occur.
     /// </summary>
-    public Instant? ScheduledFor { get; init; }
+    public DateTimeOffset? ScheduledFor { get; init; }
 
 
     /// <summary>

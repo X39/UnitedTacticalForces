@@ -143,15 +143,21 @@ describe("event authoring model", () => {
     const [createUrl, createInit] = fetchMock.mock.calls[0] as [URL, RequestInit];
     expect(createUrl.pathname).toBe("/api/events/create");
     expect(createInit.method).toBe("POST");
-    expect(JSON.parse(String(createInit.body))).toMatchObject({
+    const createPayload = JSON.parse(String(createInit.body)) as { scheduledFor: string };
+    expect(createPayload).toMatchObject({
       title: "Operation Northstar",
       terrainFk: 3,
       modPackRevisionFk: 8,
       imageAssetFk: "4a7e2d42-50b0-4a7d-a381-a4f20a1f5dc2",
       isVisible: true,
     });
-    const [updateUrl] = fetchMock.mock.calls[1] as [URL, RequestInit];
+    expect(createPayload.scheduledFor).toBe(new Date(values.scheduledForLocal).toISOString());
+    expect(createPayload.scheduledFor.endsWith("Z")).toBe(true);
+    const [updateUrl, updateInit] = fetchMock.mock.calls[1] as [URL, RequestInit];
     expect(updateUrl.pathname).toBe("/api/events/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f/update");
+    expect((JSON.parse(String(updateInit.body)) as { scheduledFor: string }).scheduledFor).toBe(
+      new Date(values.scheduledForLocal).toISOString(),
+    );
     expect(new ApiClient(configuration)).toBeInstanceOf(ApiClient);
   });
 

@@ -191,7 +191,7 @@ public class EventOptionalAssetsTests
 
     private static EventCreationPayload CreatePayload(Guid hostId)
     {
-        var scheduledFor = NodaSystemClock.Instance.GetCurrentInstant().Plus(Duration.FromDays(1));
+        var scheduledFor = NodaSystemClock.Instance.GetCurrentInstant().Plus(Duration.FromDays(1)).ToDateTimeOffset();
         return new EventCreationPayload
         {
             Title = "Optional assets operation",
