@@ -4,6 +4,15 @@ const eventId = "16979a3f-57bc-49ea-8f93-c22ecfbd6eb2";
 const operatorId = "00000000-0000-0000-0000-000000000001";
 const hostId = "2fdd4802-e081-4baa-9120-f1873653a057";
 const assetId = "4a7e2d42-50b0-4a7d-a381-a4f20a1f5dc2";
+const galleryAssets = Array.from({ length: 48 }, (_, index) => ({
+  primaryKey: index === 0 ? assetId : `4a7e2d42-50b0-4a7d-a381-${String(index).padStart(12, "0")}`,
+  originalFileName: index === 0 ? "operation-cover.webp" : `operation-cover-${index}.webp`,
+  contentType: "image/webp",
+  size: 1536 + index,
+  imagePath: `/api/media-assets/${index === 0 ? assetId : `gallery-${index}`}/content`,
+  tags: ["event"],
+  usages: [],
+}));
 
 test("creates through the certified alias and edits in the command workspace", async ({ page }) => {
   let createdEvent: Record<string, unknown> | undefined;
@@ -44,6 +53,21 @@ test("creates through the certified alias and edits in the command workspace", a
     route.fulfill({ json: { steam: true, discord: true } }),
   );
   await page.route("**/api/game-servers/notifications", (route) => route.fulfill({ json: [] }));
+  await page.route("**/api/game-servers/capabilities", (route) =>
+    route.fulfill({
+      json: [
+        {
+          gameIdentifier: "arma3",
+          displayName: "Arma 3",
+          requiresScenario: false,
+          requiresModPack: true,
+          actions: [],
+          runtimeProviders: [],
+          runtimeProviderProfiles: [],
+        },
+      ],
+    }),
+  );
   await page.route("**/api/site-image-settings", (route) => route.fulfill({ json: [] }));
   await page.route("**/api/users/all?**", (route) =>
     route.fulfill({
@@ -99,17 +123,7 @@ test("creates through the certified alias and edits in the command workspace", a
   );
   await page.route("**/api/media-assets?**", (route) =>
     route.fulfill({
-      json: [
-        {
-          primaryKey: assetId,
-          originalFileName: "operation-cover.webp",
-          contentType: "image/webp",
-          size: 1536,
-          imagePath: `/api/media-assets/${assetId}/content`,
-          tags: ["event"],
-          usages: [],
-        },
-      ],
+      json: galleryAssets,
     }),
   );
   await page.route("**/api/media-assets/*/content", (route) =>
@@ -185,7 +199,53 @@ test("creates through the certified alias and edits in the command workspace", a
   await page.getByRole("option", { name: "Altis" }).click();
   await page.getByRole("combobox", { name: "Mod pack revision" }).click();
   await page.getByRole("option", { name: "UTF Main" }).click();
+  const galleryDialog = page.locator("dialog.gallery-picker-dialog");
+  const galleryWorkspace = galleryDialog.locator(".gallery-picker-dialog__workspace");
+  const galleryResults = galleryWorkspace.locator(":scope > section");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const desktopScrollBeforePicker = await page.evaluate(() => window.scrollY);
   await page.getByRole("button", { name: "Select image" }).click();
+  await expect(galleryDialog).toBeVisible();
+  await expect(galleryDialog.locator("footer")).toBeVisible();
+  const desktopDialogBounds = await galleryDialog.boundingBox();
+  expect(desktopDialogBounds).not.toBeNull();
+  expect(desktopDialogBounds!.x + desktopDialogBounds!.width).toBeLessThanOrEqual(1440);
+  expect(desktopDialogBounds!.y + desktopDialogBounds!.height).toBeLessThanOrEqual(900);
+  expect(desktopDialogBounds!.width).toBeLessThanOrEqual(962);
+  expect(
+    await galleryWorkspace.evaluate(
+      (element) => getComputedStyle(element).gridTemplateColumns.split(" ").length,
+    ),
+  ).toBe(2);
+  expect(
+    await galleryDialog.evaluate((element) => element.scrollHeight <= element.clientHeight),
+  ).toBe(true);
+  expect(await page.evaluate(() => window.scrollY)).toBe(desktopScrollBeforePicker);
+  await galleryDialog.locator("footer").getByRole("button", { name: "Cancel" }).click();
+
+  await page.setViewportSize({ width: 1024, height: 640 });
+  await page.getByRole("button", { name: "Select image" }).click();
+  await expect(galleryDialog).toBeVisible();
+  const documentScrollBeforePicker = await page.evaluate(() => window.scrollY);
+  await expect(galleryDialog.locator("footer")).toBeVisible();
+  const dialogBounds = await galleryDialog.boundingBox();
+  expect(dialogBounds).not.toBeNull();
+  expect(dialogBounds!.x).toBeGreaterThanOrEqual(0);
+  expect(dialogBounds!.y).toBeGreaterThanOrEqual(0);
+  expect(dialogBounds!.x + dialogBounds!.width).toBeLessThanOrEqual(1024);
+  expect(dialogBounds!.y + dialogBounds!.height).toBeLessThanOrEqual(640);
+  expect(dialogBounds!.width).toBeLessThanOrEqual(962);
+  expect(
+    await galleryDialog.evaluate((element) => element.scrollHeight <= element.clientHeight),
+  ).toBe(true);
+  expect(
+    await galleryResults.evaluate((element) => element.scrollHeight > element.clientHeight),
+  ).toBe(true);
+  await galleryResults.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  expect(await galleryResults.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(documentScrollBeforePicker);
   await page.getByRole("button", { name: /operation-cover\.webp/ }).click();
   await page.getByRole("button", { name: "Apply", exact: true }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();

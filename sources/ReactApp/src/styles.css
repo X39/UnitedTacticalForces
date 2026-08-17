@@ -4717,15 +4717,17 @@ button {
   color: var(--warning);
 }
 .gallery-picker-dialog {
-  width: min(94vw, 1240px);
+  width: min(92vw, 960px);
+  height: min(82dvh, 700px);
   max-width: none;
-  max-height: 90vh;
+  max-height: calc(100dvh - 2rem);
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 5px;
   background: var(--canvas);
   color: var(--text);
   box-shadow: 0 24px 80px rgb(0 0 0 / 70%);
+  overflow: hidden;
 }
 .gallery-picker-dialog::backdrop {
   background: rgb(0 0 0 / 72%);
@@ -4733,8 +4735,12 @@ button {
 }
 .gallery-picker-dialog__shell {
   display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   gap: 1rem;
+  height: 100%;
+  min-height: 0;
   padding: 1.25rem;
+  overflow: hidden;
 }
 .gallery-picker-dialog__shell > header,
 .gallery-picker-dialog__shell > footer,
@@ -4762,6 +4768,10 @@ button {
   gap: 0.65rem;
   align-items: center;
 }
+.gallery-picker-dialog__status {
+  min-height: 0;
+  overflow: hidden;
+}
 .gallery-picker-dialog__upload {
   position: relative;
   overflow: hidden;
@@ -4774,7 +4784,7 @@ button {
   cursor: pointer;
 }
 .gallery-picker-dialog__workspace {
-  min-height: 390px;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 0.3fr);
   gap: 1rem;
@@ -4782,6 +4792,7 @@ button {
 }
 .gallery-picker-dialog__workspace > section,
 .gallery-picker-dialog__workspace > aside {
+  min-height: 0;
   overflow: auto;
   padding: 1rem;
   border: 1px solid var(--line);
@@ -5091,6 +5102,7 @@ button {
   .site-image-setting-card,
   .gallery-picker-dialog__workspace {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(10rem, 0.55fr);
   }
   .gallery-picker-dialog__tools {
     align-items: stretch;

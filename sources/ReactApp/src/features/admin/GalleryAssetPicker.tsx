@@ -147,10 +147,12 @@ export function GalleryAssetPicker({
           </label>
         </form>
 
-        {(validationError || upload.isError) && (
-          <StatePanel kind="error">{validationError || upload.error?.message}</StatePanel>
-        )}
-        {query.isError && <StatePanel kind="error">{query.error.message}</StatePanel>}
+        <div className="gallery-picker-dialog__status" aria-live="polite">
+          {(validationError || upload.isError) && (
+            <StatePanel kind="error">{validationError || upload.error?.message}</StatePanel>
+          )}
+          {query.isError && <StatePanel kind="error">{query.error.message}</StatePanel>}
+        </div>
 
         <div className="gallery-picker-dialog__workspace">
           <section>
