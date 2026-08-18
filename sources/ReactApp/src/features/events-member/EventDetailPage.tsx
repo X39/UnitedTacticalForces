@@ -1,4 +1,19 @@
-import { ArrowLeft20Regular, ArrowSync20Regular, PeopleTeam24Regular } from "@fluentui/react-icons";
+import {
+  ArrowDownload20Regular,
+  ArrowLeft20Regular,
+  ArrowSync20Regular,
+  Box20Regular,
+  CalendarLtr20Regular,
+  Checkmark20Regular,
+  Clock20Regular,
+  Cube20Regular,
+  Document20Regular,
+  Map20Regular,
+  PeopleTeam20Regular,
+  PeopleTeam24Regular,
+  Person20Regular,
+  Settings20Regular,
+} from "@fluentui/react-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,7 +21,7 @@ import { Link, useParams } from "react-router";
 import { resolveImageUrl } from "@/api/client";
 import { eventService, queryKeys } from "@/api/services";
 import type { EventAcceptance, FullEvent, FullUser } from "@/api/types";
-import { formatDate, formatDateTime, formatUtcDateTime } from "@/app/format";
+import { currentLocale, formatDate, formatDateTime } from "@/app/format";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import { useSiteImage } from "@/app/siteImages";
@@ -192,95 +207,100 @@ export function EventDetailPage() {
   return (
     <div className="em-event-page public-page">
       <section
-        className="public-hero editorial-hero em-event-hero"
+        className="em-event-hero"
         style={{ "--hero-image": `url("${image.replaceAll('"', "%22")}")` } as CSSProperties}
       >
-        <div className="public-hero__inner em-event-hero__inner">
-          <div className="public-hero__copy">
-            <Link className="em-event-hero__back" to="/events/upcoming">
-              <ArrowLeft20Regular /> {t("Auto_BackToEvents_6f92c820")}
-            </Link>
-            <span className="kicker">{t("Operation")}</span>
-            <h1>{event.title || t("Pages_Events_Detail_UntitledOperation")}</h1>
-            <div className="em-event-hero__status">
-              <StatusBadge tone={attendanceProgress.needsMoreSignups ? "warning" : "success"}>
-                {t(
-                  attendanceProgress.needsMoreSignups
-                    ? "Pages_Events_Detail_Status_NeedsMoreSignups"
-                    : "Pages_Events_Detail_Status_MinimumMet",
-                )}
-              </StatusBadge>
-              <span>
-                {timeRemaining === "tbd"
-                  ? t("Pages_Events_Detail_Status_ToBeDetermined")
-                  : timeRemaining === "started"
-                    ? t("Pages_Events_Detail_Status_Started")
-                    : `${t("Auto_TimeRemaining_864927fe")}: ${timeRemaining}`}
-              </span>
-            </div>
-          </div>
-          <dl
-            className="public-hero__panel em-event-meta"
-            aria-label={t("Auto_MissionMetadata_384bdc08")}
-          >
+        <div className="em-event-hero__inner">
+          <Link className="em-event-hero__back" to="/events/upcoming">
+            <ArrowLeft20Regular /> {t("Auto_BackToEvents_6f92c820")}
+          </Link>
+          <span className="em-operation-tag">{t("Operation")}</span>
+          <h1>{event.title || t("Pages_Events_Detail_UntitledOperation")}</h1>
+          <dl className="em-event-meta" aria-label={t("Auto_MissionMetadata_384bdc08")}>
             <div>
-              <dt>{t("Date")}</dt>
-              <dd>
-                {event.scheduledFor
-                  ? formatDate(event.scheduledFor, { dateStyle: "full" })
-                  : t("Pages_Events_Detail_Status_DatePending")}
-              </dd>
+              <CalendarLtr20Regular aria-hidden="true" />
+              <div>
+                <dt>{t("Date")}</dt>
+                <dd>
+                  {event.scheduledFor
+                    ? formatDate(event.scheduledFor, {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : t("Pages_Events_Detail_Status_DatePending")}
+                </dd>
+                <small>
+                  {event.scheduledFor
+                    ? formatDate(event.scheduledFor, { weekday: "long" })
+                    : t("Pages_Events_Detail_Status_SchedulePending")}
+                </small>
+              </div>
             </div>
             <div>
-              <dt>{t("Time")}</dt>
-              <dd>
-                {event.scheduledFor
-                  ? formatUtcDateTime(event.scheduledFor)
-                  : t("Pages_Events_Detail_Status_TimePending")}
-              </dd>
-              <small>
-                {event.scheduledFor
-                  ? formatResource(
-                      t("Pages_Events_Detail_Format_LocalTime"),
-                      formatDateTime(event.scheduledFor),
-                    )
-                  : t("Pages_Events_Detail_Status_LocalTimePending")}
-              </small>
+              <Clock20Regular aria-hidden="true" />
+              <div>
+                <dt>{t("Time")}</dt>
+                <dd>
+                  {event.scheduledFor
+                    ? formatEventUtcTime(event.scheduledFor)
+                    : t("Pages_Events_Detail_Status_TimePending")}
+                </dd>
+                <small>
+                  {event.scheduledFor
+                    ? formatResource(
+                        t("Pages_Events_Detail_Format_LocalTime"),
+                        formatDateTime(event.scheduledFor),
+                      )
+                    : t("Pages_Events_Detail_Status_LocalTimePending")}
+                </small>
+              </div>
             </div>
             <div>
-              <dt>{t("Terrain")}</dt>
-              <dd>{event.terrainTitle || t("Pages_Events_Detail_Status_TerrainPending")}</dd>
+              <Map20Regular aria-hidden="true" />
+              <div>
+                <dt>{t("Terrain")}</dt>
+                <dd>{event.terrainTitle || t("Pages_Events_Detail_Status_TerrainPending")}</dd>
+                <small>{t("Auto_MissionArea_783638f1")}</small>
+              </div>
             </div>
             <div>
-              <dt>{t("Modpack")}</dt>
-              <dd>
-                {event.modPackDefinitionTitle || t("Pages_Events_Detail_Status_ModPackPending")}
-              </dd>
-              <small>
-                {event.modPackRevisionPrimaryKey == null
-                  ? t("Pages_Events_Detail_Status_LatestRevision")
-                  : formatResource(
-                      t("Pages_Events_Detail_Count_Revision"),
-                      event.modPackRevisionPrimaryKey,
-                    )}
-              </small>
+              <Cube20Regular aria-hidden="true" />
+              <div>
+                <dt>{t("Modpack")}</dt>
+                <dd>
+                  {event.modPackDefinitionTitle || t("Pages_Events_Detail_Status_ModPackPending")}
+                </dd>
+                <small>
+                  {event.modPackRevisionPrimaryKey == null
+                    ? t("Pages_Events_Detail_Status_LatestRevision")
+                    : formatResource(
+                        t("Pages_Events_Detail_Count_Revision"),
+                        event.modPackRevisionPrimaryKey,
+                      )}
+                </small>
+              </div>
             </div>
             <div>
-              <dt>{t("Host")}</dt>
-              <dd>{event.hostedBy.nickname || t("Pages_Events_Detail_Status_HostPending")}</dd>
+              <Person20Regular aria-hidden="true" />
+              <div>
+                <dt>{t("Host")}</dt>
+                <dd>{event.hostedBy.nickname || t("Pages_Events_Detail_Status_HostPending")}</dd>
+                <small>{t("Auto_OperationLead_56551686")}</small>
+              </div>
             </div>
           </dl>
         </div>
       </section>
 
-      <div className="content-section public-section em-event-workspace">
+      <div className="em-event-workspace">
         <div className="em-event-main">
           <section className="em-panel em-briefing-panel">
-            <header className="page-header">
-              <div>
-                <span className="kicker">{t("Auto_FullBriefing_8df6347a")}</span>
-                <h2>{t("Auto_OperationBrief_b34e36ec")}</h2>
-              </div>
+            <header className="em-panel-title">
+              <span>
+                <Document20Regular aria-hidden="true" />
+              </span>
+              <h2>{t("Auto_OperationBrief_b34e36ec")}</h2>
             </header>
             {event.description ? (
               <>
@@ -291,15 +311,15 @@ export function EventDetailPage() {
                   >
                     {briefingObjectives.map((objective, index) => (
                       <li key={`${objective.icon}-${index}`}>
-                        <span data-icon={objective.icon} aria-hidden="true">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
+                        <span data-icon={objective.icon} aria-hidden="true" />
                         <p>{objective.text}</p>
                       </li>
                     ))}
                   </ol>
                 )}
                 <div className="em-briefing-notes">
+                  <span className="kicker">{t("Auto_FullBriefing_8df6347a")}</span>
+                  <h3>{t("Auto_CommanderSNotes_99b2f4e5")}</h3>
                   <Markdown>{event.description}</Markdown>
                 </div>
               </>
@@ -310,23 +330,39 @@ export function EventDetailPage() {
             )}
           </section>
 
-          <section className="em-panel" aria-labelledby="slot-register-title">
-            <header className="page-header">
-              <div>
+          <section className="em-panel em-roster-panel" aria-labelledby="slot-register-title">
+            <header className="em-roster-panel__header">
+              <div className="em-panel-title">
+                <span>
+                  <PeopleTeam20Regular aria-hidden="true" />
+                </span>
                 <h2 id="slot-register-title">{t("Auto_SlotRegister_20eeba00")}</h2>
-                <p>
-                  {openSlots} / {totalSlots} {t("Pages_Events_Upcoming_SlotsLabel")}
-                </p>
               </div>
+              <p>
+                {openSlots} open / {totalSlots} total
+              </p>
             </header>
             {groups.length === 0 ? (
               <StatePanel kind="empty">{t("Auto_NoSlotsConfigured_d0093e9c")}</StatePanel>
             ) : (
-              <div className="em-slot-register">
+              <div
+                className="em-slot-register"
+                role="table"
+                aria-label={t("Auto_SlotRegister_20eeba00")}
+              >
+                <div className="em-slot-register__head" aria-hidden="true">
+                  <span>{t("Role")}</span>
+                  <span>{t("Assigned")}</span>
+                  <span>{t("Status")}</span>
+                  <span />
+                </div>
                 {groups.map((group) => (
                   <section key={group.name} className="em-slot-group">
                     <header>
-                      <h3>{group.name}</h3>
+                      <div>
+                        <span className="em-slot-group__icon" aria-hidden="true" />
+                        <h3>{group.name}</h3>
+                      </div>
                       <span>
                         {formatResource(
                           t("Pages_Events_Detail_Count_GroupAssigned"),
@@ -358,8 +394,11 @@ export function EventDetailPage() {
 
         <aside className="em-event-aside" aria-label={t("Attendance")}>
           {canManageEvent && (
-            <section className="em-side-card">
-              <h2>{t("Auto_EventControls_ad2e84e1")}</h2>
+            <section className="em-side-card em-event-control-card">
+              <header className="em-side-card__header">
+                <Settings20Regular aria-hidden="true" />
+                <h2>{t("Auto_EventControls_ad2e84e1")}</h2>
+              </header>
               <p>{t("Auto_OpenThisOperationInCommandManagement_604a555e")}</p>
               <Link className="button button--ghost" to={`/command/events/${eventId}`}>
                 {t("Auto_ManageEvent_0a863949")}
@@ -368,7 +407,10 @@ export function EventDetailPage() {
           )}
 
           <section className="em-side-card">
-            <h2>{t("Auto_YourAttendance_71dff290")}</h2>
+            <header className="em-side-card__header">
+              <Checkmark20Regular aria-hidden="true" />
+              <h2>{t("Auto_YourAttendance_71dff290")}</h2>
+            </header>
             <div className="em-attendance-actions">
               <AttendanceButton
                 label={t("Pages_Events_Detail_Status_Confirmed")}
@@ -396,7 +438,7 @@ export function EventDetailPage() {
               />
             </div>
             <button
-              className="button button--gold"
+              className="em-primary-slot-action"
               type="button"
               disabled={!firstOpenSlot || slotMutation.isPending}
               aria-busy={slotMutation.isPending}
@@ -431,7 +473,7 @@ export function EventDetailPage() {
           </section>
 
           <section className="em-side-card em-slot-summary">
-            <PeopleTeam24Regular />
+            <PeopleTeam24Regular className="em-slot-summary__icon" aria-hidden="true" />
             <div className="em-attendance-progress">
               <div>
                 <strong>
@@ -492,7 +534,10 @@ export function EventDetailPage() {
           </section>
 
           <section className="em-side-card">
-            <h2>{t("Auto_MissionPackage_3ff65611")}</h2>
+            <header className="em-side-card__header">
+              <Box20Regular aria-hidden="true" />
+              <h2>{t("Auto_MissionPackage_3ff65611")}</h2>
+            </header>
             <dl className="em-package-list">
               <div>
                 <dt>{t("Modpack")}</dt>
@@ -508,13 +553,13 @@ export function EventDetailPage() {
               </div>
             </dl>
             <button
-              className="button button--gold"
+              className="em-primary-slot-action"
               type="button"
               disabled={!modPackDownloadPath(event) || downloadMutation.isPending}
               aria-busy={downloadMutation.isPending}
               onClick={() => downloadMutation.mutate(event)}
             >
-              {t("Common_DownloadModpack")}
+              <ArrowDownload20Regular aria-hidden="true" /> {t("Common_DownloadModpack")}
             </button>
             {downloadMutation.isError && (
               <StatePanel kind="error">
@@ -557,20 +602,31 @@ function AttendanceButton({
   onClick(): void;
 }) {
   return (
-    <button type="button" disabled={disabled} aria-busy={pending} onClick={onClick}>
-      <StatusBadge tone={tone}>
-        {pending ? (
-          <>
-            <span aria-hidden="true">…</span>
-            <span className="sr-only">{label}</span>
-          </>
-        ) : (
-          label
-        )}
-      </StatusBadge>
-      <strong>{count}</strong>
+    <button
+      className={`em-attendance-choice em-attendance-choice--${tone}`}
+      type="button"
+      disabled={disabled}
+      aria-busy={pending}
+      onClick={onClick}
+    >
+      <span className="em-attendance-choice__mark" aria-hidden="true">
+        {tone === "success" ? "✓" : tone === "warning" ? "?" : "×"}
+      </span>
+      <strong>{pending ? "…" : label}</strong>
+      <span>{count}</span>
     </button>
   );
+}
+
+function formatEventUtcTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${new Intl.DateTimeFormat(currentLocale(), {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(date)} UTC`;
 }
 
 function assigneeAvatarSource(user: EventAssignee): string | undefined {
@@ -590,6 +646,17 @@ function assigneeInitials(name: string): string {
       .map((part) => Array.from(part)[0]?.toLocaleUpperCase() ?? "")
       .join("") || "?"
   );
+}
+
+function slotRoleIconKey(title: string): string {
+  const value = title.toLocaleLowerCase();
+  if (/(medic|medical|corpsman)/.test(value)) return "medical";
+  if (/(radio|rto|jtac|fac)/.test(value)) return "radio";
+  if (/(lead|command|officer)/.test(value)) return "host";
+  if (/(pilot|transport|driver|crew)/.test(value)) return "extract";
+  if (/(marksman|sniper|scout|recon)/.test(value)) return "stealth";
+  if (/(support|engineer|gunner|autorifleman)/.test(value)) return "support";
+  return "slot";
 }
 
 function SlotRow({
@@ -670,19 +737,26 @@ function SlotRow({
 
   return (
     <article className={`em-slot-row${mine ? " em-slot-row--mine" : ""}`}>
-      <div>
-        <StatusBadge tone={mine ? "info" : "neutral"}>
-          {sideKey ? t(sideKey) : t("Pages_Events_Detail_Status_SidePending")}
-        </StatusBadge>
-        <h4>{row.slots.length > 1 ? `${row.title} (x${row.slots.length})` : row.title}</h4>
-        <small>
-          {formatResource(
-            row.slots.length > 1
-              ? t("Pages_Events_Detail_Count_SlotNumbers")
-              : t("Pages_Events_Detail_Count_SlotNumber"),
-            slotNumbers,
-          )}
-        </small>
+      <div className="em-slot-role-cell">
+        <span
+          className="em-slot-role-icon"
+          data-icon={slotRoleIconKey(row.title)}
+          aria-hidden="true"
+        />
+        <div>
+          <span className={`em-side-pill em-side-pill--${sideKey || "empty"}`}>
+            {sideKey ? t(sideKey) : t("Pages_Events_Detail_Status_SidePending")}
+          </span>
+          <h4>{row.slots.length > 1 ? `${row.title} (x${row.slots.length})` : row.title}</h4>
+          <small>
+            {formatResource(
+              row.slots.length > 1
+                ? t("Pages_Events_Detail_Count_SlotNumbers")
+                : t("Pages_Events_Detail_Count_SlotNumber"),
+              slotNumbers,
+            )}
+          </small>
+        </div>
       </div>
       <div className="em-slot-assignees">
         {assignedUsers.length > 0 && (
@@ -722,7 +796,7 @@ function SlotRow({
         <small>{actionLabel}</small>
       </div>
       <button
-        className="button button--ghost button--small"
+        className={`em-slot-assign-button${mine ? " em-slot-assign-button--mine" : ""}`}
         type="button"
         disabled={mutationPending || (action.kind !== "assign" && action.kind !== "claim-role")}
         aria-busy={action.kind === "assigning"}
