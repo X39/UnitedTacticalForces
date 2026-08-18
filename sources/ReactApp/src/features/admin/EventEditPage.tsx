@@ -1,6 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  ArrowLeft20Regular,
+  Calendar20Regular,
+  Document20Regular,
+  People20Regular,
+  Save20Regular,
+  Settings20Regular,
+} from "@fluentui/react-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Link, useParams, useSearchParams } from "react-router";
@@ -9,11 +17,11 @@ import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
 import { canEditEvents } from "@/auth/claims";
+import { useAppToast } from "@/components/AppToasts";
 import { NotFoundPage } from "@/components/NotFoundPage";
 import {
   ConfirmDialog,
   Markdown,
-  PageHeader,
   StatePanel,
   StatusBadge,
   useUnsavedChanges,
@@ -100,6 +108,7 @@ function syntheticScenario(snapshot: EventAuthoringSnapshot): GameContentOption 
 
 function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
   const { t } = useTranslation();
+  const { showToast } = useAppToast();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const eventId = snapshot.event.primaryKey;
@@ -141,20 +150,16 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset>();
   const [removeObjective, setRemoveObjective] = useState<EventObjectiveDraft>();
-  const [notice, setNotice] = useState<{
-    kind: "success" | "warning" | "error";
-    text: string;
-  } | null>(
-    searchParams.get("slotSetup") === "failed"
-      ? { kind: "warning", text: t("React_EventAuthoring_PartialSlotFailure") }
-      : null,
-  );
   const dirty = form.formState.isDirty || slotsDirty;
   const capabilities = useQuery({
     queryKey: hostingQueryKeys.capabilities,
     queryFn: ({ signal }) => hostingService.capabilities(signal),
   });
   useUnsavedChanges(dirty);
+  useEffect(() => {
+    if (searchParams.get("slotSetup") === "failed")
+      showToast(t("React_EventAuthoring_PartialSlotFailure"), "warning");
+  }, [searchParams, showToast, t]);
 
   const updateSlots = (next: EventSlotDraft[]) => {
     setSlots(next);
@@ -196,33 +201,32 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
       if (mode === "all" && values) await eventAuthoringService.update(eventId, values);
       return persistSlots();
     },
-    onSuccess: async (freshSlots, variables) => {
+    onSuccess: async (freshSlots, { mode, values }) => {
       setSlots(freshSlots);
       setSlotsDirty(false);
-      if (variables.mode === "all" && variables.values) form.reset(variables.values);
-      setNotice({
-        kind: "success",
-        text:
-          variables.mode === "slots"
-            ? t("Pages_Events_Edit_Message_SlotPlanSaved")
-            : t("React_EventAuthoring_SaveSuccess"),
-      });
+      if (mode === "all" && values) form.reset(values);
+      showToast(
+        mode === "slots"
+          ? t("Pages_Events_Edit_Message_SlotPlanSaved")
+          : t("React_EventAuthoring_SaveSuccess"),
+        "success",
+      );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: eventAuthoringQueryKeys.event(eventId) }),
         queryClient.invalidateQueries({ queryKey: ["events", eventId] }),
         queryClient.invalidateQueries({ queryKey: ["command-events"] }),
       ]);
     },
-    onError: (error, variables) =>
-      setNotice({
-        kind: "error",
-        text: formatResource(
-          variables.mode === "slots"
+    onError: (error, { mode }) =>
+      showToast(
+        formatResource(
+          mode === "slots"
             ? t("Pages_Events_Edit_Message_SlotPlanSaveFailed")
             : t("React_EventAuthoring_SaveError"),
           error.message,
         ),
-      }),
+        "error",
+      ),
   });
 
   const assignmentMutation = useMutation({
@@ -260,22 +264,20 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
       } else {
         setSlots(await eventAuthoringService.reloadSlots(eventId));
       }
-      setNotice({
-        kind: "success",
-        text:
-          operation.kind === "assign"
-            ? t("Pages_Events_Edit_Message_SlotAssignmentUpdated")
-            : t("Pages_Events_Edit_Message_SlotAssignmentRemoved"),
-      });
+      showToast(
+        operation.kind === "assign"
+          ? t("Pages_Events_Edit_Message_SlotAssignmentUpdated")
+          : t("Pages_Events_Edit_Message_SlotAssignmentRemoved"),
+        "success",
+      );
     },
     onError: (_error, operation) =>
-      setNotice({
-        kind: "error",
-        text:
-          operation.kind === "assign"
-            ? t("Pages_Events_Edit_Message_SlotAssignFailed")
-            : t("Pages_Events_Edit_Message_SlotUnassignFailed"),
-      }),
+      showToast(
+        operation.kind === "assign"
+          ? t("Pages_Events_Edit_Message_SlotAssignFailed")
+          : t("Pages_Events_Edit_Message_SlotUnassignFailed"),
+        "error",
+      ),
   });
 
   const applyObjectives = (next: EventObjectiveDraft[]) => {
@@ -297,58 +299,73 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
   const errors = form.formState.errors;
   const imageUrl = resolveImageUrl(watched.imagePath);
 
-  const saveAll = form.handleSubmit((values) => {
-    setNotice(null);
-    saveMutation.mutate({ mode: "all", values });
-  });
-  const saveSlots = () => {
-    setNotice(null);
-    saveMutation.mutate({ mode: "slots" });
-  };
+  const saveAll = form.handleSubmit(
+    (values) => saveMutation.mutate({ mode: "all", values }),
+    () => {
+      setTab("details");
+      showToast(t("Pages_Events_Edit_Status_NeedsAttention"), "warning");
+    },
+  );
+  const saveSlots = () => saveMutation.mutate({ mode: "slots" });
+  const saveCurrent = tab === "slots" ? saveSlots : () => void saveAll();
+  const currentSaveDisabled = busy || (tab === "slots" ? !slotsDirty : !dirty);
 
   return (
     <section className="event-authoring-page event-editor-page">
-      <PageHeader
-        kicker={t("Shared_CommandCenter_Nav_Events")}
-        title={watched.title?.trim() || t("Pages_Events_Edit_UntitledOperation")}
-        description={t(
-          "Auto_AuthoringWorkspaceForOperationMetadataBriefingMediaReadinessAnd_560063d1",
-        )}
-        actions={
-          <>
-            <Link className="button button--ghost" to="/command/events">
+      <section className="command-panel event-editor-header">
+        <div className="event-editor-header__main">
+          <div className="event-editor-header__copy">
+            <Link className="event-editor-back-link" to="/command/events">
+              <ArrowLeft20Regular />
               {t("Auto_BackToEvents_6f92c820")}
             </Link>
+            <div className="event-editor-title-row">
+              <div>
+                <span className="kicker">{t("Shared_CommandCenter_Nav_Events")}</span>
+                <h1>{watched.title?.trim() || t("Pages_Events_Edit_UntitledOperation")}</h1>
+              </div>
+              <StatusBadge tone={watched.isVisible ? "success" : "neutral"}>
+                {watched.isVisible ? t("Public") : t("Hidden")}
+              </StatusBadge>
+            </div>
+            <p>
+              {t("Auto_AuthoringWorkspaceForOperationMetadataBriefingMediaReadinessAnd_560063d1")}
+            </p>
+            <div className="event-editor-header__meta">
+              <span>
+                <Calendar20Regular />
+                {formatDate(watched.scheduledForLocal)}
+              </span>
+              <span>
+                <People20Regular />
+                {t("Host")}: {host?.nickname || t("Pages_Events_Edit_Status_HostPending")}
+              </span>
+              {dirty && <strong>{t("React_UnsavedChanges")}</strong>}
+            </div>
+          </div>
+          <div className="event-editor-header__actions">
             <Link className="button button--ghost" to={`/events/${eventId}`}>
+              <People20Regular />
               {t("Auto_ViewSlots_ddcd3598")}
             </Link>
             <button
               className="button button--primary"
               type="button"
-              disabled={busy}
-              onClick={() => void saveAll()}
+              disabled={currentSaveDisabled}
+              onClick={saveCurrent}
             >
+              <Save20Regular />
               {saveMutation.isPending
-                ? t("Pages_Events_Edit_ActionSaving")
-                : t("Pages_Events_Edit_ActionSaveChanges")}
+                ? tab === "slots"
+                  ? t("Pages_Events_Edit_ActionSavingSlots")
+                  : t("Pages_Events_Edit_ActionSaving")
+                : tab === "slots"
+                  ? t("Pages_Events_Edit_ActionSaveSlotPlan")
+                  : t("Pages_Events_Edit_ActionSaveChanges")}
             </button>
-          </>
-        }
-      />
-      {notice && <StatePanel kind={notice.kind}>{notice.text}</StatePanel>}
-
-      <section className="command-panel event-editor-hero">
-        <div>
-          <StatusBadge tone={watched.isVisible ? "success" : "neutral"}>
-            {watched.isVisible ? t("Public") : t("Hidden")}
-          </StatusBadge>
-          <h2>{watched.title?.trim() || t("Pages_Events_Edit_UntitledOperation")}</h2>
-          <p>
-            {formatDate(watched.scheduledForLocal)} · {t("Host")}:{" "}
-            {host?.nickname || t("Pages_Events_Edit_Status_HostPending")}
-          </p>
+          </div>
         </div>
-        <div
+        <nav
           className="event-editor-tabs"
           role="tablist"
           aria-label={t("React_EventAuthoring_EditorTabs")}
@@ -362,6 +379,15 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
               className={tab === item ? "is-active" : ""}
               onClick={() => setTab(item)}
             >
+              {item === "details" ? (
+                <Settings20Regular />
+              ) : item === "briefing" ? (
+                <Document20Regular />
+              ) : item === "objectives" ? (
+                <Calendar20Regular />
+              ) : (
+                <People20Regular />
+              )}
               {t(
                 item === "details"
                   ? "Details"
@@ -371,9 +397,14 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                       ? "Objectives"
                       : "Slots",
               )}
+              {item === "slots" && (
+                <span className="event-editor-tabs__count">
+                  {slots.filter((slot) => !slot.isDeleted).length}
+                </span>
+              )}
             </button>
           ))}
-        </div>
+        </nav>
       </section>
 
       <div className="event-editor-workspace">
@@ -469,6 +500,7 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                   loadingLabel={t("React_EventAuthoring_SelectorLoading")}
                   emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
                   errorLabel={t("React_EventAuthoring_SelectorError")}
+                  clearLabel={`${t("Remove")} ${t("Terrain")}`}
                   onSelect={(item) => {
                     setTerrain(item);
                     setScenario(null);
@@ -488,27 +520,18 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                     form.setValue("modPackRequired", capability?.requiresModPack !== false);
                     form.setValue("modPackRevisionFk", null, { shouldDirty: true });
                   }}
+                  onClear={() => {
+                    setTerrain(null);
+                    setScenario(null);
+                    setModPack(null);
+                    form.setValue("terrainFk", null, { shouldDirty: true });
+                    form.setValue("terrainGameIdentifier", "", { shouldDirty: true });
+                    form.setValue("scenarioFk", null, { shouldDirty: true });
+                    form.setValue("scenarioRequired", false);
+                    form.setValue("modPackRevisionFk", null, { shouldDirty: true });
+                    form.setValue("modPackRequired", false);
+                  }}
                 />
-                {terrain && (
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      setTerrain(null);
-                      setScenario(null);
-                      setModPack(null);
-                      form.setValue("terrainFk", null, { shouldDirty: true });
-                      form.setValue("terrainGameIdentifier", "", { shouldDirty: true });
-                      form.setValue("scenarioFk", null, { shouldDirty: true });
-                      form.setValue("scenarioRequired", false);
-                      form.setValue("modPackRevisionFk", null, { shouldDirty: true });
-                      form.setValue("modPackRequired", false);
-                    }}
-                  >
-                    {t("Remove")}
-                  </button>
-                )}
                 {watched.scenarioRequired && terrain && (
                   <EventEntityPicker<GameContentOption>
                     label="Scenario"
@@ -560,13 +583,11 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                   loadingLabel={t("React_EventAuthoring_SelectorLoading")}
                   emptyLabel={t("React_EventAuthoring_SelectorEmpty")}
                   errorLabel={t("React_EventAuthoring_SelectorError")}
+                  clearLabel={`${t("Remove")} ${t("Auto_ModPackRevision_d199668f")}`}
                   onSelect={(item) => {
                     const revision = latestActiveRevision(item);
                     if (revision?.primaryKey == null) {
-                      setNotice({
-                        kind: "warning",
-                        text: t("React_EventAuthoring_ModPackNoRevision"),
-                      });
+                      showToast(t("React_EventAuthoring_ModPackNoRevision"), "warning");
                       return;
                     }
                     setModPack(item);
@@ -575,23 +596,14 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                       shouldValidate: true,
                     });
                   }}
+                  onClear={() => {
+                    setModPack(null);
+                    form.setValue("modPackRevisionFk", null, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }}
                 />
-                {modPack && (
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      setModPack(null);
-                      form.setValue("modPackRevisionFk", null, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
-                    }}
-                  >
-                    {t("Remove")}
-                  </button>
-                )}
               </div>
               <section className="event-authoring-resource-panel">
                 <SectionHeading
@@ -641,7 +653,6 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                   </div>
                 </div>
               </section>
-              <Readiness rows={readiness} />
             </section>
           )}
 
@@ -763,6 +774,7 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
               saving={saveMutation.isPending}
               onChange={updateSlots}
               onSave={saveSlots}
+              showSave={false}
               onAssign={(slot, person) =>
                 assignmentMutation.mutate({ kind: "assign", slot, person })
               }

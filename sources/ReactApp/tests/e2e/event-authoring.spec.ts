@@ -18,6 +18,7 @@ test("creates through the certified alias and edits in the command workspace", a
   let createdEvent: Record<string, unknown> | undefined;
   let createdSlot: Record<string, unknown> | undefined;
   let updatedEvent: Record<string, unknown> | undefined;
+  let updatedSlot: Record<string, unknown> | undefined;
 
   await page.route("**/api/**", (route) => {
     if (!new URL(route.request().url()).pathname.startsWith("/api/")) return route.continue();
@@ -183,9 +184,10 @@ test("creates through the certified alias and edits in the command workspace", a
     updatedEvent = (await route.request().postDataJSON()) as Record<string, unknown>;
     return route.fulfill({ status: 204 });
   });
-  await page.route(`**/api/events/${eventId}/slotting/1/update`, (route) =>
-    route.fulfill({ status: 204 }),
-  );
+  await page.route(`**/api/events/${eventId}/slotting/1/update`, async (route) => {
+    updatedSlot = (await route.request().postDataJSON()) as Record<string, unknown>;
+    return route.fulfill({ status: 204 });
+  });
 
   await page.goto("events/create");
   await expect(page.getByRole("heading", { name: "Create Event", exact: true })).toBeVisible();
@@ -272,6 +274,13 @@ test("creates through the certified alias and edits in the command workspace", a
 
   await page.getByRole("textbox", { name: "Title" }).fill("Operation Northstar II");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(page.getByText("Event changes and slot plan saved.")).toBeVisible();
+  await expect(page.getByText("Event changes and slot plan saved.").last()).toBeVisible();
   expect(updatedEvent).toMatchObject({ title: "Operation Northstar II" });
+
+  await page.getByRole("textbox", { name: "Title" }).fill("");
+  await page.getByRole("tab", { name: /Slots/ }).click();
+  await page.getByRole("textbox", { name: "Group" }).fill("Bravo");
+  await page.getByRole("button", { name: "Save slot plan", exact: true }).click();
+  await expect(page.getByText("Slot plan saved.").last()).toBeVisible();
+  expect(updatedSlot).toMatchObject({ group: "Bravo" });
 });

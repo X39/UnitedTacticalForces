@@ -6,9 +6,16 @@ import type {
 } from "@/features/hosting/types";
 import {
   buildCommandProtocol,
+  affectedDestinationDirectories,
   combineServerPath,
   configurationInputValue,
+  directoryAncestors,
+  findHostingFileByPath,
+  findUploadCollisions,
+  normalizeServerRelativePath,
+  orderDirectoriesShallowFirst,
   parentServerPath,
+  planUploads,
   parseConfigurationEntryValue,
   primaryServerAction,
   protocolEntries,
@@ -44,6 +51,55 @@ describe("server workspace model", () => {
     );
     expect(parentServerPath("profiles/main/users/test.vars")).toBe("profiles/main/users");
     expect(parentServerPath("server.cfg")).toBe("");
+    expect(normalizeServerRelativePath("/ profiles\\main//./server.cfg ")).toBe(
+      "profiles/main/server.cfg",
+    );
+    expect(() => normalizeServerRelativePath("profiles/../server.cfg")).toThrow("parent-directory");
+  });
+
+  it("derives destination directories in shallow creation order", () => {
+    expect(directoryAncestors("profiles/main/users")).toEqual([
+      "profiles",
+      "profiles/main",
+      "profiles/main/users",
+    ]);
+    expect(
+      affectedDestinationDirectories([
+        "profiles/main/users/a.cfg",
+        "addons/mod/file.pbo",
+        "root.txt",
+      ]),
+    ).toEqual(["addons", "profiles", "addons/mod", "profiles/main", "profiles/main/users"]);
+    expect(orderDirectoriesShallowFirst(["a/b", "a", "B/c", "a/b"])).toEqual(["a", "a/b", "B/c"]);
+  });
+
+  it("plans uploads deterministically and identifies case-insensitive collisions", () => {
+    const uploads = planUploads("profiles/main", [
+      { item: "z", relativePath: "mods/z.pbo" },
+      { item: "a", relativePath: "server.cfg" },
+    ]);
+    expect(uploads.map((upload) => upload.targetPath)).toEqual([
+      "profiles/main/mods/z.pbo",
+      "profiles/main/server.cfg",
+    ]);
+    const files = [
+      {
+        name: "Server.cfg",
+        path: "profiles/main/Server.cfg",
+        isDirectory: false,
+        isGeneratedTarget: true,
+        overridesGenerated: false,
+      },
+      { name: "mods", path: "profiles/main/mods", isDirectory: true },
+    ] as HostingFile[];
+    expect(findHostingFileByPath(files, "PROFILES/main/server.cfg")?.name).toBe("Server.cfg");
+    expect(findUploadCollisions(uploads, files)).toMatchObject([
+      {
+        upload: { item: "a", targetPath: "profiles/main/server.cfg" },
+        existing: { name: "Server.cfg" },
+        requiresGeneratedOverride: true,
+      },
+    ]);
   });
 
   it("parses typed sparse configuration values and rejects constraints", () => {

@@ -7,6 +7,7 @@ import { routeManifest } from "@/app/routes";
 import { RouteCertificationGate } from "@/app/RouteCertificationGate";
 import { SiteImagesProvider } from "@/app/siteImages";
 import { AuthProvider } from "@/auth/auth";
+import { AppToastProvider } from "@/components/AppToasts";
 import { NotFoundPage } from "@/components/NotFoundPage";
 import { CommandCenterLayout } from "@/components/CommandCenterLayout";
 import { CommunityLayout } from "@/components/CommunityLayout";
@@ -631,7 +632,9 @@ export function App({ configuration }: { configuration: PublicConfiguration }) {
       <QueryClientProvider client={queryClient}>
         <SiteImagesProvider>
           <AuthProvider>
-            <RouterProvider router={router} />
+            <AppToastProvider>
+              <RouterProvider router={router} />
+            </AppToastProvider>
           </AuthProvider>
         </SiteImagesProvider>
       </QueryClientProvider>

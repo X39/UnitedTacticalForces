@@ -5,25 +5,137 @@ import type {
   ServerAction,
 } from "@/features/hosting/types";
 
+/** A file selected for upload, resolved against the server workspace root. */
+export interface PlannedUpload<T = unknown> {
+  item: T;
+  relativePath: string;
+  targetPath: string;
+}
+
+/** An upload target that already exists in the destination directory. */
+export interface UploadCollision<T = unknown> {
+  upload: PlannedUpload<T>;
+  existing: HostingFile;
+  requiresGeneratedOverride: boolean;
+}
+
+/**
+ * Converts browser/file-system path syntax to the server's safe relative-path syntax.
+ * Empty paths represent the workspace root; traversal is never accepted client-side.
+ */
+export function normalizeServerRelativePath(path: string): string {
+  const segments = path
+    .replaceAll("\\", "/")
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0 && segment !== ".");
+  if (segments.some((segment) => segment === ".."))
+    throw new Error("Server-relative paths cannot contain parent-directory segments.");
+  return segments.join("/");
+}
+
 export function parentServerPath(path: string): string {
-  const normalized = path.replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
+  const normalized = normalizeServerRelativePath(path);
   const index = normalized.lastIndexOf("/");
   return index < 0 ? "" : normalized.slice(0, index);
 }
 
 export function combineServerPath(directory: string, name: string): string {
-  const left = directory.replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
-  const right = name.replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
+  const left = normalizeServerRelativePath(directory);
+  const right = normalizeServerRelativePath(name);
   return left ? `${left}/${right}` : right;
 }
 
 export function pathBreadcrumbs(path: string): { label: string; path: string }[] {
-  const segments = path.replaceAll("\\", "/").split("/").filter(Boolean);
+  const segments = normalizeServerRelativePath(path).split("/").filter(Boolean);
   let current = "";
   return segments.map((segment) => {
     current = combineServerPath(current, segment);
     return { label: segment, path: current };
   });
+}
+
+/** Returns each non-root ancestor in shallow-to-deep order for a directory path. */
+export function directoryAncestors(path: string): string[] {
+  const segments = normalizeServerRelativePath(path).split("/").filter(Boolean);
+  return segments.map((_, index) => segments.slice(0, index + 1).join("/"));
+}
+
+/**
+ * Returns all non-root directories which must exist before uploading the supplied targets.
+ * Results are deduplicated and ordered shallowest-first so they are safe to create in order.
+ */
+export function affectedDestinationDirectories(targetPaths: Iterable<string>): string[] {
+  const directories = new Set<string>();
+  for (const targetPath of targetPaths) {
+    for (const directory of directoryAncestors(parentServerPath(targetPath)))
+      directories.add(directory);
+  }
+  return orderDirectoriesShallowFirst(directories);
+}
+
+/** Deduplicates directories and gives parent directories precedence over their children. */
+export function orderDirectoriesShallowFirst(paths: Iterable<string>): string[] {
+  return [...new Set([...paths].map(normalizeServerRelativePath).filter(Boolean))].sort(
+    (left, right) =>
+      left.split("/").length - right.split("/").length ||
+      left.localeCompare(right, undefined, { sensitivity: "base" }),
+  );
+}
+
+/** Resolves selected relative paths into deterministic workspace upload targets. */
+export function planUploads<T>(
+  destinationDirectory: string,
+  items: Iterable<{ item: T; relativePath: string }>,
+): PlannedUpload<T>[] {
+  return [...items]
+    .map(({ item, relativePath }) => {
+      const normalizedRelativePath = normalizeServerRelativePath(relativePath);
+      if (!normalizedRelativePath) throw new Error("An uploaded file must have a relative path.");
+      return {
+        item,
+        relativePath: normalizedRelativePath,
+        targetPath: combineServerPath(destinationDirectory, normalizedRelativePath),
+      };
+    })
+    .sort((left, right) => compareServerPaths(left.targetPath, right.targetPath));
+}
+
+/** Finds an existing entry without making server paths case-sensitive in the UI. */
+export function findHostingFileByPath(
+  files: Iterable<HostingFile>,
+  path: string,
+): HostingFile | undefined {
+  const normalizedPath = normalizeServerRelativePath(path).toLocaleLowerCase();
+  return [...files].find(
+    (file) => normalizeServerRelativePath(file.path).toLocaleLowerCase() === normalizedPath,
+  );
+}
+
+/** Classifies existing-file targets, including generated files that require explicit approval. */
+export function findUploadCollisions<T>(
+  uploads: Iterable<PlannedUpload<T>>,
+  files: Iterable<HostingFile>,
+): UploadCollision<T>[] {
+  const filesByPath = new Map<string, HostingFile>();
+  for (const file of files) {
+    filesByPath.set(normalizeServerRelativePath(file.path).toLocaleLowerCase(), file);
+  }
+  return [...uploads].flatMap((upload) => {
+    const existing = filesByPath.get(upload.targetPath.toLocaleLowerCase());
+    if (!existing || existing.isDirectory) return [];
+    return [
+      {
+        upload,
+        existing,
+        requiresGeneratedOverride: existing.isGeneratedTarget && !existing.overridesGenerated,
+      },
+    ];
+  });
+}
+
+function compareServerPaths(left: string, right: string): number {
+  return left.localeCompare(right, undefined, { sensitivity: "base" }) || left.localeCompare(right);
 }
 
 export function sortHostingFiles(

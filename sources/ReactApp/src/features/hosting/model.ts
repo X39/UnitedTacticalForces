@@ -10,6 +10,7 @@ import type {
 } from "@/features/hosting/types";
 
 const bytesPerGiB = 1_073_741_824;
+const byteUnits = ["B", "KiB", "MiB", "GiB", "TiB"] as const;
 
 export type StorageStrategy = "IncludedDisk" | "AutomaticExternal" | "FixedExternal";
 
@@ -226,7 +227,15 @@ export function isConfigurationDraftDirty(
 
 export function formatBytes(bytes: number | null | undefined): string {
   if (bytes === null || bytes === undefined) return "—";
-  return `${(bytes / bytesPerGiB).toLocaleString(undefined, { maximumFractionDigits: 2 })} GiB`;
+  const unitIndex = Math.min(
+    Math.floor(Math.log(Math.max(Math.abs(bytes), 1)) / Math.log(1024)),
+    byteUnits.length - 1,
+  );
+  const divisor = 1024 ** unitIndex;
+  const formatted = new Intl.NumberFormat(currentLocale(), {
+    maximumFractionDigits: unitIndex === 0 ? 0 : 1,
+  }).format(bytes / divisor);
+  return `${formatted} ${byteUnits[unitIndex]}`;
 }
 
 export function formatDate(value: string | null | undefined): string {

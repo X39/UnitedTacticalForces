@@ -15868,4 +15868,45 @@ Beginne hier mit dem Schreiben.</value>
   <data name="React_CommandOverview_AllClearDescription" xml:space="preserve"><value>Kein sichtbarer Server meldet mögliche Providerkosten oder ausstehende Lebenszyklusarbeiten.</value></data>
   <data name="React_CommandOverview_WorkAreasKicker" xml:space="preserve"><value>Berechtigte Steuerungsbereiche</value></data>
   <data name="React_CommandOverview_WorkAreasTitle" xml:space="preserve"><value>Deine Arbeitsbereiche</value></data>
+  <data name="React_ServerFiles_ShowFolders" xml:space="preserve"><value>Ordner anzeigen</value></data>
+  <data name="React_ServerFiles_HideFolders" xml:space="preserve"><value>Ordner ausblenden</value></data>
+  <data name="React_ServerFiles_PreservedPaths" xml:space="preserve"><value>Gesicherte Pfade</value></data>
+  <data name="React_ServerFiles_ExpandFolder" xml:space="preserve"><value>{{name}} erweitern</value></data>
+  <data name="React_ServerFiles_CollapseFolder" xml:space="preserve"><value>{{name}} einklappen</value></data>
+  <data name="React_ServerFiles_FolderLoadFailed" xml:space="preserve"><value>Dieser Ordner konnte nicht geladen werden.</value></data>
+  <data name="React_ServerFiles_NoFolders" xml:space="preserve"><value>Keine Ordner</value></data>
+  <data name="React_ServerFiles_Search" xml:space="preserve"><value>Diesen Ordner durchsuchen</value></data>
+  <data name="React_ServerFiles_SearchPlaceholder" xml:space="preserve"><value>Diesen Ordner durchsuchen</value></data>
+  <data name="React_ServerFiles_DropToUpload" xml:space="preserve"><value>Dateien oder Ordner zum Hochladen ablegen</value></data>
+  <data name="React_ServerFiles_Upload" xml:space="preserve"><value>Hochladen</value></data>
+  <data name="React_ServerFiles_NoSearchResults" xml:space="preserve"><value>Keine Einträge entsprechen dieser Suche.</value></data>
+  <data name="React_ServerFiles_ItemCount" xml:space="preserve"><value>{{count}} Element</value><value>{{count}} Elemente</value></data>
+  <data name="React_ServerFiles_FilteredCount" xml:space="preserve"><value>{{visible}} von {{total}} Elementen</value></data>
+  <data name="React_ServerFiles_ActionsFor" xml:space="preserve"><value>Aktionen für {{name}}</value></data>
+  <data name="React_ServerFiles_Open" xml:space="preserve"><value>Öffnen</value></data>
+  <data name="React_ServerFiles_Destination" xml:space="preserve"><value>Ziel: {{path}}</value></data>
+  <data name="React_ServerFiles_FolderName" xml:space="preserve"><value>Ordnername</value></data>
+  <data name="React_ServerFiles_FolderNameInvalid" xml:space="preserve"><value>Gib einen Ordnernamen ohne Schrägstriche, „.“ oder „..“ ein.</value></data>
+  <data name="React_ServerFiles_ChooseFiles" xml:space="preserve"><value>Dateien auswählen</value></data>
+  <data name="React_ServerFiles_ChooseFolder" xml:space="preserve"><value>Ordner auswählen</value></data>
+  <data name="React_ServerFiles_CheckingDestinations" xml:space="preserve"><value>Ziele werden geprüft…</value></data>
+  <data name="React_ServerFiles_SelectOrDrop" xml:space="preserve"><value>Dateien auswählen oder im Explorer ablegen.</value></data>
+  <data name="React_ServerFiles_UploadProgress" xml:space="preserve"><value>{{completed}} von {{total}} verarbeitet</value></data>
+  <data name="React_ServerFiles_WillReplace" xml:space="preserve"><value>Wird ersetzt</value></data>
+  <data name="React_ServerFiles_ApproveReplacements" xml:space="preserve"><value>{{count}} vorhandene Datei(en) ersetzen</value></data>
+  <data name="React_ServerFiles_CancelUpload" xml:space="preserve"><value>Uploads abbrechen</value></data>
+  <data name="React_ServerFiles_RetryFailed" xml:space="preserve"><value>Fehlgeschlagene wiederholen ({{count}})</value></data>
+  <data name="React_ServerFiles_PreflightFailed" xml:space="preserve"><value>Die Upload-Ziele konnten nicht sicher geprüft werden.</value></data>
+  <data name="React_ServerFiles_InvalidPath" xml:space="preserve"><value>Der ausgewählte Pfad ist ungültig.</value></data>
+  <data name="React_ServerFiles_CreateDirectoryFailed" xml:space="preserve"><value>Ein benötigter Ordner konnte nicht erstellt werden.</value></data>
+  <data name="React_ServerFiles_ParentDirectoryFailed" xml:space="preserve"><value>Ein übergeordneter Ordner konnte nicht erstellt werden.</value></data>
+  <data name="React_ServerFiles_UploadCancelled" xml:space="preserve"><value>Upload abgebrochen.</value></data>
+  <data name="React_ServerFiles_UploadFailed" xml:space="preserve"><value>Upload fehlgeschlagen.</value></data>
+  <data name="React_ServerFiles_DuplicateTarget" xml:space="preserve"><value>Eine weitere ausgewählte Datei hat dasselbe Ziel.</value></data>
+  <data name="React_ServerFiles_Status_queued" xml:space="preserve"><value>Wartet</value></data>
+  <data name="React_ServerFiles_Status_uploading" xml:space="preserve"><value>Wird hochgeladen</value></data>
+  <data name="React_ServerFiles_Status_succeeded" xml:space="preserve"><value>Hochgeladen</value></data>
+  <data name="React_ServerFiles_Status_failed" xml:space="preserve"><value>Fehlgeschlagen</value></data>
+  <data name="React_ServerFiles_Status_cancelled" xml:space="preserve"><value>Abgebrochen</value></data>
+  <data name="React_ServerFiles_Status_rejected" xml:space="preserve"><value>Abgelehnt</value></data>
 </root>

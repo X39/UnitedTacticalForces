@@ -14,6 +14,7 @@ import { hostingService } from "@/features/hosting/services";
 import type {
   GameConfiguration,
   GameServer,
+  HostingFile,
   HostingOperation,
   LifecycleJob,
   ServerCapability,
@@ -234,14 +235,24 @@ describe("certified server workspace", () => {
     renderWorkspace(<ServerFilesPanel server={server} />);
 
     expect(await screen.findByText(/notes\.txt/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Upload" }));
     const fileInput = screen.getByLabelText("File (maximum 16 MiB)");
     await user.upload(fileInput, new File(["hostname=test"], "server.cfg"));
+    await user.click(
+      await screen.findByRole("checkbox", {
+        name: "Replace 1 existing file(s)",
+      }),
+    );
     await user.click(
       screen.getByRole("checkbox", {
         name: "Create a persistent override of this generated target",
       }),
     );
-    await user.click(screen.getByRole("button", { name: "Upload or replace" }));
+    await user.click(
+      within(screen.getByRole("dialog", { name: "Upload or replace file" })).getByRole("button", {
+        name: "Upload",
+      }),
+    );
     await waitFor(() =>
       expect(hostingService.uploadFile).toHaveBeenCalledWith(
         server.primaryKey,
@@ -249,11 +260,18 @@ describe("certified server workspace", () => {
         "server.cfg",
         expect.any(File),
         true,
+        expect.any(AbortSignal),
       ),
+    );
+    await user.click(
+      within(screen.getByRole("dialog", { name: "Upload or replace file" })).getByRole("button", {
+        name: "Cancel",
+      }),
     );
 
     const notesRow = screen.getByText(/notes\.txt/).closest("tr")!;
-    await user.click(within(notesRow).getByRole("button", { name: "Delete" }));
+    await user.click(within(notesRow).getByLabelText("Actions for notes.txt"));
+    await user.click(within(notesRow).getByRole("menuitem", { name: "Delete" }));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
     await waitFor(() =>
       expect(hostingService.deleteFile).toHaveBeenCalledWith(
@@ -290,7 +308,116 @@ describe("certified server workspace", () => {
         expect.any(AbortSignal),
       ),
     );
-    expect(screen.queryByRole("button", { name: "Upload or replace" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Upload" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Delete" })).not.toBeInTheDocument();
+  });
+
+  it("lazy-loads folders, creates in the current path, filters entries, and retries a partial folder upload", async () => {
+    const user = userEvent.setup();
+    const folder = (path: string, name: string) =>
+      ({
+        path,
+        name,
+        isDirectory: true,
+        size: null,
+        modifiedAt: null,
+        context: "Persistent",
+        classification: "Unknown",
+        canModify: true,
+        origin: "Persistent",
+        modificationMode: "RawFile",
+        isGeneratedTarget: false,
+        overridesGenerated: false,
+        configurationStatus: "NotApplicable",
+      }) as HostingFile;
+    const file = (path: string, name: string) =>
+      ({
+        ...folder(path, name),
+        isDirectory: false,
+        size: 12_700,
+        modifiedAt: "2026-08-13T09:00:00Z",
+      }) as HostingFile;
+    vi.spyOn(hostingService, "files").mockImplementation(async (_serverId, _context, path) => {
+      if (path === "") return [folder("profiles", "profiles"), file("readme.txt", "readme.txt")];
+      if (path === "profiles") return [file("profiles/server.cfg", "server.cfg")];
+      return [];
+    });
+    vi.spyOn(hostingService, "preservationSelections").mockResolvedValue([]);
+    vi.spyOn(hostingService, "fileDownloadUrl").mockReturnValue("http://localhost/download");
+    vi.spyOn(hostingService, "createDirectory").mockResolvedValue({} as never);
+    const upload = vi
+      .spyOn(hostingService, "uploadFile")
+      .mockResolvedValueOnce({} as never)
+      .mockRejectedValueOnce(new Error("network interruption"))
+      .mockResolvedValue({} as never);
+    renderWorkspace(<ServerFilesPanel server={server} />);
+
+    const profiles = await screen.findByRole("treeitem", { name: /profiles/ });
+    await user.click(profiles);
+    await waitFor(() =>
+      expect(hostingService.files).toHaveBeenCalledWith(
+        server.primaryKey,
+        "persistent",
+        "profiles",
+        expect.any(AbortSignal),
+      ),
+    );
+    expect(await screen.findByText("12.4 KiB")).toBeVisible();
+
+    await user.type(screen.getByRole("searchbox", { name: "Search this folder" }), "missing");
+    expect(screen.getByText("No entries match this search.")).toBeVisible();
+    await user.clear(screen.getByRole("searchbox", { name: "Search this folder" }));
+
+    await user.click(screen.getByRole("button", { name: "Create folder" }));
+    const folderDialog = screen.getByRole("dialog", { name: "New directory" });
+    await user.type(within(folderDialog).getByRole("textbox", { name: "Folder name" }), "missions");
+    await user.click(within(folderDialog).getByRole("button", { name: "Create folder" }));
+    await waitFor(() =>
+      expect(hostingService.createDirectory).toHaveBeenCalledWith(
+        server.primaryKey,
+        "persistent",
+        "profiles/missions",
+      ),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Upload" }));
+    const uploadDialog = screen.getByRole("dialog", { name: "Upload or replace file" });
+    const first = new File(["first"], "a.txt");
+    const second = new File(["second"], "b.txt");
+    Object.defineProperty(first, "webkitRelativePath", { value: "pack/sub/a.txt" });
+    Object.defineProperty(second, "webkitRelativePath", { value: "pack/sub/b.txt" });
+    const directoryInput = uploadDialog.querySelector<HTMLInputElement>("input[webkitdirectory]")!;
+    await user.upload(directoryInput, [first, second]);
+    await screen.findByText("pack/sub/a.txt");
+    await user.click(within(uploadDialog).getByRole("button", { name: "Upload" }));
+
+    await waitFor(() => expect(upload).toHaveBeenCalledTimes(2));
+    expect(hostingService.createDirectory).toHaveBeenCalledWith(
+      server.primaryKey,
+      "persistent",
+      "profiles/pack",
+      expect.any(AbortSignal),
+    );
+    expect(hostingService.createDirectory).toHaveBeenCalledWith(
+      server.primaryKey,
+      "persistent",
+      "profiles/pack/sub",
+      expect.any(AbortSignal),
+    );
+    await user.click(await within(uploadDialog).findByRole("button", { name: "Retry failed (1)" }));
+    await waitFor(() => expect(upload).toHaveBeenCalledTimes(3));
+
+    await user.click(within(uploadDialog).getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Upload" }));
+    const duplicateDialog = screen.getByRole("dialog", { name: "Upload or replace file" });
+    const duplicateInput = within(duplicateDialog).getByLabelText("File (maximum 16 MiB)");
+    await user.upload(duplicateInput, [
+      new File(["one"], "duplicate.txt"),
+      new File(["two"], "duplicate.txt"),
+    ]);
+    expect(
+      await within(duplicateDialog).findByText("Another selected file has the same destination."),
+    ).toBeVisible();
   });
 
   it("saves typed sparse configuration overrides, resets values, and selects profile mode", async () => {

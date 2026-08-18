@@ -15891,4 +15891,45 @@ Start writing here.</value>
   <data name="React_CommandOverview_AllClearDescription" xml:space="preserve"><value>No visible server reports possible provider cost or pending lifecycle work.</value></data>
   <data name="React_CommandOverview_WorkAreasKicker" xml:space="preserve"><value>Authorized control surfaces</value></data>
   <data name="React_CommandOverview_WorkAreasTitle" xml:space="preserve"><value>Your work areas</value></data>
+  <data name="React_ServerFiles_ShowFolders" xml:space="preserve"><value>Show folders</value></data>
+  <data name="React_ServerFiles_HideFolders" xml:space="preserve"><value>Hide folders</value></data>
+  <data name="React_ServerFiles_PreservedPaths" xml:space="preserve"><value>Preserved paths</value></data>
+  <data name="React_ServerFiles_ExpandFolder" xml:space="preserve"><value>Expand {{name}}</value></data>
+  <data name="React_ServerFiles_CollapseFolder" xml:space="preserve"><value>Collapse {{name}}</value></data>
+  <data name="React_ServerFiles_FolderLoadFailed" xml:space="preserve"><value>This folder could not be loaded.</value></data>
+  <data name="React_ServerFiles_NoFolders" xml:space="preserve"><value>No folders</value></data>
+  <data name="React_ServerFiles_Search" xml:space="preserve"><value>Search this folder</value></data>
+  <data name="React_ServerFiles_SearchPlaceholder" xml:space="preserve"><value>Search this folder</value></data>
+  <data name="React_ServerFiles_DropToUpload" xml:space="preserve"><value>Drop files or folders to upload</value></data>
+  <data name="React_ServerFiles_Upload" xml:space="preserve"><value>Upload</value></data>
+  <data name="React_ServerFiles_NoSearchResults" xml:space="preserve"><value>No entries match this search.</value></data>
+  <data name="React_ServerFiles_ItemCount" xml:space="preserve"><value>{{count}} items</value></data>
+  <data name="React_ServerFiles_FilteredCount" xml:space="preserve"><value>{{visible}} of {{total}} items</value></data>
+  <data name="React_ServerFiles_ActionsFor" xml:space="preserve"><value>Actions for {{name}}</value></data>
+  <data name="React_ServerFiles_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="React_ServerFiles_Destination" xml:space="preserve"><value>Destination: {{path}}</value></data>
+  <data name="React_ServerFiles_FolderName" xml:space="preserve"><value>Folder name</value></data>
+  <data name="React_ServerFiles_FolderNameInvalid" xml:space="preserve"><value>Enter one folder name without slashes, “.”, or “..”.</value></data>
+  <data name="React_ServerFiles_ChooseFiles" xml:space="preserve"><value>Choose files</value></data>
+  <data name="React_ServerFiles_ChooseFolder" xml:space="preserve"><value>Choose folder</value></data>
+  <data name="React_ServerFiles_CheckingDestinations" xml:space="preserve"><value>Checking destinations…</value></data>
+  <data name="React_ServerFiles_SelectOrDrop" xml:space="preserve"><value>Choose files or drop them into the explorer.</value></data>
+  <data name="React_ServerFiles_UploadProgress" xml:space="preserve"><value>{{completed}} of {{total}} processed</value></data>
+  <data name="React_ServerFiles_WillReplace" xml:space="preserve"><value>Will replace</value></data>
+  <data name="React_ServerFiles_ApproveReplacements" xml:space="preserve"><value>Replace {{count}} existing file(s)</value></data>
+  <data name="React_ServerFiles_CancelUpload" xml:space="preserve"><value>Cancel uploads</value></data>
+  <data name="React_ServerFiles_RetryFailed" xml:space="preserve"><value>Retry failed ({{count}})</value></data>
+  <data name="React_ServerFiles_PreflightFailed" xml:space="preserve"><value>Upload destinations could not be checked safely.</value></data>
+  <data name="React_ServerFiles_InvalidPath" xml:space="preserve"><value>The selected path is invalid.</value></data>
+  <data name="React_ServerFiles_CreateDirectoryFailed" xml:space="preserve"><value>A required folder could not be created.</value></data>
+  <data name="React_ServerFiles_ParentDirectoryFailed" xml:space="preserve"><value>A parent folder could not be created.</value></data>
+  <data name="React_ServerFiles_UploadCancelled" xml:space="preserve"><value>Upload cancelled.</value></data>
+  <data name="React_ServerFiles_UploadFailed" xml:space="preserve"><value>Upload failed.</value></data>
+  <data name="React_ServerFiles_DuplicateTarget" xml:space="preserve"><value>Another selected file has the same destination.</value></data>
+  <data name="React_ServerFiles_Status_queued" xml:space="preserve"><value>Queued</value></data>
+  <data name="React_ServerFiles_Status_uploading" xml:space="preserve"><value>Uploading</value></data>
+  <data name="React_ServerFiles_Status_succeeded" xml:space="preserve"><value>Uploaded</value></data>
+  <data name="React_ServerFiles_Status_failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="React_ServerFiles_Status_cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="React_ServerFiles_Status_rejected" xml:space="preserve"><value>Rejected</value></data>
 </root>

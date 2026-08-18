@@ -15,6 +15,8 @@ export function EventEntityPicker<T>({
   loadingLabel,
   errorLabel,
   onSelect,
+  clearLabel,
+  onClear,
 }: {
   label: string;
   placeholder: string;
@@ -28,9 +30,15 @@ export function EventEntityPicker<T>({
   loadingLabel: string;
   errorLabel: string;
   onSelect(item: T): void;
+  clearLabel?: string;
+  onClear?(): void;
 }) {
   const id = useId();
-  const [search, setSearch] = useState(selected ? getLabel(selected) : "");
+  const selectedKey = selected ? getKey(selected) : "";
+  const selectedLabel = selected ? getLabel(selected) : "";
+  const [searchState, setSearchState] = useState({ selectedKey, value: selectedLabel });
+  const search = searchState.selectedKey === selectedKey ? searchState.value : selectedLabel;
+  const setSearch = (value: string) => setSearchState({ selectedKey, value });
   const [open, setOpen] = useState(false);
   const query = useQuery({
     queryKey: ["event-authoring", "selector", queryKey, search.trim()],
@@ -38,10 +46,9 @@ export function EventEntityPicker<T>({
     enabled: open && !disabled,
     staleTime: 20_000,
   });
-
   return (
-    <label className="event-authoring-picker" htmlFor={`${id}-input`}>
-      <span>{label}</span>
+    <div className="event-authoring-picker">
+      <label htmlFor={`${id}-input`}>{label}</label>
       <div className="event-authoring-picker__control">
         <input
           id={`${id}-input`}
@@ -57,7 +64,7 @@ export function EventEntityPicker<T>({
           onBlur={() =>
             window.setTimeout(() => {
               setOpen(false);
-              setSearch(selected ? getLabel(selected) : "");
+              setSearch(selectedLabel);
             }, 120)
           }
           onChange={(event) => {
@@ -68,6 +75,23 @@ export function EventEntityPicker<T>({
             if (event.key === "Escape") setOpen(false);
           }}
         />
+        {selected && onClear && (
+          <button
+            className="event-authoring-picker__clear"
+            type="button"
+            disabled={disabled}
+            aria-label={clearLabel}
+            title={clearLabel}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              setSearch("");
+              setOpen(false);
+              onClear();
+            }}
+          >
+            <span aria-hidden="true">&times;</span>
+          </button>
+        )}
         {open && (
           <div className="event-authoring-picker__popover" id={`${id}-options`} role="listbox">
             {query.isPending ? (
@@ -97,6 +121,6 @@ export function EventEntityPicker<T>({
           </div>
         )}
       </div>
-    </label>
+    </div>
   );
 }
