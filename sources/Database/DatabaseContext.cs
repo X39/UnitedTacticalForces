@@ -398,6 +398,10 @@ public class DatabaseContext : DbContext
                 .WithMany(q => q.Resources)
                 .HasForeignKey(q => q.DeploymentFk)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(q => q.Worker)
+                .WithMany(q => q.Resources)
+                .HasForeignKey(q => q.WorkerFk)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(q => new
                 {
                     q.ProviderIdentifier,
@@ -420,7 +424,7 @@ public class DatabaseContext : DbContext
                 .WithMany(q => q.Workers)
                 .HasForeignKey(q => q.DeploymentFk)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(q => q.DeploymentFk)
+            entity.HasIndex(q => new { q.DeploymentFk, q.ServiceIdentifier, q.ServiceOrdinal })
                 .HasDatabaseName(LifecycleWorker.ActiveDeploymentIndexName)
                 .IsUnique()
                 .HasFilter(LifecycleWorker.ActiveDeploymentIndexFilter);
@@ -511,7 +515,7 @@ public class DatabaseContext : DbContext
                 .WithMany(q => q.Commands)
                 .HasForeignKey(q => q.WorkerFk)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(q => q.DeploymentFk)
+            entity.HasIndex(q => q.WorkerFk)
                 .HasDatabaseName(WorkerCommand.ActiveDeploymentIndexName)
                 .IsUnique()
                 .HasFilter(WorkerCommand.ActiveDeploymentIndexFilter);

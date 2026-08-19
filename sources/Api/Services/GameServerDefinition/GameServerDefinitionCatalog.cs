@@ -40,6 +40,29 @@ public sealed class GameServerDefinitionCatalog : IGameServerDefinitionCatalog
                     + $"plan: {networkFailure}");
             }
 
+            var nodes = registration.Definition.Nodes;
+            if (nodes.Count(q => q.IsPrimary) != 1
+                || nodes.Any(q => string.IsNullOrWhiteSpace(q.ServiceIdentifier)
+                                  || q.ServiceIdentifier.Length > 128
+                                  || q.Count is < 1 or > 16)
+                || nodes.GroupBy(q => q.ServiceIdentifier, StringComparer.Ordinal).Any(q => q.Count() != 1))
+            {
+                throw new InvalidOperationException(
+                    $"Game definition '{registration.Definition.GameIdentifier}' has an invalid worker-node topology.");
+            }
+            foreach (var node in nodes)
+            {
+                var nodeNetworkFailure = node.InboundNetworkRequirements.Count == 0
+                    ? null
+                    : RuntimeInboundNetworkPlanValidator.Validate(node.InboundNetworkRequirements);
+                if (nodeNetworkFailure is not null)
+                {
+                    throw new InvalidOperationException(
+                        $"Game definition '{registration.Definition.GameIdentifier}' node '{node.ServiceIdentifier}' "
+                        + $"has an invalid inbound network plan: {nodeNetworkFailure}");
+                }
+            }
+
             if (registration.Definition.PrimaryConnection is { } connection
                 && !registration.Definition.InboundNetworkRequirements.Any(q =>
                     q.Protocol == connection.Protocol

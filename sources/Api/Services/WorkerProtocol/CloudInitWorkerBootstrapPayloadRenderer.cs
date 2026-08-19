@@ -56,7 +56,9 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         {
             throw new InvalidOperationException("The resolved runtime-storage plan is invalid for bootstrap.");
         }
-        var networkFailure = RuntimeInboundNetworkPlanValidator.Validate(inboundNetworkRequirements);
+        var networkFailure = inboundNetworkRequirements.Count == 0
+            ? null
+            : RuntimeInboundNetworkPlanValidator.Validate(inboundNetworkRequirements);
         if (networkFailure is not null)
             throw new InvalidOperationException(networkFailure);
         var apiBaseUrl = configuration[Constants.Configuration.General.ApiBaseUrl]?.Trim();
@@ -79,12 +81,14 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
             deploymentId = bootstrap.DeploymentId,
             serverId,
             gameIdentifier,
+            serviceIdentifier = bootstrap.ServiceIdentifier,
+            serviceOrdinal = bootstrap.ServiceOrdinal,
             bootstrapCredential = bootstrap.BootstrapCredential,
             expiresAt = bootstrap.ExpiresAt,
             workerApiPath,
         });
 
-        var serviceName = $"utf-cloud-worker-{bootstrap.DeploymentId:N}";
+        var serviceName = $"utf-cloud-worker-{bootstrap.WorkerId:N}";
         var service = RenderSystemdService(
             serviceName,
             inboundNetworkRequirements,

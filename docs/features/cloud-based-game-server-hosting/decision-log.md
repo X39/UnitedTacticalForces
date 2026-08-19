@@ -122,8 +122,8 @@ Old change requests and planning files are intentionally ignored as source mater
 - Hetzner is the first provider implementation, but periodic resource observation and drift detection are provider-neutral requirements.
 - The control plane provisions, observes, and tears down provider resources independently of the target runtime worker.
 - Runtime workers perform work inside provisioned resources, including game installation, content preparation, persistent-data placement, configuration generation, process control, and health reporting.
-- Each active deployment has exactly one dedicated worker for its server record.
-- The one-worker rule prohibits overlapping allocated worker instances for the same individual server record's active deployment, including during restart or replacement.
+- Each active deployment has exactly one dedicated worker for every expanded node in its game-defined service topology.
+- The one-worker-per-node rule prohibits overlapping allocated worker instances for the same service identifier and ordinal, including during restart or replacement.
 - A replacement worker instance is provisioned only after the previous worker instance is verified fully deprovisioned.
 - Worker restart is a convenience operation composed of an ordered worker stop followed by worker start.
 - The planned no-heartbeat gap during worker restart uses the configurable worker-registration startup window rather than the ordinary missed-heartbeat fault threshold.

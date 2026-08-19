@@ -107,4 +107,42 @@ public sealed class DeploymentHealthReconcilerTests
 
         Assert.False(await store.DbContext.LifecycleJobs.AnyAsync(q => q.Kind == ELifecycleJobKind.Terminate));
     }
+
+    [Fact]
+    public async Task HealthyMultiNodeDeployment_DoesNotQueueTermination()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        store.DbContext.LifecycleWorkers.AddRange(
+            CreateHealthyWorker(seed.Deployment!.PrimaryKey, "game-server", now),
+            CreateHealthyWorker(seed.Deployment.PrimaryKey, "headless-client", now));
+        await store.DbContext.SaveChangesAsync();
+        var options = Options.Create(new LifecycleWorkerOptions
+        {
+            StaleThreshold = TimeSpan.FromSeconds(60),
+        });
+        var costStop = new AutomaticCostStopService(store.DbContext, new HostingAuditWriter());
+        var reconciler = new DeploymentHealthReconciler(store.DbContext, costStop, options);
+
+        await reconciler.ReconcileAsync();
+
+        Assert.False(await store.DbContext.LifecycleJobs.AnyAsync(q => q.Kind == ELifecycleJobKind.Terminate));
+    }
+
+    private static LifecycleWorker CreateHealthyWorker(Guid deploymentId, string serviceIdentifier, Instant now)
+        => new()
+        {
+            PrimaryKey = Guid.NewGuid(),
+            DeploymentFk = deploymentId,
+            ServiceIdentifier = serviceIdentifier,
+            Identity = $"healthy-{serviceIdentifier}",
+            Status = EWorkerStatus.Online,
+            LastHeartbeatAt = now,
+            ProcessId = 123,
+            ProcessStartedAt = now,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+            TimeStampRegistered = now,
+        };
 }

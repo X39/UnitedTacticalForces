@@ -25,6 +25,8 @@ public sealed class HetznerRuntimeProvider(
     internal const string DeploymentLabel = "utf-deployment";
     internal const string IntentLabel = "utf-intent";
     internal const string WorkerLabel = "utf-worker";
+    internal const string ServiceLabel = "utf-service";
+    internal const string ServiceOrdinalLabel = "utf-service-ordinal";
     internal const string ResourceKindLabel = "utf-resource-kind";
     internal const string ServerConfigurationFingerprintLabel = "utf-server-config";
     internal const string FirewallRulesFingerprintLabel = "utf-firewall-rules";
@@ -256,7 +258,7 @@ public sealed class HetznerRuntimeProvider(
                     request.DeploymentId,
                     guardedCancellationToken => client.CreateVolumeAsync(
                         new HetznerVolumeCreateRequest(
-                            $"utf-{request.DeploymentId:N}",
+                            $"utf-{request.WorkerId:N}",
                             selectedGiB,
                             optionsProvider.Value.Location.Trim(),
                             labels),
@@ -335,7 +337,7 @@ public sealed class HetznerRuntimeProvider(
                     request.DeploymentId,
                     guardedCancellationToken => client.CreateFirewallAsync(
                         new HetznerFirewallCreateRequest(
-                            $"utf-{request.DeploymentId:N}",
+                            $"utf-{request.WorkerId:N}",
                             request.InboundNetworkRequirements!
                                 .Select(ToFirewallRule)
                                 .ToArray(),
@@ -426,7 +428,7 @@ public sealed class HetznerRuntimeProvider(
                     request.DeploymentId,
                     guardedCancellationToken => client.CreatePrimaryIpAsync(
                         new HetznerPrimaryIpCreateRequest(
-                            $"utf-{request.DeploymentId:N}",
+                            $"utf-{request.WorkerId:N}",
                             Type: "ipv4",
                             optionsProvider.Value.Location.Trim(),
                             AutoDelete: true,
@@ -527,7 +529,7 @@ public sealed class HetznerRuntimeProvider(
                     request.DeploymentId,
                     guardedCancellationToken => client.CreateServerAsync(
                         new HetznerServerCreateRequest(
-                            $"utf-{request.DeploymentId:N}",
+                            $"utf-{request.WorkerId:N}",
                             RequestedServerType(request),
                             options.Image.Trim(),
                             options.Location.Trim(),
@@ -1496,6 +1498,13 @@ public sealed class HetznerRuntimeProvider(
             return "A stable worker identity is required for Hetzner provisioning.";
         if (request.ProvisioningIntentId == Guid.Empty)
             return "A durably persisted provisioning intent is required before Hetzner provisioning.";
+        if (string.IsNullOrWhiteSpace(request.ServiceIdentifier)
+            || request.ServiceIdentifier.Length > 63
+            || request.ServiceIdentifier.Any(q => !char.IsAsciiLetterOrDigit(q) && q is not ('-' or '_'))
+            || request.ServiceOrdinal is < 0 or > 255)
+        {
+            return "A valid deployment service identity is required for Hetzner provisioning.";
+        }
         if (string.IsNullOrWhiteSpace(request.CloudInit))
             return "Cloud-init content is required for Hetzner worker provisioning.";
         var networkFailure = RuntimeInboundNetworkPlanValidator.Validate(request.InboundNetworkRequirements);
@@ -1653,6 +1662,8 @@ public sealed class HetznerRuntimeProvider(
             [DeploymentLabel] = LabelValue(request.DeploymentId),
             [IntentLabel] = LabelValue(request.ProvisioningIntentId),
             [WorkerLabel] = LabelValue(request.WorkerId),
+            [ServiceLabel] = request.ServiceIdentifier,
+            [ServiceOrdinalLabel] = request.ServiceOrdinal.ToString(CultureInfo.InvariantCulture),
             [ResourceKindLabel] = resourceType,
         };
         if (string.Equals(resourceType, ServerResourceType, StringComparison.Ordinal))
@@ -2073,7 +2084,12 @@ public sealed class HetznerRuntimeProvider(
             ParseGuidLabel(labels, ServerLabel),
             ParseGuidLabel(labels, DeploymentLabel),
             ParseGuidLabel(labels, IntentLabel),
-            ParseGuidLabel(labels, WorkerLabel));
+            ParseGuidLabel(labels, WorkerLabel),
+            labels.GetValueOrDefault(ServiceLabel),
+            labels.TryGetValue(ServiceOrdinalLabel, out var ordinal)
+            && int.TryParse(ordinal, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedOrdinal)
+                ? parsedOrdinal
+                : null);
 
     private static Guid? ParseGuidLabel(IReadOnlyDictionary<string, string> labels, string key)
         => labels.TryGetValue(key, out var value) && Guid.TryParseExact(value, "N", out var parsed)

@@ -1780,7 +1780,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Instant>("TimeStampUpdated")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("WorkerFk")
+                        .HasColumnType("uuid");
+
                     b.HasKey("PrimaryKey");
+
+                    b.HasIndex("WorkerFk");
 
                     b.HasIndex("DeploymentFk", "State");
 
@@ -2713,6 +2718,14 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<int>("ProtocolVersion")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ServiceIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("ServiceOrdinal")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -2752,16 +2765,16 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.HasIndex("BootstrapCredentialExpiresAt");
 
-                    b.HasIndex("DeploymentFk")
-                        .IsUnique()
-                        .HasDatabaseName("IX_LifecycleWorkers_DeploymentFk_Active")
-                        .HasFilter("\"TimeStampStopped\" IS NULL");
-
                     b.HasIndex("PendingWorkerCredentialExpiresAt");
 
                     b.HasIndex("WorkerCredentialExpiresAt");
 
-                    b.HasIndex("DeploymentFk", "Status");
+                    b.HasIndex("DeploymentFk", "ServiceIdentifier", "ServiceOrdinal")
+                        .IsUnique()
+                        .HasDatabaseName("IX_LifecycleWorkers_DeploymentFk_Active")
+                        .HasFilter("\"TimeStampStopped\" IS NULL");
+
+                    b.HasIndex("DeploymentFk", "ServiceIdentifier", "ServiceOrdinal", "Status");
 
                     b.ToTable("LifecycleWorkers", t =>
                         {
@@ -2898,14 +2911,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.HasKey("PrimaryKey");
 
-                    b.HasIndex("DeploymentFk")
-                        .IsUnique()
-                        .HasDatabaseName("IX_WorkerCommands_DeploymentFk_Active")
-                        .HasFilter("\"Status\" IN (1, 2)");
-
                     b.HasIndex("LifecycleJobFk");
 
-                    b.HasIndex("WorkerFk");
+                    b.HasIndex("WorkerFk")
+                        .IsUnique()
+                        .HasDatabaseName("IX_WorkerCommands_WorkerFk_Active")
+                        .HasFilter("\"Status\" IN (1, 2)");
 
                     b.HasIndex("DeploymentFk", "Sequence")
                         .IsUnique();
@@ -4346,7 +4357,14 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.LifecycleWorker", "Worker")
+                        .WithMany("Resources")
+                        .HasForeignKey("WorkerFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Deployment");
+
+                    b.Navigation("Worker");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.GameServer", b =>
@@ -5257,6 +5275,8 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("Commands");
 
                     b.Navigation("JobAttempts");
+
+                    b.Navigation("Resources");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.WorkerCommand", b =>

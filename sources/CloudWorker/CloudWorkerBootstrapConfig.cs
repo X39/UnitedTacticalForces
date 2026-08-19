@@ -54,6 +54,8 @@ public sealed record CloudWorkerBootstrapConfig : CloudWorkerConnectionConfig
             DeploymentId = DeploymentId,
             ServerId = ServerId,
             GameIdentifier = GameIdentifier,
+            ServiceIdentifier = ServiceIdentifier,
+            ServiceOrdinal = ServiceOrdinal,
             WorkerApiPath = WorkerApiPath,
         };
 }

@@ -15,9 +15,30 @@ public sealed class Arma3ConfigurationRenderer
         foreach (var rendered in implementation.Render(payload.Command.Configuration))
         {
             var path = ResolveTarget(paths.DeploymentRoot, rendered.Path);
-            await WriteRestrictedAtomicAsync(path, rendered.Content, cancellationToken).ConfigureAwait(false);
+            var content = rendered.Content;
+            if (payload.Command.IsPrimaryService
+                && string.Equals(rendered.Path, "server/server.cfg", StringComparison.Ordinal))
+            {
+                var headlessAddresses = payload.Command.Topology
+                    .Where(q => !q.IsPrimary
+                                && string.Equals(q.ServiceIdentifier, "headless-client", StringComparison.Ordinal))
+                    .Select(q => q.Address)
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)
+                    .ToArray();
+                if (headlessAddresses.Length > 0)
+                {
+                    var suffix = $"headlessClients[] = {{{string.Join(',', headlessAddresses.Select(QuoteArma))}}};"
+                                 + Environment.NewLine;
+                    content = [.. content, .. Encoding.UTF8.GetBytes(suffix)];
+                }
+            }
+            await WriteRestrictedAtomicAsync(path, content, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    private static string QuoteArma(string value)
+        => $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 
     private static string ResolveTarget(string deploymentRoot, string relativePath)
     {

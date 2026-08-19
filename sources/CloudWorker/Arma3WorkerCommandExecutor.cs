@@ -286,9 +286,12 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         }
         try
         {
-            await _storageTransfer
-                .ResetPersistentOverlayAsync(_paths.DeploymentRoot, cancellationToken)
-                .ConfigureAwait(false);
+            if (payload.Command.IsPrimaryService)
+            {
+                await _storageTransfer
+                    .ResetPersistentOverlayAsync(_paths.DeploymentRoot, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
         catch (Exception ex) when (IsStorageTransferFailure(ex))
         {
@@ -301,9 +304,12 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         await _renderer.RenderAsync(payload, _paths, cancellationToken).ConfigureAwait(false);
         try
         {
-            await _storageTransfer
-                .ApplyPersistentSnapshotAsync(command, _paths.DeploymentRoot, cancellationToken)
-                .ConfigureAwait(false);
+            if (payload.Command.IsPrimaryService)
+            {
+                await _storageTransfer
+                    .ApplyPersistentSnapshotAsync(command, _paths.DeploymentRoot, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
         catch (Exception ex) when (IsStorageTransferFailure(ex))
         {
@@ -331,6 +337,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 cancellationToken)
             .ConfigureAwait(false);
         if (!stopped.Succeeded)
+            return stopped;
+        if (!payload.Command.PreserveOnStop)
             return stopped;
         try
         {
@@ -721,6 +729,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
 
     private IReadOnlyList<string> BuildLaunchArguments(Arma3CommandPayload payload)
     {
+        if (!payload.Command.IsPrimaryService)
+            return BuildAuxiliaryLaunchArguments(payload);
         var arguments = new List<string>
         {
             $"-config={_paths.ServerConfigurationPath}",
@@ -753,6 +763,39 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             EnsureSelectedWorkshopContentExists(workshopItemIds);
             arguments.Add(
                 $"-mod={string.Join(';', workshopItemIds.Select(_paths.GetSteamWorkshopItemPath))}");
+        }
+        return arguments;
+    }
+
+    private IReadOnlyList<string> BuildAuxiliaryLaunchArguments(Arma3CommandPayload payload)
+    {
+        if (!string.Equals(payload.Command.ServiceIdentifier, "headless-client", StringComparison.Ordinal))
+            throw new InvalidDataException("Arma worker was assigned an unsupported auxiliary service.");
+        var primary = payload.Command.Topology.Single(q => q.IsPrimary);
+        if (primary.Port is not { } port)
+            throw new InvalidDataException("Arma Headless Client topology has no primary game port.");
+        var arguments = new List<string>
+        {
+            "-client",
+            $"-connect={primary.Address}",
+            $"-port={port.ToString(CultureInfo.InvariantCulture)}",
+            "-nosound",
+            $"-name=UTFHC{(payload.Command.ServiceOrdinal + 1).ToString(CultureInfo.InvariantCulture)}",
+            $"-profiles={_paths.ProfilePath}",
+        };
+        if (payload.Command.Configuration.TryGetValue("server.cfg@password", out var password))
+        {
+            if (password.ValueKind is not JsonValueKind.String)
+                throw new InvalidDataException("Arma join password is invalid for the Headless Client.");
+            var value = password.GetString();
+            if (!string.IsNullOrEmpty(value))
+                arguments.Add($"-password={value}");
+        }
+        var workshopItemIds = payload.GetSteamWorkshopItemIds();
+        if (workshopItemIds.Count > 0)
+        {
+            EnsureSelectedWorkshopContentExists(workshopItemIds);
+            arguments.Add($"-mod={string.Join(';', workshopItemIds.Select(_paths.GetSteamWorkshopItemPath))}");
         }
         return arguments;
     }
@@ -1026,10 +1069,10 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         var configuration = payload.Command.Configuration.ToDictionary(q => q.Key, q => q.Value, StringComparer.Ordinal);
         var mappings = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["join-password"] = "server/server.cfg:password",
-            ["admin-password"] = "server/server.cfg:passwordAdmin",
-            ["server-command-password"] = "server/server.cfg:serverCommandPassword",
-            ["battleye-rcon-password"] = "server/battleye/beserver.cfg:RConPassword",
+            ["join-password"] = "server.cfg@password",
+            ["admin-password"] = "server.cfg@passwordAdmin",
+            ["server-command-password"] = "server.cfg@serverCommandPassword",
+            ["battleye-rcon-password"] = "beserver.cfg@RConPassword",
         };
         foreach (var (secretKey, configurationKey) in mappings)
         {

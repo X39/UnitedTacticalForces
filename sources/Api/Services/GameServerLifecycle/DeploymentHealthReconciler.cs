@@ -30,7 +30,7 @@ internal sealed class DeploymentHealthReconciler(
             .Select(q => new
             {
                 q.PrimaryKey,
-                Worker = q.Workers
+                Workers = q.Workers
                     .Where(worker => worker.TimeStampStopped == null)
                     .Select(worker => new
                     {
@@ -39,7 +39,7 @@ internal sealed class DeploymentHealthReconciler(
                         worker.ProcessId,
                         worker.ProcessStartedAt,
                     })
-                    .SingleOrDefault(),
+                    .ToArray(),
             })
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -49,25 +49,25 @@ internal sealed class DeploymentHealthReconciler(
             cancellationToken.ThrowIfCancellationRequested();
             string? code = null;
             string? message = null;
-            if (candidate.Worker is null)
+            if (candidate.Workers.Length == 0)
             {
                 code = "dedicated-worker-missing";
                 message = "The running deployment has no allocated dedicated worker identity.";
             }
-            else if (candidate.Worker.Status is EWorkerStatus.Offline or EWorkerStatus.Faulted)
+            else if (candidate.Workers.Any(q => q.Status is EWorkerStatus.Offline or EWorkerStatus.Faulted))
             {
                 code = "dedicated-worker-offline";
-                message = "The dedicated worker is confirmed offline while its deployment remains allocated.";
+                message = "A dedicated service worker is confirmed offline while its deployment remains allocated.";
             }
-            else if (candidate.Worker.LastHeartbeatAt is null || candidate.Worker.LastHeartbeatAt < cutoff)
+            else if (candidate.Workers.Any(q => q.LastHeartbeatAt is null || q.LastHeartbeatAt < cutoff))
             {
                 code = "dedicated-worker-heartbeat-stale";
-                message = "The dedicated worker exceeded the configured heartbeat fault threshold.";
+                message = "A dedicated service worker exceeded the configured heartbeat fault threshold.";
             }
-            else if (candidate.Worker.ProcessId is null || candidate.Worker.ProcessStartedAt is null)
+            else if (candidate.Workers.Any(q => q.ProcessId is null || q.ProcessStartedAt is null))
             {
                 code = "game-process-missing";
-                message = "The worker is online but no longer observes the required game process.";
+                message = "A service worker is online but no longer observes its required game process.";
             }
 
             if (code is not null)

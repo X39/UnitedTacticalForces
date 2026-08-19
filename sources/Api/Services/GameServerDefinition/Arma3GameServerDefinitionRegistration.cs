@@ -8,6 +8,7 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 public sealed class Arma3GameServerDefinitionRegistration : IGameServerDefinitionRegistration
 {
     public const string GameIdentifier = "arma3";
+    public const string HeadlessClientServiceIdentifier = "headless-client";
 
     public GameServerDefinition Definition { get; } = new(
         GameIdentifier,
@@ -133,6 +134,21 @@ public sealed class Arma3GameServerDefinitionRegistration : IGameServerDefinitio
             new("server-command-password", "Server command password", false, true, true),
             new("battleye-rcon-password", "BattlEye RCON password", false, true, true),
             new("join-password", "Join password", false, false, true),
+        ],
+        Nodes =
+        [
+            new(
+                GameServerNodeDefinition.PrimaryServiceIdentifier,
+                "Arma 3 dedicated server",
+                1,
+                true,
+                [new(ERuntimeNetworkProtocol.Udp, 2302, 2306, "Arma 3 game traffic")]),
+            new(
+                HeadlessClientServiceIdentifier,
+                "Arma 3 Headless Client",
+                1,
+                false,
+                []),
         ],
     };
 }

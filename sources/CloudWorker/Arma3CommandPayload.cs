@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
@@ -49,6 +50,25 @@ public sealed record Arma3CommandPayload
             throw new InvalidDataException("Arma command payload game identifier does not match worker bootstrap.");
         if (!string.Equals(Command.ActionIdentifier, command.ActionIdentifier, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("Arma command payload action does not match its command envelope.");
+        if (!string.Equals(Command.ServiceIdentifier, connection.ServiceIdentifier, StringComparison.Ordinal)
+            || Command.ServiceOrdinal != connection.ServiceOrdinal)
+        {
+            throw new InvalidDataException("Arma command payload service identity does not match worker bootstrap.");
+        }
+        var topology = Command.Topology
+                       ?? throw new InvalidDataException("Arma command topology is missing.");
+        var isLegacySinglePrimary = topology.Count == 0 && Command.IsPrimaryService;
+        if (!isLegacySinglePrimary
+            && (topology.Count is < 1 or > 32
+            || topology.Count(q => q.IsPrimary) != 1
+            || topology.GroupBy(q => (q.ServiceIdentifier, q.ServiceOrdinal)).Any(q => q.Count() != 1)
+            || topology.Any(q => string.IsNullOrWhiteSpace(q.ServiceIdentifier)
+                                 || q.ServiceOrdinal is < 0 or > 255
+                                 || !IPAddress.TryParse(q.Address, out _)
+                                 || q.Port is < 1 or > 65535)))
+        {
+            throw new InvalidDataException("Arma command topology is invalid.");
+        }
         var isFaultStop = string.Equals(Command.ActionIdentifier, "fault-stop", StringComparison.OrdinalIgnoreCase);
         if (isFaultStop != Command.FaultEvidenceDeadline.HasValue)
         {

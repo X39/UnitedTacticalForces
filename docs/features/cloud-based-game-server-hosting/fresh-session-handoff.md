@@ -23,7 +23,7 @@ Process:
 
 Terminology and communication rules:
 - The platform may run deployments for many server records concurrently. The one-deployment limit is per individual server record, never platform-wide.
-- Never describe workers as a fleet or pool. There is exactly one dedicated worker for each active deployment/server record, no ready-made workers, no sharing, and no reassignment. A fully stopped server record has no worker.
+- Never describe workers as a fleet or pool. There is exactly one dedicated worker per expanded game-defined service node, with no ready-made workers, sharing, or reassignment. A single-node game has one worker and a fully stopped server record has none.
 - A server is the durable platform record. A deployment is one runtime/provider-resource lifetime created by starting that record.
 - Use Terminate for the extraordinary user action. Use cancelled by cost-stop for interrupted commands and terminating/terminated due to fault for fault states. Do not reintroduce Abort terminology.
 - Arma 3 is the first implementation of game-neutral abstractions, not the product's main conceptual model.
@@ -71,7 +71,7 @@ Normal command queue:
 - Command history has a separate configurable maximum-age policy, initially one month. Cleanup applies only to completed, skipped, and cancelled entries; queued, running, and failed entries remain until resolved.
 
 Worker restart and the per-record single-worker invariant:
-- At most one worker resource may be allocated for an individual server record's active deployment, including replacement.
+- At most one worker resource may be allocated for each service identifier and ordinal, including replacement.
 - A replacement worker waits until the prior worker is verified fully deprovisioned.
 - Worker restart is a convenience operation composed of ordered stop then start; it is not a separate magical replacement path.
 - Restart uses the same preservation synchronization before old-worker removal. If it fails, the restart fails/pauses for intervention and no replacement starts.

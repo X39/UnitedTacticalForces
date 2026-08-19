@@ -13,7 +13,7 @@ namespace X39.UnitedTacticalForces.Database.Hosting;
 [Index(nameof(Status), nameof(Priority), nameof(TimeStampCreated))]
 public class WorkerCommand : IPrimaryKey<Guid>, ITimeStampCreated
 {
-    public const string ActiveDeploymentIndexName = "IX_WorkerCommands_DeploymentFk_Active";
+    public const string ActiveDeploymentIndexName = "IX_WorkerCommands_WorkerFk_Active";
     public const string ActiveDeploymentIndexFilter = "\"Status\" IN (1, 2)";
 
     [Key]

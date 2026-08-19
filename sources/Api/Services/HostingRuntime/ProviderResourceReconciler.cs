@@ -513,6 +513,7 @@ internal sealed class ProviderResourceReconciler(
             {
                 PrimaryKey = Guid.NewGuid(),
                 DeploymentFk = deployment.PrimaryKey,
+                WorkerFk = observed.Attribution.WorkerId,
                 ProviderIdentifier = provider.ProviderIdentifier,
                 ProvisioningIntentIdentifier = intent,
                 Kind = observed.ResourceType,
@@ -741,10 +742,11 @@ internal sealed class ProviderResourceReconciler(
         {
             if (!deployments.TryGetValue(resource.DeploymentFk, out var deployment))
                 continue;
-            var workerId = deployment.Workers
-                .Where(q => q.TimeStampStopped == null)
-                .Select(q => q.PrimaryKey)
-                .FirstOrDefault();
+            var workerId = resource.WorkerFk
+                           ?? deployment.Workers
+                               .Where(q => q.TimeStampStopped == null)
+                               .Select(q => q.PrimaryKey)
+                               .FirstOrDefault();
             RuntimeObservationResult observation;
             try
             {
@@ -1307,6 +1309,7 @@ internal sealed class ProviderResourceReconciler(
     {
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         resource.ProviderResourceIdentifier = observed.ResourceIdentifier;
+        resource.WorkerFk ??= observed.Attribution?.WorkerId;
         resource.Kind = observed.ResourceType;
         RuntimeResourceFacts.Apply(resource, observed);
         resource.State = observed.IsAllocated

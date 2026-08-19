@@ -24,6 +24,12 @@ public class DeploymentResource : IPrimaryKey<Guid>, ITimeStampCreated
 
     public Guid DeploymentFk { get; set; }
 
+    [ForeignKey(nameof(WorkerFk))]
+    [DeleteBehavior(DeleteBehavior.Restrict)]
+    public LifecycleWorker? Worker { get; set; }
+
+    public Guid? WorkerFk { get; set; }
+
     [MaxLength(128)]
     public string ProviderIdentifier { get; set; } = string.Empty;
 

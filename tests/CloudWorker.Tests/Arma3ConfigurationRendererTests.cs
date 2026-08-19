@@ -68,4 +68,48 @@ public class Arma3ConfigurationRendererTests
         await Assert.ThrowsAsync<InvalidDataException>(() =>
             new Arma3ConfigurationRenderer().RenderAsync(payload, paths, CancellationToken.None));
     }
+
+    [Fact]
+    public async Task RenderAsync_PrimaryNodeAllowsAttributedHeadlessClientAddresses()
+    {
+        using var directory = new TemporaryDirectory();
+        var paths = new Arma3RuntimePaths(
+            Path.Combine(directory.Path, "runtime"),
+            Path.Combine(directory.Path, "state"),
+            Guid.NewGuid(),
+            "arma3server_x64");
+        var payload = new Arma3CommandPayload
+        {
+            Command = new WorkerCommandPayload
+            {
+                GameIdentifier = Arma3ConfigurationImplementation.Identifier,
+                IsPrimaryService = true,
+                Topology =
+                [
+                    new WorkerNodeEndpoint
+                    {
+                        ServiceIdentifier = "game-server",
+                        Address = "192.0.2.10",
+                        Port = 2302,
+                        IsPrimary = true,
+                    },
+                    new WorkerNodeEndpoint
+                    {
+                        ServiceIdentifier = "headless-client",
+                        Address = "192.0.2.20",
+                    },
+                ],
+                Configuration = new Dictionary<string, JsonElement>
+                {
+                    ["server.cfg@hostname"] = JsonSerializer.SerializeToElement("UTF HC Test"),
+                },
+            },
+        };
+
+        await new Arma3ConfigurationRenderer().RenderAsync(payload, paths, CancellationToken.None);
+
+        var serverConfig = await File.ReadAllTextAsync(paths.ServerConfigurationPath);
+        Assert.Contains("headlessClients[] = {\"192.0.2.20\"};", serverConfig, StringComparison.Ordinal);
+        Assert.DoesNotContain("localClient", serverConfig, StringComparison.Ordinal);
+    }
 }

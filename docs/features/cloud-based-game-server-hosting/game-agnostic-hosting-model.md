@@ -14,6 +14,12 @@ Arma 3 is the first game implementation of these abstractions. Common hosting co
 
 The goal is not to support every game immediately. The goal is to avoid designing Arma 3 as a special-case platform that cannot be extended.
 
+A game definition may declare a deployment topology made of independently provisioned service nodes. Each node has a
+stable service identifier, a bounded instance count, its own inbound network requirements, and exactly one node role is
+primary. The control plane persists one dedicated worker identity and provider-resource attribution per expanded node.
+Provider code receives only this generic node identity and network/storage plan; it never branches on Arma 3 or Headless
+Client semantics. Commands carry a non-secret topology snapshot so game workers can configure peer addresses.
+
 The game-action model has two required well-known actions: Start and Stop. Start supplies the game-specific preparation and start behavior used after the platform provisions the deployment's dedicated worker. Stop supplies the game-specific graceful stop behavior used by the ordinary full cost-stop lifecycle. A game can declare further custom actions, but it cannot omit these two lifecycle actions. Creating the durable server record is a separate platform operation and never invokes Start implicitly.
 
 Actions are projected with stable identity and complete presentation/availability metadata. Apart from the semantic Start and Stop identities, grouping and ordering are supplied by the game or platform action provider for display only; the generic model does not impose a universal category taxonomy. Server-side authorization and precondition evaluation produce an enabled state and safe user-facing reason without exposing claim internals.
@@ -53,6 +59,9 @@ A game implementation can also advertise specialized Modpack artifact formats th
 - [ ] State reporting transitions from worker-supplied preparation/runtime states to game-server states reported through the worker after startup.
 - [ ] Game-specific states and actions can be localized on the API side.
 - [ ] Provider provisioning can consume game-specific requirements through a generic contract.
+- [ ] Game implementations can declare independently provisioned primary and auxiliary service nodes.
+- [ ] Every expanded service node has its own durable worker, provisioning intent, provider attribution, command stream, and teardown path.
+- [ ] Provider implementations remain unaware of game-specific meanings such as Arma 3 Headless Client.
 - [ ] Game implementations provide stable typed configuration definitions through a generic contract.
 - [ ] The platform stores configuration values by game-owned key without hard-coding game configuration files.
 - [ ] Servers consume reusable Configuration Profiles without a separate abstract per-Server override layer.

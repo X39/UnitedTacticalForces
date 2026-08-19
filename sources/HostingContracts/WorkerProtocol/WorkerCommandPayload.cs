@@ -16,6 +16,17 @@ public sealed record WorkerCommandPayload
 
     public string ActionIdentifier { get; init; } = string.Empty;
 
+    public string ServiceIdentifier { get; init; } = "game-server";
+
+    public int ServiceOrdinal { get; init; }
+
+    public bool IsPrimaryService { get; init; } = true;
+
+    /// <summary>Whether this node owns the deployment's persistent-data publication during Stop.</summary>
+    public bool PreserveOnStop { get; init; } = true;
+
+    public IReadOnlyCollection<WorkerNodeEndpoint> Topology { get; init; } = [];
+
     public int GracefulStopAttempts { get; init; }
 
     public int GracefulStopTimeoutSeconds { get; init; }

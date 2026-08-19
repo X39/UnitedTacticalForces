@@ -9,7 +9,7 @@ namespace X39.UnitedTacticalForces.Database.Hosting;
 /// <summary>
 /// Persistent identity and health state of a deployment's dedicated worker.
 /// </summary>
-[Index(nameof(DeploymentFk), nameof(Status))]
+[Index(nameof(DeploymentFk), nameof(ServiceIdentifier), nameof(ServiceOrdinal), nameof(Status))]
 [Index(nameof(BootstrapCredentialExpiresAt))]
 [Index(nameof(WorkerCredentialExpiresAt))]
 [Index(nameof(PendingWorkerCredentialExpiresAt))]
@@ -26,6 +26,11 @@ public class LifecycleWorker : IPrimaryKey<Guid>, ITimeStampCreated
     public GameServerDeployment? Deployment { get; set; }
 
     public Guid DeploymentFk { get; set; }
+
+    [MaxLength(128)]
+    public string ServiceIdentifier { get; set; } = "game-server";
+
+    public int ServiceOrdinal { get; set; }
 
     [MaxLength(256)]
     public string Identity { get; set; } = string.Empty;
@@ -116,6 +121,8 @@ public class LifecycleWorker : IPrimaryKey<Guid>, ITimeStampCreated
     public ICollection<LifecycleJobAttempt> JobAttempts { get; set; } = [];
 
     public ICollection<WorkerCommand> Commands { get; set; } = [];
+
+    public ICollection<DeploymentResource> Resources { get; set; } = [];
 
     public ICollection<HostingAuditRecord> AuditRecords { get; set; } = [];
 }

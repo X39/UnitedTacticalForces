@@ -9,4 +9,6 @@ public sealed record WorkerBootstrapConfiguration(
     Guid DeploymentId,
     string BootstrapCredential,
     DateTimeOffset ExpiresAt,
-    string RegistrationPath);
+    string RegistrationPath,
+    string ServiceIdentifier = "game-server",
+    int ServiceOrdinal = 0);

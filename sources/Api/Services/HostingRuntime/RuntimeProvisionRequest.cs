@@ -9,4 +9,6 @@ public sealed record RuntimeProvisionRequest(
     string? CloudInit = null,
     IReadOnlyList<RuntimeInboundNetworkRequirement>? InboundNetworkRequirements = null,
     string RuntimeProfileIdentifier = "",
-    RuntimeStoragePlan? StoragePlan = null);
+    RuntimeStoragePlan? StoragePlan = null,
+    string ServiceIdentifier = "game-server",
+    int ServiceOrdinal = 0);

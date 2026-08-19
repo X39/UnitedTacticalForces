@@ -38,7 +38,9 @@ internal sealed class WorkerCredentialService(IOptions<LifecycleWorkerOptions> o
             worker.DeploymentFk,
             credential,
             expiresAt.ToDateTimeOffset(),
-            $"/lifecycle-workers/{worker.PrimaryKey:D}/register");
+            $"/lifecycle-workers/{worker.PrimaryKey:D}/register",
+            worker.ServiceIdentifier,
+            worker.ServiceOrdinal);
     }
 
     public bool VerifyBootstrapCredential(LifecycleWorker worker, string credential, Instant now)

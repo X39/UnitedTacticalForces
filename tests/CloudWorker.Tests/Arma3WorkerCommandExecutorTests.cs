@@ -521,6 +521,105 @@ public class Arma3WorkerCommandExecutorTests
         return command with { Payload = payload.ToJsonString(CloudWorkerJson.Options) };
     }
 
+    [Fact]
+    public async Task Start_HeadlessClient_UsesTopologyAndDoesNotPublishPrimaryStorage()
+    {
+        using var directory = new TemporaryDirectory();
+        var bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap() with
+        {
+            ServiceIdentifier = "headless-client",
+            ServiceOrdinal = 0,
+        };
+        var executableName = "arma3server_x64";
+        var options = new CloudWorkerOptions(
+            Path.Combine(directory.Path, "bootstrap.json"),
+            Path.Combine(directory.Path, "state"),
+            Path.Combine(directory.Path, "runtime"),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(15),
+            true,
+            false,
+            new Arma3WorkerOptions(
+                Path.Combine(directory.Path, "steamcmd.sh"),
+                "anonymous",
+                null,
+                null,
+                executableName,
+                TimeSpan.FromSeconds(30))
+            {
+                TemporaryDirectory = Path.Combine(directory.Path, "tmp"),
+            });
+        var paths = new Arma3RuntimePaths(
+            options.RuntimeRoot,
+            options.StateDirectory,
+            bootstrap.DeploymentId,
+            executableName);
+        paths.EnsureDirectories();
+        await File.WriteAllTextAsync(paths.ExecutablePath, "prepared");
+        await File.WriteAllTextAsync(paths.PreparationMarkerPath, "prepared");
+        var processController = new RecordingProcessController(paths.ExecutablePath, paths.ServerConfigurationPath);
+        var executor = new Arma3WorkerCommandExecutor(
+            bootstrap.ToConnectionConfig(),
+            options,
+            processController: processController);
+        var payload = new WorkerCommandPayload
+        {
+            ServerId = bootstrap.ServerId,
+            DeploymentId = bootstrap.DeploymentId,
+            GameIdentifier = "arma3",
+            ActionIdentifier = "start",
+            ServiceIdentifier = "headless-client",
+            ServiceOrdinal = 0,
+            IsPrimaryService = false,
+            PreserveOnStop = false,
+            GracefulStopAttempts = 2,
+            GracefulStopTimeoutSeconds = 30,
+            Topology =
+            [
+                new WorkerNodeEndpoint
+                {
+                    ServiceIdentifier = "game-server",
+                    Address = "192.0.2.10",
+                    Port = 2302,
+                    IsPrimary = true,
+                },
+                new WorkerNodeEndpoint
+                {
+                    ServiceIdentifier = "headless-client",
+                    Address = "192.0.2.20",
+                },
+            ],
+        };
+        var command = new WorkerCommandClaimResponse
+        {
+            CommandId = Guid.NewGuid(),
+            LifecycleJobId = Guid.NewGuid(),
+            DeploymentId = bootstrap.DeploymentId,
+            WorkerId = bootstrap.WorkerId,
+            Sequence = 1,
+            ActionIdentifier = "start",
+            Payload = JsonSerializer.Serialize(payload, CloudWorkerJson.Options),
+            Secrets = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["join-password"] = "hc-join-secret",
+            },
+            Attempt = 1,
+            LeaseExpiresAt = DateTimeOffset.UtcNow.AddMinutes(1),
+        };
+
+        var result = await executor.ExecuteAsync(command, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Contains("-client", processController.ArgumentsAtStart);
+        Assert.Contains("-connect=192.0.2.10", processController.ArgumentsAtStart);
+        Assert.Contains("-port=2302", processController.ArgumentsAtStart);
+        Assert.Contains("-password=hc-join-secret", processController.ArgumentsAtStart);
+        Assert.Contains("-name=UTFHC1", processController.ArgumentsAtStart);
+        Assert.DoesNotContain(
+            processController.ArgumentsAtStart,
+            q => q.StartsWith("-config=", StringComparison.Ordinal));
+    }
+
     private sealed class PreparingCommandRunner(
         string executablePath,
         string output = "prepared",

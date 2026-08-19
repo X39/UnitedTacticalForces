@@ -675,17 +675,23 @@ internal sealed class GameServerProjectionService(
         var canSeeOwner = await authorizationService
             .CanViewCostOwnerAsync(principal, server.CurrentCostOwnerFk, cancellationToken)
             .ConfigureAwait(false);
-        var worker = deployment?.Workers
-            .OrderByDescending(q => q.TimeStampCreated)
-            .FirstOrDefault();
         var gameDefinition = gameDefinitions.GetDefinitions()
             .SingleOrDefault(q => string.Equals(
                 q.GameIdentifier,
                 server.GameIdentifier,
                 StringComparison.OrdinalIgnoreCase));
+        var primaryServiceIdentifier = gameDefinition?.Nodes.Single(q => q.IsPrimary).ServiceIdentifier
+                                       ?? GameServerNodeDefinition.PrimaryServiceIdentifier;
+        var worker = deployment?.Workers
+            .Where(q => q.TimeStampStopped == null && q.ServiceIdentifier == primaryServiceIdentifier)
+            .OrderByDescending(q => q.TimeStampCreated)
+            .FirstOrDefault();
         var publicAddress = deployment?.Resources
             .Where(q => q.State == EDeploymentResourceState.Allocated
                         && q.TimeStampReleased == null
+                        && (worker == null
+                            || q.WorkerFk == worker.PrimaryKey
+                            || deployment!.Resources.All(resource => resource.WorkerFk == null))
                         && !string.IsNullOrWhiteSpace(q.PublicAddress))
             .OrderBy(q => string.Equals(q.Kind, "primary-ip", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .ThenBy(q => q.Kind, StringComparer.OrdinalIgnoreCase)

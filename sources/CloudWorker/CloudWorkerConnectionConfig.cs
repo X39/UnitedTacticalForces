@@ -22,6 +22,12 @@ public record CloudWorkerConnectionConfig
     [JsonPropertyName("gameIdentifier")]
     public string GameIdentifier { get; init; } = string.Empty;
 
+    [JsonPropertyName("serviceIdentifier")]
+    public string ServiceIdentifier { get; init; } = "game-server";
+
+    [JsonPropertyName("serviceOrdinal")]
+    public int ServiceOrdinal { get; init; }
+
     [JsonPropertyName("workerApiPath")]
     public string WorkerApiPath { get; init; } = "lifecycle-workers";
 
@@ -40,6 +46,13 @@ public record CloudWorkerConnectionConfig
             throw new InvalidOperationException("Worker connection identifiers must be non-empty GUIDs.");
         if (string.IsNullOrWhiteSpace(GameIdentifier) || GameIdentifier.Length > 128)
             throw new InvalidOperationException("Worker connection game identifier is missing.");
+        if (string.IsNullOrWhiteSpace(ServiceIdentifier)
+            || ServiceIdentifier.Length > 128
+            || ServiceIdentifier.Any(q => !char.IsAsciiLetterOrDigit(q) && q is not ('-' or '_'))
+            || ServiceOrdinal is < 0 or > 255)
+        {
+            throw new InvalidOperationException("Worker connection service identity is invalid.");
+        }
         if (string.IsNullOrWhiteSpace(WorkerApiPath)
             || WorkerApiPath.Length > 256
             || WorkerApiPath.Contains("..", StringComparison.Ordinal)

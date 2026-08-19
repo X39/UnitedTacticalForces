@@ -37,4 +37,18 @@ public sealed record GameServerDefinition(
         []);
 
     public IReadOnlyList<GameSecretDefinition> Secrets { get; init; } = [];
+
+    /// <summary>
+    /// Independently provisioned worker nodes that form one game-server deployment. Definitions that do not
+    /// declare a topology retain the traditional single primary worker.
+    /// </summary>
+    public IReadOnlyList<GameServerNodeDefinition> Nodes { get; init; } =
+    [
+        new(
+            GameServerNodeDefinition.PrimaryServiceIdentifier,
+            "Game server",
+            1,
+            true,
+            []),
+    ];
 }

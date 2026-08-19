@@ -303,6 +303,7 @@ public sealed class HetznerRuntimeProviderTests
         using var serverBody = JsonDocument.Parse(handler.Requests[5].Body);
         var serverRoot = serverBody.RootElement;
         Assert.Equal("ccx13", serverRoot.GetProperty("server_type").GetString());
+        Assert.Equal($"utf-{request.WorkerId:N}", serverRoot.GetProperty("name").GetString());
         Assert.Equal(request.CloudInit, serverRoot.GetProperty("user_data").GetString());
         Assert.Equal(91, serverRoot.GetProperty("public_net").GetProperty("ipv4").GetInt64());
         Assert.True(serverRoot.GetProperty("public_net").GetProperty("enable_ipv4").GetBoolean());
@@ -314,6 +315,12 @@ public sealed class HetznerRuntimeProviderTests
         Assert.Equal(
             HetznerRuntimeProvider.ServerResourceType,
             serverRoot.GetProperty("labels").GetProperty(HetznerRuntimeProvider.ResourceKindLabel).GetString());
+        Assert.Equal(
+            request.ServiceIdentifier,
+            serverRoot.GetProperty("labels").GetProperty(HetznerRuntimeProvider.ServiceLabel).GetString());
+        Assert.Equal(
+            request.ServiceOrdinal.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            serverRoot.GetProperty("labels").GetProperty(HetznerRuntimeProvider.ServiceOrdinalLabel).GetString());
         var serverFingerprint = serverRoot.GetProperty("labels")
             .GetProperty(HetznerRuntimeProvider.ServerConfigurationFingerprintLabel)
             .GetString();
@@ -1722,6 +1729,9 @@ public sealed class HetznerRuntimeProviderTests
             [HetznerRuntimeProvider.DeploymentLabel] = request.DeploymentId.ToString("N"),
             [HetznerRuntimeProvider.IntentLabel] = request.ProvisioningIntentId.ToString("N"),
             [HetznerRuntimeProvider.WorkerLabel] = request.WorkerId.ToString("N"),
+            [HetznerRuntimeProvider.ServiceLabel] = request.ServiceIdentifier,
+            [HetznerRuntimeProvider.ServiceOrdinalLabel] = request.ServiceOrdinal.ToString(
+                System.Globalization.CultureInfo.InvariantCulture),
             [HetznerRuntimeProvider.ResourceKindLabel] = resourceType,
         };
         if (resourceType == HetznerRuntimeProvider.ServerResourceType)
