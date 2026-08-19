@@ -4321,6 +4321,14 @@ textarea.member-management-control {
     width: 100%;
 }
 
+.utf-package-download-button {
+    --type-ramp-base-font-size: 1rem;
+    --type-ramp-base-font-weight: 700;
+    font-size: 1rem;
+    font-weight: 700;
+    min-height: 48px;
+}
+
 .utf-sr-only {
     clip: rect(0, 0, 0, 0);
     border: 0;
@@ -4566,8 +4574,8 @@ textarea.member-management-control {
     color: #0b0f13;
     display: inline-flex;
     font: inherit;
-    font-size: 0.86rem;
-    font-weight: 850;
+    font-size: 1rem;
+    font-weight: 700;
     gap: 0.48rem;
     height: 48px;
     justify-content: center;
@@ -4753,6 +4761,7 @@ textarea.member-management-control {
     border: 1px solid rgba(214, 174, 84, 0.36);
     border-radius: 999px;
     display: block;
+    flex: 0 0 2rem;
     height: 2rem;
     object-fit: cover;
     width: 2rem;

@@ -521,7 +521,8 @@
                             <dd>@(_event.HostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Events_Detail_Status_Pending)].Value)</dd>
                         </div>
                     </dl>
-                    <FluentButton IconStart="@(new Icons.Regular.Size24.ArrowDownload())"
+                    <FluentButton class="utf-package-download-button"
+                                  IconStart="@(new Icons.Regular.Size24.ArrowDownload())"
                                   Disabled="@(!CanDownloadModPack)"
                                   OnClick="DownloadModPack">
                         @Localizer[nameof(Language.Common_DownloadModpack)]
