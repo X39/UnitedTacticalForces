@@ -853,10 +853,6 @@
     padding: 0;
 }
 
-.event-editor-save-state {
-    border-color: rgba(34, 197, 94, 0.28);
-}
-
 @media (max-width: 1320px) {
     .event-editor-slot-register__head {
         display: none;

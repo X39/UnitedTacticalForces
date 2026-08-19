@@ -21,6 +21,7 @@
 @inject TerrainAutoCompleteService TerrainAutoCompleteService
 @inject BaseUrl BaseUrl
 @inject MeService Me
+@inject IToastService ToastService
 
 @inject IStringLocalizer<Language> Localizer
 <PageTitle>@(_event?.Title ?? Localizer[nameof(Language.Pages_Events_Edit_PageTitleFallback)].Value)</PageTitle>
@@ -80,19 +81,6 @@
     }
     else if (_model is not null && _event is not null)
     {
-        @if (_submitError is not null)
-        {
-            <div class="utf-state-panel utf-state-panel--warning" role="alert">
-                @_submitError
-            </div>
-        }
-        @if (_saveMessage is not null)
-        {
-            <div class="utf-state-panel event-editor-save-state">
-                @_saveMessage
-            </div>
-        }
-
         <section class="utf-panel event-editor-hero">
             <div>
                 <span class="@GetVisibilityStatusClass()">
@@ -635,8 +623,6 @@
     private Guid? _busySlotKey;
     private Guid? _objectiveRemovalConfirmationKey;
     private string? _loadError;
-    private string? _submitError;
-    private string? _saveMessage;
 
     private static readonly string[] EventUploadTags = ["event"];
 
@@ -742,8 +728,6 @@
     {
         _isLoading = true;
         _loadError = null;
-        _submitError = null;
-        _saveMessage = null;
 
         try
         {
@@ -769,7 +753,7 @@
             await LoadSlotAssigneesAsync();
 
             if (NavigationManager.ToAbsoluteUri(NavigationManager.Uri).Query.Contains("slotSetup=failed", StringComparison.OrdinalIgnoreCase))
-                _submitError = "Event was created, but one or more initial slots could not be created. Review and save the slot plan here.";
+                ToastService.ShowWarning(Localizer["React_EventAuthoring_PartialSlotFailure"].Value);
         }
         catch
         {
@@ -783,37 +767,41 @@
 
     private async Task SaveAllAsync()
     {
-        await SaveEventAsync();
-        if (_submitError is null)
-            await SaveSlotsAsync(showSuccess: false);
-        if (_submitError is null)
-            _saveMessage = "Event changes saved.";
-    }
-
-    private async Task SaveEventAsync()
-    {
-        if (_model is null || _isSaving)
+        if (!await SaveEventAsync())
+            return;
+        if (!await SaveSlotsAsync(showSuccess: false))
             return;
 
+        ToastService.ShowSuccess(Localizer["React_EventAuthoring_SaveSuccess"].Value);
+    }
+
+    private async Task<bool> SaveEventAsync()
+    {
+        if (_model is null || _isSaving)
+            return false;
+
         _isSaving = true;
-        _submitError = null;
-        _saveMessage = null;
 
         var errors = _model.GetValidationErrors(requireImage: false);
         if (errors.Count > 0)
         {
-            _submitError = string.Join(" ", errors);
+            ToastService.ShowError(string.Join(" ", errors));
             _isSaving = false;
-            return;
+            return false;
         }
 
         try
         {
             await EventRepository.ModifyEventAsync(EventId, _model.ToUpdatePayload());
+            return true;
         }
-        catch
+        catch (Exception ex)
         {
-            _submitError = "Event changes could not be saved.";
+            ToastService.ShowError(string.Format(
+                CultureInfo.CurrentCulture,
+                Localizer["React_EventAuthoring_SaveError"].Value,
+                UserFacingError.Message(ex)));
+            return false;
         }
         finally
         {
@@ -821,15 +809,12 @@
         }
     }
 
-    private async Task SaveSlotsAsync(bool showSuccess)
+    private async Task<bool> SaveSlotsAsync(bool showSuccess)
     {
         if (_isSavingSlots)
-            return;
+            return false;
 
         _isSavingSlots = true;
-        _submitError = null;
-        if (showSuccess)
-            _saveMessage = null;
 
         var errors = _slots
             .Where((slot) => !slot.IsDeleted)
@@ -837,9 +822,9 @@
             .ToArray();
         if (errors.Length > 0)
         {
-            _submitError = string.Join(" ", errors);
+            ToastService.ShowError(string.Join(" ", errors));
             _isSavingSlots = false;
-            return;
+            return false;
         }
 
         try
@@ -866,11 +851,13 @@
             _slots = [..slots.Select(EventSlotDraftModel.FromSlot)];
             await LoadSlotAssigneesAsync();
             if (showSuccess)
-                _saveMessage = Localizer["Pages_Events_Edit_Message_SlotPlanSaved"].Value;
+                ToastService.ShowSuccess(Localizer["Pages_Events_Edit_Message_SlotPlanSaved"].Value);
+            return true;
         }
-        catch
+        catch (Exception ex)
         {
-            _submitError = Localizer["Pages_Events_Edit_Message_SlotPlanSaveFailed"].Value;
+            ToastService.ShowError($"{Localizer["Pages_Events_Edit_Message_SlotPlanSaveFailed"].Value} {UserFacingError.Message(ex)}");
+            return false;
         }
         finally
         {
@@ -888,9 +875,9 @@
         SetSlotAssignedUser(slot, user);
         if (slot.SlotNumber is null)
         {
-            _saveMessage = Localizer[user is null
+            ToastService.ShowSuccess(Localizer[user is null
                 ? "Pages_Events_Edit_Message_StagedSlotAssignmentRemoved"
-                : "Pages_Events_Edit_Message_SlotAssignmentStaged"].Value;
+                : "Pages_Events_Edit_Message_SlotAssignmentStaged"].Value);
             return;
         }
 
@@ -902,18 +889,18 @@
             else if (previousAssignedToFk is { } assignedToFk)
                 await SlotRepository.UnassignSlotAsync(EventId, slot.SlotNumber.Value, assignedToFk);
 
-            _saveMessage = Localizer[user is null
+            ToastService.ShowSuccess(Localizer[user is null
                 ? "Pages_Events_Edit_Message_SlotAssignmentRemoved"
-                : "Pages_Events_Edit_Message_SlotAssignmentUpdated"].Value;
+                : "Pages_Events_Edit_Message_SlotAssignmentUpdated"].Value);
             await ReloadSlotsAsync();
         }
-        catch
+        catch (Exception ex)
         {
             SetSlotAssignedUser(slot, previousUser);
             slot.AssignedToFk = previousAssignedToFk;
-            _submitError = Localizer[user is null
+            ToastService.ShowError($"{Localizer[user is null
                 ? "Pages_Events_Edit_Message_SlotUnassignFailed"
-                : "Pages_Events_Edit_Message_SlotAssignFailed"].Value;
+                : "Pages_Events_Edit_Message_SlotAssignFailed"].Value} {UserFacingError.Message(ex)}");
         }
         finally
         {

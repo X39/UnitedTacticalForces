@@ -130,6 +130,23 @@ public class EventAuthoringBoundaryTests
     }
 
     [Fact]
+    public void EventEditor_SaveFeedbackUsesToastsWithoutLayoutPanels()
+    {
+        const string file = "sources/WebApp/Pages/Events/Edit/_EventId/Index.razor";
+        var source = ReadRepositoryFile(file);
+        var failures = new List<string>();
+
+        AssertContains(source, "@inject IToastService ToastService", file, "toast service", failures);
+        AssertContains(source, "ToastService.ShowSuccess", file, "success toast", failures);
+        AssertContains(source, "ToastService.ShowError", file, "error toast", failures);
+        AssertDoesNotContain(source, "_saveMessage", file, "inline save message removal", failures);
+        AssertDoesNotContain(source, "_submitError", file, "inline submit error removal", failures);
+        AssertDoesNotContain(source, "event-editor-save-state", file, "inline save panel removal", failures);
+
+        AssertNoFailures(failures);
+    }
+
+    [Fact]
     public void EventAuthoringModel_UsesMediaAssetReferencesForImages()
     {
         const string file = "sources/WebApp/Data/EventAuthoringModel.cs";
