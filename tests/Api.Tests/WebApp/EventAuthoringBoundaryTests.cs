@@ -109,6 +109,27 @@ public class EventAuthoringBoundaryTests
     }
 
     [Fact]
+    public void EventEditor_SlotsUseSingleControlAssignmentAndExplicitActionStyles()
+    {
+        const string razorFile = "sources/WebApp/Pages/Events/Edit/_EventId/Index.razor";
+        const string cssFile = "sources/WebApp/Pages/Events/Edit/_EventId/Index.razor.css";
+        var source = ReadRepositoryFile(razorFile);
+        var styles = ReadRepositoryFile(cssFile);
+        var failures = new List<string>();
+
+        AssertContains(source, "datalist id=\"event-editor-slot-groups\"", razorFile, "slot group combobox", failures);
+        AssertContains(source, "OnSlotAssignmentChangedAsync", razorFile, "automatic slot assignment", failures);
+        AssertContains(source, "utf-button utf-button--primary", razorFile, "positive add slot action", failures);
+        AssertContains(source, "utf-button utf-button--danger", razorFile, "destructive remove slot action", failures);
+        AssertDoesNotContain(source, "@onclick=\"@(() => AssignSlotAsync(slot))\"", razorFile, "separate assign action removal", failures);
+        AssertDoesNotContain(source, "@onclick=\"@(() => UnassignSlotAsync(slot))\"", razorFile, "separate unassign action removal", failures);
+        AssertContains(styles, ".event-editor-slot-register", cssFile, "slot register styling", failures);
+        AssertContains(styles, "overflow: visible", cssFile, "autocomplete overflow visibility", failures);
+
+        AssertNoFailures(failures);
+    }
+
+    [Fact]
     public void EventAuthoringModel_UsesMediaAssetReferencesForImages()
     {
         const string file = "sources/WebApp/Data/EventAuthoringModel.cs";

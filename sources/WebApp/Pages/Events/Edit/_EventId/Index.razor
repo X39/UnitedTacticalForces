@@ -238,11 +238,12 @@
                                     <span class="utf-kicker">@Localizer[nameof(Language.Slots)]</span>
                                     <h2>@Localizer[nameof(Language.Auto_SlotPlan_7b3bf485)]</h2>
                                 </div>
-                                <button class="utf-button utf-button--ghost"
+                                <button class="utf-button utf-button--primary"
                                         type="button"
                                         title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_AddSlot)])"
                                         @onclick="AddSlot">
-                                    @Localizer[nameof(Language.Auto_AddSlot_21ac8a98)]
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.Add())"/>
+                                    <span>@Localizer[nameof(Language.Auto_AddSlot_21ac8a98)]</span>
                                 </button>
                             </div>
                             @if (VisibleSlots.Count is 0)
@@ -252,6 +253,12 @@
                             else
                             {
                                 <div class="event-editor-slot-register" role="table" aria-label="@(Localizer[nameof(Language.Auto_EditableSlotPlan_f406ee7b)])">
+                                    <datalist id="event-editor-slot-groups">
+                                        @foreach (var groupName in SlotGroupNames)
+                                        {
+                                            <option value="@groupName"></option>
+                                        }
+                                    </datalist>
                                     <div class="event-editor-slot-register__head" aria-hidden="true">
                                         <span>@Localizer[nameof(Language.Role)]</span>
                                         <span>@Localizer[nameof(Language.Assigned)]</span>
@@ -278,6 +285,9 @@
                                                             <label class="utf-command-field event-editor-field">
                                                                 <span>@Localizer[nameof(Language.Group)]</span>
                                                                 <input class="utf-command-input"
+                                                                       list="event-editor-slot-groups"
+                                                                       role="combobox"
+                                                                       autocomplete="off"
                                                                        title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_SlotGroup)])"
                                                                        @bind="slot.Group"/>
                                                             </label>
@@ -305,20 +315,6 @@
                                                     </div>
 
                                                     <div class="event-editor-slot-assignee">
-                                                        <div class="event-editor-slot-current-user">
-                                                            @if (slot.AssignedUser?.ToImageSource() is { } avatar)
-                                                            {
-                                                                <img src="@avatar" alt=""/>
-                                                            }
-                                                            else
-                                                            {
-                                                                <span class="event-editor-avatar-fallback" aria-hidden="true"></span>
-                                                            }
-                                                            <div>
-                                                                <strong>@GetSlotStateLabel(slot)</strong>
-                                                                <small>@Localizer[slot.IsPersisted ? nameof(Language.Pages_Events_Edit_Status_SavedAssignment) : nameof(Language.Pages_Events_Edit_Status_StagedAssignment)]</small>
-                                                            </div>
-                                                        </div>
                                                         <div class="utf-command-field event-editor-field event-editor-autocomplete event-editor-slot-autocomplete">
                                                             <FluentAutocomplete Id="@GetSlotAutocompleteId(slot)"
                                                                                 TOption="PlainUserDto"
@@ -330,9 +326,10 @@
                                                                                 OptionText="UserAutoCompleteService.PlainUserDto.OptionText"
                                                                                 Label="@(Localizer[nameof(Language.Auto_AssignMember_c88914b5)])"
                                                                                 Placeholder="@(Localizer[nameof(Language.Auto_SearchMember_ef216823)])"
+                                                                                Disabled="@IsSlotAssignmentBusy(slot)"
                                                                                 @bind-ValueText="slot.AssignmentSearchText"
-                                                                                @bind-SelectedOption="slot.AssignmentCandidate"
-                                                                                @bind-SelectedOption:after="@(() => OnSlotAssignmentCandidateChanged(slot))">
+                                                                                SelectedOption="slot.AssignmentCandidate"
+                                                                                SelectedOptionChanged="@((PlainUserDto? user) => OnSlotAssignmentChangedAsync(slot, user))">
                                                                 <OptionTemplate Context="user">
                                                                     <div class="event-editor-autocomplete-option">
                                                                         @if (user.ToImageSource() is { } optionAvatar)
@@ -369,25 +366,12 @@
                                                     </div>
 
                                                     <div class="event-editor-slot-actions">
-                                                        <button class="utf-button utf-button--ghost"
-                                                                type="button"
-                                                                title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_ApplySlotAssignment)])"
-                                                                disabled="@(!CanAssignSlot(slot))"
-                                                                @onclick="@(() => AssignSlotAsync(slot))">
-                                                            @Localizer["Pages_Events_Edit_ActionAssignSlot"]
-                                                        </button>
-                                                        <button class="utf-button utf-button--ghost"
-                                                                type="button"
-                                                                title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_ClearSlotAssignment)])"
-                                                                disabled="@(slot.AssignedToFk is null)"
-                                                                @onclick="@(() => UnassignSlotAsync(slot))">
-                                                            @Localizer["Pages_Events_Edit_ActionUnassignSlot"]
-                                                        </button>
-                                                        <button class="utf-button utf-button--ghost"
+                                                        <button class="utf-button utf-button--danger"
                                                                 type="button"
                                                                 title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_RemoveSlot)])"
                                                                 @onclick="@(() => RemoveSlot(slot))">
-                                                            @Localizer["Pages_Events_Edit_ActionRemoveSlot"]
+                                                            <FluentIcon Value="@(new Icons.Regular.Size20.Delete())"/>
+                                                            <span>@Localizer["Pages_Events_Edit_ActionRemoveSlot"]</span>
                                                         </button>
                                                     </div>
                                                 </article>
@@ -648,6 +632,7 @@
     private bool _isSaving;
     private bool _isSavingSlots;
     private bool _isSyncingObjectives;
+    private Guid? _busySlotKey;
     private Guid? _objectiveRemovalConfirmationKey;
     private string? _loadError;
     private string? _submitError;
@@ -741,6 +726,9 @@
                 ))
                 .OrderBy((slotGroup) => slotGroup.Name, StringComparer.CurrentCultureIgnoreCase),
         ];
+
+    private IReadOnlyList<string> SlotGroupNames
+        => [..VisibleSlots.Select((slot) => NormalizeSlotGroup(slot.Group)).Distinct(StringComparer.OrdinalIgnoreCase).Order()];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -890,57 +878,51 @@
         }
     }
 
-    private async Task AssignSlotAsync(EventSlotDraftModel slot)
+    private async Task OnSlotAssignmentChangedAsync(EventSlotDraftModel slot, PlainUserDto? user)
     {
-        if (!CanAssignSlot(slot) || slot.AssignmentCandidate?.PrimaryKey is not { } userId)
+        if (IsSlotAssignmentBusy(slot) || user?.PrimaryKey == slot.AssignedToFk)
             return;
 
+        var previousUser = slot.AssignedUser;
+        var previousAssignedToFk = slot.AssignedToFk;
+        SetSlotAssignedUser(slot, user);
         if (slot.SlotNumber is null)
         {
-            SetSlotAssignedUser(slot, slot.AssignmentCandidate);
-            _saveMessage = Localizer["Pages_Events_Edit_Message_SlotAssignmentStaged"].Value;
+            _saveMessage = Localizer[user is null
+                ? "Pages_Events_Edit_Message_StagedSlotAssignmentRemoved"
+                : "Pages_Events_Edit_Message_SlotAssignmentStaged"].Value;
             return;
         }
 
+        _busySlotKey = slot.DraftKey;
         try
         {
-            await SlotRepository.AssignSlotAsync(EventId, slot.SlotNumber.Value, userId);
-            _saveMessage = Localizer["Pages_Events_Edit_Message_SlotAssignmentUpdated"].Value;
+            if (user?.PrimaryKey is { } userId)
+                await SlotRepository.AssignSlotAsync(EventId, slot.SlotNumber.Value, userId);
+            else if (previousAssignedToFk is { } assignedToFk)
+                await SlotRepository.UnassignSlotAsync(EventId, slot.SlotNumber.Value, assignedToFk);
+
+            _saveMessage = Localizer[user is null
+                ? "Pages_Events_Edit_Message_SlotAssignmentRemoved"
+                : "Pages_Events_Edit_Message_SlotAssignmentUpdated"].Value;
             await ReloadSlotsAsync();
         }
         catch
         {
-            _submitError = Localizer["Pages_Events_Edit_Message_SlotAssignFailed"].Value;
+            SetSlotAssignedUser(slot, previousUser);
+            slot.AssignedToFk = previousAssignedToFk;
+            _submitError = Localizer[user is null
+                ? "Pages_Events_Edit_Message_SlotUnassignFailed"
+                : "Pages_Events_Edit_Message_SlotAssignFailed"].Value;
+        }
+        finally
+        {
+            _busySlotKey = null;
         }
     }
 
-    private async Task UnassignSlotAsync(EventSlotDraftModel slot)
-    {
-        if (slot.AssignedToFk is null)
-            return;
-
-        if (slot.SlotNumber is null)
-        {
-            SetSlotAssignedUser(slot, null);
-            _saveMessage = Localizer["Pages_Events_Edit_Message_StagedSlotAssignmentRemoved"].Value;
-            return;
-        }
-
-        try
-        {
-            await SlotRepository.UnassignSlotAsync(EventId, slot.SlotNumber.Value, slot.AssignedToFk.Value);
-            _saveMessage = Localizer["Pages_Events_Edit_Message_SlotAssignmentRemoved"].Value;
-            await ReloadSlotsAsync();
-        }
-        catch
-        {
-            _submitError = Localizer["Pages_Events_Edit_Message_SlotUnassignFailed"].Value;
-        }
-    }
-
-    private bool CanAssignSlot(EventSlotDraftModel slot)
-        => slot.AssignmentCandidate?.PrimaryKey is not null
-           && slot.AssignmentCandidate.PrimaryKey != slot.AssignedToFk;
+    private bool IsSlotAssignmentBusy(EventSlotDraftModel slot)
+        => _isSaving || _isSavingSlots || _busySlotKey == slot.DraftKey;
 
     private void AddSlot()
         => _slots.Add(EventSlotDraftModel.CreateDefault());
@@ -995,13 +977,6 @@
             if (slot.AssignedToFk is { } assignedToFk && usersById.TryGetValue(assignedToFk, out var user))
                 SetSlotAssignedUser(slot, user);
         }
-    }
-
-    private void OnSlotAssignmentCandidateChanged(EventSlotDraftModel slot)
-    {
-        slot.AssignmentSearchText = GetUserLabel(slot.AssignmentCandidate);
-        if (slot.SlotNumber is null)
-            SetSlotAssignedUser(slot, slot.AssignmentCandidate);
     }
 
     private static void SetSlotAssignedUser(EventSlotDraftModel slot, PlainUserDto? user)
