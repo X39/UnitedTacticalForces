@@ -252,14 +252,14 @@
                         </ul>
                     }
 
-                    @if (_event.Description.IsNotNullOrWhiteSpace())
+                    @if (GetBriefingBody().IsNotNullOrWhiteSpace())
                     {
                         <div class="utf-briefing-notes">
                             <div class="utf-section-heading">
                                 <span class="utf-kicker">@Localizer[nameof(Language.Auto_FullBriefing_8df6347a)]</span>
                                 <h3>@Localizer[nameof(Language.Auto_CommanderSNotes_99b2f4e5)]</h3>
                             </div>
-                            <FluentMarkdown Content="@_event.Description"/>
+                            <FluentMarkdown Content="@GetBriefingBody()"/>
                         </div>
                     }
                     else
@@ -554,6 +554,10 @@
         new Dictionary<string, SiteImageSettingInfo>(StringComparer.OrdinalIgnoreCase);
     private static readonly Regex BriefingIconPrefixRegex =
         new(@"^:(?<icon>[a-z0-9-]+):\s*", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex MissionObjectiveHeadingRegex =
+        new(@"^\s{0,3}#{1,6}\s+mission objectives\s*$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+    private static readonly Regex MissionObjectiveLineRegex =
+        new(@"^\s*(?:[-*+]\s+|\d+[.)]\s+):[a-z0-9-]+:\s*.+$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
     private static readonly Regex MarkdownIconShortcodeRegex =
         new(@":(?<icon>[a-z0-9-]+):", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex MarkdownListPrefixRegex =
@@ -1038,6 +1042,30 @@
 
     private IReadOnlyList<BriefingObjective> GetBriefingObjectives()
         => ExtractBriefingObjectives(_event?.Description);
+
+    private string GetBriefingBody()
+        => RemoveMissionObjectiveBlock(_event?.Description);
+
+    private static string RemoveMissionObjectiveBlock(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return string.Empty;
+
+        var lines = description.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+        var firstContentIndex = Array.FindIndex(lines, static (line) => !string.IsNullOrWhiteSpace(line));
+        if (firstContentIndex < 0 || !MissionObjectiveHeadingRegex.IsMatch(lines[firstContentIndex]))
+            return description;
+
+        var index = firstContentIndex + 1;
+        while (index < lines.Length && string.IsNullOrWhiteSpace(lines[index]))
+            index++;
+        while (index < lines.Length && MissionObjectiveLineRegex.IsMatch(lines[index]))
+            index++;
+        while (index < lines.Length && string.IsNullOrWhiteSpace(lines[index]))
+            index++;
+
+        return string.Join(Environment.NewLine, lines.Skip(index)).TrimStart();
+    }
 
     private static IReadOnlyList<BriefingObjective> ExtractBriefingObjectives(string? description)
     {

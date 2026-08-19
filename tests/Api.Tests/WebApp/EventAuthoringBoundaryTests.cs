@@ -91,6 +91,24 @@ public class EventAuthoringBoundaryTests
     }
 
     [Fact]
+    public void EventBriefing_SeparatesObjectiveMetadataFromRenderedMarkdown()
+    {
+        const string editorFile = "sources/WebApp/Pages/Events/Edit/_EventId/Index.razor";
+        const string publicFile = "sources/WebApp/Pages/Events/_EventId/Index.razor";
+        var editorSource = ReadRepositoryFile(editorFile);
+        var publicSource = ReadRepositoryFile(publicFile);
+        var failures = new List<string>();
+
+        AssertContains(editorSource, "@bind=\"BriefingBody\"", editorFile, "briefing body editor binding", failures);
+        AssertContains(editorSource, "Pages_Events_Edit_MarkdownHelpFormatting", editorFile, "markdown help", failures);
+        AssertContains(editorSource, "BuildObjectiveMarkdown(objectiveLines, value)", editorFile, "objective metadata preservation", failures);
+        AssertContains(publicSource, "FluentMarkdown Content=\"@GetBriefingBody()\"", publicFile, "clean public briefing body", failures);
+        AssertContains(publicSource, "RemoveMissionObjectiveBlock", publicFile, "objective metadata removal", failures);
+
+        AssertNoFailures(failures);
+    }
+
+    [Fact]
     public void EventAuthoringModel_UsesMediaAssetReferencesForImages()
     {
         const string file = "sources/WebApp/Data/EventAuthoringModel.cs";

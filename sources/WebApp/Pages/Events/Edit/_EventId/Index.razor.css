@@ -304,6 +304,25 @@
     resize: vertical;
 }
 
+.event-editor-markdown-help {
+    background: var(--utf-surface-2);
+    border: 1px solid var(--utf-stroke);
+    border-radius: var(--utf-radius-sm);
+    color: var(--utf-text-muted);
+    padding: 0.8rem 1rem;
+}
+
+.event-editor-markdown-help summary {
+    color: var(--utf-text);
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.event-editor-markdown-help p {
+    line-height: 1.5;
+    margin: 0.7rem 0 0;
+}
+
 .event-editor-markdown-preview,
 .event-editor-objective-preview,
 .event-editor-readiness,

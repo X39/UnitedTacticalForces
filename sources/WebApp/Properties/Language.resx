@@ -12153,6 +12153,15 @@ Start writing here.</value>
   <data name="Pages_Events_Edit_Tooltip_BriefingMarkdown" xml:space="preserve">
     <value>Briefing markdown shown to players.</value>
   </data>
+  <data name="Pages_Events_Edit_MarkdownHelpTitle" xml:space="preserve">
+    <value>Markdown formatting help</value>
+  </data>
+  <data name="Pages_Events_Edit_MarkdownHelpFormatting" xml:space="preserve">
+    <value>Use # for headings, **bold** for emphasis, - for lists, [text](URL) for links, and blank lines to separate paragraphs.</value>
+  </data>
+  <data name="Pages_Events_Edit_MarkdownHelpObjectives" xml:space="preserve">
+    <value>Mission objectives and their icons are managed on the Objectives tab and are kept out of the briefing text.</value>
+  </data>
   <data name="Pages_Events_Edit_Tooltip_ObjectiveIcon" xml:space="preserve">
     <value>Icon name for the objective.</value>
   </data>

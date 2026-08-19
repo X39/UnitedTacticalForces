@@ -12153,6 +12153,15 @@ Beginne hier mit dem Schreiben.</value>
   <data name="Pages_Events_Edit_Tooltip_BriefingMarkdown" xml:space="preserve">
     <value>Briefing-Markdown für Spieler.</value>
   </data>
+  <data name="Pages_Events_Edit_MarkdownHelpTitle" xml:space="preserve">
+    <value>Hilfe zur Markdown-Formatierung</value>
+  </data>
+  <data name="Pages_Events_Edit_MarkdownHelpFormatting" xml:space="preserve">
+    <value>Nutze # für Überschriften, **fett** für Hervorhebungen, - für Listen, [Text](URL) für Links und Leerzeilen zwischen Absätzen.</value>
+  </data>
+  <data name="Pages_Events_Edit_MarkdownHelpObjectives" xml:space="preserve">
+    <value>Missionsziele und ihre Symbole werden im Reiter Ziele verwaltet und nicht im Briefingtext angezeigt.</value>
+  </data>
   <data name="Pages_Events_Edit_Tooltip_ObjectiveIcon" xml:space="preserve">
     <value>Icon-Name für das Ziel.</value>
   </data>

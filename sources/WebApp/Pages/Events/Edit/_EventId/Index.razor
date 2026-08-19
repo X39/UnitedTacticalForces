@@ -127,12 +127,16 @@
                                 <textarea class="utf-command-input event-editor-textarea"
                                           rows="18"
                                           title="@(Localizer[nameof(Language.Pages_Events_Edit_Tooltip_BriefingMarkdown)])"
-                                          @bind="_model.Description"
-                                          @bind:after="RefreshObjectivesFromBriefing"></textarea>
+                                          @bind="BriefingBody"></textarea>
                             </label>
+                            <details class="event-editor-markdown-help">
+                                <summary>@Localizer["Pages_Events_Edit_MarkdownHelpTitle"]</summary>
+                                <p>@Localizer["Pages_Events_Edit_MarkdownHelpFormatting"]</p>
+                                <p>@Localizer["Pages_Events_Edit_MarkdownHelpObjectives"]</p>
+                            </details>
                             <section class="event-editor-markdown-preview">
                                 <span class="utf-kicker">@Localizer[nameof(Language.Auto_RenderedBriefing_9d4f9366)]</span>
-                                <FluentMarkdown Content="@_model.Description"/>
+                                <FluentMarkdown Content="@BriefingBody"/>
                             </section>
                         </section>
                         break;
@@ -687,6 +691,24 @@
     private bool CanSubmit
         => CanManageEvents && !_isLoading && !_isSaving && _model is not null;
 
+    private string BriefingBody
+    {
+        get => RemoveObjectiveBlock(_model?.Description);
+        set
+        {
+            if (_model is null)
+                return;
+
+            var objectiveLines = _objectiveDrafts
+                .Where((objective) => objective.HasText)
+                .Select((objective) => objective.ToMarkdownLine())
+                .ToArray();
+            _model.Description = objectiveLines.Length is 0
+                ? value
+                : BuildObjectiveMarkdown(objectiveLines, value);
+        }
+    }
+
     private bool HasImage
         => _model?.ImageAssetFk is not null;
 
@@ -1200,20 +1222,7 @@
             yield break;
         }
 
-        foreach (var rawLine in lines)
-        {
-            var line = rawLine.Trim();
-            if (line.Length is 0
-                || line.StartsWith("#", StringComparison.Ordinal)
-                || line.StartsWith("```", StringComparison.Ordinal)
-                || line.StartsWith("|", StringComparison.Ordinal)
-                || line.StartsWith("<!--", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            yield return line;
-        }
+        yield break;
     }
 
     private static bool TryParseObjectiveLine(string line, out string icon, out string text)
@@ -1296,7 +1305,7 @@
 
     private string GetBriefingLengthLabel()
     {
-        var length = _model?.Description?.Length ?? 0;
+        var length = BriefingBody.Length;
         return length is 0
             ? Localizer[nameof(Language.Pages_Events_Edit_Status_NoBriefing)].Value
             : Localizer[nameof(Language.Pages_Events_Edit_Count_Characters), length].Value;
