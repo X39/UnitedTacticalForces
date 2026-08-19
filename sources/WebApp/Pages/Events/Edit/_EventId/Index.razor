@@ -470,7 +470,17 @@
                                         <option value="hidden">@Localizer[nameof(Language.Hidden)]</option>
                                     </select>
                                 </label>
-                                <div class="utf-command-field event-editor-field event-editor-autocomplete">
+                            </div>
+                            <section class="event-editor-resource-panel">
+                                <div class="event-editor-section__heading">
+                                    <div>
+                                        <span class="utf-kicker">@Localizer[nameof(Language.Assets)]</span>
+                                        <h2>@Localizer[nameof(Language.Assets)]</h2>
+                                    </div>
+                                    <span>@GetAssetReadinessLabel()</span>
+                                </div>
+                                <div class="event-editor-assets-grid">
+                                    <div class="event-editor-asset-card utf-command-field event-editor-field event-editor-autocomplete">
                                     <FluentAutocomplete Id="event-editor-terrain"
                                                         Required="true"
                                                         TOption="PlainTerrainDto"
@@ -495,8 +505,8 @@
                                             <span class="event-editor-selected-option">@GetTerrainLabel(terrain)</span>
                                         </SelectedOptionTemplate>
                                     </FluentAutocomplete>
-                                </div>
-                                <div class="utf-command-field event-editor-field event-editor-autocomplete">
+                                    </div>
+                                    <div class="event-editor-asset-card utf-command-field event-editor-field event-editor-autocomplete">
                                     <FluentAutocomplete Id="event-editor-modpack"
                                                         Required="true"
                                                         TOption="PlainModPackRevisionDto"
@@ -521,29 +531,24 @@
                                             <span class="event-editor-selected-option">@GetModPackLabel(modPack)</span>
                                         </SelectedOptionTemplate>
                                     </FluentAutocomplete>
-                                </div>
-                            </div>
-                            <section class="event-editor-resource-panel">
-                                <div class="event-editor-section__heading">
-                                    <div>
-                                        <span class="utf-kicker">@Localizer[nameof(Language.Assets)]</span>
-                                        <h2>@Localizer[nameof(Language.Auto_TerrainModPackAndMissionImage_7e5fddd3)]</h2>
                                     </div>
-                                    <span>@GetAssetReadinessLabel()</span>
-                                </div>
-                                <div class="event-editor-image-grid">
-                                    <div class="event-editor-image-preview" style="@GetImageStyle()">
-                                        @if (!HasImage)
-                                        {
-                                            <span>@Localizer[nameof(Language.Auto_NoMissionImage_4188cdba)]</span>
-                                        }
-                                    </div>
-                                    <div class="event-editor-gallery-picker">
+                                    <div class="event-editor-asset-card event-editor-asset-card--image">
+                                        <div class="event-editor-asset-card__heading">
+                                            <span class="utf-md-icon utf-md-icon--document" aria-hidden="true"></span>
+                                            <strong>@Localizer[nameof(Language.Auto_MissionImage_85cc2241)]</strong>
+                                        </div>
+                                        <div class="event-editor-image-preview" style="@GetImageStyle()">
+                                            @if (!HasImage)
+                                            {
+                                                <span>@Localizer[nameof(Language.Auto_NoMissionImage_4188cdba)]</span>
+                                            }
+                                        </div>
                                         <GalleryImagePicker SelectedAssetId="@_model.ImageAssetFk"
                                                             SelectedImagePath="@_model.ImagePath"
                                                             SelectedFileName="@GetSelectedImageFileName()"
                                                             UploadTags="@EventUploadTags"
                                                             AllowClear="true"
+                                                            ShowPreview="false"
                                                             Disabled="@_isSaving"
                                                             SelectedAssetChanged="OnImageAssetSelected"/>
                                     </div>
