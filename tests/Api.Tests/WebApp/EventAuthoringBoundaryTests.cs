@@ -74,6 +74,23 @@ public class EventAuthoringBoundaryTests
     }
 
     [Fact]
+    public void EventEditor_ObjectivesUseExplicitActionsAndPublicPreviewMarkup()
+    {
+        const string file = "sources/WebApp/Pages/Events/Edit/_EventId/Index.razor";
+        var source = ReadRepositoryFile(file);
+        var failures = new List<string>();
+
+        AssertContains(source, "utf-button utf-button--primary", file, "positive add objective action", failures);
+        AssertContains(source, "new Icons.Regular.Size20.Add()", file, "add objective icon", failures);
+        AssertContains(source, "event-editor-objective-select__selected-icon", file, "selected objective icon rendering", failures);
+        AssertContains(source, "class=\"utf-briefing-objectives\"", file, "public objective preview markup", failures);
+        AssertContains(source, "private const int InitialObjectiveDraftCount = 0", file, "explicit blank objective creation", failures);
+        AssertContains(source, "event-editor-objective-remove", file, "destructive remove objective action", failures);
+
+        AssertNoFailures(failures);
+    }
+
+    [Fact]
     public void EventAuthoringModel_UsesMediaAssetReferencesForImages()
     {
         const string file = "sources/WebApp/Data/EventAuthoringModel.cs";

@@ -145,15 +145,21 @@
                                 </div>
                                 <div class="event-editor-heading-actions">
                                     <span>@GetObjectivesStatusLabel()</span>
-                                    <button class="utf-button utf-button--ghost"
+                                    <button class="utf-button utf-button--primary"
                                             type="button"
                                             title="@Localizer["Pages_Events_Edit_Tooltip_AddObjective"]"
                                             @onclick="AddObjective">
-                                        @Localizer["Pages_Events_Edit_ActionAddObjective"]
+                                        <FluentIcon Value="@(new Icons.Regular.Size20.Add())"/>
+                                        <span>@Localizer["Pages_Events_Edit_ActionAddObjective"]</span>
                                     </button>
                                 </div>
                             </div>
+                            <p class="event-editor-action-help">@Localizer["Pages_Events_Edit_Tooltip_AddObjective"]</p>
                             <div class="event-editor-objectives">
+                                @if (_objectiveDrafts.Count is 0)
+                                {
+                                    <div class="event-editor-empty">@Localizer[nameof(Language.Auto_NoMissionObjectivesHaveBeenAdded_d6bd1a03)]</div>
+                                }
                                 @for (var index = 0; index < _objectiveDrafts.Count; index++)
                                 {
                                     var objective = _objectiveDrafts[index];
@@ -161,6 +167,8 @@
                                         <label class="utf-command-field event-editor-field event-editor-objective-row__icon">
                                             <span>@Localizer[nameof(Language.Icon)]</span>
                                             <div class="event-editor-objective-select">
+                                                <span class="event-editor-objective-select__selected-icon @GetObjectiveIconClass(objective.Icon)"
+                                                      aria-hidden="true"></span>
                                                 <FluentSelect TOption="ObjectiveIconOption"
                                                               Items="@ObjectiveIconOptions"
                                                               OptionText="@(static (icon) => icon.Label)"
@@ -206,7 +214,7 @@
                                 }
                                 else
                                 {
-                                    <ul>
+                                    <ul class="utf-briefing-objectives">
                                         @foreach (var objective in _objectiveDrafts.Where((objective) => objective.HasText))
                                         {
                                             <li @key="objective.DraftKey">
@@ -615,7 +623,7 @@
 
 @code {
     private const string MissingValue = "n/a";
-    private const int InitialObjectiveDraftCount = 1;
+    private const int InitialObjectiveDraftCount = 0;
 
     [Parameter]
     public Guid EventId { get; set; }
