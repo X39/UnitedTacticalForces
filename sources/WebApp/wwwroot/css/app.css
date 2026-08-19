@@ -4508,10 +4508,7 @@ textarea.member-management-control {
 .utf-briefing-notes {
     border-top: 1px solid var(--utf-event-line);
     color: var(--utf-event-muted);
-    max-height: 156px;
-    overflow: auto;
     padding: 1.1rem 1.2rem 1.2rem;
-    scrollbar-color: var(--utf-scrollbar-thumb) var(--utf-scrollbar-track);
 }
 
 .utf-briefing-notes .utf-section-heading h3,
