@@ -8,6 +8,7 @@ import { currentLocale, formatCurrency, formatDate } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinLedger } from "@/auth/claims";
+import { useAppRouteToast } from "@/components/AppToasts";
 import { Metric, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
 import {
   dateFilterInstant,
@@ -55,6 +56,17 @@ export function Component() {
     enabled: authorized,
   });
   useDocumentTitle(t("Pages_Command_Verein_KassenbuchPageTitle"));
+  const savedState = location.state as {
+    kassenbuchSaved?: boolean;
+    kassenbuchDeleted?: boolean;
+  } | null;
+  useAppRouteToast(
+    savedState?.kassenbuchSaved
+      ? t("Pages_Command_Verein_KassenbuchToastSaved")
+      : savedState?.kassenbuchDeleted
+        ? t("Pages_Command_Verein_KassenbuchToastDeleted")
+        : undefined,
+  );
 
   if (!authorized)
     return (
@@ -74,11 +86,6 @@ export function Component() {
     query.isError &&
     query.error instanceof ApiError &&
     (query.error.code === "unauthorized" || query.error.code === "forbidden");
-  const savedState = location.state as {
-    kassenbuchSaved?: boolean;
-    kassenbuchDeleted?: boolean;
-  } | null;
-
   return (
     <section className="verein-kassenbuch-page">
       <PageHeader
@@ -104,13 +111,6 @@ export function Component() {
           </>
         }
       />
-
-      {savedState?.kassenbuchSaved && (
-        <StatePanel kind="success">{t("Pages_Command_Verein_KassenbuchToastSaved")}</StatePanel>
-      )}
-      {savedState?.kassenbuchDeleted && (
-        <StatePanel kind="success">{t("Pages_Command_Verein_KassenbuchToastDeleted")}</StatePanel>
-      )}
 
       {forbidden ? (
         <StatePanel

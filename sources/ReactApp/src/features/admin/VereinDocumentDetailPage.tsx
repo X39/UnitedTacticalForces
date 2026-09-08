@@ -5,6 +5,7 @@ import { currentLocale, formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinDocuments } from "@/auth/claims";
+import { useAppRouteToast, useAppToastOnChange } from "@/components/AppToasts";
 import { Markdown, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
 import {
   activeVereinRevision,
@@ -43,6 +44,15 @@ export function Component() {
       );
     },
   });
+  useAppRouteToast(
+    (location.state as { documentSaved?: boolean } | null)?.documentSaved
+      ? t("Pages_Command_Verein_DocumentToastSaved")
+      : undefined,
+  );
+  useAppToastOnChange(
+    publication.isSuccess ? t("Pages_Command_Verein_DocumentToastPublicationUpdated") : undefined,
+  );
+  useAppToastOnChange(publication.isError ? publication.error.message : undefined, "error");
   const title =
     activeRevision?.title ||
     (document
@@ -102,16 +112,6 @@ export function Component() {
           </>
         }
       />
-
-      {Boolean((location.state as { documentSaved?: boolean } | null)?.documentSaved) && (
-        <StatePanel kind="success">{t("Pages_Command_Verein_DocumentToastSaved")}</StatePanel>
-      )}
-      {publication.isSuccess && (
-        <StatePanel kind="success">
-          {t("Pages_Command_Verein_DocumentToastPublicationUpdated")}
-        </StatePanel>
-      )}
-      {publication.isError && <StatePanel kind="error">{publication.error.message}</StatePanel>}
 
       <div className="verein-document-detail-shell">
         <section className="command-panel verein-document-preview-panel">

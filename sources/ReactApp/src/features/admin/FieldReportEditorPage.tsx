@@ -14,6 +14,7 @@ import {
   canReadFieldReports,
 } from "@/auth/claims";
 import { NotFoundPage } from "@/components/NotFoundPage";
+import { useAppRouteToast, useAppToastOnChange } from "@/components/AppToasts";
 import {
   ConfirmDialog,
   Markdown,
@@ -21,7 +22,6 @@ import {
   StatePanel,
   StatusBadge,
   useUnsavedChanges,
-  type StateKind,
 } from "@/components/primitives";
 import {
   createFieldReportFormSchema,
@@ -39,8 +39,8 @@ import {
 import { GalleryAssetPicker } from "@/features/admin/GalleryAssetPicker";
 import type { MediaAsset } from "@/features/admin/siteImages";
 
-interface Notice {
-  kind: Extract<StateKind, "success" | "error" | "warning">;
+interface ToastFeedback {
+  kind: "success" | "error" | "warning";
   text: string;
 }
 
@@ -111,11 +111,14 @@ function Editor({ reportId }: { reportId?: string }) {
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset>();
   const [previewVisible, setPreviewVisible] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [notice, setNotice] = useState<Notice | undefined>(() =>
-    (location.state as { fieldReportSaved?: boolean } | null)?.fieldReportSaved
-      ? { kind: "success", text: t("Pages_Command_FieldReports_Edit_ToastSaved") }
+  const [feedback, setFeedback] = useState<ToastFeedback>();
+  const [validationNotice, setValidationNotice] = useState<string>();
+  useAppRouteToast(
+    canOpen && (location.state as { fieldReportSaved?: boolean } | null)?.fieldReportSaved
+      ? t("Pages_Command_FieldReports_Edit_ToastSaved")
       : undefined,
   );
+  useAppToastOnChange(feedback?.text, feedback?.kind ?? "success");
 
   const { errors, isDirty } = form.formState;
   const watchedValues = useWatch({ control: form.control });
@@ -142,12 +145,14 @@ function Editor({ reportId }: { reportId?: string }) {
 
   const save = useMutation({
     mutationFn: (nextValues: FieldReportFormValues) => saveCommandFieldReport(reportId, nextValues),
+    onMutate: () => setFeedback(undefined),
     onSuccess: async (report) => {
       await applySavedReport(report);
-      setNotice({ kind: "success", text: t("Pages_Command_FieldReports_Edit_ToastSaved") });
+      if (!isCreate)
+        setFeedback({ kind: "success", text: t("Pages_Command_FieldReports_Edit_ToastSaved") });
     },
     onError: (error) =>
-      setNotice({
+      setFeedback({
         kind: "error",
         text: mutationMessage(
           error,
@@ -166,6 +171,7 @@ function Editor({ reportId }: { reportId?: string }) {
   }, [isCreate, navigate, save.data, save.isSuccess]);
   const action = useMutation({
     mutationFn: (operation: FieldReportAction) => runFieldReportAction(reportId!, operation),
+    onMutate: () => setFeedback(undefined),
     onSuccess: async (report, operation) => {
       await applySavedReport(report);
       const key =
@@ -176,7 +182,7 @@ function Editor({ reportId }: { reportId?: string }) {
             : operation === "delete"
               ? "Pages_Command_FieldReports_Edit_ToastDeleted"
               : "Pages_Command_FieldReports_Edit_ToastRestored";
-      setNotice({ kind: "success", text: t(key) });
+      setFeedback({ kind: "success", text: t(key) });
       setDeleteOpen(false);
     },
     onError: (error, operation) => {
@@ -188,7 +194,7 @@ function Editor({ reportId }: { reportId?: string }) {
             : operation === "delete"
               ? "Pages_Command_FieldReports_Edit_ErrorDelete"
               : "Pages_Command_FieldReports_Edit_ErrorRestore";
-      setNotice({
+      setFeedback({
         kind: "error",
         text: mutationMessage(error, t(key), t("Pages_Command_FieldReports_Edit_ErrorConflict")),
       });
@@ -198,12 +204,10 @@ function Editor({ reportId }: { reportId?: string }) {
 
   const requestAction = (operation: FieldReportAction) => {
     if (isDirty) {
-      setNotice({
-        kind: "warning",
-        text: t("Pages_Command_FieldReports_Edit_UnsavedActionMessage"),
-      });
+      setValidationNotice(t("Pages_Command_FieldReports_Edit_UnsavedActionMessage"));
       return;
     }
+    setValidationNotice(undefined);
     if (operation === "delete") setDeleteOpen(true);
     else action.mutate(operation);
   };
@@ -220,7 +224,7 @@ function Editor({ reportId }: { reportId?: string }) {
         },
       );
     setPickerOpen(false);
-    setNotice({
+    setFeedback({
       kind: "success",
       text: t("Pages_Command_FieldReports_Edit_GallerySelectedToast"),
     });
@@ -273,7 +277,7 @@ function Editor({ reportId }: { reportId?: string }) {
         }
       />
 
-      {notice && <StatePanel kind={notice.kind}>{notice.text}</StatePanel>}
+      {validationNotice && <StatePanel kind="warning">{validationNotice}</StatePanel>}
       {!isCreate && query.isPending ? (
         <StatePanel kind="loading">{t("Pages_Command_FieldReports_Edit_Loading")}</StatePanel>
       ) : !isCreate && query.isError ? (
@@ -325,7 +329,8 @@ function Editor({ reportId }: { reportId?: string }) {
               aria-label={t("Pages_Command_FieldReports_Edit_FormAria")}
               noValidate
               onSubmit={form.handleSubmit((nextValues) => {
-                setNotice(undefined);
+                setFeedback(undefined);
+                setValidationNotice(undefined);
                 save.mutate(nextValues);
               })}
             >

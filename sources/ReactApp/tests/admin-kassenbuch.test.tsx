@@ -7,6 +7,7 @@ import { beforeEach } from "vitest";
 import type { FullUser } from "@/api/types";
 import i18n, { i18nReady } from "@/app/i18n";
 import { canManageVereinLedger } from "@/auth/claims";
+import { AppToastProvider } from "@/components/AppToasts";
 import { Component as VereinKassenbuchEditorPage } from "@/features/admin/VereinKassenbuchEditorPage";
 import { Component as VereinKassenbuchPage } from "@/features/admin/VereinKassenbuchPage";
 import type { KassenbuchEntry, KassenbuchPage } from "@/features/admin/vereinKassenbuch";
@@ -81,7 +82,9 @@ function renderPage(initialEntry: string) {
   return render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <AppToastProvider>
+          <RouterProvider router={router} />
+        </AppToastProvider>
       </QueryClientProvider>
     </I18nextProvider>,
   );
@@ -186,7 +189,10 @@ describe("Verein Kassenbuch administration", () => {
         }),
       ),
     );
-    expect(await screen.findByText("Kassenbuch entry saved.")).toBeVisible();
+    const savedToast = (await screen.findByText("Kassenbuch entry saved.")).closest(
+      '[role="status"]',
+    );
+    expect(savedToast).toHaveClass("app-toast");
   });
 
   it("loads an edit target and keeps destructive deletion behind confirmation", async () => {
@@ -202,7 +208,10 @@ describe("Verein Kassenbuch administration", () => {
     await user.click(within(dialog).getByRole("button", { name: "Delete entry" }));
 
     await waitFor(() => expect(kassenbuch.deleteKassenbuchEntry).toHaveBeenCalledWith(42));
-    expect(await screen.findByText("Kassenbuch entry deleted.")).toBeVisible();
+    const deletedToast = (await screen.findByText("Kassenbuch entry deleted.")).closest(
+      '[role="status"]',
+    );
+    expect(deletedToast).toHaveClass("app-toast");
   });
 
   it("renders the command workflow from German resources", async () => {

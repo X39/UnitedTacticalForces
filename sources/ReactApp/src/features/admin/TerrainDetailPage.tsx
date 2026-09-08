@@ -8,6 +8,7 @@ import { ApiError, resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canAccessTerrain, canDeleteTerrain, canModifyTerrain } from "@/auth/claims";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import { NotFoundPage } from "@/components/NotFoundPage";
 import {
   ConfirmDialog,
@@ -74,6 +75,7 @@ function TerrainDetail({ terrainId }: { terrainId: string }) {
   const titleChanged = Boolean(terrain && title.trim() !== terrain.title);
   const hasChanges = titleChanged || Boolean(selectedAsset);
   useUnsavedChanges(!allowNavigation && hasChanges);
+  useAppToastOnChange(notice?.text, notice?.kind ?? "success");
 
   useEffect(() => {
     if (terrain) form.reset({ title: terrain.title });
@@ -89,6 +91,7 @@ function TerrainDetail({ terrainId }: { terrainId: string }) {
         ...(values.title.trim() !== terrain?.title ? { title: values.title.trim() } : {}),
         ...(selectedAsset ? { imageAssetFk: selectedAsset.primaryKey } : {}),
       }),
+    onMutate: () => setNotice(undefined),
     onSuccess: async () => {
       setSelectedAsset(undefined);
       const refreshed = await query.refetch();
@@ -107,6 +110,7 @@ function TerrainDetail({ terrainId }: { terrainId: string }) {
   });
   const deactivate = useMutation({
     mutationFn: () => deactivateTerrain(terrainId),
+    onMutate: () => setNotice(undefined),
     onSuccess: async () => {
       setAllowNavigation(true);
       setDeleteOpen(false);
@@ -195,8 +199,6 @@ function TerrainDetail({ terrainId }: { terrainId: string }) {
           </>
         }
       />
-
-      {notice && <StatePanel kind={notice.kind}>{notice.text}</StatePanel>}
 
       <section
         className="command-metrics terrain-detail-metrics"

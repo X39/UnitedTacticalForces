@@ -7,6 +7,7 @@ import { formatDate } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import {
   ConfirmDialog,
   PageHeader,
@@ -240,6 +241,15 @@ export function Component() {
     },
     onSuccess: invalidate,
   });
+  useAppToastOnChange(
+    profileMutation.isSuccess ? t("Pages_Command_Member_ProfileSaved") : undefined,
+  );
+  useAppToastOnChange(
+    membershipMutation.isSuccess ? t("Pages_Command_Member_MembershipSaved") : undefined,
+  );
+  useAppToastOnChange(
+    authorityMutation.isSuccess ? t("Pages_Command_Member_AuthoritySaved") : undefined,
+  );
 
   const setProfile = (change: Omit<Partial<ProfileDraft>, "userId">) =>
     userId &&
@@ -371,15 +381,6 @@ export function Component() {
             error.message,
           )}
         </StatePanel>
-      )}
-      {profileMutation.isSuccess && (
-        <StatePanel kind="success">{t("Pages_Command_Member_ProfileSaved")}</StatePanel>
-      )}
-      {membershipMutation.isSuccess && (
-        <StatePanel kind="success">{t("Pages_Command_Member_MembershipSaved")}</StatePanel>
-      )}
-      {authorityMutation.isSuccess && (
-        <StatePanel kind="success">{t("Pages_Command_Member_AuthoritySaved")}</StatePanel>
       )}
       {query.isPending ? (
         <StatePanel kind="loading">{t("Pages_Command_Member_Loading")}</StatePanel>

@@ -9,13 +9,13 @@ import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManagePublicPages } from "@/auth/claims";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import {
   Markdown,
   PageHeader,
   StatePanel,
   StatusBadge,
   useUnsavedChanges,
-  type StateKind,
 } from "@/components/primitives";
 import { GalleryAssetPicker } from "@/features/admin/GalleryAssetPicker";
 import { GdprContentEditor } from "@/features/admin/GdprContentEditor";
@@ -37,8 +37,8 @@ import {
 } from "@/features/admin/publicPageEditor";
 import type { MediaAsset } from "@/features/admin/siteImages";
 
-interface Notice {
-  kind: Extract<StateKind, "error" | "success" | "warning">;
+interface ToastFeedback {
+  kind: "error" | "success" | "warning";
   text: string;
 }
 
@@ -98,7 +98,8 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset>();
   const [structuredInvalid, setStructuredInvalid] = useState(false);
-  const [notice, setNotice] = useState<Notice>();
+  const [feedback, setFeedback] = useState<ToastFeedback>();
+  const [validationNotice, setValidationNotice] = useState<string>();
   const [savedSlug, setSavedSlug] = useState<string>();
   const values = useWatch({ control: form.control });
   const currentGdprSnapshot = `${Number(gdprState.preserveLegacyMarkdown)}:${serializeGdprContent(gdprState.content)}`;
@@ -106,6 +107,7 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
 
   const save = useMutation({
     mutationFn: (payload: PublicPageRevisionPayload) => createPublicPageRevision(slug, payload),
+    onMutate: () => setFeedback(undefined),
     onSuccess: async (savedPage) => {
       form.reset(createPublicPageEditorValues(savedPage, defaults));
       queryClient.setQueryData(["command-center", "public-pages", slug], savedPage);
@@ -117,23 +119,27 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
     },
     onError: (error) => {
       if (error instanceof ApiError && error.code === "conflict") {
-        setNotice({ kind: "warning", text: t("React_PublicPageEditor_Conflict") });
+        setFeedback({ kind: "warning", text: t("React_PublicPageEditor_Conflict") });
         return;
       }
       if (error instanceof ApiError && error.code === "not-found") {
-        setNotice({ kind: "error", text: t("React_PublicPageEditor_NotFound") });
+        setFeedback({ kind: "error", text: t("React_PublicPageEditor_NotFound") });
         return;
       }
-      setNotice({
+      setFeedback({
         kind: "error",
         text: formatResource(t("React_PublicPageEditor_SaveError"), error.message),
       });
     },
   });
+  useAppToastOnChange(feedback?.text, feedback?.kind ?? "success");
   useUnsavedChanges(dirty && !save.isPending && !savedSlug);
   useEffect(() => {
     if (!savedSlug) return;
-    navigate(`/command/content/pages/${encodeURIComponent(savedSlug)}`, { replace: true });
+    navigate(`/command/content/pages/${encodeURIComponent(savedSlug)}`, {
+      replace: true,
+      state: { pageSaved: true },
+    });
   }, [navigate, savedSlug]);
 
   const nextVersion =
@@ -162,7 +168,7 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
     });
     form.setValue("heroImagePath", asset.imagePath, { shouldDirty: true });
     setPickerOpen(false);
-    setNotice({
+    setFeedback({
       kind: "success",
       text: t("Pages_Command_Content_PageGallerySelectedToast"),
     });
@@ -173,31 +179,26 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
     form.setValue("heroImagePath", "", { shouldDirty: true });
   };
   const submit = form.handleSubmit((nextValues) => {
-    setNotice(undefined);
+    setFeedback(undefined);
+    setValidationNotice(undefined);
     setStructuredInvalid(false);
     const payload = createPublicPageRevisionPayload(nextValues, isGdpr, gdprState, sourceRevision);
     if (isGdpr && gdprState.preserveLegacyMarkdown) {
       setStructuredInvalid(true);
-      setNotice({
-        kind: "error",
-        text: t("Pages_Command_Content_Gdpr_LegacyMarkdownSaveBlocked"),
-      });
+      setValidationNotice(t("Pages_Command_Content_Gdpr_LegacyMarkdownSaveBlocked"));
       document.getElementById("public-page-structured-editor")?.focus();
       return;
     }
     if (!payload.markdown?.trim() || payload.markdown.trim().length > 60_000) {
       setStructuredInvalid(isGdpr);
-      setNotice({ kind: "error", text: t("Pages_Command_Content_PageValidationMarkdown") });
+      setValidationNotice(t("Pages_Command_Content_PageValidationMarkdown"));
       if (isGdpr) document.getElementById("public-page-structured-editor")?.focus();
       else form.setFocus("markdown");
       return;
     }
     if ((payload.contentJson?.length ?? 0) > maximumStructuredContentLength) {
       setStructuredInvalid(true);
-      setNotice({
-        kind: "error",
-        text: t("Pages_Command_Content_Gdpr_ContentValidationTooLarge"),
-      });
+      setValidationNotice(t("Pages_Command_Content_Gdpr_ContentValidationTooLarge"));
       document.getElementById("public-page-structured-editor")?.focus();
       return;
     }
@@ -230,7 +231,7 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
         }
       />
 
-      {notice && <StatePanel kind={notice.kind}>{notice.text}</StatePanel>}
+      {validationNotice && <StatePanel kind="error">{validationNotice}</StatePanel>}
 
       <section
         className="command-panel public-page-editor-identity"

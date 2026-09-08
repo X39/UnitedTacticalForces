@@ -15,6 +15,7 @@ import type { ProfileSettings } from "@/api/types";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import { localReturnUrl, useAuth } from "@/auth/auth";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import {
   ConfirmDialog,
   PageHeader,
@@ -164,6 +165,11 @@ export function AccountSettingsPage() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.me });
     },
   });
+  useAppToastOnChange(saveSucceeded ? t("Pages_Settings_SaveSuccess") : undefined);
+  useAppToastOnChange(
+    save.isError ? formatResource(t("React_Settings_SaveError"), save.error.message) : undefined,
+    "error",
+  );
 
   const preview = useMemo(
     () => (settings ? avatarSource(settings, avatar) : undefined),
@@ -479,13 +485,6 @@ export function AccountSettingsPage() {
           </button>
         </footer>
       </form>
-
-      {save.isError && (
-        <StatePanel kind="error">
-          {formatResource(t("React_Settings_SaveError"), save.error.message)}
-        </StatePanel>
-      )}
-      {saveSucceeded && <StatePanel kind="success">{t("Pages_Settings_SaveSuccess")}</StatePanel>}
 
       <ConfirmDialog
         open={deleteConfirmation}

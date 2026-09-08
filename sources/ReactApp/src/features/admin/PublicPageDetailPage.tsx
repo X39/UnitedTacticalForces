@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManagePublicPages } from "@/auth/claims";
+import { useAppRouteToast, useAppToastOnChange } from "@/components/AppToasts";
 import { Markdown, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
 import {
   latestPublishedRevision,
@@ -24,6 +25,7 @@ export function Component() {
   const { t } = useTranslation();
   const { slug = "gdpr" } = useParams();
   const { user } = useAuth();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const canManagePages = canManagePublicPages(user);
   const queryKey = ["command-center", "public-pages", slug] as const;
@@ -33,16 +35,23 @@ export function Component() {
     enabled: canManagePages,
     retry: false,
   });
-  const [success, setSuccess] = useState(false);
   const publication = useMutation({
     mutationFn: ({ revisionId, publish }: { revisionId: number; publish: boolean }) =>
       setPublicPageRevisionPublished(revisionId, publish),
     onSuccess: async (page) => {
       queryClient.setQueryData(queryKey, page);
       await queryClient.invalidateQueries({ queryKey: ["command-center", "public-pages"] });
-      setSuccess(true);
     },
   });
+  useAppRouteToast(
+    canManagePages && (location.state as { pageSaved?: boolean } | null)?.pageSaved
+      ? t("Pages_Command_Content_PageToastSaved")
+      : undefined,
+  );
+  useAppToastOnChange(
+    publication.isSuccess ? t("Pages_Command_Content_PageToastPublicationUpdated") : undefined,
+  );
+  useAppToastOnChange(publication.isError ? publication.error.message : undefined, "error");
   const page = query.data;
   const activeRevision = page ? latestRevision(page) : undefined;
   const publishedRevision = page ? latestPublishedRevision(page) : undefined;
@@ -120,13 +129,6 @@ export function Component() {
           </Link>
         </StatePanel>
       )}
-      {publication.isError && <StatePanel kind="error">{publication.error.message}</StatePanel>}
-      {success && (
-        <StatePanel kind="success">
-          {t("Pages_Command_Content_PageToastPublicationUpdated")}
-        </StatePanel>
-      )}
-
       {page && (
         <div className="command-public-page-detail__grid">
           <section className="command-panel command-public-page-detail__preview">
@@ -222,13 +224,12 @@ export function Component() {
                       className="button button--ghost button--small"
                       type="button"
                       disabled={publication.isPending}
-                      onClick={() => {
-                        setSuccess(false);
+                      onClick={() =>
                         publication.mutate({
                           revisionId: revision.primaryKey,
                           publish: !revision.isPublished,
-                        });
-                      }}
+                        })
+                      }
                     >
                       {t(
                         revision.isPublished

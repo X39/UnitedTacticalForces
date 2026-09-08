@@ -6,6 +6,7 @@ import { resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageSiteImages } from "@/auth/claims";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import { PageHeader, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
 import { GalleryAssetPicker } from "@/features/admin/GalleryAssetPicker";
 import {
@@ -51,6 +52,7 @@ export function Component() {
   });
   const dirty = Object.keys(selectedAssets).length > 0;
   useUnsavedChanges(dirty && !save.isPending);
+  useAppToastOnChange(success ? t("Pages_Command_SiteImages_SavedToast") : undefined);
   const groupLabel = t(siteImageGroups.find(([key]) => key === group)![1]);
   const resetPending = () => {
     setSelectedAssets({});
@@ -121,10 +123,6 @@ export function Component() {
         </StatePanel>
       )}
       {save.isError && <StatePanel kind="error">{save.error.message}</StatePanel>}
-      {success && (
-        <StatePanel kind="success">{t("Pages_Command_SiteImages_SavedToast")}</StatePanel>
-      )}
-
       {query.data && query.data.length === 0 && (
         <StatePanel kind="empty" title={t("Pages_Command_SiteImages_EmptyTitle")}>
           {t("Pages_Command_SiteImages_EmptyDescription")}

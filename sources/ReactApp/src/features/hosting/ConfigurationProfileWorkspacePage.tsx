@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation, useParams, useSearchParams } from "react-router";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
+import { useAppRouteToast, useAppToastOnChange } from "@/components/AppToasts";
 import { ConfirmDialog, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
 import { getHostingPermissions } from "@/features/hosting/authorization";
 import {
@@ -41,9 +42,7 @@ export function ConfigurationProfileWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [issues, setIssues] = useState<ConfigurationValidationIssue[]>([]);
-  const [message, setMessage] = useState<string | undefined>(
-    (location.state as { message?: string } | null)?.message,
-  );
+  const [message, setMessage] = useState<string>();
   const [archiveOpen, setArchiveOpen] = useState(false);
   const profile = useQuery({
     queryKey: hostingQueryKeys.profile(profileId),
@@ -88,6 +87,8 @@ export function ConfigurationProfileWorkspacePage() {
       (baseDraft[definition.key] ?? ""),
   ).length;
   useUnsavedChanges(dirty);
+  useAppRouteToast((location.state as { message?: string } | null)?.message);
+  useAppToastOnChange(message);
 
   useEffect(() => {
     if (profile.data && tabRequest === "access" && !profile.data.canManageAccess) {
@@ -233,7 +234,6 @@ export function ConfigurationProfileWorkspacePage() {
           {operationError.message}
         </StatePanel>
       )}
-      {message && <StatePanel kind="success">{message}</StatePanel>}
       <nav
         className="next-hosting-profile-tabs"
         role="tablist"

@@ -7,6 +7,7 @@ import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinMemberships } from "@/auth/claims";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import {
   Metric,
   PageHeader,
@@ -176,6 +177,12 @@ export function Component() {
       );
     },
   });
+  useAppToastOnChange(
+    transition.isSuccess
+      ? t("Pages_Command_Verein_MembershipRequests_TransitionSuccess")
+      : undefined,
+  );
+  useAppToastOnChange(commandError, "error");
 
   const applySearch = (event: FormEvent) => {
     event.preventDefault();
@@ -425,13 +432,6 @@ export function Component() {
                     {t(statusLabels[selected.status])}
                   </StatusBadge>
                 </header>
-
-                {transition.isSuccess && (
-                  <StatePanel kind="success">
-                    {t("Pages_Command_Verein_MembershipRequests_TransitionSuccess")}
-                  </StatePanel>
-                )}
-                {commandError && <StatePanel kind="error">{commandError}</StatePanel>}
 
                 <dl className="verein-membership-request-meta">
                   <div>

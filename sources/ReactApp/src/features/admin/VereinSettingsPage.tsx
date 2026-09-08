@@ -9,6 +9,7 @@ import { queryKeys } from "@/api/services";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinMemberships } from "@/auth/claims";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import { PageHeader, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
 import {
   createVereinSettingsPayload,
@@ -95,6 +96,7 @@ export function Component() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.vereinSettings });
     },
   });
+  useAppToastOnChange(save.isSuccess ? t("Pages_Command_Verein_SettingsSavedToast") : undefined);
   const values = useWatch({ control: form.control });
   const monthly = parseContributionAmount(values.monthlyAmount ?? "");
   const annual = parseContributionAmount(values.annualAmount ?? "");
@@ -152,9 +154,6 @@ export function Component() {
         </StatePanel>
       ) : (
         <>
-          {save.isSuccess && (
-            <StatePanel kind="success">{t("Pages_Command_Verein_SettingsSavedToast")}</StatePanel>
-          )}
           {save.isError && <StatePanel kind="error">{save.error.message}</StatePanel>}
           <div className="verein-settings-admin-workspace">
             <form

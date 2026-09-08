@@ -12,6 +12,7 @@ import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageGallery } from "@/auth/claims";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import { PageHeader, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
 import {
   loadMediaAssetPage,
@@ -108,9 +109,11 @@ export function Component() {
     selectedAsset && !mediaAssetTagsEqual(tagEditorValue, selectedAsset.tags),
   );
   useUnsavedChanges(tagDirty);
+  useAppToastOnChange(notice?.text, notice?.tone ?? "success");
 
   const upload = useMutation({
     mutationFn: (file: File) => uploadMediaAsset(file, parseMediaAssetTags(uploadTags)),
+    onMutate: () => setNotice(undefined),
     onSuccess: async (asset) => {
       queryClient.setQueryData<InfiniteData<MediaAsset[], number>>(queryKey, (current) =>
         upsertAsset(current, asset),
@@ -131,6 +134,7 @@ export function Component() {
   const saveTags = useMutation({
     mutationFn: ({ assetId, tags }: { assetId: string; tags: string[] }) =>
       replaceMediaAssetTags(assetId, tags),
+    onMutate: () => setNotice(undefined),
     onSuccess: async (asset) => {
       queryClient.setQueryData<InfiniteData<MediaAsset[], number>>(queryKey, (current) =>
         upsertAsset(current, asset),
@@ -183,6 +187,7 @@ export function Component() {
   };
   const copyReference = async () => {
     if (!selectedAsset) return;
+    setNotice(undefined);
     try {
       await navigator.clipboard.writeText(selectedAsset.imagePath);
       setNotice({ tone: "success", text: t("Pages_Command_Gallery_CopiedReference") });
@@ -232,7 +237,6 @@ export function Component() {
         }
       />
 
-      {notice && <StatePanel kind={notice.tone}>{notice.text}</StatePanel>}
       <form
         className="toolbar media-gallery-toolbar"
         aria-label={t("Pages_Command_Gallery_FilterAria")}

@@ -5,6 +5,7 @@ import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import {
   ConfirmDialog,
   PageHeader,
@@ -147,6 +148,8 @@ export function HostingFinancePage() {
   const [confirmation, setConfirmation] = useState<Confirmation>();
   const [feedbackError, setFeedbackError] = useState<TranslationKey>();
   const [feedbackSuccess, setFeedbackSuccess] = useState<TranslationKey>();
+  useAppToastOnChange(feedbackSuccess ? t(feedbackSuccess) : undefined);
+  useAppToastOnChange(feedbackError ? t(feedbackError) : undefined, "error");
 
   const policy = useQuery({
     queryKey: financeQueryKeys.policy,
@@ -518,12 +521,6 @@ export function HostingFinancePage() {
               {t(financeErrorTranslationKey(policy.error ?? owners.error))}
             </StatePanel>
           )}
-          {feedbackError && (
-            <p className="next-hosting-inline-error" role="alert">
-              {t(feedbackError)}
-            </p>
-          )}
-          {feedbackSuccess && <StatePanel kind="success">{t(feedbackSuccess)}</StatePanel>}
           <section className="next-hosting-panel" aria-labelledby="finance-policy-title">
             <header className="next-hosting-section-heading">
               <div>

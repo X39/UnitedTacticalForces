@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach } from "vitest";
 import type { FullUser } from "@/api/types";
 import i18n, { i18nReady } from "@/app/i18n";
+import { AppToastProvider } from "@/components/AppToasts";
 import { Component as VereinDocumentDetailPage } from "@/features/admin/VereinDocumentDetailPage";
 import { Component as VereinDocumentEditorPage } from "@/features/admin/VereinDocumentEditorPage";
 import { Component as VereinDocumentsPage } from "@/features/admin/VereinDocumentsPage";
@@ -86,7 +87,9 @@ function renderPage(initialEntry: string) {
   return render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <AppToastProvider>
+          <RouterProvider router={router} />
+        </AppToastProvider>
       </QueryClientProvider>
     </I18nextProvider>,
   );
@@ -223,6 +226,8 @@ describe("Verein document administration", () => {
     await waitFor(() =>
       expect(vereinDocuments.setVereinRevisionPublished).toHaveBeenCalledWith(71, true),
     );
-    expect(await screen.findByText("Publication state updated.")).toBeVisible();
+    const toast = await screen.findByRole("status");
+    expect(toast).toHaveClass("app-toast");
+    expect(toast).toHaveTextContent("Publication state updated.");
   });
 });

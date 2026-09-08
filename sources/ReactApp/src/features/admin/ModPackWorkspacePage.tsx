@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import {
   ConfirmDialog,
   Metric,
@@ -99,7 +100,6 @@ export function Component() {
   const [replacementHtml, setReplacementHtml] = useState("");
   const [replacementHtmlFileName, setReplacementHtmlFileName] = useState("");
   const [selectedOverride, setSelectedOverride] = useState<FullModPackDefinition[]>();
-  const [successMessage, setSuccessMessage] = useState<string>();
   const [fileError, setFileError] = useState<string>();
   const [dangerOpen, setDangerOpen] = useState(false);
   const editTitle = editTitleOverride ?? workspace?.definition.title ?? "";
@@ -146,7 +146,6 @@ export function Component() {
             html: replacementHtml || null,
           }),
     onSuccess: async () => {
-      setSuccessMessage(t("Auto_ModPackChangesWereSaved_fcb4be49"));
       setEditTitleOverride(undefined);
       setSelectedOverride(undefined);
       setReplacementHtml("");
@@ -174,6 +173,19 @@ export function Component() {
       URL.revokeObjectURL(url);
     },
   });
+  useAppToastOnChange(
+    updateMutation.isSuccess ? t("Auto_ModPackChangesWereSaved_fcb4be49") : undefined,
+  );
+  useAppToastOnChange(
+    updateMutation.isError
+      ? t("Auto_ModPackChangesCouldNotBeSavedCheckThe_11fc0ea1")
+      : deactivateMutation.isError
+        ? t("Auto_ModPackCouldNotBeDeactivatedRetryFromThe_3003a328")
+        : downloadMutation.isError
+          ? t("Pages_Events_Detail_Error_Download")
+          : undefined,
+    "error",
+  );
   const readReplacementHtml = async (file: File | undefined) => {
     setFileError(undefined);
     if (!file) return;
@@ -185,7 +197,6 @@ export function Component() {
     }
     setReplacementHtml(await file.text());
     setReplacementHtmlFileName(file.name);
-    setSuccessMessage(undefined);
   };
   const resetEditState = () => {
     if (!workspace) return;
@@ -250,23 +261,12 @@ export function Component() {
         }
       />
 
-      {(query.isError ||
-        updateMutation.isError ||
-        deactivateMutation.isError ||
-        downloadMutation.isError) && (
+      {query.isError && (
         <StatePanel kind="error">
-          {query.isError
-            ? formatResource(t("Auto_FailedToLoadModPack_8b2eb217"), routeId, "")
-            : updateMutation.isError
-              ? t("Auto_ModPackChangesCouldNotBeSavedCheckThe_11fc0ea1")
-              : deactivateMutation.isError
-                ? t("Auto_ModPackCouldNotBeDeactivatedRetryFromThe_3003a328")
-                : t("Pages_Events_Detail_Error_Download")}
+          {formatResource(t("Auto_FailedToLoadModPack_8b2eb217"), routeId, "")}
         </StatePanel>
       )}
       {fileError && <StatePanel kind="warning">{fileError}</StatePanel>}
-      {successMessage && <StatePanel kind="success">{successMessage}</StatePanel>}
-
       <section className="command-panel modpack-workspace">
         {workspace && (
           <>

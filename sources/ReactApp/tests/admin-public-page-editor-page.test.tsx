@@ -7,6 +7,7 @@ import { beforeEach } from "vitest";
 import { initializeApiClient } from "@/api/client";
 import type { PublicConfiguration } from "@/app/config";
 import i18n, { i18nReady } from "@/app/i18n";
+import { AppToastProvider } from "@/components/AppToasts";
 import { Component as PublicPageEditorPage } from "@/features/admin/PublicPageEditorPage";
 
 vi.mock("@/auth/auth", () => ({
@@ -72,7 +73,9 @@ function renderPage() {
   return render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <AppToastProvider>
+          <RouterProvider router={router} />
+        </AppToastProvider>
       </QueryClientProvider>
     </I18nextProvider>,
   );
@@ -142,5 +145,34 @@ describe("certified public-page editor workflow", () => {
     expect(await screen.findByRole("heading", { name: "Operations bearbeiten" })).toBeVisible();
     expect(screen.getByLabelText("Revisionskommentar")).toBeVisible();
     expect(screen.getByRole("button", { name: "Revision speichern" })).toBeVisible();
+  });
+
+  it("shows failed revision saves as non-blocking toasts", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(existingPage()), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: "The revision could not be stored." }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Edit Operations" });
+    await user.type(screen.getByLabelText("Revision comment"), "Retry this revision");
+    await user.click(screen.getByRole("button", { name: "Save revision" }));
+
+    const toast = await screen.findByRole("alert");
+    expect(toast).toHaveClass("app-toast");
+    expect(toast).toHaveTextContent(/public page revision could not be saved/i);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

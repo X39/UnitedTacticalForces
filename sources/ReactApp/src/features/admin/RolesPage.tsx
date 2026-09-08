@@ -6,6 +6,7 @@ import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canCreateRoles, canManageAuthority } from "@/auth/claims";
 import { CommandListToolbar } from "@/components/CommandListToolbar";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import {
   Metric,
   PageHeader,
@@ -84,6 +85,7 @@ export function Component() {
       await queryClient.invalidateQueries({ queryKey: ["command-center", "authority-snapshot"] });
     },
   });
+  useAppToastOnChange(created ? t("Pages_Command_Roles_CreateSuccess") : undefined);
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
     setSearch(searchDraft.trim());
@@ -139,8 +141,6 @@ export function Component() {
           </>
         }
       />
-
-      {created && <StatePanel kind="success">{t("Pages_Command_Roles_CreateSuccess")}</StatePanel>}
 
       <section
         className="command-metrics authority-metrics"

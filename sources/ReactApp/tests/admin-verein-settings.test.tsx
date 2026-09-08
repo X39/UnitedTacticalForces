@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach } from "vitest";
 import type { FullUser } from "@/api/types";
 import i18n, { i18nReady } from "@/app/i18n";
+import { AppToastProvider } from "@/components/AppToasts";
 import { Component as VereinSettingsPage } from "@/features/admin/VereinSettingsPage";
 import {
   createVereinSettingsPayload,
@@ -54,7 +55,9 @@ function renderPage() {
   return render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <AppToastProvider>
+          <RouterProvider router={router} />
+        </AppToastProvider>
       </QueryClientProvider>
     </I18nextProvider>,
   );
@@ -132,7 +135,8 @@ describe("Verein contribution settings", () => {
         membershipContributionPublicTextEn: "English notice",
       }),
     );
-    expect(await screen.findByText("Verein settings saved.")).toBeVisible();
+    const toast = (await screen.findByText("Verein settings saved.")).closest('[role="status"]');
+    expect(toast).toHaveClass("app-toast");
   });
 
   it("localizes paired-amount validation", async () => {

@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach } from "vitest";
 import type { FullUser } from "@/api/types";
 import i18n, { i18nReady } from "@/app/i18n";
+import { AppToastProvider } from "@/components/AppToasts";
 import { Component as MembershipRequestsPage } from "@/features/admin/VereinMembershipRequestsPage";
 import {
   createMembershipTransition,
@@ -82,7 +83,9 @@ function renderPage() {
   return render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <AppToastProvider>
+          <RouterProvider router={router} />
+        </AppToastProvider>
       </QueryClientProvider>
     </I18nextProvider>,
   );
@@ -179,7 +182,10 @@ describe("Verein membership request administration", () => {
         notes: "Welcome pack pending",
       }),
     );
-    expect(await within(detail).findByText("Membership request updated.")).toBeVisible();
+    const toast = (await screen.findByText("Membership request updated.")).closest(
+      '[role="status"]',
+    );
+    expect(toast).toHaveClass("app-toast");
     expect(within(detail).getByText("Approved")).toBeVisible();
   });
 });

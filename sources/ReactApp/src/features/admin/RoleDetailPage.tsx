@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageAuthority } from "@/auth/claims";
+import { useAppToastOnChange } from "@/components/AppToasts";
 import {
   ConfirmDialog,
   PageHeader,
@@ -118,6 +119,11 @@ export function Component() {
       setRoleMember(roleId, userId, active),
     onSuccess: invalidate,
   });
+  useAppToastOnChange(saveMutation.isSuccess ? t("Pages_Command_Roles_SaveSuccess") : undefined);
+  useAppToastOnChange(claimMutation.isSuccess ? t("Pages_Command_Roles_ClaimsSaved") : undefined);
+  useAppToastOnChange(
+    memberMutation.isSuccess ? t("Pages_Command_Member_AuthoritySaved") : undefined,
+  );
 
   const claimRows = useMemo(() => {
     const assignedClaimIds = new Set(role?.claims.flatMap((claim) => claim.primaryKey ?? []) ?? []);
@@ -207,15 +213,6 @@ export function Component() {
           </>
         }
       />
-      {saveMutation.isSuccess && (
-        <StatePanel kind="success">{t("Pages_Command_Roles_SaveSuccess")}</StatePanel>
-      )}
-      {claimMutation.isSuccess && (
-        <StatePanel kind="success">{t("Pages_Command_Roles_ClaimsSaved")}</StatePanel>
-      )}
-      {memberMutation.isSuccess && (
-        <StatePanel kind="success">{t("Pages_Command_Member_AuthoritySaved")}</StatePanel>
-      )}
       {(claimMutation.isError || memberMutation.isError || deleteMutation.isError) && (
         <StatePanel kind="error">
           {formatResource(
