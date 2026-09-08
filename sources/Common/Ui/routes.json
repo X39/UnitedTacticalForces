@@ -308,6 +308,22 @@
       "shell": "command"
     },
     {
+      "id": "configuration-profile-create",
+      "canonical": "/command/configuration-profiles/create",
+      "classicFallback": "/command/configuration-profiles",
+      "aliases": [],
+      "certified": true,
+      "shell": "command"
+    },
+    {
+      "id": "configuration-profile",
+      "canonical": "/command/configuration-profiles/{ProfileId:guid}",
+      "classicFallback": "/command/configuration-profiles",
+      "aliases": [],
+      "certified": true,
+      "shell": "command"
+    },
+    {
       "id": "server-create",
       "canonical": "/command/servers/create",
       "aliases": [],

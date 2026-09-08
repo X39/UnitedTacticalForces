@@ -5,19 +5,20 @@ default at `/`, and the React deployment does not replace or redirect the classi
 
 ## Release boundary
 
-`sources/Common/Ui/routes.json` is the neutral route manifest. It contains every canonical and legacy Blazor route
-pattern and records whether a route has completed the React parity checklist. Both clients consume the same file:
+`sources/Common/Ui/routes.json` is the neutral route manifest. It contains every canonical and legacy Blazor route,
+plus React-only routes with an explicit classic fallback, and records whether a route has completed the React parity
+checklist. Both clients consume the same file:
 
 - Blazor only renders **Try new UI** when the current route is certified.
 - React renders every known route. Unknown paths remain a React 404 and are not redirected to an unrelated classic
   route.
 
-Certification is deliberately conservative. The beta now certifies all 76 canonical and legacy route patterns. That
-includes the public and member workflows, events and slotting, Wiki and published content, account and Verein flows,
-the complete permission-filtered Command Center, event/mod-pack/terrain/content/member/role administration,
-Kassenbuch and document governance, server fleet and creation, configuration profiles, hosting finance, and the full
-server workspace. The classic application remains deployed as the manual rollback variant rather than as a route-level
-fallback.
+Certification is deliberately conservative. The beta now certifies all 76 canonical and legacy Blazor route patterns
+and two React-only configuration-profile routes with an explicit classic fallback. That includes the public and member
+workflows, events and slotting, Wiki and published content, account and Verein flows, the complete permission-filtered
+Command Center, event/mod-pack/terrain/content/member/role administration, Kassenbuch and document governance,
+server fleet and creation, configuration profiles, hosting finance, and the full server workspace. The classic
+application remains deployed as the manual rollback variant rather than as a route-level fallback.
 
 The manifest remains the release contract. A future route must not be marked certified until reads, mutations,
 authorization, aliases, polling, loading/empty/error states, localization, accessibility, and cross-variant data

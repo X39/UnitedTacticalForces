@@ -15429,6 +15429,41 @@ Start writing here.</value>
   <data name="HostingFinance_ReversedEntry" xml:space="preserve"><value>Reversed ledger-entry ID</value></data>
   <data name="HostingFinance_ReverseEntry" xml:space="preserve"><value>Reverse entry</value></data>
   <data name="Hosting_ConfigurationProfiles_Title" xml:space="preserve"><value>Configuration profiles</value></data>
+  <data name="React_ConfigurationProfiles_AccessTab" xml:space="preserve"><value>Access</value></data>
+  <data name="React_ConfigurationProfiles_ActiveProfiles" xml:space="preserve"><value>Active profiles</value></data>
+  <data name="React_ConfigurationProfiles_AllGames" xml:space="preserve"><value>All games</value></data>
+  <data name="React_ConfigurationProfiles_AllStatuses" xml:space="preserve"><value>All statuses</value></data>
+  <data name="React_ConfigurationProfiles_ArchivedProfiles" xml:space="preserve"><value>Archived profiles</value></data>
+  <data name="React_ConfigurationProfiles_BackToProfiles" xml:space="preserve"><value>Back to profiles</value></data>
+  <data name="React_ConfigurationProfiles_BasicsDescription" xml:space="preserve"><value>Name the profile and choose the game whose configuration schema it will use.</value></data>
+  <data name="React_ConfigurationProfiles_ChangeCount" xml:space="preserve"><value>{0} unsaved change(s)</value></data>
+  <data name="React_ConfigurationProfiles_ChangeGameWarning" xml:space="preserve"><value>Changing the game discards the configuration values already entered. Continue?</value></data>
+  <data name="React_ConfigurationProfiles_ConfigurationTab" xml:space="preserve"><value>Configuration</value></data>
+  <data name="React_ConfigurationProfiles_Configured" xml:space="preserve"><value>Configured securely</value></data>
+  <data name="React_ConfigurationProfiles_DiscardChanges" xml:space="preserve"><value>Discard changes</value></data>
+  <data name="React_ConfigurationProfiles_LibrarySummary" xml:space="preserve"><value>Configuration profile library summary</value></data>
+  <data name="React_ConfigurationProfiles_Next" xml:space="preserve"><value>Next: configuration</value></data>
+  <data name="React_ConfigurationProfiles_NoMatchesDescription" xml:space="preserve"><value>Adjust the search term or filters to show more profiles.</value></data>
+  <data name="React_ConfigurationProfiles_NoMatchesTitle" xml:space="preserve"><value>No profiles match these filters</value></data>
+  <data name="React_ConfigurationProfiles_OpenProfile" xml:space="preserve"><value>Open profile</value></data>
+  <data name="React_ConfigurationProfiles_Previous" xml:space="preserve"><value>Previous step</value></data>
+  <data name="React_ConfigurationProfiles_ProfileSections" xml:space="preserve"><value>Profile sections</value></data>
+  <data name="React_ConfigurationProfiles_ReviewDescription" xml:space="preserve"><value>Review the baseline that will become immutable revision 1.</value></data>
+  <data name="React_ConfigurationProfiles_ReviewProfile" xml:space="preserve"><value>Review profile</value></data>
+  <data name="React_ConfigurationProfiles_RevisionsTab" xml:space="preserve"><value>Revisions</value></data>
+  <data name="React_ConfigurationProfiles_Search" xml:space="preserve"><value>Search profiles</value></data>
+  <data name="React_ConfigurationProfiles_SearchPlaceholder" xml:space="preserve"><value>Search by profile or game</value></data>
+  <data name="React_ConfigurationProfiles_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="React_ConfigurationProfiles_StepCount" xml:space="preserve"><value>Step {0} of {1}</value></data>
+  <data name="React_ConfigurationProfiles_StepOne" xml:space="preserve"><value>Step 1</value></data>
+  <data name="React_ConfigurationProfiles_StepThree" xml:space="preserve"><value>Step 3</value></data>
+  <data name="React_ConfigurationProfiles_StepTwo" xml:space="preserve"><value>Step 2</value></data>
+  <data name="React_ConfigurationProfiles_TotalProfiles" xml:space="preserve"><value>Total profiles</value></data>
+  <data name="React_ConfigurationProfiles_UnsavedChanges" xml:space="preserve"><value>Unpublished profile changes</value></data>
+  <data name="React_ConfigurationProfiles_WizardBasics" xml:space="preserve"><value>Basics</value></data>
+  <data name="React_ConfigurationProfiles_WizardConfiguration" xml:space="preserve"><value>Configuration</value></data>
+  <data name="React_ConfigurationProfiles_WizardProgress" xml:space="preserve"><value>Profile creation progress</value></data>
+  <data name="React_ConfigurationProfiles_WizardReview" xml:space="preserve"><value>Review</value></data>
   <data name="Hosting_ConfigurationProfiles_Description" xml:space="preserve"><value>Create reusable game-server settings, publish immutable revisions, and control who may use or maintain them.</value></data>
   <data name="Hosting_ConfigurationProfiles_Loading" xml:space="preserve"><value>Loading configuration profiles…</value></data>
   <data name="Hosting_ConfigurationProfiles_LoadError" xml:space="preserve"><value>Configuration profiles could not be loaded: {0}</value></data>

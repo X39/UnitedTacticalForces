@@ -474,6 +474,20 @@ const commandRouteDefinitions: { manifestPattern: string; route: RouteObject }[]
     },
   },
   {
+    manifestPattern: "/command/configuration-profiles/create",
+    route: {
+      path: "configuration-profiles/create",
+      lazy: lazyComponent(() => import("@/features/hosting"), "ConfigurationProfileCreatePage"),
+    },
+  },
+  {
+    manifestPattern: "/command/configuration-profiles/{ProfileId:guid}",
+    route: {
+      path: "configuration-profiles/:profileId",
+      lazy: lazyComponent(() => import("@/features/hosting"), "ConfigurationProfileWorkspacePage"),
+    },
+  },
+  {
     manifestPattern: "/command/hosting-finance",
     route: {
       path: "hosting-finance",

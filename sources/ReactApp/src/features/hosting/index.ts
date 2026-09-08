@@ -3,6 +3,8 @@ import "@/features/hosting/hosting.css";
 export * from "@/features/hosting/authorization";
 export * from "@/features/hosting/components";
 export * from "@/features/hosting/ConfigurationProfilesPage";
+export * from "@/features/hosting/ConfigurationProfileCreatePage";
+export * from "@/features/hosting/ConfigurationProfileWorkspacePage";
 export * from "@/features/hosting/CreateServerPage";
 export * from "@/features/hosting/FleetPages";
 export * from "@/features/hosting/HostingFinancePage";

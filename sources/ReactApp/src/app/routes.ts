@@ -4,6 +4,7 @@ export type AppShell = "community" | "command";
 export interface RouteManifestEntry {
   id: string;
   canonical: string;
+  classicFallback?: string;
   aliases: string[];
   certified: boolean;
   shell: AppShell;
@@ -61,6 +62,8 @@ export function currentClassicUrl(): string {
     : window.location.pathname === base
       ? "/"
       : window.location.pathname;
+  const route = matchRoute(classicPath || "/");
+  if (route?.classicFallback) return route.classicFallback;
   return `${classicPath || "/"}${window.location.search}${window.location.hash}`;
 }
 

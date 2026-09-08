@@ -15406,6 +15406,41 @@ Beginne hier mit dem Schreiben.</value>
   <data name="HostingFinance_ReversedEntry" xml:space="preserve"><value>Stornierte Buchungs-ID</value></data>
   <data name="HostingFinance_ReverseEntry" xml:space="preserve"><value>Buchung stornieren</value></data>
   <data name="Hosting_ConfigurationProfiles_Title" xml:space="preserve"><value>Konfigurationsprofile</value></data>
+  <data name="React_ConfigurationProfiles_AccessTab" xml:space="preserve"><value>Zugriff</value></data>
+  <data name="React_ConfigurationProfiles_ActiveProfiles" xml:space="preserve"><value>Aktive Profile</value></data>
+  <data name="React_ConfigurationProfiles_AllGames" xml:space="preserve"><value>Alle Spiele</value></data>
+  <data name="React_ConfigurationProfiles_AllStatuses" xml:space="preserve"><value>Alle Status</value></data>
+  <data name="React_ConfigurationProfiles_ArchivedProfiles" xml:space="preserve"><value>Archivierte Profile</value></data>
+  <data name="React_ConfigurationProfiles_BackToProfiles" xml:space="preserve"><value>Zurück zu den Profilen</value></data>
+  <data name="React_ConfigurationProfiles_BasicsDescription" xml:space="preserve"><value>Benenne das Profil und wähle das Spiel aus, dessen Konfigurationsschema verwendet wird.</value></data>
+  <data name="React_ConfigurationProfiles_ChangeCount" xml:space="preserve"><value>{0} ungespeicherte Änderung(en)</value></data>
+  <data name="React_ConfigurationProfiles_ChangeGameWarning" xml:space="preserve"><value>Beim Wechsel des Spiels werden die bereits eingegebenen Konfigurationswerte verworfen. Fortfahren?</value></data>
+  <data name="React_ConfigurationProfiles_ConfigurationTab" xml:space="preserve"><value>Konfiguration</value></data>
+  <data name="React_ConfigurationProfiles_Configured" xml:space="preserve"><value>Sicher konfiguriert</value></data>
+  <data name="React_ConfigurationProfiles_DiscardChanges" xml:space="preserve"><value>Änderungen verwerfen</value></data>
+  <data name="React_ConfigurationProfiles_LibrarySummary" xml:space="preserve"><value>Zusammenfassung der Konfigurationsprofilbibliothek</value></data>
+  <data name="React_ConfigurationProfiles_Next" xml:space="preserve"><value>Weiter: Konfiguration</value></data>
+  <data name="React_ConfigurationProfiles_NoMatchesDescription" xml:space="preserve"><value>Passe den Suchbegriff oder die Filter an, um weitere Profile anzuzeigen.</value></data>
+  <data name="React_ConfigurationProfiles_NoMatchesTitle" xml:space="preserve"><value>Keine Profile entsprechen diesen Filtern</value></data>
+  <data name="React_ConfigurationProfiles_OpenProfile" xml:space="preserve"><value>Profil öffnen</value></data>
+  <data name="React_ConfigurationProfiles_Previous" xml:space="preserve"><value>Vorheriger Schritt</value></data>
+  <data name="React_ConfigurationProfiles_ProfileSections" xml:space="preserve"><value>Profilbereiche</value></data>
+  <data name="React_ConfigurationProfiles_ReviewDescription" xml:space="preserve"><value>Prüfe die Ausgangskonfiguration, die als unveränderliche Revision 1 veröffentlicht wird.</value></data>
+  <data name="React_ConfigurationProfiles_ReviewProfile" xml:space="preserve"><value>Profil prüfen</value></data>
+  <data name="React_ConfigurationProfiles_RevisionsTab" xml:space="preserve"><value>Revisionen</value></data>
+  <data name="React_ConfigurationProfiles_Search" xml:space="preserve"><value>Profile durchsuchen</value></data>
+  <data name="React_ConfigurationProfiles_SearchPlaceholder" xml:space="preserve"><value>Nach Profil oder Spiel suchen</value></data>
+  <data name="React_ConfigurationProfiles_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="React_ConfigurationProfiles_StepCount" xml:space="preserve"><value>Schritt {0} von {1}</value></data>
+  <data name="React_ConfigurationProfiles_StepOne" xml:space="preserve"><value>Schritt 1</value></data>
+  <data name="React_ConfigurationProfiles_StepThree" xml:space="preserve"><value>Schritt 3</value></data>
+  <data name="React_ConfigurationProfiles_StepTwo" xml:space="preserve"><value>Schritt 2</value></data>
+  <data name="React_ConfigurationProfiles_TotalProfiles" xml:space="preserve"><value>Profile insgesamt</value></data>
+  <data name="React_ConfigurationProfiles_UnsavedChanges" xml:space="preserve"><value>Unveröffentlichte Profiländerungen</value></data>
+  <data name="React_ConfigurationProfiles_WizardBasics" xml:space="preserve"><value>Grundlagen</value></data>
+  <data name="React_ConfigurationProfiles_WizardConfiguration" xml:space="preserve"><value>Konfiguration</value></data>
+  <data name="React_ConfigurationProfiles_WizardProgress" xml:space="preserve"><value>Fortschritt der Profilerstellung</value></data>
+  <data name="React_ConfigurationProfiles_WizardReview" xml:space="preserve"><value>Prüfen</value></data>
   <data name="Hosting_ConfigurationProfiles_Description" xml:space="preserve"><value>Wiederverwendbare Spielserver-Einstellungen erstellen, unveränderliche Revisionen veröffentlichen und Zugriffe verwalten.</value></data>
   <data name="Hosting_ConfigurationProfiles_Loading" xml:space="preserve"><value>Konfigurationsprofile werden geladen…</value></data>
   <data name="Hosting_ConfigurationProfiles_LoadError" xml:space="preserve"><value>Konfigurationsprofile konnten nicht geladen werden: {0}</value></data>

@@ -23,12 +23,11 @@ function collectBlazorRoutes(directory: string): string[] {
 }
 
 describe("route manifest", () => {
-  it("describes every existing Blazor route pattern", () => {
-    expect(countRoutePatterns()).toBe(76);
-    const manifestRoutes = routeManifest.routes.flatMap((route) => [
-      route.canonical,
-      ...route.aliases,
-    ]);
+  it("describes every existing Blazor route and marks React-only fallbacks", () => {
+    expect(countRoutePatterns()).toBe(78);
+    const manifestRoutes = routeManifest.routes
+      .filter((route) => !route.classicFallback)
+      .flatMap((route) => [route.canonical, ...route.aliases]);
     const blazorRoutes = collectBlazorRoutes(resolve(process.cwd(), "..", "WebApp", "Pages"));
     expect(new Set(manifestRoutes)).toEqual(new Set(blazorRoutes));
     expect(manifestRoutes).toHaveLength(new Set(manifestRoutes).size);
@@ -91,6 +90,10 @@ describe("route manifest", () => {
     expect(matchRoute("/command/servers")?.certified).toBe(true);
     expect(matchRoute("/command/hosting-finance")?.certified).toBe(true);
     expect(matchRoute("/command/configuration-profiles")?.certified).toBe(true);
+    expect(matchRoute("/command/configuration-profiles/create")?.certified).toBe(true);
+    expect(
+      matchRoute("/command/configuration-profiles/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f")?.certified,
+    ).toBe(true);
     expect(matchRoute("/command/servers/create")?.certified).toBe(true);
     expect(matchRoute("/command/servers/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f")?.certified).toBe(
       true,

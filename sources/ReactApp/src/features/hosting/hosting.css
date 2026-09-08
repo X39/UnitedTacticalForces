@@ -37,7 +37,6 @@
 .next-hosting-dashboard-grid,
 .next-hosting-workspace-grid,
 .next-hosting-form-grid,
-.next-hosting-profile-workspace,
 .next-hosting-finance-workspace {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
@@ -247,8 +246,7 @@
 }
 
 .next-hosting-form,
-.next-hosting-estimate,
-.next-hosting-profile-editor {
+.next-hosting-estimate {
   display: grid;
   gap: 1rem;
 }
@@ -352,7 +350,6 @@
 }
 
 .next-hosting-form .field,
-.next-hosting-profile-editor .field,
 .next-hosting-policy-fields .field,
 .next-hosting-owner-browser .field {
   display: grid;
@@ -362,9 +359,6 @@
 .next-hosting-form input,
 .next-hosting-form select,
 .next-hosting-form textarea,
-.next-hosting-profile-editor input,
-.next-hosting-profile-editor select,
-.next-hosting-profile-editor textarea,
 .next-hosting-policy-fields input,
 .next-hosting-owner-browser input {
   width: 100%;
@@ -391,25 +385,21 @@
   justify-content: flex-end;
 }
 
-.next-hosting-profile-workspace,
 .next-hosting-finance-workspace {
   grid-template-columns: minmax(17rem, 0.8fr) minmax(0, 2fr);
 }
 
-.next-hosting-profile-browser,
 .next-hosting-owner-browser {
   position: sticky;
   top: 1rem;
 }
 
-.next-hosting-profile-list,
 .next-hosting-owner-list {
   display: grid;
   gap: 0.45rem;
   margin-top: 1rem;
 }
 
-.next-hosting-profile-list button,
 .next-hosting-owner-list button {
   display: flex;
   justify-content: space-between;
@@ -423,13 +413,11 @@
   text-align: left;
 }
 
-.next-hosting-profile-list button[aria-selected="true"],
 .next-hosting-owner-list button[aria-selected="true"] {
   border-color: #c4a95d;
   background: rgb(196 169 93 / 12%);
 }
 
-.next-hosting-profile-list button span,
 .next-hosting-owner-list button span {
   display: grid;
   gap: 0.2rem;
@@ -595,6 +583,299 @@
   padding-left: 0.55rem;
   border: 1px solid #344255;
   border-radius: 999px;
+}
+
+.next-hosting-profile-library-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.next-hosting-profile-library-metrics .metric {
+  min-height: 5.5rem;
+  align-content: space-between;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-top: 2px solid rgb(186 160 90 / 58%);
+  border-radius: var(--radius);
+  background: linear-gradient(145deg, rgb(186 160 90 / 8%), transparent 62%), var(--surface);
+}
+
+.next-hosting-profile-catalog,
+.next-hosting-profile-wizard,
+.next-hosting-profile-configuration {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.next-hosting-profile-filters {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(10rem, 0.35fr) minmax(10rem, 0.35fr);
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.next-hosting-profile-filters .field,
+.next-hosting-profile-wizard .field,
+.next-hosting-profile-configuration .field,
+.next-hosting-profile-access .field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.next-hosting-profile-filters input,
+.next-hosting-profile-filters select,
+.next-hosting-profile-wizard input,
+.next-hosting-profile-wizard select,
+.next-hosting-profile-wizard textarea,
+.next-hosting-profile-configuration input,
+.next-hosting-profile-configuration select,
+.next-hosting-profile-configuration textarea,
+.next-hosting-profile-access input,
+.next-hosting-profile-access select {
+  width: 100%;
+  min-height: var(--control-height);
+  box-sizing: border-box;
+  padding: 0.7rem;
+  border: 1px solid #344255;
+  border-radius: var(--radius);
+  color: inherit;
+  background: #0b1119;
+}
+
+.next-hosting-profile-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 0.85rem;
+}
+
+.next-hosting-profile-card {
+  display: grid;
+  gap: 1.15rem;
+  min-height: 12rem;
+  padding: 1rem;
+  border: 1px solid #2e3a4b;
+  border-radius: var(--radius);
+  background: linear-gradient(145deg, rgb(186 160 90 / 7%), transparent 52%), #111822;
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.next-hosting-profile-card:hover {
+  border-color: rgb(196 169 93 / 72%);
+  transform: translateY(-2px);
+}
+
+.next-hosting-profile-card > header,
+.next-hosting-profile-card > footer,
+.next-hosting-profile-identity,
+.next-hosting-profile-identity-actions,
+.next-hosting-profile-wizard-actions,
+.next-hosting-profile-wizard-actions > div,
+.next-hosting-profile-savebar,
+.next-hosting-profile-savebar > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.next-hosting-profile-card h2 {
+  margin-block: 0.3rem 0;
+}
+
+.next-hosting-profile-card > footer {
+  align-self: end;
+  color: var(--muted);
+}
+
+.next-hosting-profile-card > footer a {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+
+.next-hosting-profile-game-mark {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 1px solid rgb(196 169 93 / 45%);
+  border-radius: 50%;
+  color: var(--gold-bright);
+  background: rgb(196 169 93 / 10%);
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.next-hosting-profile-stepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.next-hosting-profile-stepper button {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  background: transparent;
+}
+
+.next-hosting-profile-stepper button + button {
+  border-left: 1px solid var(--line);
+}
+
+.next-hosting-profile-stepper button[aria-current="step"] {
+  border-bottom-color: var(--gold);
+  color: var(--text);
+  background: rgb(196 169 93 / 9%);
+}
+
+.next-hosting-profile-stepper button > span {
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  border: 1px solid currentcolor;
+  border-radius: 50%;
+  font-size: 0.75rem;
+}
+
+.next-hosting-profile-wizard-step {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.next-hosting-profile-wizard-step > div:first-child p {
+  max-width: 55rem;
+  color: var(--muted);
+}
+
+.next-hosting-profile-wizard-actions {
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.next-hosting-profile-review-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.next-hosting-profile-review-meta > div,
+.next-hosting-profile-review-values > div {
+  padding: 0.8rem;
+  border: 1px solid #2b3748;
+  border-radius: var(--radius);
+  background: rgb(8 12 18 / 38%);
+}
+
+.next-hosting-profile-review-meta dt,
+.next-hosting-profile-review-values small {
+  color: var(--muted);
+}
+
+.next-hosting-profile-review-meta dd {
+  margin: 0.25rem 0 0;
+  font-weight: 700;
+}
+
+.next-hosting-profile-review-values {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.next-hosting-profile-review-values > div,
+.next-hosting-profile-review-values > div > span:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.next-hosting-profile-review-values > div > span:first-child {
+  display: grid;
+  justify-content: initial;
+  gap: 0.2rem;
+}
+
+.next-hosting-profile-review-values > div > span:last-child {
+  max-width: 50%;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.next-hosting-profile-identity {
+  align-items: flex-start;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(110deg, rgb(186 160 90 / 10%), transparent 50%), var(--surface);
+}
+
+.next-hosting-profile-identity h1 {
+  margin-block: 0.25rem 0.35rem;
+}
+
+.next-hosting-profile-identity p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.next-hosting-profile-identity-actions {
+  justify-content: flex-end;
+}
+
+.next-hosting-profile-tabs {
+  display: flex;
+  gap: 0.3rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+}
+
+.next-hosting-profile-tabs button {
+  min-height: 3rem;
+  padding-inline: 1rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 700;
+}
+
+.next-hosting-profile-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--gold);
+  color: var(--gold-bright);
+}
+
+.next-hosting-profile-savebar {
+  position: sticky;
+  z-index: 4;
+  bottom: 0.75rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgb(196 169 93 / 55%);
+  border-radius: var(--radius);
+  background: rgb(10 15 22 / 96%);
+  box-shadow: 0 1rem 2.4rem rgb(0 0 0 / 42%);
+}
+
+.next-hosting-profile-savebar > span {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--muted);
+}
+
+.next-hosting-profile-savebar strong {
+  color: var(--gold-bright);
 }
 
 .next-hosting-finance-detail {
@@ -1229,7 +1510,6 @@
   .next-hosting-dashboard-grid,
   .next-hosting-workspace-grid,
   .next-hosting-form-grid,
-  .next-hosting-profile-workspace,
   .next-hosting-finance-workspace,
   .next-hosting-profile-meta,
   .next-hosting-policy-fields,
@@ -1237,7 +1517,6 @@
     grid-template-columns: 1fr;
   }
 
-  .next-hosting-profile-browser,
   .next-hosting-owner-browser {
     position: static;
   }
@@ -1262,6 +1541,37 @@
   .next-hosting-access-form,
   .next-hosting-access-grants article {
     grid-template-columns: 1fr;
+  }
+
+  .next-hosting-profile-library-metrics,
+  .next-hosting-profile-filters,
+  .next-hosting-profile-meta,
+  .next-hosting-profile-review-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .next-hosting-profile-identity,
+  .next-hosting-profile-wizard-actions,
+  .next-hosting-profile-savebar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .next-hosting-profile-identity-actions,
+  .next-hosting-profile-wizard-actions > div,
+  .next-hosting-profile-savebar > div {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .next-hosting-profile-review-values > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .next-hosting-profile-review-values > div > span:last-child {
+    max-width: none;
+    text-align: left;
   }
 
   .next-hosting-file-mutations,

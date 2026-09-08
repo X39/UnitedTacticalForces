@@ -8,9 +8,14 @@ describe("hosting router integration contract", () => {
       "/command/servers/create",
       "/command/servers/{ServerId:guid}",
       "/command/configuration-profiles",
+      "/command/configuration-profiles/create",
+      "/command/configuration-profiles/{ProfileId:guid}",
       "/command/hosting-finance",
     ]);
     expect(hostingRouteDefinitions.find((route) => route.path.endsWith(":serverId"))?.parity).toBe(
+      "workflow",
+    );
+    expect(hostingRouteDefinitions.find((route) => route.path.endsWith(":profileId"))?.parity).toBe(
       "workflow",
     );
   });

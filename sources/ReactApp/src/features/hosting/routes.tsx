@@ -1,4 +1,6 @@
 import type { ComponentType } from "react";
+import { ConfigurationProfileCreatePage } from "@/features/hosting/ConfigurationProfileCreatePage";
+import { ConfigurationProfileWorkspacePage } from "@/features/hosting/ConfigurationProfileWorkspacePage";
 import { ConfigurationProfilesPage } from "@/features/hosting/ConfigurationProfilesPage";
 import { CreateServerPage } from "@/features/hosting/CreateServerPage";
 import { HostingOverviewPage, ServerFleetPage } from "@/features/hosting/FleetPages";
@@ -45,6 +47,18 @@ export const hostingRouteDefinitions: HostingRouteDefinition[] = [
     manifestPattern: "/command/configuration-profiles",
     path: "command/configuration-profiles",
     Component: ConfigurationProfilesPage,
+    parity: "workflow",
+  },
+  {
+    manifestPattern: "/command/configuration-profiles/create",
+    path: "command/configuration-profiles/create",
+    Component: ConfigurationProfileCreatePage,
+    parity: "workflow",
+  },
+  {
+    manifestPattern: "/command/configuration-profiles/{ProfileId:guid}",
+    path: "command/configuration-profiles/:profileId",
+    Component: ConfigurationProfileWorkspacePage,
     parity: "workflow",
   },
   {
