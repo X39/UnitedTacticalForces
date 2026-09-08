@@ -15312,6 +15312,9 @@ Start writing here.</value>
   <data name="React_NotFound_Title" xml:space="preserve"><value>Route not found</value></data>
   <data name="React_NotFound_Body" xml:space="preserve"><value>The requested page is not part of either interface.</value></data>
   <data name="React_NotFound_Home" xml:space="preserve"><value>Return home</value></data>
+  <data name="React_RouteError_Title" xml:space="preserve"><value>Page unavailable</value></data>
+  <data name="React_RouteError_Body" xml:space="preserve"><value>This page could not be displayed. Reload it or return to the home page.</value></data>
+  <data name="React_RouteError_Reload" xml:space="preserve"><value>Reload page</value></data>
   <data name="React_Bootstrap_Title" xml:space="preserve"><value>Interface unavailable</value></data>
   <data name="React_Bootstrap_Classic" xml:space="preserve"><value>Open the classic interface</value></data>
   <data name="React_Verein_Contribution" xml:space="preserve"><value>Membership contribution</value></data>

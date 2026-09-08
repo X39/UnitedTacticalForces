@@ -6,6 +6,8 @@ import { resolveImageUrl } from "@/api/client";
 import { fieldReportService, queryKeys } from "@/api/services";
 import { formatDate } from "@/app/format";
 import { resolveSiteImage, useSiteImage, useSiteImages } from "@/app/siteImages";
+import { ActionAnchor, ActionLink } from "@/components/ActionControl";
+import { PublicHero } from "@/components/PublicHero";
 import { StatePanel } from "@/components/primitives";
 
 export function Component() {
@@ -41,26 +43,25 @@ export function Component() {
 
   return (
     <div className="field-reports-page public-page">
-      <section
-        className="public-hero public-hero--compact editorial-hero"
+      <PublicHero
+        className="editorial-hero"
+        compact
+        singleColumn
         style={{ "--hero-image": `url("${headerImage.replaceAll('"', "%22")}")` } as CSSProperties}
-      >
-        <div className="public-hero__inner public-hero__inner--single">
-          <div className="public-hero__copy">
-            <span className="kicker">{t("Pages_Public_Media_Kicker")}</span>
-            <h1>{t("Pages_Public_Media_Title")}</h1>
-            <p>{t("Pages_Public_Media_Subtitle")}</p>
-            <div className="public-hero__actions">
-              <a className="button button--gold" href="#reports">
-                {t("Pages_Public_Media_ReadReports")}
-              </a>
-              <Link className="button button--glass" to="/events/upcoming">
-                {t("Pages_Public_Media_OperationsBoard")}
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+        kicker={t("Pages_Public_Media_Kicker")}
+        title={t("Pages_Public_Media_Title")}
+        description={t("Pages_Public_Media_Subtitle")}
+        actions={
+          <>
+            <ActionAnchor variant="gold" href="#reports">
+              {t("Pages_Public_Media_ReadReports")}
+            </ActionAnchor>
+            <ActionLink variant="glass" to="/events/upcoming">
+              {t("Pages_Public_Media_OperationsBoard")}
+            </ActionLink>
+          </>
+        }
+      />
 
       <div className="content-section public-section field-reports-content" id="reports">
         {query.isLoading && (

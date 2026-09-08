@@ -15285,6 +15285,9 @@ Beginne hier mit dem Schreiben.</value>
   <data name="React_NotFound_Title" xml:space="preserve"><value>Route nicht gefunden</value></data>
   <data name="React_NotFound_Body" xml:space="preserve"><value>Die angeforderte Seite gehört zu keiner der beiden Oberflächen.</value></data>
   <data name="React_NotFound_Home" xml:space="preserve"><value>Zur Startseite</value></data>
+  <data name="React_RouteError_Title" xml:space="preserve"><value>Seite nicht verfügbar</value></data>
+  <data name="React_RouteError_Body" xml:space="preserve"><value>Diese Seite konnte nicht angezeigt werden. Bitte neu laden oder zur Startseite zurückkehren.</value></data>
+  <data name="React_RouteError_Reload" xml:space="preserve"><value>Seite neu laden</value></data>
   <data name="React_Bootstrap_Title" xml:space="preserve"><value>Oberfläche nicht verfügbar</value></data>
   <data name="React_Bootstrap_Classic" xml:space="preserve"><value>Klassische Oberfläche öffnen</value></data>
   <data name="React_Verein_Contribution" xml:space="preserve"><value>Mitgliedsbeitrag</value></data>

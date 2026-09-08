@@ -18,6 +18,8 @@ import { membershipStatusTranslationKey } from "@/app/membership";
 import { useSiteImage } from "@/app/siteImages";
 import { useAuth } from "@/auth/auth";
 import { canAccessVereinLedger, isVereinMember } from "@/auth/claims";
+import { ActionLink } from "@/components/ActionControl";
+import { PublicHero } from "@/components/PublicHero";
 import { Markdown, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
 
 export function VereinPage() {
@@ -68,28 +70,26 @@ export function VereinPage() {
       : t("Pages_Verein_Index_MembershipOpenBody");
   return (
     <div className="verein-page public-page">
-      <section
-        className="public-hero editorial-hero"
+      <PublicHero
+        className="editorial-hero"
         style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
-      >
-        <div className="public-hero__inner">
-          <div className="public-hero__copy">
-            <span className="kicker">{t("Pages_Verein_Index_Kicker")}</span>
-            <h1>{t("Pages_Verein_Index_Title")}</h1>
-            <p>{t("Pages_Verein_Index_Subtitle")}</p>
-            <div className="public-hero__actions">
-              <Link className="button button--gold" to="/join">
-                {t("Pages_Verein_Index_MembershipRequest")}
-              </Link>
-              <Link className="button button--glass" to="/verein/satzung">
-                {t("Pages_Verein_Index_ReadSatzung")}
-              </Link>
-            </div>
-          </div>
-          <aside
-            className="public-hero__panel verein-status-panel"
-            aria-label={t("Pages_Verein_Index_StatusAria")}
-          >
+        kicker={t("Pages_Verein_Index_Kicker")}
+        title={t("Pages_Verein_Index_Title")}
+        description={t("Pages_Verein_Index_Subtitle")}
+        actions={
+          <>
+            <ActionLink variant="gold" to="/join">
+              {t("Pages_Verein_Index_MembershipRequest")}
+            </ActionLink>
+            <ActionLink variant="glass" to="/verein/satzung">
+              {t("Pages_Verein_Index_ReadSatzung")}
+            </ActionLink>
+          </>
+        }
+        asideClassName="verein-status-panel"
+        asideLabel={t("Pages_Verein_Index_StatusAria")}
+        aside={
+          <>
             <div className="public-hero__panel-heading">
               <BookOpen24Regular />
               <div>
@@ -132,9 +132,9 @@ export function VereinPage() {
                 </dd>
               </div>
             </dl>
-          </aside>
-        </div>
-      </section>
+          </>
+        }
+      />
       <section
         className="content-section public-section status-overview"
         aria-label={t("Pages_Verein_Index_StatusAria")}

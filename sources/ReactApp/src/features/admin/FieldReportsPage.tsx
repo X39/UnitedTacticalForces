@@ -6,6 +6,7 @@ import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canCreateFieldReports, canReadFieldReports } from "@/auth/claims";
+import { CommandListToolbar } from "@/components/CommandListToolbar";
 import { PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
 import {
   fieldReportMatchesView,
@@ -204,22 +205,16 @@ export function Component() {
         </button>
       </section>
 
-      <form
-        className="toolbar field-report-admin-toolbar"
-        aria-label={t("Pages_Command_FieldReports_FilterAria")}
+      <CommandListToolbar
+        className="field-report-admin-toolbar"
+        ariaLabel={t("Pages_Command_FieldReports_FilterAria")}
         onSubmit={applySearch}
+        searchLabel={t("Pages_Command_FieldReports_SearchPlaceholder")}
+        searchValue={searchDraft}
+        onSearchChange={setSearchDraft}
+        submitLabel={t("Pages_Command_FieldReports_Search")}
+        submitDisabled={query.isFetching}
       >
-        <label className="search-field">
-          <span className="sr-only">{t("Pages_Command_FieldReports_SearchPlaceholder")}</span>
-          <input
-            value={searchDraft}
-            placeholder={t("Pages_Command_FieldReports_SearchPlaceholder")}
-            onChange={(event) => setSearchDraft(event.target.value)}
-          />
-        </label>
-        <button className="button button--ghost" type="submit" disabled={query.isFetching}>
-          {t("Pages_Command_FieldReports_Search")}
-        </button>
         <div className="filter-chips">
           {views.map((value) => (
             <button
@@ -233,7 +228,7 @@ export function Component() {
             </button>
           ))}
         </div>
-      </form>
+      </CommandListToolbar>
 
       {query.isPending ? (
         <StatePanel kind="loading">{t("Pages_Command_FieldReports_Loading")}</StatePanel>

@@ -19,6 +19,8 @@ import { isOpenMembershipStatus, membershipStatusTranslationKey } from "@/app/me
 import { useSiteImage } from "@/app/siteImages";
 import { useAuth } from "@/auth/auth";
 import { isVereinMember } from "@/auth/claims";
+import { ActionLink } from "@/components/ActionControl";
+import { PublicHero } from "@/components/PublicHero";
 import { PageHeader, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
 
 export const membershipApplicationSchema = z.object({
@@ -117,28 +119,26 @@ export function Component() {
   );
   return (
     <div className="join-page public-page">
-      <section
-        className="public-hero editorial-hero"
+      <PublicHero
+        className="editorial-hero"
         style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
-      >
-        <div className="public-hero__inner">
-          <div className="public-hero__copy">
-            <span className="kicker">{t("Pages_Public_Join_Kicker")}</span>
-            <h1>{t("Pages_Public_Join_Title")}</h1>
-            <p>{t("Pages_Public_Join_Subtitle")}</p>
-            <div className="public-hero__actions">
-              <Link className="button button--gold" to="/events/upcoming">
-                {t("Pages_Public_Join_ViewOperations")}
-              </Link>
-              <Link className="button button--glass" to="/verein">
-                {t("Pages_Public_Join_OpenVerein")}
-              </Link>
-            </div>
-          </div>
-          <aside
-            className="public-hero__panel join-process-panel"
-            aria-label={t("Pages_Public_Join_ProcessAria")}
-          >
+        kicker={t("Pages_Public_Join_Kicker")}
+        title={t("Pages_Public_Join_Title")}
+        description={t("Pages_Public_Join_Subtitle")}
+        actions={
+          <>
+            <ActionLink variant="gold" to="/events/upcoming">
+              {t("Pages_Public_Join_ViewOperations")}
+            </ActionLink>
+            <ActionLink variant="glass" to="/verein">
+              {t("Pages_Public_Join_OpenVerein")}
+            </ActionLink>
+          </>
+        }
+        asideClassName="join-process-panel"
+        asideLabel={t("Pages_Public_Join_ProcessAria")}
+        aside={
+          <>
             <div className="public-hero__panel-heading">
               <PeopleAdd24Regular />
               <div>
@@ -151,9 +151,9 @@ export function Component() {
               <li>{t("Pages_Public_Join_MiniStep2")}</li>
               <li>{t("Pages_Public_Join_MiniStep3")}</li>
             </ol>
-          </aside>
-        </div>
-      </section>
+          </>
+        }
+      />
       <section className="content-section public-section join-path-section">
         <PageHeader
           kicker={t("Pages_Public_Join_StepperKicker")}

@@ -1,6 +1,6 @@
 .wiki-page {
   width: min(100% - 2.5rem, 1540px);
-  min-height: calc(100dvh - 72px);
+  min-height: calc(100dvh - var(--header-height));
   margin-inline: auto;
   padding-block: 1.5rem 3rem;
 }
@@ -50,8 +50,8 @@
 
 .wiki-hero h1 {
   margin: 0;
-  font-size: clamp(2.25rem, 5vw, 4rem);
-  line-height: 0.95;
+  font-size: clamp(2.1rem, 3.5vw, 3.2rem);
+  line-height: 1;
 }
 
 .wiki-hero p {
@@ -72,7 +72,7 @@
 }
 
 .wiki-search > span:last-child {
-  min-height: 46px;
+  min-height: var(--control-height);
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
@@ -129,7 +129,7 @@
 }
 
 .wiki-panel__header {
-  min-height: 78px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -281,8 +281,8 @@
 
 .wiki-article__header h2 {
   margin: 0;
-  font-size: clamp(2.1rem, 5vw, 3.8rem);
-  line-height: 0.95;
+  font-size: clamp(2rem, 3.5vw, 3.2rem);
+  line-height: 1;
 }
 
 .wiki-article__header p {

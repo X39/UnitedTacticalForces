@@ -23,6 +23,7 @@ import {
   remarkMarkdigContainers,
   remarkMarkdigInlineExtensions,
 } from "@/app/markdownExtensions";
+import { ActionButton } from "@/components/ActionControl";
 
 export function PageHeader({
   kicker,
@@ -290,12 +291,12 @@ export function ConfirmDialog({
           </label>
         )}
         <div className="dialog__actions">
-          <button className="button button--ghost" type="button" onClick={onCancel}>
+          <ActionButton variant="ghost" type="button" onClick={onCancel}>
             {cancelLabel}
-          </button>
-          <button className="button button--danger" type="submit">
+          </ActionButton>
+          <ActionButton variant="danger" type="submit">
             {confirmLabel}
-          </button>
+          </ActionButton>
         </div>
       </form>
     </dialog>

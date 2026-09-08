@@ -11,6 +11,7 @@ import { AppToastProvider } from "@/components/AppToasts";
 import { NotFoundPage } from "@/components/NotFoundPage";
 import { CommandCenterLayout } from "@/components/CommandCenterLayout";
 import { CommunityLayout } from "@/components/CommunityLayout";
+import { RouteErrorPage } from "@/components/RouteErrorPage";
 
 const tacticalTheme: Theme = {
   ...webDarkTheme,
@@ -566,6 +567,10 @@ export const implementedReactRoutePatterns = [
   ...commandAliasRouteDefinitions,
 ].map(({ manifestPattern }) => manifestPattern);
 
+function withRouteErrorElement(route: RouteObject): RouteObject {
+  return { ...route, errorElement: <RouteErrorPage /> };
+}
+
 function createRoutes(configuration: PublicConfiguration): RouteObject[] {
   return [
     {
@@ -575,8 +580,9 @@ function createRoutes(configuration: PublicConfiguration): RouteObject[] {
           <CommunityLayout configuration={configuration} />
         </RouteCertificationGate>
       ),
+      errorElement: <RouteErrorPage />,
       children: [
-        ...communityRouteDefinitions.map(({ route }) => route),
+        ...communityRouteDefinitions.map(({ route }) => withRouteErrorElement(route)),
         { path: "*", element: <NotFoundPage /> },
       ],
     },
@@ -587,7 +593,11 @@ function createRoutes(configuration: PublicConfiguration): RouteObject[] {
           <CommandCenterLayout configuration={configuration} />
         </RouteCertificationGate>
       ),
-      children: commandRouteDefinitions.map(({ route }) => route),
+      errorElement: <RouteErrorPage />,
+      children: [
+        ...commandRouteDefinitions.map(({ route }) => withRouteErrorElement(route)),
+        { path: "*", element: <NotFoundPage /> },
+      ],
     },
     ...commandAliasRouteDefinitions.map(({ path, route }) => ({
       path,
@@ -596,9 +606,9 @@ function createRoutes(configuration: PublicConfiguration): RouteObject[] {
           <CommandCenterLayout configuration={configuration} />
         </RouteCertificationGate>
       ),
-      children: [route],
+      errorElement: <RouteErrorPage />,
+      children: [withRouteErrorElement(route)],
     })),
-    { path: "command/*", element: <NotFoundPage /> },
   ];
 }
 

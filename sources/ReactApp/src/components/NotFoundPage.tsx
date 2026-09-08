@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { ActionLink } from "@/components/ActionControl";
 import { StatePanel } from "@/components/primitives";
 
 export function NotFoundPage() {
@@ -8,9 +8,9 @@ export function NotFoundPage() {
     <div className="narrow-page">
       <StatePanel kind="empty" title={t("React_NotFound_Title")}>
         <p>{t("React_NotFound_Body")}</p>
-        <Link className="button button--gold" to="/">
+        <ActionLink variant="gold" to="/">
           {t("React_NotFound_Home")}
-        </Link>
+        </ActionLink>
       </StatePanel>
     </div>
   );

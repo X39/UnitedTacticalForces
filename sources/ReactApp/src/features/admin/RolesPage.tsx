@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canCreateRoles, canManageAuthority } from "@/auth/claims";
+import { CommandListToolbar } from "@/components/CommandListToolbar";
 import {
   Metric,
   PageHeader,
@@ -203,22 +204,16 @@ export function Component() {
         </button>
       </section>
 
-      <form
-        className="toolbar authority-toolbar"
-        aria-label={t("Pages_Command_Roles_ToolbarAriaLabel")}
+      <CommandListToolbar
+        className="authority-toolbar"
+        ariaLabel={t("Pages_Command_Roles_ToolbarAriaLabel")}
         onSubmit={submitSearch}
+        searchLabel={t("Pages_Command_Roles_SearchPlaceholder")}
+        searchValue={searchDraft}
+        onSearchChange={setSearchDraft}
+        submitLabel={t("Pages_Command_Roles_ActionSearch")}
+        submitDisabled={query.isFetching}
       >
-        <label className="search-field">
-          <span className="sr-only">{t("Pages_Command_Roles_SearchPlaceholder")}</span>
-          <input
-            value={searchDraft}
-            placeholder={t("Pages_Command_Roles_SearchPlaceholder")}
-            onChange={(event) => setSearchDraft(event.target.value)}
-          />
-        </label>
-        <button className="button button--ghost" type="submit" disabled={query.isFetching}>
-          {t("Pages_Command_Roles_ActionSearch")}
-        </button>
         <div className="filter-chips">
           {(["all", "assigned", "empty", "high-impact"] as RoleView[]).map((candidate) => (
             <button
@@ -240,7 +235,7 @@ export function Component() {
             </button>
           ))}
         </div>
-      </form>
+      </CommandListToolbar>
 
       {creating && (
         <form className="command-panel role-create-panel" onSubmit={submitCreate}>

@@ -21,12 +21,12 @@
 
 .command-shell .page-header {
   align-items: flex-start;
-  padding-bottom: 1.5rem;
+  padding-bottom: 1rem;
   border-bottom: 1px solid var(--line);
 }
 
 .command-shell .page-header h1 {
-  font-size: clamp(2.15rem, 4vw, 3.8rem);
+  font-size: clamp(2rem, 3vw, 2.75rem);
 }
 
 .command-shell .page-header__actions {
@@ -70,7 +70,7 @@
 }
 
 .command-overview-page {
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .command-operational-snapshot {
@@ -85,9 +85,12 @@
 }
 
 .command-operational-snapshot__metrics .metric {
-  min-height: 8rem;
+  min-height: 6.25rem;
   align-content: space-between;
+  padding: 0.95rem;
+  border: 1px solid var(--line);
   border-top: 2px solid rgb(186 160 90 / 65%);
+  border-radius: var(--radius);
   background: linear-gradient(145deg, rgb(186 160 90 / 8%), transparent 62%), var(--surface);
 }
 
@@ -100,7 +103,7 @@
 
 .command-overview-panel {
   min-width: 0;
-  padding: 1.25rem;
+  padding: 1rem;
   border: 1px solid var(--line);
   border-radius: 0.45rem;
   background: linear-gradient(150deg, rgb(21 28 39 / 98%), rgb(12 17 25 / 98%));
@@ -112,14 +115,14 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
 }
 
 .command-overview-panel__heading h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.55rem, 3vw, 2.15rem);
-  line-height: 1;
+  font-size: clamp(1.4rem, 2.3vw, 1.85rem);
+  line-height: 1.05;
   text-transform: uppercase;
 }
 
@@ -133,12 +136,12 @@
 }
 
 .command-attention-item {
-  min-height: 4.7rem;
+  min-height: 4rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.85rem;
-  padding: 0.8rem 0.9rem;
+  padding: 0.7rem 0.8rem;
   border: 1px solid #303b4b;
   border-left: 3px solid #d1ae58;
   border-radius: 0.35rem;
@@ -174,7 +177,7 @@
 }
 
 .command-overview-all-clear {
-  min-height: 10rem;
+  min-height: 7.5rem;
   display: grid;
   align-content: center;
   justify-items: start;
@@ -195,12 +198,12 @@
 }
 
 .command-work-area {
-  min-height: 5.25rem;
+  min-height: 4.5rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.85rem;
+  padding: 0.75rem;
   border: 1px solid #2d3949;
   border-radius: 0.35rem;
   background: rgb(8 12 18 / 32%);
@@ -236,7 +239,7 @@
 
 .command-shell .next-hosting-tabs {
   position: sticky;
-  top: 72px;
+  top: var(--command-header-height);
   z-index: 10;
   margin: -0.25rem 0 1.1rem;
   padding: 0.3rem 0.25rem 0;
@@ -253,15 +256,9 @@
   background: rgb(255 255 255 / 4%);
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1180px) {
   .command-overview-workspace {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 780px) {
-  .command-topbar__area-icon {
-    display: none;
   }
 
   .command-topbar__actions > .command-topbar__site-link {
@@ -279,6 +276,12 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
   }
+}
+
+@media (max-width: 780px) {
+  .command-topbar__area-icon {
+    display: none;
+  }
 
   .command-shell .page-header {
     align-items: stretch;
@@ -291,7 +294,7 @@
   }
 
   .command-shell .page-header__actions .button {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
   }
 
   .command-operational-snapshot__metrics,
@@ -305,13 +308,13 @@
 }
 
 @media (max-width: 520px) {
-  .command-operational-snapshot__metrics,
   .command-work-area-list {
     grid-template-columns: 1fr;
   }
 
   .command-operational-snapshot__metrics .metric {
-    min-height: 6.5rem;
+    min-height: 5.5rem;
+    padding: 0.75rem;
   }
 
   .command-overview-panel {

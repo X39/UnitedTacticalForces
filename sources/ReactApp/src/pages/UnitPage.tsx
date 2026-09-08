@@ -11,6 +11,8 @@ import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { useSiteImage } from "@/app/siteImages";
+import { ActionLink } from "@/components/ActionControl";
+import { PublicHero } from "@/components/PublicHero";
 import { PageHeader, StatusBadge } from "@/components/primitives";
 
 export function Component() {
@@ -37,28 +39,26 @@ export function Component() {
 
   return (
     <div className="unit-page public-page">
-      <section
-        className="public-hero editorial-hero"
+      <PublicHero
+        className="editorial-hero"
         style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
-      >
-        <div className="public-hero__inner">
-          <div className="public-hero__copy">
-            <span className="kicker">{t("Pages_Unit_Index_Kicker")}</span>
-            <h1>{t("Pages_Unit_Index_Title")}</h1>
-            <p>{t("Pages_Unit_Index_HeroText")}</p>
-            <div className="public-hero__actions">
-              <Link className="button button--gold" to="/events/upcoming">
-                {t("Pages_Unit_Index_ViewOperations")}
-              </Link>
-              <Link className="button button--glass" to="/join">
-                {t("Pages_Unit_Index_JoinCommunity")}
-              </Link>
-            </div>
-          </div>
-          <aside
-            className="public-hero__panel operating-model-panel"
-            aria-label={t("Pages_Unit_Index_OperatingModelLabel")}
-          >
+        kicker={t("Pages_Unit_Index_Kicker")}
+        title={t("Pages_Unit_Index_Title")}
+        description={t("Pages_Unit_Index_HeroText")}
+        actions={
+          <>
+            <ActionLink variant="gold" to="/events/upcoming">
+              {t("Pages_Unit_Index_ViewOperations")}
+            </ActionLink>
+            <ActionLink variant="glass" to="/join">
+              {t("Pages_Unit_Index_JoinCommunity")}
+            </ActionLink>
+          </>
+        }
+        asideClassName="operating-model-panel"
+        asideLabel={t("Pages_Unit_Index_OperatingModelLabel")}
+        aside={
+          <>
             <div className="public-hero__panel-heading">
               <PeopleCommunity24Regular />
               <div>
@@ -80,9 +80,9 @@ export function Component() {
                 <dd>{t("Pages_Unit_Index_OnboardingValue")}</dd>
               </div>
             </dl>
-          </aside>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <section className="content-section public-section operating-model-section">
         <PageHeader

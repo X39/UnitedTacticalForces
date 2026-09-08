@@ -12,6 +12,7 @@ import {
   getCommandNavigationGroups,
   getCommandOverviewItems,
 } from "@/components/commandNavigation";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { Metric, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
 import { getHostingPermissions } from "@/features/hosting/authorization";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
@@ -196,18 +197,18 @@ export function Component() {
         actions={
           permissions.accessServers ? (
             <>
-              <button
-                className="button button--ghost"
+              <ActionButton
+                variant="ghost"
                 type="button"
                 disabled={fleet.isFetching || notifications.isFetching}
                 onClick={refresh}
               >
                 {t("Hosting_Common_Refresh")}
-              </button>
+              </ActionButton>
               {permissions.createServers && (
-                <Link className="button button--primary" to="/command/servers/create">
+                <ActionLink variant="primary" to="/command/servers/create">
                   {t("Hosting_Servers_Create")}
-                </Link>
+                </ActionLink>
               )}
             </>
           ) : undefined
@@ -221,9 +222,9 @@ export function Component() {
           <StatePanel
             kind="error"
             action={
-              <button className="button button--ghost" type="button" onClick={refresh}>
+              <ActionButton variant="ghost" type="button" onClick={refresh}>
                 {t("Hosting_Common_Refresh")}
-              </button>
+              </ActionButton>
             }
           >
             {t("Hosting_Servers_LoadError")}

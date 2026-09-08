@@ -8,7 +8,9 @@ import { setCulture } from "@/app/i18n";
 import { matchRoute, switchToClassic } from "@/app/routes";
 import { canAccessCommandCenter } from "@/auth/claims";
 import { useAuth } from "@/auth/auth";
+import { ActionButton } from "@/components/ActionControl";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { useResponsiveNavigation } from "@/components/useResponsiveNavigation";
 
 const navigation = [
   ["/", "Shared_CommunityNav_Home"],
@@ -28,6 +30,7 @@ export function CommunityLayout({ configuration }: { configuration: PublicConfig
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const loginDialog = useRef<HTMLDialogElement>(null);
+  useResponsiveNavigation(menuOpen, setMenuOpen);
   useEffect(() => {
     const dialog = loginDialog.current;
     if (!dialog) return;
@@ -119,16 +122,25 @@ export function CommunityLayout({ configuration }: { configuration: PublicConfig
           {auth.isAuthenticated ? (
             <ProfileMenu mode="community" />
           ) : (
-            <button
-              className="button button--small button--gold"
+            <ActionButton
+              variant="gold"
+              size="compact"
               type="button"
               onClick={() => setLoginOpen(true)}
             >
               {t("Shared_CommunityNav_Login")}
-            </button>
+            </ActionButton>
           )}
         </div>
       </header>
+      {menuOpen && (
+        <button
+          className="navigation-scrim"
+          type="button"
+          aria-label={t("Shared_CommunityNav_ToggleNavigationAria")}
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
       <main id="main-content" tabIndex={-1}>
         <Outlet context={configuration} />
       </main>
@@ -191,13 +203,9 @@ export function CommunityLayout({ configuration }: { configuration: PublicConfig
               <p>{t("React_UI_NoIdentityProviders")}</p>
             )}
           </div>
-          <button
-            className="button button--ghost"
-            type="button"
-            onClick={() => setLoginOpen(false)}
-          >
+          <ActionButton variant="ghost" type="button" onClick={() => setLoginOpen(false)}>
             {t("Shared_CommunityDialog_Cancel")}
-          </button>
+          </ActionButton>
         </form>
       </dialog>
       <span className="build-variant" title={`${t("React_UI_Beta")} · ${location.pathname}`}>

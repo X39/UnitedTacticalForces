@@ -16,6 +16,8 @@ import type { PublicConfiguration } from "@/app/config";
 import { formatDate, formatUtcDateTime, plainText } from "@/app/format";
 import { resolveSiteImage, useSiteImages } from "@/app/siteImages";
 import { eventNeedsSignups, normalizeEventAcceptance } from "@/app/upcomingEvents";
+import { ActionLink } from "@/components/ActionControl";
+import { PublicHero } from "@/components/PublicHero";
 import { Metric, StatePanel, StatusBadge } from "@/components/primitives";
 
 function operationTone(event: UpcomingEvent): "success" | "warning" {
@@ -106,36 +108,37 @@ export function Component() {
 
   return (
     <div className="home-page public-page">
-      <section
-        className="public-hero public-hero--home home-hero"
+      <PublicHero
+        className="public-hero--home home-hero"
+        innerClassName="home-hero__inner"
+        copyClassName="home-hero__content"
+        actionsClassName="home-hero__actions"
         style={{ "--hero-image": `url("${primaryImage.replaceAll('"', "%22")}")` } as CSSProperties}
-      >
-        <div className="public-hero__inner home-hero__inner">
-          <div className="public-hero__copy home-hero__content">
-            <span className="kicker">{t("Pages_Public_Home_NextOperationKicker")}</span>
-            <h1>{primary?.title ?? t("Pages_Public_Home_DefaultHeroTitle")}</h1>
-            <p>
-              {primary
-                ? plainText(primary.description, 220)
-                : t("Pages_Public_Home_NoOperationsPublished")}
-            </p>
-            <div className="public-hero__actions home-hero__actions">
-              <Link
-                className="button button--gold"
-                to={primary ? `/events/${primary.primaryKey}` : "/events/upcoming"}
-              >
-                {primary ? t("Pages_Public_Home_ViewSlots") : t("Pages_Public_Home_ViewOperations")}
-                <ChevronRight20Regular />
-              </Link>
-              <Link className="button button--glass" to="/events/upcoming?mode=calendar">
-                {t("Pages_Public_Home_ViewCalendar")}
-              </Link>
-            </div>
-          </div>
-          <aside
-            className="public-hero__panel operation-brief"
-            aria-label={t("Pages_Public_Home_OperationStatusPanelAria")}
-          >
+        kicker={t("Pages_Public_Home_NextOperationKicker")}
+        title={primary?.title ?? t("Pages_Public_Home_DefaultHeroTitle")}
+        description={
+          primary
+            ? plainText(primary.description, 220)
+            : t("Pages_Public_Home_NoOperationsPublished")
+        }
+        actions={
+          <>
+            <ActionLink
+              variant="gold"
+              to={primary ? `/events/${primary.primaryKey}` : "/events/upcoming"}
+            >
+              {primary ? t("Pages_Public_Home_ViewSlots") : t("Pages_Public_Home_ViewOperations")}
+              <ChevronRight20Regular />
+            </ActionLink>
+            <ActionLink variant="glass" to="/events/upcoming?mode=calendar">
+              {t("Pages_Public_Home_ViewCalendar")}
+            </ActionLink>
+          </>
+        }
+        asideClassName="operation-brief"
+        asideLabel={t("Pages_Public_Home_OperationStatusPanelAria")}
+        aside={
+          <>
             {primary ? (
               <>
                 <dl className="operation-brief__facts">
@@ -209,9 +212,9 @@ export function Component() {
                 )}
               </nav>
             )}
-          </aside>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <section
         className="content-section public-section section-grid section-grid--intro"

@@ -8,6 +8,7 @@ import { setCulture } from "@/app/i18n";
 import { matchRoute, switchToClassic } from "@/app/routes";
 import { useAuth } from "@/auth/auth";
 import { canAccessCommandCenter } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import {
   getCommandNavigationContext,
   getCommandNavigationGroups,
@@ -15,6 +16,7 @@ import {
 } from "@/components/commandNavigation";
 import { StatePanel } from "@/components/primitives";
 import { ProfileMenu } from "@/components/ProfileMenu";
+import { useResponsiveNavigation } from "@/components/useResponsiveNavigation";
 import "@/components/commandCenter.css";
 
 export function CommandCenterLayout({ configuration }: { configuration: PublicConfiguration }) {
@@ -23,6 +25,7 @@ export function CommandCenterLayout({ configuration }: { configuration: PublicCo
   const location = useLocation();
   const currentRouteIsCertified = matchRoute(location.pathname)?.certified === true;
   const [drawerOpen, setDrawerOpen] = useState(false);
+  useResponsiveNavigation(drawerOpen, setDrawerOpen);
   const currentContext = getCommandNavigationContext(location.pathname);
   const currentAreaKey = currentContext?.titleKey ?? "Shared_CommandCenter_CurrentArea_Overview";
   useDocumentTitle(t(currentAreaKey));
@@ -39,9 +42,9 @@ export function CommandCenterLayout({ configuration }: { configuration: PublicCo
       <main className="command-access-state">
         <StatePanel kind="forbidden" title={t("Auto_ConfigurationAccessRequired_aa38db73")}>
           <p>{t("Pages_Command_Content_HubNoAccessDescription")}</p>
-          <Link className="button button--gold" to="/">
+          <ActionLink variant="gold" to="/">
             {t("Shared_CommandCenter_BackToSite")}
-          </Link>
+          </ActionLink>
         </StatePanel>
       </main>
     );
@@ -136,17 +139,13 @@ export function CommandCenterLayout({ configuration }: { configuration: PublicCo
               </select>
             </label>
             {configuration.Ui.ReactVariantEnabled && currentRouteIsCertified && (
-              <button
-                className="button button--ghost button--small"
-                type="button"
-                onClick={switchToClassic}
-              >
+              <ActionButton variant="ghost" size="compact" type="button" onClick={switchToClassic}>
                 {t("React_UI_UseClassic")}
-              </button>
+              </ActionButton>
             )}
-            <Link className="button button--ghost button--small command-topbar__site-link" to="/">
+            <ActionLink variant="ghost" size="compact" className="command-topbar__site-link" to="/">
               <ArrowExit20Regular /> <span>{t("Shared_CommandCenter_BackToSite")}</span>
-            </Link>
+            </ActionLink>
             <ProfileMenu mode="command" />
           </div>
         </header>

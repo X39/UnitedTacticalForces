@@ -1,5 +1,5 @@
 .operations-hero {
-  min-height: min(620px, calc(100vh - 72px));
+  min-height: min(520px, calc(100vh - var(--header-height)));
   --hero-position: center 42%;
 }
 
@@ -46,7 +46,7 @@
 }
 
 .operations-commandbar .view-toggle button {
-  min-height: 2.65rem;
+  min-height: var(--control-height);
   padding-inline: 1rem;
   border: 1px solid transparent;
   background: transparent;
@@ -141,13 +141,13 @@
 
 .operations-page .operation-board-card__media {
   position: relative;
-  min-height: 245px;
+  min-height: 220px;
   isolation: isolate;
   background-color: #090c10;
 }
 
 .operations-page .operation-board-card--featured .operation-board-card__media {
-  min-height: 360px;
+  min-height: 300px;
 }
 
 .operations-page .operation-board-card__media::before {
@@ -491,7 +491,7 @@
 
 @media (max-width: 780px) {
   .operations-hero {
-    min-height: 500px;
+    min-height: 0;
   }
 
   .operations-commandbar {

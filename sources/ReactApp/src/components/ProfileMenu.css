@@ -503,6 +503,26 @@
   background: rgb(228 119 119 / 12%);
 }
 
+@media (max-width: 1180px) {
+  .account-profile--command .account-profile__trigger-copy {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .account-profile--command .account-profile__trigger {
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+    padding: 3px;
+  }
+}
+
 @media (max-width: 780px) {
   .account-profile__trigger-copy {
     position: absolute;

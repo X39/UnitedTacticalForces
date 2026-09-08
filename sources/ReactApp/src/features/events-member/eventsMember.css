@@ -1,15 +1,15 @@
 .em-panel {
   border: 1px solid var(--color-stroke, rgba(255, 255, 255, 0.12));
-  border-radius: 1rem;
+  border-radius: var(--radius);
   background: var(--color-panel, rgba(12, 18, 24, 0.92));
 }
 
 .em-ledger-hero {
   position: relative;
   overflow: hidden;
-  padding: clamp(1.5rem, 5vw, 4rem);
+  padding: clamp(1.5rem, 3.5vw, 3rem);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 1.25rem;
+  border-radius: var(--radius);
   background:
     linear-gradient(90deg, rgba(6, 10, 14, 0.96), rgba(6, 10, 14, 0.42)),
     var(--em-event-image) center / cover;
@@ -18,7 +18,7 @@
 .em-ledger-hero h1 {
   max-width: 20ch;
   margin-block: 0.75rem 1.5rem;
-  font-size: clamp(2rem, 5vw, 4.5rem);
+  font-size: clamp(2rem, 3.5vw, 3.4rem);
 }
 
 /* Keep the canary event detail visually aligned with the established public event page. */
@@ -199,7 +199,7 @@
 .em-event-page .em-event-aside {
   position: sticky;
   top: 5.5rem;
-  margin-top: -323px;
+  margin-top: 0;
 }
 
 .em-event-page .em-panel,
@@ -308,8 +308,6 @@
 
 .em-briefing-notes {
   min-width: 0;
-  max-height: 156px;
-  overflow: auto;
   padding: 1.1rem 1.2rem 1.2rem;
   border-top: 1px solid var(--em-event-line);
   color: var(--em-event-muted);
@@ -568,7 +566,7 @@
 .em-primary-slot-action {
   display: inline-flex;
   width: 100%;
-  min-height: 48px;
+  min-height: 42px;
   align-items: center;
   justify-content: center;
   gap: 0.48rem;
@@ -613,7 +611,7 @@
   gap: 0.45rem;
   align-items: center;
   justify-items: start;
-  min-height: 42px;
+  min-height: var(--control-height);
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--em-event-line);
   border-radius: 3px;
@@ -740,11 +738,20 @@
   }
 
   .em-event-page .em-event-hero {
-    padding-inline: 0.75rem;
+    padding-inline: 1rem;
+  }
+
+  .em-event-page .em-event-hero h1 {
+    font-size: clamp(2.25rem, 11vw, 3rem);
   }
 
   .em-event-page .em-event-meta {
     grid-template-columns: 1fr;
+  }
+
+  .em-event-page .em-event-meta > div {
+    min-height: 64px;
+    padding: 0.55rem 0.75rem;
   }
 
   .em-event-page .em-event-meta > div::after {
@@ -773,7 +780,7 @@
 .em-identities > div {
   padding: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.8rem;
+  border-radius: var(--radius);
   background: rgba(8, 13, 18, 0.76);
 }
 
@@ -845,7 +852,7 @@
   align-items: center;
   padding: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.7rem;
+  border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.025);
 }
 
@@ -882,7 +889,7 @@
   padding: 0.65rem 0.35rem;
   color: inherit;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.6rem;
+  border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.035);
   cursor: pointer;
 }

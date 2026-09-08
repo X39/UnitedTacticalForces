@@ -6,6 +6,7 @@ import { ApiError, resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canCreateTerrains, canManageTerrains } from "@/auth/claims";
+import { CommandListToolbar } from "@/components/CommandListToolbar";
 import { PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
 import {
   formatTerrainTitle,
@@ -130,22 +131,16 @@ export function Component() {
         </button>
       </section>
 
-      <form
-        className="toolbar terrain-toolbar"
-        aria-label={t("Pages_Data_Terrains_All_FilterBarAria")}
+      <CommandListToolbar
+        className="terrain-toolbar"
+        ariaLabel={t("Pages_Data_Terrains_All_FilterBarAria")}
         onSubmit={applySearch}
+        searchLabel={t("Pages_Data_Terrains_All_SearchPlaceholder")}
+        searchValue={searchDraft}
+        onSearchChange={setSearchDraft}
+        submitLabel={t("Search")}
+        submitDisabled={query.isFetching}
       >
-        <label className="search-field">
-          <span className="sr-only">{t("Pages_Data_Terrains_All_SearchPlaceholder")}</span>
-          <input
-            value={searchDraft}
-            placeholder={t("Pages_Data_Terrains_All_SearchPlaceholder")}
-            onChange={(event) => setSearchDraft(event.target.value)}
-          />
-        </label>
-        <button className="button button--ghost" type="submit" disabled={query.isFetching}>
-          {t("Search")}
-        </button>
         <div className="filter-chips">
           <button
             type="button"
@@ -164,7 +159,7 @@ export function Component() {
             {t("Pages_Data_Terrains_All_FilterMissingImage")}
           </button>
         </div>
-      </form>
+      </CommandListToolbar>
 
       {query.isPending ? (
         <StatePanel kind="loading">{t("Pages_Data_Terrains_All_LoadingState")}</StatePanel>

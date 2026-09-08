@@ -6,6 +6,7 @@ import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
+import { CommandListToolbar } from "@/components/CommandListToolbar";
 import { Metric, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
 import {
   loadCommunitySnapshot,
@@ -313,22 +314,16 @@ export function Component() {
         </button>
       </section>
 
-      <form
-        className="toolbar members-admin-toolbar"
-        aria-label={t("Pages_Command_Members_FilterAria")}
+      <CommandListToolbar
+        className="members-admin-toolbar"
+        ariaLabel={t("Pages_Command_Members_FilterAria")}
         onSubmit={submitSearch}
+        searchLabel={t("Pages_Command_Members_SearchPlaceholder")}
+        searchValue={searchDraft}
+        onSearchChange={setSearchDraft}
+        submitLabel={t("Pages_Command_Members_Search")}
+        submitDisabled={query.isFetching}
       >
-        <label className="search-field">
-          <span className="sr-only">{t("Pages_Command_Members_SearchPlaceholder")}</span>
-          <input
-            value={searchDraft}
-            placeholder={t("Pages_Command_Members_SearchPlaceholder")}
-            onChange={(event) => setSearchDraft(event.target.value)}
-          />
-        </label>
-        <button className="button button--ghost" type="submit" disabled={query.isFetching}>
-          {t("Pages_Command_Members_Search")}
-        </button>
         <div className="filter-chips">
           {(Object.keys(viewKeys) as MemberView[]).map((candidate) => (
             <button
@@ -342,7 +337,7 @@ export function Component() {
             </button>
           ))}
         </div>
-      </form>
+      </CommandListToolbar>
 
       {query.isPending ? (
         <StatePanel kind="loading">{t("Pages_Command_Members_Loading")}</StatePanel>
