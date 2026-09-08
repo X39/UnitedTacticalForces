@@ -188,7 +188,32 @@ describe("certified server workspace", () => {
     );
     await user.click(screen.getByRole("button", { name: "Audit" }));
     expect(screen.getByText("Preparation failed")).toBeVisible();
+    await user.click(screen.getByText("Technical evidence"));
     expect(screen.getByText("trace-1")).toBeVisible();
+  });
+
+  it("does not present a pending audit request as an empty history", async () => {
+    const user = userEvent.setup();
+    renderWorkspace(
+      <ServerWorkspaceView
+        server={server}
+        jobs={[]}
+        operations={[]}
+        operationsLoading
+        actionBusy={false}
+        jobBusy={false}
+        onExecuteAction={vi.fn().mockResolvedValue(undefined)}
+        onRetryJob={vi.fn()}
+        onSkipJob={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Loading operational activity…")).toBeVisible();
+    expect(
+      screen.queryByText("No operational activity has been recorded for this server."),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Audit" }));
+    expect(screen.getByText("Loading operational activity…")).toBeVisible();
   });
 
   it("browses both file contexts and performs confirmed persistent file and preservation mutations", async () => {

@@ -15902,6 +15902,34 @@ Start writing here.</value>
   <data name="React_ServerWorkspace_CurrentRuntime" xml:space="preserve"><value>Current runtime</value></data>
   <data name="React_ServerWorkspace_Offline" xml:space="preserve"><value>Offline</value></data>
   <data name="React_ServerWorkspace_RecentActivity" xml:space="preserve"><value>Recent activity</value></data>
+  <data name="React_ServerAudit_NewestFirst" xml:space="preserve"><value>Newest first</value></data>
+  <data name="React_ServerAudit_ControlPlane" xml:space="preserve"><value>Control plane</value></data>
+  <data name="React_ServerAudit_Loading" xml:space="preserve"><value>Loading operational activity…</value></data>
+  <data name="React_ServerAudit_CategoryLifecycle" xml:space="preserve"><value>Lifecycle</value></data>
+  <data name="React_ServerAudit_CategoryWorker" xml:space="preserve"><value>Worker</value></data>
+  <data name="React_ServerAudit_CategoryCloud" xml:space="preserve"><value>Cloud resources</value></data>
+  <data name="React_ServerAudit_CategoryConfiguration" xml:space="preserve"><value>Configuration</value></data>
+  <data name="React_ServerAudit_CategorySecurity" xml:space="preserve"><value>Security</value></data>
+  <data name="React_ServerAudit_CategoryFinance" xml:space="preserve"><value>Finance</value></data>
+  <data name="React_ServerAudit_StatusRecorded" xml:space="preserve"><value>Recorded</value></data>
+  <data name="React_ServerAudit_StatusSucceeded" xml:space="preserve"><value>Succeeded</value></data>
+  <data name="React_ServerAudit_StatusWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="React_ServerAudit_StatusFailed" xml:space="preserve"><value>Failed</value></data>
+  <data name="React_ServerAudit_StatusInProgress" xml:space="preserve"><value>In progress</value></data>
+  <data name="React_ServerAudit_Source" xml:space="preserve"><value>Source</value></data>
+  <data name="React_ServerAudit_ResourceType" xml:space="preserve"><value>Resource type</value></data>
+  <data name="React_ServerAudit_ProviderState" xml:space="preserve"><value>Provider state</value></data>
+  <data name="React_ServerAudit_Failure" xml:space="preserve"><value>Failure</value></data>
+  <data name="React_ServerAudit_TechnicalEvidence" xml:space="preserve"><value>Technical evidence</value></data>
+  <data name="React_ServerAudit_RecordId" xml:space="preserve"><value>Audit record ID</value></data>
+  <data name="React_ServerAudit_EventKind" xml:space="preserve"><value>Event kind</value></data>
+  <data name="React_ServerAudit_StatusCode" xml:space="preserve"><value>Status code</value></data>
+  <data name="React_ServerAudit_ResourceId" xml:space="preserve"><value>Resource ID</value></data>
+  <data name="React_ServerAudit_DeploymentId" xml:space="preserve"><value>Deployment ID</value></data>
+  <data name="React_ServerAudit_LifecycleJobId" xml:space="preserve"><value>Lifecycle job ID</value></data>
+  <data name="React_ServerAudit_WorkerId" xml:space="preserve"><value>Worker ID</value></data>
+  <data name="React_ServerAudit_TraceId" xml:space="preserve"><value>Telemetry trace</value></data>
+  <data name="React_ServerAudit_SpanId" xml:space="preserve"><value>Telemetry span</value></data>
   <data name="React_ServerWorkspace_RecommendedAction" xml:space="preserve"><value>Recommended action</value></data>
   <data name="React_ServerWorkspace_Logs" xml:space="preserve"><value>Logs</value></data>
   <data name="React_ServerWorkspace_Files" xml:space="preserve"><value>Files</value></data>

@@ -7,6 +7,7 @@ export * from "@/features/hosting/ConfigurationProfileCreatePage";
 export * from "@/features/hosting/ConfigurationProfileWorkspacePage";
 export * from "@/features/hosting/CreateServerPage";
 export * from "@/features/hosting/FleetPages";
+export * from "@/features/hosting/HostingAuditFeed";
 export * from "@/features/hosting/HostingFinancePage";
 export * from "@/features/hosting/financeAuthorization";
 export * from "@/features/hosting/financeModel";

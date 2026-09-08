@@ -15,6 +15,7 @@ import {
   ServerStatus,
 } from "@/features/hosting/components";
 import { useHostingCopy } from "@/features/hosting/copy";
+import { HostingAuditFeed } from "@/features/hosting/HostingAuditFeed";
 import { ServerConfigurationPanel } from "@/features/hosting/ServerConfigurationPanel";
 import { ServerFilesPanel } from "@/features/hosting/ServerFilesPanel";
 import { ServerLogsPanel } from "@/features/hosting/ServerLogsPanel";
@@ -171,49 +172,6 @@ function JobList({
   );
 }
 
-function AuditList({ operations }: { operations: HostingOperation[] }) {
-  const c = useHostingCopy();
-  const { t } = useTranslation();
-  if (operations.length === 0) return <StatePanel kind="empty">{c.noAudit}</StatePanel>;
-  return (
-    <ol className="next-hosting-audit-list">
-      {operations.map((operation) => (
-        <li key={operation.primaryKey}>
-          <span className="next-hosting-audit-marker" aria-hidden="true" />
-          <div>
-            <header>
-              <strong>{operation.summary || humanizeToken(operation.kind)}</strong>
-              <StatusBadge
-                tone={
-                  operation.status.toLowerCase().includes("fail")
-                    ? "danger"
-                    : operation.status.toLowerCase().includes("warning")
-                      ? "warning"
-                      : "neutral"
-                }
-              >
-                {humanizeToken(operation.status)}
-              </StatusBadge>
-            </header>
-            {operation.detail && <p>{operation.detail}</p>}
-            <small>
-              {formatDate(operation.timeStampCreated)} ·{" "}
-              {operation.providerIdentifier || "control-plane"}
-              {operation.resourceKind ? ` · ${operation.resourceKind}` : ""}
-            </small>
-            {operation.resourceIdentifier && <code>{operation.resourceIdentifier}</code>}
-            {operation.traceId && (
-              <small>
-                {t("Hosting_Detail_OperationsTrace")}: <code>{operation.traceId}</code>
-              </small>
-            )}
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 function CloudPanel({ server }: { server: GameServer }) {
   const { t } = useTranslation();
   const c = useHostingCopy();
@@ -365,6 +323,7 @@ export function ServerWorkspaceView({
   server,
   jobs,
   operations,
+  operationsLoading = false,
   actionBusy,
   jobBusy,
   onExecuteAction,
@@ -374,6 +333,7 @@ export function ServerWorkspaceView({
   server: GameServer;
   jobs: LifecycleJob[];
   operations: HostingOperation[];
+  operationsLoading?: boolean;
   actionBusy: boolean;
   jobBusy: boolean;
   onExecuteAction(action: ServerAction, confirmation?: string): Promise<void>;
@@ -547,9 +507,26 @@ export function ServerWorkspaceView({
             </section>
           )}
           <section className="next-hosting-panel">
-            <span className="kicker">{t("React_ServerWorkspace_RecentActivity")}</span>
-            <h2>{t("Hosting_Detail_OperationsTitle")}</h2>
-            <AuditList operations={operations.slice(0, 6)} />
+            <header className="next-hosting-section-heading">
+              <div>
+                <span className="kicker">{t("React_ServerWorkspace_RecentActivity")}</span>
+                <h2>{t("Hosting_Detail_OperationsTitle")}</h2>
+              </div>
+              {operations.length > 6 && (
+                <button
+                  className="button button--ghost"
+                  type="button"
+                  onClick={() => selectTab("audit")}
+                >
+                  {t("Hosting_Detail_OperationsShowAll")}
+                </button>
+              )}
+            </header>
+            <HostingAuditFeed
+              operations={operations.slice(0, 6)}
+              compact
+              loading={operationsLoading}
+            />
           </section>
         </div>
       )}
@@ -576,10 +553,13 @@ export function ServerWorkspaceView({
         </section>
       )}
       {tab === "audit" && (
-        <section className="next-hosting-panel">
-          <span className="kicker">{t("Hosting_Detail_OperationsKicker")}</span>
-          <h2>{t("Hosting_Detail_OperationsTitle")}</h2>
-          <AuditList operations={operations} />
+        <section className="next-hosting-panel next-hosting-audit-panel">
+          <header className="next-hosting-audit-panel__heading">
+            <span className="kicker">{t("Hosting_Detail_OperationsKicker")}</span>
+            <h2>{t("Hosting_Detail_OperationsTitle")}</h2>
+            <p>{t("Hosting_Detail_OperationsDescription")}</p>
+          </header>
+          <HostingAuditFeed operations={operations} loading={operationsLoading} />
         </section>
       )}
       <ActionConfirmation
@@ -755,6 +735,7 @@ export function ServerWorkspacePage() {
               server={server.data}
               jobs={jobs.data ?? []}
               operations={operations.data ?? []}
+              operationsLoading={operations.isLoading}
               actionBusy={action.isPending}
               jobBusy={intervention.isPending}
               onExecuteAction={async (item, confirmation) => {
