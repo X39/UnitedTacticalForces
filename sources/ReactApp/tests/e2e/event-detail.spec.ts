@@ -24,7 +24,7 @@ const operation = {
   primaryKey: eventId,
   title: "Operation Copper Trail",
   description:
-    "## Situation\n- :objective: Coordinate the reconnaissance team.\n- :radio: Report extraction readiness.",
+    "## Mission objectives\n- :objective: Coordinate the reconnaissance team.\n- :radio: Report extraction readiness.\n\n## Situation\nProceed through the **northern approach**.",
   terrainPrimaryKey: 1,
   terrainTitle: "Altis",
   terrainImagePath: "",
@@ -71,6 +71,16 @@ const slots = [
     title: "Rifleman",
     side: "West",
   },
+  {
+    slotNumber: 3,
+    assignedToFk: null,
+    eventFk: eventId,
+    isSelfAssignable: false,
+    isVisible: true,
+    group: "Alpha",
+    title: "Medic",
+    side: "East",
+  },
 ];
 
 test("renders the event workflow and confirms attendance changes that release a slot", async ({
@@ -109,10 +119,26 @@ test("renders the event workflow and confirms attendance changes that release a 
   await expect(page.locator(".em-briefing-objectives")).toContainText(
     "Coordinate the reconnaissance team.",
   );
+  await expect(page.locator('[data-tactical-icon="objective"]')).toBeVisible();
+  await expect(page.locator('[data-tactical-icon="radio"]')).toBeVisible();
+  const commanderNotes = page.locator(".em-briefing-notes");
+  await expect(commanderNotes).toContainText("Proceed through the northern approach.");
+  await expect(commanderNotes.locator("strong")).toHaveText("northern approach");
+  await expect(commanderNotes).not.toContainText("Coordinate the reconnaissance team.");
+  await expect(commanderNotes).not.toContainText("Report extraction readiness.");
+  const westSide = page.locator('.em-slot-side[data-side="west"]');
+  const eastSide = page.locator('.em-slot-side[data-side="east"]');
+  await expect(westSide.getByRole("heading", { name: "Alpha" })).toBeVisible();
+  await expect(eastSide.getByRole("heading", { name: "Alpha" })).toBeVisible();
+  await expect(westSide.locator('[data-tactical-icon="rifleman"]')).toBeVisible();
+  await expect(eastSide.locator('[data-tactical-icon="medical"]')).toBeVisible();
   await expect(page.locator(".em-slot-avatars img")).toHaveAttribute(
     "src",
     `data:image/png;base64,${user.avatar}`,
   );
+  const avatarBounds = await page.locator(".em-slot-avatars img").boundingBox();
+  expect(avatarBounds?.width).toBe(32);
+  expect(avatarBounds?.height).toBe(32);
   await expect(page.locator(".em-slot-status").first()).toContainText("Your slot");
   await expect(page.getByRole("button", { name: "Your slot" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Assign slot" })).toBeEnabled();
@@ -138,5 +164,5 @@ test("renders the event workflow and confirms attendance changes that release a 
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       ),
     )
-    .toBe(0);
+    .toBeLessThanOrEqual(0);
 });

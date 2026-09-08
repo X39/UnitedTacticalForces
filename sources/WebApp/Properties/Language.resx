@@ -5661,6 +5661,9 @@ Start writing here.</value>
   <data name="Shared_CommunityNav_ToggleNavigationAria" xml:space="preserve">
         <value>Toggle navigation</value>
     </data>
+  <data name="Shared_CommunityNav_CloseNavigationAria" xml:space="preserve">
+        <value>Close navigation</value>
+    </data>
   <data name="Shared_CommunityNav_Unit" xml:space="preserve">
         <value>Unit</value>
     </data>
@@ -12164,6 +12167,51 @@ Start writing here.</value>
   </data>
   <data name="Pages_Events_Edit_Tooltip_ObjectiveIcon" xml:space="preserve">
     <value>Icon name for the objective.</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Objective" xml:space="preserve">
+    <value>Objective</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Intel" xml:space="preserve">
+    <value>Intelligence</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Map" xml:space="preserve">
+    <value>Map</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Rally" xml:space="preserve">
+    <value>Rally point</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Radio" xml:space="preserve">
+    <value>Radio</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Stealth" xml:space="preserve">
+    <value>Stealth</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Support" xml:space="preserve">
+    <value>Support</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Medical" xml:space="preserve">
+    <value>Medical</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Extract" xml:space="preserve">
+    <value>Extraction</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Host" xml:space="preserve">
+    <value>Host</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_ModPack" xml:space="preserve">
+    <value>Mod pack</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Slot" xml:space="preserve">
+    <value>Slot</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Document" xml:space="preserve">
+    <value>Document</value>
   </data>
   <data name="Pages_Events_Edit_LabelObjective" xml:space="preserve">
     <value>Objective {0}</value>

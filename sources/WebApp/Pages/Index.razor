@@ -22,7 +22,9 @@
             <div class="utf-landing-hero__content">
                 <span class="utf-kicker">@Localizer[nameof(Language.Pages_Public_Home_NextOperationKicker)]</span>
                 <h1>@GetHeroTitle()</h1>
-                <p class="utf-landing-hero__summary">@GetHeroSummary()</p>
+                <div class="utf-landing-hero__summary">
+                    <FluentMarkdown Content="@GetHeroSummary()" IsExcerpt="true"/>
+                </div>
 
                 <div class="utf-hero-meta" aria-label="@(Localizer[nameof(Language.Pages_Public_Home_OperationMetadataAria)])">
                     <span>

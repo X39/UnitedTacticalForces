@@ -1,5 +1,13 @@
 import type { FullEvent, FullUser } from "@/api/types";
-import type { EventSlot, EventSlotGroup, EventSlotRow, SlotSide } from "./types";
+import { eventSidePresentation } from "@/features/events/eventSlotPresentation";
+import type {
+  EventSlot,
+  EventSlotGroup,
+  EventSlotRow,
+  EventSlotSideGroup,
+  SlotSide,
+  SlotSideId,
+} from "./types";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const briefingIconPattern = /^:(?<icon>[a-z0-9-]+):\s*/i;
@@ -138,28 +146,14 @@ function textOrFallback(value: string | null | undefined, fallback: string): str
   return trimmed ? trimmed : fallback;
 }
 
-function sideSort(side: SlotSide): number {
-  const value = typeof side === "number" ? side : side.toLocaleLowerCase();
-  if (value === 2 || value === "west") return 0;
-  if (value === 1 || value === "east") return 1;
-  if (value === 3 || value === "resistance") return 2;
-  if (value === 4 || value === "civilian") return 3;
-  if (value === 5 || value === "ambientlife" || value === "ambient") return 4;
-  if (value === 6 || value === "logic") return 5;
-  return 6;
-}
-
 export function slotSideKey(
   side: SlotSide,
 ): "East" | "West" | "Resistance" | "Civilian" | "Ambient" | "Logic" | undefined {
-  const value = typeof side === "string" ? side.trim().toLocaleLowerCase() : side;
-  if (value === 1 || value === "east") return "East";
-  if (value === 2 || value === "west") return "West";
-  if (value === 3 || value === "resistance") return "Resistance";
-  if (value === 4 || value === "civilian") return "Civilian";
-  if (value === 5 || value === "ambientlife" || value === "ambient") return "Ambient";
-  if (value === 6 || value === "logic") return "Logic";
-  return undefined;
+  return eventSidePresentation(side).labelKey;
+}
+
+export function slotSideId(side: SlotSide): SlotSideId {
+  return eventSidePresentation(side).id;
 }
 
 export function groupEventSlots(
@@ -167,53 +161,78 @@ export function groupEventSlots(
   ungroupedLabel: string,
   unassignedRoleLabel: string,
   locale?: string,
-): EventSlotGroup[] {
-  const grouped = new Map<string, Map<string, EventSlot[]>>();
+): EventSlotSideGroup[] {
+  const grouped = new Map<
+    SlotSideId,
+    {
+      labelKey: ReturnType<typeof slotSideKey>;
+      groups: Map<string, Map<string, EventSlot[]>>;
+    }
+  >();
   const collator = new Intl.Collator(locale, { sensitivity: "base" });
 
   for (const slot of slots) {
+    const sideId = slotSideId(slot.side);
     const group = textOrFallback(slot.group, ungroupedLabel);
     const title = textOrFallback(slot.title, unassignedRoleLabel);
-    const rowKey = `${slotSideKey(slot.side) ?? "Empty"}|${title}`;
-    const rows = grouped.get(group) ?? new Map<string, EventSlot[]>();
-    rows.set(rowKey, [...(rows.get(rowKey) ?? []), slot]);
-    grouped.set(group, rows);
+    const sideGroup = grouped.get(sideId) ?? {
+      labelKey: slotSideKey(slot.side),
+      groups: new Map<string, Map<string, EventSlot[]>>(),
+    };
+    const rows = sideGroup.groups.get(group) ?? new Map<string, EventSlot[]>();
+    rows.set(title, [...(rows.get(title) ?? []), slot]);
+    sideGroup.groups.set(group, rows);
+    grouped.set(sideId, sideGroup);
   }
 
   return [...grouped.entries()]
-    .sort(([left], [right]) => collator.compare(left, right))
-    .map(([name, rows]) => {
-      const mappedRows: EventSlotRow[] = [...rows.entries()]
-        .map(([key, rowSlots]) => {
-          const orderedSlots = [...rowSlots].sort(
-            (left, right) => left.slotNumber - right.slotNumber,
-          );
-          const assignedCount = orderedSlots.filter((slot) => slot.assignedToFk != null).length;
-          const openCount = orderedSlots.filter(
-            (slot) => slot.assignedToFk == null && slot.isVisible !== false,
-          ).length;
-          const first = orderedSlots[0]!;
+    .sort(
+      ([left], [right]) => eventSidePresentation(left).order - eventSidePresentation(right).order,
+    )
+    .map(([id, sideGroup]) => {
+      const mappedGroups: EventSlotGroup[] = [...sideGroup.groups.entries()]
+        .sort(([left], [right]) => collator.compare(left, right))
+        .map(([name, rows]) => {
+          const mappedRows: EventSlotRow[] = [...rows.entries()]
+            .map(([title, rowSlots]) => {
+              const orderedSlots = [...rowSlots].sort(
+                (left, right) => left.slotNumber - right.slotNumber,
+              );
+              const assignedCount = orderedSlots.filter((slot) => slot.assignedToFk != null).length;
+              const openCount = orderedSlots.filter(
+                (slot) => slot.assignedToFk == null && slot.isVisible !== false,
+              ).length;
+              const first = orderedSlots[0]!;
+              return {
+                key: `${id}|${name}|${title}`,
+                group: name,
+                title,
+                side: first.side,
+                slots: orderedSlots,
+                assignedCount,
+                openCount,
+              };
+            })
+            .sort(
+              (left, right) =>
+                left.slots[0]!.slotNumber - right.slots[0]!.slotNumber ||
+                collator.compare(left.title, right.title),
+            );
+
           return {
-            key: `${name}|${key}`,
-            group: name,
-            title: textOrFallback(first.title, unassignedRoleLabel),
-            side: first.side,
-            slots: orderedSlots,
-            assignedCount,
-            openCount,
+            name,
+            rows: mappedRows,
+            assignedCount: mappedRows.reduce((total, row) => total + row.assignedCount, 0),
+            totalCount: mappedRows.reduce((total, row) => total + row.slots.length, 0),
           };
-        })
-        .sort(
-          (left, right) =>
-            sideSort(left.side) - sideSort(right.side) ||
-            left.slots[0]!.slotNumber - right.slots[0]!.slotNumber ||
-            collator.compare(left.title, right.title),
-        );
+        });
+
       return {
-        name,
-        rows: mappedRows,
-        assignedCount: mappedRows.reduce((total, row) => total + row.assignedCount, 0),
-        totalCount: mappedRows.reduce((total, row) => total + row.slots.length, 0),
+        id,
+        labelKey: sideGroup.labelKey,
+        groups: mappedGroups,
+        assignedCount: mappedGroups.reduce((total, group) => total + group.assignedCount, 0),
+        totalCount: mappedGroups.reduce((total, group) => total + group.totalCount, 0),
       };
     });
 }

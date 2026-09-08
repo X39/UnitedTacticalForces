@@ -29,7 +29,8 @@ const config = {
 const event = {
   primaryKey: "83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f",
   title: "Operation Copper Trail",
-  description: "A coordinated reconnaissance operation.",
+  description:
+    "## Briefing\n\n**Coordinate reconnaissance** from the [published orders](/events/briefing).",
   terrainTitle: "Altis",
   modPackDefinitionTitle: "UTF Main",
   modPackDefinitionIsComposition: false,
@@ -142,6 +143,18 @@ test("loads the beta shell at a deep link", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Field reports" })).toBeVisible();
 });
 
+test("renders home operation summaries as Markdown excerpts", async ({ page }) => {
+  await page.goto(".");
+
+  const heroBriefing = page.locator(".home-hero__content .markdown--excerpt");
+  const cardBriefing = page.locator(".operation-card .markdown--excerpt").first();
+  await expect(heroBriefing).toContainText("Briefing");
+  await expect(heroBriefing.getByText("Coordinate reconnaissance", { exact: true })).toBeVisible();
+  await expect(cardBriefing).toContainText("Coordinate reconnaissance");
+  await expect(cardBriefing.getByRole("link")).toHaveCount(0);
+  await expect(cardBriefing).not.toContainText("**");
+});
+
 test("returns a reopened route to its classic equivalent", async ({ page }) => {
   await page.addInitScript(() => {
     document.cookie = "utf_ui_variant=react; Path=/; SameSite=Lax";
@@ -170,7 +183,9 @@ test("keeps the public shell usable on a narrow keyboard viewport", async ({ pag
   await page.keyboard.press("Enter");
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
   await expect(navigation.getByRole("link", { name: "Operations" })).toBeVisible();
-  await expect(page.locator("body")).toHaveJSProperty("scrollWidth", 390);
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
+    .toBeLessThanOrEqual(0);
 });
 
 test("keeps the German Join journey inside a narrow viewport", async ({ page }) => {
@@ -198,7 +213,7 @@ test("keeps the German Join journey inside a narrow viewport", async ({ page }) 
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       ),
     )
-    .toBe(0);
+    .toBeLessThanOrEqual(0);
 });
 
 test("keeps identity and operational attention in the signed-in shell", async ({ page }) => {
@@ -322,6 +337,7 @@ test("offers full-page identity sign-in with a local React return target", async
 });
 
 test("navigates the UTC month calendar", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-08-12T12:00:00Z"));
   await page.goto("events/upcoming?mode=calendar");
   await page.getByRole("button", { name: "Next month" }).click();
   await expect(page.getByRole("heading", { name: event.title })).toBeVisible();
@@ -420,7 +436,10 @@ test("filters the event administration ledger on canonical and legacy routes", a
               maybeCount: 1,
               rejectedCount: 0,
             },
-            hostedBy: { nickname: "Raven" },
+            hostedBy: {
+              primaryKey: "00000000-0000-0000-0000-000000000001",
+              nickname: "Raven",
+            },
             owner: { nickname: "Planner" },
             terrain: { title: "Altis" },
             modPackRevision: { definitionTitle: "UTF Main" },
@@ -436,7 +455,10 @@ test("filters the event administration ledger on canonical and legacy routes", a
               maybeCount: 0,
               rejectedCount: 0,
             },
-            hostedBy: { nickname: "Falcon" },
+            hostedBy: {
+              primaryKey: "00000000-0000-0000-0000-000000000001",
+              nickname: "Falcon",
+            },
             owner: { nickname: "Planner" },
             terrain: { title: "Malden" },
             modPackRevision: { definitionTitle: "Training" },

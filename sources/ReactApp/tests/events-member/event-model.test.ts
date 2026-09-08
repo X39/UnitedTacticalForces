@@ -93,7 +93,7 @@ describe("event detail parity model", () => {
     expect(isEventId("00000000-0000-0000-0000-000000000000")).toBe(true);
     expect(isEventId("not-an-event")).toBe(false);
 
-    const groups = groupEventSlots(
+    const sides = groupEventSlots(
       [
         slot({ slotNumber: 3, title: "Medic" }),
         slot({ slotNumber: 2 }),
@@ -104,9 +104,32 @@ describe("event detail parity model", () => {
       "Unassigned role",
     );
 
-    expect(groups.map((group) => group.name)).toEqual(["Alpha", "Ungrouped"]);
-    expect(groups[0]?.rows[0]?.slots.map((item) => item.slotNumber)).toEqual([1, 2]);
-    expect(groups[0]).toMatchObject({ assignedCount: 1, totalCount: 3 });
+    expect(sides.map((side) => side.id)).toEqual(["west"]);
+    expect(sides[0]?.groups.map((group) => group.name)).toEqual(["Alpha", "Ungrouped"]);
+    expect(sides[0]?.groups[0]?.rows[0]?.slots.map((item) => item.slotNumber)).toEqual([1, 2]);
+    expect(sides[0]).toMatchObject({ assignedCount: 1, totalCount: 4 });
+    expect(sides[0]?.groups[0]).toMatchObject({ assignedCount: 1, totalCount: 3 });
+  });
+
+  it("keeps identically named groups separated by side", () => {
+    const sides = groupEventSlots(
+      [
+        slot({ slotNumber: 4, group: "Alpha", title: "Rifleman", side: "East" }),
+        slot({ slotNumber: 1, group: "Alpha", title: "Team Lead", side: "West" }),
+        slot({ slotNumber: 2, group: "Alpha", title: "Rifleman", side: "West" }),
+        slot({ slotNumber: 3, group: "Alpha", title: "Medic", side: "East" }),
+      ],
+      "Ungrouped",
+      "Unassigned role",
+    );
+
+    expect(sides.map((side) => side.id)).toEqual(["west", "east"]);
+    expect(sides.map((side) => side.groups.map((group) => group.name))).toEqual([
+      ["Alpha"],
+      ["Alpha"],
+    ]);
+    expect(sides[0]?.groups[0]?.rows.map((row) => row.title)).toEqual(["Team Lead", "Rifleman"]);
+    expect(sides[1]?.groups[0]?.rows.map((row) => row.title)).toEqual(["Medic", "Rifleman"]);
   });
 
   it("permits only authenticated users to claim a visible, open, self-assignable future slot", () => {
@@ -133,7 +156,9 @@ describe("event detail parity model", () => {
     delete (legacySlot as Partial<EventSlot>).isSelfAssignable;
 
     expect(canSelfAssignSlot(legacySlot, user(), operation(), false)).toBe(true);
-    expect(groupEventSlots([legacySlot], "Ungrouped", "Unassigned")[0]?.rows[0]?.openCount).toBe(1);
+    expect(
+      groupEventSlots([legacySlot], "Ungrouped", "Unassigned")[0]?.groups[0]?.rows[0]?.openCount,
+    ).toBe(1);
   });
 
   it("never turns the current-slot row into a self-unassign action", () => {

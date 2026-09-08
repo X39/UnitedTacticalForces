@@ -5403,6 +5403,9 @@ Beginne hier mit dem Schreiben.</value>
   <data name="Shared_CommunityNav_ToggleNavigationAria" xml:space="preserve">
         <value>Navigation ein- oder ausblenden</value>
     </data>
+  <data name="Shared_CommunityNav_CloseNavigationAria" xml:space="preserve">
+        <value>Navigation schließen</value>
+    </data>
   <data name="Shared_CommunityNav_Unit" xml:space="preserve">
         <value>Einheit</value>
     </data>
@@ -10531,7 +10534,7 @@ Beginne hier mit dem Schreiben.</value>
     <value>Offener Slot</value>
   </data>
   <data name="Auto_ManageEvent_0a863949" xml:space="preserve">
-    <value>Manage Veranstaltung</value>
+    <value>Veranstaltung verwalten</value>
   </data>
   <data name="Auto_EventControls_ad2e84e1" xml:space="preserve">
     <value>Veranstaltung Controls</value>
@@ -12164,6 +12167,51 @@ Beginne hier mit dem Schreiben.</value>
   </data>
   <data name="Pages_Events_Edit_Tooltip_ObjectiveIcon" xml:space="preserve">
     <value>Icon-Name für das Ziel.</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Objective" xml:space="preserve">
+    <value>Ziel</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Intel" xml:space="preserve">
+    <value>Aufklärung</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Map" xml:space="preserve">
+    <value>Karte</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Rally" xml:space="preserve">
+    <value>Sammelpunkt</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Radio" xml:space="preserve">
+    <value>Funk</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Warning" xml:space="preserve">
+    <value>Warnung</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Stealth" xml:space="preserve">
+    <value>Tarnung</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Support" xml:space="preserve">
+    <value>Unterstützung</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Medical" xml:space="preserve">
+    <value>Sanität</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Extract" xml:space="preserve">
+    <value>Extraktion</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Host" xml:space="preserve">
+    <value>Host</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Time" xml:space="preserve">
+    <value>Zeit</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_ModPack" xml:space="preserve">
+    <value>Mod-Paket</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Slot" xml:space="preserve">
+    <value>Slot</value>
+  </data>
+  <data name="React_EventAuthoring_ObjectiveIcon_Document" xml:space="preserve">
+    <value>Dokument</value>
   </data>
   <data name="Pages_Events_Edit_LabelObjective" xml:space="preserve">
     <value>Ziel {0}</value>

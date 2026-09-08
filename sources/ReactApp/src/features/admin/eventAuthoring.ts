@@ -2,6 +2,9 @@ import { z } from "zod";
 import { getApiClient } from "@/api/client";
 import { apiMethod, apiPath, apiPathWithQuery, fillApiPath } from "@/api/contract";
 import type { components } from "@/generated/api";
+import { removeObjectiveBlock } from "@/features/events/eventBriefing";
+
+export { removeObjectiveBlock };
 
 type Schema<Name extends keyof components["schemas"]> = components["schemas"][Name];
 type EventCreationPayload = Schema<"EventCreationPayload">;
@@ -325,17 +328,6 @@ export function parseEventObjectives(description: string): EventObjectiveDraft[]
     .filter((item): item is Pick<EventObjectiveDraft, "icon" | "text"> => Boolean(item))
     .map((item) => ({ ...item, draftKey: crypto.randomUUID() }));
   return drafts.length ? drafts : [createObjectiveDraft()];
-}
-
-export function removeObjectiveBlock(description: string): string {
-  const lines = normalizedLines(description);
-  const firstContent = lines.findIndex((line) => line.trim().length > 0);
-  if (firstContent < 0 || !objectiveHeading.test(lines[firstContent] ?? "")) return description;
-  let index = firstContent + 1;
-  while (index < lines.length && !lines[index]?.trim()) index += 1;
-  while (index < lines.length && parseObjectiveLine(lines[index] ?? "")) index += 1;
-  while (index < lines.length && !lines[index]?.trim()) index += 1;
-  return lines.slice(index).join("\n").trimStart();
 }
 
 export function applyEventObjectives(

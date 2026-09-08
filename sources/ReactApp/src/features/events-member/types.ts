@@ -1,4 +1,5 @@
 import type { components } from "@/generated/api";
+import type { EventSideId, EventSideLabelKey } from "@/features/events/eventSlotPresentation";
 
 type Schema<Name extends keyof components["schemas"]> = components["schemas"][Name];
 type RequiredSchema<Name extends keyof components["schemas"]> = Required<Schema<Name>>;
@@ -13,6 +14,8 @@ export type KassenbuchPage = Omit<RequiredSchema<"KassenbuchPageDto">, "entries"
 };
 
 export type SlotSide = EventSlot["side"] | number;
+export type SlotSideId = EventSideId;
+export type SlotSideLabelKey = EventSideLabelKey;
 
 export interface EventSlotRow {
   key: string;
@@ -27,6 +30,14 @@ export interface EventSlotRow {
 export interface EventSlotGroup {
   name: string;
   rows: EventSlotRow[];
+  assignedCount: number;
+  totalCount: number;
+}
+
+export interface EventSlotSideGroup {
+  id: SlotSideId;
+  labelKey: SlotSideLabelKey | undefined;
+  groups: EventSlotGroup[];
   assignedCount: number;
   totalCount: number;
 }

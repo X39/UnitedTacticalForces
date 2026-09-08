@@ -8,6 +8,7 @@ interface PublicHeroBaseProps {
   className?: string;
   innerClassName?: string;
   copyClassName?: string;
+  descriptionClassName?: string;
   actionsClassName?: string;
   style?: CSSProperties;
   compact?: boolean;
@@ -45,6 +46,7 @@ export function PublicHero({
   className,
   innerClassName,
   copyClassName,
+  descriptionClassName,
   actionsClassName,
   style,
   compact = false,
@@ -67,7 +69,11 @@ export function PublicHero({
         <div className={joinClassNames("public-hero__copy", copyClassName)}>
           {kicker !== undefined && kicker !== null && <span className="kicker">{kicker}</span>}
           <h1>{title}</h1>
-          {description !== undefined && description !== null && <p>{description}</p>}
+          {description !== undefined && description !== null && (
+            <div className={joinClassNames("public-hero__description", descriptionClassName)}>
+              {description}
+            </div>
+          )}
           {actions !== undefined && actions !== null && (
             <div className={joinClassNames("public-hero__actions", actionsClassName)}>
               {actions}

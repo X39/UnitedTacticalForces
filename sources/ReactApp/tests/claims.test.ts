@@ -4,6 +4,7 @@ import {
   canAccessVereinLedger,
   canCreateRoles,
   canCreateGameServers,
+  canEditEvent,
   canEditEvents,
   canManageAuthority,
   canManageEvents,
@@ -78,10 +79,15 @@ describe("authorization predicates", () => {
   });
 
   it("keeps event creation and event administration permissions distinct", () => {
-    expect(canManageEvents(user([claim("crt:ev")]))).toBe(true);
-    expect(canEditEvents(user([claim("crt:ev")]))).toBe(false);
+    const creator = user([claim("crt:ev")]);
+    expect(canManageEvents(creator)).toBe(true);
+    expect(canEditEvents(creator)).toBe(false);
+    expect(canEditEvent(creator, creator.primaryKey)).toBe(true);
+    expect(canEditEvent(creator, "00000000-0000-0000-0000-000000000002")).toBe(false);
     expect(canEditEvents(user([claim("adm:ev", "event-scope")]))).toBe(true);
-    expect(canEditEvents(user([claim("adm")]))).toBe(true);
+    const administrator = user([claim("adm")]);
+    expect(canEditEvents(administrator)).toBe(true);
+    expect(canEditEvent(administrator, "00000000-0000-0000-0000-000000000002")).toBe(true);
   });
 
   it("matches classic Verein membership administration claims", () => {

@@ -1,12 +1,13 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
-import { canManageEvents } from "@/auth/claims";
+import { canEditEvent, canManageEvents } from "@/auth/claims";
+import { ActionLink } from "@/components/ActionControl";
 import { Metric, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
 import {
   eventAdminState,
@@ -71,6 +72,7 @@ function relativeSchedule(
 export function Component() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const authorized = canManageEvents(user);
   const [filter, setFilter] = useState<EventAdminFilter>("all");
   const [search, setSearch] = useState("");
@@ -300,15 +302,44 @@ export function Component() {
                   {visibleRows.map((row) => {
                     const event = row.plainEvent;
                     const state = stateCopy[eventAdminState(event, now)];
+                    const title = event.title || t("Pages_Events_All_UntitledEvent");
+                    const canOpenEditor = Boolean(
+                      event.primaryKey && canEditEvent(user, row.hostedBy?.primaryKey),
+                    );
+                    const editorPath = event.primaryKey
+                      ? `/command/events/${event.primaryKey}`
+                      : undefined;
+                    const openEditor = () => {
+                      if (canOpenEditor && editorPath) navigate(editorPath);
+                    };
                     return (
-                      <tr key={event.primaryKey || event.title}>
+                      <tr
+                        key={event.primaryKey || event.title}
+                        className={canOpenEditor ? "event-admin-row--interactive" : undefined}
+                        tabIndex={canOpenEditor ? 0 : undefined}
+                        onClick={canOpenEditor ? openEditor : undefined}
+                        onKeyDown={
+                          canOpenEditor
+                            ? (keyboardEvent) => {
+                                if (keyboardEvent.target !== keyboardEvent.currentTarget) return;
+                                if (keyboardEvent.key !== "Enter" && keyboardEvent.key !== " ")
+                                  return;
+                                keyboardEvent.preventDefault();
+                                openEditor();
+                              }
+                            : undefined
+                        }
+                      >
                         <th scope="row">
-                          {event.primaryKey ? (
-                            <Link to={`/command/events/${event.primaryKey}`}>
-                              {event.title || t("Pages_Events_All_UntitledEvent")}
+                          {canOpenEditor && editorPath ? (
+                            <Link
+                              to={editorPath}
+                              onClick={(clickEvent) => clickEvent.stopPropagation()}
+                            >
+                              {title}
                             </Link>
                           ) : (
-                            <strong>{event.title || t("Pages_Events_All_UntitledEvent")}</strong>
+                            <strong>{title}</strong>
                           )}
                           <span>{event.primaryKey || missing}</span>
                         </th>
@@ -347,14 +378,28 @@ export function Component() {
                           </div>
                         </td>
                         <td>
-                          {event.primaryKey && (
-                            <Link
-                              className="button button--ghost button--small"
-                              to={`/events/${event.primaryKey}`}
-                            >
-                              {t("Pages_Events_All_ViewSlots")}
-                            </Link>
-                          )}
+                          <div className="event-admin-row-actions">
+                            {canOpenEditor && editorPath && (
+                              <ActionLink
+                                variant="primary"
+                                size="compact"
+                                to={editorPath}
+                                onClick={(clickEvent) => clickEvent.stopPropagation()}
+                              >
+                                {t("Auto_ManageEvent_0a863949")}
+                              </ActionLink>
+                            )}
+                            {event.primaryKey && (
+                              <ActionLink
+                                variant="ghost"
+                                size="compact"
+                                to={`/events/${event.primaryKey}`}
+                                onClick={(clickEvent) => clickEvent.stopPropagation()}
+                              >
+                                {t("Pages_Events_All_ViewSlots")}
+                              </ActionLink>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

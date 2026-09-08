@@ -13,12 +13,12 @@ import { resolveImageUrl } from "@/api/client";
 import { eventService, fieldReportService, queryKeys } from "@/api/services";
 import type { UpcomingEvent } from "@/api/types";
 import type { PublicConfiguration } from "@/app/config";
-import { formatDate, formatUtcDateTime, plainText } from "@/app/format";
+import { formatDate, formatUtcDateTime } from "@/app/format";
 import { resolveSiteImage, useSiteImages } from "@/app/siteImages";
 import { eventNeedsSignups, normalizeEventAcceptance } from "@/app/upcomingEvents";
 import { ActionLink } from "@/components/ActionControl";
 import { PublicHero } from "@/components/PublicHero";
-import { Metric, StatePanel, StatusBadge } from "@/components/primitives";
+import { MarkdownExcerpt, Metric, StatePanel, StatusBadge } from "@/components/primitives";
 
 function operationTone(event: UpcomingEvent): "success" | "warning" {
   return eventNeedsSignups(event) ? "warning" : "success";
@@ -117,9 +117,11 @@ export function Component() {
         kicker={t("Pages_Public_Home_NextOperationKicker")}
         title={primary?.title ?? t("Pages_Public_Home_DefaultHeroTitle")}
         description={
-          primary
-            ? plainText(primary.description, 220)
-            : t("Pages_Public_Home_NoOperationsPublished")
+          primary ? (
+            <MarkdownExcerpt maximumLines={4}>{primary.description}</MarkdownExcerpt>
+          ) : (
+            t("Pages_Public_Home_NoOperationsPublished")
+          )
         }
         actions={
           <>
@@ -309,7 +311,7 @@ export function Component() {
               <div className="operation-card__body">
                 <span>{formatUtcDateTime(event.scheduledFor)}</span>
                 <h3>{event.title}</h3>
-                <p>{plainText(event.description)}</p>
+                <MarkdownExcerpt maximumLines={3}>{event.description}</MarkdownExcerpt>
                 <div className="operation-card__metadata">
                   <Metric
                     label={t("React_UI_Terrain")}

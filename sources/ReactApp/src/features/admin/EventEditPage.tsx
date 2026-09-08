@@ -16,7 +16,7 @@ import { resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
-import { canEditEvents } from "@/auth/claims";
+import { canEditEvent, canManageEvents, isAuthenticated } from "@/auth/claims";
 import { useAppToast } from "@/components/AppToasts";
 import { NotFoundPage } from "@/components/NotFoundPage";
 import {
@@ -27,6 +27,7 @@ import {
   useUnsavedChanges,
 } from "@/components/primitives";
 import { EventEntityPicker } from "@/features/admin/EventEntityPicker";
+import { EventObjectiveIconPicker } from "@/features/admin/EventObjectiveIconPicker";
 import { EventSlotPlanner } from "@/features/admin/EventSlotPlanner";
 import {
   applyEventObjectives,
@@ -108,6 +109,7 @@ function syntheticScenario(snapshot: EventAuthoringSnapshot): GameContentOption 
 
 function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { showToast } = useAppToast();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -298,6 +300,7 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
   const busy = saveMutation.isPending || assignmentMutation.isPending;
   const errors = form.formState.errors;
   const imageUrl = resolveImageUrl(watched.imagePath);
+  const backPath = canManageEvents(user) ? "/command/events" : `/events/${eventId}`;
 
   const saveAll = form.handleSubmit(
     (values) => saveMutation.mutate({ mode: "all", values }),
@@ -315,7 +318,7 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
       <section className="command-panel event-editor-header">
         <div className="event-editor-header__main">
           <div className="event-editor-header__copy">
-            <Link className="event-editor-back-link" to="/command/events">
+            <Link className="event-editor-back-link" to={backPath}>
               <ArrowLeft20Regular />
               {t("Auto_BackToEvents_6f92c820")}
             </Link>
@@ -698,28 +701,19 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
               <div className="event-objective-list">
                 {objectives.map((objective, index) => (
                   <article key={objective.draftKey}>
-                    <label>
-                      <span>{t("Icon")}</span>
-                      <select
-                        value={objective.icon}
-                        disabled={busy}
-                        onChange={(event) =>
-                          applyObjectives(
-                            objectives.map((item) =>
-                              item.draftKey === objective.draftKey
-                                ? { ...item, icon: event.target.value }
-                                : item,
-                            ),
-                          )
-                        }
-                      >
-                        {eventObjectiveIcons.map((icon) => (
-                          <option key={icon} value={icon}>
-                            {icon}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <EventObjectiveIconPicker
+                      label={t("Icon")}
+                      value={objective.icon}
+                      options={eventObjectiveIcons}
+                      disabled={busy}
+                      onChange={(icon) =>
+                        applyObjectives(
+                          objectives.map((item) =>
+                            item.draftKey === objective.draftKey ? { ...item, icon } : item,
+                          ),
+                        )
+                      }
+                    />
                     <label>
                       <span>
                         {formatResource(t("Pages_Events_Edit_LabelObjective"), index + 1)}
@@ -855,15 +849,15 @@ export function Component() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { eventId } = useParams<{ eventId: string }>();
-  const canManage = canEditEvents(user);
+  const canLoad = isAuthenticated(user);
   const query = useQuery({
     queryKey: eventAuthoringQueryKeys.event(eventId ?? ""),
     queryFn: ({ signal }) => eventAuthoringService.load(eventId!, signal),
-    enabled: canManage && isGuid(eventId),
+    enabled: canLoad && isGuid(eventId),
   });
 
   if (!isGuid(eventId)) return <NotFoundPage />;
-  if (!canManage)
+  if (!canLoad)
     return (
       <StatePanel kind="forbidden" title={t("Auto_EventAdministratorAccessRequired_d59039c1")}>
         {t("Auto_EventAuthoringIsVisibleOnlyToAuthorizedOperationPlanners_b8740e86")}
@@ -890,6 +884,12 @@ export function Component() {
         <Link className="button button--ghost" to="/command/events">
           {t("Auto_BackToEvents_6f92c820")}
         </Link>
+      </StatePanel>
+    );
+  if (!canEditEvent(user, query.data.event.hostedBy?.primaryKey))
+    return (
+      <StatePanel kind="forbidden" title={t("Auto_EventAdministratorAccessRequired_d59039c1")}>
+        {t("Auto_EventAuthoringIsVisibleOnlyToAuthorizedOperationPlanners_b8740e86")}
       </StatePanel>
     );
   return <Editor snapshot={query.data} />;

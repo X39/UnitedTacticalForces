@@ -103,6 +103,15 @@ describe("event authoring model", () => {
         { ...objectives[0]!, icon: "map", text: "Secure the bridge" },
       ]),
     ).toBe("## Mission objectives\n- :map: Secure the bridge\n\n## Execution\nMove at dusk.");
+
+    expect(removeObjectiveBlock("## Mission objectives\nBriefing prose starts immediately.")).toBe(
+      "Briefing prose starts immediately.",
+    );
+    expect(
+      removeObjectiveBlock(
+        "## Mission objectives\n- :intel: Locate the convoy\n## Execution\nMove at dusk.",
+      ),
+    ).toBe("## Execution\nMove at dusk.");
   });
 
   it("normalizes legacy numeric and string Arma sides", () => {

@@ -5589,11 +5589,39 @@ textarea.member-management-control {
 }
 
 .utf-landing-hero__summary {
-    display: -webkit-box;
-    line-clamp: 3;
     max-height: calc(1.7em * 3);
     overflow: hidden;
     overflow-wrap: anywhere;
+}
+
+.utf-landing-hero__summary > div,
+.utf-landing-hero__summary > div > :first-child,
+.utf-landing-hero__summary > div > :last-child {
+    margin-block: 0;
+}
+
+.utf-landing-hero__summary h1,
+.utf-landing-hero__summary h2,
+.utf-landing-hero__summary h3,
+.utf-landing-hero__summary h4,
+.utf-landing-hero__summary h5,
+.utf-landing-hero__summary h6 {
+    display: inline;
+    color: inherit;
+    font: inherit;
+    font-weight: 750;
+    text-transform: none;
+}
+
+.utf-landing-hero__summary p,
+.utf-landing-hero__summary ul,
+.utf-landing-hero__summary ol {
+    margin-block: 0 0.25rem;
+}
+
+.utf-landing-hero__summary {
+    display: -webkit-box;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
 }
@@ -9356,10 +9384,35 @@ code {
 }
 
 .utf-calendar-detail p,
+.utf-calendar-detail__description,
 .utf-calendar-detail__empty p {
     color: var(--utf-text-muted);
     line-height: 1.6;
     margin: 0;
+}
+
+.utf-calendar-detail__description {
+    max-height: calc(1.6em * 4);
+    overflow: hidden;
+}
+
+.utf-calendar-detail__description > div,
+.utf-calendar-detail__description > div > :first-child,
+.utf-calendar-detail__description > div > :last-child {
+    margin-block: 0;
+}
+
+.utf-calendar-detail__description h1,
+.utf-calendar-detail__description h2,
+.utf-calendar-detail__description h3,
+.utf-calendar-detail__description h4,
+.utf-calendar-detail__description h5,
+.utf-calendar-detail__description h6 {
+    display: inline;
+    color: inherit;
+    font: inherit;
+    font-weight: 750;
+    text-transform: none;
 }
 
 .utf-calendar-detail__facts {

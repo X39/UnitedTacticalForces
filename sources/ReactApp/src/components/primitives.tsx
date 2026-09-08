@@ -5,9 +5,16 @@ import {
   Info20Regular,
   Warning20Regular,
 } from "@fluentui/react-icons";
-import { useEffect, useRef, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
-import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import { useBlocker } from "react-router";
 import remarkGridTables from "@adobe/remark-gridtables";
 import rehypeHighlight from "rehype-highlight";
@@ -208,28 +215,90 @@ function MarkdownCodeBlock({ children }: ComponentPropsWithoutRef<"pre">) {
   );
 }
 
+function MarkdownExcerptHeading({ children }: { children?: ReactNode }) {
+  return <strong className="markdown-excerpt__heading">{children}</strong>;
+}
+
+function MarkdownExcerptLink({ children }: ComponentPropsWithoutRef<"a">) {
+  return <span className="markdown-excerpt__link">{children}</span>;
+}
+
+function MarkdownExcerptCodeBlock({ children }: ComponentPropsWithoutRef<"pre">) {
+  return <span className="markdown-excerpt__code">{children}</span>;
+}
+
+function MarkdownExcerptImage({ alt }: ComponentPropsWithoutRef<"img">) {
+  return alt ? <span>{alt}</span> : null;
+}
+
+const markdownComponents: Components = { a: MarkdownLink, pre: MarkdownCodeBlock };
+const markdownExcerptComponents: Components = {
+  a: MarkdownExcerptLink,
+  h1: MarkdownExcerptHeading,
+  h2: MarkdownExcerptHeading,
+  h3: MarkdownExcerptHeading,
+  h4: MarkdownExcerptHeading,
+  h5: MarkdownExcerptHeading,
+  h6: MarkdownExcerptHeading,
+  img: MarkdownExcerptImage,
+  pre: MarkdownExcerptCodeBlock,
+};
+
+function MarkdownContent({ children, components }: { children: string; components: Components }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[
+        [remarkGfm, { singleTilde: false }],
+        remarkGridTables,
+        remarkDeflist,
+        remarkDirective,
+        remarkFlexibleMarkers,
+        remarkMarkdigContainers,
+        remarkMarkdigInlineExtensions,
+        remarkMarkdigAbbreviations,
+      ]}
+      rehypePlugins={[rehypeSlug, rehypeHighlight]}
+      remarkRehypeOptions={markdownRehypeOptions}
+      urlTransform={safeUrlTransform}
+      skipHtml
+      components={components}
+    >
+      {expandShortcodes(preprocessMarkdigBlocks(children))}
+    </ReactMarkdown>
+  );
+}
+
 export function Markdown({ children }: { children: string }) {
   return (
     <div className="markdown">
-      <ReactMarkdown
-        remarkPlugins={[
-          [remarkGfm, { singleTilde: false }],
-          remarkGridTables,
-          remarkDeflist,
-          remarkDirective,
-          remarkFlexibleMarkers,
-          remarkMarkdigContainers,
-          remarkMarkdigInlineExtensions,
-          remarkMarkdigAbbreviations,
-        ]}
-        rehypePlugins={[rehypeSlug, rehypeHighlight]}
-        remarkRehypeOptions={markdownRehypeOptions}
-        urlTransform={safeUrlTransform}
-        skipHtml
-        components={{ a: MarkdownLink, pre: MarkdownCodeBlock }}
-      >
-        {expandShortcodes(preprocessMarkdigBlocks(children))}
-      </ReactMarkdown>
+      <MarkdownContent components={markdownComponents}>{children}</MarkdownContent>
+    </div>
+  );
+}
+
+export function MarkdownExcerpt({
+  children,
+  fallback,
+  maximumLines = 3,
+}: {
+  children: string;
+  fallback?: ReactNode;
+  maximumLines?: number;
+}) {
+  const source = children.trim();
+  if (!source && (fallback === undefined || fallback === null)) return null;
+  const lineCount = Number.isFinite(maximumLines) ? Math.max(1, Math.floor(maximumLines)) : 3;
+  const style = {
+    "--markdown-excerpt-max-height": `${lineCount * 1.55}em`,
+  } as CSSProperties;
+
+  return (
+    <div className="markdown markdown--excerpt" style={style}>
+      {source ? (
+        <MarkdownContent components={markdownExcerptComponents}>{source}</MarkdownContent>
+      ) : (
+        fallback
+      )}
     </div>
   );
 }

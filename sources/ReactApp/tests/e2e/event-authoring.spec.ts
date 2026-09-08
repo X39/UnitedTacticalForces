@@ -250,6 +250,14 @@ test("creates through the certified alias and edits in the command workspace", a
   expect(await page.evaluate(() => window.scrollY)).toBe(documentScrollBeforePicker);
   await page.getByRole("button", { name: /operation-cover\.webp/ }).click();
   await page.getByRole("button", { name: "Apply", exact: true }).click();
+  const createImagePreview = page.locator(".event-authoring-image-preview");
+  const createImageBounds = await createImagePreview.boundingBox();
+  expect(createImageBounds).not.toBeNull();
+  expect(createImageBounds!.width).toBeLessThanOrEqual(288);
+  expect(createImageBounds!.width / createImageBounds!.height).toBeCloseTo(16 / 9, 1);
+  expect(await createImagePreview.evaluate((element) => getComputedStyle(element).minHeight)).toBe(
+    "0px",
+  );
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Briefing markdown" })
@@ -263,6 +271,10 @@ test("creates through the certified alias and edits in the command workspace", a
     .evaluate((form: HTMLFormElement) => form.requestSubmit());
 
   await expect(page).toHaveURL(new RegExp(`/next/command/events/${eventId}$`));
+  const editImageBounds = await page.locator(".event-authoring-image-preview").boundingBox();
+  expect(editImageBounds).not.toBeNull();
+  expect(editImageBounds!.width).toBeLessThanOrEqual(288);
+  expect(editImageBounds!.width / editImageBounds!.height).toBeCloseTo(16 / 9, 1);
   expect(createdEvent).toMatchObject({
     title: "Operation Northstar",
     hostedByFk: hostId,
@@ -272,10 +284,23 @@ test("creates through the certified alias and edits in the command workspace", a
   });
   expect(createdSlot).toMatchObject({ group: "Alpha", title: "Rifleman", side: "West" });
 
+  await page.getByRole("tab", { name: /Objectives/ }).click();
+  const objectiveIconGroup = page.locator("fieldset.event-objective-icon-picker");
+  await expect(objectiveIconGroup).toHaveAccessibleName(/Icon Objective/);
+  await expect(objectiveIconGroup.getByRole("radio")).toHaveCount(15);
+  await expect(objectiveIconGroup.locator('[data-tactical-icon="objective"] svg')).toBeVisible();
+  await objectiveIconGroup.locator('label[data-icon="map"]').click();
+  await expect(objectiveIconGroup.getByRole("radio", { name: "Map" })).toBeChecked();
+  await expect(objectiveIconGroup).toHaveAccessibleName(/Icon Map/);
+  await page.getByRole("tab", { name: /Details/ }).click();
+
   await page.getByRole("textbox", { name: "Title" }).fill("Operation Northstar II");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByText("Event changes and slot plan saved.").last()).toBeVisible();
-  expect(updatedEvent).toMatchObject({ title: "Operation Northstar II" });
+  expect(updatedEvent).toMatchObject({
+    title: "Operation Northstar II",
+    description: expect.stringContaining("- :map: Secure the objective."),
+  });
 
   await page.getByRole("textbox", { name: "Title" }).fill("");
   await page.getByRole("tab", { name: /Slots/ }).click();

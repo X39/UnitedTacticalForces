@@ -15,7 +15,8 @@ function currentMonthOperation() {
   return {
     primaryKey: eventId,
     title: "Operation Copper Trail",
-    description: "A coordinated reconnaissance operation with a published briefing.",
+    description:
+      "## Briefing\n\n**Coordinate reconnaissance** from the [published orders](/events/briefing).\n\n- Hold :radio: watch",
     terrainTitle: "Altis",
     modPackDefinitionTitle: "UTF Main",
     modPackDefinitionIsComposition: false,
@@ -64,6 +65,12 @@ test("keeps operation readiness separate from personal attendance on the public 
   await expect(card).toHaveClass(/operation-board-card--featured/);
   await expect(card.getByText("Low slots", { exact: true })).toBeVisible();
   await expect(card.getByText("Confirmed", { exact: true })).toBeVisible();
+  const briefing = card.locator(".markdown--excerpt");
+  await expect(briefing).toContainText("Briefing");
+  await expect(briefing.getByText("Coordinate reconnaissance", { exact: true })).toBeVisible();
+  await expect(briefing).toContainText("Hold 📻 watch");
+  await expect(briefing.getByRole("link")).toHaveCount(0);
+  await expect(briefing).not.toContainText("**");
   await expect(page.getByPlaceholder("Search operations")).toHaveCount(0);
 });
 
@@ -74,11 +81,14 @@ test("keeps the calendar agenda usable without horizontal overflow on mobile", a
 
   await expect(page.locator(".calendar-week-strip")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Operation Copper Trail" })).toBeVisible();
+  await expect(page.locator(".calendar-detail > .markdown--excerpt")).toContainText(
+    "Coordinate reconnaissance",
+  );
   await expect
     .poll(() =>
       page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       ),
     )
-    .toBe(0);
+    .toBeLessThanOrEqual(0);
 });

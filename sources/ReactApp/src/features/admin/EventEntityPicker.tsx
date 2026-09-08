@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { StatePanel } from "@/components/primitives";
 
 export function EventEntityPicker<T>({
@@ -11,6 +11,7 @@ export function EventEntityPicker<T>({
   load,
   getKey,
   getLabel,
+  renderOption,
   emptyLabel,
   loadingLabel,
   errorLabel,
@@ -26,6 +27,7 @@ export function EventEntityPicker<T>({
   load(search: string, signal?: AbortSignal): Promise<T[]>;
   getKey(item: T): string;
   getLabel(item: T): string;
+  renderOption?(item: T): ReactNode;
   emptyLabel: string;
   loadingLabel: string;
   errorLabel: string;
@@ -40,12 +42,44 @@ export function EventEntityPicker<T>({
   const search = searchState.selectedKey === selectedKey ? searchState.value : selectedLabel;
   const setSearch = (value: string) => setSearchState({ selectedKey, value });
   const [open, setOpen] = useState(false);
+  const [activeKey, setActiveKey] = useState<string>();
+  const [pendingNavigation, setPendingNavigation] = useState<"first" | "last" | null>(null);
   const query = useQuery({
     queryKey: ["event-authoring", "selector", queryKey, search.trim()],
     queryFn: ({ signal }) => load(search.trim(), signal),
     enabled: open && !disabled,
     staleTime: 20_000,
   });
+  const options = query.data ?? [];
+  const pendingActive =
+    !activeKey && pendingNavigation && options.length
+      ? pendingNavigation === "last"
+        ? options[options.length - 1]
+        : options[0]
+      : undefined;
+  const resolvedActiveKey = activeKey ?? (pendingActive ? getKey(pendingActive) : undefined);
+  const activeIndex = resolvedActiveKey
+    ? options.findIndex((item) => getKey(item) === resolvedActiveKey)
+    : -1;
+  const activeOptionId = activeIndex >= 0 ? `${id}-option-${activeIndex}` : undefined;
+  const close = (restoreSearch: boolean) => {
+    setOpen(false);
+    setActiveKey(undefined);
+    setPendingNavigation(null);
+    if (restoreSearch) setSearch(selectedLabel);
+  };
+  const select = (item: T) => {
+    const itemKey = getKey(item);
+    onSelect(item);
+    setSearchState({ selectedKey: itemKey, value: getLabel(item) });
+    close(false);
+  };
+
+  useEffect(() => {
+    if (!activeOptionId) return;
+    document.getElementById(activeOptionId)?.scrollIntoView?.({ block: "nearest" });
+  }, [activeOptionId]);
+
   return (
     <div className="event-authoring-picker">
       <label htmlFor={`${id}-input`}>{label}</label>
@@ -60,19 +94,50 @@ export function EventEntityPicker<T>({
           aria-autocomplete="list"
           aria-controls={`${id}-options`}
           aria-expanded={open}
+          aria-activedescendant={open ? activeOptionId : undefined}
           onFocus={() => setOpen(true)}
           onBlur={() =>
             window.setTimeout(() => {
-              setOpen(false);
-              setSearch(selectedLabel);
+              close(true);
             }, 120)
           }
           onChange={(event) => {
             setSearch(event.target.value);
             setOpen(true);
+            setActiveKey(undefined);
+            setPendingNavigation(null);
           }}
           onKeyDown={(event) => {
-            if (event.key === "Escape") setOpen(false);
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              const direction = event.key === "ArrowDown" ? "first" : "last";
+              setOpen(true);
+              if (!options.length) {
+                setPendingNavigation(direction);
+                return;
+              }
+              setPendingNavigation(null);
+              const nextIndex =
+                activeIndex < 0
+                  ? direction === "first"
+                    ? 0
+                    : options.length - 1
+                  : (activeIndex + (direction === "first" ? 1 : -1) + options.length) %
+                    options.length;
+              const next = options[nextIndex];
+              if (next) setActiveKey(getKey(next));
+              return;
+            }
+            if (event.key === "Enter" && open && activeIndex >= 0) {
+              event.preventDefault();
+              const active = options[activeIndex];
+              if (active) select(active);
+              return;
+            }
+            if (event.key === "Escape" && open) {
+              event.preventDefault();
+              close(true);
+            }
           }}
         />
         {selected && onClear && (
@@ -85,7 +150,7 @@ export function EventEntityPicker<T>({
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => {
               setSearch("");
-              setOpen(false);
+              close(false);
               onClear();
             }}
           >
@@ -101,22 +166,29 @@ export function EventEntityPicker<T>({
             ) : !query.data?.length ? (
               <span>{emptyLabel}</span>
             ) : (
-              query.data.map((item) => (
-                <button
-                  key={getKey(item)}
-                  type="button"
-                  role="option"
-                  aria-selected={selected ? getKey(item) === getKey(selected) : false}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    onSelect(item);
-                    setSearch(getLabel(item));
-                    setOpen(false);
-                  }}
-                >
-                  <strong>{getLabel(item)}</strong>
-                </button>
-              ))
+              options.map((item, index) => {
+                const itemKey = getKey(item);
+                const isActive = itemKey === resolvedActiveKey;
+                return (
+                  <button
+                    id={`${id}-option-${index}`}
+                    key={itemKey}
+                    type="button"
+                    role="option"
+                    aria-selected={isActive}
+                    data-current={itemKey === selectedKey || undefined}
+                    tabIndex={-1}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => {
+                      setPendingNavigation(null);
+                      setActiveKey(itemKey);
+                    }}
+                    onClick={() => select(item)}
+                  >
+                    {renderOption ? renderOption(item) : <strong>{getLabel(item)}</strong>}
+                  </button>
+                );
+              })
             )}
           </div>
         )}

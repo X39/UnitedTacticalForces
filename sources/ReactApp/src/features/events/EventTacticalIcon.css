@@ -1,0 +1,13 @@
+.event-tactical-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+}
+
+.event-tactical-icon > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

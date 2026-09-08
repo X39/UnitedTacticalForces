@@ -92,6 +92,16 @@ export function canEditEvents(user: FullUser | undefined): boolean {
   return hasClaim(user, "adm", "adm:ev");
 }
 
+export function canEditEvent(
+  user: FullUser | undefined,
+  hostedByUserId: string | null | undefined,
+): boolean {
+  return (
+    canEditEvents(user) ||
+    Boolean(isAuthenticated(user) && hostedByUserId && hostedByUserId === user.primaryKey)
+  );
+}
+
 export function canManageModPacks(user: FullUser | undefined): boolean {
   return hasClaim(user, "adm", "adm:mp") || hasBaseClaim(user, "crt:mp", "mp");
 }

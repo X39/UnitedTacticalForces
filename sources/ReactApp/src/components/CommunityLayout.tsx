@@ -137,7 +137,7 @@ export function CommunityLayout({ configuration }: { configuration: PublicConfig
         <button
           className="navigation-scrim"
           type="button"
-          aria-label={t("Shared_CommunityNav_ToggleNavigationAria")}
+          aria-label={t("Shared_CommunityNav_CloseNavigationAria")}
           onClick={() => setMenuOpen(false)}
         />
       )}

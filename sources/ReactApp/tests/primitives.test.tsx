@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import i18n, { i18nReady } from "@/app/i18n";
-import { ConfirmDialog, Markdown, PageHeader } from "@/components/primitives";
+import { PublicHero } from "@/components/PublicHero";
+import { ConfirmDialog, Markdown, MarkdownExcerpt, PageHeader } from "@/components/primitives";
 
 describe("shared UI primitives", () => {
   beforeAll(async () => {
@@ -72,6 +73,47 @@ describe("shared UI primitives", () => {
     expect(container.querySelector("footer")).toHaveTextContent("Footer line Continued footer");
     expect(container.querySelector("table thead")).toHaveTextContent("HeaderHeader");
     expect(container.querySelector("table tbody")).toHaveTextContent("CellValue");
+  });
+
+  it("renders Markdown excerpts without exposing source syntax or nested interactions", () => {
+    const { container } = render(
+      <MarkdownExcerpt maximumLines={4}>
+        {
+          "## Situation\n\n**Secure** the [rally point](/events/briefing).\n\n- Hold :radio: watch\n- Report contact"
+        }
+      </MarkdownExcerpt>,
+    );
+    const excerpt = container.querySelector<HTMLElement>(".markdown--excerpt");
+
+    expect(excerpt).not.toBeNull();
+    expect(excerpt?.style.getPropertyValue("--markdown-excerpt-max-height")).toBe("6.2em");
+    expect(excerpt?.querySelector(".markdown-excerpt__heading")).toHaveTextContent("Situation");
+    expect(excerpt?.querySelector("strong:not(.markdown-excerpt__heading)")).toHaveTextContent(
+      "Secure",
+    );
+    expect(excerpt?.querySelector("ul")).toHaveTextContent("Hold 📻 watch Report contact");
+    expect(screen.queryByRole("link", { name: "rally point" })).not.toBeInTheDocument();
+    expect(screen.getByText("rally point")).toHaveClass("markdown-excerpt__link");
+    expect(excerpt).not.toHaveTextContent("##");
+    expect(excerpt).not.toHaveTextContent("**");
+  });
+
+  it("provides fallback copy and keeps PublicHero descriptions block-safe", () => {
+    const { container } = render(
+      <PublicHero
+        title="Operation Northstar"
+        description={
+          <MarkdownExcerpt fallback="No briefing is available yet.">{"   "}</MarkdownExcerpt>
+        }
+      />,
+    );
+    const description = container.querySelector<HTMLElement>(".public-hero__description");
+
+    expect(description?.tagName).toBe("DIV");
+    expect(description?.querySelector(":scope > .markdown--excerpt")).toHaveTextContent(
+      "No briefing is available yet.",
+    );
+    expect(description?.querySelector(":scope > p")).not.toBeInTheDocument();
   });
 
   it("requires an exact challenge before confirming", async () => {

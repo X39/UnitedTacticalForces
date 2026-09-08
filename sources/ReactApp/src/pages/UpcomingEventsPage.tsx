@@ -13,7 +13,7 @@ import { Link } from "react-router";
 import { resolveImageUrl } from "@/api/client";
 import { eventService, queryKeys } from "@/api/services";
 import type { UpcomingEvent } from "@/api/types";
-import { currentLocale, plainText } from "@/app/format";
+import { currentLocale } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useSiteImage } from "@/app/siteImages";
 import {
@@ -25,7 +25,7 @@ import {
   utcDateKey,
   type UpcomingEventFilter,
 } from "@/app/upcomingEvents";
-import { StatePanel, StatusBadge } from "@/components/primitives";
+import { MarkdownExcerpt, StatePanel, StatusBadge } from "@/components/primitives";
 import "./publicEvents.css";
 
 type ViewMode = "board" | "calendar";
@@ -614,9 +614,12 @@ function CalendarWorkspace({
               </div>
               <small>{formatResource(t("Auto_Pending_7948f853"), selectedEvent.maybeCount)}</small>
             </div>
-            <p>
-              {plainText(selectedEvent.description) || t("Pages_Events_Upcoming_NoBriefingSummary")}
-            </p>
+            <MarkdownExcerpt
+              maximumLines={4}
+              fallback={t("Pages_Events_Upcoming_NoBriefingSummary")}
+            >
+              {selectedEvent.description}
+            </MarkdownExcerpt>
             <Link className="button button--gold" to={`/events/${selectedEvent.primaryKey}`}>
               {t("Auto_ViewSlots_ddcd3598")} <ChevronRight20Regular />
             </Link>
@@ -671,7 +674,9 @@ function OperationCard({
             <AttendanceBadge event={event} />
           </div>
         </div>
-        <p>{plainText(event.description) || t("Pages_Events_Upcoming_NoBriefingSummary")}</p>
+        <MarkdownExcerpt maximumLines={3} fallback={t("Pages_Events_Upcoming_NoBriefingSummary")}>
+          {event.description}
+        </MarkdownExcerpt>
         <dl>
           <div>
             <dt>{t("Terrain")}</dt>

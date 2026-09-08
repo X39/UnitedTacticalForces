@@ -408,7 +408,9 @@
                                 <span>@Localizer[nameof(Language.Auto_Pending_7948f853), selectedOperation.MaybeCount]</span>
                             </div>
                         </div>
-                        <p>@selectedOperation.Description</p>
+                        <div class="utf-calendar-detail__description">
+                            <FluentMarkdown Content="@selectedOperation.Description" IsExcerpt="true"/>
+                        </div>
                         <button class="utf-button utf-button--primary"
                                 type="button"
                                 disabled="@(selectedOperation.EventId is null)"

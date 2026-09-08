@@ -284,6 +284,15 @@ public partial class FluentMarkdown : FluentComponentBase
     [Parameter]
     public string? Content { get; set; }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether the rendered Markdown is a clipped, non-interactive excerpt.
+    /// </summary>
+    /// <value>
+    /// <see langword="true"/> to remove interactive links and copy controls; otherwise, <see langword="false"/>.
+    /// </value>
+    [Parameter]
+    public bool IsExcerpt { get; set; }
+
     [Parameter]
     public EventCallback OnContentConverted { get; set; }
 
@@ -297,9 +306,10 @@ public partial class FluentMarkdown : FluentComponentBase
 
     protected override void OnParametersSet()
     {
-        if (string.Equals(_previousContent, Content, StringComparison.Ordinal))
+        var contentKey = $"{IsExcerpt}\0{Content}";
+        if (string.Equals(_previousContent, contentKey, StringComparison.Ordinal))
             return;
-        _previousContent  = Content;
+        _previousContent  = contentKey;
         _markdownChanged = true;
     }
 
@@ -329,7 +339,8 @@ public partial class FluentMarkdown : FluentComponentBase
             }
 
             await _jsModule.InvokeVoidAsync("highlight");
-            await _jsModule.InvokeVoidAsync("addCopyButton");
+            if (!IsExcerpt)
+                await _jsModule.InvokeVoidAsync("addCopyButton");
         }
     }
 
@@ -337,7 +348,8 @@ public partial class FluentMarkdown : FluentComponentBase
     /// Converts markdown, provided in Content or from markdown file stored as a static asset, to MarkupString for rendering.
     /// </summary>
     /// <returns>MarkupString</returns>
-    private Task<MarkupString> MarkdownToMarkupStringAsync() => Task.FromResult(ConvertToMarkupString(Content));
+    private Task<MarkupString> MarkdownToMarkupStringAsync()
+        => Task.FromResult(ConvertToMarkupString(Content, IsExcerpt));
 
     private static MarkdownPipeline BuildMarkdownPipeline()
     {
@@ -362,12 +374,28 @@ public partial class FluentMarkdown : FluentComponentBase
             .Build();
     }
 
-    private static MarkupString ConvertToMarkupString(string? value)
+    /// <summary>
+    /// Converts Markdown source to safe rendered markup.
+    /// </summary>
+    /// <param name="value">The Markdown source.</param>
+    /// <param name="isExcerpt">Whether interactive elements must be removed for clipped summary use.</param>
+    /// <returns>The converted safe markup.</returns>
+    private static MarkupString ConvertToMarkupString(string? value, bool isExcerpt)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
             var html = Markdown.ToHtml(value, MarkdownPipeline);
             html = ReplaceIconShortcodes(html);
+            if (isExcerpt)
+            {
+                html = Regex.Replace(
+                    html,
+                    @"</?a(?:\s[^>]*)?>",
+                    string.Empty,
+                    RegexOptions.CultureInvariant | RegexOptions.IgnoreCase
+                );
+                html = html.Replace("snippet hljs-copy-wrapper", string.Empty, StringComparison.Ordinal);
+            }
 
             // Raw HTML is disabled and unsafe link schemes are neutralized before rendering as MarkupString.
             return new MarkupString(html);

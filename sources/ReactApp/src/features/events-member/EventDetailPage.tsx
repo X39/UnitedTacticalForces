@@ -26,9 +26,16 @@ import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import { useSiteImage } from "@/app/siteImages";
 import { useAuth } from "@/auth/auth";
-import { canEditEvents } from "@/auth/claims";
+import { canEditEvent } from "@/auth/claims";
 import { NotFoundPage } from "@/components/NotFoundPage";
 import { ConfirmDialog, Markdown, StatePanel, StatusBadge } from "@/components/primitives";
+import {
+  EventTacticalIcon,
+  eventMissionIconName,
+  eventRoleIconName,
+} from "@/features/events/EventTacticalIcon";
+import { EventSideMark } from "@/features/events/EventSideMark";
+import { removeObjectiveBlock } from "@/features/events/eventBriefing";
 import { eventFailureResourceKey } from "./eventErrors";
 import {
   attendanceChangeNeedsSlotLossConfirmation,
@@ -43,7 +50,6 @@ import {
   modPackDownloadPath,
   safeDownloadFileName,
   slotRowAction,
-  slotSideKey,
 } from "./eventModel";
 import { eventsMemberQueryKeys, eventsMemberService, saveBlob } from "./services";
 import type { EventAssignee, EventSlot, EventSlotRow } from "./types";
@@ -118,7 +124,7 @@ export function EventDetailPage() {
   const event = eventQuery.data;
   const slots = useMemo(() => slotsQuery.data ?? [], [slotsQuery.data]);
   const mySlot = currentUserSlot(slots, auth.user);
-  const groups = useMemo(
+  const sideGroups = useMemo(
     () =>
       groupEventSlots(
         slots,
@@ -130,6 +136,10 @@ export function EventDetailPage() {
   );
   const briefingObjectives = useMemo(
     () => extractBriefingObjectives(event?.description),
+    [event?.description],
+  );
+  const briefingBody = useMemo(
+    () => removeObjectiveBlock(event?.description),
     [event?.description],
   );
   useDocumentTitle(event?.title ?? t("Pages_Events_Detail_PageTitleFallback"));
@@ -191,7 +201,7 @@ export function EventDetailPage() {
     (slot) => slot.assignedToFk == null && slot.isVisible !== false,
   ).length;
   const totalSlots = slots.length;
-  const canManageEvent = canEditEvents(auth.user);
+  const canManageEvent = canEditEvent(auth.user, event.hostedBy?.primaryKey);
   const attendanceDisabled = !auth.isAuthenticated || started || attendanceMutation.isPending;
   const attendanceProgress = eventAttendanceProgress(event);
   const timeRemaining = formatEventTimeRemaining(event.scheduledFor);
@@ -311,7 +321,10 @@ export function EventDetailPage() {
                   >
                     {briefingObjectives.map((objective, index) => (
                       <li key={`${objective.icon}-${index}`}>
-                        <span data-icon={objective.icon} aria-hidden="true" />
+                        <EventTacticalIcon
+                          name={eventMissionIconName(objective.icon)}
+                          className="em-objective-icon"
+                        />
                         <p>{objective.text}</p>
                       </li>
                     ))}
@@ -320,7 +333,7 @@ export function EventDetailPage() {
                 <div className="em-briefing-notes">
                   <span className="kicker">{t("Auto_FullBriefing_8df6347a")}</span>
                   <h3>{t("Auto_CommanderSNotes_99b2f4e5")}</h3>
-                  <Markdown>{event.description}</Markdown>
+                  <Markdown>{briefingBody}</Markdown>
                 </div>
               </>
             ) : (
@@ -339,52 +352,79 @@ export function EventDetailPage() {
                 <h2 id="slot-register-title">{t("Auto_SlotRegister_20eeba00")}</h2>
               </div>
               <p>
-                {openSlots} open / {totalSlots} total
+                {openSlots} {t("Auto_OpenSlots_183c44b6")} / {totalSlots} {t("Slots")}
               </p>
             </header>
-            {groups.length === 0 ? (
+            {sideGroups.length === 0 ? (
               <StatePanel kind="empty">{t("Auto_NoSlotsConfigured_d0093e9c")}</StatePanel>
             ) : (
-              <div
-                className="em-slot-register"
-                role="table"
-                aria-label={t("Auto_SlotRegister_20eeba00")}
-              >
+              <div className="em-slot-register">
                 <div className="em-slot-register__head" aria-hidden="true">
                   <span>{t("Role")}</span>
                   <span>{t("Assigned")}</span>
                   <span>{t("Status")}</span>
                   <span />
                 </div>
-                {groups.map((group) => (
-                  <section key={group.name} className="em-slot-group">
-                    <header>
+                {sideGroups.map((sideGroup) => (
+                  <section
+                    key={sideGroup.id}
+                    className="em-slot-side"
+                    data-side={sideGroup.id}
+                    aria-labelledby={`slot-side-${sideGroup.id}`}
+                  >
+                    <header className="em-slot-side__header">
                       <div>
-                        <span className="em-slot-group__icon" aria-hidden="true" />
-                        <h3>{group.name}</h3>
+                        <EventSideMark side={sideGroup.id} className="em-slot-side__emblem" />
+                        <div>
+                          <span>{t("Side")}</span>
+                          <h3 id={`slot-side-${sideGroup.id}`}>
+                            {sideGroup.labelKey
+                              ? t(sideGroup.labelKey)
+                              : t("Pages_Events_Detail_Status_SidePending")}
+                          </h3>
+                        </div>
                       </div>
                       <span>
                         {formatResource(
                           t("Pages_Events_Detail_Count_GroupAssigned"),
-                          group.assignedCount,
-                          group.totalCount,
+                          sideGroup.assignedCount,
+                          sideGroup.totalCount,
                         )}
                       </span>
                     </header>
-                    {group.rows.map((row) => (
-                      <SlotRow
-                        key={row.key}
-                        row={row}
-                        event={event}
-                        assignees={assigneesQuery.data ?? new Map()}
-                        user={auth.user}
-                        isAuthenticated={auth.isAuthenticated}
-                        assigningSlotNumber={
-                          slotMutation.isPending ? slotMutation.variables : undefined
-                        }
-                        onAssign={(slot) => slotMutation.mutate(slot.slotNumber)}
-                      />
-                    ))}
+                    <div className="em-slot-side__groups">
+                      {sideGroup.groups.map((group) => (
+                        <section key={`${sideGroup.id}|${group.name}`} className="em-slot-group">
+                          <header>
+                            <div>
+                              <span className="em-slot-group__icon" aria-hidden="true" />
+                              <h4>{group.name}</h4>
+                            </div>
+                            <span>
+                              {formatResource(
+                                t("Pages_Events_Detail_Count_GroupAssigned"),
+                                group.assignedCount,
+                                group.totalCount,
+                              )}
+                            </span>
+                          </header>
+                          {group.rows.map((row) => (
+                            <SlotRow
+                              key={row.key}
+                              row={row}
+                              event={event}
+                              assignees={assigneesQuery.data ?? new Map()}
+                              user={auth.user}
+                              isAuthenticated={auth.isAuthenticated}
+                              assigningSlotNumber={
+                                slotMutation.isPending ? slotMutation.variables : undefined
+                              }
+                              onAssign={(slot) => slotMutation.mutate(slot.slotNumber)}
+                            />
+                          ))}
+                        </section>
+                      ))}
+                    </div>
                   </section>
                 ))}
               </div>
@@ -648,17 +688,6 @@ function assigneeInitials(name: string): string {
   );
 }
 
-function slotRoleIconKey(title: string): string {
-  const value = title.toLocaleLowerCase();
-  if (/(medic|medical|corpsman)/.test(value)) return "medical";
-  if (/(radio|rto|jtac|fac)/.test(value)) return "radio";
-  if (/(lead|command|officer)/.test(value)) return "host";
-  if (/(pilot|transport|driver|crew)/.test(value)) return "extract";
-  if (/(marksman|sniper|scout|recon)/.test(value)) return "stealth";
-  if (/(support|engineer|gunner|autorifleman)/.test(value)) return "support";
-  return "slot";
-}
-
 function SlotRow({
   row,
   event,
@@ -694,7 +723,6 @@ function SlotRow({
       ? assignedNames[0]
       : `${assignedNames[0]} + ${assignedNames.length - 1}`;
   const slotNumbers = row.slots.map((slot) => slot.slotNumber).join(", ");
-  const sideKey = slotSideKey(row.side);
   const isHidden = row.slots.every((slot) => slot.isVisible === false);
   const rowStatus = isHidden
     ? { label: t("Pages_Events_Detail_Status_Hidden"), tone: "neutral" as const }
@@ -738,16 +766,9 @@ function SlotRow({
   return (
     <article className={`em-slot-row${mine ? " em-slot-row--mine" : ""}`}>
       <div className="em-slot-role-cell">
-        <span
-          className="em-slot-role-icon"
-          data-icon={slotRoleIconKey(row.title)}
-          aria-hidden="true"
-        />
+        <EventTacticalIcon name={eventRoleIconName(row.title)} className="em-slot-role-icon" />
         <div>
-          <span className={`em-side-pill em-side-pill--${sideKey || "empty"}`}>
-            {sideKey ? t(sideKey) : t("Pages_Events_Detail_Status_SidePending")}
-          </span>
-          <h4>{row.slots.length > 1 ? `${row.title} (x${row.slots.length})` : row.title}</h4>
+          <h5>{row.slots.length > 1 ? `${row.title} (x${row.slots.length})` : row.title}</h5>
           <small>
             {formatResource(
               row.slots.length > 1
@@ -764,9 +785,18 @@ function SlotRow({
             {assignedUsers.slice(0, 3).map((assignee) => {
               const avatar = assigneeAvatarSource(assignee);
               return avatar ? (
-                <img key={assignee.primaryKey} src={avatar} alt="" />
+                <img
+                  className="em-slot-avatar"
+                  key={assignee.primaryKey}
+                  src={avatar}
+                  alt=""
+                  width={32}
+                  height={32}
+                />
               ) : (
-                <span key={assignee.primaryKey}>{assigneeInitials(assignee.nickname)}</span>
+                <span className="em-slot-avatar" key={assignee.primaryKey}>
+                  {assigneeInitials(assignee.nickname)}
+                </span>
               );
             })}
           </div>
