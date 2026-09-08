@@ -580,7 +580,7 @@ function createRoutes(configuration: PublicConfiguration): RouteObject[] {
           <CommunityLayout configuration={configuration} />
         </RouteCertificationGate>
       ),
-      errorElement: <RouteErrorPage />,
+      errorElement: <RouteErrorPage standalone />,
       children: [
         ...communityRouteDefinitions.map(({ route }) => withRouteErrorElement(route)),
         { path: "*", element: <NotFoundPage /> },
@@ -593,7 +593,7 @@ function createRoutes(configuration: PublicConfiguration): RouteObject[] {
           <CommandCenterLayout configuration={configuration} />
         </RouteCertificationGate>
       ),
-      errorElement: <RouteErrorPage />,
+      errorElement: <RouteErrorPage standalone />,
       children: [
         ...commandRouteDefinitions.map(({ route }) => withRouteErrorElement(route)),
         { path: "*", element: <NotFoundPage /> },
@@ -606,7 +606,7 @@ function createRoutes(configuration: PublicConfiguration): RouteObject[] {
           <CommandCenterLayout configuration={configuration} />
         </RouteCertificationGate>
       ),
-      errorElement: <RouteErrorPage />,
+      errorElement: <RouteErrorPage standalone />,
       children: [withRouteErrorElement(route)],
     })),
   ];
