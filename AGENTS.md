@@ -229,6 +229,13 @@ The hosting implementation is a persistent control plane with one dedicated exte
 - No Roslyn analyzer rule set, StyleCop config, or separate formatter config is detected. Use `dotnet build X39.UnitedTacticalForces.slnx` as the primary static verification command.
 - Nullable reference types and implicit usings are enabled in active projects such as `sources/Api/Api.csproj`, `sources/WebApp/WebApp.csproj`, `sources/X39.BI.Config.Parsing/X39.BI.Config.Parsing.csproj`, and `tests/X39.BI.Config.Parsing.Tests/X39.BI.Config.Parsing.Tests.csproj`.
 
+## UI Component Reuse
+
+- Build the WebApp UI from reusable Razor components and the shared Fluent UI controls under `sources/WebApp/Components` and `sources/WebApp/Shared`.
+- Reuse the corresponding shared component whenever a control or interaction is already available; do not recreate page-local markup for a standard control such as a button, input, dialog, or form field.
+- Do not use a raw `<input>` element to represent a button. Use the shared button component or the appropriate Fluent UI button control, and create a reusable component when the interaction is not yet shared.
+- Keep page files focused on composition and page-specific state. Put repeated presentation, interaction behavior, and control styling in reusable components.
+
 ## Import Organization
 
 - No C# path aliases are configured. Use project references and namespaces from `.csproj` files.
