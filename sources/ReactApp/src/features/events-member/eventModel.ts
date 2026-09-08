@@ -1,8 +1,10 @@
 import type { FullEvent, FullUser } from "@/api/types";
 import { eventSidePresentation } from "@/features/events/eventSlotPresentation";
+import { normalizeEventSlotRoleSymbol } from "@/features/events/EventTacticalIcon";
 import type {
   EventSlot,
   EventSlotGroup,
+  EventSlotRoleSymbol,
   EventSlotRow,
   EventSlotSideGroup,
   SlotSide,
@@ -34,6 +36,12 @@ const fallbackBriefingIcons = ["objective", "warning", "radio"] as const;
 export interface BriefingObjective {
   icon: string;
   text: string;
+}
+
+interface GroupedSlotRow {
+  title: string;
+  roleSymbol: EventSlotRoleSymbol;
+  slots: EventSlot[];
 }
 
 export type SlotRowAction =
@@ -166,7 +174,7 @@ export function groupEventSlots(
     SlotSideId,
     {
       labelKey: ReturnType<typeof slotSideKey>;
-      groups: Map<string, Map<string, EventSlot[]>>;
+      groups: Map<string, Map<string, GroupedSlotRow>>;
     }
   >();
   const collator = new Intl.Collator(locale, { sensitivity: "base" });
@@ -175,12 +183,15 @@ export function groupEventSlots(
     const sideId = slotSideId(slot.side);
     const group = textOrFallback(slot.group, ungroupedLabel);
     const title = textOrFallback(slot.title, unassignedRoleLabel);
+    const roleSymbol = normalizeEventSlotRoleSymbol(slot.roleSymbol);
     const sideGroup = grouped.get(sideId) ?? {
       labelKey: slotSideKey(slot.side),
-      groups: new Map<string, Map<string, EventSlot[]>>(),
+      groups: new Map<string, Map<string, GroupedSlotRow>>(),
     };
-    const rows = sideGroup.groups.get(group) ?? new Map<string, EventSlot[]>();
-    rows.set(title, [...(rows.get(title) ?? []), slot]);
+    const rows = sideGroup.groups.get(group) ?? new Map<string, GroupedSlotRow>();
+    const rowKey = JSON.stringify([title, roleSymbol]);
+    const row = rows.get(rowKey) ?? { title, roleSymbol, slots: [] };
+    rows.set(rowKey, { ...row, slots: [...row.slots, slot] });
     sideGroup.groups.set(group, rows);
     grouped.set(sideId, sideGroup);
   }
@@ -193,8 +204,8 @@ export function groupEventSlots(
       const mappedGroups: EventSlotGroup[] = [...sideGroup.groups.entries()]
         .sort(([left], [right]) => collator.compare(left, right))
         .map(([name, rows]) => {
-          const mappedRows: EventSlotRow[] = [...rows.entries()]
-            .map(([title, rowSlots]) => {
+          const mappedRows: EventSlotRow[] = [...rows.values()]
+            .map(({ title, roleSymbol, slots: rowSlots }) => {
               const orderedSlots = [...rowSlots].sort(
                 (left, right) => left.slotNumber - right.slotNumber,
               );
@@ -204,9 +215,10 @@ export function groupEventSlots(
               ).length;
               const first = orderedSlots[0]!;
               return {
-                key: `${id}|${name}|${title}`,
+                key: `${id}|${name}|${title}|${roleSymbol}`,
                 group: name,
                 title,
+                roleSymbol,
                 side: first.side,
                 slots: orderedSlots,
                 assignedCount,

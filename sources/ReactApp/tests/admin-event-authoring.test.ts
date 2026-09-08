@@ -10,6 +10,7 @@ import {
   isGuid,
   normalizeEventVisibility,
   normalizeArmaSide,
+  normalizeEventSlotRoleSymbol,
   parseEventObjectives,
   removeObjectiveBlock,
   validateSlot,
@@ -83,6 +84,7 @@ describe("event authoring model", () => {
     ).toBe(true);
 
     const slot = { ...createSlotDraft(), group: " ", title: "" };
+    expect(slot.roleSymbol).toBe("Rifleman");
     expect(validateSlot(slot, { groupRequired: "group", titleRequired: "role" })).toEqual([
       "group",
       "role",
@@ -119,6 +121,73 @@ describe("event authoring model", () => {
     expect(normalizeArmaSide(5)).toBe("AmbientLife");
     expect(normalizeArmaSide("Resistance")).toBe("Resistance");
     expect(normalizeArmaSide(99)).toBe("Empty");
+  });
+
+  it("normalizes missing and unknown persisted role symbols", () => {
+    expect(normalizeEventSlotRoleSymbol(undefined)).toBe("Automatic");
+    expect(normalizeEventSlotRoleSymbol("FutureRoleSymbol")).toBe("Automatic");
+    expect(normalizeEventSlotRoleSymbol("RadioOperator")).toBe("RadioOperator");
+  });
+
+  it("loads legacy slot symbols safely and sends explicit symbols in slot mutations", async () => {
+    const eventId = "83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              slotNumber: 1,
+              eventFk: eventId,
+              group: "Alpha",
+              title: "Legacy medic",
+              side: "West",
+              isSelfAssignable: true,
+              isVisible: true,
+            },
+            {
+              slotNumber: 2,
+              eventFk: eventId,
+              group: "Alpha",
+              title: "Future role",
+              roleSymbol: "FutureRoleSymbol",
+              side: "West",
+              isSelfAssignable: true,
+              isVisible: true,
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ slotNumber: 3, eventFk: eventId }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    initializeApiClient(configuration);
+
+    const loaded = await eventAuthoringService.reloadSlots(eventId);
+    expect(loaded.map((slot) => slot.roleSymbol)).toEqual(["Automatic", "Automatic"]);
+
+    await eventAuthoringService.createSlot(eventId, {
+      ...createSlotDraft(),
+      roleSymbol: "Medic",
+    });
+    await eventAuthoringService.updateSlot(eventId, {
+      ...createSlotDraft(),
+      slotNumber: 3,
+      roleSymbol: "Leader",
+    });
+
+    expect(JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body))).toMatchObject({
+      roleSymbol: "Medic",
+    });
+    expect(JSON.parse(String((fetchMock.mock.calls[2]?.[1] as RequestInit).body))).toMatchObject({
+      roleSymbol: "Leader",
+    });
   });
 
   it("sends typed event and slot mutations through the shared adapter", async () => {

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using X39.UnitedTacticalForces.Common.Event;
 using X39.UnitedTacticalForces.Database.Eventing;
 
 namespace X39.UnitedTacticalForces.Api.DTO;
@@ -45,6 +46,12 @@ public record PlainEventSlotDto
     /// </summary>
     [MaxLength(1024)]
     public string Title { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The semantic symbol selected for this role, independently of its free-text title.
+    /// </summary>
+    /// <value>The semantic role symbol returned to clients.</value>
+    public EEventSlotRoleSymbol RoleSymbol { get; init; }
 
     /// <summary>
     /// The side of this role.

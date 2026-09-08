@@ -17,6 +17,7 @@ function slot(draftKey: string, side: EventSlotDraft["side"], title: string): Ev
     assignmentCandidate: null,
     group: "Alpha",
     title,
+    roleSymbol: title === "Medic" ? "Medic" : "Rifleman",
     side,
     isSelfAssignable: true,
     isVisible: true,
@@ -68,6 +69,20 @@ describe("event slot planner", () => {
     expect(west!.querySelector('[data-tactical-icon="rifleman"]')).toBeInTheDocument();
     expect(east!.querySelector('[data-tactical-icon="medical"]')).toBeInTheDocument();
     expect(container.querySelector("select")).not.toBeInTheDocument();
+
+    const westSymbolPicker = west!.querySelector<HTMLDetailsElement>(
+      "details.event-role-symbol-picker",
+    );
+    expect(westSymbolPicker).not.toBeNull();
+    await userEvent.click(westSymbolPicker!.querySelector("summary")!);
+    await userEvent.click(within(westSymbolPicker!).getByRole("radio", { name: "Medic" }));
+    expect(onChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ draftKey: "west", roleSymbol: "Medic" }),
+      expect.objectContaining({ draftKey: "east", roleSymbol: "Medic" }),
+    ]);
+    expect(
+      west!.querySelector(".event-slot-editor-row__identity > .event-tactical-icon"),
+    ).toHaveAttribute("data-tactical-icon", "medical");
 
     const groupInput = within(west!).getByRole("textbox", { name: "Group" });
     await userEvent.clear(groupInput);

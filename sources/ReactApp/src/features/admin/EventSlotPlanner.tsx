@@ -13,7 +13,11 @@ import {
 import { EventSideMark } from "@/features/events/EventSideMark";
 import { EventSidePicker, type EditableEventSide } from "@/features/events/EventSidePicker";
 import { eventSidePresentation } from "@/features/events/eventSlotPresentation";
-import { EventTacticalIcon, eventRoleIconName } from "@/features/events/EventTacticalIcon";
+import { EventRoleSymbolPicker } from "@/features/events/EventRoleSymbolPicker";
+import {
+  EventTacticalIcon,
+  eventSlotRoleSymbolIconName,
+} from "@/features/events/EventTacticalIcon";
 
 function statusTone(slot: EventSlotDraft): "neutral" | "success" | "warning" | "info" {
   if (!slot.isVisible) return "neutral";
@@ -174,7 +178,9 @@ export function EventSlotPlanner({
                               data-side={eventSidePresentation(slot.side).id}
                             >
                               <div className="event-slot-editor-row__identity">
-                                <EventTacticalIcon name={eventRoleIconName(slot.title)} />
+                                <EventTacticalIcon
+                                  name={eventSlotRoleSymbolIconName(slot.roleSymbol, slot.title)}
+                                />
                                 <div className="event-slot-editor-row__fields">
                                   <label>
                                     <span>{t("Role")}</span>
@@ -212,6 +218,14 @@ export function EventSlotPlanner({
                                       }
                                     />
                                   </label>
+                                  <EventRoleSymbolPicker
+                                    value={slot.roleSymbol}
+                                    roleTitle={slot.title}
+                                    disabled={disabled}
+                                    onChange={(roleSymbol) =>
+                                      updateSlot(slot.draftKey, { roleSymbol })
+                                    }
+                                  />
                                 </div>
                               </div>
 

@@ -15815,6 +15815,54 @@ Beginne hier mit dem Schreiben.</value>
   <data name="React_EventAuthoring_SlotTitleRequired" xml:space="preserve">
     <value>Jeder Slot benötigt einen Rollentitel.</value>
   </data>
+  <data name="React_EventRoleSymbol_Label" xml:space="preserve">
+    <value>Rollensymbol</value>
+  </data>
+  <data name="React_EventRoleSymbol_Hint" xml:space="preserve">
+    <value>Automatisch folgt dem Rollentitel. Ein ausdrücklich gewähltes Symbol bleibt bei Titeländerungen erhalten.</value>
+  </data>
+  <data name="React_EventRoleSymbol_Automatic" xml:space="preserve">
+    <value>Automatisch</value>
+  </data>
+  <data name="React_EventRoleSymbol_Generic" xml:space="preserve">
+    <value>Allgemein</value>
+  </data>
+  <data name="React_EventRoleSymbol_Rifleman" xml:space="preserve">
+    <value>Schütze</value>
+  </data>
+  <data name="React_EventRoleSymbol_AutomaticRifleman" xml:space="preserve">
+    <value>MG-Schütze</value>
+  </data>
+  <data name="React_EventRoleSymbol_Grenadier" xml:space="preserve">
+    <value>Grenadier</value>
+  </data>
+  <data name="React_EventRoleSymbol_AntiArmor" xml:space="preserve">
+    <value>Panzerabwehr</value>
+  </data>
+  <data name="React_EventRoleSymbol_Medic" xml:space="preserve">
+    <value>Sanitäter</value>
+  </data>
+  <data name="React_EventRoleSymbol_RadioOperator" xml:space="preserve">
+    <value>Funker</value>
+  </data>
+  <data name="React_EventRoleSymbol_Leader" xml:space="preserve">
+    <value>Trupp- / Gruppenführung</value>
+  </data>
+  <data name="React_EventRoleSymbol_Marksman" xml:space="preserve">
+    <value>Scharfschütze / Aufklärung</value>
+  </data>
+  <data name="React_EventRoleSymbol_Engineer" xml:space="preserve">
+    <value>Pionier / EOD</value>
+  </data>
+  <data name="React_EventRoleSymbol_Crew" xml:space="preserve">
+    <value>Fahrzeugbesatzung</value>
+  </data>
+  <data name="React_EventRoleSymbol_Pilot" xml:space="preserve">
+    <value>Pilot</value>
+  </data>
+  <data name="React_EventRoleSymbol_Support" xml:space="preserve">
+    <value>Unterstützung</value>
+  </data>
   <data name="React_EventAuthoring_AtLeastOneSlot" xml:space="preserve">
     <value>Füge vor dem Erstellen der Veranstaltung mindestens einen Slot hinzu.</value>
   </data>

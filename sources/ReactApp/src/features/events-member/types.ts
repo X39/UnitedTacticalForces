@@ -5,6 +5,7 @@ type Schema<Name extends keyof components["schemas"]> = components["schemas"][Na
 type RequiredSchema<Name extends keyof components["schemas"]> = Required<Schema<Name>>;
 
 export type EventSlot = RequiredSchema<"PlainEventSlotDto">;
+export type EventSlotRoleSymbol = Schema<"EEventSlotRoleSymbol">;
 export type EventAssignee = Required<Pick<Schema<"UserDto">, "primaryKey" | "nickname">> &
   Schema<"UserDto">;
 export type ProfileSettingsUpdate = Schema<"ProfileSettingsUpdate">;
@@ -21,6 +22,7 @@ export interface EventSlotRow {
   key: string;
   group: string;
   title: string;
+  roleSymbol: EventSlotRoleSymbol;
   side: SlotSide;
   slots: EventSlot[];
   assignedCount: number;

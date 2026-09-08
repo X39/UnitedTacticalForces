@@ -32,7 +32,7 @@ import { ConfirmDialog, Markdown, StatePanel, StatusBadge } from "@/components/p
 import {
   EventTacticalIcon,
   eventMissionIconName,
-  eventRoleIconName,
+  eventSlotRoleSymbolIconName,
 } from "@/features/events/EventTacticalIcon";
 import { EventSideMark } from "@/features/events/EventSideMark";
 import { removeObjectiveBlock } from "@/features/events/eventBriefing";
@@ -766,7 +766,10 @@ function SlotRow({
   return (
     <article className={`em-slot-row${mine ? " em-slot-row--mine" : ""}`}>
       <div className="em-slot-role-cell">
-        <EventTacticalIcon name={eventRoleIconName(row.title)} className="em-slot-role-icon" />
+        <EventTacticalIcon
+          name={eventSlotRoleSymbolIconName(row.roleSymbol, row.title)}
+          className="em-slot-role-icon"
+        />
         <div>
           <h5>{row.slots.length > 1 ? `${row.title} (x${row.slots.length})` : row.title}</h5>
           <small>

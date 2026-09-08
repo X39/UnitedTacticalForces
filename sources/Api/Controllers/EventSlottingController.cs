@@ -89,6 +89,7 @@ public class EventSlottingController : ControllerBase
                     IsVisible        = e.IsVisible,
                     Group            = e.Group,
                     Title            = e.Title,
+                    RoleSymbol       = e.RoleSymbol,
                     Side             = e.Side,
                 }
             )
@@ -134,6 +135,7 @@ public class EventSlottingController : ControllerBase
                     IsVisible        = e.IsVisible,
                     Group            = e.Group,
                     Title            = e.Title,
+                    RoleSymbol       = e.RoleSymbol,
                     Side             = e.Side,
                 }
             )
@@ -371,6 +373,7 @@ public class EventSlottingController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     [HttpPost("create", Name = nameof(CreateEventSlotAsync))]
+    [ProducesResponseType(typeof(void), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(void), StatusCodes.Status403Forbidden)]
@@ -382,6 +385,8 @@ public class EventSlottingController : ControllerBase
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
+        if (!Enum.IsDefined(payload.RoleSymbol))
+            return BadRequest();
         var existingEvent = await _apiDbContext.Events
             .SingleOrDefaultAsync(q => q.PrimaryKey == eventId, cancellationToken);
         if (existingEvent is null)
@@ -406,13 +411,25 @@ public class EventSlottingController : ControllerBase
             IsVisible        = payload.IsVisible,
             Group            = payload.Group,
             Title            = payload.Title,
+            RoleSymbol       = payload.RoleSymbol,
             Side             = payload.Side,
             AssignedToFk     = payload.AssignedToFk,
         };
         await _apiDbContext.EventSlots.AddAsync(eventSlot, cancellationToken);
         await _apiDbContext.SaveChangesAsync(cancellationToken);
         await dbTransaction.CommitAsync(cancellationToken);
-        return Ok(eventSlot);
+        return Ok(new PlainEventSlotDto
+        {
+            SlotNumber       = eventSlot.SlotNumber,
+            AssignedToFk     = eventSlot.AssignedToFk,
+            EventFk          = eventSlot.EventFk,
+            IsSelfAssignable = eventSlot.IsSelfAssignable,
+            IsVisible        = eventSlot.IsVisible,
+            Group            = eventSlot.Group,
+            Title            = eventSlot.Title,
+            RoleSymbol       = eventSlot.RoleSymbol,
+            Side             = eventSlot.Side,
+        });
     }
 
     /// <summary>
@@ -426,6 +443,7 @@ public class EventSlottingController : ControllerBase
     ///     Passed automatically by ASP.Net framework.
     /// </param>
     [HttpPost("{slotNumber:int}/update", Name = nameof(UpdateEventSlotAsync))]
+    [ProducesResponseType(typeof(void), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(void), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(void), StatusCodes.Status403Forbidden)]
@@ -438,6 +456,8 @@ public class EventSlottingController : ControllerBase
     {
         if (!User.TryGetUserId(out var userId))
             return Unauthorized();
+        if (payload.RoleSymbol is not null && !Enum.IsDefined(payload.RoleSymbol.Value))
+            return BadRequest();
         var existingEvent = await _apiDbContext.Events
             .SingleOrDefaultAsync(q => q.PrimaryKey == eventId, cancellationToken);
         if (existingEvent is null)
@@ -454,6 +474,8 @@ public class EventSlottingController : ControllerBase
             existingEventSlot.Title            = payload.Title;
         if (payload.Group is not null)
             existingEventSlot.Group            = payload.Group;
+        if (payload.RoleSymbol is not null)
+            existingEventSlot.RoleSymbol       = payload.RoleSymbol.Value;
         if (payload.IsSelfAssignable is not null)
             existingEventSlot.IsSelfAssignable = payload.IsSelfAssignable.Value;
         if (payload.IsVisible is not null)

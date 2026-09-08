@@ -173,6 +173,7 @@ test("creates through the certified alias and edits in the command workspace", a
           assignedToFk: null,
           group: "Alpha",
           title: "Rifleman",
+          roleSymbol: createdSlot?.roleSymbol ?? "Automatic",
           side: "West",
           isSelfAssignable: true,
           isVisible: true,
@@ -264,6 +265,12 @@ test("creates through the certified alias and edits in the command workspace", a
     .fill("# Situation\n\nSecure the objective.");
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByRole("button", { name: "Add slot" }).click();
+  const roleSymbolPicker = page.locator("details.event-role-symbol-picker");
+  await roleSymbolPicker.locator("summary").click();
+  await roleSymbolPicker.locator('label[data-role-symbol="Medic"]').click();
+  await expect(
+    page.locator(".event-slot-editor-row__identity > .event-tactical-icon"),
+  ).toHaveAttribute("data-tactical-icon", "medical");
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("button", { name: "Create event", exact: true })).toBeEnabled();
   await page
@@ -282,7 +289,12 @@ test("creates through the certified alias and edits in the command workspace", a
     modPackRevisionFk: 8,
     imageAssetFk: assetId,
   });
-  expect(createdSlot).toMatchObject({ group: "Alpha", title: "Rifleman", side: "West" });
+  expect(createdSlot).toMatchObject({
+    group: "Alpha",
+    title: "Rifleman",
+    roleSymbol: "Medic",
+    side: "West",
+  });
 
   await page.getByRole("tab", { name: /Objectives/ }).click();
   const objectiveIconGroup = page.locator("fieldset.event-objective-icon-picker");
@@ -307,5 +319,5 @@ test("creates through the certified alias and edits in the command workspace", a
   await page.getByRole("textbox", { name: "Group" }).fill("Bravo");
   await page.getByRole("button", { name: "Save slot plan", exact: true }).click();
   await expect(page.getByText("Slot plan saved.").last()).toBeVisible();
-  expect(updatedSlot).toMatchObject({ group: "Bravo" });
+  expect(updatedSlot).toMatchObject({ group: "Bravo", roleSymbol: "Medic" });
 });

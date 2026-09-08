@@ -28,6 +28,7 @@ function slot(overrides: Partial<EventSlot> = {}): EventSlot {
     isVisible: true,
     group: "Alpha",
     title: "Rifleman",
+    roleSymbol: "Automatic",
     side: "West",
     ...overrides,
   };
@@ -132,6 +133,27 @@ describe("event detail parity model", () => {
     expect(sides[1]?.groups[0]?.rows.map((row) => row.title)).toEqual(["Medic", "Rifleman"]);
   });
 
+  it("keeps identically titled roles with different symbols in separate rows", () => {
+    const sides = groupEventSlots(
+      [
+        slot({ slotNumber: 3, title: "Operator", roleSymbol: "Rifleman" }),
+        slot({ slotNumber: 1, title: "Operator", roleSymbol: "Medic" }),
+        slot({ slotNumber: 2, title: "Operator", roleSymbol: "Rifleman" }),
+      ],
+      "Ungrouped",
+      "Unassigned role",
+    );
+
+    expect(sides[0]?.groups[0]?.rows).toMatchObject([
+      { roleSymbol: "Medic", slots: [{ slotNumber: 1 }] },
+      { roleSymbol: "Rifleman", slots: [{ slotNumber: 2 }, { slotNumber: 3 }] },
+    ]);
+    expect(sides[0]?.groups[0]?.rows.map((row) => row.key)).toEqual([
+      "west|Alpha|Operator|Medic",
+      "west|Alpha|Operator|Rifleman",
+    ]);
+  });
+
   it("permits only authenticated users to claim a visible, open, self-assignable future slot", () => {
     const futureEvent = operation();
     expect(canSelfAssignSlot(slot(), user(), futureEvent, false)).toBe(true);
@@ -154,11 +176,15 @@ describe("event detail parity model", () => {
     const legacySlot = slot();
     delete (legacySlot as Partial<EventSlot>).isVisible;
     delete (legacySlot as Partial<EventSlot>).isSelfAssignable;
+    delete (legacySlot as Partial<EventSlot>).roleSymbol;
 
     expect(canSelfAssignSlot(legacySlot, user(), operation(), false)).toBe(true);
     expect(
       groupEventSlots([legacySlot], "Ungrouped", "Unassigned")[0]?.groups[0]?.rows[0]?.openCount,
     ).toBe(1);
+    expect(
+      groupEventSlots([legacySlot], "Ungrouped", "Unassigned")[0]?.groups[0]?.rows[0]?.roleSymbol,
+    ).toBe("Automatic");
   });
 
   it("never turns the current-slot row into a self-unassign action", () => {
@@ -167,6 +193,7 @@ describe("event detail parity model", () => {
       key: "Alpha|West|Rifleman",
       group: "Alpha",
       title: "Rifleman",
+      roleSymbol: "Automatic",
       side: "West",
       slots: [assignedSlot],
       assignedCount: 1,
@@ -187,6 +214,7 @@ describe("event detail parity model", () => {
       key: "row",
       group: "Alpha",
       title: "Rifleman",
+      roleSymbol: "Automatic",
       side: "West",
       slots: [value],
       assignedCount: value.assignedToFk ? 1 : 0,

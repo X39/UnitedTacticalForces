@@ -6882,6 +6882,145 @@ button {
   cursor: not-allowed;
   opacity: 0.55;
 }
+.event-role-symbol-picker {
+  grid-column: 1 / -1;
+  min-width: 0;
+  color: var(--text-muted);
+}
+.event-role-symbol-picker > summary {
+  display: flex;
+  min-height: 2.7rem;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.65rem;
+  list-style: none;
+  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  cursor: pointer;
+}
+.event-role-symbol-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.event-role-symbol-picker > summary::after {
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: auto;
+  content: "";
+  border-right: 1px solid currentcolor;
+  border-bottom: 1px solid currentcolor;
+  transform: translateY(-0.12rem) rotate(45deg);
+  transition: transform 120ms ease;
+}
+.event-role-symbol-picker[open] > summary::after {
+  transform: translateY(0.12rem) rotate(225deg);
+}
+.event-role-symbol-picker > summary:hover,
+.event-role-symbol-picker > summary:focus-visible,
+.event-role-symbol-picker[open] > summary {
+  border-color: color-mix(in srgb, var(--gold) 62%, var(--border));
+  outline: none;
+}
+.event-role-symbol-picker > summary[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.event-role-symbol-picker > summary > span {
+  display: grid;
+  min-width: 0;
+  line-height: 1.1;
+}
+.event-role-symbol-picker > summary small {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.event-role-symbol-picker > summary strong {
+  overflow: hidden;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.event-role-symbol-picker__current-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: 0 0 auto;
+  padding: 0.25rem;
+  color: var(--slot-side-accent, var(--gold));
+  background: var(--slot-side-wash, color-mix(in srgb, var(--gold) 9%, transparent));
+  border: 1px solid color-mix(in srgb, var(--slot-side-accent, var(--gold)) 45%, transparent);
+  border-radius: var(--radius-small);
+}
+.event-role-symbol-picker__palette {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.55rem;
+  margin-top: 0.4rem;
+  background: color-mix(in srgb, var(--surface-raised) 90%, var(--surface-sunken));
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-small);
+  box-shadow: var(--shadow-low);
+}
+.event-role-symbol-picker__palette > p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+.event-role-symbol-picker__palette fieldset {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.event-role-symbol-picker__palette fieldset > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  gap: 0.3rem;
+}
+.event-role-symbol-picker__palette label {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 2.35rem;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.45rem;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-sunken) 78%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  cursor: pointer;
+}
+.event-role-symbol-picker__palette label:hover,
+.event-role-symbol-picker__palette label:has(input:focus-visible),
+.event-role-symbol-picker__palette label.is-selected {
+  color: var(--gold-light);
+  border-color: color-mix(in srgb, var(--gold) 62%, var(--border));
+  background: color-mix(in srgb, var(--gold) 10%, var(--surface-raised));
+}
+.event-role-symbol-picker__palette label.is-selected {
+  box-shadow: inset 0 -2px var(--gold);
+}
+.event-role-symbol-picker__palette label .event-tactical-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+}
+.event-role-symbol-picker__palette label > span:last-child {
+  overflow: hidden;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+}
+.event-role-symbol-picker__palette fieldset:disabled label {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 .event-slot-planner {
   display: grid;
   gap: 1rem;
@@ -7228,6 +7367,13 @@ button {
   }
   .event-side-picker > div {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .event-role-symbol-picker__palette fieldset > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .event-role-symbol-picker__palette label {
+    min-height: 2.65rem;
+    align-items: flex-start;
   }
   .event-slot-side-section__header {
     align-items: flex-start;

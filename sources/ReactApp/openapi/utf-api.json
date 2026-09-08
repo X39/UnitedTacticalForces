@@ -2751,6 +2751,12 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { }
+            }
+          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -2834,6 +2840,12 @@
           "required": true
         },
         "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { }
+            }
+          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -13667,6 +13679,102 @@
           ]
         }
       },
+      "EEventSlotRoleSymbol": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Automatic",
+          "Generic",
+          "Rifleman",
+          "AutomaticRifleman",
+          "Grenadier",
+          "AntiArmor",
+          "Medic",
+          "RadioOperator",
+          "Leader",
+          "Marksman",
+          "Engineer",
+          "Crew",
+          "Pilot",
+          "Support"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EEventSlotRoleSymbol",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Automatic",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "Generic",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "Rifleman",
+              "value": 2,
+              "description": ""
+            },
+            {
+              "name": "AutomaticRifleman",
+              "value": 3,
+              "description": ""
+            },
+            {
+              "name": "Grenadier",
+              "value": 4,
+              "description": ""
+            },
+            {
+              "name": "AntiArmor",
+              "value": 5,
+              "description": ""
+            },
+            {
+              "name": "Medic",
+              "value": 6,
+              "description": ""
+            },
+            {
+              "name": "RadioOperator",
+              "value": 7,
+              "description": ""
+            },
+            {
+              "name": "Leader",
+              "value": 8,
+              "description": ""
+            },
+            {
+              "name": "Marksman",
+              "value": 9,
+              "description": ""
+            },
+            {
+              "name": "Engineer",
+              "value": 10,
+              "description": ""
+            },
+            {
+              "name": "Crew",
+              "value": 11,
+              "description": ""
+            },
+            {
+              "name": "Pilot",
+              "value": 12,
+              "description": ""
+            },
+            {
+              "name": "Support",
+              "value": 13,
+              "description": ""
+            }
+          ]
+        }
+      },
       "EFileClassification": {
         "$comment": "Applied FixEnumsSchemaTransformer",
         "enum": [
@@ -14855,6 +14963,10 @@
             "type": "string",
             "description": "The title of this role."
           },
+          "roleSymbol": {
+            "description": "The semantic symbol selected for this role, independently of its free-text title.\nThe semantic role symbol to persist.",
+            "$ref": "#/components/schemas/EEventSlotRoleSymbol"
+          },
           "side": {
             "description": "The side of this role.",
             "$ref": "#/components/schemas/EArmaSide"
@@ -14884,6 +14996,17 @@
               {
                 "type": "string",
                 "description": "Represents the group or category associated with an event slot.\r\nCan be used to classify or organize event slots under a specific label or grouping."
+              }
+            ]
+          },
+          "roleSymbol": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets or initializes the semantic symbol selected for the event slot role.\nThe replacement semantic role symbol, or `null` to retain the current value.",
+                "$ref": "#/components/schemas/EEventSlotRoleSymbol"
               }
             ]
           },
@@ -19471,6 +19594,10 @@
             "maxLength": 1024,
             "type": "string",
             "description": "The title of this role."
+          },
+          "roleSymbol": {
+            "description": "The semantic symbol selected for this role, independently of its free-text title.\nThe semantic role symbol returned to clients.",
+            "$ref": "#/components/schemas/EEventSlotRoleSymbol"
           },
           "side": {
             "description": "The side of this role.",

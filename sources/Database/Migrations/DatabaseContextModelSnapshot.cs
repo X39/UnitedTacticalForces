@@ -1392,6 +1392,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<bool>("IsVisible")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("RoleSymbol")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Side")
                         .HasColumnType("integer");
 

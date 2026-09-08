@@ -1,3 +1,4 @@
+using X39.UnitedTacticalForces.Common.Event;
 using X39.UnitedTacticalForces.Database.Eventing;
 
 namespace X39.UnitedTacticalForces.Api.DTO.Updates;
@@ -24,6 +25,15 @@ public record EventSlotUpdate
     /// If <see langword="null"/> is provided, no change will be made.
     /// </remarks>
     public string? Group { get; init; }
+
+    /// <summary>
+    /// Gets or initializes the semantic symbol selected for the event slot role.
+    /// </summary>
+    /// <remarks>
+    /// If <see langword="null"/> is provided, no change will be made.
+    /// </remarks>
+    /// <value>The replacement semantic role symbol, or <see langword="null"/> to retain the current value.</value>
+    public EEventSlotRoleSymbol? RoleSymbol { get; init; }
 
     /// <summary>
     /// Indicates whether the event slot can be assigned to the user themselves without requiring admin intervention.

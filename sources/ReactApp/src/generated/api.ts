@@ -6171,6 +6171,8 @@ export interface components {
         /** @enum {integer} */
         EEventAcceptance: "Maybe" | "Accepted" | "Rejected";
         /** @enum {integer} */
+        EEventSlotRoleSymbol: "Automatic" | "Generic" | "Rifleman" | "AutomaticRifleman" | "Grenadier" | "AntiArmor" | "Medic" | "RadioOperator" | "Leader" | "Marksman" | "Engineer" | "Crew" | "Pilot" | "Support";
+        /** @enum {integer} */
         EFileClassification: "Unknown" | "GameFile" | "SaveFile" | "Log" | "Configuration" | "Mod" | "Mission" | "Upload" | "Generated" | "Downloaded";
         /** @enum {integer} */
         EFileContext: "Persistent" | "Live";
@@ -6246,6 +6248,11 @@ export interface components {
             group?: string;
             /** @description The title of this role. */
             title?: string;
+            /**
+             * @description The semantic symbol selected for this role, independently of its free-text title.
+             *     The semantic role symbol to persist.
+             */
+            roleSymbol?: components["schemas"]["EEventSlotRoleSymbol"];
             /** @description The side of this role. */
             side?: components["schemas"]["EArmaSide"];
         };
@@ -6253,6 +6260,7 @@ export interface components {
         EventSlotUpdate: {
             title?: null | string;
             group?: null | string;
+            roleSymbol?: null | components["schemas"]["EEventSlotRoleSymbol"];
             isSelfAssignable?: null | boolean;
             isVisible?: null | boolean;
             side?: null | components["schemas"]["EArmaSide"];
@@ -7409,6 +7417,11 @@ export interface components {
             group?: string;
             /** @description The title of this role. */
             title?: string;
+            /**
+             * @description The semantic symbol selected for this role, independently of its free-text title.
+             *     The semantic role symbol returned to clients.
+             */
+            roleSymbol?: components["schemas"]["EEventSlotRoleSymbol"];
             /** @description The side of this role. */
             side?: components["schemas"]["EArmaSide"];
         };
@@ -9353,6 +9366,15 @@ export interface operations {
                     "application/json": components["schemas"]["PlainEventSlotDto"];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
             /** @description Unauthorized */
             401: {
                 headers: {
@@ -9408,6 +9430,15 @@ export interface operations {
         responses: {
             /** @description No Content */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

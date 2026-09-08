@@ -21,6 +21,7 @@ import {
   WrenchScrewdriver24Regular,
   type FluentIcon,
 } from "@fluentui/react-icons";
+import type { components } from "@/generated/api";
 import "./EventTacticalIcon.css";
 
 export const eventMissionIconNames = [
@@ -43,24 +44,47 @@ export const eventMissionIconNames = [
 
 export type EventMissionIconName = (typeof eventMissionIconNames)[number];
 
-export type EventRoleIconName =
-  | "anti-armor"
-  | "automatic-rifleman"
-  | "crew"
-  | "engineer"
-  | "grenadier"
-  | "host"
-  | "medical"
-  | "pilot"
-  | "radio"
-  | "rifleman"
-  | "slot"
-  | "stealth"
-  | "support";
+export const eventRoleIconNames = [
+  "anti-armor",
+  "automatic-rifleman",
+  "crew",
+  "engineer",
+  "grenadier",
+  "host",
+  "medical",
+  "pilot",
+  "radio",
+  "rifleman",
+  "slot",
+  "stealth",
+  "support",
+] as const;
+
+export type EventRoleIconName = (typeof eventRoleIconNames)[number];
+
+export type EventSlotRoleSymbol = components["schemas"]["EEventSlotRoleSymbol"];
+
+export const eventSlotRoleSymbols = [
+  "Automatic",
+  "Generic",
+  "Rifleman",
+  "AutomaticRifleman",
+  "Grenadier",
+  "AntiArmor",
+  "Medic",
+  "RadioOperator",
+  "Leader",
+  "Marksman",
+  "Engineer",
+  "Crew",
+  "Pilot",
+  "Support",
+] as const satisfies readonly EventSlotRoleSymbol[];
 
 export type EventTacticalIconName = EventMissionIconName | EventRoleIconName;
 
 const missionIconNames = new Set<string>(eventMissionIconNames);
+const slotRoleSymbols = new Set<string>(eventSlotRoleSymbols);
 const iconByName: Record<EventTacticalIconName, FluentIcon> = {
   "anti-armor": Rocket24Regular,
   "automatic-rifleman": ScanPerson24Regular,
@@ -85,6 +109,22 @@ const iconByName: Record<EventTacticalIconName, FluentIcon> = {
   time: Clock24Regular,
   warning: Warning24Regular,
 };
+
+const explicitRoleIconBySymbol = {
+  Generic: "slot",
+  Rifleman: "rifleman",
+  AutomaticRifleman: "automatic-rifleman",
+  Grenadier: "grenadier",
+  AntiArmor: "anti-armor",
+  Medic: "medical",
+  RadioOperator: "radio",
+  Leader: "host",
+  Marksman: "stealth",
+  Engineer: "engineer",
+  Crew: "crew",
+  Pilot: "pilot",
+  Support: "support",
+} as const satisfies Record<Exclude<EventSlotRoleSymbol, "Automatic">, EventRoleIconName>;
 
 function normalizedRoleTitle(title: string): string {
   return title
@@ -121,6 +161,20 @@ export function eventRoleIconName(title: string): EventRoleIconName {
   if (/(rifleman|fusilier|schutze)/.test(value)) return "rifleman";
   if (/(support|assistant|ammo|versorgung)/.test(value)) return "support";
   return "slot";
+}
+
+export function normalizeEventSlotRoleSymbol(value: unknown): EventSlotRoleSymbol {
+  return typeof value === "string" && slotRoleSymbols.has(value)
+    ? (value as EventSlotRoleSymbol)
+    : "Automatic";
+}
+
+export function eventSlotRoleSymbolIconName(
+  value: unknown,
+  title: string | null | undefined,
+): EventRoleIconName {
+  const symbol = normalizeEventSlotRoleSymbol(value);
+  return symbol === "Automatic" ? eventRoleIconName(title ?? "") : explicitRoleIconBySymbol[symbol];
 }
 
 export function EventTacticalIcon({

@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
+using X39.UnitedTacticalForces.Common.Event;
 using X39.UnitedTacticalForces.Database.Authority;
 
 namespace X39.UnitedTacticalForces.Database.Eventing;
@@ -65,6 +66,12 @@ public class EventSlot
     /// </summary>
     [MaxLength(1024)]
     public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The semantic symbol selected for this role, independently of its free-text title.
+    /// </summary>
+    /// <value>The semantic role symbol, or <see cref="EEventSlotRoleSymbol.Automatic"/> for title inference.</value>
+    public EEventSlotRoleSymbol RoleSymbol { get; set; } = EEventSlotRoleSymbol.Automatic;
     
     /// <summary>
     /// The side of this role.

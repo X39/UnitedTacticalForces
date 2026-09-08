@@ -59,6 +59,7 @@ const slots = [
     isVisible: true,
     group: "Alpha",
     title: "Team Lead",
+    roleSymbol: "Rifleman",
     side: "West",
   },
   {
@@ -69,6 +70,7 @@ const slots = [
     isVisible: true,
     group: "Alpha",
     title: "Rifleman",
+    roleSymbol: "Rifleman",
     side: "West",
   },
   {
@@ -79,6 +81,7 @@ const slots = [
     isVisible: true,
     group: "Alpha",
     title: "Medic",
+    roleSymbol: "Medic",
     side: "East",
   },
 ];
@@ -130,8 +133,13 @@ test("renders the event workflow and confirms attendance changes that release a 
   const eastSide = page.locator('.em-slot-side[data-side="east"]');
   await expect(westSide.getByRole("heading", { name: "Alpha" })).toBeVisible();
   await expect(eastSide.getByRole("heading", { name: "Alpha" })).toBeVisible();
-  await expect(westSide.locator('[data-tactical-icon="rifleman"]')).toBeVisible();
+  await expect(westSide.locator('[data-tactical-icon="rifleman"]').first()).toBeVisible();
   await expect(eastSide.locator('[data-tactical-icon="medical"]')).toBeVisible();
+  await expect(
+    westSide
+      .locator(".em-slot-row", { hasText: "Team Lead" })
+      .locator('[data-tactical-icon="rifleman"]'),
+  ).toBeVisible();
   await expect(page.locator(".em-slot-avatars img")).toHaveAttribute(
     "src",
     `data:image/png;base64,${user.avatar}`,

@@ -3,8 +3,10 @@ import { getApiClient } from "@/api/client";
 import { apiMethod, apiPath, apiPathWithQuery, fillApiPath } from "@/api/contract";
 import type { components } from "@/generated/api";
 import { removeObjectiveBlock } from "@/features/events/eventBriefing";
+import { normalizeEventSlotRoleSymbol } from "@/features/events/EventTacticalIcon";
 
 export { removeObjectiveBlock };
+export { normalizeEventSlotRoleSymbol };
 
 type Schema<Name extends keyof components["schemas"]> = components["schemas"][Name];
 type EventCreationPayload = Schema<"EventCreationPayload">;
@@ -18,6 +20,7 @@ type FullUserDto = Schema<"FullUserDto">;
 type UserDto = Schema<"UserDto">;
 
 export type ArmaSide = Schema<"EArmaSide">;
+export type EventSlotRoleSymbol = Schema<"EEventSlotRoleSymbol">;
 
 export interface EventPerson {
   primaryKey: string;
@@ -77,6 +80,7 @@ export interface EventSlotDraft {
   assignmentCandidate: EventPerson | null;
   group: string;
   title: string;
+  roleSymbol: EventSlotRoleSymbol;
   side: ArmaSide;
   isSelfAssignable: boolean;
   isVisible: boolean;
@@ -247,6 +251,7 @@ export function createSlotDraft(): EventSlotDraft {
     assignmentCandidate: null,
     group: "Alpha",
     title: "Rifleman",
+    roleSymbol: "Rifleman",
     side: "West",
     isSelfAssignable: true,
     isVisible: true,
@@ -400,6 +405,7 @@ function normalizeSlot(slot: PlainEventSlotDto): EventSlotDraft {
     assignmentCandidate: null,
     group: slot.group?.trim() || "Ungrouped",
     title: slot.title?.trim() || "Unassigned role",
+    roleSymbol: normalizeEventSlotRoleSymbol(slot.roleSymbol),
     side: normalizeArmaSide(slot.side),
     isSelfAssignable: slot.isSelfAssignable ?? true,
     isVisible: slot.isVisible ?? true,
@@ -445,6 +451,7 @@ function toSlotCreationPayload(slot: EventSlotDraft): EventSlotCreationPayload {
     assignedToFk: slot.assignedToFk || null,
     group: slot.group.trim(),
     title: slot.title.trim(),
+    roleSymbol: slot.roleSymbol,
     side: slot.side,
     isSelfAssignable: slot.isSelfAssignable,
     isVisible: slot.isVisible,
@@ -455,6 +462,7 @@ function toSlotUpdate(slot: EventSlotDraft): EventSlotUpdate {
   return {
     group: slot.group.trim(),
     title: slot.title.trim(),
+    roleSymbol: slot.roleSymbol,
     side: slot.side,
     isSelfAssignable: slot.isSelfAssignable,
     isVisible: slot.isVisible,
