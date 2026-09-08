@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html id="page-html" style="background: #150326">
+<html style="background: #070b0f">
 
 <head>
     <meta charset="utf-8"/>
@@ -11,16 +11,6 @@
     <link href="X39.UnitedTacticalForces.WebApp.styles.css" rel="stylesheet"/>
     <link rel="stylesheet" href="css/app.css" />
     <script>
-        // This is a workaround to make sure that the dark mode is applied before the page is rendered via Blazor.
-        let html = window.document.getElementById("page-html");
-        html.style.background = window.localStorage.getItem("UiConfiguration.DarkMode")
-            ? "#1c033d"
-            : "#ffffff"
-
-        function page_clear_init_dark_mode() {
-            window.document.getElementById("page-html").style.background = "";
-        }
-
         window.utfCulture = {
             get: () => {
                 const stored = window.localStorage.getItem("UtfCulture");
