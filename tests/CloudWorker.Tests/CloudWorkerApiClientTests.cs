@@ -86,7 +86,16 @@ public class CloudWorkerApiClientTests
                 null,
                 "collected-log-output",
                 42,
-                DateTimeOffset.UtcNow),
+                DateTimeOffset.UtcNow,
+                ObservedContentVersions:
+                [
+                    new WorkerObservedContentVersion
+                    {
+                        ProviderIdentifier = "git",
+                        SourceIdentifier = "https://github.com/example/mod.git",
+                        ObservedVersion = "0123456789abcdef0123456789abcdef01234567",
+                    },
+                ]),
             CancellationToken.None);
         var rotation = await client.RotateCredentialAsync(
             bootstrap,
@@ -107,6 +116,7 @@ public class CloudWorkerApiClientTests
             requests[3].Path);
         Assert.Contains("\"processId\":42", requests[3].Body, StringComparison.Ordinal);
         Assert.Contains("\"output\":\"collected-log-output\"", requests[3].Body, StringComparison.Ordinal);
+        Assert.Contains("\"providerIdentifier\":\"git\"", requests[3].Body, StringComparison.Ordinal);
         Assert.Equal("replacement-worker-token", rotation.WorkerCredential);
         Assert.Equal(
             $"/api/lifecycle-workers/{bootstrap.WorkerId:D}/rotate-credential",

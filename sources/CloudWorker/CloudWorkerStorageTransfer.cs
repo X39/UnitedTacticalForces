@@ -18,6 +18,57 @@ public sealed class CloudWorkerStorageTransfer(
     CloudWorkerConnectionConfig connection,
     string agentStateDirectory) : ICloudWorkerStorageTransfer
 {
+    /// <inheritdoc />
+    public async Task DownloadContentArtifactAsync(
+        WorkerCommandClaimResponse command,
+        string artifactIdentifier,
+        string destinationPath,
+        CancellationToken cancellationToken)
+    {
+        command.Validate(connection);
+        if (string.IsNullOrWhiteSpace(artifactIdentifier)
+            || artifactIdentifier.Length > 128
+            || artifactIdentifier.Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_'))
+        {
+            throw new InvalidDataException("The content artifact identifier is invalid.");
+        }
+
+        destinationPath = Path.GetFullPath(destinationPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+        using var response = await SendAsync(
+                HttpMethod.Get,
+                command.CommandId,
+                $"content-artifacts/{artifactIdentifier}",
+                null,
+                "application/zip",
+                cancellationToken)
+            .ConfigureAwait(false);
+        await EnsureSuccessAsync(response, "content artifact", cancellationToken).ConfigureAwait(false);
+        if (response.Content.Headers.ContentLength is > WorkerStorageProtocol.MaximumArchiveBytes)
+            throw new InvalidDataException("The content artifact exceeds the archive size limit.");
+
+        var temporaryPath = destinationPath + $".download-{Guid.NewGuid():N}";
+        try
+        {
+            await using var target = new FileStream(
+                temporaryPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                81920,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            await CopyBoundedAsync(source, target, WorkerStorageProtocol.MaximumArchiveBytes, cancellationToken)
+                .ConfigureAwait(false);
+            await target.FlushAsync(cancellationToken).ConfigureAwait(false);
+            File.Move(temporaryPath, destinationPath, true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+        }
+    }
+
     private const int PersistentOverlayManifestVersion = 1;
     private const int MaximumPlanBytes = 1024 * 1024;
     private const string PersistentOverlayManifestFileName = ".utf-persistent-overlay-manifest.json";

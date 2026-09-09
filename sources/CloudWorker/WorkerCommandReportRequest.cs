@@ -11,4 +11,6 @@ public sealed record WorkerCommandReportRequest(
     int? ProcessId,
     DateTimeOffset? ProcessStartedAt,
     IReadOnlyCollection<X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol.WorkerStorageMeasurement>?
-        StorageMeasurements = null);
+        StorageMeasurements = null,
+    IReadOnlyCollection<X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol.WorkerObservedContentVersion>?
+        ObservedContentVersions = null);

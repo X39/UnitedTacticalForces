@@ -109,4 +109,35 @@ public class Arma3CommandPayloadTests
 
         Assert.Throws<InvalidDataException>(() => payload.ValidateAttribution(bootstrap, command));
     }
+
+    [Fact]
+    public void RegisteredTreeProvider_UsesArmaOverlayInstallerWithoutWorkshopFallback()
+    {
+        var bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap();
+        var command = FlatFileWorkerCommandJournalTests.CreateCommand(
+            bootstrap.WorkerId,
+            bootstrap.DeploymentId,
+            bootstrap.ServerId);
+        var payload = Arma3CommandPayload.Parse(command.Payload);
+        payload = payload with
+        {
+            Command = payload.Command with
+            {
+                Content =
+                [
+                    new WorkerContentReference
+                    {
+                        Source = "git",
+                        Identifier = "https://github.com/example/arma-mod.git",
+                        DisplayName = "Example Mod",
+                        InstallerIdentifier = "archive-overlay",
+                    },
+                ],
+            },
+        };
+
+        payload.ValidateAttribution(bootstrap, command);
+
+        Assert.Empty(payload.GetSteamWorkshopItemIds());
+    }
 }

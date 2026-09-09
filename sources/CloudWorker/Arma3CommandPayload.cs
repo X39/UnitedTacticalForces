@@ -104,7 +104,16 @@ public sealed record Arma3CommandPayload
                 throw new InvalidDataException("Arma command contains an invalid content reference.");
             }
             if (!string.Equals(reference.Source, SteamWorkshopContentSource, StringComparison.Ordinal))
-                throw new InvalidDataException("Arma command contains an unsupported content source.");
+            {
+                if (reference.Source is not ("uploaded-artifact" or "git" or "built-in"))
+                    throw new InvalidDataException("Arma command contains an unsupported content source.");
+                if (reference.Source is "uploaded-artifact" or "git"
+                    && reference.InstallerIdentifier != "archive-overlay")
+                {
+                    throw new InvalidDataException("Arma command contains an incompatible content installer.");
+                }
+                continue;
+            }
             if (!ulong.TryParse(
                     reference.Identifier,
                     NumberStyles.None,
@@ -117,6 +126,13 @@ public sealed record Arma3CommandPayload
                     StringComparison.Ordinal))
             {
                 throw new InvalidDataException("Arma Workshop content identifier must be a positive integer.");
+            }
+            if (Command.IsPrimaryService
+                    && string.Equals(reference.UsageRole, "ClientOnly", StringComparison.OrdinalIgnoreCase)
+                || !Command.IsPrimaryService
+                    && string.Equals(reference.UsageRole, "ServerOnly", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
             }
             if (!seen.Add(workshopItemId))
                 throw new InvalidDataException("Arma command contains duplicate Workshop content references.");

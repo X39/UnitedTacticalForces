@@ -131,6 +131,7 @@ public sealed class CloudWorkerApiClient(HttpClient httpClient) : ICloudWorkerAp
                     ProcessStartedAt = request.ProcessStartedAt,
                     Output = request.Output,
                     StorageMeasurements = request.StorageMeasurements ?? [],
+                    ObservedContentVersions = request.ObservedContentVersions ?? [],
                 },
                 options: CloudWorkerJson.Options),
             EWorkerCommandReportState.Failed => JsonContent.Create(

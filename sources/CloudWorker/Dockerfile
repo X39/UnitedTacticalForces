@@ -25,6 +25,7 @@ RUN test "$(dpkg --print-architecture)" = "amd64" \
         bash \
         ca-certificates \
         curl \
+        git \
         libc6:i386 \
         libgcc-s1 \
         libgcc-s1:i386 \

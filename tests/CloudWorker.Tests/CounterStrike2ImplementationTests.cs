@@ -55,7 +55,7 @@ public sealed class CounterStrike2ImplementationTests
                 writer.Write("fixture");
             }
             Assert.Throws<InvalidDataException>(() => TrustedArchiveInstaller.Install(
-                archivePath, Path.Combine(root, "install"), "cs2-plugin", new HashSet<string>()));
+                archivePath, Path.Combine(root, "install"), "cs2", "cs2-plugin", new HashSet<string>()));
         }
         finally
         {

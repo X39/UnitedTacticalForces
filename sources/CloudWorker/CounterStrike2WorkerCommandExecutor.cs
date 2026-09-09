@@ -18,6 +18,7 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
     private readonly ICloudWorkerStorageTransfer _storage;
     private readonly RestrictedGameProcessLauncher _launcher;
     private readonly ICounterStrike2RconClient _rcon;
+    private readonly WorkerContentAcquisitionService _contentAcquisition;
 
     public CounterStrike2WorkerCommandExecutor(
         CloudWorkerConnectionConfig connection,
@@ -44,6 +45,7 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
             connection.ServerId, connection.DeploymentId, _paths, _launcher);
         _storage = storage ?? new UnavailableCloudWorkerStorageTransfer();
         _rcon = rcon ?? new CounterStrike2RconClient();
+        _contentAcquisition = new WorkerContentAcquisitionService(options, _storage, _runner);
     }
 
     public async Task<WorkerCommandExecutionResult> ExecuteAsync(
@@ -67,6 +69,13 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
                 "collect-logs" => await CollectLogsAsync(command.Secrets.Values, cancellationToken).ConfigureAwait(false),
                 _ => WorkerCommandExecutionResult.Failure("action-unsupported", "unsupported-action", "The CS2 worker action is unsupported."),
             };
+        }
+        catch (ContentAcquisitionException exception)
+        {
+            return WorkerCommandExecutionResult.Failure(
+                "content-acquisition-failed",
+                exception.Retryable ? $"retryable-{exception.ErrorCode}" : exception.ErrorCode,
+                exception.Message);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
                                               or InvalidDataException or InvalidOperationException or ArgumentException)
@@ -135,8 +144,11 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
         await _storage.ResetPersistentOverlayAsync(_paths.DeploymentRoot, cancellationToken).ConfigureAwait(false);
         await RenderConfigurationAsync(payload, command.Secrets, cancellationToken).ConfigureAwait(false);
         await _storage.ApplyPersistentSnapshotAsync(command, _paths.DeploymentRoot, cancellationToken).ConfigureAwait(false);
-        await InstallContentAsync(payload.Command.Content, cancellationToken).ConfigureAwait(false);
-        return await _process.StartAsync(BuildArguments(payload, command.Secrets), cancellationToken).ConfigureAwait(false);
+        var observedVersions = await _contentAcquisition
+            .AcquireAndInstallAsync(command, payload.Command.Content, "cs2", _paths.InstallPath, cancellationToken)
+            .ConfigureAwait(false);
+        var started = await _process.StartAsync(BuildArguments(payload, command.Secrets), cancellationToken).ConfigureAwait(false);
+        return started with { ObservedContentVersions = observedVersions };
     }
 
     private async Task<WorkerCommandExecutionResult> RestartAsync(
@@ -253,45 +265,6 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
             "+sv_setsteamaccount", secrets["gslt"],
         ];
     }
-
-    private Task InstallContentAsync(IReadOnlyCollection<WorkerContentReference> content, CancellationToken cancellationToken)
-    {
-        var targets = new HashSet<string>(OperatingSystem.IsWindows()
-            ? StringComparer.OrdinalIgnoreCase
-            : StringComparer.Ordinal);
-        foreach (var item in content.Where(q => q.UsageRole is not "ClientOnly")
-                     .OrderBy(q => InstallerOrder(q.InstallerIdentifier))
-                     .ThenBy(q => q.DisplayName, StringComparer.OrdinalIgnoreCase)
-                     .ThenBy(q => q.Identifier, StringComparer.Ordinal))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (item.Source is "steam-workshop" or "built-in")
-                continue;
-            if (item.Source != "uploaded-artifact" || string.IsNullOrWhiteSpace(item.ArtifactIdentifier))
-                throw new InvalidDataException("CS2 content has no staged artifact.");
-            var archive = Path.Combine(_paths.DeploymentRoot, "content-artifacts", item.ArtifactIdentifier + ".zip");
-            using (var artifact = File.OpenRead(archive))
-            {
-                if (string.IsNullOrWhiteSpace(item.ChecksumSha256)
-                    || !string.Equals(
-                        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(artifact)),
-                        item.ChecksumSha256,
-                        StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("The staged CS2 content checksum does not match its immutable snapshot.");
-            }
-            TrustedArchiveInstaller.Install(archive, _paths.InstallPath, item.InstallerIdentifier, targets);
-        }
-        return Task.CompletedTask;
-    }
-
-    private static int InstallerOrder(string identifier) => identifier switch
-    {
-        "cs2-metamod" => 10,
-        "cs2-counterstrikesharp" => 20,
-        "cs2-plugin" => 30,
-        "archive-overlay" => 40,
-        _ => 100,
-    };
 
     private async Task<WorkerCommandExecutionResult> CollectLogsAsync(IEnumerable<string> secrets, CancellationToken cancellationToken)
     {

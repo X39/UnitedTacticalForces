@@ -15,6 +15,13 @@ public sealed record CloudWorkerOptions(
     bool AllowInsecureHttp,
     Arma3WorkerOptions Arma3)
 {
+    /// <summary>Gets constrained public Git acquisition options.</summary>
+    public GitContentOptions Git { get; init; } = new(
+        "git",
+        new HashSet<string>(["github.com"], StringComparer.OrdinalIgnoreCase),
+        512L * 1024 * 1024,
+        TimeSpan.FromMinutes(5));
+
     public CounterStrike2WorkerOptions CounterStrike2 { get; init; } = new("game/bin/linuxsteamrt64/cs2");
     public SteamCmdWorkerOptions SteamCmd => new(
         Arma3.SteamCmdPath,
@@ -72,6 +79,7 @@ public sealed record CloudWorkerOptions(
             Arma3WorkerOptions.Create(values, getEnvironmentVariable))
         {
             CounterStrike2 = CounterStrike2WorkerOptions.Create(values, getEnvironmentVariable),
+            Git = GitContentOptions.Create(values, getEnvironmentVariable),
         };
     }
 

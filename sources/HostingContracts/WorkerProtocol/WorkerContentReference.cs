@@ -25,7 +25,7 @@ public sealed record WorkerContentReference : IValidatableObject
     [MaxLength(128)]
     public string InstallerIdentifier { get; init; } = string.Empty;
 
-    [MaxLength(128)]
+    [MaxLength(256)]
     public string? VersionIdentifier { get; init; }
 
     [MaxLength(128)]

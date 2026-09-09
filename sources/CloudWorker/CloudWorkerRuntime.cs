@@ -37,6 +37,7 @@ public sealed class CloudWorkerRuntime(
                         Identity = $"cloud-{bootstrap.WorkerId:N}",
                         ProtocolVersion = 2,
                         SupportedGameIdentifiers = ["arma3", "cs2"],
+                        SupportedContentProviderIdentifiers = ["steam-workshop", "uploaded-artifact", "git"],
                     },
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -465,7 +466,8 @@ public sealed class CloudWorkerRuntime(
                 outcome?.Output,
                 outcome?.ProcessId,
                 outcome?.ProcessStartedAt,
-                outcome?.StorageMeasurements),
+                outcome?.StorageMeasurements,
+                outcome?.ObservedContentVersions),
             cancellationToken);
 
     private static void ValidateTransport(CloudWorkerConnectionConfig connection, bool allowInsecureHttp)

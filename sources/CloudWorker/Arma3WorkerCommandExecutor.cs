@@ -41,6 +41,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
     private readonly HashSet<string> _diagnosticSecrets = new(StringComparer.Ordinal);
     private readonly string _steamTemporaryRoot;
     private readonly string _steamHomeDirectory;
+    private readonly WorkerContentAcquisitionService _contentAcquisition;
 
     public Arma3WorkerCommandExecutor(
         CloudWorkerConnectionConfig connection,
@@ -69,6 +70,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                                   identityStore,
                                   _processLauncher);
         _storageTransfer = storageTransfer ?? new UnavailableCloudWorkerStorageTransfer();
+        _contentAcquisition = new WorkerContentAcquisitionService(options, _storageTransfer, _commandRunner);
         _steamTemporaryRoot = PrepareSteamTemporaryRoot(options.Arma3.TemporaryDirectory);
         _steamHomeDirectory = ResolveSteamHomeDirectory(options);
         CleanupStaleSteamTemporaryArtifacts();
@@ -108,6 +110,13 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                     "unsupported-action",
                     "The requested worker action is not supported."),
             };
+        }
+        catch (ContentAcquisitionException ex)
+        {
+            return WorkerCommandExecutionResult.Failure(
+                "content-acquisition-failed",
+                ex.Retryable ? $"retryable-{ex.ErrorCode}" : ex.ErrorCode,
+                ex.Message);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException
                                       or InvalidOperationException or ArgumentException)
@@ -319,9 +328,22 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 WorkerSecretRedactor.Redact(ex.Message, SnapshotDiagnosticSecrets())
                 ?? "Persistent data could not be prepared.");
         }
-        return await _processController
+        var observed = (await _contentAcquisition
+                .AcquireAndInstallAsync(
+                    command,
+                    payload.Command.Content,
+                    "arma3",
+                    _paths.InstallPath,
+                    cancellationToken,
+                    includeClientOnly: !payload.Command.IsPrimaryService,
+                    includeServerOnly: payload.Command.IsPrimaryService)
+                .ConfigureAwait(false))
+            .Concat(ObserveWorkshopVersions(payload.Command.Content, payload.Command.IsPrimaryService))
+            .ToArray();
+        var started = await _processController
             .StartAsync(BuildLaunchArguments(payload), cancellationToken)
             .ConfigureAwait(false);
+        return started with { ObservedContentVersions = observed };
     }
 
     private async Task<WorkerCommandExecutionResult> StopAndPreserveAsync(
@@ -481,10 +503,26 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 WorkerSecretRedactor.Redact(ex.Message, SnapshotDiagnosticSecrets())
                 ?? "Persistent data could not be prepared.");
         }
+        var observed = (await _contentAcquisition
+                .AcquireAndInstallAsync(
+                    command,
+                    payload.Command.Content,
+                    "arma3",
+                    _paths.InstallPath,
+                    cancellationToken,
+                    includeClientOnly: !payload.Command.IsPrimaryService,
+                    includeServerOnly: payload.Command.IsPrimaryService)
+                .ConfigureAwait(false))
+            .Concat(ObserveWorkshopVersions(payload.Command.Content, payload.Command.IsPrimaryService))
+            .ToArray();
         var started = await _processController
             .StartAsync(BuildLaunchArguments(payload), cancellationToken)
             .ConfigureAwait(false);
-        return started with { Stage = started.Succeeded ? "restarted" : "restart-start-failed" };
+        return started with
+        {
+            Stage = started.Succeeded ? "restarted" : "restart-start-failed",
+            ObservedContentVersions = observed,
+        };
     }
 
     private async Task<WorkerCommandExecutionResult> MaintainAsync(
@@ -758,11 +796,13 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             arguments.Add($"-name={payload.ProfileName}");
         }
         var workshopItemIds = payload.GetSteamWorkshopItemIds();
-        if (workshopItemIds.Count > 0)
+        var modPaths = workshopItemIds.Select(_paths.GetSteamWorkshopItemPath)
+            .Concat(GetProviderModPaths(payload.Command.Content, isPrimaryService: true))
+            .ToArray();
+        if (modPaths.Length > 0)
         {
             EnsureSelectedWorkshopContentExists(workshopItemIds);
-            arguments.Add(
-                $"-mod={string.Join(';', workshopItemIds.Select(_paths.GetSteamWorkshopItemPath))}");
+            arguments.Add($"-mod={string.Join(';', modPaths)}");
         }
         return arguments;
     }
@@ -792,13 +832,26 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 arguments.Add($"-password={value}");
         }
         var workshopItemIds = payload.GetSteamWorkshopItemIds();
-        if (workshopItemIds.Count > 0)
+        var modPaths = workshopItemIds.Select(_paths.GetSteamWorkshopItemPath)
+            .Concat(GetProviderModPaths(payload.Command.Content, isPrimaryService: false))
+            .ToArray();
+        if (modPaths.Length > 0)
         {
             EnsureSelectedWorkshopContentExists(workshopItemIds);
-            arguments.Add($"-mod={string.Join(';', workshopItemIds.Select(_paths.GetSteamWorkshopItemPath))}");
+            arguments.Add($"-mod={string.Join(';', modPaths)}");
         }
         return arguments;
     }
+
+    private IEnumerable<string> GetProviderModPaths(
+        IReadOnlyCollection<WorkerContentReference> references,
+        bool isPrimaryService)
+        => references
+            .Where(reference => reference.Source is "uploaded-artifact" or "git")
+            .Where(reference => isPrimaryService
+                ? !string.Equals(reference.UsageRole, "ClientOnly", StringComparison.OrdinalIgnoreCase)
+                : !string.Equals(reference.UsageRole, "ServerOnly", StringComparison.OrdinalIgnoreCase))
+            .Select(reference => Path.Combine(_paths.InstallPath, WorkerContentPath.GetArma3ModDirectoryName(reference)));
 
     private async Task<WorkerCommandExecutionResult> CollectLogsAsync(CancellationToken cancellationToken)
     {
@@ -1264,6 +1317,42 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             "\\\"timeupdated\\\"\\s*\\\"(?<value>[0-9]+)\\\"",
             RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
         return version.Success ? version.Groups["value"].Value : null;
+    }
+
+    private IReadOnlyCollection<WorkerObservedContentVersion> ObserveWorkshopVersions(
+        IReadOnlyCollection<WorkerContentReference> references,
+        bool isPrimaryService)
+    {
+        var observed = new List<WorkerObservedContentVersion>();
+        foreach (var reference in references.Where(
+                     reference => reference.Source == Arma3CommandPayload.SteamWorkshopContentSource)
+                     .Where(reference => payloadRoleApplies(reference)))
+        {
+            if (!ulong.TryParse(reference.Identifier, out var workshopItemId))
+            {
+                throw new InvalidDataException("Steam Workshop version evidence is unavailable after preparation.");
+            }
+            var version = ReadWorkshopManifestVersion(workshopItemId);
+            if (string.IsNullOrWhiteSpace(version))
+            {
+                var contentPath = _paths.GetSteamWorkshopItemPath(workshopItemId);
+                if (!Directory.Exists(contentPath))
+                    throw new InvalidDataException("Steam Workshop version evidence is unavailable after preparation.");
+                version = Directory.GetLastWriteTimeUtc(contentPath).Ticks.ToString(CultureInfo.InvariantCulture);
+            }
+            observed.Add(new WorkerObservedContentVersion
+            {
+                ProviderIdentifier = reference.Source,
+                SourceIdentifier = reference.Identifier,
+                ObservedVersion = version,
+            });
+        }
+        return observed;
+
+        bool payloadRoleApplies(WorkerContentReference reference)
+            => isPrimaryService
+                ? !string.Equals(reference.UsageRole, "ClientOnly", StringComparison.OrdinalIgnoreCase)
+                : !string.Equals(reference.UsageRole, "ServerOnly", StringComparison.OrdinalIgnoreCase);
     }
 
     private bool SelectedWorkshopContentExists(IEnumerable<ulong> workshopItemIds)

@@ -8,6 +8,43 @@ namespace CloudWorker.Tests;
 public class CloudWorkerRuntimeTests
 {
     [Fact]
+    public async Task NewRegistration_AdvertisesRegisteredContentProviders()
+    {
+        using var directory = new TemporaryDirectory();
+        var bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap();
+        var connection = bootstrap.ToConnectionConfig();
+        var api = new FakeApiClient();
+        var runtime = new CloudWorkerRuntime(
+            api,
+            new CloudWorkerCredentialStore(directory.Path),
+            new FlatFileWorkerCommandJournal(directory.Path),
+            new FakeExecutor());
+        var options = new CloudWorkerOptions(
+            Path.Combine(directory.Path, "bootstrap.json"),
+            directory.Path,
+            Path.Combine(directory.Path, "runtime"),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(15),
+            true,
+            true,
+            new Arma3WorkerOptions(
+                "unused-steamcmd",
+                "anonymous",
+                null,
+                null,
+                "arma3server_x64",
+                TimeSpan.FromSeconds(30)));
+
+        var exitCode = await runtime.RunAsync(connection, bootstrap, options, CancellationToken.None);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(2, api.LastRegistrationRequest?.ProtocolVersion);
+        Assert.Equal(
+            ["git", "steam-workshop", "uploaded-artifact"],
+            api.LastRegistrationRequest?.SupportedContentProviderIdentifiers.Order());
+    }
+
+    [Fact]
     public async Task PersistedRegistration_RestartsWithoutBootstrapFile()
     {
         using var directory = new TemporaryDirectory();
@@ -484,13 +521,25 @@ public class CloudWorkerRuntimeTests
         public int SupersedeOnRunningReport { get; init; } = int.MaxValue;
         public bool SupersedeTerminalReports { get; init; }
         public WorkerHeartbeatRequest? LastHeartbeatRequest { get; private set; }
+        public WorkerRegistrationRequest? LastRegistrationRequest { get; private set; }
         private int RunningReportCount { get; set; }
 
         public Task<WorkerRegistrationResult> RegisterAsync(
             CloudWorkerBootstrapConfig bootstrap,
             WorkerRegistrationRequest request,
             CancellationToken cancellationToken)
-            => throw new NotSupportedException();
+        {
+            LastRegistrationRequest = request;
+            return Task.FromResult(new WorkerRegistrationResult(
+                "registered-worker-token",
+                new WorkerRegistrationResponse
+                {
+                    WorkerId = bootstrap.WorkerId,
+                    DeploymentId = bootstrap.DeploymentId,
+                    CredentialExpiresAt = DateTimeOffset.UtcNow.AddHours(1),
+                    HeartbeatIntervalSeconds = 15,
+                }));
+        }
 
         public Task<WorkerCredentialRotationResult> RotateCredentialAsync(
             CloudWorkerConnectionConfig connection,
