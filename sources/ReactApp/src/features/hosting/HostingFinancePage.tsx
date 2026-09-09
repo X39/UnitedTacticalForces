@@ -65,6 +65,14 @@ export function HostingFinancePage() {
       navigate(`/command/hosting-finance/accounts/${owner.costOwnerId}`);
     },
   });
+  const openCreateDialog = () => {
+    create.reset();
+    setDialogOpen(true);
+  };
+  const closeCreateDialog = () => {
+    create.reset();
+    setDialogOpen(false);
+  };
   const setFilter = (name: string, value: string, resetPage = true) => {
     const next = new URLSearchParams(params);
     if (value) next.set(name, value);
@@ -99,7 +107,7 @@ export function HostingFinancePage() {
               {t("HostingFinance_GlobalSettings")}
             </ActionLink>
             {permissions.manageCostOwners && (
-              <ActionButton variant="primary" onClick={() => setDialogOpen(true)}>
+              <ActionButton variant="primary" onClick={openCreateDialog}>
                 {t("HostingFinance_AddAccount")}
               </ActionButton>
             )}
@@ -220,7 +228,7 @@ export function HostingFinancePage() {
         title={t("HostingFinance_AddAccount")}
         submitLabel={t("HostingFinance_CreateAccount")}
         busy={create.isPending}
-        onClose={() => setDialogOpen(false)}
+        onClose={closeCreateDialog}
         onSubmit={(event: FormEvent) => {
           event.preventDefault();
           if (canCreate) create.mutate();
@@ -231,6 +239,7 @@ export function HostingFinancePage() {
           <select
             value={createKind}
             onChange={(event) => {
+              create.reset();
               setCreateKind(event.target.value as FinanceOwnerKind);
               setUserId("");
             }}

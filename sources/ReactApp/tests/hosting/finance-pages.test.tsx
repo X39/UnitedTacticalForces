@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach } from "vitest";
@@ -91,5 +92,26 @@ describe("hosting finance routes", () => {
     await renderRoute("/command/hosting-finance/settings");
     expect(await screen.findByRole("heading", { name: /Global management/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/Protected reserve/i)).toBeInTheDocument();
+  });
+
+  it("clears a failed account creation when the dialog is reopened", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(financeService, "createOwner").mockRejectedValue(new Error("creation failed"));
+    await renderRoute("/command/hosting-finance");
+
+    await user.click(await screen.findByRole("button", { name: "Add account" }));
+    const dialog = screen.getByRole("dialog");
+    await user.selectOptions(within(dialog).getByLabelText("Type"), "ExternalOrganization");
+    await user.type(within(dialog).getByLabelText("Organization name"), "Partner two");
+    await user.click(within(dialog).getByRole("button", { name: "Create account" }));
+    expect(
+      await within(dialog).findByText("The finance action could not be completed."),
+    ).toBeVisible();
+
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Add account" }));
+    expect(
+      within(dialog).queryByText("The finance action could not be completed."),
+    ).not.toBeInTheDocument();
   });
 });

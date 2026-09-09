@@ -25,20 +25,21 @@ public sealed class HostingFinanceAdministrationTests
         await store.DbContext.SaveChangesAsync();
         var controller = CreateController(store, actor);
 
-        var userResult = Assert.IsType<CreatedAtActionResult>(await controller.CreateAsync(
+        var userResult = Assert.IsType<CreatedAtRouteResult>(await controller.CreateAsync(
             new CostOwnerCreationPayload { Kind = ECostOwnerKind.User, UserId = represented.PrimaryKey },
             default));
+        Assert.Equal(nameof(CostOwnersController.GetAsync), userResult.RouteName);
         var userOwner = Assert.IsType<HostingCostOwnerDto>(userResult.Value);
         Assert.Equal("Current nickname", userOwner.DisplayName);
         Assert.IsType<ConflictObjectResult>(await controller.CreateAsync(
             new CostOwnerCreationPayload { Kind = ECostOwnerKind.User, UserId = represented.PrimaryKey },
             default));
 
-        Assert.IsType<CreatedAtActionResult>(await controller.CreateAsync(
+        Assert.IsType<CreatedAtRouteResult>(await controller.CreateAsync(
             new CostOwnerCreationPayload { Kind = ECostOwnerKind.Verein }, default));
         Assert.IsType<ConflictObjectResult>(await controller.CreateAsync(
             new CostOwnerCreationPayload { Kind = ECostOwnerKind.Verein }, default));
-        var organizationResult = Assert.IsType<CreatedAtActionResult>(await controller.CreateAsync(
+        var organizationResult = Assert.IsType<CreatedAtRouteResult>(await controller.CreateAsync(
             new CostOwnerCreationPayload
             {
                 Kind = ECostOwnerKind.ExternalOrganization,

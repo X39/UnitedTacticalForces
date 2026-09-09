@@ -72,7 +72,7 @@ public sealed class CostOwnersController(
     /// <summary>
     /// Returns one cost owner's current hosting-finance position when the caller may inspect it.
     /// </summary>
-    [HttpGet("{costOwnerId:guid}")]
+    [HttpGet("{costOwnerId:guid}", Name = nameof(GetAsync))]
     [ProducesResponseType<HostingCostOwnerDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -235,7 +235,7 @@ public sealed class CostOwnersController(
             return Conflict(new { error = "A matching cost owner was created concurrently." });
         }
 
-        return CreatedAtAction(nameof(GetAsync), new { costOwnerId = owner.PrimaryKey },
+        return CreatedAtRoute(nameof(GetAsync), new { costOwnerId = owner.PrimaryKey },
             await ToCostOwnerDtoAsync(owner, cancellationToken).ConfigureAwait(false));
     }
 
