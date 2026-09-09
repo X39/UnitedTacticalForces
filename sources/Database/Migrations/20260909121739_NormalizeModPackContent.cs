@@ -53,9 +53,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                 SET "ProviderIdentifier" = CASE latest."SourceKind"
                         WHEN 1 THEN 'steam-workshop' WHEN 2 THEN 'uploaded-artifact' ELSE 'built-in' END,
                     "CanonicalSourceIdentifier" = latest."SourceIdentifier", "UsageRole" = latest."UsageRole"
-                FROM LATERAL (
-                    SELECT mv."SourceKind", mv."SourceIdentifier", mv."UsageRole" FROM "ModVersions" AS mv
-                    WHERE mv."ModFk" = m."PrimaryKey" ORDER BY mv."VersionNumber" DESC LIMIT 1) AS latest;
+                FROM (
+                    SELECT DISTINCT ON (mv."ModFk") mv."ModFk", mv."SourceKind", mv."SourceIdentifier",
+                        mv."UsageRole"
+                    FROM "ModVersions" AS mv
+                    ORDER BY mv."ModFk", mv."VersionNumber" DESC, mv."PrimaryKey" DESC) AS latest
+                WHERE latest."ModFk" = m."PrimaryKey";
                 UPDATE "Events" AS e SET "ModPackRevisionFk" = NULL WHERE e."ModPackRevisionFk" IN (
                     SELECT r."PrimaryKey" FROM "ModPackRevisions" r JOIN "ModPackDefinitions" d
                     ON d."PrimaryKey" = r."DefinitionFk" WHERE d."GameIdentifier" = 'arma3');
