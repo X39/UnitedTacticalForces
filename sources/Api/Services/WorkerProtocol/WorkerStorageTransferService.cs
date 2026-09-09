@@ -30,6 +30,7 @@ internal sealed class WorkerStorageTransferService(
     IServerFileLockProvider lockProvider,
     IPreservationSelectionResolver selectionResolver,
     IHostingAuditWriter auditWriter,
+    IModArtifactStorage modArtifactStorage,
     ILogger<WorkerStorageTransferService> logger) : IWorkerStorageTransferService
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
@@ -37,6 +38,33 @@ internal sealed class WorkerStorageTransferService(
         Converters = { new JsonStringEnumConverter() },
     };
     private static readonly StringComparer ProtocolPathComparer = StringComparer.OrdinalIgnoreCase;
+
+    /// <inheritdoc />
+    public async Task<ModArtifactDownload> OpenContentArtifactAsync(
+        Guid workerId,
+        Guid commandId,
+        string artifactIdentifier,
+        string workerCredential,
+        CancellationToken cancellationToken = default)
+    {
+        _ = await AuthenticateCommandAsync(workerId, commandId, workerCredential, GameServerActions.Start,
+            ELifecycleJobKind.Start, false, cancellationToken).ConfigureAwait(false);
+        var payloadJson = await dbContext.WorkerCommands.AsNoTracking().Where(q => q.PrimaryKey == commandId)
+            .Select(q => q.Payload).SingleAsync(cancellationToken).ConfigureAwait(false);
+        var payload = JsonSerializer.Deserialize<WorkerCommandPayload>(payloadJson, SerializerOptions)
+                      ?? throw new WorkerProtocolConflictException("The command payload is invalid.");
+        if (!payload.Content.Any(q => q.Source == ModSourceProviderIdentifiers.UploadedArtifact
+                                      && q.ArtifactIdentifier == artifactIdentifier))
+            throw new WorkerProtocolNotFoundException("The artifact is not declared by this command.");
+        try
+        {
+            return await modArtifactStorage.OpenReadAsync(artifactIdentifier, cancellationToken).ConfigureAwait(false);
+        }
+        catch (FileNotFoundException)
+        {
+            throw new WorkerProtocolNotFoundException("The declared artifact is unavailable.");
+        }
+    }
 
     public async Task<WorkerStorageArchiveDownload> CreatePersistentSnapshotAsync(
         Guid workerId,

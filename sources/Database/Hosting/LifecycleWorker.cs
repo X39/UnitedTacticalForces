@@ -40,6 +40,10 @@ public class LifecycleWorker : IPrimaryKey<Guid>, ITimeStampCreated
     [Column(TypeName = "jsonb")]
     public string SupportedGameIdentifiers { get; set; } = "[]";
 
+    /// <summary>Gets or sets registered mod source providers supported by this worker.</summary>
+    [Column(TypeName = "jsonb")]
+    public string SupportedContentProviderIdentifiers { get; set; } = "[]";
+
     /// <summary>
     /// SHA-256 hash of the short-lived bootstrap credential. Registration may retry it after a
     /// lost response, but it is retired when an issued worker credential first authenticates.

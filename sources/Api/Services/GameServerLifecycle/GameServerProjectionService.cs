@@ -124,6 +124,22 @@ internal sealed class GameServerProjectionService(
                 RequiresModPack = capability.ContentCapabilities.RequiresModPack,
                 TerrainSourceKinds = capability.ContentCapabilities.TerrainSourceKinds,
                 ModInstallerIdentifiers = capability.ContentCapabilities.ModInstallerIdentifiers,
+                ModProviderBindings = capability.ContentCapabilities.ModProviderBindings.Select(q => new ModProviderBindingDto
+                {
+                    ProviderIdentifier = q.ProviderIdentifier,
+                    DisplayName = q.DisplayName,
+                    AcceptedInput = q.AcceptedInput,
+                    InstallerIdentifiers = q.InstallerIdentifiers,
+                    SupportsVersionSelector = q.SupportsVersionSelector,
+                }).ToArray(),
+                ModPackFormats = capability.ContentCapabilities.ModPackFormats.Select(q => new ModPackFormatDto
+                {
+                    Identifier = q.Identifier,
+                    DisplayName = q.DisplayName,
+                    FileExtension = q.FileExtension,
+                    MediaType = q.MediaType,
+                    MaximumSizeBytes = q.MaximumSizeBytes,
+                }).ToArray(),
                 DefaultTerrainSourceIdentifier = capability.ContentCapabilities.DefaultTerrainSourceIdentifier,
                 DefaultScenarioSourceIdentifier = capability.ContentCapabilities.DefaultScenarioSourceIdentifier,
                 Secrets = capability.Secrets.Select(q => new GameServerSecretCapabilityDto(

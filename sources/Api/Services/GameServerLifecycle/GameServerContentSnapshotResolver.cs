@@ -1,9 +1,5 @@
-using System.Globalization;
 using System.Net;
-using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
-using X39.UnitedTacticalForces.Api.Helpers;
-using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Core;
 using X39.UnitedTacticalForces.Hosting.Contracts;
@@ -19,8 +15,6 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContext)
     : IGameServerContentSnapshotResolver
 {
-    private const string SteamWorkshopSource = "steam-workshop";
-
     public async Task<IReadOnlyCollection<WorkerContentReference>> ResolveAsync(
         Guid gameServerId,
         CancellationToken cancellationToken = default)
@@ -61,15 +55,10 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
             }
         }
 
-        var normalized = await ResolveNormalizedAsync(
+        return await ResolveNormalizedAsync(
                 server.GameIdentifier,
                 definitionIds,
                 cancellationToken)
-            .ConfigureAwait(false);
-        if (normalized.Count > 0 || definitionIds.Count == 0)
-            return normalized;
-
-        return await ResolveAsync(server.GameIdentifier, server.SelectedModPackDefinitionFk, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -81,162 +70,11 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
         if (modPackDefinitionId is not { } definitionId)
             return [];
 
-        var normalized = await ResolveNormalizedAsync(
+        return await ResolveNormalizedAsync(
                 gameIdentifier,
                 [(definitionId, null)],
                 cancellationToken)
             .ConfigureAwait(false);
-        if (normalized.Count > 0)
-            return normalized;
-
-        var definition = await dbContext.ModPackDefinitions
-            .AsNoTracking()
-            .Where(q => q.PrimaryKey == definitionId)
-            .Select(q => new
-            {
-                q.IsActive,
-                q.IsComposition,
-                q.GameIdentifier,
-            })
-            .SingleOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw InvalidSelection("The selected content definition no longer exists.");
-        if (!definition.IsActive)
-            throw InvalidSelection("The selected content definition is no longer active.");
-        if (!string.Equals(definition.GameIdentifier, gameIdentifier, StringComparison.OrdinalIgnoreCase))
-            throw InvalidSelection("The selected content definition belongs to a different game.");
-
-        // Provider-neutral selections remain durable for every game. Arma 3 is the first implementation that maps
-        // those selections to concrete worker content references.
-        if (!string.Equals(
-                gameIdentifier,
-                Arma3GameServerDefinitionRegistration.GameIdentifier,
-                StringComparison.OrdinalIgnoreCase))
-            return [];
-
-        var revisions = definition.IsComposition
-            ? await dbContext.ModPackRevisions
-                .AsNoTracking()
-                .Where(q => q.ModPackDefinitions!.Any(d => d.PrimaryKey == definitionId))
-                .OrderBy(q => q.PrimaryKey)
-                .Select(q => new RevisionSnapshot(
-                    q.Html,
-                    q.Definition!.GameIdentifier))
-                .ToArrayAsync(cancellationToken)
-                .ConfigureAwait(false)
-            : await dbContext.ModPackRevisions
-                .AsNoTracking()
-                .Where(q => q.DefinitionFk == definitionId && q.IsActive)
-                .OrderBy(q => q.PrimaryKey)
-                .Select(q => new RevisionSnapshot(
-                    q.Html,
-                    q.Definition!.GameIdentifier))
-                .ToArrayAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-        if (!definition.IsComposition && revisions.Length is not 1)
-            throw InvalidSelection("The selected standalone content definition has no unique active revision.");
-        if (revisions.Any(q => !string.Equals(
-                q.GameIdentifier,
-                gameIdentifier,
-                StringComparison.OrdinalIgnoreCase)))
-        {
-            throw InvalidSelection("The selected composition contains cross-game content.");
-        }
-
-        var references = new Dictionary<ulong, WorkerContentReference>();
-        foreach (var revision in revisions)
-        {
-            var mods = ParseMods(revision.Html);
-            foreach (var mod in mods)
-            {
-                var workshopId = ParseSteamWorkshopId(mod.Link);
-                references.TryAdd(workshopId, new WorkerContentReference
-                {
-                    Source = SteamWorkshopSource,
-                    Identifier = workshopId.ToString(CultureInfo.InvariantCulture),
-                    DisplayName = BoundDisplayName(mod.Title),
-                });
-            }
-        }
-
-        return references
-            .OrderBy(q => q.Key)
-            .Select(q => q.Value)
-            .ToArray();
-    }
-
-    private static IReadOnlyCollection<Arma3ModPackParser.TitleLinkPair> ParseMods(string html)
-    {
-        try
-        {
-            var (_, mods, _) = Arma3ModPackParser.FromHtml(html);
-            var document = new HtmlDocument();
-            document.LoadHtml(html);
-            var sourceRows = document.DocumentNode
-                .SelectNodes("//tr[@data-type='ModContainer']")
-                ?.Count ?? 0;
-            if (sourceRows != mods.Count)
-                throw InvalidSelection("The selected Arma 3 content contains a malformed mod entry.");
-            return mods;
-        }
-        catch (PermanentLifecycleExecutionException)
-        {
-            throw;
-        }
-        catch (Exception)
-        {
-            throw InvalidSelection("The selected Arma 3 content could not be parsed.");
-        }
-    }
-
-    private static ulong ParseSteamWorkshopId(string link)
-    {
-        try
-        {
-            if (!Uri.TryCreate(link, UriKind.Absolute, out var uri)
-                || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-                || !(string.Equals(uri.Host, "steamcommunity.com", StringComparison.OrdinalIgnoreCase)
-                     || string.Equals(uri.Host, "www.steamcommunity.com", StringComparison.OrdinalIgnoreCase))
-                || !string.Equals(
-                    uri.AbsolutePath.TrimEnd('/'),
-                    "/sharedfiles/filedetails",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                throw InvalidSelection("The selected Arma 3 content contains a non-Steam Workshop link.");
-            }
-
-            var workshopIds = uri.Query
-                .TrimStart('?')
-                .Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(q => q.Split('=', 2))
-                .Where(q => q.Length == 2
-                            && string.Equals(
-                                Uri.UnescapeDataString(q[0]),
-                                "id",
-                                StringComparison.OrdinalIgnoreCase))
-                .Select(q => Uri.UnescapeDataString(q[1]))
-                .ToArray();
-            if (workshopIds.Length is not 1
-                || !ulong.TryParse(
-                    workshopIds[0],
-                    NumberStyles.None,
-                    CultureInfo.InvariantCulture,
-                    out var workshopId)
-                || workshopId is 0)
-            {
-                throw InvalidSelection("The selected Arma 3 content contains an invalid Steam Workshop id.");
-            }
-            return workshopId;
-        }
-        catch (PermanentLifecycleExecutionException)
-        {
-            throw;
-        }
-        catch (Exception)
-        {
-            throw InvalidSelection("The selected Arma 3 content contains a malformed Steam Workshop link.");
-        }
     }
 
     private static string BoundDisplayName(string title)
@@ -260,7 +98,8 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
         IReadOnlyCollection<(long DefinitionId, long? PinnedRevisionId)> roots,
         CancellationToken cancellationToken)
     {
-        var result = new Dictionary<Guid, WorkerContentReference>();
+        var result = new List<WorkerContentReference>();
+        var resolvedMods = new HashSet<Guid>();
         var visitedDefinitions = new HashSet<long>();
         var activeDefinitions = new HashSet<long>();
         foreach (var root in roots)
@@ -271,14 +110,12 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
                     gameIdentifier,
                     visitedDefinitions,
                     activeDefinitions,
+                    resolvedMods,
                     result,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
-        return result.OrderBy(q => q.Value.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(q => q.Key)
-            .Select(q => q.Value)
-            .ToArray();
+        return result;
     }
 
     private async Task ResolveDefinitionAsync(
@@ -287,7 +124,8 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
         string gameIdentifier,
         ISet<long> visitedDefinitions,
         ISet<long> activeDefinitions,
-        IDictionary<Guid, WorkerContentReference> result,
+        ISet<Guid> resolvedMods,
+        ICollection<WorkerContentReference> result,
         CancellationToken cancellationToken)
     {
         if (visitedDefinitions.Contains(definitionId))
@@ -312,12 +150,6 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
                 .ThenByDescending(q => q.PrimaryKey)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
-        if (revision is null && definition.IsComposition)
-        {
-            activeDefinitions.Remove(definitionId);
-            visitedDefinitions.Add(definitionId);
-            return;
-        }
         if (revision is null)
             throw InvalidSelection("A selected mod pack has no resolvable revision.");
 
@@ -344,20 +176,14 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
                     .ConfigureAwait(false);
             if (version is null)
                 throw InvalidSelection($"Mod '{mod.Title}' has no resolvable version.");
-            result.TryAdd(mod.PrimaryKey, new WorkerContentReference
+            if (resolvedMods.Add(mod.PrimaryKey)) result.Add(new WorkerContentReference
             {
-                Source = version.SourceKind switch
-                {
-                    EContentSourceKind.SteamWorkshop => SteamWorkshopSource,
-                    EContentSourceKind.UploadedArtifact => "uploaded-artifact",
-                    EContentSourceKind.BuiltIn => "built-in",
-                    _ => throw InvalidSelection("A mod uses an unsupported source kind."),
-                },
-                Identifier = version.SourceIdentifier,
+                Source = mod.ProviderIdentifier,
+                Identifier = mod.CanonicalSourceIdentifier,
                 DisplayName = BoundDisplayName(mod.Title),
-                UsageRole = version.UsageRole.ToString(),
+                UsageRole = mod.UsageRole.ToString(),
                 InstallerIdentifier = version.InstallerIdentifier,
-                VersionIdentifier = version.VersionLabel,
+                VersionIdentifier = version.VersionSelector,
                 ArtifactIdentifier = version.ArtifactIdentifier,
                 ChecksumSha256 = version.ChecksumSha256,
                 InstallerConfiguration = version.InstallerConfiguration,
@@ -375,15 +201,14 @@ internal sealed class GameServerContentSnapshotResolver(DatabaseContext dbContex
                     dependency.ChildDefinitionFk,
                     dependency.PinnedChildRevisionFk,
                     gameIdentifier,
-                    visitedDefinitions,
-                    activeDefinitions,
-                    result,
+                visitedDefinitions,
+                activeDefinitions,
+                resolvedMods,
+                result,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
         activeDefinitions.Remove(definitionId);
         visitedDefinitions.Add(definitionId);
     }
-
-    private sealed record RevisionSnapshot(string Html, string GameIdentifier);
 }

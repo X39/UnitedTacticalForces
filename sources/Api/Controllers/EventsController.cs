@@ -85,7 +85,6 @@ public class EventsController : ControllerBase
                         Description                    = e.Description,
                         TerrainTitle                   = e.Terrain == null ? string.Empty : e.Terrain.Title,
                         ModPackDefinitionTitle         = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Definition!.Title,
-                        ModPackDefinitionIsComposition = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsComposition,
                         ImageAssetFk                   = e.ImageAssetFk,
                         ImagePath                      = e.ImageAssetFk == null
                             ? null
@@ -132,7 +131,6 @@ public class EventsController : ControllerBase
                         Description                        = e.Description,
                         TerrainTitle                       = e.Terrain == null ? string.Empty : e.Terrain.Title,
                         ModPackDefinitionTitle             = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Definition!.Title,
-                        ModPackDefinitionIsComposition     = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsComposition,
                         ImageAssetFk                       = e.ImageAssetFk,
                         ImagePath                          = e.ImageAssetFk == null
                             ? null
@@ -315,13 +313,11 @@ public class EventsController : ControllerBase
                         TerrainIsActive                   = e.Terrain != null && e.Terrain.IsActive,
                         ModPackRevisionPrimaryKey         = e.ModPackRevisionFk,
                         ModPackRevisionTimeStampCreated   = e.ModPackRevision == null ? null : e.ModPackRevision.TimeStampCreated,
-                        ModPackRevisionHtml               = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Html,
                         ModPackRevisionIsActive           = e.ModPackRevision != null && e.ModPackRevision.IsActive,
                         ModPackDefinitionPrimaryKey       = e.ModPackRevision == null ? null : e.ModPackRevision.DefinitionFk,
                         ModPackDefinitionTimeStampCreated = e.ModPackRevision == null ? null : e.ModPackRevision.Definition!.TimeStampCreated,
                         ModPackDefinitionTitle            = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Definition!.Title,
                         ModPackDefinitionIsActive         = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsActive,
-                        ModPackDefinitionIsComposition    = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsComposition,
                         ImageAssetFk                      = e.ImageAssetFk,
                         ImagePath                         = e.ImageAssetFk == null
                             ? null
@@ -394,13 +390,11 @@ public class EventsController : ControllerBase
                         TerrainIsActive                   = e.Terrain != null && e.Terrain.IsActive,
                         ModPackRevisionPrimaryKey         = e.ModPackRevisionFk,
                         ModPackRevisionTimeStampCreated   = e.ModPackRevision == null ? null : e.ModPackRevision.TimeStampCreated,
-                        ModPackRevisionHtml               = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Html,
                         ModPackRevisionIsActive           = e.ModPackRevision != null && e.ModPackRevision.IsActive,
                         ModPackDefinitionPrimaryKey       = e.ModPackRevision == null ? null : e.ModPackRevision.DefinitionFk,
                         ModPackDefinitionTimeStampCreated = e.ModPackRevision == null ? null : e.ModPackRevision.Definition!.TimeStampCreated,
                         ModPackDefinitionTitle            = e.ModPackRevision == null ? string.Empty : e.ModPackRevision.Definition!.Title,
                         ModPackDefinitionIsActive         = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsActive,
-                        ModPackDefinitionIsComposition    = e.ModPackRevision != null && e.ModPackRevision.Definition!.IsComposition,
                         ImageAssetFk                      = e.ImageAssetFk,
                         ImagePath                         = e.ImageAssetFk == null
                             ? null

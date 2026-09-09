@@ -139,7 +139,6 @@ internal static class DebugDemoDataSeeder
                 dbContext,
                 debugUser,
                 DebugModPackTitle,
-                isComposition: false,
                 now,
                 cancellationToken
             )
@@ -149,7 +148,7 @@ internal static class DebugDemoDataSeeder
                 modPack,
                 debugUser,
                 now,
-                CreateDemoModPackHtml(),
+                CreateDemoModPackEntries(),
                 cancellationToken
             )
             .ConfigureAwait(false);
@@ -157,7 +156,6 @@ internal static class DebugDemoDataSeeder
                 dbContext,
                 debugUser,
                 DebugTrainingModPackTitle,
-                isComposition: false,
                 now,
                 cancellationToken
             )
@@ -167,7 +165,7 @@ internal static class DebugDemoDataSeeder
                 trainingModPack,
                 debugUser,
                 now,
-                CreateTrainingModPackHtml(),
+                CreateTrainingModPackEntries(),
                 cancellationToken
             )
             .ConfigureAwait(false);
@@ -175,7 +173,6 @@ internal static class DebugDemoDataSeeder
                 dbContext,
                 debugUser,
                 DebugReconModPackTitle,
-                isComposition: false,
                 now,
                 cancellationToken
             )
@@ -185,7 +182,7 @@ internal static class DebugDemoDataSeeder
                 reconModPack,
                 debugUser,
                 now,
-                CreateReconModPackHtml(),
+                CreateReconModPackEntries(),
                 cancellationToken
             )
             .ConfigureAwait(false);
@@ -520,12 +517,11 @@ internal static class DebugDemoDataSeeder
         DatabaseContext dbContext,
         User debugUser,
         string title,
-        bool isComposition,
         Instant now,
         CancellationToken cancellationToken)
     {
         var modPack = await dbContext.ModPackDefinitions
-            .Include(q => q.ModPackRevisions)
+            .Include(q => q.ModPackRevisionsOwned)
             .FirstOrDefaultAsync(
                 q => q.Title == title
                      && q.GameIdentifier == Arma3GameServerDefinitionRegistration.GameIdentifier,
@@ -540,8 +536,6 @@ internal static class DebugDemoDataSeeder
                 Title = title,
                 OwnerFk = debugUser.PrimaryKey,
                 IsActive = true,
-                IsComposition = isComposition,
-                ModPackRevisions = [],
                 ModPackRevisionsOwned = [],
             };
             dbContext.ModPackDefinitions.Add(modPack);
@@ -549,7 +543,6 @@ internal static class DebugDemoDataSeeder
 
         modPack.OwnerFk = debugUser.PrimaryKey;
         modPack.IsActive = true;
-        modPack.IsComposition = isComposition;
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return modPack;
     }
@@ -559,10 +552,11 @@ internal static class DebugDemoDataSeeder
         ModPackDefinition modPack,
         User debugUser,
         Instant now,
-        string html,
+        IReadOnlyList<(string Title, string WorkshopId)> entries,
         CancellationToken cancellationToken)
     {
         var revision = await dbContext.ModPackRevisions
+            .Include(q => q.Mods)
             .FirstOrDefaultAsync(q => q.DefinitionFk == modPack.PrimaryKey && q.IsActive, cancellationToken)
             .ConfigureAwait(false);
         if (revision is null)
@@ -573,23 +567,63 @@ internal static class DebugDemoDataSeeder
                 TimeStampCreated = now,
                 UpdatedByFk = debugUser.PrimaryKey,
                 IsActive = true,
-                Html = html,
             };
             dbContext.ModPackRevisions.Add(revision);
         }
 
         revision.UpdatedByFk = debugUser.PrimaryKey;
-        if (string.IsNullOrWhiteSpace(revision.Html))
-            revision.Html = html;
-
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        modPack.ModPackRevisions ??= [];
-        if (!modPack.ModPackRevisions.Any(q => q.PrimaryKey == revision.PrimaryKey))
-            modPack.ModPackRevisions.Add(revision);
         modPack.ModPackRevisionsOwned ??= [];
         if (!modPack.ModPackRevisionsOwned.Any(q => q.PrimaryKey == revision.PrimaryKey))
             modPack.ModPackRevisionsOwned.Add(revision);
+
+        dbContext.ModPackRevisionMods.RemoveRange(revision.Mods);
+        revision.Mods.Clear();
+        for (var order = 0; order < entries.Count; order++)
+        {
+            var entry = entries[order];
+            var mod = await dbContext.Mods.Include(q => q.Versions).FirstOrDefaultAsync(
+                    q => q.GameIdentifier == Arma3GameServerDefinitionRegistration.GameIdentifier
+                         && q.ProviderIdentifier == ModSourceProviderIdentifiers.SteamWorkshop
+                         && q.CanonicalSourceIdentifier == entry.WorkshopId,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (mod is null)
+            {
+                mod = new Mod
+                {
+                    PrimaryKey = Guid.NewGuid(),
+                    GameIdentifier = Arma3GameServerDefinitionRegistration.GameIdentifier,
+                    ProviderIdentifier = ModSourceProviderIdentifiers.SteamWorkshop,
+                    CanonicalSourceIdentifier = entry.WorkshopId,
+                    Title = entry.Title,
+                    UsageRole = EModUsageRole.Shared,
+                    IsActive = true,
+                    TimeStampCreated = now,
+                };
+                mod.Versions.Add(new ModVersion
+                {
+                    PrimaryKey = Guid.NewGuid(),
+                    Mod = mod,
+                    ModFk = mod.PrimaryKey,
+                    VersionNumber = 1,
+                    VersionLabel = "Current Workshop version",
+                    VersionSelector = string.Empty,
+                    InstallerIdentifier = "arma3-workshop",
+                    TimeStampCreated = now,
+                });
+                dbContext.Mods.Add(mod);
+            }
+            mod.IsActive = true;
+            revision.Mods.Add(new ModPackRevisionMod
+            {
+                ModPackRevisionFk = revision.PrimaryKey,
+                ModFk = mod.PrimaryKey,
+                Mod = mod,
+                Order = order,
+            });
+        }
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return revision;
     }
@@ -2197,41 +2231,14 @@ internal static class DebugDemoDataSeeder
         });
     }
 
-    private static string CreateDemoModPackHtml()
-        => Arma3ModPackParser.ToHtml(
-            DebugModPackTitle,
-            new Arma3ModPackParser.TitleLinkPair[]
-            {
-                new("CBA_A3", "https://steamcommunity.com/sharedfiles/filedetails/?id=450814997"),
-                new("ACE3", "https://steamcommunity.com/sharedfiles/filedetails/?id=463939057"),
-            },
-            []
-        );
+    private static IReadOnlyList<(string Title, string WorkshopId)> CreateDemoModPackEntries()
+        => [("CBA_A3", "450814997"), ("ACE3", "463939057")];
 
-    private static string CreateTrainingModPackHtml()
-        => Arma3ModPackParser.ToHtml(
-            DebugTrainingModPackTitle,
-            new Arma3ModPackParser.TitleLinkPair[]
-            {
-                new("CBA_A3", "https://steamcommunity.com/sharedfiles/filedetails/?id=450814997"),
-                new("ACE3", "https://steamcommunity.com/sharedfiles/filedetails/?id=463939057"),
-                new("Task Force Arrowhead Radio", "https://steamcommunity.com/sharedfiles/filedetails/?id=894678801"),
-            },
-            []
-        );
+    private static IReadOnlyList<(string Title, string WorkshopId)> CreateTrainingModPackEntries()
+        => [.. CreateDemoModPackEntries(), ("Task Force Arrowhead Radio", "894678801")];
 
-    private static string CreateReconModPackHtml()
-        => Arma3ModPackParser.ToHtml(
-            DebugReconModPackTitle,
-            new Arma3ModPackParser.TitleLinkPair[]
-            {
-                new("CBA_A3", "https://steamcommunity.com/sharedfiles/filedetails/?id=450814997"),
-                new("ACE3", "https://steamcommunity.com/sharedfiles/filedetails/?id=463939057"),
-                new("3CB Factions", "https://steamcommunity.com/sharedfiles/filedetails/?id=1673456286"),
-                new("LAMBS Danger.fsm", "https://steamcommunity.com/sharedfiles/filedetails/?id=1858075458"),
-            },
-            []
-        );
+    private static IReadOnlyList<(string Title, string WorkshopId)> CreateReconModPackEntries()
+        => [.. CreateDemoModPackEntries(), ("3CB Factions", "1673456286"), ("LAMBS Danger.fsm", "1858075458")];
 
     private static byte[] GetTerrainImage(string title)
         => title switch

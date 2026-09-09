@@ -12,7 +12,7 @@ public sealed record WorkerContentReference : IValidatableObject
     public string Source { get; init; } = string.Empty;
 
     [Required]
-    [MaxLength(128)]
+    [MaxLength(512)]
     public string Identifier { get; init; } = string.Empty;
 
     [Required]

@@ -371,6 +371,7 @@ public sealed class WorkerStorageTransferServiceTests
             new ServerFileLockProvider(),
             new PreservationSelectionResolver(),
             new HostingAuditWriter(),
+            new MissingModArtifactStorage(),
             NullLogger<WorkerStorageTransferService>.Instance);
         return new TransferSeed(
             service,
@@ -483,6 +484,24 @@ public sealed class WorkerStorageTransferServiceTests
 
         public string ResolvePersistentRoot(Guid serverId)
             => Path.Combine(PersistentBasePath, serverId.ToString("N"));
+    }
+
+    /// <summary>Test storage that has no reusable artifacts.</summary>
+    private sealed class MissingModArtifactStorage : IModArtifactStorage
+    {
+        /// <inheritdoc />
+        public Task StoreAsync(string artifactIdentifier, Stream content, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        /// <inheritdoc />
+        public Task<ModArtifactDownload> OpenReadAsync(
+            string artifactIdentifier,
+            CancellationToken cancellationToken = default)
+            => throw new FileNotFoundException();
+
+        /// <inheritdoc />
+        public Task DeleteAsync(string artifactIdentifier, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 
     private sealed class StorageGameDefinitionCatalog : IGameServerDefinitionCatalog

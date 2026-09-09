@@ -35,7 +35,9 @@ internal sealed class WorkerProtocolService(
             throw new WorkerProtocolValidationException("A deployment id and bounded worker identity are required.");
         if (request.ProtocolVersion is < 1 or > 2
             || request.SupportedGameIdentifiers.Count > 32
-            || request.SupportedGameIdentifiers.Any(q => string.IsNullOrWhiteSpace(q) || q.Length > 128))
+            || request.SupportedGameIdentifiers.Any(q => string.IsNullOrWhiteSpace(q) || q.Length > 128)
+            || request.SupportedContentProviderIdentifiers.Count > 32
+            || request.SupportedContentProviderIdentifiers.Any(q => string.IsNullOrWhiteSpace(q) || q.Length > 64))
             throw new WorkerProtocolValidationException("Worker protocol capabilities are invalid.");
 
         await using var transaction = await BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
@@ -78,6 +80,9 @@ internal sealed class WorkerProtocolService(
         worker.ProtocolVersion = request.ProtocolVersion;
         worker.SupportedGameIdentifiers = JsonSerializer.Serialize(
             request.SupportedGameIdentifiers.Distinct(StringComparer.OrdinalIgnoreCase).Order(),
+            CommandJsonOptions);
+        worker.SupportedContentProviderIdentifiers = JsonSerializer.Serialize(
+            request.SupportedContentProviderIdentifiers.Distinct(StringComparer.OrdinalIgnoreCase).Order(),
             CommandJsonOptions);
         worker.Status = EWorkerStatus.Online;
         worker.LastHeartbeatAt = now;
@@ -344,6 +349,7 @@ internal sealed class WorkerProtocolService(
             null,
             null,
             null,
+            null,
             cancellationToken);
 
     public Task ReportRunningAsync(
@@ -363,6 +369,7 @@ internal sealed class WorkerProtocolService(
             EWorkerCommandStatus.Running,
             request.ProcessId,
             request.ProcessStartedAt,
+            null,
             null,
             null,
             null,
@@ -391,6 +398,7 @@ internal sealed class WorkerProtocolService(
             null,
             request.Output,
             request.StorageMeasurements,
+            request.ObservedContentVersions,
             cancellationToken);
     }
 
@@ -416,6 +424,7 @@ internal sealed class WorkerProtocolService(
             request.ErrorMessage,
             request.Output,
             null,
+            null,
             cancellationToken);
     }
 
@@ -432,6 +441,7 @@ internal sealed class WorkerProtocolService(
         string? errorMessage,
         string? diagnosticOutput,
         IReadOnlyCollection<WorkerStorageMeasurement>? storageMeasurements,
+        IReadOnlyCollection<WorkerObservedContentVersion>? observedContentVersions,
         CancellationToken cancellationToken)
     {
         stage = BoundStage(stage);
@@ -505,6 +515,7 @@ internal sealed class WorkerProtocolService(
         {
             await ApplyStorageMeasurementsAsync(command, storageMeasurements ?? [], now, cancellationToken)
                 .ConfigureAwait(false);
+            command.ObservedContentVersions = JsonSerializer.Serialize(observedContentVersions ?? [], CommandJsonOptions);
         }
         worker.LastHeartbeatAt = now;
         if (worker.Status is EWorkerStatus.Provisioning or EWorkerStatus.Degraded)

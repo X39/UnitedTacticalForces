@@ -59,7 +59,8 @@ internal sealed class SteamWorkshopMetadataClient(IHttpClientFactory httpClientF
                 resultCode == 1 && size is >= 0 ? size : null,
                 resultCode == 1 ? "available" : resultCode == 9 ? "deleted-or-inaccessible" : "unavailable",
                 updated is > 0 ? updated.Value.ToString(CultureInfo.InvariantCulture) : null,
-                updated is > 0 ? Instant.FromUnixTimeSeconds(updated.Value) : null));
+                updated is > 0 ? Instant.FromUnixTimeSeconds(updated.Value) : null,
+                ReadString(detail, "title")));
         }
         foreach (var missing in identifiers.Except(result.Select(q => q.ItemIdentifier), StringComparer.Ordinal))
             result.Add(new SteamWorkshopMetadata(missing, null, "unavailable", null, null));

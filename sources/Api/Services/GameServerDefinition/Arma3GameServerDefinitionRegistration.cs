@@ -127,7 +127,19 @@ public sealed class Arma3GameServerDefinitionRegistration : IGameServerDefinitio
             true,
             true,
             ["BuiltIn", "SteamWorkshop", "UploadedArtifact"],
-            ["arma3-workshop", "archive-overlay"]),
+            ["arma3-workshop", "archive-overlay"])
+        {
+            ModProviderBindings =
+            [
+                new(ModSourceProviderIdentifiers.SteamWorkshop, "Steam Workshop", "Steam Workshop URL", ["arma3-workshop"], true),
+                new(ModSourceProviderIdentifiers.UploadedArtifact, "Uploaded archive", "ZIP archive", ["archive-overlay"], false),
+                new(ModSourceProviderIdentifiers.Git, "Git repository", "Public HTTPS Git URL", ["archive-overlay"], true),
+            ],
+            ModPackFormats =
+            [
+                new("arma3-launcher-html", "Arma 3 Launcher", "html", "text/html", 4 * 1024 * 1024),
+            ],
+        },
         Secrets =
         [
             new("admin-password", "Administrator password", false, true, true),

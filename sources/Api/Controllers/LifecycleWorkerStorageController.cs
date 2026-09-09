@@ -18,6 +18,35 @@ namespace X39.UnitedTacticalForces.Api.Controllers;
 public sealed class LifecycleWorkerStorageController(
     IWorkerStorageTransferService storageTransferService) : ControllerBase
 {
+    /// <summary>Downloads a reusable content artifact declared by the command.</summary>
+    /// <param name="workerId">Worker identifier.</param>
+    /// <param name="commandId">Command identifier.</param>
+    /// <param name="artifactIdentifier">Artifact identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Artifact stream.</returns>
+    [HttpGet("content-artifacts/{artifactIdentifier}")]
+    [Produces("application/zip")]
+    public async Task<IActionResult> DownloadContentArtifactAsync(
+        Guid workerId,
+        Guid commandId,
+        string artifactIdentifier,
+        CancellationToken cancellationToken)
+    {
+        SetNoStoreHeaders();
+        if (!TryReadBearerCredential(out var workerCredential)) return Unauthorized();
+        try
+        {
+            var download = await storageTransferService.OpenContentArtifactAsync(
+                workerId, commandId, artifactIdentifier, workerCredential, cancellationToken).ConfigureAwait(false);
+            Response.ContentLength = download.Length;
+            return File(download.Content, "application/zip");
+        }
+        catch (Exception exception) when (TryMapException(exception, out var result))
+        {
+            return result;
+        }
+    }
+
     [HttpGet("persistent-snapshot")]
     [Produces(WorkerStorageProtocol.ArchiveMediaType)]
     [ProducesResponseType(StatusCodes.Status200OK)]

@@ -82,5 +82,9 @@ public class WorkerCommand : IPrimaryKey<Guid>, ITimeStampCreated
     [MaxLength(16384)]
     public string? DiagnosticOutput { get; set; }
 
+    /// <summary>Gets or sets provider versions observed while resolving floating content.</summary>
+    [Column(TypeName = "jsonb")]
+    public string ObservedContentVersions { get; set; } = "[]";
+
     public ICollection<HostingAuditRecord> AuditRecords { get; set; } = [];
 }

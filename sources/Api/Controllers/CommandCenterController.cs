@@ -590,7 +590,6 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
                     DefinitionTitle            = e.ModPackRevision.Definition?.Title,
                     DefinitionOwnerFk          = e.ModPackRevision.Definition?.OwnerFk,
                     DefinitionIsActive         = e.ModPackRevision.Definition?.IsActive,
-                    DefinitionIsComposition    = e.ModPackRevision.Definition?.IsComposition,
                     MetaTimeStampDownloaded = e.ModPackRevision.UserMetas!
                         .Where(meta => meta.UserFk == userId)
                         .Select(meta => (Instant?)meta.TimeStampDownloaded)
@@ -598,7 +597,6 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
                         .FirstOrDefault(),
                     PrimaryKey       = e.ModPackRevision.PrimaryKey,
                     TimeStampCreated = e.ModPackRevision.TimeStampCreated,
-                    Html             = e.ModPackRevision.Html,
                     UpdatedByFk      = e.ModPackRevision.UpdatedByFk,
                     IsActive         = e.ModPackRevision.IsActive,
                 },
@@ -640,7 +638,6 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
             Description                        = e.Description,
             TerrainTitle                       = e.Terrain?.Title ?? string.Empty,
             ModPackDefinitionTitle             = e.ModPackRevision?.Definition?.Title ?? string.Empty,
-            ModPackDefinitionIsComposition     = e.ModPackRevision?.Definition?.IsComposition ?? false,
             ImageAssetFk                       = e.ImageAssetFk,
             ImagePath                          = e.ImageAssetFk is { } imageAssetFk
                 ? IMediaAssetService.CreateImagePath(imageAssetFk)

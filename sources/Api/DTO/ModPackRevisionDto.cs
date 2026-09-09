@@ -36,12 +36,6 @@ public record ModPackRevisionDto
     public bool? DefinitionIsActive { get; init; }
 
     /// <summary>
-    /// Whether this modpack is a composition of multiple modpack revisions
-    /// or not.
-    /// </summary>
-    public bool? DefinitionIsComposition { get; init; }
-
-    /// <summary>
     /// The timestamp indicating when the mod pack was downloaded.
     /// </summary>
     public Instant? MetaTimeStampDownloaded { get; set; }
@@ -55,11 +49,6 @@ public record ModPackRevisionDto
     /// The timestamp when this revision was created.
     /// </summary>
     public Instant TimeStampCreated { get; init; }
-
-    /// <summary>
-    /// The HTML content of this revision.
-    /// </summary>
-    public string Html { get; init; } = string.Empty;
 
     /// <summary>
     /// The foreign key of the user who updated this revision.

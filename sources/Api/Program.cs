@@ -131,7 +131,6 @@ internal class Program
             await DebugDemoDataSeeder.SeedAsync(dbContext, mediaAssetService).ConfigureAwait(false);
         await HostingFinanceClaimSeeder.SeedAsync(dbContext).ConfigureAwait(false);
         await Services.GameServerDefinition.GameContentSeeder.SeedAsync(dbContext).ConfigureAwait(false);
-        await Services.GameServerDefinition.NormalizedContentBackfill.ApplyAsync(dbContext).ConfigureAwait(false);
         await scope.ServiceProvider.GetRequiredService<Services.GameServerSecrets.IGameServerSecretService>()
             .MigrateLegacyConfigurationSecretsAsync().ConfigureAwait(false);
     }

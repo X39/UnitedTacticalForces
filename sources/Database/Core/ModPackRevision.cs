@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Diagnostics.CodeAnalysis;
 using X39.UnitedTacticalForces.Database.Authority;
 
 namespace X39.UnitedTacticalForces.Database.Core;
@@ -20,12 +19,6 @@ public class ModPackRevision
     /// The timestamp when this revision was created.
     /// </summary>
     public Instant TimeStampCreated { get; set; }
-
-    /// <summary>
-    /// The HTML content of this revision.
-    /// </summary>
-    [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
-    public string Html { get; set; } = string.Empty;
 
     /// <summary>
     /// The user who updated this revision.
@@ -59,13 +52,9 @@ public class ModPackRevision
     /// </summary>
     public long DefinitionFk { get; set; }
 
-    /// <summary>
-    /// The definitions where this revision is part of.
-    /// </summary>
-    [InverseProperty(nameof(ModPackDefinition.ModPackRevisions))]
-    public ICollection<ModPackDefinition>? ModPackDefinitions { get; set; }
-
+    /// <summary>Gets or sets the ordered direct mod memberships.</summary>
     public ICollection<ModPackRevisionMod> Mods { get; set; } = [];
 
+    /// <summary>Gets or sets the ordered nested mod-pack memberships.</summary>
     public ICollection<ModPackRevisionDependency> Dependencies { get; set; } = [];
 }

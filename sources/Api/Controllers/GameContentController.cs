@@ -20,7 +20,9 @@ public sealed partial class GameContentController(
     DatabaseContext dbContext,
     IGameServerDefinitionCatalog gameDefinitions,
     IServerFileStorage fileStorage,
-    IHostingAuthorizationService authorizationService) : ControllerBase
+    IHostingAuthorizationService authorizationService,
+    IEnumerable<IModSourceProvider> modSourceProviders,
+    IModArtifactStorage modArtifactStorage) : ControllerBase
 {
     [HttpPost("servers/{serverId:guid}/artifacts/{artifactIdentifier}")]
     [RequestSizeLimit(2L * 1024 * 1024 * 1024)]
@@ -39,7 +41,7 @@ public sealed partial class GameContentController(
         var expectedChecksum = await dbContext.ModVersions
             .Where(q => q.Mod!.GameIdentifier == serverGame
                         && q.ArtifactIdentifier == artifactIdentifier
-                        && q.SourceKind == EContentSourceKind.UploadedArtifact)
+                        && q.Mod.ProviderIdentifier == ModSourceProviderIdentifiers.UploadedArtifact)
             .Select(q => q.ChecksumSha256).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         if (expectedChecksum is null) return BadRequest("The artifact is not declared by a compatible mod version.");
         await using (var checksumStream = file.OpenReadStream())
@@ -171,18 +173,68 @@ public sealed partial class GameContentController(
     }
 
     [HttpGet("mods")]
-    public async Task<IActionResult> GetModsAsync([FromQuery] string gameIdentifier, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetModsAsync(
+        [FromQuery] string gameIdentifier,
+        [FromQuery] string? search,
+        [FromQuery] int skip,
+        [FromQuery] int take = 50,
+        CancellationToken cancellationToken = default)
         => Ok(await dbContext.Mods.AsNoTracking().Where(q => q.GameIdentifier == gameIdentifier && q.IsActive)
+            .Where(q => string.IsNullOrWhiteSpace(search) || EF.Functions.ILike(q.Title, $"%{search.Trim()}%"))
             .OrderBy(q => q.Title).Select(q => new
             {
-                q.PrimaryKey, q.GameIdentifier, q.Title,
+                q.PrimaryKey, q.GameIdentifier, q.ProviderIdentifier, q.CanonicalSourceIdentifier, q.Title, q.UsageRole,
                 Versions = q.Versions.OrderByDescending(v => v.VersionNumber).Select(v => new
                 {
-                    v.PrimaryKey, v.VersionNumber, v.VersionLabel, v.SourceKind, v.SourceIdentifier, v.UsageRole,
+                    v.PrimaryKey, v.VersionNumber, v.VersionLabel, v.VersionSelector,
                     v.InstallerIdentifier, v.InstallerConfiguration, v.ArtifactIdentifier, v.ChecksumSha256,
                     v.ArtifactSizeBytes,
                 }),
-            }).ToArrayAsync(cancellationToken).ConfigureAwait(false));
+            }).Skip(Math.Max(0, skip)).Take(Math.Clamp(take, 1, 100)).ToArrayAsync(cancellationToken).ConfigureAwait(false));
+
+    /// <summary>Previews canonical provider metadata without mutating the catalog.</summary>
+    /// <param name="payload">Source inputs to resolve.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Resolved canonical sources and existing catalog matches.</returns>
+    [HttpPost("mods/source-preview")]
+    public async Task<IActionResult> PreviewModSourcesAsync(
+        ModSourcePreviewPayload payload,
+        CancellationToken cancellationToken)
+    {
+        var definition = FindDefinition(payload.GameIdentifier);
+        if (definition is null) return BadRequest("Game identifier is not registered.");
+        var results = new List<object>();
+        foreach (var source in payload.Sources)
+        {
+            var provider = string.IsNullOrWhiteSpace(source.ProviderIdentifier)
+                ? modSourceProviders.FirstOrDefault(q => q.CanResolve(source.Input))
+                : modSourceProviders.FirstOrDefault(q => q.Identifier.Equals(source.ProviderIdentifier, StringComparison.Ordinal));
+            if (provider is null) return BadRequest($"No registered source provider accepts '{source.Input}'.");
+            var binding = definition.ContentCapabilities.ModProviderBindings.FirstOrDefault(
+                q => q.ProviderIdentifier.Equals(provider.Identifier, StringComparison.Ordinal));
+            if (binding is null) return BadRequest($"Provider '{provider.Identifier}' is not supported by this game.");
+            try
+            {
+                var resolved = await provider.ResolveAsync(source.Input, source.VersionSelector, cancellationToken)
+                    .ConfigureAwait(false);
+                var existingId = await dbContext.Mods.Where(q => q.GameIdentifier == definition.GameIdentifier
+                        && q.ProviderIdentifier == resolved.ProviderIdentifier
+                        && q.CanonicalSourceIdentifier == resolved.CanonicalSourceIdentifier)
+                    .Select(q => (Guid?)q.PrimaryKey).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                results.Add(new { Source = resolved, ExistingModId = existingId, binding.InstallerIdentifiers });
+            }
+            catch (ModSourceUnavailableException exception)
+            {
+                return Problem(exception.Message, statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "Mod source provider unavailable");
+            }
+            catch (ArgumentException exception)
+            {
+                return BadRequest(exception.Message);
+            }
+        }
+        return Ok(results);
+    }
 
     [Authorize(Claims.Creation.ModPack)]
     [HttpPost("mods")]
@@ -190,16 +242,25 @@ public sealed partial class GameContentController(
     {
         var definition = FindDefinition(payload.GameIdentifier);
         if (definition is null) return BadRequest("Game identifier is not registered.");
-        var validation = ValidateModVersion(definition, payload.Version);
+        var validation = ValidateModVersion(definition, payload.ProviderIdentifier, payload.Version);
         if (validation is not null) return BadRequest(validation);
-        if (await dbContext.ModVersions.AnyAsync(q => q.Mod!.GameIdentifier == definition.GameIdentifier
-                                                       && q.SourceKind == payload.Version.SourceKind
-                                                       && q.SourceIdentifier == payload.Version.SourceIdentifier,
+        var provider = modSourceProviders.FirstOrDefault(q => q.Identifier == payload.ProviderIdentifier);
+        if (provider is null) return BadRequest("Source provider is not registered.");
+        ModSourceResolution source;
+        try { source = await provider.ResolveAsync(payload.Source, payload.Version.VersionSelector, cancellationToken); }
+        catch (ModSourceUnavailableException exception)
+        { return Problem(exception.Message, statusCode: StatusCodes.Status503ServiceUnavailable); }
+        catch (ArgumentException exception) { return BadRequest(exception.Message); }
+        if (await dbContext.Mods.AnyAsync(q => q.GameIdentifier == definition.GameIdentifier
+                                               && q.ProviderIdentifier == source.ProviderIdentifier
+                                               && q.CanonicalSourceIdentifier == source.CanonicalSourceIdentifier,
                 cancellationToken).ConfigureAwait(false))
             return Conflict("A Mod with this game/source identity already exists.");
         var mod = new Mod
         {
             PrimaryKey = Guid.NewGuid(), GameIdentifier = definition.GameIdentifier, Title = payload.Title.Trim(),
+            ProviderIdentifier = source.ProviderIdentifier, CanonicalSourceIdentifier = source.CanonicalSourceIdentifier,
+            UsageRole = payload.UsageRole,
             TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
         };
         mod.Versions.Add(CreateModVersion(mod, 1, payload.Version));
@@ -208,55 +269,82 @@ public sealed partial class GameContentController(
         return Ok(new { mod.PrimaryKey, VersionId = mod.Versions.Single().PrimaryKey });
     }
 
+    /// <summary>Creates a reusable uploaded-artifact mod and immutable first version.</summary>
+    /// <param name="gameIdentifier">Owning game identifier.</param>
+    /// <param name="title">Catalog title.</param>
+    /// <param name="usageRole">Client/server usage role.</param>
+    /// <param name="installerIdentifier">Game installer identifier.</param>
+    /// <param name="file">ZIP artifact.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Created mod and version identifiers.</returns>
+    [Authorize(Claims.Creation.ModPack)]
+    [HttpPost("mods/uploaded-artifact")]
+    [RequestSizeLimit(2L * 1024 * 1024 * 1024)]
+    public async Task<IActionResult> CreateUploadedArtifactModAsync(
+        [FromForm] string gameIdentifier,
+        [FromForm] string title,
+        [FromForm] EModUsageRole usageRole,
+        [FromForm] string installerIdentifier,
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        var definition = FindDefinition(gameIdentifier);
+        if (definition is null) return BadRequest("Game identifier is not registered.");
+        if (file.Length is <= 0 or > 2L * 1024 * 1024 * 1024) return BadRequest("The artifact size is invalid.");
+        var binding = definition.ContentCapabilities.ModProviderBindings.FirstOrDefault(
+            q => q.ProviderIdentifier == ModSourceProviderIdentifiers.UploadedArtifact);
+        if (binding is null || !binding.InstallerIdentifiers.Contains(installerIdentifier, StringComparer.Ordinal))
+            return BadRequest("The uploaded-artifact installer is not supported by this game.");
+        var artifactIdentifier = Guid.NewGuid().ToString("N");
+        string checksum;
+        await using (var checksumStream = file.OpenReadStream())
+            checksum = Convert.ToHexString(await SHA256.HashDataAsync(checksumStream, cancellationToken).ConfigureAwait(false));
+        await using (var content = file.OpenReadStream())
+            await modArtifactStorage.StoreAsync(artifactIdentifier, content, cancellationToken).ConfigureAwait(false);
+        var mod = new Mod
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameIdentifier = definition.GameIdentifier,
+            ProviderIdentifier = ModSourceProviderIdentifiers.UploadedArtifact,
+            CanonicalSourceIdentifier = artifactIdentifier,
+            Title = title.Trim(),
+            UsageRole = usageRole,
+            IsActive = true,
+            TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+        };
+        mod.Versions.Add(new ModVersion
+        {
+            PrimaryKey = Guid.NewGuid(), Mod = mod, ModFk = mod.PrimaryKey, VersionNumber = 1,
+            VersionLabel = "1", InstallerIdentifier = installerIdentifier, ArtifactIdentifier = artifactIdentifier,
+            ChecksumSha256 = checksum, ArtifactSizeBytes = file.Length,
+            TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+        });
+        try
+        {
+            dbContext.Mods.Add(mod);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await modArtifactStorage.DeleteAsync(artifactIdentifier, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        return Ok(new { mod.PrimaryKey, VersionId = mod.Versions.Single().PrimaryKey, ArtifactIdentifier = artifactIdentifier });
+    }
+
     [Authorize(Claims.Creation.ModPack)]
     [HttpPost("mods/{modId:guid}/versions")]
     public async Task<IActionResult> CreateModVersionAsync(Guid modId, ModVersionPayload payload, CancellationToken cancellationToken)
     {
         var mod = await dbContext.Mods.Include(q => q.Versions)
-            .SingleOrDefaultAsync(q => q.PrimaryKey == modId, cancellationToken).ConfigureAwait(false);
+            .SingleOrDefaultAsync(q => q.PrimaryKey == modId && q.IsActive, cancellationToken).ConfigureAwait(false);
         if (mod is null) return NotFound();
-        var validation = ValidateModVersion(FindDefinition(mod.GameIdentifier)!, payload);
+        var validation = ValidateModVersion(FindDefinition(mod.GameIdentifier)!, mod.ProviderIdentifier, payload);
         if (validation is not null) return BadRequest(validation);
         var version = CreateModVersion(mod, mod.Versions.DefaultIfEmpty().Max(q => q?.VersionNumber ?? 0) + 1, payload);
         dbContext.ModVersions.Add(version);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Ok(new { version.PrimaryKey, version.VersionNumber });
-    }
-
-    [Authorize(Claims.ResourceBased.ModPack.Modify)]
-    [HttpPut("modpacks/{revisionId:long}/members")]
-    public async Task<IActionResult> SetModPackMembersAsync(
-        long revisionId,
-        ModPackMembersPayload payload,
-        CancellationToken cancellationToken)
-    {
-        var revision = await dbContext.ModPackRevisions.Include(q => q.Definition)
-            .SingleOrDefaultAsync(q => q.PrimaryKey == revisionId, cancellationToken).ConfigureAwait(false);
-        if (revision is null) return NotFound();
-        if (payload.Mods.Select(q => q.ModId).Distinct().Count() != payload.Mods.Count
-            || payload.Dependencies.Select(q => q.DefinitionId).Distinct().Count() != payload.Dependencies.Count)
-            return BadRequest("Duplicate mod or nested-modpack membership is not allowed.");
-        var mods = await dbContext.Mods.Where(q => payload.Mods.Select(x => x.ModId).Contains(q.PrimaryKey)).ToArrayAsync(cancellationToken);
-        var definitions = await dbContext.ModPackDefinitions.Where(q => payload.Dependencies.Select(x => x.DefinitionId).Contains(q.PrimaryKey)).ToArrayAsync(cancellationToken);
-        if (mods.Length != payload.Mods.Count || definitions.Length != payload.Dependencies.Count
-            || mods.Any(q => q.GameIdentifier != revision.Definition!.GameIdentifier)
-            || definitions.Any(q => q.GameIdentifier != revision.Definition!.GameIdentifier))
-            return BadRequest("All members must exist and belong to the same game.");
-        if (await WouldCreateCycle(revision.DefinitionFk, payload.Dependencies.Select(q => q.DefinitionId), cancellationToken))
-            return BadRequest("Nested modpacks must not contain a cycle.");
-        await dbContext.ModPackRevisionMods.Where(q => q.ModPackRevisionFk == revisionId).ExecuteDeleteAsync(cancellationToken);
-        await dbContext.ModPackRevisionDependencies.Where(q => q.ParentRevisionFk == revisionId).ExecuteDeleteAsync(cancellationToken);
-        dbContext.ModPackRevisionMods.AddRange(payload.Mods.Select((q, index) => new ModPackRevisionMod
-        {
-            ModPackRevisionFk = revisionId, ModFk = q.ModId, PinnedVersionFk = q.PinnedVersionId, Order = index,
-        }));
-        dbContext.ModPackRevisionDependencies.AddRange(payload.Dependencies.Select((q, index) => new ModPackRevisionDependency
-        {
-            ParentRevisionFk = revisionId, ChildDefinitionFk = q.DefinitionId,
-            PinnedChildRevisionFk = q.PinnedRevisionId, Order = index,
-        }));
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return NoContent();
     }
 
     private GameServerDefinition? FindDefinition(string identifier)
@@ -298,35 +386,28 @@ public sealed partial class GameContentController(
         return null;
     }
 
-    private static string? ValidateModVersion(GameServerDefinition definition, ModVersionPayload payload)
+    private static string? ValidateModVersion(
+        GameServerDefinition definition,
+        string providerIdentifier,
+        ModVersionPayload payload)
     {
-        var common = ValidateVersion(definition, "mod", payload);
-        if (common is not null) return common;
-        if (!definition.ContentCapabilities.ModInstallerIdentifiers.Contains(payload.InstallerIdentifier, StringComparer.Ordinal))
+        var binding = definition.ContentCapabilities.ModProviderBindings.FirstOrDefault(
+            q => q.ProviderIdentifier.Equals(providerIdentifier, StringComparison.Ordinal));
+        if (binding is null) return "The source provider is not supported by this game.";
+        if (!binding.InstallerIdentifiers.Contains(payload.InstallerIdentifier, StringComparer.Ordinal))
             return "The installer identifier is not registered for this game.";
-        return IsValidJson(payload.InstallerConfiguration) ? null : "Installer configuration must be valid JSON.";
+        if (!binding.SupportsVersionSelector && !string.IsNullOrWhiteSpace(payload.VersionSelector))
+            return "This provider does not support a version selector.";
+        if (!IsValidJson(payload.InstallerConfiguration)) return "Installer configuration must be valid JSON.";
+        if (providerIdentifier == ModSourceProviderIdentifiers.UploadedArtifact
+            && (string.IsNullOrWhiteSpace(payload.ArtifactIdentifier)
+                || !Sha256Regex().IsMatch(payload.ChecksumSha256 ?? string.Empty)))
+            return "Uploaded artifacts require an artifact identity and SHA-256 checksum.";
+        return null;
     }
 
     private async Task<bool> RequiredPacksAreCompatible(IReadOnlyCollection<ModPackReferencePayload> packs, string gameIdentifier, CancellationToken cancellationToken)
         => await dbContext.ModPackDefinitions.CountAsync(q => packs.Select(p => p.DefinitionId).Contains(q.PrimaryKey) && q.GameIdentifier == gameIdentifier, cancellationToken) == packs.Select(q => q.DefinitionId).Distinct().Count();
-
-    private async Task<bool> WouldCreateCycle(long rootDefinitionId, IEnumerable<long> children, CancellationToken cancellationToken)
-    {
-        var edges = await dbContext.ModPackRevisionDependencies.AsNoTracking()
-            .Select(q => new { q.ParentRevision!.DefinitionFk, q.ChildDefinitionFk }).ToArrayAsync(cancellationToken);
-        var graph = edges.GroupBy(q => q.DefinitionFk).ToDictionary(q => q.Key, q => q.Select(x => x.ChildDefinitionFk).ToArray());
-        graph[rootDefinitionId] = children.ToArray();
-        var active = new HashSet<long>();
-        var visited = new HashSet<long>();
-        bool Visit(long node)
-        {
-            if (!active.Add(node)) return true;
-            if (visited.Add(node) && graph.TryGetValue(node, out var next) && next.Any(Visit)) return true;
-            active.Remove(node);
-            return false;
-        }
-        return Visit(rootDefinitionId);
-    }
 
     private static TerrainVersion CreateTerrainVersion(Terrain terrain, int number, ContentVersionPayload payload) => new()
     {
@@ -348,8 +429,8 @@ public sealed partial class GameContentController(
     private static ModVersion CreateModVersion(Mod mod, int number, ModVersionPayload payload) => new()
     {
         PrimaryKey = Guid.NewGuid(), Mod = mod, ModFk = mod.PrimaryKey, VersionNumber = number,
-        VersionLabel = payload.VersionLabel, SourceKind = payload.SourceKind, SourceIdentifier = payload.SourceIdentifier,
-        UsageRole = payload.UsageRole, InstallerIdentifier = payload.InstallerIdentifier,
+        VersionLabel = payload.VersionLabel, VersionSelector = payload.VersionSelector,
+        InstallerIdentifier = payload.InstallerIdentifier,
         InstallerConfiguration = payload.InstallerConfiguration, ArtifactIdentifier = payload.ArtifactIdentifier,
         ChecksumSha256 = payload.ChecksumSha256, ArtifactSizeBytes = payload.ArtifactSizeBytes,
         TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
@@ -371,12 +452,12 @@ public sealed partial class GameContentController(
     public record ContentVersionPayload(EContentSourceKind SourceKind, string SourceIdentifier, string VersionLabel,
         string Metadata = "{}", string? ArtifactIdentifier = null, string? ChecksumSha256 = null, long? ArtifactSizeBytes = null);
     public record ScenarioVersionPayload(ContentVersionPayload Version, IReadOnlyCollection<ModPackReferencePayload> RequiredModPacks);
-    public record ModPayload(string GameIdentifier, string Title, ModVersionPayload Version);
-    public record ModVersionPayload(EContentSourceKind SourceKind, string SourceIdentifier, string VersionLabel,
-        EModUsageRole UsageRole, string InstallerIdentifier, string InstallerConfiguration = "{}", string Metadata = "{}",
-        string? ArtifactIdentifier = null, string? ChecksumSha256 = null, long? ArtifactSizeBytes = null)
-        : ContentVersionPayload(SourceKind, SourceIdentifier, VersionLabel, Metadata, ArtifactIdentifier, ChecksumSha256, ArtifactSizeBytes);
+    public record ModPayload(string GameIdentifier, string Title, string ProviderIdentifier, string Source,
+        EModUsageRole UsageRole, ModVersionPayload Version);
+    public record ModVersionPayload(string VersionLabel, string VersionSelector, string InstallerIdentifier,
+        string InstallerConfiguration = "{}", string? ArtifactIdentifier = null, string? ChecksumSha256 = null,
+        long? ArtifactSizeBytes = null);
+    public record ModSourceInputPayload(string Input, string? ProviderIdentifier = null, string? VersionSelector = null);
+    public record ModSourcePreviewPayload(string GameIdentifier, IReadOnlyList<ModSourceInputPayload> Sources);
     public record ModPackReferencePayload(long DefinitionId, long? PinnedRevisionId);
-    public record ModMembershipPayload(Guid ModId, Guid? PinnedVersionId);
-    public record ModPackMembersPayload(IReadOnlyList<ModMembershipPayload> Mods, IReadOnlyList<ModPackReferencePayload> Dependencies);
 }

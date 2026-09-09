@@ -889,24 +889,37 @@ public sealed class LifecycleJobExecutorCloudTests
             OwnerFk = seed.User.PrimaryKey,
             IsActive = true,
             TimeStampCreated = now,
-            ModPackRevisions = [],
             ModPackRevisionsOwned = [],
         };
+        var mod = new Mod
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameIdentifier = Arma3GameServerDefinitionRegistration.GameIdentifier,
+            ProviderIdentifier = ModSourceProviderIdentifiers.SteamWorkshop,
+            CanonicalSourceIdentifier = "450814997",
+            Title = "CBA",
+            UsageRole = EModUsageRole.Shared,
+            IsActive = true,
+            TimeStampCreated = now,
+        };
+        mod.Versions.Add(new ModVersion
+        {
+            PrimaryKey = Guid.NewGuid(),
+            Mod = mod,
+            ModFk = mod.PrimaryKey,
+            VersionNumber = 1,
+            VersionLabel = "Current Workshop version",
+            VersionSelector = string.Empty,
+            InstallerIdentifier = "arma3-workshop",
+            TimeStampCreated = now,
+        });
         var revision = new ModPackRevision
         {
             Definition = definition,
             UpdatedByFk = seed.User.PrimaryKey,
             IsActive = true,
-            Html = Arma3ModPackParser.ToHtml(
-                "Runtime selection",
-                new Arma3ModPackParser.TitleLinkPair[]
-                {
-                    new("CBA", "https://steamcommunity.com/sharedfiles/filedetails/?id=450814997"),
-                    new("Duplicate CBA", "https://steamcommunity.com/sharedfiles/filedetails/?id=450814997"),
-                },
-                Array.Empty<Arma3ModPackParser.TitleLinkPair>()),
             TimeStampCreated = now,
-            ModPackDefinitions = [],
+            Mods = [new ModPackRevisionMod { Mod = mod, ModFk = mod.PrimaryKey, Order = 0 }],
         };
         definition.ModPackRevisionsOwned.Add(revision);
         seed.Server.SelectedModPackDefinition = definition;

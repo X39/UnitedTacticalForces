@@ -351,7 +351,6 @@ public sealed class GameServerLifecycleServiceTests
                 IsActive = isActive,
                 OwnerFk = seed.User.PrimaryKey,
                 TimeStampCreated = now,
-                ModPackRevisions = [],
                 ModPackRevisionsOwned = [],
             };
     }

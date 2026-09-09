@@ -71,11 +71,6 @@ public record FullEventDto
     public Instant? ModPackRevisionTimeStampCreated { get; init; }
 
     /// <summary>
-    /// The HTML content of this revision.
-    /// </summary>
-    public string ModPackRevisionHtml { get; init; } = string.Empty;
-
-    /// <summary>
     /// The user who updated this revision.
     /// </summary>
     public PlainUserDto? ModPackRevisionUpdatedBy { get; init; }
@@ -122,12 +117,6 @@ public record FullEventDto
     /// Whether this modpack is active or not.
     /// </summary>
     public bool ModPackDefinitionIsActive { get; init; }
-
-    /// <summary>
-    /// Whether this modpack is a composition of multiple modpack revisions
-    /// or not.
-    /// </summary>
-    public bool ModPackDefinitionIsComposition { get; init; }
 
     #endregion
 

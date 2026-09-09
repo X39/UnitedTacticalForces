@@ -1,8 +1,9 @@
 namespace X39.UnitedTacticalForces.Api.Services.StorageDemand;
 
-internal sealed record SteamWorkshopMetadata(
+public sealed record SteamWorkshopMetadata(
     string ItemIdentifier,
     long? ReportedBytes,
     string Status,
     string? Version,
-    Instant? UpdatedAt);
+    Instant? UpdatedAt,
+    string? Title = null);

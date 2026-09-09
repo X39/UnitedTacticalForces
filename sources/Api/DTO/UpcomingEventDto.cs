@@ -51,12 +51,6 @@ public record UpcomingEventDto
     public string ModPackDefinitionTitle { get; init; } = string.Empty;
 
 
-    /// <summary>
-    /// Whether this modpack is a composition of multiple modpack revisions
-    /// or not.
-    /// </summary>
-    public bool ModPackDefinitionIsComposition { get; init; }
-
     #endregion
 
 

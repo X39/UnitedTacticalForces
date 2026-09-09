@@ -382,7 +382,6 @@ public sealed class GameServerProjectionServiceTests
                 IsActive = isActive,
                 OwnerFk = seed.User.PrimaryKey,
                 TimeStampCreated = now,
-                ModPackRevisions = [],
                 ModPackRevisionsOwned = [],
             };
     }

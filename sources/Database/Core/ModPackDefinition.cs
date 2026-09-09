@@ -9,7 +9,6 @@ namespace X39.UnitedTacticalForces.Database.Core;
 /// A modpack definition is the base of a modpack.
 /// It contains the title, the owner and the revisions of the modpack.
 /// A modpack definition can have multiple revisions.
-/// A modpack may be a composition of multiple modpack revisions.
 /// </summary>
 [Index(nameof(GameIdentifier))]
 public class ModPackDefinition
@@ -51,19 +50,7 @@ public class ModPackDefinition
     /// Whether this modpack is active or not.
     /// </summary>
     public bool IsActive { get; set; }
-    
-    /// <summary>
-    /// Whether this modpack is a composition of multiple modpack revisions
-    /// or not.
-    /// </summary>
-    public bool IsComposition { get; set; }
-    
-    /// <summary>
-    /// The revisions which are part of this modpack.
-    /// </summary>
-    [InverseProperty(nameof(ModPackRevision.ModPackDefinitions))]
-    public ICollection<ModPackRevision>? ModPackRevisions { get; set; }
-    
+
     /// <summary>
     /// The revisions which are owned by this modpack.
     /// </summary>

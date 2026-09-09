@@ -6,43 +6,6 @@ namespace X39.UnitedTacticalForces.Api;
 
 internal static class Transform
 {
-    public static PlainModPackDefinitionDto ToPlainDto(this ModPackDefinition self)
-        => new()
-        {
-            GameIdentifier   = self.GameIdentifier,
-            PrimaryKey       = self.PrimaryKey,
-            TimeStampCreated = self.TimeStampCreated,
-            Title            = self.Title,
-            OwnerFk          = self.OwnerFk,
-            IsActive         = self.IsActive,
-            IsComposition    = self.IsComposition,
-        };
-
-    public static FullModPackDefinitionDto ToFullDto(this ModPackDefinition self)
-        => new()
-        {
-            GameIdentifier   = self.GameIdentifier,
-            PrimaryKey       = self.PrimaryKey,
-            TimeStampCreated = self.TimeStampCreated,
-            Title            = self.Title,
-            Owner            = self.Owner?.ToPlainDto(),
-            IsActive         = self.IsActive,
-            IsComposition    = self.IsComposition,
-            ModPackRevisions = self.ModPackRevisions?.Select((modPackRevision) => modPackRevision.ToPlainDto())
-                .ToArray() ?? [],
-        };
-
-    public static PlainModPackRevisionDto ToPlainDto(this ModPackRevision self)
-        => new()
-        {
-            PrimaryKey       = self.PrimaryKey,
-            TimeStampCreated = self.TimeStampCreated,
-            Html             = self.Html,
-            UpdatedByFk      = self.UpdatedByFk,
-            IsActive         = self.IsActive,
-            DefinitionFk     = self.DefinitionFk,
-        };
-
     public static PlainUserDto ToPlainDto(this User self)
         => new()
         {

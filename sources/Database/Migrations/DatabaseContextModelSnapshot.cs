@@ -53,21 +53,6 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.ToTable("ClaimUser");
                 });
 
-            modelBuilder.Entity("ModPackDefinitionModPackRevision", b =>
-                {
-                    b.Property<long>("ModPackDefinitionsPrimaryKey")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("ModPackRevisionsPrimaryKey")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("ModPackDefinitionsPrimaryKey", "ModPackRevisionsPrimaryKey");
-
-                    b.HasIndex("ModPackRevisionsPrimaryKey");
-
-                    b.ToTable("ModPackDefinitionModPackRevision");
-                });
-
             modelBuilder.Entity("RoleUser", b =>
                 {
                     b.Property<long>("RolesPrimaryKey")
@@ -880,6 +865,11 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CanonicalSourceIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
                     b.Property<string>("GameIdentifier")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -887,6 +877,11 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("ProviderIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<Instant>("TimeStampCreated")
                         .HasColumnType("timestamp with time zone");
@@ -896,9 +891,15 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<int>("UsageRole")
+                        .HasColumnType("integer");
+
                     b.HasKey("PrimaryKey");
 
                     b.HasIndex("GameIdentifier", "IsActive");
+
+                    b.HasIndex("GameIdentifier", "ProviderIdentifier", "CanonicalSourceIdentifier")
+                        .IsUnique();
 
                     b.ToTable("Mods");
                 });
@@ -917,9 +918,6 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsComposition")
                         .HasColumnType("boolean");
 
                     b.Property<Guid>("OwnerFk")
@@ -952,10 +950,6 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.Property<long>("DefinitionFk")
                         .HasColumnType("bigint");
-
-                    b.Property<string>("Html")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -1050,19 +1044,8 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Guid>("ModFk")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("SourceIdentifier")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("SourceKind")
-                        .HasColumnType("integer");
-
                     b.Property<Instant>("TimeStampCreated")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("UsageRole")
-                        .HasColumnType("integer");
 
                     b.Property<string>("VersionLabel")
                         .IsRequired()
@@ -1072,12 +1055,15 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<int>("VersionNumber")
                         .HasColumnType("integer");
 
+                    b.Property<string>("VersionSelector")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.HasKey("PrimaryKey");
 
                     b.HasIndex("ModFk", "VersionNumber")
                         .IsUnique();
-
-                    b.HasIndex("ModFk", "SourceKind", "SourceIdentifier");
 
                     b.ToTable("ModVersions");
                 });
@@ -2732,6 +2718,10 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<string>("SupportedContentProviderIdentifiers")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("SupportedGameIdentifiers")
                         .IsRequired()
                         .HasColumnType("jsonb");
@@ -2875,6 +2865,10 @@ namespace X39.UnitedTacticalForces.Database.Migrations
 
                     b.Property<Guid>("LifecycleJobFk")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ObservedContentVersions")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("Payload")
                         .IsRequired()
@@ -3851,21 +3845,6 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", null)
                         .WithMany()
                         .HasForeignKey("UsersPrimaryKey")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ModPackDefinitionModPackRevision", b =>
-                {
-                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackDefinition", null)
-                        .WithMany()
-                        .HasForeignKey("ModPackDefinitionsPrimaryKey")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackRevision", null)
-                        .WithMany()
-                        .HasForeignKey("ModPackRevisionsPrimaryKey")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -253,13 +253,11 @@ public class EventExposureAuthorizationTests
             Title            = "Operations",
             OwnerFk          = host.PrimaryKey,
             IsActive         = true,
-            IsComposition    = false,
         };
         var modPackRevision = new ModPackRevision
         {
             PrimaryKey       = 1,
             TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant().Plus(Duration.FromDays(-1)),
-            Html             = "<p>Operations</p>",
             UpdatedByFk      = host.PrimaryKey,
             IsActive         = true,
             DefinitionFk     = modPackDefinition.PrimaryKey,

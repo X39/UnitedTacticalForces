@@ -57,7 +57,16 @@ public sealed class CounterStrike2GameServerDefinitionRegistration : IGameServer
             ["BuiltIn", "SteamWorkshop", "UploadedArtifact"],
             ["archive-overlay", "cs2-metamod", "cs2-counterstrikesharp", "cs2-plugin"],
             "de_dust2",
-            "competitive"),
+            "competitive")
+        {
+            ModProviderBindings =
+            [
+                new(ModSourceProviderIdentifiers.UploadedArtifact, "Uploaded archive", "ZIP archive",
+                    ["archive-overlay", "cs2-metamod", "cs2-counterstrikesharp", "cs2-plugin"], false),
+                new(ModSourceProviderIdentifiers.Git, "Git repository", "Public HTTPS Git URL",
+                    ["archive-overlay", "cs2-metamod", "cs2-counterstrikesharp", "cs2-plugin"], true),
+            ],
+        },
         Secrets =
         [
             new("rcon-password", "RCON password", true, true, true),

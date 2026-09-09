@@ -19,6 +19,10 @@ public sealed record GameServerCapabilityDto
     public bool RequiresModPack { get; init; }
     public IReadOnlyCollection<string> TerrainSourceKinds { get; init; } = [];
     public IReadOnlyCollection<string> ModInstallerIdentifiers { get; init; } = [];
+    /// <summary>Gets compatible mod source providers and their installers.</summary>
+    public IReadOnlyCollection<ModProviderBindingDto> ModProviderBindings { get; init; } = [];
+    /// <summary>Gets game-owned bidirectional mod-pack formats.</summary>
+    public IReadOnlyCollection<ModPackFormatDto> ModPackFormats { get; init; } = [];
     public string? DefaultTerrainSourceIdentifier { get; init; }
     public string? DefaultScenarioSourceIdentifier { get; init; }
     public IReadOnlyCollection<GameServerSecretCapabilityDto> Secrets { get; init; } = [];

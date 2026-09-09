@@ -16,4 +16,7 @@ public sealed record WorkerRegistrationRequest
     public int ProtocolVersion { get; init; } = 1;
 
     public IReadOnlyCollection<string> SupportedGameIdentifiers { get; init; } = [];
+
+    /// <summary>Gets registered content providers implemented by this worker.</summary>
+    public IReadOnlyCollection<string> SupportedContentProviderIdentifiers { get; init; } = [];
 }

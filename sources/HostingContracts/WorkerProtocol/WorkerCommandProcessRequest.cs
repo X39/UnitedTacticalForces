@@ -21,4 +21,8 @@ public sealed record WorkerCommandProcessRequest
 
     [MaxLength(512)]
     public IReadOnlyCollection<WorkerStorageMeasurement> StorageMeasurements { get; init; } = [];
+
+    /// <summary>Gets concrete versions observed while resolving provider-floating content.</summary>
+    [MaxLength(512)]
+    public IReadOnlyCollection<WorkerObservedContentVersion> ObservedContentVersions { get; init; } = [];
 }
