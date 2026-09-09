@@ -14,6 +14,9 @@ Arma 3 is the first game implementation of these abstractions. Common hosting co
 
 The goal is not to support every game immediately. The goal is to avoid designing Arma 3 as a special-case platform that cannot be extended.
 
+The provider, installer, immutable revision, custom format, and worker acquisition boundaries are specified in
+[Normalized Mod Content Workflow](normalized-mod-content-workflow.md).
+
 A game definition may declare a deployment topology made of independently provisioned service nodes. Each node has a
 stable service identifier, a bounded instance count, its own inbound network requirements, and exactly one node role is
 primary. The control plane persists one dedicated worker identity and provider-resource attribution per expanded node.
