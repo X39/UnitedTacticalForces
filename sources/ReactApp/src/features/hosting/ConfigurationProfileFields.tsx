@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
@@ -28,6 +29,56 @@ export function configurationValidationMessage(
 
 export function gameLabel(identifier: string): string {
   return identifier.toLowerCase() === "arma3" ? "Arma 3" : identifier;
+}
+
+function ConfigurationBooleanField({
+  id,
+  label,
+  value,
+  required,
+  invalid,
+  describedBy,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  required: boolean;
+  invalid: boolean;
+  describedBy: string;
+  onChange(value: string): void;
+}) {
+  const { t } = useTranslation();
+  const input = useRef<HTMLInputElement>(null);
+  const isUnset = value === "";
+
+  useEffect(() => {
+    if (input.current) input.current.indeterminate = isUnset;
+  }, [isUnset]);
+
+  return (
+    <label className="next-hosting-configuration-toggle" htmlFor={id}>
+      <input
+        ref={input}
+        id={id}
+        type="checkbox"
+        required={required}
+        checked={value === "true"}
+        aria-label={label}
+        aria-checked={isUnset ? "mixed" : value === "true"}
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+        onChange={(event) => onChange(isUnset ? "false" : event.target.checked ? "true" : "false")}
+      />
+      <span>
+        {isUnset
+          ? t("Hosting_ConfigurationProfiles_NotSet")
+          : value === "true"
+            ? t("Hosting_ConfigurationProfiles_Enabled")
+            : t("Hosting_ConfigurationProfiles_Disabled")}
+      </span>
+    </label>
+  );
 }
 
 export function ConfigurationProfileFields({
@@ -113,21 +164,15 @@ export function ConfigurationProfileFields({
                         </span>
                       </div>
                       {kind === "boolean" ? (
-                        <label className="next-hosting-configuration-toggle" htmlFor={id}>
-                          <input
-                            {...common}
-                            type="checkbox"
-                            checked={value === "true"}
-                            onChange={(event) =>
-                              onChange(definition.key, event.target.checked ? "true" : "false")
-                            }
-                          />
-                          <span>
-                            {value === "true"
-                              ? t("Hosting_ConfigurationProfiles_Enabled")
-                              : t("Hosting_ConfigurationProfiles_Disabled")}
-                          </span>
-                        </label>
+                        <ConfigurationBooleanField
+                          id={id}
+                          label={definition.displayName}
+                          value={value}
+                          required={definition.required}
+                          invalid={Boolean(issue)}
+                          describedBy={describedBy}
+                          onChange={(nextValue) => onChange(definition.key, nextValue)}
+                        />
                       ) : choices.length > 0 || (definition.allowedValues?.length ?? 0) > 0 ? (
                         <select
                           {...common}

@@ -249,6 +249,86 @@ describe("configuration-profile routes", () => {
     );
   });
 
+  it("publishes missing required defaults without requiring the field to be edited", async () => {
+    vi.mocked(hostingService.profile).mockResolvedValue(
+      details({
+        definitions: definitions.map((definition) =>
+          definition.key === "hostname"
+            ? { ...definition, defaultValue: "United Tactical Forces" }
+            : definition,
+        ),
+        revisions: [
+          {
+            primaryKey: "30000000-0000-0000-0000-000000000003",
+            revisionNumber: 1,
+            timeStampCreated: "2026-08-13T12:00:00Z",
+            values: { "motd[]": ["Alpha"] },
+          },
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage(`/command/configuration-profiles/${profile.primaryKey}`);
+
+    const message = await screen.findByLabelText("Message of the day");
+    await user.clear(message);
+    await user.type(message, "Bravo");
+    await user.click(screen.getByRole("button", { name: "Publish revision" }));
+
+    await waitFor(() =>
+      expect(hostingService.createProfileRevision).toHaveBeenCalledWith(
+        profile.primaryKey,
+        1,
+        [
+          { key: "hostname", value: "United Tactical Forces" },
+          { key: "motd[]", value: ["Bravo"] },
+        ],
+        [],
+      ),
+    );
+  });
+
+  it("shows an unset Boolean distinctly and changes it directly to false", async () => {
+    const booleanDefinition = {
+      key: "persistent",
+      targetPath: "server.cfg",
+      group: "Lifecycle",
+      displayName: "Persistent battlefield",
+      description: "Retain mission state.",
+      kind: "Boolean",
+      required: false,
+      sensitive: false,
+      order: 40,
+      defaultValue: true,
+      minimum: null,
+      maximum: null,
+      allowedValues: [],
+    } satisfies ConfigurationDefinition;
+    vi.mocked(hostingService.profile).mockResolvedValue(
+      details({ definitions: [...definitions, booleanDefinition] }),
+    );
+    const user = userEvent.setup();
+    renderPage(`/command/configuration-profiles/${profile.primaryKey}`);
+
+    const checkbox = await screen.findByRole("checkbox", { name: "Persistent battlefield" });
+    expect(checkbox).toHaveProperty("indeterminate", true);
+    expect(screen.getByText("Not set")).toBeVisible();
+    await user.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).toHaveProperty("indeterminate", false);
+    expect(screen.getByText("Disabled")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Publish revision" }));
+
+    await waitFor(() =>
+      expect(hostingService.createProfileRevision).toHaveBeenCalledWith(
+        profile.primaryKey,
+        1,
+        [{ key: "persistent", value: false }],
+        [],
+      ),
+    );
+  });
+
   it("shows revision publishing failures as an alert toast", async () => {
     vi.mocked(hostingService.createProfileRevision).mockRejectedValue(
       new Error("The latest revision must be reloaded."),

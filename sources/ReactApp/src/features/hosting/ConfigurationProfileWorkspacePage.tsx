@@ -71,15 +71,20 @@ export function ConfigurationProfileWorkspacePage() {
       ),
     [profile.data?.revisions],
   );
+  const persistedKeys = useMemo(() => new Set(Object.keys(latest?.values ?? {})), [latest?.values]);
   const baseDraft = useMemo(
     () =>
       Object.fromEntries(
         definitions.map((definition) => [
           definition.key,
-          configurationDraftValue(definition, latest?.values[definition.key]),
+          persistedKeys.has(definition.key)
+            ? configurationDraftValue(definition, latest?.values[definition.key])
+            : definition.required
+              ? configurationDraftValue(definition, undefined)
+              : "",
         ]),
       ),
-    [definitions, latest],
+    [definitions, latest, persistedKeys],
   );
   const effectiveDraft = { ...baseDraft, ...draft };
   const dirty = isConfigurationDraftDirty(definitions, baseDraft, draft) || clearedKeys.length > 0;
@@ -161,7 +166,8 @@ export function ConfigurationProfileWorkspacePage() {
       .map((definition) => definition.key);
     const changedDefinitions = definitions.filter(
       (definition) =>
-        changedDraftKeys.includes(definition.key) &&
+        (changedDraftKeys.includes(definition.key) ||
+          (definition.required && !persistedKeys.has(definition.key))) &&
         !resetKeys.includes(definition.key) &&
         Boolean(effectiveDraft[definition.key]?.trim()),
     );
