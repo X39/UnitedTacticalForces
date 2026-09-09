@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatResource } from "@/app/i18n";
 import { ActionButton } from "@/components/ActionControl";
 import { StatePanel } from "@/components/primitives";
 import { FinanceAccountPicker } from "@/features/hosting/FinanceAccountPicker";
@@ -210,7 +211,7 @@ export function FinanceProtocol({
             >
               {t("HostingFinance_Previous")}
             </ActionButton>
-            <span>{t("HostingFinance_PageLabel", { current: page + 1, total: pages })}</span>
+            <span>{formatResource(t("HostingFinance_PageLabel"), page + 1, pages)}</span>
             <ActionButton
               variant="ghost"
               size="compact"

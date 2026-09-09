@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router";
 import { useDocumentTitle } from "@/app/documentTitle";
+import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
@@ -202,7 +203,7 @@ export function HostingFinancePage() {
             >
               {t("HostingFinance_Previous")}
             </ActionButton>
-            <span>{t("HostingFinance_PageLabel", { current: page + 1, total: totalPages })}</span>
+            <span>{formatResource(t("HostingFinance_PageLabel"), page + 1, totalPages)}</span>
             <ActionButton
               variant="ghost"
               size="compact"

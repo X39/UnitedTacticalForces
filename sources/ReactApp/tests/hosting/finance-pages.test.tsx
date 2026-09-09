@@ -78,6 +78,7 @@ describe("hosting finance routes", () => {
     expect(
       screen.getByRole("columnheader", { name: /Available before reserve/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Page 1 of 1")).toBeInTheDocument();
   });
 
   it("renders account position and its protocol", async () => {
