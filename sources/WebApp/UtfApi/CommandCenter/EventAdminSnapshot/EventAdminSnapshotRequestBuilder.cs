@@ -34,7 +34,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.EventAdminSnapsho
         {
         }
         /// <summary>
-        /// Returns a display-ready aggregate snapshot for Command Center event administration.
+        /// Returns event administration rows.
         /// </summary>
         /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterEventAdminSnapshotDto"/></returns>
         /// <param name="cancellationToken">Cancellation token to use when cancelling requests</param>
@@ -52,7 +52,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.EventAdminSnapsho
             return await RequestAdapter.SendAsync<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterEventAdminSnapshotDto>(requestInfo, global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterEventAdminSnapshotDto.CreateFromDiscriminatorValue, default, cancellationToken).ConfigureAwait(false);
         }
         /// <summary>
-        /// Returns a display-ready aggregate snapshot for Command Center event administration.
+        /// Returns event administration rows.
         /// </summary>
         /// <returns>A <see cref="RequestInformation"/></returns>
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
@@ -80,15 +80,13 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.EventAdminSnapsho
             return new global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.EventAdminSnapshot.EventAdminSnapshotRequestBuilder(rawUrl, RequestAdapter);
         }
         /// <summary>
-        /// Returns a display-ready aggregate snapshot for Command Center event administration.
+        /// Returns event administration rows.
         /// </summary>
         [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
         public partial class EventAdminSnapshotRequestBuilderGetQueryParameters 
         {
-            /// <summary>Whether to return only events hosted by the current user.</summary>
             [QueryParameter("hostedByMeOnly")]
             public bool? HostedByMeOnly { get; set; }
-            /// <summary>Optional title, owner, host, terrain, or mod pack search.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
             [QueryParameter("search")]
@@ -98,10 +96,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.EventAdminSnapsho
             [QueryParameter("search")]
             public string Search { get; set; }
 #endif
-            /// <summary>Amount of matching event rows to skip.</summary>
             [QueryParameter("skip")]
             public int? Skip { get; set; }
-            /// <summary>Maximum amount of matching event rows to return.</summary>
             [QueryParameter("take")]
             public int? Take { get; set; }
         }

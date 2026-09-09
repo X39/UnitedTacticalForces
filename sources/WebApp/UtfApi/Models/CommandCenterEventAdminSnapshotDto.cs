@@ -8,7 +8,7 @@ using System;
 namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 {
     /// <summary>
-    /// Event administration summary for operators with event management access.
+    /// Aggregate read model for Command Center event administration.
     /// </summary>
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
     public partial class CommandCenterEventAdminSnapshotDto : IAdditionalDataHolder, IParsable

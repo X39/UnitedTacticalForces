@@ -15,7 +15,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The claim metadata.</summary>
+        /// <summary>Represents a Data Transfer Object (DTO) for a specific claim associated with users or roles.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainClaimDto? Claim { get; set; }

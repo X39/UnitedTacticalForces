@@ -19,7 +19,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public bool? IsDeleted { get; set; }
         /// <summary>The unique identifier for the object.</summary>
         public Guid? PrimaryKey { get; set; }
-        /// <summary>The revisions property</summary>
+        /// <summary>The content of the page and its revisions.The latest revision is always the one with the highest TimeStampCreated.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public List<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.WikiPageRevisionDto>? Revisions { get; set; }
@@ -27,7 +27,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public List<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.WikiPageRevisionDto> Revisions { get; set; }
 #endif
-        /// <summary>The timestamp indicating when the wiki page was created.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>The title of the page.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER

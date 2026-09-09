@@ -8,24 +8,22 @@ using System;
 namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 {
     /// <summary>
-    /// Mod pack revision dependency.
+    /// Represents a Data Transfer Object (DTO) for a mod pack revision in the system.
     /// </summary>
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
     public partial class ModPackRevisionDto : IAdditionalDataHolder, IParsable
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The definitionIsActive property</summary>
+        /// <summary>Whether this modpack is active or not.</summary>
         public bool? DefinitionIsActive { get; set; }
-        /// <summary>The definitionIsComposition property</summary>
-        public bool? DefinitionIsComposition { get; set; }
-        /// <summary>The definitionOwnerFk property</summary>
+        /// <summary>The foreign key of the owner from this modpack.</summary>
         public Guid? DefinitionOwnerFk { get; set; }
-        /// <summary>The definitionPrimaryKey property</summary>
+        /// <summary>The primary key of this entity.</summary>
         public long? DefinitionPrimaryKey { get; set; }
         /// <summary>The definitionTimeStampCreated property</summary>
         public DateTimeOffset? DefinitionTimeStampCreated { get; set; }
-        /// <summary>The definitionTitle property</summary>
+        /// <summary>The name of this modpack.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? DefinitionTitle { get; set; }
@@ -33,21 +31,13 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string DefinitionTitle { get; set; }
 #endif
-        /// <summary>The HTML content of this revision.</summary>
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
-#nullable enable
-        public string? Html { get; set; }
-#nullable restore
-#else
-        public string Html { get; set; }
-#endif
         /// <summary>Whether this revision is active or not.</summary>
         public bool? IsActive { get; set; }
         /// <summary>The metaTimeStampDownloaded property</summary>
         public DateTimeOffset? MetaTimeStampDownloaded { get; set; }
         /// <summary>The primary key of this entity.</summary>
         public long? PrimaryKey { get; set; }
-        /// <summary>The timestamp when this revision was created.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>The foreign key of the user who updated this revision.</summary>
         public Guid? UpdatedByFk { get; set; }
@@ -77,12 +67,10 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             return new Dictionary<string, Action<IParseNode>>
             {
                 { "definitionIsActive", n => { DefinitionIsActive = n.GetBoolValue(); } },
-                { "definitionIsComposition", n => { DefinitionIsComposition = n.GetBoolValue(); } },
                 { "definitionOwnerFk", n => { DefinitionOwnerFk = n.GetGuidValue(); } },
                 { "definitionPrimaryKey", n => { DefinitionPrimaryKey = n.GetLongValue(); } },
                 { "definitionTimeStampCreated", n => { DefinitionTimeStampCreated = n.GetDateTimeOffsetValue(); } },
                 { "definitionTitle", n => { DefinitionTitle = n.GetStringValue(); } },
-                { "html", n => { Html = n.GetStringValue(); } },
                 { "isActive", n => { IsActive = n.GetBoolValue(); } },
                 { "metaTimeStampDownloaded", n => { MetaTimeStampDownloaded = n.GetDateTimeOffsetValue(); } },
                 { "primaryKey", n => { PrimaryKey = n.GetLongValue(); } },
@@ -98,12 +86,10 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         {
             if(ReferenceEquals(writer, null)) throw new ArgumentNullException(nameof(writer));
             writer.WriteBoolValue("definitionIsActive", DefinitionIsActive);
-            writer.WriteBoolValue("definitionIsComposition", DefinitionIsComposition);
             writer.WriteGuidValue("definitionOwnerFk", DefinitionOwnerFk);
             writer.WriteLongValue("definitionPrimaryKey", DefinitionPrimaryKey);
             writer.WriteDateTimeOffsetValue("definitionTimeStampCreated", DefinitionTimeStampCreated);
             writer.WriteStringValue("definitionTitle", DefinitionTitle);
-            writer.WriteStringValue("html", Html);
             writer.WriteBoolValue("isActive", IsActive);
             writer.WriteDateTimeOffsetValue("metaTimeStampDownloaded", MetaTimeStampDownloaded);
             writer.WriteLongValue("primaryKey", PrimaryKey);

@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-using X39.UnitedTacticalForces.WebApp.UtfApi.Models;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services.ModPackRepository;
@@ -8,192 +6,138 @@ namespace X39.UnitedTacticalForces.WebApp.Services.ModPackRepository;
 internal class ModPackRepositoryImpl(IHttpClientFactory httpClientFactory, BaseUrl baseUrl)
     : RepositoryBase(httpClientFactory, baseUrl), IModPackRepository
 {
-    public async Task<long> GetModPackCountAsync(bool myModPacksOnly, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ModCatalogItemInfo>> GetModsAsync(
+        string gameIdentifier,
+        string? search = null,
+        int skip = 0,
+        int take = 50,
+        CancellationToken cancellationToken = default)
     {
-        var result = await Client.ModPacks
-            .All
-            .Count
-            .GetAsync(conf => conf.QueryParameters.MyModPacksOnly = myModPacksOnly, cancellationToken)
-            .ConfigureAwait(false);
-        return result ?? default;
+        var route = $"game-content/mods?gameIdentifier={Uri.EscapeDataString(gameIdentifier)}"
+                    + $"&skip={Math.Max(0, skip)}&take={Math.Clamp(take, 1, 100)}";
+        if (!string.IsNullOrWhiteSpace(search))
+            route += $"&search={Uri.EscapeDataString(search.Trim())}";
+        return await GetFromJsonAsync<ModCatalogItemInfo[]>(route, cancellationToken).ConfigureAwait(false) ?? [];
     }
 
-    public async Task<IReadOnlyCollection<FullModPackDefinitionDto>> GetModPacksAsync(
-        int skip,
-        int take,
-        bool myModPacksOnly,
-        string? search = default,
-        CancellationToken cancellationToken = default,
-        string? gameIdentifier = default
-    )
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ModSourcePreviewInfo>> PreviewSourcesAsync(
+        string gameIdentifier,
+        IReadOnlyList<string> sources,
+        CancellationToken cancellationToken = default)
     {
-        var modPacks = await Client.ModPacks
-            .All
-            .GetAsync(
-                conf =>
-                {
-                    conf.QueryParameters.Skip           = skip;
-                    conf.QueryParameters.Take           = take;
-                    conf.QueryParameters.MyModPacksOnly = myModPacksOnly;
-                    conf.QueryParameters.Search         = search;
-                    conf.QueryParameters.GameIdentifier = gameIdentifier;
-                },
-                cancellationToken: cancellationToken
-            )
-            .ConfigureAwait(false);
-        return modPacks?.ToImmutableArray() ?? [];
+        var response = await PostAsJsonAsync(
+            "game-content/mods/source-preview",
+            new
+            {
+                GameIdentifier = gameIdentifier,
+                Sources = sources.Select(source => new { Input = source }).ToArray(),
+            },
+            cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        return await ReadFromJsonAsync<ModSourcePreviewInfo[]>(response, cancellationToken).ConfigureAwait(false) ?? [];
     }
 
-    public async Task<PlainModPackDefinitionDto> CreateModPackAsync(
-        ModPackCompositionCreationPayload payload,
-        CancellationToken cancellationToken = default
-    )
+    /// <inheritdoc />
+    public async Task<CreatedModResult> CreateModAsync(
+        CreateModPayload payload,
+        CancellationToken cancellationToken = default)
     {
-        var result = await Client.ModPacks
-            .Create
-            .Composition
-            .PostAsync(payload, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-        return result ?? throw new NullReferenceException("Failed to create mod pack.");
+        var response = await PostAsJsonAsync("game-content/mods", payload, cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        return await ReadFromJsonAsync<CreatedModResult>(response, cancellationToken).ConfigureAwait(false)
+               ?? throw new InvalidOperationException("The API did not return the created mod identifiers.");
     }
 
-    public async Task<PlainModPackDefinitionDto> CreateModPackAsync(
-        ModPackCreationPayload payload,
-        CancellationToken cancellationToken = default
-    )
+    /// <inheritdoc />
+    public async Task<NormalizedModPackResult> CreateNormalizedModPackAsync(
+        NormalizedModPackPayload payload,
+        CancellationToken cancellationToken = default)
     {
-        var result = await Client.ModPacks
-            .Create
-            .Standalone
-            .PostAsync(payload, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-        return result ?? throw new NullReferenceException("Failed to create mod pack.");
+        var response = await PostAsJsonAsync("game-content/mod-packs", payload, cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        return await ReadFromJsonAsync<NormalizedModPackResult>(response, cancellationToken).ConfigureAwait(false)
+               ?? throw new InvalidOperationException("The API did not return the created mod-pack identifiers.");
     }
 
-    public async Task ModifyModPackAsync(
+    /// <inheritdoc />
+    public async Task<long> AppendRevisionAsync(
         long modPackDefinitionId,
-        string? title = null,
-        string? html = null,
-        CancellationToken cancellationToken = default
-    )
+        NormalizedModPackRevisionPayload payload,
+        CancellationToken cancellationToken = default)
     {
-        await Client.ModPacks[modPackDefinitionId]
-            .Update
-            .Standalone
-            .PostAsync(
-                new ModPackStandaloneUpdate
-                {
-                    Html  = html,
-                    Title = title,
-                },
-                cancellationToken: cancellationToken
-            )
-            .ConfigureAwait(false);
+        var response = await PostAsJsonAsync(
+            $"game-content/mod-packs/{modPackDefinitionId}/revisions",
+            payload,
+            cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        var result = await ReadFromJsonAsync<NormalizedModPackResult>(response, cancellationToken).ConfigureAwait(false);
+        return result?.RevisionId
+               ?? throw new InvalidOperationException("The API did not return the created revision identifier.");
     }
 
-    public async Task ModifyModPackAsync(
+    /// <inheritdoc />
+    public async Task<ModPackMembershipInfo> GetMembershipAsync(
+        long revisionId,
+        bool effective,
+        CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<ModPackMembershipInfo>(
+               $"game-content/mod-packs/revisions/{revisionId}/members?effective={effective.ToString().ToLowerInvariant()}",
+               cancellationToken).ConfigureAwait(false)
+           ?? new ModPackMembershipInfo();
+
+    /// <inheritdoc />
+    public async Task<ModPackFormatPreviewInfo> PreviewFormatAsync(string gameIdentifier, string formatIdentifier, string fileName, Stream content, CancellationToken cancellationToken = default)
+    {
+        using var form = new MultipartFormDataContent();
+        form.Add(new StreamContent(content), "file", fileName);
+        var response = await HttpClient.PostAsync(BaseUrl.ResolveApiUrl($"game-content/mod-packs/formats/{Uri.EscapeDataString(gameIdentifier)}/{Uri.EscapeDataString(formatIdentifier)}/preview"), form, cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        return await ReadFromJsonAsync<ModPackFormatPreviewInfo>(response, cancellationToken).ConfigureAwait(false) ?? new();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<X39.UnitedTacticalForces.WebApp.Services.GameServerRepository.ModPackFormatInfo>> GetRevisionFormatsAsync(long revisionId, CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<X39.UnitedTacticalForces.WebApp.Services.GameServerRepository.ModPackFormatInfo[]>($"game-content/mod-packs/revisions/{revisionId}/formats", cancellationToken).ConfigureAwait(false) ?? [];
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<X39.UnitedTacticalForces.WebApp.Services.GameServerRepository.ModPackFormatInfo>> GetEventFormatsAsync(Guid eventId, CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<X39.UnitedTacticalForces.WebApp.Services.GameServerRepository.ModPackFormatInfo[]>($"events/{eventId}/mod-pack-formats", cancellationToken).ConfigureAwait(false) ?? [];
+
+    /// <inheritdoc />
+    public async Task<CreatedModResult> CreateUploadedArtifactModAsync(string gameIdentifier, string title, X39.UnitedTacticalForces.Hosting.Contracts.EModUsageRole usageRole, string installerIdentifier, string fileName, Stream content, CancellationToken cancellationToken = default)
+    {
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent(gameIdentifier), "gameIdentifier"); form.Add(new StringContent(title), "title"); form.Add(new StringContent(usageRole.ToString()), "usageRole"); form.Add(new StringContent(installerIdentifier), "installerIdentifier"); form.Add(new StreamContent(content), "file", fileName);
+        var response = await HttpClient.PostAsync(BaseUrl.ResolveApiUrl("game-content/mods/uploaded-artifact"), form, cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+        return await ReadFromJsonAsync<CreatedModResult>(response, cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException("The API did not return the uploaded mod identifier.");
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<NormalizedModPackListItemInfo>> GetNormalizedModPacksAsync(
+        string gameIdentifier,
+        CancellationToken cancellationToken = default)
+        => await GetFromJsonAsync<NormalizedModPackListItemInfo[]>(
+               $"game-content/mod-packs?gameIdentifier={Uri.EscapeDataString(gameIdentifier)}",
+               cancellationToken).ConfigureAwait(false) ?? [];
+
+    /// <inheritdoc />
+    public Task<NormalizedModPackWorkspaceInfo?> GetNormalizedModPackAsync(
         long modPackDefinitionId,
-        string? title = null,
-        bool? useLatest = null,
-        long[]? modPackRevisionIds = null,
-        CancellationToken cancellationToken = default
-    )
-    {
-        await Client.ModPacks[modPackDefinitionId]
-            .Update
-            .Composition
-            .PostAsync(
-                new ModPackCompositionUpdate
-                {
-                    Title = title,
-                    ModPackRevisionIds = modPackRevisionIds?.Cast<long?>()
-                        .ToList(),
-                    UseLatest = useLatest,
-                },
-                cancellationToken: cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
+        CancellationToken cancellationToken = default)
+        => GetFromJsonAsync<NormalizedModPackWorkspaceInfo>(
+            $"game-content/mod-packs/{modPackDefinitionId}", cancellationToken);
 
-    public async Task DeleteModPackAsync(long modPackDefinitionId, CancellationToken cancellationToken = default)
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        await Client.ModPacks[modPackDefinitionId]
-            .DeletePath
-            .PostAsync(cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    public async Task<ModPackDefinitionDto?> GetModPackDefinitionAsync(
-        long modPackDefinitionId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var result = await Client.ModPacks[modPackDefinitionId]
-            .GetAsync(cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-        return result;
-    }
-
-    public async Task<ModPackWorkspaceInfo?> GetModPackWorkspaceAsync(
-        long modPackDefinitionId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        return await GetFromJsonAsync<ModPackWorkspaceInfo>(
-                $"mod-packs/{modPackDefinitionId}/workspace",
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-    }
-
-    public async Task<FullModPackDefinitionDto> GetFullModPackDefinitionAsync(
-        long modPackDefinitionId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var result = await GetFromJsonAsync<FullModPackDefinitionDto>(
-                $"mod-packs/{modPackDefinitionId}/full",
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-        return result ?? throw new NullReferenceException("Failed to load mod pack.");
-    }
-
-    public async Task<IReadOnlyCollection<PlainModPackRevisionDto>> GetModPackRevisionHistoryAsync(
-        long modPackDefinitionId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var result = await GetFromJsonAsync<PlainModPackRevisionDto[]>(
-                $"mod-packs/{modPackDefinitionId}/revisions",
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-        return result ?? [];
-    }
-
-    public async Task<IReadOnlyCollection<ModPackDownloadAuditInfo>> GetModPackDownloadAuditsAsync(
-        long modPackDefinitionId,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var result = await GetFromJsonAsync<ModPackDownloadAuditInfo[]>(
-                $"mod-packs/{modPackDefinitionId}/downloads",
-                cancellationToken
-            )
-            .ConfigureAwait(false);
-        return result ?? [];
-    }
-
-    public async Task<ModPackRevisionDto?> GetModPackRevisionAsync(
-        long modPackRevisionPk,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var result = await Client.ModPacks
-            .Revision[modPackRevisionPk]
-            .GetAsync(cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-        return result;
+        if (response.IsSuccessStatusCode)
+            return;
+        var message = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        throw new HttpRequestException(
+            string.IsNullOrWhiteSpace(message) ? response.ReasonPhrase : message,
+            null,
+            response.StatusCode);
     }
 }

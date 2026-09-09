@@ -3,9 +3,10 @@ using System.Runtime.Serialization;
 using System;
 namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 {
-    /// <summary>Income or expense direction.</summary>
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
+    #pragma warning disable CS1591
     public enum EKassenbuchEntryDirection
+    #pragma warning restore CS1591
     {
         [EnumMember(Value = "Income")]
         #pragma warning disable CS1591

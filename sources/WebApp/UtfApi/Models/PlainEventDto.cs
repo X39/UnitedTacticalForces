@@ -8,7 +8,7 @@ using System;
 namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 {
     /// <summary>
-    /// Core event data.
+    /// Represents detailed information about an event in the system.
     /// </summary>
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
     public partial class PlainEventDto : IAdditionalDataHolder, IParsable
@@ -53,13 +53,19 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public Guid? PrimaryKey { get; set; }
         /// <summary>Represents the number of users who have explicitly declined participation in the event.</summary>
         public int? RejectedCount { get; set; }
-        /// <summary>Indicates the date and time when the event is scheduled to occur.</summary>
+        /// <summary>The scenarioFk property</summary>
+        public Guid? ScenarioFk { get; set; }
+        /// <summary>The scenarioVersionFk property</summary>
+        public Guid? ScenarioVersionFk { get; set; }
+        /// <summary>The scheduledFor property</summary>
         public DateTimeOffset? ScheduledFor { get; set; }
-        /// <summary>Represents the original scheduled date and time for the event before any modifications.</summary>
+        /// <summary>The scheduledForOriginal property</summary>
         public DateTimeOffset? ScheduledForOriginal { get; set; }
         /// <summary>References the unique identifier of the associated terrain in the system.</summary>
         public long? TerrainFk { get; set; }
-        /// <summary>Indicates the date and time when the event was created.</summary>
+        /// <summary>The terrainVersionFk property</summary>
+        public Guid? TerrainVersionFk { get; set; }
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>Represents the title of the event.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
@@ -101,15 +107,18 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "imagePath", n => { ImagePath = n.GetStringValue(); } },
                 { "isVisible", n => { IsVisible = n.GetBoolValue(); } },
                 { "maybeCount", n => { MaybeCount = n.GetIntValue(); } },
-                { "metaAcceptance", n => { MetaAcceptance = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance?) n.GetIntValue(); } },
+                { "metaAcceptance", n => { MetaAcceptance = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance>(); } },
                 { "minimumAccepted", n => { MinimumAccepted = n.GetIntValue(); } },
                 { "modPackRevisionFk", n => { ModPackRevisionFk = n.GetLongValue(); } },
                 { "ownerFk", n => { OwnerFk = n.GetGuidValue(); } },
                 { "primaryKey", n => { PrimaryKey = n.GetGuidValue(); } },
                 { "rejectedCount", n => { RejectedCount = n.GetIntValue(); } },
+                { "scenarioFk", n => { ScenarioFk = n.GetGuidValue(); } },
+                { "scenarioVersionFk", n => { ScenarioVersionFk = n.GetGuidValue(); } },
                 { "scheduledFor", n => { ScheduledFor = n.GetDateTimeOffsetValue(); } },
                 { "scheduledForOriginal", n => { ScheduledForOriginal = n.GetDateTimeOffsetValue(); } },
                 { "terrainFk", n => { TerrainFk = n.GetLongValue(); } },
+                { "terrainVersionFk", n => { TerrainVersionFk = n.GetGuidValue(); } },
                 { "timeStampCreated", n => { TimeStampCreated = n.GetDateTimeOffsetValue(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
@@ -128,15 +137,18 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteStringValue("imagePath", ImagePath);
             writer.WriteBoolValue("isVisible", IsVisible);
             writer.WriteIntValue("maybeCount", MaybeCount);
-            writer.WriteIntValue("metaAcceptance", (int?)MetaAcceptance);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance>("metaAcceptance", MetaAcceptance);
             writer.WriteIntValue("minimumAccepted", MinimumAccepted);
             writer.WriteLongValue("modPackRevisionFk", ModPackRevisionFk);
             writer.WriteGuidValue("ownerFk", OwnerFk);
             writer.WriteGuidValue("primaryKey", PrimaryKey);
             writer.WriteIntValue("rejectedCount", RejectedCount);
+            writer.WriteGuidValue("scenarioFk", ScenarioFk);
+            writer.WriteGuidValue("scenarioVersionFk", ScenarioVersionFk);
             writer.WriteDateTimeOffsetValue("scheduledFor", ScheduledFor);
             writer.WriteDateTimeOffsetValue("scheduledForOriginal", ScheduledForOriginal);
             writer.WriteLongValue("terrainFk", TerrainFk);
+            writer.WriteGuidValue("terrainVersionFk", TerrainVersionFk);
             writer.WriteDateTimeOffsetValue("timeStampCreated", TimeStampCreated);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);

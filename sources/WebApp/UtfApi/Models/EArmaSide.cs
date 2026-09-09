@@ -3,9 +3,10 @@ using System.Runtime.Serialization;
 using System;
 namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 {
-    /// <summary>The side of this role.</summary>
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
+    #pragma warning disable CS1591
     public enum EArmaSide
+    #pragma warning restore CS1591
     {
         [EnumMember(Value = "Empty")]
         #pragma warning disable CS1591

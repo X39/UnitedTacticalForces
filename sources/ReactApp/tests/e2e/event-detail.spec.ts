@@ -31,13 +31,11 @@ const operation = {
   terrainIsActive: true,
   modPackRevisionPrimaryKey: 24,
   modPackRevisionTimeStampCreated: "2026-08-01T00:00:00Z",
-  modPackRevisionHtml: "<html></html>",
   modPackRevisionIsActive: true,
   modPackDefinitionPrimaryKey: 7,
   modPackDefinitionTimeStampCreated: "2026-08-01T00:00:00Z",
   modPackDefinitionTitle: "UTF Main",
   modPackDefinitionIsActive: true,
-  modPackDefinitionIsComposition: false,
   imagePath: "",
   scheduledForOriginal: "2030-09-12T18:00:00Z",
   scheduledFor: "2030-09-12T18:00:00Z",
@@ -90,6 +88,7 @@ test("renders the event workflow and confirms attendance changes that release a 
   page,
 }) => {
   const mutationPaths: string[] = [];
+  const formatDownloadPaths: string[] = [];
   await page.route("**/api/**", (route) => {
     throw new Error(`Unexpected API request: ${route.request().method()} ${route.request().url()}`);
   });
@@ -101,6 +100,29 @@ test("renders the event workflow and confirms attendance changes that release a 
   await page.route("**/api/game-servers/notifications", (route) => route.fulfill({ json: [] }));
   await page.route("**/api/site-image-settings", (route) => route.fulfill({ json: [] }));
   await page.route(`**/api/events/${eventId}`, (route) => route.fulfill({ json: operation }));
+  await page.route(`**/api/events/${eventId}/mod-pack-formats`, (route) =>
+    route.fulfill({
+      json: [
+        {
+          identifier: "arma3-launcher-html",
+          displayName: "Arma 3 Launcher",
+          fileExtension: "html",
+          mediaType: "text/html",
+        },
+      ],
+    }),
+  );
+  await page.route(
+    `**/api/events/${eventId}/mod-pack-formats/arma3-launcher-html`,
+    (route) => {
+      formatDownloadPaths.push(new URL(route.request().url()).pathname);
+      return route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: "<!doctype html><title>UTF Main</title>",
+      });
+    },
+  );
   await page.route(`**/api/events/${eventId}/slotting/all`, (route) =>
     route.fulfill({ json: slots }),
   );
@@ -150,6 +172,13 @@ test("renders the event workflow and confirms attendance changes that release a 
   await expect(page.locator(".em-slot-status").first()).toContainText("Your slot");
   await expect(page.getByRole("button", { name: "Your slot" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Assign slot" })).toBeEnabled();
+
+  const formatDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Arma 3 Launcher" }).click();
+  await expect.poll(() => formatDownloadPaths).toEqual([
+    `/api/events/${eventId}/mod-pack-formats/arma3-launcher-html`,
+  ]);
+  expect((await formatDownload).suggestedFilename()).toBe("UTF Main.html");
 
   await page.getByRole("button", { name: /Pending/ }).click();
   await expect(

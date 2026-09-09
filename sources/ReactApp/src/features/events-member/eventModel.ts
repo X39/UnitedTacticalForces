@@ -352,15 +352,3 @@ export function formatEventTimeRemaining(value: string | undefined, now = new Da
   if (hours >= 1) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
 }
-
-export function modPackDownloadPath(event: FullEvent): string | undefined {
-  if (event.modPackDefinitionPrimaryKey == null) return undefined;
-  return event.modPackRevisionPrimaryKey == null
-    ? `/mod-packs/${event.modPackDefinitionPrimaryKey}/download/latest`
-    : `/mod-packs/${event.modPackDefinitionPrimaryKey}/download/${event.modPackRevisionPrimaryKey}`;
-}
-
-export function safeDownloadFileName(title: string | null | undefined): string {
-  const safe = [...(title ?? "")].filter((value) => /[\p{L}\p{N}+-]/u.test(value)).join("");
-  return `${safe || "modpack"}.html`;
-}

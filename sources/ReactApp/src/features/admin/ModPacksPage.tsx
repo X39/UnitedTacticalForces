@@ -18,19 +18,15 @@ import {
 import "@/features/admin/modPacks.css";
 
 const windowSize = 80;
-type ModPackFilter = "all" | "compositions" | "standalone" | "no-revisions";
+type ModPackFilter = "all" | "no-revisions";
 
 const filterLabels: Record<ModPackFilter, TranslationKey> = {
   all: "All",
-  compositions: "Compositions",
-  standalone: "Standalone",
   "no-revisions": "Auto_MissingRevisions_fd474e59",
 };
 
 const listTitles: Record<ModPackFilter, TranslationKey> = {
   all: "Pages_Data_ModPacks_All_TitleAll",
-  compositions: "Pages_Data_ModPacks_All_TitleCompositions",
-  standalone: "Pages_Data_ModPacks_All_TitleStandalone",
   "no-revisions": "Pages_Data_ModPacks_All_TitleNoRevisions",
 };
 
@@ -63,8 +59,6 @@ export function Component() {
   const counts = useMemo(
     () => ({
       all: definitions.length,
-      compositions: definitions.filter((definition) => definition.isComposition ?? false).length,
-      standalone: definitions.filter((definition) => !(definition.isComposition ?? false)).length,
       "no-revisions": definitions.filter((definition) => definition.modPackRevisions.length === 0)
         .length,
     }),
@@ -100,9 +94,7 @@ export function Component() {
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_ModPacks")}
         title={t("Pages_ModPacks_AllModPacks")}
-        description={t(
-          "Auto_CommandWorkspaceForPackageDefinitionsCompositionStatusRevisionFreshness_1894ea65",
-        )}
+        description={t("ModPacks_LedgerDescription")}
         actions={
           <>
             <button
@@ -113,11 +105,8 @@ export function Component() {
             >
               {t("Common_Refresh")}
             </button>
-            <Link className="button button--primary" to="/command/mod-packs/create?kind=standalone">
-              {t("Auto_CreateStandalone_e930c8fc")}
-            </Link>
-            <Link className="button button--ghost" to="/command/mod-packs/create?kind=composition">
-              {t("Auto_CreateComposition_0aee6519")}
+            <Link className="button button--primary" to="/command/mod-packs/create">
+              {t("Auto_CreateModPack_04e0630f")}
             </Link>
           </>
         }
@@ -158,36 +147,6 @@ export function Component() {
                 : t("Pages_Data_ModPacks_All_CountLoading")
             }
             detail={formatResource(t("Pages_Data_ModPacks_All_MetricActiveWindow"), counts.all)}
-          />
-        </button>
-        <button
-          type="button"
-          className={filter === "compositions" ? "active" : undefined}
-          aria-pressed={filter === "compositions"}
-          onClick={() => setFilter("compositions")}
-        >
-          <Metric
-            label={t("Composition")}
-            value={formatResource(
-              t("Pages_Data_ModPacks_All_ValueCompositionCount"),
-              counts.compositions,
-            )}
-            detail={t("Auto_PackagesAssembledFromMultipleRevisions_ce39fa2a")}
-          />
-        </button>
-        <button
-          type="button"
-          className={filter === "standalone" ? "active" : undefined}
-          aria-pressed={filter === "standalone"}
-          onClick={() => setFilter("standalone")}
-        >
-          <Metric
-            label={t("Standalone")}
-            value={formatResource(
-              t("Pages_Data_ModPacks_All_ValueStandaloneCount"),
-              counts.standalone,
-            )}
-            detail={t("Auto_DirectPackageDefinitionsAvailableToMissions_6f62a750")}
           />
         </button>
         <button
@@ -271,7 +230,7 @@ export function Component() {
                 <thead>
                   <tr>
                     <th>{t("Package")}</th>
-                    <th>{t("Type")}</th>
+                    <th>{t("React_Terrains_GameLabel")}</th>
                     <th>{t("Owner")}</th>
                     <th>{t("Revisions")}</th>
                     <th>{t("Updated")}</th>
@@ -299,9 +258,7 @@ export function Component() {
                           <span>{id ?? "—"}</span>
                         </td>
                         <td>
-                          <StatusBadge tone={definition.isComposition ? "info" : "neutral"}>
-                            {definition.isComposition ? t("Composition") : t("Standalone")}
-                          </StatusBadge>
+                          <StatusBadge tone="info">{definition.gameIdentifier}</StatusBadge>
                         </td>
                         <td>
                           <strong>{definition.owner?.nickname || "—"}</strong>

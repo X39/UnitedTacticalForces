@@ -34,7 +34,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.SettingsSnapshot
         {
         }
         /// <summary>
-        /// Returns a redacted aggregate settings snapshot for Command Center governance.
+        /// Returns a redacted settings snapshot.
         /// </summary>
         /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterSettingsSnapshotDto"/></returns>
         /// <param name="cancellationToken">Cancellation token to use when cancelling requests</param>
@@ -52,7 +52,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.SettingsSnapshot
             return await RequestAdapter.SendAsync<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterSettingsSnapshotDto>(requestInfo, global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterSettingsSnapshotDto.CreateFromDiscriminatorValue, default, cancellationToken).ConfigureAwait(false);
         }
         /// <summary>
-        /// Returns a redacted aggregate settings snapshot for Command Center governance.
+        /// Returns a redacted settings snapshot.
         /// </summary>
         /// <returns>A <see cref="RequestInformation"/></returns>
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>

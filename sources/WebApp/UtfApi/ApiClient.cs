@@ -11,10 +11,14 @@ using System.IO;
 using System.Threading.Tasks;
 using System;
 using X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter;
+using X39.UnitedTacticalForces.WebApp.UtfApi.ConfigurationProfiles;
+using X39.UnitedTacticalForces.WebApp.UtfApi.CostOwners;
 using X39.UnitedTacticalForces.WebApp.UtfApi.Events;
 using X39.UnitedTacticalForces.WebApp.UtfApi.FieldReports;
+using X39.UnitedTacticalForces.WebApp.UtfApi.GameContent;
+using X39.UnitedTacticalForces.WebApp.UtfApi.GameServers;
+using X39.UnitedTacticalForces.WebApp.UtfApi.Jobs;
 using X39.UnitedTacticalForces.WebApp.UtfApi.MediaAssets;
-using X39.UnitedTacticalForces.WebApp.UtfApi.ModPacks;
 using X39.UnitedTacticalForces.WebApp.UtfApi.PublicPages;
 using X39.UnitedTacticalForces.WebApp.UtfApi.ResourceClaim;
 using X39.UnitedTacticalForces.WebApp.UtfApi.Roles;
@@ -37,6 +41,16 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi
         {
             get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.CommandCenterRequestBuilder(PathParameters, RequestAdapter);
         }
+        /// <summary>The configurationProfiles property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.ConfigurationProfiles.ConfigurationProfilesRequestBuilder ConfigurationProfiles
+        {
+            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.ConfigurationProfiles.ConfigurationProfilesRequestBuilder(PathParameters, RequestAdapter);
+        }
+        /// <summary>The costOwners property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.CostOwners.CostOwnersRequestBuilder CostOwners
+        {
+            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.CostOwners.CostOwnersRequestBuilder(PathParameters, RequestAdapter);
+        }
         /// <summary>The events property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Events.EventsRequestBuilder Events
         {
@@ -47,15 +61,25 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi
         {
             get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.FieldReports.FieldReportsRequestBuilder(PathParameters, RequestAdapter);
         }
+        /// <summary>The gameContent property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.GameContent.GameContentRequestBuilder GameContent
+        {
+            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.GameContent.GameContentRequestBuilder(PathParameters, RequestAdapter);
+        }
+        /// <summary>The gameServers property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.GameServers.GameServersRequestBuilder GameServers
+        {
+            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.GameServers.GameServersRequestBuilder(PathParameters, RequestAdapter);
+        }
+        /// <summary>The jobs property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.Jobs.JobsRequestBuilder Jobs
+        {
+            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.Jobs.JobsRequestBuilder(PathParameters, RequestAdapter);
+        }
         /// <summary>The mediaAssets property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.MediaAssets.MediaAssetsRequestBuilder MediaAssets
         {
             get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.MediaAssets.MediaAssetsRequestBuilder(PathParameters, RequestAdapter);
-        }
-        /// <summary>The modPacks property</summary>
-        public global::X39.UnitedTacticalForces.WebApp.UtfApi.ModPacks.ModPacksRequestBuilder ModPacks
-        {
-            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.ModPacks.ModPacksRequestBuilder(PathParameters, RequestAdapter);
         }
         /// <summary>The publicPages property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.PublicPages.PublicPagesRequestBuilder PublicPages
@@ -115,11 +139,6 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi
             ApiClientBuilder.RegisterDefaultDeserializer<JsonParseNodeFactory>();
             ApiClientBuilder.RegisterDefaultDeserializer<TextParseNodeFactory>();
             ApiClientBuilder.RegisterDefaultDeserializer<FormParseNodeFactory>();
-            if (string.IsNullOrEmpty(RequestAdapter.BaseUrl))
-            {
-                RequestAdapter.BaseUrl = "https://localhost:7072";
-            }
-            PathParameters.TryAdd("baseurl", RequestAdapter.BaseUrl);
         }
     }
 }

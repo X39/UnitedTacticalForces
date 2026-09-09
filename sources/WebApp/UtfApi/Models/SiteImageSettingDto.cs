@@ -51,9 +51,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>Display order within the editor group.</summary>
         public int? SortOrder { get; set; }
-        /// <summary>Creation timestamp.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
-        /// <summary>Last update timestamp.</summary>
+        /// <summary>The timeStampUpdated property</summary>
         public DateTimeOffset? TimeStampUpdated { get; set; }
         /// <summary>Human-readable label.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
@@ -63,7 +63,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Title { get; set; }
 #endif
-        /// <summary>The updatedByName property</summary>
+        /// <summary>Display name of the last updating user.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? UpdatedByName { get; set; }

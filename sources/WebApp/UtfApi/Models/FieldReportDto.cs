@@ -31,7 +31,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Excerpt { get; set; }
 #endif
-        /// <summary>The heroImageAlt property</summary>
+        /// <summary>Alternative text for the hero image.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? HeroImageAlt { get; set; }
@@ -39,9 +39,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string HeroImageAlt { get; set; }
 #endif
-        /// <summary>The heroImageAssetFk property</summary>
+        /// <summary>Optional gallery media asset used as hero image.</summary>
         public Guid? HeroImageAssetFk { get; set; }
-        /// <summary>The heroImagePath property</summary>
+        /// <summary>Computed API-relative image render path.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? HeroImagePath { get; set; }
@@ -73,7 +73,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public int? SortOrder { get; set; }
         /// <summary>The timeStampPublished property</summary>
         public DateTimeOffset? TimeStampPublished { get; set; }
-        /// <summary>Last update timestamp.</summary>
+        /// <summary>The timeStampUpdated property</summary>
         public DateTimeOffset? TimeStampUpdated { get; set; }
         /// <summary>Display title.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER

@@ -6,11 +6,14 @@
 @using X39.UnitedTacticalForces.WebApp.Data
 @using X39.UnitedTacticalForces.WebApp.Services
 @using X39.UnitedTacticalForces.WebApp.Services.EventRepository
+@using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
 @using X39.UnitedTacticalForces.WebApp.Services.SiteImageSettingsRepository
 @using X39.UnitedTacticalForces.WebApp.Services.SlotRepository
 @using X39.UnitedTacticalForces.WebApp.Services.UserRepository
 @using X39.UnitedTacticalForces.WebApp.UtfApi.Models
 @inject IEventRepository EventRepository
+@inject IModPackRepository ModPackRepository
 @inject ISiteImageSettingsRepository SiteImageSettingsRepository
 @inject ISlotRepository SlotRepository
 @inject IUserRepository UserRepository
@@ -521,12 +524,17 @@
                             <dd>@(_event.HostedBy?.Nickname ?? Localizer[nameof(Language.Pages_Events_Detail_Status_Pending)].Value)</dd>
                         </div>
                     </dl>
-                    <FluentButton class="utf-package-download-button"
-                                  IconStart="@(new Icons.Regular.Size24.ArrowDownload())"
-                                  Disabled="@(!CanDownloadModPack)"
-                                  OnClick="DownloadModPack">
-                        @Localizer[nameof(Language.Common_DownloadModpack)]
-                    </FluentButton>
+                    @if (_modPackFormats.Count == 0)
+                    {
+                        <FluentButton class="utf-package-download-button" IconStart="@(new Icons.Regular.Size24.Open())" Disabled="@(!CanViewModPack)" OnClick="ViewModPack">@Localizer["ModPacks_ViewContent"]</FluentButton>
+                    }
+                    else
+                    {
+                        @foreach (var format in _modPackFormats)
+                        {
+                            <FluentButton class="utf-package-download-button" IconStart="@(new Icons.Regular.Size24.ArrowDownload())" OnClick="@(() => DownloadEventFormat(format.Identifier))">@Localizer["ModPacks_DownloadFormat", format.DisplayName]</FluentButton>
+                        }
+                    }
                 </section>
             </aside>
         </div>
@@ -600,7 +608,8 @@
     ];
 
     private bool IsEventClosed => _event?.ScheduledFor is { } scheduledFor && scheduledFor < DateTimeOffset.Now;
-    private bool CanDownloadModPack => _event?.ModPackDefinitionPrimaryKey is not null;
+    private bool CanViewModPack => _event?.ModPackDefinitionPrimaryKey is not null;
+    private IReadOnlyList<ModPackFormatInfo> _modPackFormats = [];
     private IEnumerable<PlainEventSlotDto> AllSlots => _slotGroups.SelectMany((slotGroup) => slotGroup);
     private int TotalSlotCount => AllSlots.Count();
     private int OpenSlotCount
@@ -668,6 +677,7 @@
                     .OrderBy((q) => q.Name),
             ];
             _event = tmp;
+            _modPackFormats = tmp.ModPackRevisionPrimaryKey is null ? [] : await ModPackRepository.GetEventFormatsAsync(eventId, cancellationToken).ConfigureAwait(false);
         }
         catch
         {
@@ -711,16 +721,15 @@
         }
     }
 
-    private void DownloadModPack()
+    private void ViewModPack()
     {
         if (_event?.ModPackDefinitionPrimaryKey is not { } modPackDefinitionPrimaryKey)
             return;
-
-        var path = _event.ModPackRevisionPrimaryKey is { } modPackRevisionPrimaryKey
-            ? $"mod-packs/{modPackDefinitionPrimaryKey}/download/{modPackRevisionPrimaryKey}"
-            : $"mod-packs/{modPackDefinitionPrimaryKey}/download/latest";
-        NavigationManager.NavigateTo(BaseUrl.ResolveApiUrl(path), forceLoad: true);
+        NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"data/mod-packs/{modPackDefinitionPrimaryKey}"));
     }
+
+    private void DownloadEventFormat(string formatIdentifier)
+        => NavigationManager.NavigateTo(BaseUrl.ResolveApiUrl($"events/{EventId}/mod-pack-formats/{Uri.EscapeDataString(formatIdentifier)}"), forceLoad: true);
 
     private async Task SetAttendanceAsync(Common.Event.EEventAcceptance acceptance)
     {

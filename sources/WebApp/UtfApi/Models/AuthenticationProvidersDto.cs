@@ -7,15 +7,25 @@ using System.IO;
 using System;
 namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 {
+    /// <summary>
+    /// Public, secret-free authentication provider availability.
+    /// </summary>
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
-    #pragma warning disable CS1591
-    public partial class AuthenticationProvidersDto : IParsable
-    #pragma warning restore CS1591
+    public partial class AuthenticationProvidersDto : IAdditionalDataHolder, IParsable
     {
-        /// <summary>The discord property</summary>
+        /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
+        public IDictionary<string, object> AdditionalData { get; set; }
+        /// <summary>Whether Discord authentication is registered and available.</summary>
         public bool? Discord { get; set; }
-        /// <summary>The steam property</summary>
+        /// <summary>Whether Steam authentication is registered and available.</summary>
         public bool? Steam { get; set; }
+        /// <summary>
+        /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.AuthenticationProvidersDto"/> and sets the default values.
+        /// </summary>
+        public AuthenticationProvidersDto()
+        {
+            AdditionalData = new Dictionary<string, object>();
+        }
         /// <summary>
         /// Creates a new instance of the appropriate class based on discriminator value
         /// </summary>
@@ -47,6 +57,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             if(ReferenceEquals(writer, null)) throw new ArgumentNullException(nameof(writer));
             writer.WriteBoolValue("discord", Discord);
             writer.WriteBoolValue("steam", Steam);
+            writer.WriteAdditionalData(AdditionalData);
         }
     }
 }

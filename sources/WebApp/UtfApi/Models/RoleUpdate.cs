@@ -15,7 +15,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The description property</summary>
+        /// <summary>The role description.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Description { get; set; }
@@ -23,7 +23,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Description { get; set; }
 #endif
-        /// <summary>The title property</summary>
+        /// <summary>The human-readable role title.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Title { get; set; }

@@ -33,10 +33,16 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public int? MinimumAccepted { get; set; }
         /// <summary>Represents a reference to the associated mod pack revision.</summary>
         public long? ModPackRevisionFk { get; set; }
+        /// <summary>The scenarioFk property</summary>
+        public Guid? ScenarioFk { get; set; }
+        /// <summary>The scenarioVersionFk property</summary>
+        public Guid? ScenarioVersionFk { get; set; }
         /// <summary>Indicates the date and time when the event is scheduled to occur.</summary>
         public DateTimeOffset? ScheduledFor { get; set; }
         /// <summary>References the unique identifier of the associated terrain in the system.</summary>
         public long? TerrainFk { get; set; }
+        /// <summary>The terrainVersionFk property</summary>
+        public Guid? TerrainVersionFk { get; set; }
         /// <summary>Represents the title of the event.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -76,8 +82,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "isVisible", n => { IsVisible = n.GetBoolValue(); } },
                 { "minimumAccepted", n => { MinimumAccepted = n.GetIntValue(); } },
                 { "modPackRevisionFk", n => { ModPackRevisionFk = n.GetLongValue(); } },
+                { "scenarioFk", n => { ScenarioFk = n.GetGuidValue(); } },
+                { "scenarioVersionFk", n => { ScenarioVersionFk = n.GetGuidValue(); } },
                 { "scheduledFor", n => { ScheduledFor = n.GetDateTimeOffsetValue(); } },
                 { "terrainFk", n => { TerrainFk = n.GetLongValue(); } },
+                { "terrainVersionFk", n => { TerrainVersionFk = n.GetGuidValue(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
         }
@@ -94,8 +103,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteBoolValue("isVisible", IsVisible);
             writer.WriteIntValue("minimumAccepted", MinimumAccepted);
             writer.WriteLongValue("modPackRevisionFk", ModPackRevisionFk);
+            writer.WriteGuidValue("scenarioFk", ScenarioFk);
+            writer.WriteGuidValue("scenarioVersionFk", ScenarioVersionFk);
             writer.WriteDateTimeOffsetValue("scheduledFor", ScheduledFor);
             writer.WriteLongValue("terrainFk", TerrainFk);
+            writer.WriteGuidValue("terrainVersionFk", TerrainVersionFk);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);
         }

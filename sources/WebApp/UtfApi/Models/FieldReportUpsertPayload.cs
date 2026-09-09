@@ -15,7 +15,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The category property</summary>
+        /// <summary>Editorial category label.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Category { get; set; }
@@ -23,7 +23,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Category { get; set; }
 #endif
-        /// <summary>The excerpt property</summary>
+        /// <summary>Short public summary.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Excerpt { get; set; }
@@ -31,7 +31,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Excerpt { get; set; }
 #endif
-        /// <summary>The heroImageAlt property</summary>
+        /// <summary>Alternative text for the hero image.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? HeroImageAlt { get; set; }
@@ -39,13 +39,13 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string HeroImageAlt { get; set; }
 #endif
-        /// <summary>The heroImageAssetFk property</summary>
+        /// <summary>Optional gallery media asset used as hero image.</summary>
         public Guid? HeroImageAssetFk { get; set; }
         /// <summary>Whether this report should be promoted in public feature slots.</summary>
         public bool? IsFeatured { get; set; }
         /// <summary>Whether this report should be visible publicly.</summary>
         public bool? IsPublished { get; set; }
-        /// <summary>The markdown property</summary>
+        /// <summary>Markdown body.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Markdown { get; set; }
@@ -53,7 +53,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Markdown { get; set; }
 #endif
-        /// <summary>The slug property</summary>
+        /// <summary>Optional URL-safe public identifier. Generated from title when omitted.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Slug { get; set; }
@@ -65,7 +65,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public int? SortOrder { get; set; }
         /// <summary>The timeStampPublished property</summary>
         public DateTimeOffset? TimeStampPublished { get; set; }
-        /// <summary>The title property</summary>
+        /// <summary>Display title.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Title { get; set; }

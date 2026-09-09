@@ -17,8 +17,6 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public IDictionary<string, object> AdditionalData { get; set; }
         /// <summary>Configured annual contribution amount, if one is currently published.</summary>
         public double? MembershipContributionAnnualAmount { get; set; }
-        /// <summary>Configured monthly contribution amount, if one is currently published.</summary>
-        public double? MembershipContributionMonthlyAmount { get; set; }
         /// <summary>Three-letter currency code for the contribution amount.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -27,6 +25,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string MembershipContributionCurrency { get; set; }
 #endif
+        /// <summary>Configured monthly contribution amount, if one is currently published.</summary>
+        public double? MembershipContributionMonthlyAmount { get; set; }
         /// <summary>German public contribution explanation.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -71,8 +71,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             return new Dictionary<string, Action<IParseNode>>
             {
                 { "membershipContributionAnnualAmount", n => { MembershipContributionAnnualAmount = n.GetDoubleValue(); } },
-                { "membershipContributionMonthlyAmount", n => { MembershipContributionMonthlyAmount = n.GetDoubleValue(); } },
                 { "membershipContributionCurrency", n => { MembershipContributionCurrency = n.GetStringValue(); } },
+                { "membershipContributionMonthlyAmount", n => { MembershipContributionMonthlyAmount = n.GetDoubleValue(); } },
                 { "membershipContributionPublicTextDe", n => { MembershipContributionPublicTextDe = n.GetStringValue(); } },
                 { "membershipContributionPublicTextEn", n => { MembershipContributionPublicTextEn = n.GetStringValue(); } },
                 { "timeStampUpdated", n => { TimeStampUpdated = n.GetDateTimeOffsetValue(); } },
@@ -86,8 +86,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         {
             if(ReferenceEquals(writer, null)) throw new ArgumentNullException(nameof(writer));
             writer.WriteDoubleValue("membershipContributionAnnualAmount", MembershipContributionAnnualAmount);
-            writer.WriteDoubleValue("membershipContributionMonthlyAmount", MembershipContributionMonthlyAmount);
             writer.WriteStringValue("membershipContributionCurrency", MembershipContributionCurrency);
+            writer.WriteDoubleValue("membershipContributionMonthlyAmount", MembershipContributionMonthlyAmount);
             writer.WriteStringValue("membershipContributionPublicTextDe", MembershipContributionPublicTextDe);
             writer.WriteStringValue("membershipContributionPublicTextEn", MembershipContributionPublicTextEn);
             writer.WriteDateTimeOffsetValue("timeStampUpdated", TimeStampUpdated);

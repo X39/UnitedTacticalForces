@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System;
-using X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AssetsSnapshot;
+using X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthorityRole;
 using X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthoritySnapshot;
 using X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.CommunitySnapshot;
 using X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.EventAdminSnapshot;
@@ -21,10 +21,10 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
     public partial class CommandCenterRequestBuilder : BaseRequestBuilder
     {
-        /// <summary>The assetsSnapshot property</summary>
-        public global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AssetsSnapshot.AssetsSnapshotRequestBuilder AssetsSnapshot
+        /// <summary>The authorityRole property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthorityRole.AuthorityRoleRequestBuilder AuthorityRole
         {
-            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AssetsSnapshot.AssetsSnapshotRequestBuilder(PathParameters, RequestAdapter);
+            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthorityRole.AuthorityRoleRequestBuilder(PathParameters, RequestAdapter);
         }
         /// <summary>The authoritySnapshot property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthoritySnapshot.AuthoritySnapshotRequestBuilder AuthoritySnapshot

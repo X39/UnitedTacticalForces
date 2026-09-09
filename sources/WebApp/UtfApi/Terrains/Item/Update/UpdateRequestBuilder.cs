@@ -34,7 +34,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.Item.Update
         {
         }
         /// <summary>
-        ///         Only non-system properties are allowed:        * string Terrain.Title* Guid Terrain.ImageAssetFk
+        ///         Only non-system properties are allowed:        * string Terrain.Title* Guid? Terrain.ImageAssetFk
         /// </summary>
         /// <param name="body">Represents an update operation for a terrain, allowing modification of its title and gallery image.</param>
         /// <param name="cancellationToken">Cancellation token to use when cancelling requests</param>
@@ -60,7 +60,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.Item.Update
             await RequestAdapter.SendNoContentAsync(requestInfo, errorMapping, cancellationToken).ConfigureAwait(false);
         }
         /// <summary>
-        ///         Only non-system properties are allowed:        * string Terrain.Title* Guid Terrain.ImageAssetFk
+        ///         Only non-system properties are allowed:        * string Terrain.Title* Guid? Terrain.ImageAssetFk
         /// </summary>
         /// <returns>A <see cref="RequestInformation"/></returns>
         /// <param name="body">Represents an update operation for a terrain, allowing modification of its title and gallery image.</param>

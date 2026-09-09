@@ -31,7 +31,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string AvatarMimeType { get; set; }
 #endif
-        /// <summary>The discordId property</summary>
+        /// <summary>The discord user data.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? DiscordId { get; set; }
@@ -39,7 +39,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string DiscordId { get; set; }
 #endif
-        /// <summary>The discordUsername property</summary>
+        /// <summary>The discord user data.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? DiscordUsername { get; set; }
@@ -47,7 +47,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string DiscordUsername { get; set; }
 #endif
-        /// <summary>The eMail property</summary>
+        /// <summary>The email address of this user.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? EMail { get; set; }
@@ -71,7 +71,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>The unique identifier for the user.</summary>
         public Guid? PrimaryKey { get; set; }
-        /// <summary>The steamId64 property</summary>
+        /// <summary>The steam user data.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? SteamId64 { get; set; }

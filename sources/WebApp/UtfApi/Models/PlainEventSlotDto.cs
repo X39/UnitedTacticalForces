@@ -15,7 +15,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The assignedToFk property</summary>
+        /// <summary>The unique identifier of the user or entity assigned to this slot.</summary>
         public Guid? AssignedToFk { get; set; }
         /// <summary>The foreign key referencing the associated event.</summary>
         public Guid? EventFk { get; set; }
@@ -31,7 +31,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public bool? IsSelfAssignable { get; set; }
         /// <summary>Denotes whether a non-author user may view this slot.</summary>
         public bool? IsVisible { get; set; }
-        /// <summary>The side of this role.</summary>
+        /// <summary>The roleSymbol property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventSlotRoleSymbol? RoleSymbol { get; set; }
+        /// <summary>The side property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EArmaSide? Side { get; set; }
         /// <summary>Part 2 of the primary key.</summary>
         public int? SlotNumber { get; set; }
@@ -73,7 +75,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "group", n => { Group = n.GetStringValue(); } },
                 { "isSelfAssignable", n => { IsSelfAssignable = n.GetBoolValue(); } },
                 { "isVisible", n => { IsVisible = n.GetBoolValue(); } },
-                { "side", n => { Side = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EArmaSide?) n.GetIntValue(); } },
+                { "roleSymbol", n => { RoleSymbol = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventSlotRoleSymbol>(); } },
+                { "side", n => { Side = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EArmaSide>(); } },
                 { "slotNumber", n => { SlotNumber = n.GetIntValue(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
@@ -90,7 +93,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteStringValue("group", Group);
             writer.WriteBoolValue("isSelfAssignable", IsSelfAssignable);
             writer.WriteBoolValue("isVisible", IsVisible);
-            writer.WriteIntValue("side", (int?)Side);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventSlotRoleSymbol>("roleSymbol", RoleSymbol);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EArmaSide>("side", Side);
             writer.WriteIntValue("slotNumber", SlotNumber);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);

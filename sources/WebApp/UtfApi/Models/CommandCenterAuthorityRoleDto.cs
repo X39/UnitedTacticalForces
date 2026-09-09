@@ -25,7 +25,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>Amount of members assigned to the role.</summary>
         public int? MemberCount { get; set; }
-        /// <summary>The role metadata.</summary>
+        /// <summary>Represents a simplified Data Transfer Object (DTO) for a user role.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainRoleDto? Role { get; set; }

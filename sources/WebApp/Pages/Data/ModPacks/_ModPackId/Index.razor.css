@@ -5,6 +5,36 @@
     min-width: 0;
 }
 
+.mod-pack-content-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.modpack-choice-list {
+    display: grid;
+    gap: 0.65rem;
+    max-height: 22rem;
+    overflow: auto;
+}
+
+.modpack-choice-list label {
+    align-items: center;
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: auto minmax(10rem, 1fr) minmax(12rem, 2fr);
+}
+
+.modpack-choice-list small {
+    color: var(--utf-text-muted);
+}
+
+@media (max-width: 900px) {
+    .mod-pack-content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .mod-pack-workspace-header-meta {
     color: var(--utf-text-muted);
     display: flex;

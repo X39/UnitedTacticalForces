@@ -16,7 +16,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The addressLine1 property</summary>
+        /// <summary>First postal address line for formal Verein membership contact.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? AddressLine1 { get; set; }
@@ -24,7 +24,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string AddressLine1 { get; set; }
 #endif
-        /// <summary>The addressLine2 property</summary>
+        /// <summary>Optional second postal address line for formal Verein membership contact.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? AddressLine2 { get; set; }
@@ -32,7 +32,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string AddressLine2 { get; set; }
 #endif
-        /// <summary>The avatar property</summary>
+        /// <summary>Optional avatar bytes.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public byte[]? Avatar { get; set; }
@@ -40,7 +40,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public byte[] Avatar { get; set; }
 #endif
-        /// <summary>The avatarMimeType property</summary>
+        /// <summary>MIME type for byte[]? ProfileSettingsUpdate.Avatar.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? AvatarMimeType { get; set; }
@@ -48,7 +48,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string AvatarMimeType { get; set; }
 #endif
-        /// <summary>The city property</summary>
+        /// <summary>City for formal Verein membership contact.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? City { get; set; }
@@ -56,7 +56,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string City { get; set; }
 #endif
-        /// <summary>The country property</summary>
+        /// <summary>Country for formal Verein membership contact.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Country { get; set; }
@@ -66,7 +66,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>The dateOfBirth property</summary>
         public Date? DateOfBirth { get; set; }
-        /// <summary>The eMail property</summary>
+        /// <summary>Optional email address.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? EMail { get; set; }
@@ -74,7 +74,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string EMail { get; set; }
 #endif
-        /// <summary>The firstName property</summary>
+        /// <summary>Legal first name for formal Verein membership records.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? FirstName { get; set; }
@@ -82,7 +82,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string FirstName { get; set; }
 #endif
-        /// <summary>The lastName property</summary>
+        /// <summary>Legal last name for formal Verein membership records.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? LastName { get; set; }
@@ -90,7 +90,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string LastName { get; set; }
 #endif
-        /// <summary>The nickname property</summary>
+        /// <summary>The nickname shown throughout the application.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Nickname { get; set; }
@@ -98,7 +98,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Nickname { get; set; }
 #endif
-        /// <summary>The phoneNumber property</summary>
+        /// <summary>Optional phone number for formal Verein membership contact.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? PhoneNumber { get; set; }
@@ -106,7 +106,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string PhoneNumber { get; set; }
 #endif
-        /// <summary>The postalCode property</summary>
+        /// <summary>Postal code for formal Verein membership contact.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? PostalCode { get; set; }

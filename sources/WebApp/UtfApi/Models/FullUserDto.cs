@@ -39,7 +39,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public List<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainClaimDto> Claims { get; set; }
 #endif
-        /// <summary>The discordId property</summary>
+        /// <summary>The discord user data.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? DiscordId { get; set; }
@@ -47,7 +47,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string DiscordId { get; set; }
 #endif
-        /// <summary>The discordUsername property</summary>
+        /// <summary>The discord user data.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? DiscordUsername { get; set; }
@@ -55,7 +55,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string DiscordUsername { get; set; }
 #endif
-        /// <summary>The eMail property</summary>
+        /// <summary>The email address of this user.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? EMail { get; set; }
@@ -89,7 +89,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public List<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.RoleDto> Roles { get; set; }
 #endif
-        /// <summary>The steamId64 property</summary>
+        /// <summary>The steam user data.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? SteamId64 { get; set; }
@@ -97,7 +97,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string SteamId64 { get; set; }
 #endif
-        /// <summary>The vereinMemberNumber property</summary>
+        /// <summary>Optional association member number.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? VereinMemberNumber { get; set; }
@@ -105,7 +105,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string VereinMemberNumber { get; set; }
 #endif
-        /// <summary>The vereinMembershipStatus property</summary>
+        /// <summary>Formal Verein membership status, if a membership record exists.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? VereinMembershipStatus { get; set; }

@@ -47,8 +47,6 @@ import {
   formatEventTimeRemaining,
   groupEventSlots,
   isEventId,
-  modPackDownloadPath,
-  safeDownloadFileName,
   slotRowAction,
 } from "./eventModel";
 import { eventsMemberQueryKeys, eventsMemberService, saveBlob } from "./services";
@@ -96,6 +94,12 @@ export function EventDetailPage() {
     enabled: auth.isAuthenticated && assignedUserIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
+  const modPackFormatsQuery = useQuery({
+    queryKey: eventsMemberQueryKeys.modPackFormats(eventId),
+    queryFn: ({ signal }) => eventsMemberService.modPackFormats(eventId, signal),
+    enabled: validEventId,
+    retry: false,
+  });
 
   const invalidateEvent = async () => {
     await Promise.all([
@@ -113,11 +117,12 @@ export function EventDetailPage() {
     onSuccess: invalidateEvent,
   });
   const downloadMutation = useMutation({
-    mutationFn: async (event: FullEvent) => {
-      const path = modPackDownloadPath(event);
-      if (!path) return;
-      const blob = await eventsMemberService.downloadModPack(path);
-      saveBlob(blob, safeDownloadFileName(event.modPackDefinitionTitle));
+    mutationFn: async (format: { identifier: string; fileExtension: string }) => {
+      const blob = await eventsMemberService.downloadModPackFormat(eventId, format.identifier);
+      saveBlob(
+        blob,
+        `${(eventQuery.data?.modPackDefinitionTitle ?? "mod-pack").replace(/[\\/:*?"<>|]+/g, "-")}.${format.fileExtension}`,
+      );
     },
   });
 
@@ -592,15 +597,18 @@ export function EventDetailPage() {
                 <dd>{event.hostedBy.nickname || t("Pages_Events_Detail_Status_Pending")}</dd>
               </div>
             </dl>
-            <button
-              className="em-primary-slot-action"
-              type="button"
-              disabled={!modPackDownloadPath(event) || downloadMutation.isPending}
-              aria-busy={downloadMutation.isPending}
-              onClick={() => downloadMutation.mutate(event)}
-            >
-              <ArrowDownload20Regular aria-hidden="true" /> {t("Common_DownloadModpack")}
-            </button>
+            {(modPackFormatsQuery.data ?? []).map((format) => (
+              <button
+                className="em-primary-slot-action"
+                type="button"
+                key={format.identifier}
+                disabled={downloadMutation.isPending}
+                aria-busy={downloadMutation.isPending}
+                onClick={() => downloadMutation.mutate(format)}
+              >
+                <ArrowDownload20Regular aria-hidden="true" /> {format.displayName}
+              </button>
+            ))}
             {downloadMutation.isError && (
               <StatePanel kind="error">
                 {t(eventFailureResourceKey(downloadMutation.error, "download"))}

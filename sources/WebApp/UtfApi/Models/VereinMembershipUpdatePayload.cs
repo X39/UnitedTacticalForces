@@ -15,7 +15,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The memberNumber property</summary>
+        /// <summary>Optional association member number.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? MemberNumber { get; set; }
@@ -23,7 +23,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string MemberNumber { get; set; }
 #endif
-        /// <summary>The notes property</summary>
+        /// <summary>Administrative notes.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Notes { get; set; }
@@ -31,7 +31,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Notes { get; set; }
 #endif
-        /// <summary>The reason property</summary>
+        /// <summary>Audit reason.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Reason { get; set; }
@@ -39,7 +39,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Reason { get; set; }
 #endif
-        /// <summary>New membership status.</summary>
+        /// <summary>The status property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipStatus? Status { get; set; }
         /// <summary>The timeStampEnded property</summary>
         public DateTimeOffset? TimeStampEnded { get; set; }
@@ -73,7 +73,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "memberNumber", n => { MemberNumber = n.GetStringValue(); } },
                 { "notes", n => { Notes = n.GetStringValue(); } },
                 { "reason", n => { Reason = n.GetStringValue(); } },
-                { "status", n => { Status = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipStatus?) n.GetIntValue(); } },
+                { "status", n => { Status = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipStatus>(); } },
                 { "timeStampEnded", n => { TimeStampEnded = n.GetDateTimeOffsetValue(); } },
                 { "timeStampStarted", n => { TimeStampStarted = n.GetDateTimeOffsetValue(); } },
             };
@@ -88,7 +88,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteStringValue("memberNumber", MemberNumber);
             writer.WriteStringValue("notes", Notes);
             writer.WriteStringValue("reason", Reason);
-            writer.WriteIntValue("status", (int?)Status);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipStatus>("status", Status);
             writer.WriteDateTimeOffsetValue("timeStampEnded", TimeStampEnded);
             writer.WriteDateTimeOffsetValue("timeStampStarted", TimeStampStarted);
             writer.WriteAdditionalData(AdditionalData);

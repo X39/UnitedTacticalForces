@@ -23,7 +23,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto HostedBy { get; set; }
 #endif
-        /// <summary>The modPackRevision property</summary>
+        /// <summary>Represents a Data Transfer Object (DTO) for a mod pack revision in the system.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.ModPackRevisionDto? ModPackRevision { get; set; }
@@ -39,7 +39,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto Owner { get; set; }
 #endif
-        /// <summary>Core event data.</summary>
+        /// <summary>Represents detailed information about an event in the system.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainEventDto? PlainEvent { get; set; }
@@ -47,7 +47,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainEventDto PlainEvent { get; set; }
 #endif
-        /// <summary>The terrain property</summary>
+        /// <summary>Represents a data transfer object for plain terrain information.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainTerrainDto? Terrain { get; set; }

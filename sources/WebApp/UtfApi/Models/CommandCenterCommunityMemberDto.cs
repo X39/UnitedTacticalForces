@@ -59,7 +59,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public List<string> RoleTitles { get; set; }
 #endif
-        /// <summary>The vereinMemberNumber property</summary>
+        /// <summary>Optional association member number.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? VereinMemberNumber { get; set; }
@@ -71,7 +71,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public DateTimeOffset? VereinMembershipEnded { get; set; }
         /// <summary>The vereinMembershipStarted property</summary>
         public DateTimeOffset? VereinMembershipStarted { get; set; }
-        /// <summary>The vereinMembershipStatus property</summary>
+        /// <summary>Formal membership status if this user has a Verein membership record.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? VereinMembershipStatus { get; set; }

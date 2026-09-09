@@ -43,7 +43,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public Guid? PageForeignKey { get; set; }
         /// <summary>Represents the unique identifier for the entity.</summary>
         public Guid? PrimaryKey { get; set; }
-        /// <summary>The timestamp indicating when the entity was created.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>
         /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.WikiPageRevisionDto"/> and sets the default values.

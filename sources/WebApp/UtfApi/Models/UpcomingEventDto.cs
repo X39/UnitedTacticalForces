@@ -25,7 +25,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Description { get; set; }
 #endif
-        /// <summary>Specifies the user hosting the event.</summary>
+        /// <summary>The hostedBy property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto? HostedBy { get; set; }
@@ -49,8 +49,6 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance? MetaAcceptance { get; set; }
         /// <summary>Specifies the minimum number of participants that must accept the event.</summary>
         public int? MinimumAccepted { get; set; }
-        /// <summary>Whether this modpack is a composition of multiple modpack revisionsor not.</summary>
-        public bool? ModPackDefinitionIsComposition { get; set; }
         /// <summary>The name of this modpack.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -65,9 +63,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public Guid? PrimaryKey { get; set; }
         /// <summary>The count of participants who have rejected the event.</summary>
         public int? RejectedCount { get; set; }
-        /// <summary>Specifies the scheduled date and time when the event is set to occur.</summary>
+        /// <summary>The scheduledFor property</summary>
         public DateTimeOffset? ScheduledFor { get; set; }
-        /// <summary>The original scheduled date and time for the event.</summary>
+        /// <summary>The scheduledForOriginal property</summary>
         public DateTimeOffset? ScheduledForOriginal { get; set; }
         /// <summary>Indicates the title of the terrain associated with the event.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
@@ -77,7 +75,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string TerrainTitle { get; set; }
 #endif
-        /// <summary>Represents the timestamp when the event was created.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>Represents the title of the upcoming event.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
@@ -118,9 +116,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "imageAssetFk", n => { ImageAssetFk = n.GetGuidValue(); } },
                 { "imagePath", n => { ImagePath = n.GetStringValue(); } },
                 { "maybeCount", n => { MaybeCount = n.GetIntValue(); } },
-                { "metaAcceptance", n => { MetaAcceptance = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance?) n.GetIntValue(); } },
+                { "metaAcceptance", n => { MetaAcceptance = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance>(); } },
                 { "minimumAccepted", n => { MinimumAccepted = n.GetIntValue(); } },
-                { "modPackDefinitionIsComposition", n => { ModPackDefinitionIsComposition = n.GetBoolValue(); } },
                 { "modPackDefinitionTitle", n => { ModPackDefinitionTitle = n.GetStringValue(); } },
                 { "modPackRevisionTimeStampDownloaded", n => { ModPackRevisionTimeStampDownloaded = n.GetDateTimeOffsetValue(); } },
                 { "primaryKey", n => { PrimaryKey = n.GetGuidValue(); } },
@@ -145,9 +142,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteGuidValue("imageAssetFk", ImageAssetFk);
             writer.WriteStringValue("imagePath", ImagePath);
             writer.WriteIntValue("maybeCount", MaybeCount);
-            writer.WriteIntValue("metaAcceptance", (int?)MetaAcceptance);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventAcceptance>("metaAcceptance", MetaAcceptance);
             writer.WriteIntValue("minimumAccepted", MinimumAccepted);
-            writer.WriteBoolValue("modPackDefinitionIsComposition", ModPackDefinitionIsComposition);
             writer.WriteStringValue("modPackDefinitionTitle", ModPackDefinitionTitle);
             writer.WriteDateTimeOffsetValue("modPackRevisionTimeStampDownloaded", ModPackRevisionTimeStampDownloaded);
             writer.WriteGuidValue("primaryKey", PrimaryKey);

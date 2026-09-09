@@ -20,15 +20,15 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Users
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
     public partial class UsersRequestBuilder : BaseRequestBuilder
     {
-        /// <summary>The authenticationProviders property</summary>
-        public global::X39.UnitedTacticalForces.WebApp.UtfApi.Users.AuthenticationProviders.AuthenticationProvidersRequestBuilder AuthenticationProviders
-        {
-            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.Users.AuthenticationProviders.AuthenticationProvidersRequestBuilder(PathParameters, RequestAdapter);
-        }
         /// <summary>The all property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Users.All.AllRequestBuilder All
         {
             get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.Users.All.AllRequestBuilder(PathParameters, RequestAdapter);
+        }
+        /// <summary>The authenticationProviders property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.Users.AuthenticationProviders.AuthenticationProvidersRequestBuilder AuthenticationProviders
+        {
+            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.Users.AuthenticationProviders.AuthenticationProvidersRequestBuilder(PathParameters, RequestAdapter);
         }
         /// <summary>The login property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Users.Login.LoginRequestBuilder Login

@@ -1,594 +1,175 @@
 @page "/data/mod-packs/create"
 @page "/command/mod-packs/create"
 @layout CommandCenterLayout
-@using System.Globalization
-@using Microsoft.FluentUI.AspNetCore.Components
-@using X39.UnitedTacticalForces.WebApp.UtfApi.Models
-@using X39.UnitedTacticalForces.WebApp.Services
-@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
+@using X39.UnitedTacticalForces.Hosting.Contracts
 @using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository
+@using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository
 @inject IModPackRepository ModPackRepository
 @inject IGameServerRepository GameServerRepository
 @inject NavigationManager NavigationManager
-@inject ModPackAutoCompleteService ModPackAutoCompleteService
 @inject BaseUrl BaseUrl
 @inject MeService Me
-
+@inject IJSRuntime JsRuntime
 @inject IStringLocalizer<Language> Localizer
-<PageTitle>@Localizer[nameof(Language.Auto_CreateModPack_04e0630f)]</PageTitle>
 
+<PageTitle>@Localizer["ModPacks_CreateTitle"]</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges" OnBeforeInternalNavigation="ConfirmInternalNavigationAsync" />
 <div class="modpack-create-page">
-    <UtfCommandPageHeader Title="@(Localizer[nameof(Language.Auto_CreateModPack_04e0630f)])"
-                          Description="@(Localizer[nameof(Language.Auto_CreateAStandaloneHTMLModPackOrAComposition_fc31ae64)])">
-        <Actions>
-            <UtfCommandButton OnClick="@(() => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/mod-packs")))">
-                <Icon>
-                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())"/>
-                </Icon>
-                <ChildContent>@Localizer[nameof(Language.Auto_BackToModPacks_9037ecf6)]</ChildContent>
-            </UtfCommandButton>
-        </Actions>
+    <UtfCommandPageHeader Title="@Localizer["ModPacks_CreateTitle"]" Description="@Localizer["ModPacks_CreateDescription"]">
+        <Actions><UtfCommandButton OnClick="@(() => NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl("command/mod-packs")))"><ChildContent>@Localizer["ModPacks_Back"]</ChildContent></UtfCommandButton></Actions>
     </UtfCommandPageHeader>
-
     @if (!CanCreateModPacks)
     {
-        <section class="utf-empty-state">
-            <h2>@Localizer[nameof(Language.Auto_ModPackAdministratorAccessRequired_95eb8250)]</h2>
-            <p>@Localizer[nameof(Language.Auto_ModPackCreationIsVisibleOnlyToAuthorizedAsset_24514d7e)]</p>
-        </section>
+        <section class="utf-empty-state"><h2>@Localizer["ModPacks_AdminRequired"]</h2></section>
+    }
+    else if (_isLoading)
+    {
+        <section class="utf-state-panel" aria-live="polite" aria-busy="true">@Localizer["ModPacks_LoadingCapabilities"]</section>
     }
     else
     {
-        @if (_submitError is not null)
-        {
-            <div class="utf-state-panel utf-state-panel--warning" role="alert">
-                @_submitError
-            </div>
-        }
-
+        @if (_submitError is not null) { <div class="utf-state-panel utf-state-panel--warning" role="alert">@_submitError</div> }
         <section class="utf-panel modpack-create-flow">
-            <ol class="modpack-create-stepper" aria-label="@(Localizer[nameof(Language.Auto_CreateModPackSteps_cf46b9fc)])">
-                @foreach (var step in Steps)
+            <ol class="modpack-create-stepper" aria-label="@Localizer["ModPacks_CreateSteps"]">
+                @foreach (var step in Enumerable.Range(1, 3))
                 {
-                    <li class="@GetStepClass(step.Index)" @key="step.Index">
-                        <button type="button" @onclick="@(() => SetStep(step.Index))">
-                            <span>@step.Index.ToString(CultureInfo.CurrentCulture)</span>
-                            <strong>@GetStepLabel(step.Index)</strong>
-                            <small>@GetStepDescription(step.Index)</small>
-                        </button>
-                    </li>
+                    <li class="@GetStepClass(step)"><button type="button" @onclick="@(() => _step = step)"><span>@step</span><strong>@GetStepLabel(step)</strong><small>@GetStepDescription(step)</small></button></li>
                 }
             </ol>
-
             <main class="modpack-create-step">
-                @switch (_step)
+                @if (_step == 1)
                 {
-                    case 2:
-                        <section class="modpack-create-section">
-                            <div class="modpack-create-section__heading">
-                                <div>
-                                    <span class="utf-kicker">@(_kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Composition)] : Localizer[nameof(Language.Standalone)])</span>
-                                    <h2>@(_kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Auto_SelectMemberRevisions_686f0cd0)] : Localizer[nameof(Language.Auto_UploadHTMLArtifact_d37a21b4)])</h2>
-                                </div>
-                                <span>@GetArtifactStatusLabel()</span>
+                    <section class="modpack-create-section">
+                        <div class="modpack-create-section__heading"><div><span class="utf-kicker">@Localizer["ModPacks_Definition"]</span><h2>@Localizer["ModPacks_PackageIdentity"]</h2></div></div>
+                        <label class="modpack-create-field" for="modpack-game"><span>@Localizer["ModPacks_Game"]</span></label><select id="modpack-game" class="utf-command-input" value="@_gameIdentifier" @onchange="ChangeGameAsync">@foreach (var game in _capabilities.Where(q => q.SupportsModPacks)) { <option value="@game.GameIdentifier">@game.DisplayName</option> }</select>
+                        <label class="modpack-create-field" for="modpack-title"><span>@Localizer["ModPacks_Title"]</span></label><input id="modpack-title" class="utf-command-input" maxlength="1024" @bind="_title" @bind:event="oninput" />
+                        @if (SelectedCapability is { } capability)
+                        {
+                            <div class="modpack-create-review-panel"><strong>@Localizer["ModPacks_SupportedSources"]</strong><span>@string.Join(", ", capability.ModProviderBindings.Select(q => q.DisplayName))</span>
+                                @if (capability.ModPackFormats.Count > 0) { <span>@Localizer["ModPacks_ImportExport", string.Join(", ", capability.ModPackFormats.Select(q => q.DisplayName))]</span> }
                             </div>
-
-                            @if (_kind is ModPackCreationKind.Composition)
+                        }
+                    </section>
+                }
+                else if (_step == 2)
+                {
+                    <section class="modpack-create-section">
+                        <div class="modpack-create-section__heading"><div><span class="utf-kicker">@Localizer["ModPacks_Content"]</span><h2>@Localizer["ModPacks_ModsAndNested"]</h2></div><span>@Localizer["ModPacks_MemberCount", MemberCount]</span></div>
+                        @if (SelectedCapability?.ModPackFormats.Count > 0)
+                        {
+                            <div class="modpack-source-entry"><label for="modpack-format-select">@Localizer["ModPacks_ImportFormat"]</label><select id="modpack-format-select" class="utf-command-input" @bind="_selectedFormatIdentifier">@foreach (var format in SelectedCapability.ModPackFormats) { <option value="@format.Identifier">@format.DisplayName</option> }</select><FluentInputFile Id="modpack-format-import" AriaLabel="@Localizer["ModPacks_ImportFormat"]" Mode="InputFileMode.Stream" Multiple="false" MaximumFileCount="1" MaximumFileSize="@(SelectedFormat?.MaximumSizeBytes ?? 4 * Constants.File.Megabyte)" Accept="@SelectedFormat?.FileExtension" OnCompleted="ImportFormatAsync" /></div>
+                        }
+                        @if (UploadedBinding is { } upload)
+                        {
+                            <div class="modpack-source-entry"><label for="modpack-artifact-title">@Localizer["ModPacks_ArtifactTitle"]</label><input id="modpack-artifact-title" class="utf-command-input" @bind="_artifactTitle"/><label for="modpack-artifact-installer">@Localizer["ModPacks_Installer"]</label><select id="modpack-artifact-installer" class="utf-command-input" @bind="_artifactInstaller">@foreach (var installer in upload.InstallerIdentifiers) { <option value="@installer">@installer</option> }</select><FluentInputFile Id="modpack-artifact-upload" AriaLabel="@Localizer["ModPacks_UploadArtifact"]" Mode="InputFileMode.Stream" Multiple="false" MaximumFileCount="1" MaximumFileSize="@(2L * 1024 * 1024 * 1024)" Accept=".zip,application/zip" OnCompleted="UploadArtifactAsync" /></div>
+                        }
+                        <div class="modpack-source-entry">
+                            <label class="modpack-create-field modpack-create-field--wide"><span>@Localizer["ModPacks_PasteSources"]</span><textarea aria-label="@Localizer["ModPacks_PasteSources"]" class="utf-command-input" rows="4" @bind="_sourceInput"></textarea></label>
+                            <button class="utf-button utf-button--ghost" type="button" disabled="@_isResolving" @onclick="PreviewSourcesAsync">@(_isResolving ? Localizer["ModPacks_Resolving"] : Localizer["ModPacks_PreviewSources"])</button>
+                        </div>
+                        @if (_sourcePreviews.Count > 0)
+                        {
+                            <section class="modpack-create-review-panel" aria-labelledby="source-preview-title"><header><strong id="source-preview-title">@Localizer["ModPacks_SourceReview"]</strong></header>
+                            @foreach (var draft in _sourcePreviews)
                             {
-                                <div class="modpack-create-composition">
-                                    <FluentAutocomplete Multiple="true"
-                                                        MaximumSelectedOptions="100"
-                                                        Required="true"
-                                                        TOption="UtfApi.Models.FullModPackDefinitionDto"
-                                                        @bind-SelectedOptions="_selectedModPacks"
-                                                        OnOptionsSearch="OnStandaloneOptionsSearch"
-                                                        OptionText="ModPackAutoCompleteService.FullModPackDefinitionDto.OptionText"
-                                                        Label="@(Localizer[nameof(Language.Auto_StandaloneModPacks_34afa7f0)])"
-                                                        Placeholder="@(Localizer[nameof(Language.Auto_SearchStandaloneModPacks_888f2c1f)])"/>
-                                    <span>@SelectedModPacksLabel</span>
-                                </div>
-                                @if (_selectedModPacks.Any())
+                                <article class="modpack-source-preview" @key="draft.Input"><div><strong>@draft.Preview.Source.Title</strong><small>@draft.Preview.Source.ProviderIdentifier · @draft.Preview.Source.CanonicalSourceIdentifier</small></div>
+                                @if (draft.Preview.ExistingModId is not null) { <span class="utf-status utf-status--success"><span class="utf-status__dot"></span>@Localizer["ModPacks_CatalogMatch"]</span> }
+                                else
                                 {
-                                    <div class="utf-command-table-scroll modpack-create-selection-scroll">
-                                        <table class="utf-command-table modpack-create-selection-table">
-                                            <thead>
-                                            <tr>
-                                                <th>@Localizer[nameof(Language.Package)]</th>
-                                                <th>@Localizer[nameof(Language.Auto_LatestRevision_305ad7b9)]</th>
-                                                <th>@Localizer[nameof(Language.Created)]</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach (var modPack in _selectedModPacks)
-                                            {
-                                                var revision = GetLatestActiveRevision(modPack);
-                                                <tr @key="modPack.PrimaryKey">
-                                                    <td>
-                                                        <strong>@FormatTitle(modPack.Title)</strong>
-                                                        <span>@FormatKey(modPack.PrimaryKey)</span>
-                                                    </td>
-                                                    <td>@FormatKey(revision?.PrimaryKey)</td>
-                                                    <td>@FormatDate(revision?.TimeStampCreated)</td>
-                                                </tr>
-                                            }
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                    <label>@Localizer["ModPacks_Usage"]<select aria-label="@Localizer["ModPacks_Usage"]" class="utf-command-input" @bind="draft.UsageRole">@foreach (var role in Enum.GetValues<EModUsageRole>()) { <option value="@role">@role</option> }</select></label>
+                                    <label>@Localizer["ModPacks_Installer"]<select aria-label="@Localizer["ModPacks_Installer"]" class="utf-command-input" @bind="draft.InstallerIdentifier">@foreach (var installer in draft.Preview.InstallerIdentifiers) { <option value="@installer">@installer</option> }</select></label>
+                                    <label>@Localizer["ModPacks_VersionRef"]<input aria-label="@Localizer["ModPacks_VersionRef"]" class="utf-command-input" @bind="draft.VersionSelector" /></label>
                                 }
+                                <button class="utf-button utf-button--ghost" type="button" @onclick="@(() => RemovePreview(draft))">@Localizer["ModPacks_Remove"]</button></article>
                             }
-                            else
-                            {
-                                <div class="modpack-create-file">
-                                    <FluentInputFile Id="modpack-create-html-file-uploader"
-                                                     Mode="InputFileMode.Stream"
-                                                     Multiple="false"
-                                                     MaximumFileCount="1"
-                                                     MaximumFileSize="@(10 * Constants.File.Megabyte)"
-                                                     Accept=".html,.htm,text/html"
-                                                     OnCompleted="@OnHtmlCompletedAsync">
-                                        <ChildContent>
-                                            <label for="modpack-create-html-file-uploader">
-                                                <FluentIcon Value="@(new Icons.Regular.Size32.ArrowUpload())"/>
-                                            </label>
-                                            <div>@Localizer[nameof(Language.Auto_DropHTMLHereOrBrowse_7f1c5302)]</div>
-                                            <div>@Localizer[nameof(Language.Auto_HTMLOrHTMUpTo10MB_cfe507a7)]</div>
-                                        </ChildContent>
-                                    </FluentInputFile>
-                                    <span>@HtmlFileLabel</span>
-                                </div>
-                                @if (!string.IsNullOrWhiteSpace(_html))
-                                {
-                                    <section class="modpack-create-preview">
-                                        <span class="utf-kicker">@Localizer[nameof(Language.Auto_ArtifactPreview_473d17d7)]</span>
-                                        <iframe title="@(Localizer[nameof(Language.Auto_UploadedModPackHTMLPreview_43533584)])"
-                                                sandbox=""
-                                                srcdoc="@_html"></iframe>
-                                    </section>
-                                }
-                            }
-                        </section>
-                        break;
-                    case 3:
-                        <section class="modpack-create-section">
-                            <div class="modpack-create-section__heading">
-                                <div>
-                                    <span class="utf-kicker">@Localizer[nameof(Language.Review)]</span>
-                                    <h2>@Localizer[nameof(Language.Auto_ConfirmPackage_c66a3a8e)]</h2>
-                                </div>
-                                <span class="@GetReviewStatusClass()">
-                                    <span class="utf-status__dot"></span>@GetReviewStatusLabel()
-                                </span>
-                            </div>
-                            <div class="modpack-create-review-grid">
-                                <article class="modpack-create-review-panel">
-                                    <header>
-                                        <strong>@Localizer[nameof(Language.Definition)]</strong>
-                                        <button type="button" @onclick="@(() => SetStep(1))">@Localizer[nameof(Language.Edit)]</button>
-                                    </header>
-                                    <dl>
-                                        <dt>@Localizer[nameof(Language.Title)]</dt>
-                                        <dd>@GetTitleLabel()</dd>
-                                        <dt>@Localizer[nameof(Language.Type)]</dt>
-                                        <dd>@GetKindLabel()</dd>
-                                        <dt>@Localizer[nameof(Language.Owner)]</dt>
-                                        <dd>@(Me.IsAuthenticated ? Me.User.Nickname ?? Localizer[nameof(Language.Auto_CurrentUser_1572da5f)].Value : Localizer[nameof(Language.Auto_CurrentUser_1572da5f)].Value)</dd>
-                                    </dl>
-                                </article>
-                                <article class="modpack-create-review-panel">
-                                    <header>
-                                        <strong>@(_kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Members)] : Localizer[nameof(Language.Artifact)])</strong>
-                                        <button type="button" @onclick="@(() => SetStep(2))">@Localizer[nameof(Language.Edit)]</button>
-                                    </header>
-                                    <dl>
-                                        @if (_kind is ModPackCreationKind.Composition)
-                                        {
-                                            <dt>@Localizer[nameof(Language.Selected)]</dt>
-                                            <dd>@SelectedModPacksLabel</dd>
-                                            <dt>@Localizer[nameof(Language.Auto_RevisionIDs_ba9f5fcc)]</dt>
-                                            <dd>@GetSelectedRevisionSummary()</dd>
-                                        }
-                                        else
-                                        {
-                                            <dt>@Localizer[nameof(Language.File)]</dt>
-                                            <dd>@HtmlFileLabel</dd>
-                                            <dt>@Localizer[nameof(Language.Size)]</dt>
-                                            <dd>@GetHtmlSizeLabel()</dd>
-                                        }
-                                    </dl>
-                                </article>
-                            </div>
-                            <section class="modpack-create-final-checklist">
-                                @foreach (var item in GetReadinessRows())
-                                {
-                                    <div class="@GetChecklistRowClass(item.IsComplete)" @key="item.Label">
-                                        <span class="utf-status__dot"></span>
-                                        <strong>@item.Label</strong>
-                                        <span>@(item.IsComplete ? Localizer[nameof(Language.Complete)] : Localizer[nameof(Language.Auto_NeedsAttention_c1ebc781)])</span>
-                                    </div>
-                                }
                             </section>
+                        }
+                        <section class="modpack-create-review-panel"><header><strong>@Localizer["ModPacks_Catalog"]</strong><button type="button" @onclick="SearchCatalogAsync">@Localizer["ModPacks_Search"]</button></header>
+                            <label class="modpack-create-field"><span>@Localizer["ModPacks_FindMods"]</span><input aria-label="@Localizer["ModPacks_FindMods"]" class="utf-command-input" @bind="_catalogSearch" /></label>
+                            <div class="modpack-choice-list">@foreach (var mod in _catalog) { <label @key="mod.PrimaryKey"><input type="checkbox" checked="@_selectedModIds.Contains(mod.PrimaryKey)" @onchange="@(args => ToggleMod(mod.PrimaryKey, args))" /> <strong>@mod.Title</strong><small>@mod.ProviderIdentifier · @mod.CanonicalSourceIdentifier</small></label> }</div>
                         </section>
-                        break;
-                    default:
-                        <section class="modpack-create-section">
-                            <div class="modpack-create-section__heading">
-                                <div>
-                                    <span class="utf-kicker">@Localizer[nameof(Language.Definition)]</span>
-                                    <h2>@Localizer[nameof(Language.Auto_PackageIdentity_1284e9ed)]</h2>
-                                </div>
-                                <span>@GetDefinitionStatusLabel()</span>
-                            </div>
-                            <div class="modpack-create-kind-grid" role="radiogroup" aria-label="@(Localizer[nameof(Language.Auto_ModPackType_4d91d271)])">
-                                <button class="@GetKindButtonClass(ModPackCreationKind.Standalone)"
-                                        type="button"
-                                        @onclick="@(() => SetKind(ModPackCreationKind.Standalone))">
-                                    <span class="utf-status utf-status--neutral">
-                                        <span class="utf-status__dot"></span>@Localizer[nameof(Language.Standalone)]
-                                    </span>
-                                    <strong>@Localizer[nameof(Language.Auto_HTMLPackage_56c8e9c6)]</strong>
-                                    <small>@Localizer[nameof(Language.Auto_CreatesAnOwnedModPackDefinitionWithAnInitial_61cd85d0)]</small>
-                                </button>
-                                <button class="@GetKindButtonClass(ModPackCreationKind.Composition)"
-                                        type="button"
-                                        @onclick="@(() => SetKind(ModPackCreationKind.Composition))">
-                                    <span class="utf-status utf-status--info">
-                                        <span class="utf-status__dot"></span>@Localizer[nameof(Language.Composition)]
-                                    </span>
-                                    <strong>@Localizer[nameof(Language.Auto_RevisionBundle_8f3de2a4)]</strong>
-                                    <small>@Localizer[nameof(Language.Auto_CreatesAPackageFromLatestActiveRevisionsOfExisting_80b2a4d8)]</small>
-                                </button>
-                            </div>
-                            <label class="modpack-create-field modpack-create-field--wide">
-                                <span>@Localizer["Hosting_Create_Game"]</span>
-                                <select class="utf-command-input" value="@_gameIdentifier" @onchange="ChangeGame">
-                                    @foreach (var capability in _capabilities)
-                                    {
-                                        <option value="@capability.GameIdentifier">@capability.DisplayName</option>
-                                    }
-                                </select>
-                            </label>
-                            <label class="modpack-create-field modpack-create-field--wide">
-                                <span>@Localizer[nameof(Language.Title)]</span>
-                                <input class="utf-command-input" maxlength="1024" @bind="_title"/>
-                            </label>
-                        </section>
-                        break;
+                        <section class="modpack-create-review-panel"><header><strong>@Localizer["ModPacks_Nested"]</strong></header><div class="modpack-choice-list">@foreach (var pack in _availablePacks) { <label @key="pack.DefinitionId"><input type="checkbox" checked="@_selectedPackIds.Contains(pack.DefinitionId)" @onchange="@(args => TogglePack(pack.DefinitionId, args))" /> <strong>@pack.Title</strong></label> }</div></section>
+                    </section>
+                }
+                else
+                {
+                    <section class="modpack-create-section"><div class="modpack-create-section__heading"><div><span class="utf-kicker">@Localizer["ModPacks_Review"]</span><h2>@Localizer["ModPacks_CommitRevision"]</h2></div></div>
+                        <div class="modpack-create-review-grid"><article class="modpack-create-review-panel"><strong>@_title</strong><span>@SelectedCapability?.DisplayName</span></article><article class="modpack-create-review-panel"><strong>@Localizer["ModPacks_ContentMemberCount", MemberCount]</strong><span>@Localizer["ModPacks_ContentMemberBreakdown", _selectedModIds.Count, _sourcePreviews.Count, _selectedPackIds.Count]</span></article></div>
+                        <p>@Localizer["ModPacks_CreateExplanation"]</p>
+                    </section>
                 }
             </main>
-
-            <footer class="modpack-create-command-bar">
-                <div>
-                    <span>@GetCurrentStepLabel()</span>
-                    <strong>@GetReviewStatusLabel()</strong>
-                </div>
-                <div>
-                    <button class="utf-button utf-button--ghost"
-                            type="button"
-                            disabled="@(_step <= 1 || _isSubmitting)"
-                            @onclick="PreviousStep">
-                        @Localizer[nameof(Language.Previous)]
-                    </button>
-                    @if (_step < FinalStep)
-                    {
-                        <button class="utf-button utf-button--primary"
-                                type="button"
-                                @onclick="NextStep">
-                            @Localizer[nameof(Language.Next)]
-                        </button>
-                    }
-                    else
-                    {
-                        <button class="utf-button utf-button--primary"
-                                type="button"
-                                disabled="@(!CanCreate)"
-                                @onclick="CreateModPackAsync">
-                            @(_isSubmitting ? Localizer[nameof(Language.Pages_Data_ModPacks_Create_ActionCreating)] : Localizer[nameof(Language.Pages_Data_ModPacks_Create_ActionCreate)])
-                        </button>
-                    }
-                </div>
-            </footer>
+            <footer class="modpack-create-command-bar"><span>@GetStepLabel(_step)</span><div><button class="utf-button utf-button--ghost" type="button" disabled="@(_step == 1 || _isSubmitting)" @onclick="@(() => _step--)">@Localizer["ModPacks_Previous"]</button>
+                @if (_step < 3) { <button class="utf-button utf-button--primary" type="button" disabled="@(!IsStepComplete(_step))" @onclick="@(() => _step++)">@Localizer["ModPacks_Next"]</button> }
+                else { <button class="utf-button utf-button--primary" type="button" disabled="@(!CanCreate)" @onclick="CreateModPackAsync">@(_isSubmitting ? Localizer["ModPacks_Creating"] : Localizer["ModPacks_CreateTitle"])</button> }
+            </div></footer>
         </section>
     }
 </div>
 
 @code {
-    private const int FinalStep = 3;
-    private const string MissingValue = "n/a";
+    private IReadOnlyList<GameServerCapabilityInfo> _capabilities = [];
+    private IReadOnlyList<ModCatalogItemInfo> _catalog = [];
+    private IReadOnlyList<NormalizedModPackListItemInfo> _availablePacks = [];
+    private readonly HashSet<Guid> _selectedModIds = [];
+    private readonly HashSet<long> _selectedPackIds = [];
+    private readonly List<SourceDraft> _sourcePreviews = [];
+    private string _gameIdentifier = string.Empty;
+    private string _title = string.Empty;
+    private string _sourceInput = string.Empty;
+    private string _catalogSearch = string.Empty;
+    private string _artifactTitle = string.Empty;
+    private string _artifactInstaller = string.Empty;
+    private string _selectedFormatIdentifier = string.Empty;
+    private string? _submitError;
+    private int _step = 1;
+    private bool _isLoading = true;
+    private bool _isResolving;
+    private bool _isSubmitting;
+    private bool CanCreateModPacks => Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All);
+    private GameServerCapabilityInfo? SelectedCapability => _capabilities.FirstOrDefault(q => q.GameIdentifier == _gameIdentifier);
+    private ModPackFormatInfo? SelectedFormat => SelectedCapability?.ModPackFormats.FirstOrDefault(q => q.Identifier == _selectedFormatIdentifier) ?? SelectedCapability?.ModPackFormats.FirstOrDefault();
+    private ModProviderBindingInfo? UploadedBinding => SelectedCapability?.ModProviderBindings.FirstOrDefault(q => q.ProviderIdentifier == "uploaded-artifact");
+    private int MemberCount => _selectedModIds.Count + _sourcePreviews.Count + _selectedPackIds.Count;
+    private bool CanCreate => !_isSubmitting && IsStepComplete(1) && IsStepComplete(2);
+    private bool HasUnsavedChanges => !_isSubmitting && (!string.IsNullOrWhiteSpace(_title) || MemberCount > 0);
 
-    private string                                              _title            = string.Empty;
-    private IReadOnlyList<GameServerCapabilityInfo>              _capabilities     = [];
-    private string                                               _gameIdentifier   = string.Empty;
-    private string                                              _html             = string.Empty;
-    private string                                              _htmlFileName     = string.Empty;
-    private IEnumerable<UtfApi.Models.FullModPackDefinitionDto> _selectedModPacks = [];
-    private ModPackCreationKind                                 _kind             = ModPackCreationKind.Standalone;
-    private int                                                 _step             = 1;
-    private bool                                                _isSubmitting;
-    private string?                                             _submitError;
-    private string?                                             _appliedKind;
-
-    [SupplyParameterFromQuery(Name = "kind")]
-    public string? Kind { get; set; }
-
-    private static readonly IReadOnlyList<StepItem> Steps =
-    [
-        new(1),
-        new(2),
-        new(3),
-    ];
-
-    private bool CanCreateModPacks
-        => Me.HasBaseClaimOrModPackAdmin(Claims.Creation.ModPack, Claims.ResourceBased.ModPack.All);
-
-    private bool CanCreate
-        => !_isSubmitting
-           && !string.IsNullOrWhiteSpace(_gameIdentifier)
-           && !string.IsNullOrWhiteSpace(_title)
-           && (_kind is ModPackCreationKind.Composition
-               ? _selectedModPacks.Any() && _selectedModPacks.All((modPack) => GetLatestActiveRevision(modPack)?.PrimaryKey is not null)
-               : !string.IsNullOrWhiteSpace(_html));
-
-    private string HtmlFileLabel
-        => string.IsNullOrWhiteSpace(_htmlFileName) ? Localizer[nameof(Language.Auto_HTMLArtifactRequired_aa5544da)].Value : _htmlFileName;
-
-    private string SelectedModPacksLabel
-    {
-        get
-        {
-            var count = _selectedModPacks.Count();
-            return count == 1
-                ? Localizer[nameof(Language.Auto_1StandalonePackSelected_d8f0dc9c)].Value
-                : Localizer[nameof(Language.Auto_StandalonePacksSelected_e437ccf0), count].Value;
-        }
-    }
-
-    protected override void OnParametersSet()
-    {
-        if (string.Equals(_appliedKind, Kind, StringComparison.OrdinalIgnoreCase))
-            return;
-
-        _kind = ParseKind(Kind);
-        _appliedKind = Kind;
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        _capabilities = await GameServerRepository.GetCapabilitiesAsync();
-        _gameIdentifier = _capabilities.FirstOrDefault()?.GameIdentifier ?? string.Empty;
-    }
-
-    private void ChangeGame(ChangeEventArgs args)
-    {
-        _gameIdentifier = args.Value?.ToString() ?? string.Empty;
-        _selectedModPacks = [];
-    }
-
-    private void SetStep(int step)
-        => _step = Math.Clamp(step, 1, FinalStep);
-
-    private void PreviousStep()
-        => SetStep(_step - 1);
-
-    private void NextStep()
-        => SetStep(_step + 1);
-
-    private void SetKind(ModPackCreationKind kind)
-    {
-        if (_kind == kind)
-            return;
-
-        _kind = kind;
-        _submitError = null;
-    }
-
+    protected override async Task OnInitializedAsync() { try { _capabilities = await GameServerRepository.GetCapabilitiesAsync(); _gameIdentifier = _capabilities.FirstOrDefault(q => q.SupportsModPacks)?.GameIdentifier ?? string.Empty; _selectedFormatIdentifier = SelectedCapability?.ModPackFormats.FirstOrDefault()?.Identifier ?? string.Empty; _artifactInstaller = UploadedBinding?.InstallerIdentifiers.FirstOrDefault() ?? string.Empty; await LoadChoicesAsync(); } catch (Exception exception) { _submitError = UserFacingError.Message(exception); } finally { _isLoading = false; } }
+    private async Task ChangeGameAsync(ChangeEventArgs args) { _gameIdentifier = args.Value?.ToString() ?? string.Empty; _selectedModIds.Clear(); _selectedPackIds.Clear(); _sourcePreviews.Clear(); _selectedFormatIdentifier = SelectedCapability?.ModPackFormats.FirstOrDefault()?.Identifier ?? string.Empty; await LoadChoicesAsync(); }
+    private async Task LoadChoicesAsync() { if (string.IsNullOrWhiteSpace(_gameIdentifier)) return; _catalog = await ModPackRepository.GetModsAsync(_gameIdentifier); _availablePacks = await ModPackRepository.GetNormalizedModPacksAsync(_gameIdentifier); }
+    private async Task SearchCatalogAsync() => _catalog = await ModPackRepository.GetModsAsync(_gameIdentifier, _catalogSearch);
+    private async Task ImportFormatAsync(IEnumerable<FluentInputFileEventArgs> files) { if (files.SingleOrDefault() is not { Stream: not null } file || SelectedFormat is null) return; _isResolving = true; try { var preview = await ModPackRepository.PreviewFormatAsync(_gameIdentifier, SelectedFormat.Identifier, file.Name, file.Stream); if (string.IsNullOrWhiteSpace(_title)) _title = preview.Title; _sourcePreviews.Clear(); foreach (var entry in preview.Entries) { var binding = SelectedCapability?.ModProviderBindings.FirstOrDefault(q => q.ProviderIdentifier == entry.Source.ProviderIdentifier); if (binding is null) { _submitError = Localizer["ModPacks_UnsupportedImportedProvider", entry.Source.ProviderIdentifier]; continue; } if (string.IsNullOrWhiteSpace(entry.SourceInput)) { _submitError = Localizer["ModPacks_InvalidImportedSource", entry.Source.CanonicalSourceIdentifier]; continue; } _sourcePreviews.Add(new SourceDraft(entry.SourceInput, new ModSourcePreviewInfo { SourceInput = entry.SourceInput, Source = entry.Source, ExistingModId = entry.ExistingModId, InstallerIdentifiers = binding.InstallerIdentifiers.ToArray() })); } if (preview.Warnings.Count > 0) _submitError = string.Join(" ", preview.Warnings); } catch (Exception exception) { _submitError = UserFacingError.Message(exception); } finally { _isResolving = false; } }
+    private async Task UploadArtifactAsync(IEnumerable<FluentInputFileEventArgs> files) { if (files.SingleOrDefault() is not { Stream: not null } file || UploadedBinding is null) return; _isResolving = true; try { var installer = string.IsNullOrWhiteSpace(_artifactInstaller) ? UploadedBinding.InstallerIdentifiers.FirstOrDefault() : _artifactInstaller; if (string.IsNullOrWhiteSpace(installer)) { _submitError = Localizer["ModPacks_InstallerUnavailable"]; return; } var created = await ModPackRepository.CreateUploadedArtifactModAsync(_gameIdentifier, string.IsNullOrWhiteSpace(_artifactTitle) ? file.Name : _artifactTitle, EModUsageRole.Shared, installer, file.Name, file.Stream); _selectedModIds.Add(created.PrimaryKey); await SearchCatalogAsync(); } catch (Exception exception) { _submitError = UserFacingError.Message(exception); } finally { _isResolving = false; } }
+    private async Task PreviewSourcesAsync() { var inputs = _sourceInput.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct().ToArray(); if (inputs.Length == 0) return; _isResolving = true; _submitError = null; try { var inputMap = inputs.ToDictionary(q => q, StringComparer.Ordinal); var identities = new HashSet<string>(StringComparer.OrdinalIgnoreCase); var previews = await ModPackRepository.PreviewSourcesAsync(_gameIdentifier, inputs); _sourcePreviews.Clear(); foreach (var preview in previews) { var key = SourceKey(preview.Source.ProviderIdentifier, preview.Source.CanonicalSourceIdentifier); if (!inputMap.TryGetValue(preview.SourceInput, out var input) || !identities.Add(key)) { _submitError = Localizer["ModPacks_PreviewCorrelationError"]; continue; } inputMap.Remove(preview.SourceInput); _sourcePreviews.Add(new SourceDraft(input, preview)); } if (inputMap.Count > 0) _submitError = Localizer["ModPacks_PreviewCorrelationError"]; } catch (Exception exception) { _submitError = UserFacingError.Message(exception); } finally { _isResolving = false; } }
     private async Task CreateModPackAsync()
     {
-        if (!CanCreate)
-            return;
-
-        _isSubmitting = true;
-        _submitError = null;
-
+        if (MemberCount == 0) { _submitError = Localizer["ModPacks_RevisionNonEmpty"]; return; } if (!CanCreate) return; _isSubmitting = true; _submitError = null;
         try
         {
-            PlainModPackDefinitionDto createdModPack;
-            if (_kind is ModPackCreationKind.Composition)
-            {
-                createdModPack = await ModPackRepository.CreateModPackAsync(
-                        new UtfApi.Models.ModPackCompositionCreationPayload
-                        {
-                            GameIdentifier = _gameIdentifier,
-                            Title          = _title.Trim(),
-                            RevisionIds = GetLatestRevisionIds()
-                                .Cast<long?>()
-                                .ToList(),
-                        }
-                    )
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                createdModPack = await ModPackRepository.CreateModPackAsync(
-                        new UtfApi.Models.ModPackCreationPayload
-                        {
-                            GameIdentifier = _gameIdentifier,
-                            Title          = _title.Trim(),
-                            Html           = _html,
-                        }
-                    )
-                    .ConfigureAwait(false);
-            }
-
-            var route = createdModPack.PrimaryKey is { } primaryKey
-                ? $"command/mod-packs/{primaryKey}"
-                : "command/mod-packs";
-            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl(route));
+            var existingIds = _selectedModIds.Concat(_sourcePreviews.Where(q => q.Preview.ExistingModId.HasValue).Select(q => q.Preview.ExistingModId!.Value)).Distinct();
+            var newMods = _sourcePreviews.Where(q => q.Preview.ExistingModId is null).Select(q => new NormalizedModDraftPayload { Title = q.Preview.Source.Title, ProviderIdentifier = q.Preview.Source.ProviderIdentifier, Source = q.Input, VersionSelector = q.VersionSelector, UsageRole = q.UsageRole, InstallerIdentifier = q.InstallerIdentifier }).ToArray();
+            var result = await ModPackRepository.CreateNormalizedModPackAsync(new NormalizedModPackPayload { GameIdentifier = _gameIdentifier, Title = _title.Trim(), Revision = new NormalizedModPackRevisionPayload { Mods = existingIds.Select(q => new NormalizedModMembershipPayload(q, null)).ToArray(), NewMods = newMods, Dependencies = _selectedPackIds.Select(q => new NormalizedModPackDependencyPayload(q, null)).ToArray() } });
+            NavigationManager.NavigateTo(BaseUrl.ResolveSelfUrl($"command/mod-packs/{result.DefinitionId}"));
         }
-        catch
-        {
-            _submitError = Localizer[nameof(Language.Auto_ModPackCouldNotBeCreatedCheckThePackage_cd6c5632)].Value;
-        }
-        finally
-        {
-            _isSubmitting = false;
-        }
+        catch (Exception exception) { _submitError = UserFacingError.Message(exception); }
+        finally { _isSubmitting = false; }
     }
-
-    private async Task OnHtmlCompletedAsync(IEnumerable<FluentInputFileEventArgs> files)
+    private void ToggleMod(Guid id, ChangeEventArgs args) { if (args.Value is true) _selectedModIds.Add(id); else _selectedModIds.Remove(id); }
+    private void TogglePack(long? id, ChangeEventArgs args) { if (id is not { } value) return; if (args.Value is true) _selectedPackIds.Add(value); else _selectedPackIds.Remove(value); }
+    private void RemovePreview(SourceDraft draft) => _sourcePreviews.Remove(draft);
+    private bool IsStepComplete(int step) => step switch { 1 => !string.IsNullOrWhiteSpace(_gameIdentifier) && !string.IsNullOrWhiteSpace(_title), 2 => MemberCount > 0, 3 => CanCreate, _ => false };
+    private string GetStepClass(int step) => _step == step ? "active" : IsStepComplete(step) ? "complete" : string.Empty;
+    private string GetStepLabel(int step) => Localizer[$"ModPacks_Step{step}"];
+    private string GetStepDescription(int step) => Localizer[$"ModPacks_Step{step}Description"];
+    private static string SourceKey(string provider, string canonical) => $"{provider}\n{canonical}";
+    private async Task ConfirmInternalNavigationAsync(LocationChangingContext context) { if (HasUnsavedChanges && !await JsRuntime.InvokeAsync<bool>("confirm", Localizer["ModPacks_DiscardChanges"].Value)) context.PreventNavigation(); }
+    private sealed class SourceDraft
     {
-        if (files.SingleOrDefault() is not { Stream: not null } file)
-            return;
-
-        using var reader = new StreamReader(file.Stream);
-        _html = await reader.ReadToEndAsync();
-        _htmlFileName = file.Name;
+        public SourceDraft(string input, ModSourcePreviewInfo preview) { Input = input; Preview = preview; InstallerIdentifier = preview.InstallerIdentifiers.FirstOrDefault() ?? string.Empty; VersionSelector = preview.Source.VersionSelector; }
+        public string Input { get; }
+        public ModSourcePreviewInfo Preview { get; }
+        public EModUsageRole UsageRole { get; set; } = EModUsageRole.Shared;
+        public string InstallerIdentifier { get; set; }
+        public string VersionSelector { get; set; }
     }
-
-    private async Task OnStandaloneOptionsSearch(OptionsSearchEventArgs<UtfApi.Models.FullModPackDefinitionDto> arg)
-    {
-        var results = await ModPackRepository.GetModPacksAsync(
-            0,
-            10,
-            false,
-            arg.Text,
-            gameIdentifier: _gameIdentifier);
-        arg.Items = results
-            .Where((definition) => IsSelectableStandalone(definition)
-                                   && string.Equals(
-                                       definition.GameIdentifier,
-                                       _gameIdentifier,
-                                       StringComparison.Ordinal))
-            .ToArray();
-    }
-
-    private string GetStepClass(int step)
-    {
-        if (_step == step)
-            return "active";
-        return IsStepComplete(step) ? "complete" : string.Empty;
-    }
-
-    private bool IsStepComplete(int step)
-        => step switch
-        {
-            1 => !string.IsNullOrWhiteSpace(_gameIdentifier) && !string.IsNullOrWhiteSpace(_title),
-            2 => _kind is ModPackCreationKind.Composition
-                ? _selectedModPacks.Any() && _selectedModPacks.All((modPack) => GetLatestActiveRevision(modPack)?.PrimaryKey is not null)
-                : !string.IsNullOrWhiteSpace(_html),
-            3 => CanCreate,
-            _ => false,
-        };
-
-    private string GetCurrentStepLabel()
-        => GetStepLabel(_step);
-
-    private string GetStepLabel(int step)
-        => step switch
-        {
-            1 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Definition_Label)].Value,
-            2 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Artifact_Label)].Value,
-            3 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Review_Label)].Value,
-            _ => throw new ArgumentOutOfRangeException(nameof(step), step, null),
-        };
-
-    private string GetStepDescription(int step)
-        => step switch
-        {
-            1 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Definition_Description)].Value,
-            2 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Artifact_Description)].Value,
-            3 => Localizer[nameof(Language.Pages_Data_ModPacks_Create_Step_Review_Description)].Value,
-            _ => throw new ArgumentOutOfRangeException(nameof(step), step, null),
-        };
-
-    private string GetDefinitionStatusLabel()
-        => IsStepComplete(1) ? Localizer[nameof(Language.Auto_DefinitionReady_5e834525)].Value : Localizer[nameof(Language.Auto_TitleRequired_c9a0236c)].Value;
-
-    private string GetArtifactStatusLabel()
-        => IsStepComplete(2)
-            ? _kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Auto_MembersReady_55b06fbf)].Value : Localizer[nameof(Language.Auto_ArtifactReady_6be01f39)].Value
-            : _kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Auto_SelectAtLeastOneModPack_0ef5008a)].Value : Localizer[nameof(Language.Auto_HTMLArtifactRequired_aa5544da)].Value;
-
-    private string GetReviewStatusLabel()
-        => CanCreate ? Localizer[nameof(Language.Auto_ReadyToCreate_ff2d530f)].Value : Localizer[nameof(Language.Auto_NeedsAttention_c1ebc781)].Value;
-
-    private string GetReviewStatusClass()
-        => CanCreate ? "utf-status utf-status--success" : "utf-status utf-status--warning";
-
-    private string GetKindLabel()
-        => _kind is ModPackCreationKind.Composition ? Localizer[nameof(Language.Composition)].Value : Localizer[nameof(Language.Standalone)].Value;
-
-    private string GetTitleLabel()
-        => string.IsNullOrWhiteSpace(_title) ? Localizer[nameof(Language.Auto_UntitledModPack_68e62d9a)].Value : _title;
-
-    private string GetKindButtonClass(ModPackCreationKind kind)
-        => _kind == kind ? "modpack-create-kind active" : "modpack-create-kind";
-
-    private string GetHtmlSizeLabel()
-        => string.IsNullOrWhiteSpace(_html)
-            ? MissingValue
-            : Localizer["Pages_Data_ModPacks_Create_SizeCharacters", _html.Length].Value;
-
-    private string GetSelectedRevisionSummary()
-    {
-        var revisionIds = GetLatestRevisionIds();
-        return revisionIds.Length is 0
-            ? MissingValue
-            : string.Join(", ", revisionIds.Select((revisionId) => revisionId.ToString(CultureInfo.InvariantCulture)));
-    }
-
-    private IReadOnlyList<ReadinessRow> GetReadinessRows()
-        =>
-        [
-            new(Localizer[nameof(Language.Auto_TitleDefined_288586ef)].Value, !string.IsNullOrWhiteSpace(_title)),
-            new(Localizer[nameof(Language.Auto_TypeSelected_875c9448)].Value, true),
-            new(
-                _kind is ModPackCreationKind.Composition
-                    ? Localizer[nameof(Language.Auto_MemberRevisionsSelected_e6bb4b51)].Value
-                    : Localizer[nameof(Language.Auto_HTMLArtifactUploaded_f3a32db4)].Value,
-                IsStepComplete(2)
-            ),
-        ];
-
-    private long[] GetLatestRevisionIds()
-        => _selectedModPacks
-            .Select((definitionDto) => GetLatestActiveRevision(definitionDto)?.PrimaryKey)
-            .Where((revisionId) => revisionId is not null)
-            .Select((revisionId) => revisionId!.Value)
-            .ToArray();
-
-    private static string GetChecklistRowClass(bool isComplete)
-        => isComplete ? "modpack-create-checklist-row complete" : "modpack-create-checklist-row";
-
-    private static ModPackCreationKind ParseKind(string? value)
-        => string.Equals(value, "composition", StringComparison.OrdinalIgnoreCase)
-            ? ModPackCreationKind.Composition
-            : ModPackCreationKind.Standalone;
-
-    private static bool IsSelectableStandalone(UtfApi.Models.FullModPackDefinitionDto definitionDto)
-        => !(definitionDto.IsComposition ?? false) && GetLatestActiveRevision(definitionDto)?.PrimaryKey is not null;
-
-    private static UtfApi.Models.PlainModPackRevisionDto? GetLatestActiveRevision(UtfApi.Models.FullModPackDefinitionDto definitionDto)
-        => definitionDto.ModPackRevisions
-            ?.Where((revisionDto) => revisionDto.IsActive ?? true)
-            .OrderByDescending((revisionDto) => revisionDto.TimeStampCreated)
-            .FirstOrDefault();
-
-    private static string FormatDate(DateTimeOffset? value)
-        => value?.ToLocalTime().ToString("dd MMM yyyy, HH:mm", CultureInfo.CurrentCulture) ?? MissingValue;
-
-    private string FormatTitle(string? title)
-        => string.IsNullOrWhiteSpace(title) ? Localizer[nameof(Language.Auto_UntitledModPack_68e62d9a)].Value : title;
-
-    private static string FormatKey(long? value)
-        => value?.ToString(CultureInfo.InvariantCulture) ?? MissingValue;
-
-    private enum ModPackCreationKind
-    {
-        Standalone,
-        Composition,
-    }
-
-    private sealed record StepItem(int Index);
-
-    private sealed record ReadinessRow(string Label, bool IsComplete);
 }

@@ -69,7 +69,6 @@
     <_ContentIncludedByDefault Remove="Old\Dialogs\ConfirmSlotSelection.razor" />
     <_ContentIncludedByDefault Remove="Old\Dialogs\CreateWikiRevisionDialog.razor" />
     <_ContentIncludedByDefault Remove="Old\Dialogs\ModifyEventDialog.razor" />
-    <_ContentIncludedByDefault Remove="Old\Dialogs\ModifyModPackCompositionDialog.razor" />
     <_ContentIncludedByDefault Remove="Old\Dialogs\ModifyModPackStandaloneDialog.razor" />
     <_ContentIncludedByDefault Remove="Old\Dialogs\ModifyTerrainDialog.razor" />
     <_ContentIncludedByDefault Remove="Old\Dialogs\ResourceBasedPrivilegeDialog.razor" />

@@ -25,7 +25,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Category { get; set; }
 #endif
-        /// <summary>The createdByName property</summary>
+        /// <summary>Creator display name.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? CreatedByName { get; set; }
@@ -49,9 +49,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Description { get; set; }
 #endif
-        /// <summary>Income or expense direction.</summary>
+        /// <summary>The direction property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EKassenbuchEntryDirection? Direction { get; set; }
-        /// <summary>The documentNumber property</summary>
+        /// <summary>Internal document number.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? DocumentNumber { get; set; }
@@ -63,7 +63,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public bool? IsDeleted { get; set; }
         /// <summary>Entry primary key.</summary>
         public long? PrimaryKey { get; set; }
-        /// <summary>The reference property</summary>
+        /// <summary>External reference.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Reference { get; set; }
@@ -71,13 +71,13 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Reference { get; set; }
 #endif
-        /// <summary>Booking date.</summary>
+        /// <summary>The timeStampBooked property</summary>
         public DateTimeOffset? TimeStampBooked { get; set; }
-        /// <summary>Creation timestamp.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
-        /// <summary>Last update timestamp.</summary>
+        /// <summary>The timeStampUpdated property</summary>
         public DateTimeOffset? TimeStampUpdated { get; set; }
-        /// <summary>The updatedByName property</summary>
+        /// <summary>Last editor display name.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? UpdatedByName { get; set; }
@@ -115,7 +115,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "createdByName", n => { CreatedByName = n.GetStringValue(); } },
                 { "currency", n => { Currency = n.GetStringValue(); } },
                 { "description", n => { Description = n.GetStringValue(); } },
-                { "direction", n => { Direction = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EKassenbuchEntryDirection?) n.GetIntValue(); } },
+                { "direction", n => { Direction = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EKassenbuchEntryDirection>(); } },
                 { "documentNumber", n => { DocumentNumber = n.GetStringValue(); } },
                 { "isDeleted", n => { IsDeleted = n.GetBoolValue(); } },
                 { "primaryKey", n => { PrimaryKey = n.GetLongValue(); } },
@@ -138,7 +138,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteStringValue("createdByName", CreatedByName);
             writer.WriteStringValue("currency", Currency);
             writer.WriteStringValue("description", Description);
-            writer.WriteIntValue("direction", (int?)Direction);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EKassenbuchEntryDirection>("direction", Direction);
             writer.WriteStringValue("documentNumber", DocumentNumber);
             writer.WriteBoolValue("isDeleted", IsDeleted);
             writer.WriteLongValue("primaryKey", PrimaryKey);

@@ -9,8 +9,6 @@ import {
   formatEventTimeRemaining,
   groupEventSlots,
   isEventId,
-  modPackDownloadPath,
-  safeDownloadFileName,
   slotRowAction,
   slotSideKey,
 } from "@/features/events-member/eventModel";
@@ -48,7 +46,6 @@ function operation(
     terrainIsActive: true,
     modPackRevisionPrimaryKey: 24,
     modPackRevisionTimeStampCreated: "2026-08-01T00:00:00Z",
-    modPackRevisionHtml: "<html></html>",
     modPackRevisionUpdatedBy: null,
     modPackRevisionIsActive: true,
     modPackRevisionTimeStampDownloaded: null,
@@ -57,7 +54,6 @@ function operation(
     modPackDefinitionTitle: "UTF Main",
     modPackDefinitionOwner: null,
     modPackDefinitionIsActive: true,
-    modPackDefinitionIsComposition: false,
     imageAssetFk: "9ed9745b-0b38-4dce-a59f-c7674ed38d8d",
     imagePath: "",
     scheduledForOriginal: "2030-08-13T18:00:00Z",
@@ -259,18 +255,10 @@ describe("event detail parity model", () => {
     );
   });
 
-  it("finds the current slot and chooses revision-specific or latest mod-pack downloads", () => {
+  it("finds the current user's assigned slot", () => {
     expect(
       currentUserSlot([slot(), slot({ slotNumber: 2, assignedToFk: userId })], user()),
     ).toMatchObject({ slotNumber: 2 });
-    expect(modPackDownloadPath(operation())).toBe("/mod-packs/7/download/24");
-    const eventWithoutRevision = operation();
-    delete (eventWithoutRevision as Partial<FullEvent>).modPackRevisionPrimaryKey;
-    expect(modPackDownloadPath(eventWithoutRevision)).toBe("/mod-packs/7/download/latest");
-    const eventWithoutModPack = operation();
-    delete (eventWithoutModPack as Partial<FullEvent>).modPackDefinitionPrimaryKey;
-    expect(modPackDownloadPath(eventWithoutModPack)).toBeUndefined();
-    expect(safeDownloadFileName("UTF Main: A/B + 3")).toBe("UTFMainAB+3.html");
   });
 
   it("maps numeric and string sides to localizable resource keys", () => {

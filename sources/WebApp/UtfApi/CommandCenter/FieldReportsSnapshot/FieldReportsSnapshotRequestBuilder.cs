@@ -34,7 +34,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.FieldReportsSnaps
         {
         }
         /// <summary>
-        /// Returns a compact aggregate snapshot for Command Center field report administration.
+        /// Returns the aggregate field report administration snapshot.
         /// </summary>
         /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterFieldReportsSnapshotDto"/></returns>
         /// <param name="cancellationToken">Cancellation token to use when cancelling requests</param>
@@ -52,7 +52,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.FieldReportsSnaps
             return await RequestAdapter.SendAsync<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterFieldReportsSnapshotDto>(requestInfo, global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterFieldReportsSnapshotDto.CreateFromDiscriminatorValue, default, cancellationToken).ConfigureAwait(false);
         }
         /// <summary>
-        /// Returns a compact aggregate snapshot for Command Center field report administration.
+        /// Returns the aggregate field report administration snapshot.
         /// </summary>
         /// <returns>A <see cref="RequestInformation"/></returns>
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
@@ -80,12 +80,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.FieldReportsSnaps
             return new global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.FieldReportsSnapshot.FieldReportsSnapshotRequestBuilder(rawUrl, RequestAdapter);
         }
         /// <summary>
-        /// Returns a compact aggregate snapshot for Command Center field report administration.
+        /// Returns the aggregate field report administration snapshot.
         /// </summary>
         [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
         public partial class FieldReportsSnapshotRequestBuilderGetQueryParameters 
         {
-            /// <summary>Optional field report search.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
             [QueryParameter("search")]
@@ -95,7 +94,6 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.FieldReportsSnaps
             [QueryParameter("search")]
             public string Search { get; set; }
 #endif
-            /// <summary>Maximum amount of matching field report rows to return.</summary>
             [QueryParameter("take")]
             public int? Take { get; set; }
         }

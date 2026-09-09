@@ -54,7 +54,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Country { get; set; }
 #endif
-        /// <summary>Date of birth submitted with the request.</summary>
+        /// <summary>The dateOfBirth property</summary>
         public Date? DateOfBirth { get; set; }
         /// <summary>Administrative decision reason.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
@@ -114,9 +114,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>Request primary key.</summary>
         public long? PrimaryKey { get; set; }
-        /// <summary>The reviewedByFk property</summary>
+        /// <summary>Reviewer user id.</summary>
         public Guid? ReviewedByFk { get; set; }
-        /// <summary>The reviewedByName property</summary>
+        /// <summary>Reviewer display name when included in the current projection.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? ReviewedByName { get; set; }
@@ -124,17 +124,17 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string ReviewedByName { get; set; }
 #endif
-        /// <summary>Current request status.</summary>
+        /// <summary>The status property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipRequestStatus? Status { get; set; }
-        /// <summary>Creation timestamp.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>The timeStampResolved property</summary>
         public DateTimeOffset? TimeStampResolved { get; set; }
-        /// <summary>Last update timestamp.</summary>
+        /// <summary>The timeStampUpdated property</summary>
         public DateTimeOffset? TimeStampUpdated { get; set; }
         /// <summary>User who submitted the request.</summary>
         public Guid? UserFk { get; set; }
-        /// <summary>The userNickname property</summary>
+        /// <summary>User display name when included in the current projection.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? UserNickname { get; set; }
@@ -185,7 +185,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "primaryKey", n => { PrimaryKey = n.GetLongValue(); } },
                 { "reviewedByFk", n => { ReviewedByFk = n.GetGuidValue(); } },
                 { "reviewedByName", n => { ReviewedByName = n.GetStringValue(); } },
-                { "status", n => { Status = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipRequestStatus?) n.GetIntValue(); } },
+                { "status", n => { Status = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipRequestStatus>(); } },
                 { "timeStampCreated", n => { TimeStampCreated = n.GetDateTimeOffsetValue(); } },
                 { "timeStampResolved", n => { TimeStampResolved = n.GetDateTimeOffsetValue(); } },
                 { "timeStampUpdated", n => { TimeStampUpdated = n.GetDateTimeOffsetValue(); } },
@@ -218,7 +218,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteLongValue("primaryKey", PrimaryKey);
             writer.WriteGuidValue("reviewedByFk", ReviewedByFk);
             writer.WriteStringValue("reviewedByName", ReviewedByName);
-            writer.WriteIntValue("status", (int?)Status);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipRequestStatus>("status", Status);
             writer.WriteDateTimeOffsetValue("timeStampCreated", TimeStampCreated);
             writer.WriteDateTimeOffsetValue("timeStampResolved", TimeStampResolved);
             writer.WriteDateTimeOffsetValue("timeStampUpdated", TimeStampUpdated);

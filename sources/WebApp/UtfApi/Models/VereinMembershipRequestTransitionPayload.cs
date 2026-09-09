@@ -15,7 +15,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The memberNumber property</summary>
+        /// <summary>Optional member number to apply when approving.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? MemberNumber { get; set; }
@@ -23,7 +23,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string MemberNumber { get; set; }
 #endif
-        /// <summary>The notes property</summary>
+        /// <summary>Optional membership notes to apply when approving.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Notes { get; set; }
@@ -31,7 +31,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Notes { get; set; }
 #endif
-        /// <summary>The reason property</summary>
+        /// <summary>Administrative decision reason.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Reason { get; set; }
@@ -39,7 +39,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Reason { get; set; }
 #endif
-        /// <summary>Target request status.</summary>
+        /// <summary>The status property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipRequestStatus? Status { get; set; }
         /// <summary>
         /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinMembershipRequestTransitionPayload"/> and sets the default values.
@@ -69,7 +69,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "memberNumber", n => { MemberNumber = n.GetStringValue(); } },
                 { "notes", n => { Notes = n.GetStringValue(); } },
                 { "reason", n => { Reason = n.GetStringValue(); } },
-                { "status", n => { Status = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipRequestStatus?) n.GetIntValue(); } },
+                { "status", n => { Status = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipRequestStatus>(); } },
             };
         }
         /// <summary>
@@ -82,7 +82,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteStringValue("memberNumber", MemberNumber);
             writer.WriteStringValue("notes", Notes);
             writer.WriteStringValue("reason", Reason);
-            writer.WriteIntValue("status", (int?)Status);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipRequestStatus>("status", Status);
             writer.WriteAdditionalData(AdditionalData);
         }
     }

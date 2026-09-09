@@ -17,7 +17,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public IDictionary<string, object> AdditionalData { get; set; }
         /// <summary>Page primary key.</summary>
         public long? PrimaryKey { get; set; }
-        /// <summary>The revision property</summary>
+        /// <summary>Public page revision shape returned to anonymous readers.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PublishedPublicPageRevisionDto? Revision { get; set; }
@@ -33,7 +33,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Slug { get; set; }
 #endif
-        /// <summary>Last update timestamp.</summary>
+        /// <summary>The timeStampUpdated property</summary>
         public DateTimeOffset? TimeStampUpdated { get; set; }
         /// <summary>
         /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PublishedPublicPageDto"/> and sets the default values.

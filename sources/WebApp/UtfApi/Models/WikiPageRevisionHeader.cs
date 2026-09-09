@@ -35,7 +35,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>The primary key of the WikiPageRevision.</summary>
         public Guid? PrimaryKey { get; set; }
-        /// <summary>Timestamp of when this revision was created.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>
         /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.WikiPageRevisionHeader"/> and sets the default values.

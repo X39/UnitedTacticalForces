@@ -23,7 +23,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string ContentType { get; set; }
 #endif
-        /// <summary>The createdByName property</summary>
+        /// <summary>Display name of the uploading user, when available.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? CreatedByName { get; set; }
@@ -59,9 +59,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public List<string> Tags { get; set; }
 #endif
-        /// <summary>Creation timestamp.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
-        /// <summary>Last metadata update timestamp.</summary>
+        /// <summary>The timeStampUpdated property</summary>
         public DateTimeOffset? TimeStampUpdated { get; set; }
         /// <summary>Deterministic references to known content records using this image.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER

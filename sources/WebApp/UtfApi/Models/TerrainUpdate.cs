@@ -15,9 +15,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The imageAssetFk property</summary>
+        /// <summary>Gallery media asset used as terrain image.</summary>
         public Guid? ImageAssetFk { get; set; }
-        /// <summary>The title property</summary>
+        /// <summary>Represents the title of the terrain.This property is used as a descriptive name or identifier for the terrain in the application.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Title { get; set; }

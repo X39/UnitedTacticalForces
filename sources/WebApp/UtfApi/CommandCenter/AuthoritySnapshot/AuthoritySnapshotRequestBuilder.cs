@@ -34,7 +34,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthoritySnapshot
         {
         }
         /// <summary>
-        /// Returns a compact aggregate snapshot for Command Center role and claim administration.
+        /// Returns the aggregate roles and claims snapshot.
         /// </summary>
         /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterAuthoritySnapshotDto"/></returns>
         /// <param name="cancellationToken">Cancellation token to use when cancelling requests</param>
@@ -52,7 +52,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthoritySnapshot
             return await RequestAdapter.SendAsync<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterAuthoritySnapshotDto>(requestInfo, global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterAuthoritySnapshotDto.CreateFromDiscriminatorValue, default, cancellationToken).ConfigureAwait(false);
         }
         /// <summary>
-        /// Returns a compact aggregate snapshot for Command Center role and claim administration.
+        /// Returns the aggregate roles and claims snapshot.
         /// </summary>
         /// <returns>A <see cref="RequestInformation"/></returns>
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
@@ -80,12 +80,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthoritySnapshot
             return new global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthoritySnapshot.AuthoritySnapshotRequestBuilder(rawUrl, RequestAdapter);
         }
         /// <summary>
-        /// Returns a compact aggregate snapshot for Command Center role and claim administration.
+        /// Returns the aggregate roles and claims snapshot.
         /// </summary>
         [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
         public partial class AuthoritySnapshotRequestBuilderGetQueryParameters 
         {
-            /// <summary>Optional role or claim search.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
             [QueryParameter("search")]
@@ -95,7 +94,6 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.AuthoritySnapshot
             [QueryParameter("search")]
             public string Search { get; set; }
 #endif
-            /// <summary>Maximum amount of matching role and claim rows to return per section.</summary>
             [QueryParameter("take")]
             public int? Take { get; set; }
         }

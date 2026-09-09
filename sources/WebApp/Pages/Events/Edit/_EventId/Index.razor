@@ -493,13 +493,13 @@
                                     <div class="event-editor-asset-card utf-command-field event-editor-field event-editor-autocomplete">
                                     <FluentAutocomplete Id="event-editor-modpack"
                                                         Required="true"
-                                                        TOption="PlainModPackRevisionDto"
+                                                        TOption="NormalizedModPackRevisionOption"
                                                         MaximumSelectedOptions="1"
                                                         MaximumOptionsSearch="8"
                                                         AutoComplete="off"
                                                         Position="@SelectPosition.Below"
-                                                        OnOptionsSearch="ModPackAutoCompleteService.PlainModPackRevisionDto.OnOptionsSearch"
-                                                        OptionText="ModPackAutoCompleteService.PlainModPackRevisionDto.OptionText"
+                                                        OnOptionsSearch="ModPackAutoCompleteService.OnOptionsSearchAsync"
+                                                        OptionText="ModPackAutoCompleteService.OptionText"
                                                         Label="@(Localizer[nameof(Language.Auto_ModPackRevision_d199668f)])"
                                                         Placeholder="@(Localizer[nameof(Language.Auto_SearchModPack_33ce4302)])"
                                                         @bind-ValueText="_modPackText"
@@ -608,7 +608,7 @@
     private EventAuthoringModel? _model;
     private PlainUserDto? _hostedBy;
     private PlainTerrainDto? _terrain;
-    private PlainModPackRevisionDto? _modPack;
+    private NormalizedModPackRevisionOption? _modPack;
     private string? _hostedByText;
     private string? _terrainText;
     private string? _modPackText;
@@ -1009,7 +1009,7 @@
     private void OnModPackChanged()
     {
         if (_model is not null)
-            _model.ModPackRevisionFk = _modPack?.PrimaryKey;
+            _model.ModPackRevisionFk = _modPack?.RevisionId;
         _modPackText = GetModPackLabel(_modPack);
     }
 
@@ -1413,10 +1413,10 @@
     private static string GetTerrainLabel(PlainTerrainDto? terrain)
         => string.IsNullOrWhiteSpace(terrain?.Title) ? string.Empty : terrain.Title;
 
-    private string GetModPackLabel(PlainModPackRevisionDto? modPack)
+    private string GetModPackLabel(NormalizedModPackRevisionOption? modPack)
         => modPack is null
             ? string.Empty
-            : ModPackAutoCompleteService.PlainModPackRevisionDto.OptionText(modPack)
+            : ModPackAutoCompleteService.OptionText(modPack)
               ?? Localizer[nameof(Language.Pages_Events_Edit_Status_SelectedModPack)].Value;
 
     private IReadOnlyList<ReadinessRow> GetReadinessRows()
@@ -1476,19 +1476,14 @@
                 IsActive      = eventItem.TerrainIsActive,
             };
 
-    private static PlainModPackRevisionDto? CreateModPackOption(FullEventDto eventItem)
+    private static NormalizedModPackRevisionOption? CreateModPackOption(FullEventDto eventItem)
         => eventItem.ModPackRevisionPrimaryKey is null
             ? null
-            : new PlainModPackRevisionDto
+            : new NormalizedModPackRevisionOption
             {
-                PrimaryKey      = eventItem.ModPackRevisionPrimaryKey,
-                Html            = eventItem.ModPackRevisionHtml,
-                IsActive        = eventItem.ModPackRevisionIsActive,
-                TimeStampCreated = eventItem.ModPackRevisionTimeStampCreated,
-                AdditionalData = new Dictionary<string, object>
-                {
-                    ["Title"] = eventItem.ModPackDefinitionTitle ?? "Selected mod pack",
-                },
+                DefinitionId = eventItem.ModPackDefinitionPrimaryKey ?? 0,
+                RevisionId = eventItem.ModPackRevisionPrimaryKey.Value,
+                Title = eventItem.ModPackDefinitionTitle ?? string.Empty,
             };
 
     private static PlainUserDto CreatePlainUserOption(UserDto user)

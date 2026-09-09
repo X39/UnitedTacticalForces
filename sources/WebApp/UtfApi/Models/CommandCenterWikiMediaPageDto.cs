@@ -17,7 +17,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public IDictionary<string, object> AdditionalData { get; set; }
         /// <summary>Whether the page is currently deleted.</summary>
         public bool? IsDeleted { get; set; }
-        /// <summary>The latestRevisionAuthorName property</summary>
+        /// <summary>Display name of the latest revision author.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? LatestRevisionAuthorName { get; set; }
@@ -25,7 +25,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string LatestRevisionAuthorName { get; set; }
 #endif
-        /// <summary>The latestRevisionComment property</summary>
+        /// <summary>Comment attached to the latest revision.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? LatestRevisionComment { get; set; }
@@ -39,7 +39,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public Guid? PrimaryKey { get; set; }
         /// <summary>Amount of revisions for this page.</summary>
         public int? RevisionCount { get; set; }
-        /// <summary>When the page was created.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>The wiki page title.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER

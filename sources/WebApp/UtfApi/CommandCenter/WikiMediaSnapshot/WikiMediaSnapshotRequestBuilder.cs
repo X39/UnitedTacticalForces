@@ -34,7 +34,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.WikiMediaSnapshot
         {
         }
         /// <summary>
-        /// Returns a compact aggregate snapshot for Command Center wiki and media administration.
+        /// Returns the aggregate wiki/media administration snapshot.
         /// </summary>
         /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterWikiMediaSnapshotDto"/></returns>
         /// <param name="cancellationToken">Cancellation token to use when cancelling requests</param>
@@ -52,7 +52,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.WikiMediaSnapshot
             return await RequestAdapter.SendAsync<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterWikiMediaSnapshotDto>(requestInfo, global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.CommandCenterWikiMediaSnapshotDto.CreateFromDiscriminatorValue, default, cancellationToken).ConfigureAwait(false);
         }
         /// <summary>
-        /// Returns a compact aggregate snapshot for Command Center wiki and media administration.
+        /// Returns the aggregate wiki/media administration snapshot.
         /// </summary>
         /// <returns>A <see cref="RequestInformation"/></returns>
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
@@ -80,12 +80,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.WikiMediaSnapshot
             return new global::X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.WikiMediaSnapshot.WikiMediaSnapshotRequestBuilder(rawUrl, RequestAdapter);
         }
         /// <summary>
-        /// Returns a compact aggregate snapshot for Command Center wiki and media administration.
+        /// Returns the aggregate wiki/media administration snapshot.
         /// </summary>
         [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
         public partial class WikiMediaSnapshotRequestBuilderGetQueryParameters 
         {
-            /// <summary>Optional wiki page title search.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
             [QueryParameter("search")]
@@ -95,7 +94,6 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.CommandCenter.WikiMediaSnapshot
             [QueryParameter("search")]
             public string Search { get; set; }
 #endif
-            /// <summary>Maximum amount of matching wiki page rows to return.</summary>
             [QueryParameter("take")]
             public int? Take { get; set; }
         }

@@ -17,7 +17,6 @@ function event(metaAcceptance: UpcomingEvent["metaAcceptance"]): UpcomingEvent {
     terrainTitle: "Altis",
     modPackRevisionTimeStampDownloaded: null,
     modPackDefinitionTitle: "UTF",
-    modPackDefinitionIsComposition: false,
     imageAssetFk: "00000000-0000-0000-0000-000000000000",
     imagePath: "",
     scheduledForOriginal: "2026-08-13T18:00:00Z",

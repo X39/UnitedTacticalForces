@@ -100,24 +100,14 @@ test("creates through the certified alias and edits in the command workspace", a
       ],
     }),
   );
-  await page.route("**/api/mod-packs/all?**", (route) =>
+  await page.route("**/api/game-content/mod-packs?gameIdentifier=arma3", (route) =>
     route.fulfill({
       json: [
         {
-          primaryKey: 4,
+          definitionId: 4,
           title: "UTF Main",
           gameIdentifier: "arma3",
-          isActive: true,
-          isComposition: false,
-          owner: { primaryKey: operatorId, nickname: "Planner" },
-          modPackRevisions: [
-            {
-              primaryKey: 8,
-              definitionFk: 4,
-              isActive: true,
-              timeStampCreated: "2026-08-14T09:00:00Z",
-            },
-          ],
+          latestRevisionId: 8,
         },
       ],
     }),

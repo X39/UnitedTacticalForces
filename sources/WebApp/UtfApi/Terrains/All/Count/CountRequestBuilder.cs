@@ -21,7 +21,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count
         /// </summary>
         /// <param name="pathParameters">Path parameters for the request</param>
         /// <param name="requestAdapter">The request adapter to use to execute the requests.</param>
-        public CountRequestBuilder(Dictionary<string, object> pathParameters, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/terrains/all/count", pathParameters)
+        public CountRequestBuilder(Dictionary<string, object> pathParameters, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/terrains/all/count{?gameIdentifier*}", pathParameters)
         {
         }
         /// <summary>
@@ -29,7 +29,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count
         /// </summary>
         /// <param name="rawUrl">The raw URL to use for the request builder.</param>
         /// <param name="requestAdapter">The request adapter to use to execute the requests.</param>
-        public CountRequestBuilder(string rawUrl, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/terrains/all/count", rawUrl)
+        public CountRequestBuilder(string rawUrl, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/terrains/all/count{?gameIdentifier*}", rawUrl)
         {
         }
         /// <summary>
@@ -40,11 +40,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
-        public async Task<long?> PostAsync(Action<RequestConfiguration<DefaultQueryParameters>>? requestConfiguration = default, CancellationToken cancellationToken = default)
+        public async Task<long?> PostAsync(Action<RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count.CountRequestBuilder.CountRequestBuilderPostQueryParameters>>? requestConfiguration = default, CancellationToken cancellationToken = default)
         {
 #nullable restore
 #else
-        public async Task<long?> PostAsync(Action<RequestConfiguration<DefaultQueryParameters>> requestConfiguration = default, CancellationToken cancellationToken = default)
+        public async Task<long?> PostAsync(Action<RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count.CountRequestBuilder.CountRequestBuilderPostQueryParameters>> requestConfiguration = default, CancellationToken cancellationToken = default)
         {
 #endif
             var requestInfo = ToPostRequestInformation(requestConfiguration);
@@ -57,11 +57,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
-        public RequestInformation ToPostRequestInformation(Action<RequestConfiguration<DefaultQueryParameters>>? requestConfiguration = default)
+        public RequestInformation ToPostRequestInformation(Action<RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count.CountRequestBuilder.CountRequestBuilderPostQueryParameters>>? requestConfiguration = default)
         {
 #nullable restore
 #else
-        public RequestInformation ToPostRequestInformation(Action<RequestConfiguration<DefaultQueryParameters>> requestConfiguration = default)
+        public RequestInformation ToPostRequestInformation(Action<RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count.CountRequestBuilder.CountRequestBuilderPostQueryParameters>> requestConfiguration = default)
         {
 #endif
             var requestInfo = new RequestInformation(Method.POST, UrlTemplate, PathParameters);
@@ -79,11 +79,27 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count
             return new global::X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count.CountRequestBuilder(rawUrl, RequestAdapter);
         }
         /// <summary>
+        /// Returns the count of all Terrain&apos;s available.
+        /// </summary>
+        [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
+        public partial class CountRequestBuilderPostQueryParameters
+        {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#nullable enable
+            [QueryParameter("gameIdentifier")]
+            public string? GameIdentifier { get; set; }
+#nullable restore
+#else
+            [QueryParameter("gameIdentifier")]
+            public string GameIdentifier { get; set; }
+#endif
+        }
+        /// <summary>
         /// Configuration for the request such as headers, query parameters, and middleware options.
         /// </summary>
         [Obsolete("This class is deprecated. Please use the generic RequestConfiguration class generated by the generator.")]
         [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
-        public partial class CountRequestBuilderPostRequestConfiguration : RequestConfiguration<DefaultQueryParameters>
+        public partial class CountRequestBuilderPostRequestConfiguration : RequestConfiguration<global::X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All.Count.CountRequestBuilder.CountRequestBuilderPostQueryParameters>
         {
         }
     }

@@ -15,7 +15,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The group property</summary>
+        /// <summary>Represents the group or category associated with an event slot.Can be used to classify or organize event slots under a specific label or grouping.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Group { get; set; }
@@ -23,13 +23,15 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Group { get; set; }
 #endif
-        /// <summary>The isSelfAssignable property</summary>
+        /// <summary>Indicates whether the event slot can be assigned to the user themselves without requiring admin intervention.This property manages the self-assignment capability of a given event slot.</summary>
         public bool? IsSelfAssignable { get; set; }
-        /// <summary>The isVisible property</summary>
+        /// <summary>Indicates whether the event slot should be visible to users.This property can be used to toggle the visibility of specific event slotswithin an event, allowing for dynamic control over their display.</summary>
         public bool? IsVisible { get; set; }
+        /// <summary>The roleSymbol property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventSlotRoleSymbol? RoleSymbol { get; set; }
         /// <summary>The side property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EArmaSide? Side { get; set; }
-        /// <summary>The title property</summary>
+        /// <summary>Represents the title of the event slot.Can be used to specify or update the label or description for an individual slot in an event.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Title { get; set; }
@@ -65,7 +67,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "group", n => { Group = n.GetStringValue(); } },
                 { "isSelfAssignable", n => { IsSelfAssignable = n.GetBoolValue(); } },
                 { "isVisible", n => { IsVisible = n.GetBoolValue(); } },
-                { "side", n => { Side = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EArmaSide?) n.GetIntValue(); } },
+                { "roleSymbol", n => { RoleSymbol = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventSlotRoleSymbol>(); } },
+                { "side", n => { Side = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EArmaSide>(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
         }
@@ -79,7 +82,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteStringValue("group", Group);
             writer.WriteBoolValue("isSelfAssignable", IsSelfAssignable);
             writer.WriteBoolValue("isVisible", IsVisible);
-            writer.WriteIntValue("side", (int?)Side);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EEventSlotRoleSymbol>("roleSymbol", RoleSymbol);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EArmaSide>("side", Side);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);
         }

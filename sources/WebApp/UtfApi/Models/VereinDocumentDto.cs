@@ -17,11 +17,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public IDictionary<string, object> AdditionalData { get; set; }
         /// <summary>Whether the document is deleted from active workflows.</summary>
         public bool? IsDeleted { get; set; }
-        /// <summary>Document kind.</summary>
+        /// <summary>The kind property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinDocumentKind? Kind { get; set; }
         /// <summary>Document primary key.</summary>
         public long? PrimaryKey { get; set; }
-        /// <summary>The revision property</summary>
+        /// <summary>Represents one revision of a Verein document.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinDocumentRevisionDto? Revision { get; set; }
@@ -37,9 +37,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public List<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinDocumentRevisionDto> Revisions { get; set; }
 #endif
-        /// <summary>Creation timestamp.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
-        /// <summary>Last update timestamp.</summary>
+        /// <summary>The timeStampUpdated property</summary>
         public DateTimeOffset? TimeStampUpdated { get; set; }
         /// <summary>
         /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinDocumentDto"/> and sets the default values.
@@ -67,7 +67,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             return new Dictionary<string, Action<IParseNode>>
             {
                 { "isDeleted", n => { IsDeleted = n.GetBoolValue(); } },
-                { "kind", n => { Kind = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinDocumentKind?) n.GetIntValue(); } },
+                { "kind", n => { Kind = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinDocumentKind>(); } },
                 { "primaryKey", n => { PrimaryKey = n.GetLongValue(); } },
                 { "revision", n => { Revision = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinDocumentRevisionDto>(global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinDocumentRevisionDto.CreateFromDiscriminatorValue); } },
                 { "revisions", n => { Revisions = n.GetCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinDocumentRevisionDto>(global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinDocumentRevisionDto.CreateFromDiscriminatorValue)?.AsList(); } },
@@ -83,7 +83,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         {
             if(ReferenceEquals(writer, null)) throw new ArgumentNullException(nameof(writer));
             writer.WriteBoolValue("isDeleted", IsDeleted);
-            writer.WriteIntValue("kind", (int?)Kind);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinDocumentKind>("kind", Kind);
             writer.WriteLongValue("primaryKey", PrimaryKey);
             writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinDocumentRevisionDto>("revision", Revision);
             writer.WriteCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.VereinDocumentRevisionDto>("revisions", Revisions);

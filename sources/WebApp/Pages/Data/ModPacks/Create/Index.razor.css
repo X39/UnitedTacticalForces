@@ -222,6 +222,42 @@
     width: 100%;
 }
 
+.modpack-source-entry,
+.modpack-source-preview,
+.modpack-choice-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.modpack-source-preview {
+    align-items: end;
+    border-top: 1px solid var(--utf-stroke);
+    grid-template-columns: minmax(12rem, 2fr) repeat(3, minmax(8rem, 1fr)) auto;
+    padding-top: 0.75rem;
+}
+
+.modpack-source-preview > div,
+.modpack-source-preview > label,
+.modpack-choice-list label {
+    display: grid;
+    gap: 0.3rem;
+}
+
+.modpack-source-preview small,
+.modpack-choice-list small {
+    color: var(--utf-text-muted);
+}
+
+.modpack-choice-list {
+    max-height: 18rem;
+    overflow: auto;
+}
+
+.modpack-choice-list label {
+    align-items: center;
+    grid-template-columns: auto minmax(10rem, 1fr) minmax(12rem, 2fr);
+}
+
 .modpack-create-selection-table {
     min-width: 680px;
 }
@@ -344,6 +380,10 @@
     .modpack-create-command-bar {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .modpack-source-preview {
+        grid-template-columns: 1fr;
     }
 }
 

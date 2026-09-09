@@ -17,7 +17,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public IDictionary<string, object> AdditionalData { get; set; }
         /// <summary>Whether this membership currently grants member-only access.</summary>
         public bool? IsActiveMember { get; set; }
-        /// <summary>The memberNumber property</summary>
+        /// <summary>Optional association member number.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? MemberNumber { get; set; }
@@ -35,19 +35,19 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>Membership primary key.</summary>
         public long? PrimaryKey { get; set; }
-        /// <summary>Current membership status.</summary>
+        /// <summary>The status property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipStatus? Status { get; set; }
-        /// <summary>Creation timestamp.</summary>
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>The timeStampEnded property</summary>
         public DateTimeOffset? TimeStampEnded { get; set; }
-        /// <summary>Membership start timestamp.</summary>
+        /// <summary>The timeStampStarted property</summary>
         public DateTimeOffset? TimeStampStarted { get; set; }
-        /// <summary>Last update timestamp.</summary>
+        /// <summary>The timeStampUpdated property</summary>
         public DateTimeOffset? TimeStampUpdated { get; set; }
         /// <summary>User this membership belongs to.</summary>
         public Guid? UserFk { get; set; }
-        /// <summary>The userNickname property</summary>
+        /// <summary>User display name when included in the current projection.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? UserNickname { get; set; }
@@ -84,7 +84,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "memberNumber", n => { MemberNumber = n.GetStringValue(); } },
                 { "notes", n => { Notes = n.GetStringValue(); } },
                 { "primaryKey", n => { PrimaryKey = n.GetLongValue(); } },
-                { "status", n => { Status = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipStatus?) n.GetIntValue(); } },
+                { "status", n => { Status = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipStatus>(); } },
                 { "timeStampCreated", n => { TimeStampCreated = n.GetDateTimeOffsetValue(); } },
                 { "timeStampEnded", n => { TimeStampEnded = n.GetDateTimeOffsetValue(); } },
                 { "timeStampStarted", n => { TimeStampStarted = n.GetDateTimeOffsetValue(); } },
@@ -104,7 +104,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteStringValue("memberNumber", MemberNumber);
             writer.WriteStringValue("notes", Notes);
             writer.WriteLongValue("primaryKey", PrimaryKey);
-            writer.WriteIntValue("status", (int?)Status);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinMembershipStatus>("status", Status);
             writer.WriteDateTimeOffsetValue("timeStampCreated", TimeStampCreated);
             writer.WriteDateTimeOffsetValue("timeStampEnded", TimeStampEnded);
             writer.WriteDateTimeOffsetValue("timeStampStarted", TimeStampStarted);

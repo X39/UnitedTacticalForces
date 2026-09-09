@@ -19,7 +19,6 @@ function currentMonthOperation() {
       "## Briefing\n\n**Coordinate reconnaissance** from the [published orders](/events/briefing).\n\n- Hold :radio: watch",
     terrainTitle: "Altis",
     modPackDefinitionTitle: "UTF Main",
-    modPackDefinitionIsComposition: false,
     imagePath: "",
     scheduledFor,
     scheduledForOriginal: scheduledFor,

@@ -10,6 +10,7 @@ using System.Threading;
 using System;
 using X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.Accept;
 using X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.Maybe;
+using X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.ModPackFormats;
 using X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.Reject;
 using X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.Slotting;
 using X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.Update;
@@ -32,6 +33,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.Maybe.MaybeRequestBuilder Maybe
         {
             get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.Maybe.MaybeRequestBuilder(PathParameters, RequestAdapter);
+        }
+        /// <summary>The modPackFormats property</summary>
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.ModPackFormats.ModPackFormatsRequestBuilder ModPackFormats
+        {
+            get => new global::X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.ModPackFormats.ModPackFormatsRequestBuilder(PathParameters, RequestAdapter);
         }
         /// <summary>The reject property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Events.Item.Reject.RejectRequestBuilder Reject

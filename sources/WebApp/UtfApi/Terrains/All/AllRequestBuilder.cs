@@ -28,7 +28,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All
         /// </summary>
         /// <param name="pathParameters">Path parameters for the request</param>
         /// <param name="requestAdapter">The request adapter to use to execute the requests.</param>
-        public AllRequestBuilder(Dictionary<string, object> pathParameters, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/terrains/all{?search*,skip*,take*}", pathParameters)
+        public AllRequestBuilder(Dictionary<string, object> pathParameters, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/terrains/all{?gameIdentifier*,search*,skip*,take*}", pathParameters)
         {
         }
         /// <summary>
@@ -36,7 +36,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All
         /// </summary>
         /// <param name="rawUrl">The raw URL to use for the request builder.</param>
         /// <param name="requestAdapter">The request adapter to use to execute the requests.</param>
-        public AllRequestBuilder(string rawUrl, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/terrains/all{?search*,skip*,take*}", rawUrl)
+        public AllRequestBuilder(string rawUrl, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/terrains/all{?gameIdentifier*,search*,skip*,take*}", rawUrl)
         {
         }
         /// <summary>
@@ -92,6 +92,15 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Terrains.All
         [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
         public partial class AllRequestBuilderPostQueryParameters 
         {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#nullable enable
+            [QueryParameter("gameIdentifier")]
+            public string? GameIdentifier { get; set; }
+#nullable restore
+#else
+            [QueryParameter("gameIdentifier")]
+            public string GameIdentifier { get; set; }
+#endif
             /// <summary>Searches the string Terrain.Title with a function akin to bool string.StartsWith(string value)</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable

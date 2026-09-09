@@ -30,7 +30,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string AddressLine1 { get; set; }
 #endif
-        /// <summary>The addressLine2 property</summary>
+        /// <summary>Optional second postal address line.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? AddressLine2 { get; set; }
@@ -54,7 +54,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Country { get; set; }
 #endif
-        /// <summary>Date of birth.</summary>
+        /// <summary>The dateOfBirth property</summary>
         public Date? DateOfBirth { get; set; }
         /// <summary>Email address.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER

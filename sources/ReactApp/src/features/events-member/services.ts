@@ -9,7 +9,15 @@ export const eventsMemberQueryKeys = {
     ["events", eventId, "assignees", [...userIds].sort().join(",")] as const,
   profileSettings: ["users", "me", "settings"] as const,
   vereinLedger: ["verein", "kassenbuch"] as const,
+  modPackFormats: (eventId: string) => ["events", eventId, "mod-pack-formats"] as const,
 };
+
+export interface EventModPackFormat {
+  identifier: string;
+  displayName: string;
+  fileExtension: string;
+  mediaType: string;
+}
 
 async function loadAssignees(userIds: string[], signal?: AbortSignal) {
   const uniqueIds = [...new Set(userIds)];
@@ -59,6 +67,18 @@ export const eventsMemberService = {
   },
 
   downloadModPack: (path: string, signal?: AbortSignal) => getApiClient().download(path, signal),
+
+  modPackFormats: async (eventId: string, signal?: AbortSignal): Promise<EventModPackFormat[]> =>
+    (await getApiClient().request<EventModPackFormat[]>(
+      `/events/${encodeURIComponent(eventId)}/mod-pack-formats`,
+      { signal, expectedStatuses: [404] },
+    )) ?? [],
+
+  downloadModPackFormat: (eventId: string, formatIdentifier: string, signal?: AbortSignal) =>
+    getApiClient().download(
+      `/events/${encodeURIComponent(eventId)}/mod-pack-formats/${encodeURIComponent(formatIdentifier)}`,
+      signal,
+    ),
 
   vereinLedger: async (signal?: AbortSignal): Promise<KassenbuchPage> => {
     const result = await getApiClient().request<KassenbuchPage>(

@@ -33,6 +33,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Users.AuthenticationProviders
         public AuthenticationProvidersRequestBuilder(string rawUrl, IRequestAdapter requestAdapter) : base(requestAdapter, "{+baseurl}/users/authentication-providers", rawUrl)
         {
         }
+        /// <summary>
+        /// Returns the authentication providers that are currently registered and usable.
+        /// </summary>
         /// <returns>A <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.AuthenticationProvidersDto"/></returns>
         /// <param name="cancellationToken">Cancellation token to use when cancelling requests</param>
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
@@ -48,6 +51,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Users.AuthenticationProviders
             var requestInfo = ToGetRequestInformation(requestConfiguration);
             return await RequestAdapter.SendAsync<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.AuthenticationProvidersDto>(requestInfo, global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.AuthenticationProvidersDto.CreateFromDiscriminatorValue, default, cancellationToken).ConfigureAwait(false);
         }
+        /// <summary>
+        /// Returns the authentication providers that are currently registered and usable.
+        /// </summary>
         /// <returns>A <see cref="RequestInformation"/></returns>
         /// <param name="requestConfiguration">Configuration for the request such as headers, query parameters, and middleware options.</param>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
@@ -61,7 +67,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Users.AuthenticationProviders
 #endif
             var requestInfo = new RequestInformation(Method.GET, UrlTemplate, PathParameters);
             requestInfo.Configure(requestConfiguration);
-            requestInfo.Headers.TryAdd("Accept", "application/json");
+            requestInfo.Headers.TryAdd("Accept", "application/json, text/plain;q=0.9");
             return requestInfo;
         }
         /// <summary>

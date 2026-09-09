@@ -2566,6 +2566,9 @@ export interface paths {
             parameters: {
                 query?: {
                     gameIdentifier?: string;
+                    search?: string;
+                    skip?: number;
+                    take?: number;
                 };
                 header?: never;
                 path?: never;
@@ -2599,6 +2602,96 @@ export interface paths {
             };
             responses: {
                 /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/mods/source-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Previews canonical provider metadata without mutating the catalog. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Cancellation token. */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ModSourcePreviewPayload"];
+                    "text/json": components["schemas"]["ModSourcePreviewPayload"];
+                    "application/*+json": components["schemas"]["ModSourcePreviewPayload"];
+                };
+            };
+            responses: {
+                /** @description Resolved canonical sources and existing catalog matches. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/mods/uploaded-artifact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a reusable uploaded-artifact mod and immutable first version. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Cancellation token. */
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        gameIdentifier?: string;
+                    } & {
+                        title?: string;
+                    } & {
+                        usageRole?: components["schemas"]["EModUsageRole"];
+                    } & {
+                        installerIdentifier?: string;
+                    } & {
+                        file?: components["schemas"]["IFormFile"];
+                    };
+                };
+            };
+            responses: {
+                /** @description Created mod and version identifiers. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2648,47 +2741,6 @@ export interface paths {
                 };
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/game-content/modpacks/{revisionId}/members": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    revisionId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ModPackMembersPayload"];
-                    "text/json": components["schemas"]["ModPackMembersPayload"];
-                    "application/*+json": components["schemas"]["ModPackMembersPayload"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4297,41 +4349,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/mod-packs/{modPackDefinitionId}/download/latest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Downloads the ModPackRevision and updates the last downloaded timestamp in the users meta data. */
-        get: operations["DownloadLatestModPackAsync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/{modPackDefinitionId}/download/{modPackRevisionId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Downloads the ModPackRevision and updates the last downloaded timestamp in the users meta data. */
-        get: operations["DownloadModPackAsync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/create/standalone": {
+    "/game-content/mod-packs/formats/{gameIdentifier}/{formatIdentifier}/preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -4340,18 +4358,295 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Creates a new ModPackDefinition and a corresponding ModPackRevision.
-         * @description The initial ModPackRevision must be provided in the ModPackDefinition object.
-         */
-        post: operations["CreateModPackStandaloneAsync"];
+        /** Parses a custom file into reviewed normalized catalog candidates. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Owning game identifier. */
+                    gameIdentifier: string;
+                    /** @description Format identifier. */
+                    formatIdentifier: string;
+                };
+                cookie?: never;
+            };
+            /** @description Cancellation token. */
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        file?: components["schemas"]["IFormFile"];
+                    };
+                };
+            };
+            responses: {
+                /** @description Resolved entries, catalog matches, and warnings. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/mod-packs/create/composition": {
+    "/game-content/mod-packs/revisions/{revisionId}/formats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists formats available for a revision. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Revision identifier. */
+                    revisionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Format metadata. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/mod-packs/revisions/{revisionId}/formats/{formatIdentifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exports an immutable revision through a game-owned format. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Revision identifier. */
+                    revisionId: number;
+                    /** @description Format identifier. */
+                    formatIdentifier: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Generated format file. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/mod-pack-formats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists formats for a visible event's selected revision. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Event identifier. */
+                    eventId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Format metadata. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{eventId}/mod-pack-formats/{formatIdentifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Downloads a visible event's selected mod pack through a game-owned format. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Event identifier. */
+                    eventId: string;
+                    /** @description Format identifier. */
+                    formatIdentifier: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Generated format file. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/mod-packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists active game-scoped normalized mod packs. */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Owning game identifier. */
+                    gameIdentifier?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Definitions and their latest active revision. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Creates a definition and first revision atomically. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Cancellation token. */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NormalizedModPackPayload"];
+                    "text/json": components["schemas"]["NormalizedModPackPayload"];
+                    "application/*+json": components["schemas"]["NormalizedModPackPayload"];
+                };
+            };
+            responses: {
+                /** @description The created identifiers. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/mod-packs/{modPackId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gets a normalized mod-pack workspace. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Definition identifier. */
+                    modPackId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Definition metadata and revision history. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-content/mod-packs/{modPackId}/revisions": {
         parameters: {
             query?: never;
             header?: never;
@@ -4360,233 +4655,73 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Creates a new ModPackDefinition and links the given ModPackRevision to it.
-         * @description A composition may not own any ModPackRevisions.
-         */
-        post: operations["CreateModPackCompositionAsync"];
+        /** Appends a new immutable revision to a definition. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Definition identifier. */
+                    modPackId: number;
+                };
+                cookie?: never;
+            };
+            /** @description Cancellation token. */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NormalizedModPackRevisionPayload"];
+                    "text/json": components["schemas"]["NormalizedModPackRevisionPayload"];
+                    "application/*+json": components["schemas"]["NormalizedModPackRevisionPayload"];
+                };
+            };
+            responses: {
+                /** @description The new revision identifier. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/mod-packs/{modPackId}/update/standalone": {
+    "/game-content/mod-packs/revisions/{revisionId}/members": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /**
-         * Allows to update the ModPackDefinition title or set a new ModPackRevision
-         *     as active ModPackRevision.
-         */
-        post: operations["UpdateModPackStandaloneAsync"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/{modPackId}/update/composition": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+        /** Gets direct or recursively flattened revision membership. */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Whether nested packs should be flattened. */
+                    effective?: boolean;
+                };
+                header?: never;
+                path: {
+                    /** @description Revision identifier. */
+                    revisionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Ordered membership data. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
         };
-        get?: never;
-        put?: never;
-        /**
-         * Allows to update the ModPackDefinition title or set range of existing ModPackRevision
-         *     as active ModPackRevision.
-         */
-        post: operations["UpdateModPackCompositionAsync"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/{modPackId}/change-owner": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Modifies the owning user of a ModPackDefinition.
-         * @description Operation is final and only allowed by either the owner or a user with the
-         *     string Administrative.ModPack role.
-         */
-        post: operations["ChangeOwnerAsync"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/{modPackId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Receives a single ModPackDefinition and the latest active ModPackRevision. */
-        get: operations["GetModPackDefinitionAsync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/{modPackId}/full": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Receives a single ModPackDefinition with its owner and linked revisions. */
-        get: operations["GetFullModPackDefinitionAsync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/{modPackId}/workspace": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Receives the consolidated command-center workspace state for one mod pack. */
-        get: operations["GetModPackWorkspaceAsync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/{modPackId}/revisions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Receives all revisions belonging to a standalone mod pack or linked to a composition mod pack. */
-        get: operations["GetModPackRevisionHistoryAsync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/{modPackId}/downloads": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Receives the recorded users who downloaded a mod pack and the concrete revisions they downloaded. */
-        get: operations["GetModPackDownloadAuditsAsync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/revision/{modPackRevisionPk}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Receives a single ModPackRevision and the parent ModPackDefinition. */
-        get: operations["GetModPackRevisionAsync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/{modPackId}/delete": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Makes a ModPackDefinition unavailable for further usage.
-         * @description To not break data consistency, this call will not actually delete a ModPackDefinition but rather make it not appear in
-         *     any call but a direct one.
-         */
-        post: operations["DeleteModPackAsync"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/all": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Returns all ModPackDefinition's available or, given myModPacksOnly is set, only those
-         *     of the currently authorized user.
-         */
-        get: operations["GetModPacksAsync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/mod-packs/all/count": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Returns the count of all ModPackDefinition's available or, given myModPacksOnly is set,
-         *     only those of the currently authorized user.
-         */
-        get: operations["GetModPacksCountAsync"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6950,8 +7085,6 @@ export interface components {
             timeStampPublished?: null | components["schemas"]["Instant"];
         };
         /** Format: binary */
-        FileContentResult: string;
-        /** Format: binary */
         FileResult: string;
         FullEventDto: {
             /**
@@ -6976,8 +7109,6 @@ export interface components {
             terrainIsActive?: boolean;
             modPackRevisionPrimaryKey?: null | number;
             modPackRevisionTimeStampCreated?: null | components["schemas"]["Instant"];
-            /** @description The HTML content of this revision. */
-            modPackRevisionHtml?: string;
             modPackRevisionUpdatedBy?: null | components["schemas"]["PlainUserDto"];
             /** @description Whether this revision is active or not. */
             modPackRevisionIsActive?: boolean;
@@ -6989,11 +7120,6 @@ export interface components {
             modPackDefinitionOwner?: null | components["schemas"]["PlainUserDto"];
             /** @description Whether this modpack is active or not. */
             modPackDefinitionIsActive?: boolean;
-            /**
-             * @description Whether this modpack is a composition of multiple modpack revisions
-             *     or not.
-             */
-            modPackDefinitionIsComposition?: boolean;
             imageAssetFk?: null | string;
             imagePath?: null | string;
             /** @description Represents the original scheduled date and time for the event before any modifications. */
@@ -7028,30 +7154,6 @@ export interface components {
             owner?: components["schemas"]["PlainUserDto"];
             /** @description Represents the foreign key identifying the user hosting the event. */
             hostedBy?: components["schemas"]["PlainUserDto"];
-        };
-        /** @description Represents a detailed definition of a mod pack, including its metadata, ownership, status, and revisions. */
-        FullModPackDefinitionDto: {
-            /** @description Stable identifier of the game this mod pack belongs to. */
-            gameIdentifier?: string;
-            /**
-             * Format: int64
-             * @description The primary key of this entity.
-             */
-            primaryKey?: number;
-            /** @description The timestamp when this modpack was created. */
-            timeStampCreated?: components["schemas"]["Instant"];
-            /** @description The name of this modpack. */
-            title?: string;
-            owner?: null | components["schemas"]["PlainUserDto"];
-            /** @description Whether this modpack is active or not. */
-            isActive?: boolean;
-            /**
-             * @description Whether this modpack is a composition of multiple modpack revisions
-             *     or not.
-             */
-            isComposition?: boolean;
-            /** @description The revisions which are part of this modpack. */
-            modPackRevisions?: components["schemas"]["PlainModPackRevisionDto"][];
         };
         /** @description Represents a Data Transfer Object (DTO) for a user in the system. */
         FullUserDto: {
@@ -7146,6 +7248,10 @@ export interface components {
             requiresModPack?: boolean;
             terrainSourceKinds?: string[];
             modInstallerIdentifiers?: string[];
+            /** @description Gets compatible mod source providers and their installers. */
+            modProviderBindings?: components["schemas"]["ModProviderBindingDto"][];
+            /** @description Gets game-owned bidirectional mod-pack formats. */
+            modPackFormats?: components["schemas"]["ModPackFormatDto"][];
             defaultTerrainSourceIdentifier?: null | string;
             defaultScenarioSourceIdentifier?: null | string;
             secrets?: components["schemas"]["GameServerSecretCapabilityDto"][];
@@ -7797,93 +7903,21 @@ export interface components {
             /** @description Command-center or public route to the using record. */
             path?: string;
         };
-        ModMembershipPayload: {
-            /** Format: uuid */
-            modId: string;
-            pinnedVersionId: null | string;
-        };
-        /** @description Represents a payload for composing a ModPack. */
-        ModPackCompositionCreationPayload: {
-            /** @description Stable identifier of the game this composition belongs to. */
-            gameIdentifier: string;
-            /** @description Gets or sets the collection of identifiers for the revisions included in the ModPack composition. */
-            revisionIds?: number[];
-            /** @description Gets or sets the title of the ModPack composition. */
-            title?: string;
-        };
-        /** @description Represents an update to a composition-based mod pack. */
-        ModPackCompositionUpdate: {
-            title?: null | string;
-            modPackRevisionIds?: null | number[];
-            useLatest?: null | boolean;
-        };
-        /** @description Represents the payload required for creating a mod pack. */
-        ModPackCreationPayload: {
-            gameIdentifier: string;
-            title: string;
-            html: string;
-        };
-        /** @description Represents a Data Transfer Object (DTO) for defining a mod pack within the United Tactical Forces API. */
-        ModPackDefinitionDto: {
-            /** @description Stable identifier of the game this mod pack belongs to. */
-            gameIdentifier?: string;
+        /** @description Public description of a game-owned mod-pack format. */
+        ModPackFormatDto: {
+            /** @description Gets the format identifier. */
+            identifier?: string;
+            /** @description Gets the display name. */
+            displayName?: string;
+            /** @description Gets the file extension. */
+            fileExtension?: string;
+            /** @description Gets the media type. */
+            mediaType?: string;
             /**
              * Format: int64
-             * @description The primary key of this entity.
+             * @description Gets the import size limit.
              */
-            primaryKey?: number;
-            /** @description The timestamp when this modpack was created. */
-            timeStampCreated?: components["schemas"]["Instant"];
-            /** @description The name of this modpack. */
-            title?: string;
-            /**
-             * Format: uuid
-             * @description The foreign key of the owner from this modpack.
-             */
-            ownerFk?: string;
-            /** @description Whether this modpack is active or not. */
-            isActive?: boolean;
-            /**
-             * @description Whether this modpack is a composition of multiple modpack revisions
-             *     or not.
-             */
-            isComposition?: boolean;
-            metaTimeStampDownloaded?: null | components["schemas"]["Instant"];
-            revisionPrimaryKey?: null | number;
-            revisionTimeStampCreated?: null | components["schemas"]["Instant"];
-            revisionHtml?: null | string;
-            revisionUpdatedByFk?: null | string;
-            revisionIsActive?: null | boolean;
-        };
-        /** @description Represents one recorded user download of a mod pack revision. */
-        ModPackDownloadAuditDto: {
-            /** @description The user who downloaded the mod pack revision. */
-            user?: components["schemas"]["PlainUserDto"];
-            /**
-             * Format: int64
-             * @description The mod pack definition that was downloaded.
-             */
-            modPackDefinitionId?: number;
-            /**
-             * Format: int64
-             * @description The concrete revision that was downloaded.
-             */
-            modPackRevisionId?: number;
-            /**
-             * Format: int64
-             * @description The owner definition of the downloaded revision.
-             */
-            modPackRevisionDefinitionId?: number;
-            /** @description The title of the owner definition of the downloaded revision. */
-            modPackRevisionDefinitionTitle?: string;
-            /** @description The timestamp when the downloaded revision was created. */
-            modPackRevisionTimeStampCreated?: components["schemas"]["Instant"];
-            /** @description The most recent timestamp when this user downloaded this revision through this mod pack definition. */
-            timeStampDownloaded?: components["schemas"]["Instant"];
-        };
-        ModPackMembersPayload: {
-            mods: components["schemas"]["ModMembershipPayload"][];
-            dependencies: components["schemas"]["ModPackReferencePayload"][];
+            maximumSizeBytes?: number;
         };
         ModPackReferencePayload: {
             /** Format: int64 */
@@ -7897,7 +7931,6 @@ export interface components {
             definitionTitle?: null | string;
             definitionOwnerFk?: null | string;
             definitionIsActive?: null | boolean;
-            definitionIsComposition?: null | boolean;
             metaTimeStampDownloaded?: null | components["schemas"]["Instant"];
             /**
              * Format: int64
@@ -7906,8 +7939,6 @@ export interface components {
             primaryKey?: number;
             /** @description The timestamp when this revision was created. */
             timeStampCreated?: components["schemas"]["Instant"];
-            /** @description The HTML content of this revision. */
-            html?: string;
             /**
              * Format: uuid
              * @description The foreign key of the user who updated this revision.
@@ -7916,72 +7947,98 @@ export interface components {
             /** @description Whether this revision is active or not. */
             isActive?: boolean;
         };
-        /** @description Represents a standalone update to a mod pack in the system. */
-        ModPackStandaloneUpdate: {
-            title?: null | string;
-            html?: null | string;
-        };
-        /** @description Represents one linked revision inside a composition mod pack workspace. */
-        ModPackWorkspaceCompositionMemberDto: {
-            /** @description The standalone mod pack definition that owns the linked revision. */
-            definition?: components["schemas"]["PlainModPackDefinitionDto"];
-            owner?: null | components["schemas"]["PlainUserDto"];
-            /** @description The linked revision. */
-            revision?: components["schemas"]["PlainModPackRevisionDto"];
-        };
-        /** @description Represents the consolidated command-center workspace state for a mod pack. */
-        ModPackWorkspaceDto: {
-            /** @description The mod pack definition and its latest active revision summary. */
-            definition?: components["schemas"]["ModPackDefinitionDto"];
-            owner?: null | components["schemas"]["PlainUserDto"];
-            latestRevision?: null | components["schemas"]["PlainModPackRevisionDto"];
-            /** @description The linked standalone revisions when the mod pack is a composition. */
-            compositionMembers?: components["schemas"]["ModPackWorkspaceCompositionMemberDto"][];
-            /** @description Recent revisions visible to operators with ledger access. */
-            revisionPreview?: components["schemas"]["PlainModPackRevisionDto"][];
-            /** @description Recent download records visible to operators with ledger access. */
-            downloadPreview?: components["schemas"]["ModPackDownloadAuditDto"][];
-            /**
-             * Format: int64
-             * @description The number of events referencing revisions represented by this workspace.
-             */
-            eventUsageCount?: number;
-            /**
-             * Format: int64
-             * @description The total number of download records for this mod pack definition.
-             */
-            downloadRecordCount?: number;
-            /**
-             * Format: int64
-             * @description The number of distinct users with download records for this mod pack definition.
-             */
-            downloadUserCount?: number;
-            lastDownloaded?: null | components["schemas"]["Instant"];
-            /** @description Whether the current user may update this mod pack. */
-            canModify?: boolean;
-            /** @description Whether the current user may deactivate this mod pack. */
-            canDelete?: boolean;
-            /** @description Whether the current user may view revision and download ledgers. */
-            canViewLedgers?: boolean;
-        };
         ModPayload: {
             gameIdentifier: string;
             title: string;
+            providerIdentifier: string;
+            source: string;
+            usageRole: components["schemas"]["EModUsageRole"];
             version: components["schemas"]["ModVersionPayload"];
         };
+        /** @description Public game/provider installation capability. */
+        ModProviderBindingDto: {
+            /** @description Gets the provider identifier. */
+            providerIdentifier?: string;
+            /** @description Gets the display name. */
+            displayName?: string;
+            /** @description Gets the accepted input description. */
+            acceptedInput?: string;
+            /** @description Gets compatible installer identifiers. */
+            installerIdentifiers?: string[];
+            /** @description Gets whether a version selector may be supplied. */
+            supportsVersionSelector?: boolean;
+        };
+        ModSourceInputPayload: {
+            input: string;
+            providerIdentifier?: null | string;
+            versionSelector?: null | string;
+        };
+        ModSourcePreviewPayload: {
+            gameIdentifier: string;
+            sources: components["schemas"]["ModSourceInputPayload"][];
+        };
         ModVersionPayload: {
-            usageRole: components["schemas"]["EModUsageRole"];
+            versionLabel: string;
+            versionSelector: string;
             installerIdentifier: string;
             /** @default {} */
             installerConfiguration: string;
-            sourceKind: components["schemas"]["EContentSourceKind"];
-            sourceIdentifier: string;
-            versionLabel: string;
-            /** @default {} */
-            metadata: string;
             artifactIdentifier?: null | string;
             checksumSha256?: null | string;
             artifactSizeBytes?: null | number;
+        };
+        /** @description Defines a new provider-backed catalog mod committed atomically with a revision. */
+        NormalizedModDraftPayload: {
+            /** @description Gets the reviewed catalog title. */
+            title?: string;
+            /** @description Gets the registered provider identifier. */
+            providerIdentifier?: string;
+            /** @description Gets the provider input URL or identifier. */
+            source?: string;
+            /** @description Gets the optional provider version selector. */
+            versionSelector?: string;
+            /** @description Gets the client/server usage role. */
+            usageRole?: components["schemas"]["EModUsageRole"];
+            /** @description Gets the compatible game installer identifier. */
+            installerIdentifier?: string;
+            /** @description Gets provider-specific installer configuration JSON. */
+            installerConfiguration?: string;
+        };
+        /** @description References a catalog mod and an optional immutable version. */
+        NormalizedModMembershipPayload: {
+            /**
+             * Format: uuid
+             * @description Catalog mod identifier.
+             */
+            modId: string;
+            pinnedVersionId: null | string;
+        };
+        /** @description References a nested mod pack and an optional immutable revision. */
+        NormalizedModPackDependencyPayload: {
+            /**
+             * Format: int64
+             * @description Nested definition identifier.
+             */
+            definitionId: number;
+            pinnedRevisionId: null | number;
+        };
+        /** @description Creates a normalized mod pack and its first immutable revision. */
+        NormalizedModPackPayload: {
+            /** @description Gets the owning game identifier. */
+            gameIdentifier: string;
+            /** @description Gets the mod-pack title. */
+            title: string;
+            /** @description Gets direct and nested revision members. */
+            revision: components["schemas"]["NormalizedModPackRevisionPayload"];
+        };
+        /** @description Defines the complete membership of a new immutable revision. */
+        NormalizedModPackRevisionPayload: {
+            /** @description Gets ordered direct mod memberships. */
+            mods?: components["schemas"]["NormalizedModMembershipPayload"][];
+            /** @description Gets reviewed new catalog mods committed atomically with this revision. */
+            newMods?: components["schemas"]["NormalizedModDraftPayload"][];
+            /** @description Gets ordered nested mod-pack memberships. */
+            dependencies?: components["schemas"]["NormalizedModPackDependencyPayload"][];
         };
         /** @description Represents a Data Transfer Object (DTO) for a specific claim associated with users or roles. */
         PlainClaimDto: {
@@ -8094,56 +8151,6 @@ export interface components {
             roleSymbol?: components["schemas"]["EEventSlotRoleSymbol"];
             /** @description The side of this role. */
             side?: components["schemas"]["EArmaSide"];
-        };
-        /** @description Represents a plain data transfer object for a mod pack definition in the system. */
-        PlainModPackDefinitionDto: {
-            /** @description Stable identifier of the game this mod pack belongs to. */
-            gameIdentifier?: string;
-            /**
-             * Format: int64
-             * @description The primary key of this entity.
-             */
-            primaryKey?: number;
-            /** @description The timestamp when this modpack was created. */
-            timeStampCreated?: components["schemas"]["Instant"];
-            /** @description The name of this modpack. */
-            title?: string;
-            /**
-             * Format: uuid
-             * @description The foreign key of the owner from this modpack.
-             */
-            ownerFk?: string;
-            /** @description Whether this modpack is active or not. */
-            isActive?: boolean;
-            /**
-             * @description Whether this modpack is a composition of multiple modpack revisions
-             *     or not.
-             */
-            isComposition?: boolean;
-        };
-        /** @description Represents a plain data transfer object for a mod pack revision. */
-        PlainModPackRevisionDto: {
-            /**
-             * Format: int64
-             * @description The primary key of this entity.
-             */
-            primaryKey?: number;
-            /** @description The timestamp when this revision was created. */
-            timeStampCreated?: components["schemas"]["Instant"];
-            /** @description The HTML content of this revision. */
-            html?: string;
-            /**
-             * Format: uuid
-             * @description The foreign key of the user who updated this revision.
-             */
-            updatedByFk?: string;
-            /** @description Whether this revision is active or not. */
-            isActive?: boolean;
-            /**
-             * Format: int64
-             * @description Foreign key of the owning definition of this revision.
-             */
-            definitionFk?: number;
         };
         /** @description Represents a simplified Data Transfer Object (DTO) for a user role. */
         PlainRoleDto: {
@@ -8611,11 +8618,6 @@ export interface components {
             modPackRevisionTimeStampDownloaded?: null | components["schemas"]["Instant"];
             /** @description The name of this modpack. */
             modPackDefinitionTitle?: string;
-            /**
-             * @description Whether this modpack is a composition of multiple modpack revisions
-             *     or not.
-             */
-            modPackDefinitionIsComposition?: boolean;
             imageAssetFk?: null | string;
             imagePath?: null | string;
             /** @description The original scheduled date and time for the event. */
@@ -11027,587 +11029,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-        };
-    };
-    DownloadLatestModPackAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition to download. */
-                modPackDefinitionId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A file response containing the corresponding ModPackRevision HTML and title. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/octet-stream": string;
-                };
-            };
-        };
-    };
-    DownloadModPackAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition to download. */
-                modPackDefinitionId: number;
-                /** @description The long ModPackRevision.PrimaryKey of the ModPackRevision to download. */
-                modPackRevisionId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A file response containing the corresponding ModPackRevision HTML and title. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/octet-stream": string;
-                };
-            };
-        };
-    };
-    CreateModPackStandaloneAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description A CancellationToken to cancel the operation.
-         *     Passed automatically by ASP.Net framework.
-         */
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ModPackCreationPayload"];
-                "text/json": components["schemas"]["ModPackCreationPayload"];
-                "application/*+json": components["schemas"]["ModPackCreationPayload"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": components["schemas"]["PlainModPackDefinitionDto"];
-                    "application/json": components["schemas"]["PlainModPackDefinitionDto"];
-                    "text/json": components["schemas"]["PlainModPackDefinitionDto"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    CreateModPackCompositionAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description A CancellationToken to cancel the operation.
-         *     Passed automatically by ASP.Net framework.
-         */
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ModPackCompositionCreationPayload"];
-                "text/json": components["schemas"]["ModPackCompositionCreationPayload"];
-                "application/*+json": components["schemas"]["ModPackCompositionCreationPayload"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": components["schemas"]["PlainModPackDefinitionDto"];
-                    "application/json": components["schemas"]["PlainModPackDefinitionDto"];
-                    "text/json": components["schemas"]["PlainModPackDefinitionDto"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UpdateModPackStandaloneAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition. */
-                modPackId: number;
-            };
-            cookie?: never;
-        };
-        /**
-         * @description A CancellationToken to cancel the operation.
-         *     Passed automatically by ASP.Net framework.
-         */
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ModPackStandaloneUpdate"];
-                "text/json": components["schemas"]["ModPackStandaloneUpdate"];
-                "application/*+json": components["schemas"]["ModPackStandaloneUpdate"];
-            };
-        };
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UpdateModPackCompositionAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition. */
-                modPackId: number;
-            };
-            cookie?: never;
-        };
-        /**
-         * @description A CancellationToken to cancel the operation.
-         *     Passed automatically by ASP.Net framework.
-         */
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ModPackCompositionUpdate"];
-                "text/json": components["schemas"]["ModPackCompositionUpdate"];
-                "application/*+json": components["schemas"]["ModPackCompositionUpdate"];
-            };
-        };
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ChangeOwnerAsync: {
-        parameters: {
-            query?: {
-                /** @description The Guid User.PrimaryKey of the new User. */
-                newUserId?: string;
-            };
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition. */
-                modPackId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GetModPackDefinitionAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition. */
-                modPackId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": components["schemas"]["ModPackDefinitionDto"];
-                    "application/json": components["schemas"]["ModPackDefinitionDto"];
-                    "text/json": components["schemas"]["ModPackDefinitionDto"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GetFullModPackDefinitionAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition. */
-                modPackId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": components["schemas"]["FullModPackDefinitionDto"];
-                    "application/json": components["schemas"]["FullModPackDefinitionDto"];
-                    "text/json": components["schemas"]["FullModPackDefinitionDto"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GetModPackWorkspaceAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition. */
-                modPackId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": components["schemas"]["ModPackWorkspaceDto"];
-                    "application/json": components["schemas"]["ModPackWorkspaceDto"];
-                    "text/json": components["schemas"]["ModPackWorkspaceDto"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GetModPackRevisionHistoryAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition. */
-                modPackId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": components["schemas"]["PlainModPackRevisionDto"][];
-                    "application/json": components["schemas"]["PlainModPackRevisionDto"][];
-                    "text/json": components["schemas"]["PlainModPackRevisionDto"][];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GetModPackDownloadAuditsAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition. */
-                modPackId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": components["schemas"]["ModPackDownloadAuditDto"][];
-                    "application/json": components["schemas"]["ModPackDownloadAuditDto"][];
-                    "text/json": components["schemas"]["ModPackDownloadAuditDto"][];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GetModPackRevisionAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackRevision.PrimaryKey of the ModPackRevision. */
-                modPackRevisionPk: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": components["schemas"]["ModPackRevisionDto"];
-                    "application/json": components["schemas"]["ModPackRevisionDto"];
-                    "text/json": components["schemas"]["ModPackRevisionDto"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    DeleteModPackAsync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The long ModPackDefinition.PrimaryKey of the ModPackDefinition. */
-                modPackId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GetModPacksAsync: {
-        parameters: {
-            query?: {
-                /** @description The amount of ModPackDefinition's to skip. Paging argument. */
-                skip?: number;
-                /** @description The amount of ModPackDefinition's to take after skip. Paging argument. */
-                take?: number;
-                /** @description Searches the string ModPackDefinition.Title with a function akin to bool string.StartsWith(string value) */
-                search?: string;
-                /** @description If `true`, only those ModPackDefinition's of the current user are returned. */
-                myModPacksOnly?: boolean;
-                gameIdentifier?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The available ModPackDefinition's. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": components["schemas"]["FullModPackDefinitionDto"][];
-                    "application/json": components["schemas"]["FullModPackDefinitionDto"][];
-                    "text/json": components["schemas"]["FullModPackDefinitionDto"][];
-                };
-            };
-        };
-    };
-    GetModPacksCountAsync: {
-        parameters: {
-            query?: {
-                /** @description If `true`, only those ModPackDefinition's of the current user are accounted for. */
-                myModPacksOnly?: boolean;
-                gameIdentifier?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The count of available ModPackDefinition's. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/plain": number;
-                    "application/json": number;
-                    "text/json": number;
                 };
             };
         };

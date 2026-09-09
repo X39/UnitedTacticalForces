@@ -1,57 +1,29 @@
 import { getApiClient } from "@/api/client";
-import { apiMethod, apiPath, apiPathWithQuery, fillApiPath } from "@/api/contract";
+import { apiPath } from "@/api/contract";
 import type { FullUser } from "@/api/types";
 import { canManageModPacks, hasClaim, hasResourceClaim, isAuthenticated } from "@/auth/claims";
 import type { components } from "@/generated/api";
 
 type Schema<Name extends keyof components["schemas"]> = components["schemas"][Name];
 
-export type ModPackDefinition = Schema<"ModPackDefinitionDto">;
-export type ModPackRevision = Schema<"PlainModPackRevisionDto">;
-export type PlainModPackDefinition = Schema<"PlainModPackDefinitionDto">;
-export type ModPackDownloadAudit = Schema<"ModPackDownloadAuditDto">;
 export type GameCapability = Schema<"GameServerCapabilityDto">;
 export type PlainUser = Schema<"PlainUserDto">;
 
-export interface FullModPackDefinition extends Omit<
-  Schema<"FullModPackDefinitionDto">,
-  "owner" | "modPackRevisions"
-> {
+export interface ModPackRevision {
+  primaryKey?: number;
+  timeStampCreated?: string;
+  isActive?: boolean;
+  updatedByFk?: string;
+}
+
+export interface FullModPackDefinition {
+  primaryKey?: number;
+  gameIdentifier?: string;
+  title?: string;
+  timeStampCreated?: string;
+  isActive?: boolean;
   owner: PlainUser | null;
   modPackRevisions: ModPackRevision[];
-}
-
-export interface ModPackCompositionMember extends Omit<
-  Schema<"ModPackWorkspaceCompositionMemberDto">,
-  "definition" | "owner" | "revision"
-> {
-  definition: PlainModPackDefinition;
-  owner: PlainUser | null;
-  revision: ModPackRevision;
-}
-
-export interface ModPackWorkspace extends Omit<
-  Schema<"ModPackWorkspaceDto">,
-  | "definition"
-  | "owner"
-  | "latestRevision"
-  | "compositionMembers"
-  | "revisionPreview"
-  | "downloadPreview"
-> {
-  definition: ModPackDefinition;
-  owner: PlainUser | null;
-  latestRevision: ModPackRevision | null;
-  compositionMembers: ModPackCompositionMember[];
-  revisionPreview: ModPackRevision[];
-  downloadPreview: ModPackDownloadAudit[];
-  eventUsageCount: number;
-  downloadRecordCount: number;
-  downloadUserCount: number;
-  lastDownloaded: string | null;
-  canModify: boolean;
-  canDelete: boolean;
-  canViewLedgers: boolean;
 }
 
 export interface ModPackListOptions {
@@ -67,72 +39,119 @@ export interface ModPackListSnapshot {
   definitions: FullModPackDefinition[];
 }
 
+/** Temporary handwritten view of the normalized content API until OpenAPI is regenerated. */
+export interface ModProviderBinding {
+  providerIdentifier: string;
+  displayName: string;
+  acceptedInput: string;
+  installerIdentifiers: string[];
+  supportsVersionSelector: boolean;
+}
+
+/** Temporary handwritten view of a game-owned mod-pack exchange format. */
+export interface ModPackFormat {
+  identifier: string;
+  displayName: string;
+  fileExtension: string;
+  mediaType: string;
+  maximumSizeBytes: number;
+}
+
+export type NormalizedGameCapability = Omit<
+  GameCapability,
+  "modProviderBindings" | "modPackFormats"
+> & {
+  modProviderBindings?: ModProviderBinding[];
+  modPackFormats?: ModPackFormat[];
+};
+
+export interface ModVersionCatalogItem {
+  primaryKey: string;
+  versionNumber: number;
+  versionLabel: string;
+  versionSelector: string;
+  installerIdentifier: string;
+  installerConfiguration: string;
+  artifactIdentifier?: string | null;
+  checksumSha256?: string | null;
+  artifactSizeBytes?: number | null;
+}
+
+export interface ModCatalogItem {
+  primaryKey: string;
+  gameIdentifier: string;
+  providerIdentifier: string;
+  canonicalSourceIdentifier: string;
+  title: string;
+  usageRole: "Shared" | "ClientOnly" | "ServerOnly";
+  versions: ModVersionCatalogItem[];
+}
+
+export interface ModSourceDraft {
+  input: string;
+  providerIdentifier: string;
+  canonicalSourceIdentifier: string;
+  title: string;
+  versionSelector: string;
+  installerIdentifiers: string[];
+  existingModId: string | null;
+}
+
+export interface ModPackFormatPreview {
+  title: string;
+  entries: ModSourceDraft[];
+  warnings: string[];
+}
+
+export interface ModPackMembership {
+  mods: Array<{
+    modFk: string;
+    pinnedVersionFk: string | null;
+    order: number;
+    title: string;
+    providerIdentifier: string;
+    canonicalSourceIdentifier: string;
+    usageRole: string;
+  }>;
+  dependencies?: Array<{
+    childDefinitionFk: number;
+    pinnedChildRevisionFk: number | null;
+    order: number;
+  }>;
+}
+
+export interface NormalizedModPackWorkspace {
+  definitionId: number;
+  gameIdentifier: string;
+  title: string;
+  isActive: boolean;
+  revisions: Array<{
+    revisionId: number;
+    isActive: boolean;
+    timeStampCreated: string;
+    updatedByFk: string;
+    directModCount: number;
+    nestedModPackCount: number;
+  }>;
+}
+
+export interface NormalizedModPackRevisionInput {
+  mods: Array<{ modId: string; pinnedVersionId: string | null }>;
+  newMods: Array<{
+    title: string;
+    providerIdentifier: string;
+    source: string;
+    versionSelector: string;
+    usageRole: string;
+    installerIdentifier: string;
+    installerConfiguration: string;
+  }>;
+  dependencies: Array<{ definitionId: number; pinnedRevisionId: number | null }>;
+}
+
 function required<T>(value: T | undefined, operation: string): T {
   if (value === undefined) throw new Error(`${operation} returned no response body.`);
   return value;
-}
-
-export function normalizeFullModPack(
-  definition: Schema<"FullModPackDefinitionDto">,
-): FullModPackDefinition {
-  return {
-    ...definition,
-    owner: definition.owner ?? null,
-    modPackRevisions: definition.modPackRevisions ?? [],
-  };
-}
-
-export function normalizeModPackWorkspace(
-  workspace: Schema<"ModPackWorkspaceDto">,
-): ModPackWorkspace | undefined {
-  if (!workspace.definition) return undefined;
-  return {
-    ...workspace,
-    definition: workspace.definition,
-    owner: workspace.owner ?? null,
-    latestRevision: workspace.latestRevision ?? null,
-    compositionMembers: (workspace.compositionMembers ?? [])
-      .filter(
-        (
-          member,
-        ): member is typeof member & {
-          definition: PlainModPackDefinition;
-          revision: ModPackRevision;
-        } => Boolean(member.definition && member.revision),
-      )
-      .map((member) => ({
-        ...member,
-        definition: member.definition,
-        owner: member.owner ?? null,
-        revision: member.revision,
-      })),
-    revisionPreview: workspace.revisionPreview ?? [],
-    downloadPreview: workspace.downloadPreview ?? [],
-    eventUsageCount: workspace.eventUsageCount ?? 0,
-    downloadRecordCount: workspace.downloadRecordCount ?? 0,
-    downloadUserCount: workspace.downloadUserCount ?? 0,
-    lastDownloaded: workspace.lastDownloaded ?? null,
-    canModify: workspace.canModify ?? false,
-    canDelete: workspace.canDelete ?? false,
-    canViewLedgers: workspace.canViewLedgers ?? false,
-  };
-}
-
-function listQuery(options: ModPackListOptions): string {
-  const query = new URLSearchParams({
-    skip: String(options.skip),
-    take: String(options.take),
-    myModPacksOnly: String(options.myModPacksOnly),
-  });
-  if (options.search?.trim()) query.set("search", options.search.trim());
-  if (options.gameIdentifier?.trim()) query.set("gameIdentifier", options.gameIdentifier.trim());
-  return query.toString();
-}
-
-function countQuery(myModPacksOnly: boolean, gameIdentifier?: string): string {
-  const query = new URLSearchParams({ myModPacksOnly: String(myModPacksOnly) });
-  if (gameIdentifier?.trim()) query.set("gameIdentifier", gameIdentifier.trim());
-  return query.toString();
 }
 
 export function latestActiveRevision(
@@ -146,21 +165,11 @@ export function latestActiveRevision(
     )[0];
 }
 
-export function isSelectableStandalone(definition: FullModPackDefinition): boolean {
-  return (
-    !(definition.isComposition ?? false) && latestActiveRevision(definition)?.primaryKey != null
-  );
-}
-
 export function modPackMatchesFilter(
   definition: FullModPackDefinition,
-  filter: "all" | "compositions" | "standalone" | "no-revisions",
+  filter: "all" | "no-revisions",
 ): boolean {
   switch (filter) {
-    case "compositions":
-      return definition.isComposition ?? false;
-    case "standalone":
-      return !(definition.isComposition ?? false);
     case "no-revisions":
       return definition.modPackRevisions.length === 0;
     default:
@@ -207,19 +216,6 @@ export function normalizeModPackSection(section: string | undefined): ModPackWor
 export type ModPackWorkspaceSection =
   "overview" | "artifact" | "edit" | "revisions" | "downloads" | "danger";
 
-export function modPackDownloadPath(workspace: ModPackWorkspace): string {
-  const id = workspace.definition.primaryKey;
-  if (id == null) throw new Error("The mod pack has no identifier.");
-  return workspace.definition.revisionPrimaryKey != null && !workspace.definition.isComposition
-    ? fillApiPath("/mod-packs/{modPackDefinitionId}/download/{modPackRevisionId}", {
-        modPackDefinitionId: id,
-        modPackRevisionId: workspace.definition.revisionPrimaryKey,
-      })
-    : fillApiPath("/mod-packs/{modPackDefinitionId}/download/latest", {
-        modPackDefinitionId: id,
-      });
-}
-
 export const modPackQueryKeys = {
   all: ["mod-packs"] as const,
   list: (options: ModPackListOptions) => ["mod-packs", "list", options] as const,
@@ -227,15 +223,54 @@ export const modPackQueryKeys = {
   capabilities: ["mod-packs", "capabilities"] as const,
   selector: (gameIdentifier: string, search: string) =>
     ["mod-packs", "selector", gameIdentifier, search] as const,
+  mods: (gameIdentifier: string, search: string) =>
+    ["mod-packs", "mods", gameIdentifier, search] as const,
+  members: (revisionId: number, effective: boolean) =>
+    ["mod-packs", "members", revisionId, effective] as const,
 };
 
 export const modPackService = {
   async list(options: ModPackListOptions, signal?: AbortSignal): Promise<FullModPackDefinition[]> {
-    const result = await getApiClient().request<Schema<"FullModPackDefinitionDto">[]>(
-      apiPathWithQuery("/mod-packs/all", listQuery(options)),
-      { signal },
+    const games = options.gameIdentifier
+      ? [options.gameIdentifier]
+      : (await this.capabilities(signal))
+          .filter((item) => item.supportsModPacks)
+          .map((item) => item.gameIdentifier ?? "")
+          .filter(Boolean);
+    const results = await Promise.all(
+      games.map(async (gameIdentifier) => {
+        const query = new URLSearchParams({ gameIdentifier });
+        return (
+          (await getApiClient().request<
+            Array<{
+              definitionId: number;
+              gameIdentifier: string;
+              title: string;
+              latestRevisionId: number | null;
+            }>
+          >(`/game-content/mod-packs?${query}`, { signal })) ?? []
+        );
+      }),
     );
-    return (result ?? []).map(normalizeFullModPack);
+    return results
+      .flat()
+      .filter(
+        (item) =>
+          !options.search?.trim() ||
+          item.title.toLocaleLowerCase().includes(options.search.trim().toLocaleLowerCase()),
+      )
+      .slice(options.skip, options.skip + options.take)
+      .map((item) => ({
+        primaryKey: item.definitionId,
+        gameIdentifier: item.gameIdentifier,
+        title: item.title,
+        isActive: true,
+        owner: null,
+        modPackRevisions:
+          item.latestRevisionId == null
+            ? []
+            : [{ primaryKey: item.latestRevisionId, isActive: true }],
+      }));
   },
 
   async count(
@@ -244,11 +279,11 @@ export const modPackService = {
     gameIdentifier?: string,
   ): Promise<number> {
     return (
-      (await getApiClient().request<number>(
-        apiPathWithQuery("/mod-packs/all/count", countQuery(myModPacksOnly, gameIdentifier)),
-        { signal },
-      )) ?? 0
-    );
+      await this.list(
+        { skip: 0, take: 10000, myModPacksOnly, ...(gameIdentifier ? { gameIdentifier } : {}) },
+        signal,
+      )
+    ).length;
   },
 
   async snapshot(options: ModPackListOptions, signal?: AbortSignal): Promise<ModPackListSnapshot> {
@@ -259,86 +294,224 @@ export const modPackService = {
     return { count, definitions };
   },
 
-  async capabilities(signal?: AbortSignal): Promise<GameCapability[]> {
+  async capabilities(signal?: AbortSignal): Promise<NormalizedGameCapability[]> {
     return (
-      (await getApiClient().request<GameCapability[]>(apiPath("/game-servers/capabilities"), {
+      (await getApiClient().request<NormalizedGameCapability[]>(
+        apiPath("/game-servers/capabilities"),
+        {
+          signal,
+        },
+      )) ?? []
+    );
+  },
+
+  async mods(
+    gameIdentifier: string,
+    search: string,
+    signal?: AbortSignal,
+  ): Promise<ModCatalogItem[]> {
+    const query = new URLSearchParams({ gameIdentifier, search, skip: "0", take: "100" });
+    return (
+      (await getApiClient().request<ModCatalogItem[]>(`/game-content/mods?${query.toString()}`, {
         signal,
       })) ?? []
     );
   },
 
-  async workspace(id: number, signal?: AbortSignal): Promise<ModPackWorkspace | undefined> {
-    const result = await getApiClient().request<Schema<"ModPackWorkspaceDto">>(
-      fillApiPath("/mod-packs/{modPackId}/workspace", { modPackId: id }),
+  async previewSources(
+    gameIdentifier: string,
+    sources: Array<{ input: string; providerIdentifier?: string; versionSelector?: string }>,
+    signal?: AbortSignal,
+  ): Promise<ModSourceDraft[]> {
+    const result =
+      (await getApiClient().request<
+        Array<{
+          source: {
+            providerIdentifier: string;
+            canonicalSourceIdentifier: string;
+            title: string;
+            versionSelector: string;
+          };
+          existingModId?: string | null;
+          installerIdentifiers?: string[];
+        }>
+      >("/game-content/mods/source-preview", {
+        method: "POST",
+        body: { gameIdentifier, sources },
+        signal,
+      })) ?? [];
+    return result.map((item, index) => ({
+      input: sources[index]?.input ?? item.source.canonicalSourceIdentifier,
+      ...item.source,
+      existingModId: item.existingModId ?? null,
+      installerIdentifiers: item.installerIdentifiers ?? [],
+    }));
+  },
+
+  async previewFormat(
+    gameIdentifier: string,
+    formatIdentifier: string,
+    file: File,
+    signal?: AbortSignal,
+  ): Promise<ModPackFormatPreview> {
+    const body = new FormData();
+    body.append("file", file);
+    const result = required(
+      await getApiClient().request<{
+        title: string;
+        entries: Array<{
+          title: string;
+          source: {
+            providerIdentifier: string;
+            canonicalSourceIdentifier: string;
+            title: string;
+            versionSelector: string;
+          };
+          existingModId?: string | null;
+        }>;
+        warnings?: string[];
+      }>(
+        `/game-content/mod-packs/formats/${encodeURIComponent(gameIdentifier)}/${encodeURIComponent(formatIdentifier)}/preview`,
+        { method: "POST", body, signal },
+      ),
+      "Mod-pack format preview",
+    );
+    return {
+      title: result.title,
+      warnings: result.warnings ?? [],
+      entries: result.entries.map((entry) => ({
+        input: entry.source.canonicalSourceIdentifier,
+        ...entry.source,
+        title: entry.title || entry.source.title,
+        existingModId: entry.existingModId ?? null,
+        installerIdentifiers: [],
+      })),
+    };
+  },
+
+  formatDownloadPath(revisionId: number, formatIdentifier: string): string {
+    return `/game-content/mod-packs/revisions/${encodeURIComponent(String(revisionId))}/formats/${encodeURIComponent(formatIdentifier)}`;
+  },
+
+  async createMod(
+    payload: {
+      gameIdentifier: string;
+      title: string;
+      providerIdentifier: string;
+      source: string;
+      usageRole: string;
+      version: {
+        versionLabel: string;
+        versionSelector: string;
+        installerIdentifier: string;
+        installerConfiguration: string;
+        artifactIdentifier?: string;
+        checksumSha256?: string;
+        artifactSizeBytes?: number;
+      };
+    },
+    signal?: AbortSignal,
+  ): Promise<{ primaryKey: string; versionId: string }> {
+    return required(
+      await getApiClient().request<{ primaryKey: string; versionId: string }>(
+        "/game-content/mods",
+        { method: "POST", body: payload, signal },
+      ),
+      "Mod creation",
+    );
+  },
+
+  async createUploadedArtifact(
+    payload: {
+      gameIdentifier: string;
+      title: string;
+      usageRole: string;
+      installerIdentifier: string;
+      file: File;
+    },
+    signal?: AbortSignal,
+  ): Promise<{ primaryKey: string; versionId: string; artifactIdentifier: string }> {
+    const body = new FormData();
+    body.append("gameIdentifier", payload.gameIdentifier);
+    body.append("title", payload.title);
+    body.append("usageRole", payload.usageRole);
+    body.append("installerIdentifier", payload.installerIdentifier);
+    body.append("file", payload.file);
+    return required(
+      await getApiClient().request<{
+        primaryKey: string;
+        versionId: string;
+        artifactIdentifier: string;
+      }>("/game-content/mods/uploaded-artifact", { method: "POST", body, signal }),
+      "Uploaded artifact creation",
+    );
+  },
+
+  async createNormalized(
+    payload: { gameIdentifier: string; title: string; revision: NormalizedModPackRevisionInput },
+    signal?: AbortSignal,
+  ): Promise<{ definitionId: number; revisionId: number }> {
+    return required(
+      await getApiClient().request<{ definitionId: number; revisionId: number }>(
+        "/game-content/mod-packs",
+        { method: "POST", body: payload, signal },
+      ),
+      "Mod-pack creation",
+    );
+  },
+
+  async appendRevision(
+    modPackId: number,
+    payload: NormalizedModPackRevisionInput,
+    signal?: AbortSignal,
+  ): Promise<{ revisionId: number }> {
+    return required(
+      await getApiClient().request<{ revisionId: number }>(
+        `/game-content/mod-packs/${encodeURIComponent(String(modPackId))}/revisions`,
+        { method: "POST", body: payload, signal },
+      ),
+      "Mod-pack revision creation",
+    );
+  },
+
+  async normalizedWorkspace(
+    modPackId: number,
+    signal?: AbortSignal,
+  ): Promise<NormalizedModPackWorkspace | undefined> {
+    return await getApiClient().request<NormalizedModPackWorkspace>(
+      `/game-content/mod-packs/${encodeURIComponent(String(modPackId))}`,
       { signal, expectedStatuses: [404] },
     );
-    return result ? normalizeModPackWorkspace(result) : undefined;
   },
 
-  async full(id: number, signal?: AbortSignal): Promise<FullModPackDefinition | undefined> {
-    const result = await getApiClient().request<Schema<"FullModPackDefinitionDto">>(
-      fillApiPath("/mod-packs/{modPackId}/full", { modPackId: id }),
-      { signal, expectedStatuses: [404] },
+  async members(
+    revisionId: number,
+    effective: boolean,
+    signal?: AbortSignal,
+  ): Promise<ModPackMembership> {
+    const result = required(
+      await getApiClient().request<
+        Omit<ModPackMembership, "mods"> & {
+          mods: Array<
+            | ModPackMembership["mods"][number]
+            | { member: ModPackMembership["mods"][number]; effectiveOrder: number }
+          >;
+        }
+      >(
+        `/game-content/mod-packs/revisions/${encodeURIComponent(String(revisionId))}/members?effective=${effective}`,
+        { signal },
+      ),
+      "Mod-pack membership",
     );
-    return result ? normalizeFullModPack(result) : undefined;
-  },
-
-  async createStandalone(
-    payload: Schema<"ModPackCreationPayload">,
-    signal?: AbortSignal,
-  ): Promise<PlainModPackDefinition> {
-    const path = "/mod-packs/create/standalone" as const;
-    const result = await getApiClient().request<PlainModPackDefinition>(apiPath(path), {
-      method: apiMethod(path, "post"),
-      body: payload,
-      signal,
-    });
-    return required(result, "Standalone mod-pack creation");
-  },
-
-  async createComposition(
-    payload: Schema<"ModPackCompositionCreationPayload">,
-    signal?: AbortSignal,
-  ): Promise<PlainModPackDefinition> {
-    const path = "/mod-packs/create/composition" as const;
-    const result = await getApiClient().request<PlainModPackDefinition>(apiPath(path), {
-      method: apiMethod(path, "post"),
-      body: payload,
-      signal,
-    });
-    return required(result, "Composition mod-pack creation");
-  },
-
-  async updateStandalone(
-    id: number,
-    payload: Schema<"ModPackStandaloneUpdate">,
-    signal?: AbortSignal,
-  ): Promise<void> {
-    const path = "/mod-packs/{modPackId}/update/standalone" as const;
-    await getApiClient().request<void>(fillApiPath(path, { modPackId: id }), {
-      method: apiMethod(path, "post"),
-      body: payload,
-      signal,
-    });
-  },
-
-  async updateComposition(
-    id: number,
-    payload: Schema<"ModPackCompositionUpdate">,
-    signal?: AbortSignal,
-  ): Promise<void> {
-    const path = "/mod-packs/{modPackId}/update/composition" as const;
-    await getApiClient().request<void>(fillApiPath(path, { modPackId: id }), {
-      method: apiMethod(path, "post"),
-      body: payload,
-      signal,
-    });
+    return {
+      ...result,
+      mods: result.mods.map((item) => ("member" in item ? item.member : item)),
+    };
   },
 
   async deactivate(id: number, signal?: AbortSignal): Promise<void> {
-    const path = "/mod-packs/{modPackId}/delete" as const;
-    await getApiClient().request<void>(fillApiPath(path, { modPackId: id }), {
-      method: apiMethod(path, "post"),
+    await getApiClient().request<void>(`/mod-packs/${encodeURIComponent(String(id))}/delete`, {
+      method: "POST",
       signal,
     });
   },

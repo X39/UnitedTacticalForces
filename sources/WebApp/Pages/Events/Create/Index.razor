@@ -114,10 +114,10 @@
                                                     @bind-SelectedOption="_terrain"
                                                     @bind-SelectedOption:after="OnTerrainChanged"/>
                                 <FluentAutocomplete Required="true"
-                                                    TOption="PlainModPackRevisionDto"
+                                                    TOption="NormalizedModPackRevisionOption"
                                                     MaximumSelectedOptions="1"
-                                                    OnOptionsSearch="ModPackAutoCompleteService.PlainModPackRevisionDto.OnOptionsSearch"
-                                                    OptionText="ModPackAutoCompleteService.PlainModPackRevisionDto.OptionText"
+                                                    OnOptionsSearch="ModPackAutoCompleteService.OnOptionsSearchAsync"
+                                                    OptionText="ModPackAutoCompleteService.OptionText"
                                                     Label="@(Localizer[nameof(Language.Auto_ModPackRevision_d199668f)])"
                                                     Placeholder="@(Localizer[nameof(Language.Auto_SearchModPack_33ce4302)])"
                                                     @bind-SelectedOption="_modPack"
@@ -408,7 +408,7 @@
     private readonly List<EventSlotDraftModel> _slotDrafts = [];
     private PlainUserDto? _hostedBy;
     private PlainTerrainDto? _terrain;
-    private PlainModPackRevisionDto? _modPack;
+    private NormalizedModPackRevisionOption? _modPack;
     private string _imageFileName = string.Empty;
     private int _step = 1;
     private bool _isSubmitting;
@@ -518,7 +518,7 @@
         => _model.TerrainFk = _terrain?.PrimaryKey;
 
     private void OnModPackChanged()
-        => _model.ModPackRevisionFk = _modPack?.PrimaryKey;
+        => _model.ModPackRevisionFk = _modPack?.RevisionId;
 
     private void AddSlot()
         => _slotDrafts.Add(EventSlotDraftModel.CreateDefault());
@@ -613,7 +613,7 @@
     private string GetModPackLabel()
         => _modPack is null
             ? Localizer[nameof(Language.Pages_Events_Create_Status_ModPackPending)].Value
-            : ModPackAutoCompleteService.PlainModPackRevisionDto.OptionText(_modPack)
+            : ModPackAutoCompleteService.OptionText(_modPack)
               ?? Localizer[nameof(Language.Pages_Events_Create_Status_SelectedModPack)].Value;
 
     private string GetBriefingExcerpt()

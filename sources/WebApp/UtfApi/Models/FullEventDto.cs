@@ -24,7 +24,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Description { get; set; }
 #endif
-        /// <summary>Represents the foreign key identifying the user hosting the event.</summary>
+        /// <summary>The hostedBy property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto? HostedBy { get; set; }
@@ -50,8 +50,6 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public int? MinimumAccepted { get; set; }
         /// <summary>Whether this modpack is active or not.</summary>
         public bool? ModPackDefinitionIsActive { get; set; }
-        /// <summary>Whether this modpack is a composition of multiple modpack revisionsor not.</summary>
-        public bool? ModPackDefinitionIsComposition { get; set; }
         /// <summary>The modPackDefinitionOwner property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -62,7 +60,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>The primary key of this entity.</summary>
         public long? ModPackDefinitionPrimaryKey { get; set; }
-        /// <summary>The timestamp when this modpack was created.</summary>
+        /// <summary>The modPackDefinitionTimeStampCreated property</summary>
         public DateTimeOffset? ModPackDefinitionTimeStampCreated { get; set; }
         /// <summary>The name of this modpack.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
@@ -72,19 +70,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string ModPackDefinitionTitle { get; set; }
 #endif
-        /// <summary>The HTML content of this revision.</summary>
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
-#nullable enable
-        public string? ModPackRevisionHtml { get; set; }
-#nullable restore
-#else
-        public string ModPackRevisionHtml { get; set; }
-#endif
         /// <summary>Whether this revision is active or not.</summary>
         public bool? ModPackRevisionIsActive { get; set; }
         /// <summary>The primary key of this entity.</summary>
         public long? ModPackRevisionPrimaryKey { get; set; }
-        /// <summary>The timestamp when this revision was created.</summary>
+        /// <summary>The modPackRevisionTimeStampCreated property</summary>
         public DateTimeOffset? ModPackRevisionTimeStampCreated { get; set; }
         /// <summary>The modPackRevisionTimeStampDownloaded property</summary>
         public DateTimeOffset? ModPackRevisionTimeStampDownloaded { get; set; }
@@ -96,7 +86,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto ModPackRevisionUpdatedBy { get; set; }
 #endif
-        /// <summary>Represents the foreign key linking the event to its owner.</summary>
+        /// <summary>The owner property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto? Owner { get; set; }
@@ -108,10 +98,30 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public Guid? PrimaryKey { get; set; }
         /// <summary>Represents the number of users who have explicitly declined participation in the event.</summary>
         public int? RejectedCount { get; set; }
-        /// <summary>Indicates the date and time when the event is scheduled to occur.</summary>
+        /// <summary>The scenarioFk property</summary>
+        public Guid? ScenarioFk { get; set; }
+        /// <summary>The scenarioTitle property</summary>
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#nullable enable
+        public string? ScenarioTitle { get; set; }
+#nullable restore
+#else
+        public string ScenarioTitle { get; set; }
+#endif
+        /// <summary>The scenarioVersionFk property</summary>
+        public Guid? ScenarioVersionFk { get; set; }
+        /// <summary>The scheduledFor property</summary>
         public DateTimeOffset? ScheduledFor { get; set; }
-        /// <summary>Represents the original scheduled date and time for the event before any modifications.</summary>
+        /// <summary>The scheduledForOriginal property</summary>
         public DateTimeOffset? ScheduledForOriginal { get; set; }
+        /// <summary>The terrainGameIdentifier property</summary>
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#nullable enable
+        public string? TerrainGameIdentifier { get; set; }
+#nullable restore
+#else
+        public string TerrainGameIdentifier { get; set; }
+#endif
         /// <summary>Gallery media asset used as terrain image.</summary>
         public Guid? TerrainImageAssetFk { get; set; }
         /// <summary>API-relative render path for the terrain image.</summary>
@@ -134,7 +144,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string TerrainTitle { get; set; }
 #endif
-        /// <summary>Indicates the date and time when the event was created.</summary>
+        /// <summary>The terrainVersionFk property</summary>
+        public Guid? TerrainVersionFk { get; set; }
+        /// <summary>The timeStampCreated property</summary>
         public DateTimeOffset? TimeStampCreated { get; set; }
         /// <summary>Represents the title of the event.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
@@ -178,12 +190,10 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "maybeCount", n => { MaybeCount = n.GetIntValue(); } },
                 { "minimumAccepted", n => { MinimumAccepted = n.GetIntValue(); } },
                 { "modPackDefinitionIsActive", n => { ModPackDefinitionIsActive = n.GetBoolValue(); } },
-                { "modPackDefinitionIsComposition", n => { ModPackDefinitionIsComposition = n.GetBoolValue(); } },
                 { "modPackDefinitionOwner", n => { ModPackDefinitionOwner = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto>(global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto.CreateFromDiscriminatorValue); } },
                 { "modPackDefinitionPrimaryKey", n => { ModPackDefinitionPrimaryKey = n.GetLongValue(); } },
                 { "modPackDefinitionTimeStampCreated", n => { ModPackDefinitionTimeStampCreated = n.GetDateTimeOffsetValue(); } },
                 { "modPackDefinitionTitle", n => { ModPackDefinitionTitle = n.GetStringValue(); } },
-                { "modPackRevisionHtml", n => { ModPackRevisionHtml = n.GetStringValue(); } },
                 { "modPackRevisionIsActive", n => { ModPackRevisionIsActive = n.GetBoolValue(); } },
                 { "modPackRevisionPrimaryKey", n => { ModPackRevisionPrimaryKey = n.GetLongValue(); } },
                 { "modPackRevisionTimeStampCreated", n => { ModPackRevisionTimeStampCreated = n.GetDateTimeOffsetValue(); } },
@@ -192,13 +202,18 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "owner", n => { Owner = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto>(global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto.CreateFromDiscriminatorValue); } },
                 { "primaryKey", n => { PrimaryKey = n.GetGuidValue(); } },
                 { "rejectedCount", n => { RejectedCount = n.GetIntValue(); } },
+                { "scenarioFk", n => { ScenarioFk = n.GetGuidValue(); } },
+                { "scenarioTitle", n => { ScenarioTitle = n.GetStringValue(); } },
+                { "scenarioVersionFk", n => { ScenarioVersionFk = n.GetGuidValue(); } },
                 { "scheduledFor", n => { ScheduledFor = n.GetDateTimeOffsetValue(); } },
                 { "scheduledForOriginal", n => { ScheduledForOriginal = n.GetDateTimeOffsetValue(); } },
+                { "terrainGameIdentifier", n => { TerrainGameIdentifier = n.GetStringValue(); } },
                 { "terrainImageAssetFk", n => { TerrainImageAssetFk = n.GetGuidValue(); } },
                 { "terrainImagePath", n => { TerrainImagePath = n.GetStringValue(); } },
                 { "terrainIsActive", n => { TerrainIsActive = n.GetBoolValue(); } },
                 { "terrainPrimaryKey", n => { TerrainPrimaryKey = n.GetLongValue(); } },
                 { "terrainTitle", n => { TerrainTitle = n.GetStringValue(); } },
+                { "terrainVersionFk", n => { TerrainVersionFk = n.GetGuidValue(); } },
                 { "timeStampCreated", n => { TimeStampCreated = n.GetDateTimeOffsetValue(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
@@ -219,12 +234,10 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteIntValue("maybeCount", MaybeCount);
             writer.WriteIntValue("minimumAccepted", MinimumAccepted);
             writer.WriteBoolValue("modPackDefinitionIsActive", ModPackDefinitionIsActive);
-            writer.WriteBoolValue("modPackDefinitionIsComposition", ModPackDefinitionIsComposition);
             writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto>("modPackDefinitionOwner", ModPackDefinitionOwner);
             writer.WriteLongValue("modPackDefinitionPrimaryKey", ModPackDefinitionPrimaryKey);
             writer.WriteDateTimeOffsetValue("modPackDefinitionTimeStampCreated", ModPackDefinitionTimeStampCreated);
             writer.WriteStringValue("modPackDefinitionTitle", ModPackDefinitionTitle);
-            writer.WriteStringValue("modPackRevisionHtml", ModPackRevisionHtml);
             writer.WriteBoolValue("modPackRevisionIsActive", ModPackRevisionIsActive);
             writer.WriteLongValue("modPackRevisionPrimaryKey", ModPackRevisionPrimaryKey);
             writer.WriteDateTimeOffsetValue("modPackRevisionTimeStampCreated", ModPackRevisionTimeStampCreated);
@@ -233,13 +246,18 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PlainUserDto>("owner", Owner);
             writer.WriteGuidValue("primaryKey", PrimaryKey);
             writer.WriteIntValue("rejectedCount", RejectedCount);
+            writer.WriteGuidValue("scenarioFk", ScenarioFk);
+            writer.WriteStringValue("scenarioTitle", ScenarioTitle);
+            writer.WriteGuidValue("scenarioVersionFk", ScenarioVersionFk);
             writer.WriteDateTimeOffsetValue("scheduledFor", ScheduledFor);
             writer.WriteDateTimeOffsetValue("scheduledForOriginal", ScheduledForOriginal);
+            writer.WriteStringValue("terrainGameIdentifier", TerrainGameIdentifier);
             writer.WriteGuidValue("terrainImageAssetFk", TerrainImageAssetFk);
             writer.WriteStringValue("terrainImagePath", TerrainImagePath);
             writer.WriteBoolValue("terrainIsActive", TerrainIsActive);
             writer.WriteLongValue("terrainPrimaryKey", TerrainPrimaryKey);
             writer.WriteStringValue("terrainTitle", TerrainTitle);
+            writer.WriteGuidValue("terrainVersionFk", TerrainVersionFk);
             writer.WriteDateTimeOffsetValue("timeStampCreated", TimeStampCreated);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);

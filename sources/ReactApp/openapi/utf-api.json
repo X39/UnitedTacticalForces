@@ -4547,6 +4547,32 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
           }
         ],
         "responses": {
@@ -4586,6 +4612,106 @@
         }
       }
     },
+    "/game-content/mods/source-preview": {
+      "post": {
+        "tags": [
+          "GameContent"
+        ],
+        "summary": "Previews canonical provider metadata without mutating the catalog.",
+        "requestBody": {
+          "description": "Cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModSourcePreviewPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModSourcePreviewPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModSourcePreviewPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Resolved canonical sources and existing catalog matches."
+          }
+        }
+      }
+    },
+    "/game-content/mods/uploaded-artifact": {
+      "post": {
+        "tags": [
+          "GameContent"
+        ],
+        "summary": "Creates a reusable uploaded-artifact mod and immutable first version.",
+        "requestBody": {
+          "description": "Cancellation token.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "gameIdentifier": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "usageRole": {
+                        "$ref": "#/components/schemas/EModUsageRole"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "installerIdentifier": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Created mod and version identifiers."
+          }
+        }
+      }
+    },
     "/game-content/mods/{modId}/versions": {
       "post": {
         "tags": [
@@ -4617,50 +4743,6 @@
             "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ModVersionPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/game-content/modpacks/{revisionId}/members": {
-      "put": {
-        "tags": [
-          "GameContent"
-        ],
-        "parameters": [
-          {
-            "name": "revisionId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackMembersPayload"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackMembersPayload"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackMembersPayload"
               }
             }
           },
@@ -6932,18 +7014,66 @@
         "security": [ ]
       }
     },
-    "/mod-packs/{modPackDefinitionId}/download/latest": {
+    "/game-content/mod-packs/formats/{gameIdentifier}/{formatIdentifier}/preview": {
+      "post": {
+        "tags": [
+          "ModPackFormats"
+        ],
+        "summary": "Parses a custom file into reviewed normalized catalog candidates.",
+        "parameters": [
+          {
+            "name": "gameIdentifier",
+            "in": "path",
+            "description": "Owning game identifier.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "formatIdentifier",
+            "in": "path",
+            "description": "Format identifier.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Cancellation token.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "$ref": "#/components/schemas/IFormFile"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Resolved entries, catalog matches, and warnings."
+          }
+        }
+      }
+    },
+    "/game-content/mod-packs/revisions/{revisionId}/formats": {
       "get": {
         "tags": [
-          "ModPack"
+          "ModPackFormats"
         ],
-        "summary": "Downloads the ModPackRevision and updates the last downloaded timestamp in the users meta data.",
-        "operationId": "DownloadLatestModPackAsync",
+        "summary": "Lists formats available for a revision.",
         "parameters": [
           {
-            "name": "modPackDefinitionId",
+            "name": "revisionId",
             "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition to download.",
+            "description": "Revision identifier.",
             "required": true,
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -6953,33 +7083,23 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": "A file response containing the corresponding ModPackRevision HTML and title.",
-            "content": {
-              "application/octet-stream": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
+          "200": {
+            "description": "Format metadata."
           }
-        },
-        "security": [ ]
+        }
       }
     },
-    "/mod-packs/{modPackDefinitionId}/download/{modPackRevisionId}": {
+    "/game-content/mod-packs/revisions/{revisionId}/formats/{formatIdentifier}": {
       "get": {
         "tags": [
-          "ModPack"
+          "ModPackFormats"
         ],
-        "summary": "Downloads the ModPackRevision and updates the last downloaded timestamp in the users meta data.",
-        "operationId": "DownloadModPackAsync",
+        "summary": "Exports an immutable revision through a game-owned format.",
         "parameters": [
           {
-            "name": "modPackDefinitionId",
+            "name": "revisionId",
             "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition to download.",
+            "description": "Revision identifier.",
             "required": true,
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -6988,280 +7108,34 @@
             }
           },
           {
-            "name": "modPackRevisionId",
+            "name": "formatIdentifier",
             "in": "path",
-            "description": "The long ModPackRevision.PrimaryKey of the ModPackRevision to download.",
+            "description": "Format identifier.",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
         "responses": {
-          "default": {
-            "description": "A file response containing the corresponding ModPackRevision HTML and title.",
-            "content": {
-              "application/octet-stream": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          }
-        },
-        "security": [ ]
-      }
-    },
-    "/mod-packs/create/standalone": {
-      "post": {
-        "tags": [
-          "ModPack"
-        ],
-        "summary": "Creates a new ModPackDefinition and a corresponding ModPackRevision.",
-        "description": "The initial ModPackRevision must be provided in the ModPackDefinition object.",
-        "operationId": "CreateModPackStandaloneAsync",
-        "requestBody": {
-          "description": "A CancellationToken to cancel the operation.\r\nPassed automatically by ASP.Net framework.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackCreationPayload"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackCreationPayload"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackCreationPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
           "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlainModPackDefinitionDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlainModPackDefinitionDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlainModPackDefinitionDto"
-                }
-              }
-            }
+            "description": "Generated format file."
           }
         }
       }
     },
-    "/mod-packs/create/composition": {
-      "post": {
+    "/events/{eventId}/mod-pack-formats": {
+      "get": {
         "tags": [
-          "ModPack"
+          "ModPackFormats"
         ],
-        "summary": "Creates a new ModPackDefinition and links the given ModPackRevision to it.",
-        "description": "A composition may not own any ModPackRevisions.",
-        "operationId": "CreateModPackCompositionAsync",
-        "requestBody": {
-          "description": "A CancellationToken to cancel the operation.\r\nPassed automatically by ASP.Net framework.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackCompositionCreationPayload"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackCompositionCreationPayload"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackCompositionCreationPayload"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlainModPackDefinitionDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlainModPackDefinitionDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PlainModPackDefinitionDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/mod-packs/{modPackId}/update/standalone": {
-      "post": {
-        "tags": [
-          "ModPack"
-        ],
-        "summary": "Allows to update the ModPackDefinition title or set a new ModPackRevision\r\nas active ModPackRevision.",
-        "operationId": "UpdateModPackStandaloneAsync",
+        "summary": "Lists formats for a visible event's selected revision.",
         "parameters": [
           {
-            "name": "modPackId",
+            "name": "eventId",
             "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition.",
+            "description": "Event identifier.",
             "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "A CancellationToken to cancel the operation.\r\nPassed automatically by ASP.Net framework.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackStandaloneUpdate"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackStandaloneUpdate"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackStandaloneUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
-    "/mod-packs/{modPackId}/update/composition": {
-      "post": {
-        "tags": [
-          "ModPack"
-        ],
-        "summary": "Allows to update the ModPackDefinition title or set range of existing ModPackRevision\r\nas active ModPackRevision.",
-        "operationId": "UpdateModPackCompositionAsync",
-        "parameters": [
-          {
-            "name": "modPackId",
-            "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition.",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "A CancellationToken to cancel the operation.\r\nPassed automatically by ASP.Net framework.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackCompositionUpdate"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackCompositionUpdate"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ModPackCompositionUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
-    "/mod-packs/{modPackId}/change-owner": {
-      "post": {
-        "tags": [
-          "ModPack"
-        ],
-        "summary": "Modifies the owning user of a ModPackDefinition.",
-        "description": "Operation is final and only allowed by either the owner or a user with the\r\nstring Administrative.ModPack role.",
-        "operationId": "ChangeOwnerAsync",
-        "parameters": [
-          {
-            "name": "modPackId",
-            "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition.",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "newUserId",
-            "in": "query",
-            "description": "The Guid User.PrimaryKey of the new User.",
             "schema": {
               "type": "string",
               "format": "uuid"
@@ -7269,346 +7143,114 @@
           }
         ],
         "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
+          "200": {
+            "description": "Format metadata."
           }
-        }
+        },
+        "security": [ ]
       }
     },
-    "/mod-packs/{modPackId}": {
+    "/events/{eventId}/mod-pack-formats/{formatIdentifier}": {
       "get": {
         "tags": [
-          "ModPack"
+          "ModPackFormats"
         ],
-        "summary": "Receives a single ModPackDefinition and the latest active ModPackRevision.",
-        "operationId": "GetModPackDefinitionAsync",
+        "summary": "Downloads a visible event's selected mod pack through a game-owned format.",
         "parameters": [
           {
-            "name": "modPackId",
+            "name": "eventId",
             "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition.",
+            "description": "Event identifier.",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "formatIdentifier",
+            "in": "path",
+            "description": "Format identifier.",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
         "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
           "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModPackDefinitionDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModPackDefinitionDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModPackDefinitionDto"
-                }
-              }
-            }
+            "description": "Generated format file."
           }
-        }
+        },
+        "security": [ ]
       }
     },
-    "/mod-packs/{modPackId}/full": {
+    "/game-content/mod-packs": {
       "get": {
         "tags": [
-          "ModPack"
+          "NormalizedModPacks"
         ],
-        "summary": "Receives a single ModPackDefinition with its owner and linked revisions.",
-        "operationId": "GetFullModPackDefinitionAsync",
+        "summary": "Lists active game-scoped normalized mod packs.",
         "parameters": [
           {
-            "name": "modPackId",
-            "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition.",
-            "required": true,
+            "name": "gameIdentifier",
+            "in": "query",
+            "description": "Owning game identifier.",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
         "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
-          },
           "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/FullModPackDefinitionDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FullModPackDefinitionDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FullModPackDefinitionDto"
-                }
-              }
-            }
+            "description": "Definitions and their latest active revision."
           }
         }
-      }
-    },
-    "/mod-packs/{modPackId}/workspace": {
-      "get": {
-        "tags": [
-          "ModPack"
-        ],
-        "summary": "Receives the consolidated command-center workspace state for one mod pack.",
-        "operationId": "GetModPackWorkspaceAsync",
-        "parameters": [
-          {
-            "name": "modPackId",
-            "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition.",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModPackWorkspaceDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModPackWorkspaceDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModPackWorkspaceDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/mod-packs/{modPackId}/revisions": {
-      "get": {
-        "tags": [
-          "ModPack"
-        ],
-        "summary": "Receives all revisions belonging to a standalone mod pack or linked to a composition mod pack.",
-        "operationId": "GetModPackRevisionHistoryAsync",
-        "parameters": [
-          {
-            "name": "modPackId",
-            "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition.",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PlainModPackRevisionDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PlainModPackRevisionDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PlainModPackRevisionDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/mod-packs/{modPackId}/downloads": {
-      "get": {
-        "tags": [
-          "ModPack"
-        ],
-        "summary": "Receives the recorded users who downloaded a mod pack and the concrete revisions they downloaded.",
-        "operationId": "GetModPackDownloadAuditsAsync",
-        "parameters": [
-          {
-            "name": "modPackId",
-            "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition.",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModPackDownloadAuditDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModPackDownloadAuditDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModPackDownloadAuditDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/mod-packs/revision/{modPackRevisionPk}": {
-      "get": {
-        "tags": [
-          "ModPack"
-        ],
-        "summary": "Receives a single ModPackRevision and the parent ModPackDefinition.",
-        "operationId": "GetModPackRevisionAsync",
-        "parameters": [
-          {
-            "name": "modPackRevisionPk",
-            "in": "path",
-            "description": "The long ModPackRevision.PrimaryKey of the ModPackRevision.",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Unauthorized"
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModPackRevisionDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModPackRevisionDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModPackRevisionDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/mod-packs/{modPackId}/delete": {
+      },
       "post": {
         "tags": [
-          "ModPack"
+          "NormalizedModPacks"
         ],
-        "summary": "Makes a ModPackDefinition unavailable for further usage.",
-        "description": "To not break data consistency, this call will not actually delete a ModPackDefinition but rather make it not appear in\r\nany call but a direct one.",
-        "operationId": "DeleteModPackAsync",
+        "summary": "Creates a definition and first revision atomically.",
+        "requestBody": {
+          "description": "Cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizedModPackPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizedModPackPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizedModPackPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The created identifiers."
+          }
+        }
+      }
+    },
+    "/game-content/mod-packs/{modPackId}": {
+      "get": {
+        "tags": [
+          "NormalizedModPacks"
+        ],
+        "summary": "Gets a normalized mod-pack workspace.",
         "parameters": [
           {
             "name": "modPackId",
             "in": "path",
-            "description": "The long ModPackDefinition.PrimaryKey of the ModPackDefinition.",
+            "description": "Definition identifier.",
             "required": true,
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -7618,155 +7260,90 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "404": {
-            "description": "Not Found"
+          "200": {
+            "description": "Definition metadata and revision history."
           }
         }
       }
     },
-    "/mod-packs/all": {
-      "get": {
+    "/game-content/mod-packs/{modPackId}/revisions": {
+      "post": {
         "tags": [
-          "ModPack"
+          "NormalizedModPacks"
         ],
-        "summary": "Returns all ModPackDefinition's available or, given myModPacksOnly is set, only those\r\nof the currently authorized user.",
-        "operationId": "GetModPacksAsync",
+        "summary": "Appends a new immutable revision to a definition.",
         "parameters": [
           {
-            "name": "skip",
-            "in": "query",
-            "description": "The amount of ModPackDefinition's to skip. Paging argument.",
+            "name": "modPackId",
+            "in": "path",
+            "description": "Definition identifier.",
+            "required": true,
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": "integer",
-              "format": "int32"
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizedModPackRevisionPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizedModPackRevisionPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormalizedModPackRevisionPayload"
+              }
             }
           },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The new revision identifier."
+          }
+        }
+      }
+    },
+    "/game-content/mod-packs/revisions/{revisionId}/members": {
+      "get": {
+        "tags": [
+          "NormalizedModPacks"
+        ],
+        "summary": "Gets direct or recursively flattened revision membership.",
+        "parameters": [
           {
-            "name": "take",
-            "in": "query",
-            "description": "The amount of ModPackDefinition's to take after skip. Paging argument.",
+            "name": "revisionId",
+            "in": "path",
+            "description": "Revision identifier.",
+            "required": true,
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": "integer",
-              "format": "int32"
+              "format": "int64"
             }
           },
           {
-            "name": "search",
+            "name": "effective",
             "in": "query",
-            "description": "Searches the string ModPackDefinition.Title with a function akin to bool string.StartsWith(string value)",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "myModPacksOnly",
-            "in": "query",
-            "description": "If `true`, only those ModPackDefinition's of the current user are returned.",
+            "description": "Whether nested packs should be flattened.",
             "schema": {
               "type": "boolean",
               "default": false
-            }
-          },
-          {
-            "name": "gameIdentifier",
-            "in": "query",
-            "schema": {
-              "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "The available ModPackDefinition's.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FullModPackDefinitionDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FullModPackDefinitionDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FullModPackDefinitionDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/mod-packs/all/count": {
-      "get": {
-        "tags": [
-          "ModPack"
-        ],
-        "summary": "Returns the count of all ModPackDefinition's available or, given myModPacksOnly is set,\r\nonly those of the currently authorized user.",
-        "operationId": "GetModPacksCountAsync",
-        "parameters": [
-          {
-            "name": "myModPacksOnly",
-            "in": "query",
-            "description": "If `true`, only those ModPackDefinition's of the current user are accounted for.",
-            "schema": {
-              "type": "boolean",
-              "default": false
-            }
-          },
-          {
-            "name": "gameIdentifier",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The count of available ModPackDefinition's.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "pattern": "^-?(?:0|[1-9]\\d*)$",
-                  "type": "integer",
-                  "format": "int64"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "pattern": "^-?(?:0|[1-9]\\d*)$",
-                  "type": "integer",
-                  "format": "int64"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "pattern": "^-?(?:0|[1-9]\\d*)$",
-                  "type": "integer",
-                  "format": "int64"
-                }
-              }
-            }
+            "description": "Ordered membership data."
           }
         }
       }
@@ -16633,10 +16210,6 @@
         },
         "description": "Payload used to create or update a field report."
       },
-      "FileContentResult": {
-        "type": "string",
-        "format": "binary"
-      },
       "FileResult": {
         "type": "string",
         "format": "binary"
@@ -16777,10 +16350,6 @@
               }
             ]
           },
-          "modPackRevisionHtml": {
-            "type": "string",
-            "description": "The HTML content of this revision."
-          },
           "modPackRevisionUpdatedBy": {
             "oneOf": [
               {
@@ -16849,10 +16418,6 @@
           "modPackDefinitionIsActive": {
             "type": "boolean",
             "description": "Whether this modpack is active or not."
-          },
-          "modPackDefinitionIsComposition": {
-            "type": "boolean",
-            "description": "Whether this modpack is a composition of multiple modpack revisions\r\nor not."
           },
           "imageAssetFk": {
             "oneOf": [
@@ -16926,56 +16491,6 @@
             "$ref": "#/components/schemas/PlainUserDto"
           }
         }
-      },
-      "FullModPackDefinitionDto": {
-        "type": "object",
-        "properties": {
-          "gameIdentifier": {
-            "type": "string",
-            "description": "Stable identifier of the game this mod pack belongs to."
-          },
-          "primaryKey": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The primary key of this entity.",
-            "format": "int64"
-          },
-          "timeStampCreated": {
-            "description": "The timestamp when this modpack was created.",
-            "$ref": "#/components/schemas/Instant"
-          },
-          "title": {
-            "type": "string",
-            "description": "The name of this modpack."
-          },
-          "owner": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "The owner of this modpack.",
-                "$ref": "#/components/schemas/PlainUserDto"
-              }
-            ]
-          },
-          "isActive": {
-            "type": "boolean",
-            "description": "Whether this modpack is active or not."
-          },
-          "isComposition": {
-            "type": "boolean",
-            "description": "Whether this modpack is a composition of multiple modpack revisions\r\nor not."
-          },
-          "modPackRevisions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PlainModPackRevisionDto"
-            },
-            "description": "The revisions which are part of this modpack."
-          }
-        },
-        "description": "Represents a detailed definition of a mod pack, including its metadata, ownership, status, and revisions."
       },
       "FullUserDto": {
         "type": "object",
@@ -17298,6 +16813,20 @@
             "items": {
               "type": "string"
             }
+          },
+          "modProviderBindings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModProviderBindingDto"
+            },
+            "description": "Gets compatible mod source providers and their installers."
+          },
+          "modPackFormats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModPackFormatDto"
+            },
+            "description": "Gets game-owned bidirectional mod-pack formats."
           },
           "defaultTerrainSourceIdentifier": {
             "oneOf": [
@@ -19968,288 +19497,33 @@
         },
         "description": "Represents one known content usage of a media asset."
       },
-      "ModMembershipPayload": {
-        "required": [
-          "modId",
-          "pinnedVersionId"
-        ],
+      "ModPackFormatDto": {
         "type": "object",
         "properties": {
-          "modId": {
+          "identifier": {
             "type": "string",
-            "format": "uuid"
+            "description": "Gets the format identifier."
           },
-          "pinnedVersionId": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "format": "uuid"
-              }
-            ]
-          }
-        }
-      },
-      "ModPackCompositionCreationPayload": {
-        "required": [
-          "gameIdentifier"
-        ],
-        "type": "object",
-        "properties": {
-          "gameIdentifier": {
-            "maxLength": 64,
+          "displayName": {
             "type": "string",
-            "description": "Stable identifier of the game this composition belongs to."
+            "description": "Gets the display name."
           },
-          "revisionIds": {
-            "type": "array",
-            "items": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": "integer",
-              "format": "int64"
-            },
-            "description": "Gets or sets the collection of identifiers for the revisions included in the ModPack composition."
-          },
-          "title": {
+          "fileExtension": {
             "type": "string",
-            "description": "Gets or sets the title of the ModPack composition."
-          }
-        },
-        "description": "Represents a payload for composing a ModPack."
-      },
-      "ModPackCompositionUpdate": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "description": "Represents the title or name associated with the event."
-              }
-            ]
+            "description": "Gets the file extension."
           },
-          "modPackRevisionIds": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "pattern": "^-?(?:0|[1-9]\\d*)$",
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "description": "Represents a collection of identifiers for mod pack revisions associated with an update."
-              }
-            ]
-          },
-          "useLatest": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "boolean",
-                "description": "Indicates whether the latest revision of a mod pack should be used."
-              }
-            ]
-          }
-        },
-        "description": "Represents an update to a composition-based mod pack."
-      },
-      "ModPackCreationPayload": {
-        "required": [
-          "gameIdentifier",
-          "title",
-          "html"
-        ],
-        "type": "object",
-        "properties": {
-          "gameIdentifier": {
-            "maxLength": 64,
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "html": {
-            "type": "string"
-          }
-        },
-        "description": "Represents the payload required for creating a mod pack."
-      },
-      "ModPackDefinitionDto": {
-        "type": "object",
-        "properties": {
-          "gameIdentifier": {
+          "mediaType": {
             "type": "string",
-            "description": "Stable identifier of the game this mod pack belongs to."
+            "description": "Gets the media type."
           },
-          "primaryKey": {
+          "maximumSizeBytes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
-            "description": "The primary key of this entity.",
+            "description": "Gets the import size limit.",
             "format": "int64"
-          },
-          "timeStampCreated": {
-            "description": "The timestamp when this modpack was created.",
-            "$ref": "#/components/schemas/Instant"
-          },
-          "title": {
-            "type": "string",
-            "description": "The name of this modpack."
-          },
-          "ownerFk": {
-            "type": "string",
-            "description": "The foreign key of the owner from this modpack.",
-            "format": "uuid"
-          },
-          "isActive": {
-            "type": "boolean",
-            "description": "Whether this modpack is active or not."
-          },
-          "isComposition": {
-            "type": "boolean",
-            "description": "Whether this modpack is a composition of multiple modpack revisions\r\nor not."
-          },
-          "metaTimeStampDownloaded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "The timestamp indicating when the mod pack was downloaded.",
-                "$ref": "#/components/schemas/Instant"
-              }
-            ]
-          },
-          "revisionPrimaryKey": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "pattern": "^-?(?:0|[1-9]\\d*)$",
-                "type": "integer",
-                "description": "The primary key of this entity.",
-                "format": "int64"
-              }
-            ]
-          },
-          "revisionTimeStampCreated": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "The timestamp when this revision was created.",
-                "$ref": "#/components/schemas/Instant"
-              }
-            ]
-          },
-          "revisionHtml": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "description": "The HTML content of this revision."
-              }
-            ]
-          },
-          "revisionUpdatedByFk": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "description": "The foreign key of the user who updated this revision.",
-                "format": "uuid"
-              }
-            ]
-          },
-          "revisionIsActive": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "boolean",
-                "description": "Whether this revision is active or not."
-              }
-            ]
           }
         },
-        "description": "Represents a Data Transfer Object (DTO) for defining a mod pack within the United Tactical Forces API."
-      },
-      "ModPackDownloadAuditDto": {
-        "type": "object",
-        "properties": {
-          "user": {
-            "description": "The user who downloaded the mod pack revision.",
-            "$ref": "#/components/schemas/PlainUserDto"
-          },
-          "modPackDefinitionId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The mod pack definition that was downloaded.",
-            "format": "int64"
-          },
-          "modPackRevisionId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The concrete revision that was downloaded.",
-            "format": "int64"
-          },
-          "modPackRevisionDefinitionId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The owner definition of the downloaded revision.",
-            "format": "int64"
-          },
-          "modPackRevisionDefinitionTitle": {
-            "type": "string",
-            "description": "The title of the owner definition of the downloaded revision."
-          },
-          "modPackRevisionTimeStampCreated": {
-            "description": "The timestamp when the downloaded revision was created.",
-            "$ref": "#/components/schemas/Instant"
-          },
-          "timeStampDownloaded": {
-            "description": "The most recent timestamp when this user downloaded this revision through this mod pack definition.",
-            "$ref": "#/components/schemas/Instant"
-          }
-        },
-        "description": "Represents one recorded user download of a mod pack revision."
-      },
-      "ModPackMembersPayload": {
-        "required": [
-          "mods",
-          "dependencies"
-        ],
-        "type": "object",
-        "properties": {
-          "mods": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ModMembershipPayload"
-            }
-          },
-          "dependencies": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ModPackReferencePayload"
-            }
-          }
-        }
+        "description": "Public description of a game-owned mod-pack format."
       },
       "ModPackReferencePayload": {
         "required": [
@@ -20338,17 +19612,6 @@
               }
             ]
           },
-          "definitionIsComposition": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "boolean",
-                "description": "Whether this modpack is a composition of multiple modpack revisions\r\nor not."
-              }
-            ]
-          },
           "metaTimeStampDownloaded": {
             "oneOf": [
               {
@@ -20370,10 +19633,6 @@
             "description": "The timestamp when this revision was created.",
             "$ref": "#/components/schemas/Instant"
           },
-          "html": {
-            "type": "string",
-            "description": "The HTML content of this revision."
-          },
           "updatedByFk": {
             "type": "string",
             "description": "The foreign key of the user who updated this revision.",
@@ -20386,157 +19645,13 @@
         },
         "description": "Represents a Data Transfer Object (DTO) for a mod pack revision in the system."
       },
-      "ModPackStandaloneUpdate": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "description": "Represents the title associated with the event or entity."
-              }
-            ]
-          },
-          "html": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "description": "Contains HTML content, typically representing a detailed description or additional information."
-              }
-            ]
-          }
-        },
-        "description": "Represents a standalone update to a mod pack in the system."
-      },
-      "ModPackWorkspaceCompositionMemberDto": {
-        "type": "object",
-        "properties": {
-          "definition": {
-            "description": "The standalone mod pack definition that owns the linked revision.",
-            "$ref": "#/components/schemas/PlainModPackDefinitionDto"
-          },
-          "owner": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "The owner of the standalone mod pack definition.",
-                "$ref": "#/components/schemas/PlainUserDto"
-              }
-            ]
-          },
-          "revision": {
-            "description": "The linked revision.",
-            "$ref": "#/components/schemas/PlainModPackRevisionDto"
-          }
-        },
-        "description": "Represents one linked revision inside a composition mod pack workspace."
-      },
-      "ModPackWorkspaceDto": {
-        "type": "object",
-        "properties": {
-          "definition": {
-            "description": "The mod pack definition and its latest active revision summary.",
-            "$ref": "#/components/schemas/ModPackDefinitionDto"
-          },
-          "owner": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "The owner of the mod pack definition.",
-                "$ref": "#/components/schemas/PlainUserDto"
-              }
-            ]
-          },
-          "latestRevision": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "The latest active revision for this workspace, if one exists.",
-                "$ref": "#/components/schemas/PlainModPackRevisionDto"
-              }
-            ]
-          },
-          "compositionMembers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ModPackWorkspaceCompositionMemberDto"
-            },
-            "description": "The linked standalone revisions when the mod pack is a composition."
-          },
-          "revisionPreview": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PlainModPackRevisionDto"
-            },
-            "description": "Recent revisions visible to operators with ledger access."
-          },
-          "downloadPreview": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ModPackDownloadAuditDto"
-            },
-            "description": "Recent download records visible to operators with ledger access."
-          },
-          "eventUsageCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The number of events referencing revisions represented by this workspace.",
-            "format": "int64"
-          },
-          "downloadRecordCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The total number of download records for this mod pack definition.",
-            "format": "int64"
-          },
-          "downloadUserCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The number of distinct users with download records for this mod pack definition.",
-            "format": "int64"
-          },
-          "lastDownloaded": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "The latest recorded download timestamp for this mod pack definition.",
-                "$ref": "#/components/schemas/Instant"
-              }
-            ]
-          },
-          "canModify": {
-            "type": "boolean",
-            "description": "Whether the current user may update this mod pack."
-          },
-          "canDelete": {
-            "type": "boolean",
-            "description": "Whether the current user may deactivate this mod pack."
-          },
-          "canViewLedgers": {
-            "type": "boolean",
-            "description": "Whether the current user may view revision and download ledgers."
-          }
-        },
-        "description": "Represents the consolidated command-center workspace state for a mod pack."
-      },
       "ModPayload": {
         "required": [
           "gameIdentifier",
           "title",
+          "providerIdentifier",
+          "source",
+          "usageRole",
           "version"
         ],
         "type": "object",
@@ -20547,41 +19662,116 @@
           "title": {
             "type": "string"
           },
+          "providerIdentifier": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "usageRole": {
+            "$ref": "#/components/schemas/EModUsageRole"
+          },
           "version": {
             "$ref": "#/components/schemas/ModVersionPayload"
           }
         }
       },
-      "ModVersionPayload": {
+      "ModProviderBindingDto": {
+        "type": "object",
+        "properties": {
+          "providerIdentifier": {
+            "type": "string",
+            "description": "Gets the provider identifier."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Gets the display name."
+          },
+          "acceptedInput": {
+            "type": "string",
+            "description": "Gets the accepted input description."
+          },
+          "installerIdentifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Gets compatible installer identifiers."
+          },
+          "supportsVersionSelector": {
+            "type": "boolean",
+            "description": "Gets whether a version selector may be supplied."
+          }
+        },
+        "description": "Public game/provider installation capability."
+      },
+      "ModSourceInputPayload": {
         "required": [
-          "usageRole",
-          "installerIdentifier",
-          "sourceKind",
-          "sourceIdentifier",
-          "versionLabel"
+          "input"
         ],
         "type": "object",
         "properties": {
-          "usageRole": {
-            "$ref": "#/components/schemas/EModUsageRole"
+          "input": {
+            "type": "string"
+          },
+          "providerIdentifier": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "versionSelector": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "ModSourcePreviewPayload": {
+        "required": [
+          "gameIdentifier",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "gameIdentifier": {
+            "type": "string"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModSourceInputPayload"
+            }
+          }
+        }
+      },
+      "ModVersionPayload": {
+        "required": [
+          "versionLabel",
+          "versionSelector",
+          "installerIdentifier"
+        ],
+        "type": "object",
+        "properties": {
+          "versionLabel": {
+            "type": "string"
+          },
+          "versionSelector": {
+            "type": "string"
           },
           "installerIdentifier": {
             "type": "string"
           },
           "installerConfiguration": {
-            "type": "string",
-            "default": "{}"
-          },
-          "sourceKind": {
-            "$ref": "#/components/schemas/EContentSourceKind"
-          },
-          "sourceIdentifier": {
-            "type": "string"
-          },
-          "versionLabel": {
-            "type": "string"
-          },
-          "metadata": {
             "type": "string",
             "default": "{}"
           },
@@ -20618,6 +19808,148 @@
             ]
           }
         }
+      },
+      "NormalizedModDraftPayload": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Gets the reviewed catalog title."
+          },
+          "providerIdentifier": {
+            "type": "string",
+            "description": "Gets the registered provider identifier."
+          },
+          "source": {
+            "type": "string",
+            "description": "Gets the provider input URL or identifier."
+          },
+          "versionSelector": {
+            "type": "string",
+            "description": "Gets the optional provider version selector."
+          },
+          "usageRole": {
+            "description": "Gets the client/server usage role.",
+            "$ref": "#/components/schemas/EModUsageRole"
+          },
+          "installerIdentifier": {
+            "type": "string",
+            "description": "Gets the compatible game installer identifier."
+          },
+          "installerConfiguration": {
+            "type": "string",
+            "description": "Gets provider-specific installer configuration JSON."
+          }
+        },
+        "description": "Defines a new provider-backed catalog mod committed atomically with a revision."
+      },
+      "NormalizedModMembershipPayload": {
+        "required": [
+          "modId",
+          "pinnedVersionId"
+        ],
+        "type": "object",
+        "properties": {
+          "modId": {
+            "type": "string",
+            "description": "Catalog mod identifier.",
+            "format": "uuid"
+          },
+          "pinnedVersionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Optional pinned version identifier.",
+                "format": "uuid"
+              }
+            ]
+          }
+        },
+        "description": "References a catalog mod and an optional immutable version."
+      },
+      "NormalizedModPackDependencyPayload": {
+        "required": [
+          "definitionId",
+          "pinnedRevisionId"
+        ],
+        "type": "object",
+        "properties": {
+          "definitionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Nested definition identifier.",
+            "format": "int64"
+          },
+          "pinnedRevisionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Optional pinned revision identifier.",
+                "format": "int64"
+              }
+            ]
+          }
+        },
+        "description": "References a nested mod pack and an optional immutable revision."
+      },
+      "NormalizedModPackPayload": {
+        "required": [
+          "gameIdentifier",
+          "title",
+          "revision"
+        ],
+        "type": "object",
+        "properties": {
+          "gameIdentifier": {
+            "maxLength": 64,
+            "type": "string",
+            "description": "Gets the owning game identifier."
+          },
+          "title": {
+            "maxLength": 1024,
+            "type": "string",
+            "description": "Gets the mod-pack title."
+          },
+          "revision": {
+            "description": "Gets direct and nested revision members.",
+            "$ref": "#/components/schemas/NormalizedModPackRevisionPayload"
+          }
+        },
+        "description": "Creates a normalized mod pack and its first immutable revision."
+      },
+      "NormalizedModPackRevisionPayload": {
+        "type": "object",
+        "properties": {
+          "mods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NormalizedModMembershipPayload"
+            },
+            "description": "Gets ordered direct mod memberships."
+          },
+          "newMods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NormalizedModDraftPayload"
+            },
+            "description": "Gets reviewed new catalog mods committed atomically with this revision."
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NormalizedModPackDependencyPayload"
+            },
+            "description": "Gets ordered nested mod-pack memberships."
+          }
+        },
+        "description": "Defines the complete membership of a new immutable revision."
       },
       "PlainClaimDto": {
         "type": "object",
@@ -20889,78 +20221,6 @@
           }
         },
         "description": "Represents a plain data transfer object for an event slot in the system.\r\nThis DTO is used for transferring data related to specific slots within an event."
-      },
-      "PlainModPackDefinitionDto": {
-        "type": "object",
-        "properties": {
-          "gameIdentifier": {
-            "type": "string",
-            "description": "Stable identifier of the game this mod pack belongs to."
-          },
-          "primaryKey": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The primary key of this entity.",
-            "format": "int64"
-          },
-          "timeStampCreated": {
-            "description": "The timestamp when this modpack was created.",
-            "$ref": "#/components/schemas/Instant"
-          },
-          "title": {
-            "type": "string",
-            "description": "The name of this modpack."
-          },
-          "ownerFk": {
-            "type": "string",
-            "description": "The foreign key of the owner from this modpack.",
-            "format": "uuid"
-          },
-          "isActive": {
-            "type": "boolean",
-            "description": "Whether this modpack is active or not."
-          },
-          "isComposition": {
-            "type": "boolean",
-            "description": "Whether this modpack is a composition of multiple modpack revisions\r\nor not."
-          }
-        },
-        "description": "Represents a plain data transfer object for a mod pack definition in the system."
-      },
-      "PlainModPackRevisionDto": {
-        "type": "object",
-        "properties": {
-          "primaryKey": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "The primary key of this entity.",
-            "format": "int64"
-          },
-          "timeStampCreated": {
-            "description": "The timestamp when this revision was created.",
-            "$ref": "#/components/schemas/Instant"
-          },
-          "html": {
-            "type": "string",
-            "description": "The HTML content of this revision."
-          },
-          "updatedByFk": {
-            "type": "string",
-            "description": "The foreign key of the user who updated this revision.",
-            "format": "uuid"
-          },
-          "isActive": {
-            "type": "boolean",
-            "description": "Whether this revision is active or not."
-          },
-          "definitionFk": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": "integer",
-            "description": "Foreign key of the owning definition of this revision.",
-            "format": "int64"
-          }
-        },
-        "description": "Represents a plain data transfer object for a mod pack revision."
       },
       "PlainRoleDto": {
         "type": "object",
@@ -22502,10 +21762,6 @@
             "type": "string",
             "description": "The name of this modpack."
           },
-          "modPackDefinitionIsComposition": {
-            "type": "boolean",
-            "description": "Whether this modpack is a composition of multiple modpack revisions\r\nor not."
-          },
           "imageAssetFk": {
             "oneOf": [
               {
@@ -23669,7 +22925,10 @@
       "name": "MediaAssets"
     },
     {
-      "name": "ModPack"
+      "name": "ModPackFormats"
+    },
+    {
+      "name": "NormalizedModPacks"
     },
     {
       "name": "PreservationSelections"

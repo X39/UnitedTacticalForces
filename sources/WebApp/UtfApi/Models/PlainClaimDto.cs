@@ -51,7 +51,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Title { get; set; }
 #endif
-        /// <summary>The value property</summary>
+        /// <summary>The value of this claim.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Value { get; set; }
@@ -59,7 +59,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Value { get; set; }
 #endif
-        /// <summary>The valueType property</summary>
+        /// <summary>The type of the value of this claim.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? ValueType { get; set; }

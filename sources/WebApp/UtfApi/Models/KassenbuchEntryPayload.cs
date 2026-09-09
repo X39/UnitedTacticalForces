@@ -25,7 +25,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Category { get; set; }
 #endif
-        /// <summary>The currency property</summary>
+        /// <summary>Currency code.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Currency { get; set; }
@@ -41,9 +41,9 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Description { get; set; }
 #endif
-        /// <summary>Income or expense direction.</summary>
+        /// <summary>The direction property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EKassenbuchEntryDirection? Direction { get; set; }
-        /// <summary>The documentNumber property</summary>
+        /// <summary>Internal document number.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? DocumentNumber { get; set; }
@@ -51,7 +51,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string DocumentNumber { get; set; }
 #endif
-        /// <summary>The reference property</summary>
+        /// <summary>External reference.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Reference { get; set; }
@@ -59,7 +59,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Reference { get; set; }
 #endif
-        /// <summary>Booking date.</summary>
+        /// <summary>The timeStampBooked property</summary>
         public DateTimeOffset? TimeStampBooked { get; set; }
         /// <summary>
         /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.KassenbuchEntryPayload"/> and sets the default values.
@@ -90,7 +90,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "category", n => { Category = n.GetStringValue(); } },
                 { "currency", n => { Currency = n.GetStringValue(); } },
                 { "description", n => { Description = n.GetStringValue(); } },
-                { "direction", n => { Direction = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EKassenbuchEntryDirection?) n.GetIntValue(); } },
+                { "direction", n => { Direction = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EKassenbuchEntryDirection>(); } },
                 { "documentNumber", n => { DocumentNumber = n.GetStringValue(); } },
                 { "reference", n => { Reference = n.GetStringValue(); } },
                 { "timeStampBooked", n => { TimeStampBooked = n.GetDateTimeOffsetValue(); } },
@@ -107,7 +107,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteStringValue("category", Category);
             writer.WriteStringValue("currency", Currency);
             writer.WriteStringValue("description", Description);
-            writer.WriteIntValue("direction", (int?)Direction);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EKassenbuchEntryDirection>("direction", Direction);
             writer.WriteStringValue("documentNumber", DocumentNumber);
             writer.WriteStringValue("reference", Reference);
             writer.WriteDateTimeOffsetValue("timeStampBooked", TimeStampBooked);

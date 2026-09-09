@@ -14,7 +14,13 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>The description property</summary>
+        /// <summary>The clearImageAsset property</summary>
+        public bool? ClearImageAsset { get; set; }
+        /// <summary>The clearModPackRevision property</summary>
+        public bool? ClearModPackRevision { get; set; }
+        /// <summary>The clearTerrain property</summary>
+        public bool? ClearTerrain { get; set; }
+        /// <summary>Provides a detailed textual explanation or summary of the event.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Description { get; set; }
@@ -22,21 +28,27 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public string Description { get; set; }
 #endif
-        /// <summary>The hostedByFk property</summary>
+        /// <summary>Represents the foreign key identifying the user hosting the event.</summary>
         public Guid? HostedByFk { get; set; }
-        /// <summary>The imageAssetFk property</summary>
+        /// <summary>Gallery media asset used as event cover image.</summary>
         public Guid? ImageAssetFk { get; set; }
-        /// <summary>The isVisible property</summary>
+        /// <summary>Indicates whether the event is visible to users.</summary>
         public bool? IsVisible { get; set; }
-        /// <summary>The minimumAccepted property</summary>
+        /// <summary>Specifies the minimum number of participants required to consider the event as viable.</summary>
         public int? MinimumAccepted { get; set; }
-        /// <summary>The modPackRevisionFk property</summary>
+        /// <summary>Represents a reference to the associated mod pack revision.</summary>
         public long? ModPackRevisionFk { get; set; }
-        /// <summary>The scheduledFor property</summary>
+        /// <summary>The scenarioFk property</summary>
+        public Guid? ScenarioFk { get; set; }
+        /// <summary>The scenarioVersionFk property</summary>
+        public Guid? ScenarioVersionFk { get; set; }
+        /// <summary>Indicates the date and time when the event is scheduled to occur.</summary>
         public DateTimeOffset? ScheduledFor { get; set; }
-        /// <summary>The terrainFk property</summary>
+        /// <summary>References the unique identifier of the associated terrain in the system.</summary>
         public long? TerrainFk { get; set; }
-        /// <summary>The title property</summary>
+        /// <summary>The terrainVersionFk property</summary>
+        public Guid? TerrainVersionFk { get; set; }
+        /// <summary>Represents the title of the event.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public string? Title { get; set; }
@@ -69,14 +81,20 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         {
             return new Dictionary<string, Action<IParseNode>>
             {
+                { "clearImageAsset", n => { ClearImageAsset = n.GetBoolValue(); } },
+                { "clearModPackRevision", n => { ClearModPackRevision = n.GetBoolValue(); } },
+                { "clearTerrain", n => { ClearTerrain = n.GetBoolValue(); } },
                 { "description", n => { Description = n.GetStringValue(); } },
                 { "hostedByFk", n => { HostedByFk = n.GetGuidValue(); } },
                 { "imageAssetFk", n => { ImageAssetFk = n.GetGuidValue(); } },
                 { "isVisible", n => { IsVisible = n.GetBoolValue(); } },
                 { "minimumAccepted", n => { MinimumAccepted = n.GetIntValue(); } },
                 { "modPackRevisionFk", n => { ModPackRevisionFk = n.GetLongValue(); } },
+                { "scenarioFk", n => { ScenarioFk = n.GetGuidValue(); } },
+                { "scenarioVersionFk", n => { ScenarioVersionFk = n.GetGuidValue(); } },
                 { "scheduledFor", n => { ScheduledFor = n.GetDateTimeOffsetValue(); } },
                 { "terrainFk", n => { TerrainFk = n.GetLongValue(); } },
+                { "terrainVersionFk", n => { TerrainVersionFk = n.GetGuidValue(); } },
                 { "title", n => { Title = n.GetStringValue(); } },
             };
         }
@@ -87,14 +105,20 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public virtual void Serialize(ISerializationWriter writer)
         {
             if(ReferenceEquals(writer, null)) throw new ArgumentNullException(nameof(writer));
+            writer.WriteBoolValue("clearImageAsset", ClearImageAsset);
+            writer.WriteBoolValue("clearModPackRevision", ClearModPackRevision);
+            writer.WriteBoolValue("clearTerrain", ClearTerrain);
             writer.WriteStringValue("description", Description);
             writer.WriteGuidValue("hostedByFk", HostedByFk);
             writer.WriteGuidValue("imageAssetFk", ImageAssetFk);
             writer.WriteBoolValue("isVisible", IsVisible);
             writer.WriteIntValue("minimumAccepted", MinimumAccepted);
             writer.WriteLongValue("modPackRevisionFk", ModPackRevisionFk);
+            writer.WriteGuidValue("scenarioFk", ScenarioFk);
+            writer.WriteGuidValue("scenarioVersionFk", ScenarioVersionFk);
             writer.WriteDateTimeOffsetValue("scheduledFor", ScheduledFor);
             writer.WriteLongValue("terrainFk", TerrainFk);
+            writer.WriteGuidValue("terrainVersionFk", TerrainVersionFk);
             writer.WriteStringValue("title", Title);
             writer.WriteAdditionalData(AdditionalData);
         }

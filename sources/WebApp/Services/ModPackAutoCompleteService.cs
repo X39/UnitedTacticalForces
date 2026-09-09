@@ -1,166 +1,46 @@
 using Microsoft.FluentUI.AspNetCore.Components;
-using X39.UnitedTacticalForces.WebApp.UtfApi.Models;
+using X39.UnitedTacticalForces.WebApp.Services.GameServerRepository;
 using X39.UnitedTacticalForces.WebApp.Services.ModPackRepository;
-using X39.UnitedTacticalForces.WebApp.UtfApi.Models;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.WebApp.Services;
 
+/// <summary>Provides normalized mod-pack revision choices for autocomplete controls.</summary>
 [Transient<ModPackAutoCompleteService>]
-public class ModPackAutoCompleteService(IModPackRepository modPackRepository)
+public sealed class ModPackAutoCompleteService(
+    IModPackRepository modPackRepository,
+    IGameServerRepository gameServerRepository)
 {
-    public FullModPackDefinitionDtoImpl FullModPackDefinitionDto { get; } = new(modPackRepository);
-
-    public sealed class FullModPackDefinitionDtoImpl(IModPackRepository modPackRepository)
+    /// <summary>Searches active normalized revisions.</summary>
+    /// <param name="args">Autocomplete search arguments.</param>
+    /// <returns>A task representing the operation.</returns>
+    public async Task OnOptionsSearchAsync(OptionsSearchEventArgs<NormalizedModPackRevisionOption> args)
     {
-        public async Task OnOptionsSearch(OptionsSearchEventArgs<FullModPackDefinitionDto> arg)
+        var capabilities = await gameServerRepository.GetCapabilitiesAsync().ConfigureAwait(false);
+        var items = new List<NormalizedModPackRevisionOption>();
+        foreach (var game in capabilities.Where(q => q.SupportsModPacks))
         {
-            var results = await modPackRepository.GetModPacksAsync(0, 10, false, arg.Text);
-            arg.Items = results;
-        }
-
-        public string? OptionText(FullModPackDefinitionDto arg)
-        {
-            return arg.Title;
-        }
-    }
-
-    public ModPackDefinitionDtoImpl ModPackDefinitionDto { get; } = new(modPackRepository);
-
-    public sealed class ModPackDefinitionDtoImpl(IModPackRepository modPackRepository)
-    {
-        public async Task OnOptionsSearch(OptionsSearchEventArgs<ModPackDefinitionDto> arg)
-        {
-            var results = await modPackRepository.GetModPacksAsync(0, 10, false, arg.Text);
-            arg.Items = results.Select(modPack => new ModPackDefinitionDto
+            var definitions = await modPackRepository.GetNormalizedModPacksAsync(game.GameIdentifier)
+                .ConfigureAwait(false);
+            items.AddRange(definitions
+                .Where(q => q.LatestRevisionId.HasValue)
+                .Where(q => string.IsNullOrWhiteSpace(args.Text)
+                            || q.Title.Contains(args.Text, StringComparison.CurrentCultureIgnoreCase))
+                .Select(q => new NormalizedModPackRevisionOption
                 {
-                    IsActive                = modPack.IsActive,
-                    IsComposition           = modPack.IsComposition,
-                    MetaTimeStampDownloaded = null,
-                    OwnerFk                 = ((PlainUserDto?) modPack.Owner)?.PrimaryKey,
-                    PrimaryKey              = modPack.PrimaryKey,
-                    RevisionHtml = modPack.ModPackRevisions
-                        ?.OrderByDescending(e => e.TimeStampCreated)
-                        .FirstOrDefault()
-                        ?.Html,
-                    RevisionIsActive = modPack.ModPackRevisions
-                        ?.OrderByDescending(e => e.TimeStampCreated)
-                        .FirstOrDefault()
-                        ?.IsActive,
-                    RevisionPrimaryKey = modPack.ModPackRevisions
-                        ?.OrderByDescending(e => e.TimeStampCreated)
-                        .FirstOrDefault()
-                        ?.PrimaryKey,
-                    RevisionTimeStampCreated = modPack.ModPackRevisions
-                        ?.OrderByDescending(e => e.TimeStampCreated)
-                        .FirstOrDefault()
-                        ?.TimeStampCreated,
-                    RevisionUpdatedByFk = modPack.ModPackRevisions
-                        ?.OrderByDescending(e => e.TimeStampCreated)
-                        .FirstOrDefault()
-                        ?.UpdatedByFk,
-                    TimeStampCreated = modPack.TimeStampCreated,
-                    Title            = modPack.Title,
-                }
-            );
+                    DefinitionId = q.DefinitionId,
+                    RevisionId = q.LatestRevisionId!.Value,
+                    GameIdentifier = q.GameIdentifier,
+                    Title = q.Title,
+                }));
         }
 
-        public string? OptionText(ModPackDefinitionDto arg)
-        {
-            return arg.Title;
-        }
+        args.Items = items.Take(10).ToArray();
     }
 
-    public ModPackRevisionDtoImpl ModPackRevisionDto { get; } = new(modPackRepository);
-
-    public sealed class ModPackRevisionDtoImpl(IModPackRepository modPackRepository)
-    {
-        public async Task OnOptionsSearch(OptionsSearchEventArgs<ModPackRevisionDto> arg)
-        {
-            var results = await modPackRepository.GetModPacksAsync(0, 10, false, arg.Text);
-            arg.Items = results.Select(definition => (definition, revision: definition.ModPackRevisions
-                    ?.OrderByDescending(e => e.TimeStampCreated)
-                    .FirstOrDefault())
-                )
-                .Select(tuple => new ModPackRevisionDto
-                    {
-                        DefinitionIsActive         = tuple.definition.IsActive,
-                        DefinitionIsComposition    = tuple.definition.IsComposition,
-                        DefinitionOwnerFk          = ((PlainUserDto?) tuple.definition.Owner)?.PrimaryKey,
-                        DefinitionPrimaryKey       = tuple.definition.PrimaryKey,
-                        DefinitionTimeStampCreated = tuple.definition.TimeStampCreated,
-                        DefinitionTitle            = tuple.definition.Title,
-                        Html                       = tuple.revision?.Html,
-                        IsActive                   = tuple.revision?.IsActive,
-                        MetaTimeStampDownloaded    = null,
-                        PrimaryKey                 = tuple.revision?.PrimaryKey,
-                        TimeStampCreated           = tuple.revision?.TimeStampCreated,
-                        UpdatedByFk                = tuple.revision?.UpdatedByFk,
-                    }
-                );
-        }
-
-        public string? OptionText(ModPackRevisionDto arg)
-        {
-            return arg.DefinitionTitle;
-        }
-    }
-
-    public PlainModPackDefinitionDtoImpl PlainModPackDefinitionDto { get; } = new(modPackRepository);
-
-    public sealed class PlainModPackDefinitionDtoImpl(IModPackRepository modPackRepository)
-    {
-        public async Task OnOptionsSearch(OptionsSearchEventArgs<PlainModPackDefinitionDto> arg)
-        {
-            var results = await modPackRepository.GetModPacksAsync(0, 10, false, arg.Text);
-            arg.Items = results.Select(definition => new PlainModPackDefinitionDto
-                {
-                    IsActive         = definition.IsActive,
-                    IsComposition    = definition.IsComposition,
-                    OwnerFk          = ((PlainUserDto?) definition.Owner)?.PrimaryKey,
-                    PrimaryKey       = definition.PrimaryKey,
-                    TimeStampCreated = definition.TimeStampCreated,
-                    Title            = definition.Title,
-                }
-            );
-        }
-
-        public string? OptionText(PlainModPackDefinitionDto arg)
-        {
-            return arg.Title;
-        }
-    }
-
-    public PlainModPackRevisionDtoImpl PlainModPackRevisionDto { get; } = new(modPackRepository);
-
-    public sealed class PlainModPackRevisionDtoImpl(IModPackRepository modPackRepository)
-    {
-        public async Task OnOptionsSearch(OptionsSearchEventArgs<PlainModPackRevisionDto> arg)
-        {
-            var results = await modPackRepository.GetModPacksAsync(0, 10, false, arg.Text);
-            arg.Items = results.Select(definition => (definition, revision: definition.ModPackRevisions
-                    ?.OrderByDescending(e => e.TimeStampCreated)
-                    .FirstOrDefault())
-                )
-                .Select(tuple => new PlainModPackRevisionDto
-                    {
-                        AdditionalData = new Dictionary<string, object>
-                            { { "Title", tuple.definition.Title ?? string.Empty } },
-                        DefinitionFk     = tuple.revision?.DefinitionFk,
-                        Html             = tuple.revision?.Html,
-                        IsActive         = tuple.revision?.IsActive,
-                        PrimaryKey       = tuple.revision?.PrimaryKey,
-                        TimeStampCreated = tuple.revision?.TimeStampCreated,
-                        UpdatedByFk      = tuple.revision?.UpdatedByFk,
-                    }
-                );
-        }
-
-        public string? OptionText(PlainModPackRevisionDto arg)
-        {
-            return arg.AdditionalData.TryGetValue("Title", out var value)
-                ? value as string
-                : arg.PrimaryKey?.ToString();
-        }
-    }
+    /// <summary>Formats a normalized mod-pack option.</summary>
+    /// <param name="option">Option to format.</param>
+    /// <returns>The display label.</returns>
+    public string OptionText(NormalizedModPackRevisionOption option)
+        => $"{option.Title} · {option.GameIdentifier} · r{option.RevisionId}";
 }

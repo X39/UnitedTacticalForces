@@ -43,6 +43,8 @@ const capability = {
   description: "Dedicated Arma operations.",
   runtimeProviders: ["fake-cloud"],
   actions: [],
+  modProviderBindings: [],
+  modPackFormats: [],
   runtimeProviderProfiles: [
     {
       identifier: "fake-cloud",

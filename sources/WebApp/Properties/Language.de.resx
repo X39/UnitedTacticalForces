@@ -16150,4 +16150,96 @@ Beginne hier mit dem Schreiben.</value>
   <data name="HostingFinance_FreezeDescription" xml:space="preserve"><value>Soll dieses Konto künftig keine Hosting-Aktivitäten mehr finanzieren dürfen?</value></data>
   <data name="HostingFinance_GlobalDescription" xml:space="preserve"><value>Installationsweite Finanzrichtlinie bearbeiten und das vollständige Finanzprotokoll einsehen.</value></data>
   <data name="HostingFinance_SearchAccounts" xml:space="preserve"><value>Konten durchsuchen</value></data>
+  <data name="ModPacks_ViewContent" xml:space="preserve"><value>Modpack-Inhalt anzeigen</value></data>
+  <data name="ModPacks_DownloadFormat" xml:space="preserve"><value>{0} herunterladen</value></data>
+  <data name="ModPacks_ImportFormat" xml:space="preserve"><value>Spielspezifisches Modpack-Format importieren</value></data>
+  <data name="ModPacks_UploadArtifact" xml:space="preserve"><value>Wiederverwendbares ZIP-Artefakt hochladen</value></data>
+  <data name="ModPacks_ArtifactTitle" xml:space="preserve"><value>Artefakttitel</value></data>
+  <data name="ModPacks_AvailableFormats" xml:space="preserve"><value>Verfügbare Downloads</value></data>
+  <data name="ModPacks_ImportReview" xml:space="preserve"><value>Importierte Inhalte prüfen</value></data>
+  <data name="ModPacks_CatalogMatch" xml:space="preserve"><value>Katalogtreffer</value></data>
+  <data name="ModPacks_ContentMemberCount" xml:space="preserve"><value>{0} Inhaltsbestandteile</value></data>
+  <data name="ModPacks_ContentMemberBreakdown" xml:space="preserve"><value>{0} aus dem Katalog, {1} eingefügt, {2} verschachtelt</value></data>
+  <data name="ModPacks_None" xml:space="preserve"><value>Keine</value></data>
+  <data name="ModPacks_Active" xml:space="preserve"><value>Aktiv</value></data>
+  <data name="ModPacks_AdminRequired" xml:space="preserve"><value>Modpaket-Berechtigung erforderlich</value></data>
+  <data name="ModPacks_All" xml:space="preserve"><value>Alle Modpakete</value></data>
+  <data name="ModPacks_Back" xml:space="preserve"><value>Zurück</value></data>
+  <data name="ModPacks_Catalog" xml:space="preserve"><value>Katalog</value></data>
+  <data name="ModPacks_CommitRevision" xml:space="preserve"><value>Revision speichern</value></data>
+  <data name="ModPacks_Content" xml:space="preserve"><value>Inhalt</value></data>
+  <data name="ModPacks_Created" xml:space="preserve"><value>Erstellt</value></data>
+  <data name="ModPacks_CreateDescription" xml:space="preserve"><value>Erstelle ein wiederverwendbares Modpaket aus normalisierten Inhalten.</value></data>
+  <data name="ModPacks_CreateExplanation" xml:space="preserve"><value>Beim Speichern wird atomar eine unveränderliche erste Revision erstellt.</value></data>
+  <data name="ModPacks_CreateRevision" xml:space="preserve"><value>Neue Revision erstellen</value></data>
+  <data name="ModPacks_CreateSteps" xml:space="preserve"><value>Schritte zum Erstellen eines Modpakets</value></data>
+  <data name="ModPacks_CreateTitle" xml:space="preserve"><value>Modpaket erstellen</value></data>
+  <data name="ModPacks_Creating" xml:space="preserve"><value>Wird erstellt…</value></data>
+  <data name="ModPacks_Danger" xml:space="preserve"><value>Gefahrenbereich</value></data>
+  <data name="ModPacks_DeactivateTitle" xml:space="preserve"><value>Modpaket deaktivieren</value></data>
+  <data name="ModPacks_Definition" xml:space="preserve"><value>Definition</value></data>
+  <data name="ModPacks_Dependency" xml:space="preserve"><value>Modpaket {0}, Revision {1}</value></data>
+  <data name="ModPacks_DirectEffective" xml:space="preserve"><value>Direkte und effektive Inhalte</value></data>
+  <data name="ModPacks_DirectMods" xml:space="preserve"><value>Direkte Mods</value></data>
+  <data name="ModPacks_DiscardChanges" xml:space="preserve"><value>Nicht gespeicherte Änderungen verwerfen?</value></data>
+  <data name="ModPacks_DiscardRevisionChanges" xml:space="preserve"><value>Nicht gespeicherte Revisionsänderungen verwerfen?</value></data>
+  <data name="ModPacks_EffectiveMods" xml:space="preserve"><value>Effektive Mods</value></data>
+  <data name="ModPacks_FallbackTitle" xml:space="preserve"><value>Modpaket {0}</value></data>
+  <data name="ModPacks_FindMods" xml:space="preserve"><value>Mods suchen</value></data>
+  <data name="ModPacks_Game" xml:space="preserve"><value>Spiel</value></data>
+  <data name="ModPacks_History" xml:space="preserve"><value>Verlauf</value></data>
+  <data name="ModPacks_ImmutableHistory" xml:space="preserve"><value>Unveränderlicher Verlauf</value></data>
+  <data name="ModPacks_ImmutableRevisions" xml:space="preserve"><value>Unveränderliche Revisionen</value></data>
+  <data name="ModPacks_ImportExport" xml:space="preserve"><value>Import und Export</value></data>
+  <data name="ModPacks_ImportUnavailable" xml:space="preserve"><value>Das gewählte Importformat oder die Spielfunktion ist nicht verfügbar.</value></data>
+  <data name="ModPacks_Installer" xml:space="preserve"><value>Installer</value></data>
+  <data name="ModPacks_InstallerFor" xml:space="preserve"><value>Installer für {0}</value></data>
+  <data name="ModPacks_InstallerUnavailable" xml:space="preserve"><value>Für dieses Artefakt ist kein kompatibler Installer verfügbar.</value></data>
+  <data name="ModPacks_InvalidImportedSource" xml:space="preserve"><value>Die importierte Quelle „{0}“ kann vom Anbieter nicht verwendet werden.</value></data>
+  <data name="ModPacks_Latest" xml:space="preserve"><value>Aktuellste</value></data>
+  <data name="ModPacks_LatestRevision" xml:space="preserve"><value>Aktuellste Revision</value></data>
+  <data name="ModPacks_LedgerDescription" xml:space="preserve"><value>Wiederverwendbare Spielinhalte in unveränderlichen Revisionen</value></data>
+  <data name="ModPacks_LoadingCapabilities" xml:space="preserve"><value>Spielfunktionen werden geladen…</value></data>
+  <data name="ModPacks_LoadingWorkspace" xml:space="preserve"><value>Modpaket wird geladen…</value></data>
+  <data name="ModPacks_MemberCount" xml:space="preserve"><value>{0} Inhalte</value></data>
+  <data name="ModPacks_Mod" xml:space="preserve"><value>Mod</value></data>
+  <data name="ModPacks_ModifyRequired" xml:space="preserve"><value>Die Änderungsberechtigung ist erforderlich.</value></data>
+  <data name="ModPacks_ModsAndNested" xml:space="preserve"><value>Mods und verschachtelte Modpakete</value></data>
+  <data name="ModPacks_Nested" xml:space="preserve"><value>Verschachtelte Modpakete</value></data>
+  <data name="ModPacks_NewRevision" xml:space="preserve"><value>Neue Revision</value></data>
+  <data name="ModPacks_Next" xml:space="preserve"><value>Weiter</value></data>
+  <data name="ModPacks_NoNested" xml:space="preserve"><value>Keine verschachtelten Modpakete.</value></data>
+  <data name="ModPacks_Normalized" xml:space="preserve"><value>Normalisiert</value></data>
+  <data name="ModPacks_NotFound" xml:space="preserve"><value>Modpaket nicht gefunden</value></data>
+  <data name="ModPacks_PackageIdentity" xml:space="preserve"><value>Modpaket-Identität</value></data>
+  <data name="ModPacks_PasteSources" xml:space="preserve"><value>Steam-Workshop- oder Git-Quellen einfügen</value></data>
+  <data name="ModPacks_PreviewCorrelationError" xml:space="preserve"><value>Mindestens eine Vorschau konnte nicht sicher zugeordnet werden. Prüfe die Quellen und versuche es erneut.</value></data>
+  <data name="ModPacks_PreviewSources" xml:space="preserve"><value>Quellen prüfen</value></data>
+  <data name="ModPacks_Previous" xml:space="preserve"><value>Zurück</value></data>
+  <data name="ModPacks_Provider" xml:space="preserve"><value>Anbieter</value></data>
+  <data name="ModPacks_Refresh" xml:space="preserve"><value>Aktualisieren</value></data>
+  <data name="ModPacks_Remove" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="ModPacks_ResolvedContent" xml:space="preserve"><value>Aufgelöste Inhalte</value></data>
+  <data name="ModPacks_Resolving" xml:space="preserve"><value>Wird geprüft…</value></data>
+  <data name="ModPacks_Review" xml:space="preserve"><value>Prüfen</value></data>
+  <data name="ModPacks_Revision" xml:space="preserve"><value>Revision</value></data>
+  <data name="ModPacks_RevisionCreated" xml:space="preserve"><value>Eine neue unveränderliche Revision wurde erstellt.</value></data>
+  <data name="ModPacks_RevisionNonEmpty" xml:space="preserve"><value>Eine Revision muss mindestens einen Mod oder ein verschachteltes Modpaket enthalten.</value></data>
+  <data name="ModPacks_Revisions" xml:space="preserve"><value>Revisionen</value></data>
+  <data name="ModPacks_Role" xml:space="preserve"><value>Rolle</value></data>
+  <data name="ModPacks_SaveRevision" xml:space="preserve"><value>Neue Revision speichern</value></data>
+  <data name="ModPacks_Saving" xml:space="preserve"><value>Wird gespeichert…</value></data>
+  <data name="ModPacks_Search" xml:space="preserve"><value>Suchen</value></data>
+  <data name="ModPacks_Source" xml:space="preserve"><value>Quelle</value></data>
+  <data name="ModPacks_SourceReview" xml:space="preserve"><value>Quellen prüfen</value></data>
+  <data name="ModPacks_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="ModPacks_Superseded" xml:space="preserve"><value>Ersetzt</value></data>
+  <data name="ModPacks_SupportedSources" xml:space="preserve"><value>Unterstützte Quellen</value></data>
+  <data name="ModPacks_Title" xml:space="preserve"><value>Titel</value></data>
+  <data name="ModPacks_UnsupportedImportedProvider" xml:space="preserve"><value>Der importierte Anbieter „{0}“ wird von diesem Spiel nicht unterstützt.</value></data>
+  <data name="ModPacks_Usage" xml:space="preserve"><value>Verwendung</value></data>
+  <data name="ModPacks_Version" xml:space="preserve"><value>Version</value></data>
+  <data name="ModPacks_VersionRef" xml:space="preserve"><value>Versionsreferenz</value></data>
+  <data name="ModPacks_WorkspaceDescription" xml:space="preserve"><value>Direkte und effektive Inhalte sowie unveränderliche Revisionen verwalten</value></data>
+  <data name="ModPacks_WorkspaceNavigation" xml:space="preserve"><value>Modpaket-Navigation</value></data>
 </root>

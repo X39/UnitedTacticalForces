@@ -15,11 +15,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
     {
         /// <summary>Stores additional data not described in the OpenAPI description found when deserializing. Can be used for serialization as well.</summary>
         public IDictionary<string, object> AdditionalData { get; set; }
-        /// <summary>Document kind.</summary>
+        /// <summary>The kind property</summary>
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinDocumentKind? Kind { get; set; }
         /// <summary>Document primary key.</summary>
         public long? PrimaryKey { get; set; }
-        /// <summary>The revision property</summary>
+        /// <summary>Verein document revision shape returned to anonymous readers.</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PublishedVereinDocumentRevisionDto? Revision { get; set; }
@@ -27,7 +27,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #else
         public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PublishedVereinDocumentRevisionDto Revision { get; set; }
 #endif
-        /// <summary>Last update timestamp.</summary>
+        /// <summary>The timeStampUpdated property</summary>
         public DateTimeOffset? TimeStampUpdated { get; set; }
         /// <summary>
         /// Instantiates a new <see cref="global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PublishedVereinDocumentDto"/> and sets the default values.
@@ -54,7 +54,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         {
             return new Dictionary<string, Action<IParseNode>>
             {
-                { "kind", n => { Kind = (global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinDocumentKind?) n.GetIntValue(); } },
+                { "kind", n => { Kind = n.GetEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinDocumentKind>(); } },
                 { "primaryKey", n => { PrimaryKey = n.GetLongValue(); } },
                 { "revision", n => { Revision = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PublishedVereinDocumentRevisionDto>(global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PublishedVereinDocumentRevisionDto.CreateFromDiscriminatorValue); } },
                 { "timeStampUpdated", n => { TimeStampUpdated = n.GetDateTimeOffsetValue(); } },
@@ -67,7 +67,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public virtual void Serialize(ISerializationWriter writer)
         {
             if(ReferenceEquals(writer, null)) throw new ArgumentNullException(nameof(writer));
-            writer.WriteIntValue("kind", (int?)Kind);
+            writer.WriteEnumValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.EVereinDocumentKind>("kind", Kind);
             writer.WriteLongValue("primaryKey", PrimaryKey);
             writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.PublishedVereinDocumentRevisionDto>("revision", Revision);
             writer.WriteDateTimeOffsetValue("timeStampUpdated", TimeStampUpdated);

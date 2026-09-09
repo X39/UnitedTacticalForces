@@ -3,9 +3,10 @@ using System.Runtime.Serialization;
 using System;
 namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 {
-    /// <summary>Represents the calculated or system-determined level of acceptance for an event,based on user responses such as accepted, maybe, or rejected.</summary>
     [global::System.CodeDom.Compiler.GeneratedCode("Kiota", "1.0.0")]
+    #pragma warning disable CS1591
     public enum EEventAcceptance
+    #pragma warning restore CS1591
     {
         [EnumMember(Value = "Maybe")]
         #pragma warning disable CS1591
