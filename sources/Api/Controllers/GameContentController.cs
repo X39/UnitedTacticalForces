@@ -221,7 +221,13 @@ public sealed partial class GameContentController(
                         && q.ProviderIdentifier == resolved.ProviderIdentifier
                         && q.CanonicalSourceIdentifier == resolved.CanonicalSourceIdentifier)
                     .Select(q => (Guid?)q.PrimaryKey).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-                results.Add(new { Source = resolved, ExistingModId = existingId, binding.InstallerIdentifiers });
+                results.Add(new
+                {
+                    SourceInput = source.Input,
+                    Source = resolved,
+                    ExistingModId = existingId,
+                    binding.InstallerIdentifiers,
+                });
             }
             catch (ModSourceUnavailableException exception)
             {

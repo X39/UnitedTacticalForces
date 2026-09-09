@@ -940,6 +940,40 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.ToTable("ModPackDefinitions");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackFormatDelivery", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EventFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FormatIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("ModPackRevisionFk")
+                        .HasColumnType("bigint");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserFk")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("UserFk");
+
+                    b.HasIndex("EventFk", "TimeStampCreated");
+
+                    b.HasIndex("ModPackRevisionFk", "TimeStampCreated");
+
+                    b.ToTable("ModPackFormatDeliveries");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackRevision", b =>
                 {
                     b.Property<long>("PrimaryKey")
@@ -4038,6 +4072,31 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackFormatDelivery", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Eventing.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Core.ModPackRevision", "ModPackRevision")
+                        .WithMany()
+                        .HasForeignKey("ModPackRevisionFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Event");
+
+                    b.Navigation("ModPackRevision");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Core.ModPackRevision", b =>

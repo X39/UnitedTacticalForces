@@ -48,6 +48,8 @@ public class DatabaseContext : DbContext
     public DbSet<ModVersion> ModVersions { get; set; } = null!;
     public DbSet<ModPackRevisionMod> ModPackRevisionMods { get; set; } = null!;
     public DbSet<ModPackRevisionDependency> ModPackRevisionDependencies { get; set; } = null!;
+    /// <summary>Gets the successful game-owned mod-pack format deliveries.</summary>
+    public DbSet<ModPackFormatDelivery> ModPackFormatDeliveries { get; set; } = null!;
     public DbSet<ContentBackfillRun> ContentBackfillRuns { get; set; } = null!;
 
     #endregion

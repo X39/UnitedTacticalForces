@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Database;
+using X39.UnitedTacticalForces.Database.Core;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
@@ -56,7 +57,7 @@ public sealed class ModPackFormatsController(
                         && q.ProviderIdentifier == source.ProviderIdentifier
                         && q.CanonicalSourceIdentifier == source.CanonicalSourceIdentifier)
                     .Select(q => (Guid?)q.PrimaryKey).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-                resolved.Add(new { entry.Title, Source = source, ExistingModId = existingId });
+                resolved.Add(new { entry.Title, entry.SourceInput, Source = source, ExistingModId = existingId });
             }
             catch (ModSourceUnavailableException exception)
             {
@@ -89,7 +90,11 @@ public sealed class ModPackFormatsController(
         long revisionId,
         string formatIdentifier,
         CancellationToken cancellationToken)
-        => await ExportRevisionAsync(revisionId, formatIdentifier, cancellationToken).ConfigureAwait(false);
+    {
+        if (!User.TryGetUserId(out var userId)) return Unauthorized();
+        return await ExportRevisionAsync(revisionId, formatIdentifier, null, userId, cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     /// <summary>Lists formats for a visible event's selected revision.</summary>
     /// <param name="eventId">Event identifier.</param>
@@ -118,12 +123,21 @@ public sealed class ModPackFormatsController(
     {
         var selection = await GetVisibleEventSelectionAsync(eventId, cancellationToken);
         if (selection.Result is not null) return selection.Result;
-        return await ExportRevisionAsync(selection.RevisionId!.Value, formatIdentifier, cancellationToken).ConfigureAwait(false);
+        var userId = User.TryGetUserId(out var authenticatedUserId) ? authenticatedUserId : (Guid?)null;
+        return await ExportRevisionAsync(
+                selection.RevisionId!.Value,
+                formatIdentifier,
+                eventId,
+                userId,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<IActionResult> ExportRevisionAsync(
         long revisionId,
         string formatIdentifier,
+        Guid? eventId,
+        Guid? userId,
         CancellationToken cancellationToken)
     {
         var revision = await dbContext.ModPackRevisions.AsNoTracking().Where(q => q.PrimaryKey == revisionId)
@@ -136,6 +150,16 @@ public sealed class ModPackFormatsController(
         await FlattenAsync(revisionId, new HashSet<long>(), new HashSet<Guid>(), entries, cancellationToken);
         var export = await handler.ExportAsync(revision.Title, entries, cancellationToken).ConfigureAwait(false);
         if (export.Warnings.Count > 0) Response.Headers.Append("X-Mod-Pack-Warnings", string.Join(" | ", export.Warnings));
+        dbContext.ModPackFormatDeliveries.Add(new ModPackFormatDelivery
+        {
+            PrimaryKey = Guid.NewGuid(),
+            TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+            ModPackRevisionFk = revisionId,
+            FormatIdentifier = handler.Definition.Identifier,
+            EventFk = eventId,
+            UserFk = userId,
+        });
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return File(export.Content, handler.Definition.MediaType,
             $"{SanitizeFileName(revision.Title)}.{handler.Definition.FileExtension}");
     }
