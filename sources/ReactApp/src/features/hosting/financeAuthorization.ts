@@ -8,6 +8,8 @@ export interface FinancePermissions {
   manageAllowance: boolean;
   correctLedger: boolean;
   managePolicy: boolean;
+  manageCostOwners: boolean;
+  freezeCostOwner: boolean;
 }
 
 export function getFinancePermissions(user: FullUser | undefined): FinancePermissions {
@@ -18,5 +20,7 @@ export function getFinancePermissions(user: FullUser | undefined): FinancePermis
     manageAllowance: hasBaseClaim(user, "fin", "fin:manage-allowance"),
     correctLedger: hasBaseClaim(user, "fin", "fin:correct-ledger"),
     managePolicy: hasBaseClaim(user, "fin", "fin:manage-policy"),
+    manageCostOwners: hasBaseClaim(user, "fin", "fin:manage-cost-owners"),
+    freezeCostOwner: hasBaseClaim(user, "fin", "fin:freeze-cost-owner"),
   };
 }

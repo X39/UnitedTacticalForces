@@ -24,13 +24,20 @@ function collectBlazorRoutes(directory: string): string[] {
 
 describe("route manifest", () => {
   it("describes every existing Blazor route and marks React-only fallbacks", () => {
-    expect(countRoutePatterns()).toBe(78);
+    expect(countRoutePatterns()).toBe(80);
     const manifestRoutes = routeManifest.routes
       .filter((route) => !route.classicFallback)
       .flatMap((route) => [route.canonical, ...route.aliases]);
     const blazorRoutes = collectBlazorRoutes(resolve(process.cwd(), "..", "WebApp", "Pages"));
     expect(new Set(manifestRoutes)).toEqual(new Set(blazorRoutes));
     expect(manifestRoutes).toHaveLength(new Set(manifestRoutes).size);
+    expect(matchRoute("/command/hosting-finance/settings")?.classicFallback).toBe(
+      "/command/hosting-finance",
+    );
+    expect(
+      matchRoute("/command/hosting-finance/accounts/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f")
+        ?.classicFallback,
+    ).toBe("/command/hosting-finance");
   });
 
   it("matches constrained identifiers and aliases", () => {

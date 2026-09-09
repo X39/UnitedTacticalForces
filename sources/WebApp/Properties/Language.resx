@@ -16103,4 +16103,43 @@ Start writing here.</value>
   <data name="React_ServerFiles_Status_failed" xml:space="preserve"><value>Failed</value></data>
   <data name="React_ServerFiles_Status_cancelled" xml:space="preserve"><value>Cancelled</value></data>
   <data name="React_ServerFiles_Status_rejected" xml:space="preserve"><value>Rejected</value></data>
+  <data name="HostingFinance_ProtocolSearchPlaceholder" xml:space="preserve"><value>Search references, reasons, providers, accounts, servers, or IDs</value></data>
+  <data name="HostingFinance_FilterAll" xml:space="preserve"><value>All</value></data>
+  <data name="HostingFinance_FilterFrom" xml:space="preserve"><value>From</value></data>
+  <data name="HostingFinance_FilterTo" xml:space="preserve"><value>To (exclusive)</value></data>
+  <data name="HostingFinance_ProtocolAccount" xml:space="preserve"><value>Account</value></data>
+  <data name="HostingFinance_RelatedServer" xml:space="preserve"><value>Server / deployment</value></data>
+  <data name="HostingFinance_ProviderCostReason" xml:space="preserve"><value>Provider hosting cost</value></data>
+  <data name="HostingFinance_CloseDetails" xml:space="preserve"><value>Close protocol details</value></data>
+  <data name="HostingFinance_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="HostingFinance_ReversalEntry" xml:space="preserve"><value>Reversal entry</value></data>
+  <data name="HostingFinance_ServerId" xml:space="preserve"><value>Server ID</value></data>
+  <data name="HostingFinance_ProviderIdentifier" xml:space="preserve"><value>Provider identifier</value></data>
+  <data name="HostingFinance_HourlyRate" xml:space="preserve"><value>Hourly rate</value></data>
+  <data name="HostingFinance_SliceInterval" xml:space="preserve"><value>Billing slice</value></data>
+  <data name="HostingFinance_Counterparty" xml:space="preserve"><value>Counterparty account</value></data>
+  <data name="HostingFinance_OverviewDescription" xml:space="preserve"><value>Manage every hosting billing account and open its complete financial position.</value></data>
+  <data name="HostingFinance_GlobalSettings" xml:space="preserve"><value>Global management</value></data>
+  <data name="HostingFinance_AddAccount" xml:space="preserve"><value>Add account</value></data>
+  <data name="HostingFinance_AccountType" xml:space="preserve"><value>Type</value></data>
+  <data name="HostingFinance_AccountStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="HostingFinance_LastUpdate" xml:space="preserve"><value>Last update</value></data>
+  <data name="HostingFinance_CreateAccount" xml:space="preserve"><value>Create account</value></data>
+  <data name="HostingFinance_EligibleUser" xml:space="preserve"><value>Eligible user</value></data>
+  <data name="HostingFinance_SelectUser" xml:space="preserve"><value>Select a user</value></data>
+  <data name="HostingFinance_VereinUnavailable" xml:space="preserve"><value>The Verein billing account already exists and cannot be created again.</value></data>
+  <data name="HostingFinance_OrganizationName" xml:space="preserve"><value>Organization name</value></data>
+  <data name="HostingFinance_BackToAccounts" xml:space="preserve"><value>Billing accounts</value></data>
+  <data name="HostingFinance_RenameAccount" xml:space="preserve"><value>Rename account</value></data>
+  <data name="HostingFinance_UnfreezeAccount" xml:space="preserve"><value>Unfreeze account</value></data>
+  <data name="HostingFinance_FreezeAccount" xml:space="preserve"><value>Freeze account</value></data>
+  <data name="HostingFinance_SelectDeployment" xml:space="preserve"><value>Select a completed deployment</value></data>
+  <data name="HostingFinance_SearchDestination" xml:space="preserve"><value>Search destination accounts</value></data>
+  <data name="HostingFinance_DestinationAccount" xml:space="preserve"><value>Destination account</value></data>
+  <data name="HostingFinance_SelectAccount" xml:space="preserve"><value>Select an account</value></data>
+  <data name="HostingFinance_EffectiveAt" xml:space="preserve"><value>Effective booking date and time</value></data>
+  <data name="HostingFinance_UnfreezeDescription" xml:space="preserve"><value>Allow this account to fund new hosting activity again?</value></data>
+  <data name="HostingFinance_FreezeDescription" xml:space="preserve"><value>Prevent this account from funding future hosting activity?</value></data>
+  <data name="HostingFinance_GlobalDescription" xml:space="preserve"><value>Edit installation-wide affordability policy and inspect the complete finance protocol.</value></data>
+  <data name="HostingFinance_SearchAccounts" xml:space="preserve"><value>Search accounts</value></data>
 </root>

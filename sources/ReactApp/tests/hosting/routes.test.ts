@@ -11,6 +11,8 @@ describe("hosting router integration contract", () => {
       "/command/configuration-profiles/create",
       "/command/configuration-profiles/{ProfileId:guid}",
       "/command/hosting-finance",
+      "/command/hosting-finance/accounts/{CostOwnerId:guid}",
+      "/command/hosting-finance/settings",
     ]);
     expect(hostingRouteDefinitions.find((route) => route.path.endsWith(":serverId"))?.parity).toBe(
       "workflow",

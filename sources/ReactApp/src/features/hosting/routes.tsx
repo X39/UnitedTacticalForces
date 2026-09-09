@@ -5,6 +5,8 @@ import { ConfigurationProfilesPage } from "@/features/hosting/ConfigurationProfi
 import { CreateServerPage } from "@/features/hosting/CreateServerPage";
 import { HostingOverviewPage, ServerFleetPage } from "@/features/hosting/FleetPages";
 import { HostingFinancePage } from "@/features/hosting/HostingFinancePage";
+import { HostingFinanceAccountPage } from "@/features/hosting/HostingFinanceAccountPage";
+import { HostingFinanceSettingsPage } from "@/features/hosting/HostingFinanceSettingsPage";
 import { ServerWorkspacePage } from "@/features/hosting/ServerWorkspacePage";
 
 export interface HostingRouteDefinition {
@@ -65,6 +67,18 @@ export const hostingRouteDefinitions: HostingRouteDefinition[] = [
     manifestPattern: "/command/hosting-finance",
     path: "command/hosting-finance",
     Component: HostingFinancePage,
+    parity: "workflow",
+  },
+  {
+    manifestPattern: "/command/hosting-finance/accounts/{CostOwnerId:guid}",
+    path: "command/hosting-finance/accounts/:costOwnerId",
+    Component: HostingFinanceAccountPage,
+    parity: "workflow",
+  },
+  {
+    manifestPattern: "/command/hosting-finance/settings",
+    path: "command/hosting-finance/settings",
+    Component: HostingFinanceSettingsPage,
     parity: "workflow",
   },
 ];

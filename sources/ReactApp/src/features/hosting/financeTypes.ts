@@ -19,6 +19,29 @@ export interface FinanceCostOwnerPage {
 }
 
 export type FinancePolicy = Required<Schema<"HostingFinancePolicyDto">>;
+export type FinanceProtocolEntry = Required<Schema<"HostingFinanceProtocolEntryDto">>;
+export type FinanceUserCandidate = Required<Schema<"HostingCostOwnerUserCandidateDto">>;
+export type FinanceCorrectableDeployment = Required<Schema<"HostingCorrectableDeploymentDto">>;
+
+export interface FinanceProtocolPage {
+  entries: FinanceProtocolEntry[];
+  totalCount: number;
+}
+
+export interface FinanceUserCandidatePage {
+  users: FinanceUserCandidate[];
+  totalCount: number;
+}
+
+export interface FinanceProtocolFilters {
+  search?: string | undefined;
+  kind?: FinanceLedgerKind | undefined;
+  from?: string | undefined;
+  to?: string | undefined;
+  costOwnerId?: string | undefined;
+  skip: number;
+  take: number;
+}
 export type FinanceOperation = Omit<
   Required<Schema<"HostingFinanceOperationDto">>,
   "affectedLedgerEntries" | "entries"

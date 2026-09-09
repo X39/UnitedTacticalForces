@@ -494,6 +494,20 @@ const commandRouteDefinitions: { manifestPattern: string; route: RouteObject }[]
       lazy: lazyComponent(() => import("@/features/hosting"), "HostingFinancePage"),
     },
   },
+  {
+    manifestPattern: "/command/hosting-finance/accounts/{CostOwnerId:guid}",
+    route: {
+      path: "hosting-finance/accounts/:costOwnerId",
+      lazy: lazyComponent(() => import("@/features/hosting"), "HostingFinanceAccountPage"),
+    },
+  },
+  {
+    manifestPattern: "/command/hosting-finance/settings",
+    route: {
+      path: "hosting-finance/settings",
+      lazy: lazyComponent(() => import("@/features/hosting"), "HostingFinanceSettingsPage"),
+    },
+  },
 ];
 
 const commandAliasRouteDefinitions: {

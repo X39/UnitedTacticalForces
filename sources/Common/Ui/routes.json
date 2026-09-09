@@ -88,6 +88,22 @@
       "shell": "command"
     },
     {
+      "id": "command-hosting-finance-account",
+      "canonical": "/command/hosting-finance/accounts/{CostOwnerId:guid}",
+      "aliases": [],
+      "certified": true,
+      "shell": "command",
+      "classicFallback": "/command/hosting-finance"
+    },
+    {
+      "id": "command-hosting-finance-settings",
+      "canonical": "/command/hosting-finance/settings",
+      "aliases": [],
+      "certified": true,
+      "shell": "command",
+      "classicFallback": "/command/hosting-finance"
+    },
+    {
       "id": "command",
       "canonical": "/command",
       "aliases": [],

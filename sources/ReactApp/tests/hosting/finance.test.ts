@@ -53,6 +53,8 @@ describe("hosting finance authorization and validation", () => {
       manageAllowance: false,
       correctLedger: true,
       managePolicy: false,
+      manageCostOwners: false,
+      freezeCostOwner: false,
     });
     expect(getFinancePermissions(userWithClaims({ identifier: "adm", value: null }))).toEqual({
       view: true,
@@ -61,6 +63,8 @@ describe("hosting finance authorization and validation", () => {
       manageAllowance: true,
       correctLedger: true,
       managePolicy: true,
+      manageCostOwners: true,
+      freezeCostOwner: true,
     });
   });
 
@@ -68,11 +72,21 @@ describe("hosting finance authorization and validation", () => {
     expect(
       policySchema.safeParse({ minimumSafetyRangeEur: -1, reservationSliceMinutes: 15 }).success,
     ).toBe(false);
-    expect(paymentSchema.safeParse({ amount: 20, externalReference: "", reason: "" }).success).toBe(
-      false,
-    );
     expect(
-      refundSchema.safeParse({ amount: 20, externalReference: "SEPA-1", reason: "" }).success,
+      paymentSchema.safeParse({
+        amount: 20,
+        externalReference: "",
+        reason: "",
+        timeStampEffective: new Date().toISOString(),
+      }).success,
+    ).toBe(false);
+    expect(
+      refundSchema.safeParse({
+        amount: 20,
+        externalReference: "SEPA-1",
+        reason: "",
+        timeStampEffective: new Date().toISOString(),
+      }).success,
     ).toBe(false);
     expect(allowanceSchema.safeParse({ allowance: null, reason: "Approved" }).success).toBe(true);
     expect(
@@ -82,6 +96,7 @@ describe("hosting finance authorization and validation", () => {
         correctCostOwnerId: "10000000-0000-0000-0000-000000000001",
         amount: 1,
         reason: "Wrong owner",
+        timeStampEffective: new Date().toISOString(),
       }).success,
     ).toBe(false);
   });

@@ -767,6 +767,20 @@
             }
           },
           {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ECostOwnerKind"
+            }
+          },
+          {
+            "name": "isFrozen",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "skip",
             "in": "query",
             "schema": {
@@ -804,6 +818,114 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HostingCostOwnerPageDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CostOwners"
+        ],
+        "summary": "Creates a user, Verein, or external-organization cost owner.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostOwnerCreationPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostOwnerCreationPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostOwnerCreationPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -1025,6 +1147,514 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-owners/user-candidates": {
+      "get": {
+        "tags": [
+          "CostOwners"
+        ],
+        "summary": "Lists active users who do not yet have a hosting-finance cost owner.",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerUserCandidatePageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerUserCandidatePageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerUserCandidatePageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-owners/{costOwnerId}/display-name": {
+      "put": {
+        "tags": [
+          "CostOwners"
+        ],
+        "summary": "Renames an external-organization cost owner.",
+        "parameters": [
+          {
+            "name": "costOwnerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostOwnerDisplayNameUpdatePayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostOwnerDisplayNameUpdatePayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostOwnerDisplayNameUpdatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-owners/{costOwnerId}/ledger-entries": {
+      "get": {
+        "tags": [
+          "CostOwners"
+        ],
+        "summary": "Lists the append-only finance protocol for one cost owner.",
+        "parameters": [
+          {
+            "name": "costOwnerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/EHostingLedgerEntryKind"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingFinanceProtocolPageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingFinanceProtocolPageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingFinanceProtocolPageDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-owners/ledger-entries": {
+      "get": {
+        "tags": [
+          "CostOwners"
+        ],
+        "summary": "Lists the installation-wide append-only hosting-finance protocol.",
+        "parameters": [
+          {
+            "name": "costOwnerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/EHostingLedgerEntryKind"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingFinanceProtocolPageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingFinanceProtocolPageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingFinanceProtocolPageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-owners/{costOwnerId}/correctable-deployments": {
+      "get": {
+        "tags": [
+          "CostOwners"
+        ],
+        "summary": "Lists completed deployments whose remaining provider cost may be corrected to another owner.",
+        "parameters": [
+          {
+            "name": "costOwnerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HostingCorrectableDeploymentDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HostingCorrectableDeploymentDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HostingCorrectableDeploymentDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-owners/{costOwnerId}/frozen": {
+      "put": {
+        "tags": [
+          "CostOwners"
+        ],
+        "summary": "Freezes or unfreezes a cost owner for future spending.",
+        "parameters": [
+          {
+            "name": "costOwnerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostOwnerFreezeUpdatePayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostOwnerFreezeUpdatePayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostOwnerFreezeUpdatePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostingCostOwnerDto"
                 }
               }
             }
@@ -13177,6 +13807,59 @@
         },
         "description": "Retry-safe change to one cost owner's finite spending allowance. A null allowance revokes it."
       },
+      "CostOwnerCreationPayload": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "Gets the kind of cost owner to create.",
+            "$ref": "#/components/schemas/ECostOwnerKind"
+          },
+          "userId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the user represented by a user cost owner.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "displayName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the display name for an external organization."
+              }
+            ]
+          }
+        },
+        "description": "Describes a finance-controlled cost-owner creation request."
+      },
+      "CostOwnerDisplayNameUpdatePayload": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Gets the new display name."
+          }
+        },
+        "description": "Renames an external-organization cost owner."
+      },
+      "CostOwnerFreezeUpdatePayload": {
+        "type": "object",
+        "properties": {
+          "isFrozen": {
+            "type": "boolean",
+            "description": "Gets whether the cost owner should be frozen."
+          }
+        },
+        "description": "Changes whether a cost owner may fund new hosting activity."
+      },
       "CostOwnerPaymentPayload": {
         "required": [
           "recordIdentifier",
@@ -13982,7 +14665,11 @@
           "ServerSecretCreated",
           "ServerSecretRotated",
           "ServerSecretRevealed",
-          "ServerSecretUpdated"
+          "ServerSecretUpdated",
+          "CostOwnerCreated",
+          "CostOwnerRenamed",
+          "CostOwnerFrozen",
+          "CostOwnerUnfrozen"
         ],
         "type": "integer",
         "x-ms-enum": {
@@ -14382,6 +15069,26 @@
             {
               "name": "ServerSecretUpdated",
               "value": 78,
+              "description": ""
+            },
+            {
+              "name": "CostOwnerCreated",
+              "value": 79,
+              "description": ""
+            },
+            {
+              "name": "CostOwnerRenamed",
+              "value": 80,
+              "description": ""
+            },
+            {
+              "name": "CostOwnerFrozen",
+              "value": 81,
+              "description": ""
+            },
+            {
+              "name": "CostOwnerUnfrozen",
+              "value": 82,
               "description": ""
             }
           ]
@@ -17603,6 +18310,40 @@
         },
         "description": "Direct server-scoped permissions assigned to one user."
       },
+      "HostingCorrectableDeploymentDto": {
+        "type": "object",
+        "properties": {
+          "deploymentId": {
+            "type": "string",
+            "description": "Gets the deployment identifier.",
+            "format": "uuid"
+          },
+          "serverId": {
+            "type": "string",
+            "description": "Gets the server identifier.",
+            "format": "uuid"
+          },
+          "serverTitle": {
+            "type": "string",
+            "description": "Gets the server title."
+          },
+          "remainingCorrectableAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": "number",
+            "description": "Gets the provider cost still attributed to the original owner.",
+            "format": "double"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Gets the currency code."
+          },
+          "timeStampResolved": {
+            "description": "Gets when the deployment was resolved.",
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "description": "Describes a completed deployment with provider cost that may still be corrected."
+      },
       "HostingCostOwnerDto": {
         "required": [
           "costOwnerId",
@@ -17704,6 +18445,40 @@
           }
         },
         "description": "A filtered page of hosting cost owners."
+      },
+      "HostingCostOwnerUserCandidateDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "Gets the user identifier.",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Gets the current user nickname."
+          }
+        },
+        "description": "Identifies an active user who does not yet have a hosting cost owner."
+      },
+      "HostingCostOwnerUserCandidatePageDto": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HostingCostOwnerUserCandidateDto"
+            },
+            "description": "Gets the matching candidates."
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the total matching candidate count.",
+            "format": "int64"
+          }
+        },
+        "description": "Contains a filtered page of users eligible for cost-owner creation."
       },
       "HostingFileDto": {
         "type": "object",
@@ -17965,6 +18740,304 @@
           }
         },
         "description": "Updates the persisted installation-wide hosting affordability policy."
+      },
+      "HostingFinanceProtocolEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Gets the ledger-entry identifier.",
+            "format": "uuid"
+          },
+          "costOwnerId": {
+            "type": "string",
+            "description": "Gets the cost-owner identifier.",
+            "format": "uuid"
+          },
+          "costOwnerDisplayName": {
+            "type": "string",
+            "description": "Gets the current cost-owner display name."
+          },
+          "costOwnerKind": {
+            "description": "Gets the cost-owner kind.",
+            "$ref": "#/components/schemas/ECostOwnerKind"
+          },
+          "deploymentId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the related deployment identifier.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "serverId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the related server identifier.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "serverTitle": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the related server title."
+              }
+            ]
+          },
+          "kind": {
+            "description": "Gets the ledger-entry kind.",
+            "$ref": "#/components/schemas/EHostingLedgerEntryKind"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": "number",
+            "description": "Gets the signed balance delta.",
+            "format": "double"
+          },
+          "balanceAfter": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": "number",
+            "description": "Gets the balance after the entry.",
+            "format": "double"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Gets the entry currency."
+          },
+          "timeStampEffective": {
+            "description": "Gets the effective booking time.",
+            "$ref": "#/components/schemas/Instant"
+          },
+          "timeStampRecorded": {
+            "description": "Gets the recorded timestamp.",
+            "$ref": "#/components/schemas/Instant"
+          },
+          "recordedById": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the recording actor identifier.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "recordedByDisplayName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the recording actor display name."
+              }
+            ]
+          },
+          "recordIdentifier": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the retry-safe record identifier.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "financeOperationId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the containing finance-operation identifier.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "reversedEntryId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the original entry negated by this entry.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "reversalEntryId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets an entry that has already reversed this entry.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "isReversible": {
+            "type": "boolean",
+            "description": "Gets whether a new reversal may be requested."
+          },
+          "externalReference": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the external accounting reference."
+              }
+            ]
+          },
+          "reason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the recorded finance reason."
+              }
+            ]
+          },
+          "providerIdentifier": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the provider identifier for a provider-cost slice."
+              }
+            ]
+          },
+          "estimatedHourlyRate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                "type": "number",
+                "description": "Gets the estimated hourly rate for a provider-cost slice.",
+                "format": "double"
+              }
+            ]
+          },
+          "sliceStartsAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the provider-cost slice start.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "sliceEndsAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the provider-cost slice end.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "previousAllowance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                "type": "number",
+                "description": "Gets the previous finite allowance.",
+                "format": "double"
+              }
+            ]
+          },
+          "newAllowance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                "type": "number",
+                "description": "Gets the new finite allowance.",
+                "format": "double"
+              }
+            ]
+          },
+          "counterpartyCostOwnerId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the counterparty cost-owner identifier for a correction.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "counterpartyDisplayName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the counterparty display name for a correction."
+              }
+            ]
+          }
+        },
+        "description": "Presents one append-only hosting-finance ledger entry with related operational context."
+      },
+      "HostingFinanceProtocolPageDto": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HostingFinanceProtocolEntryDto"
+            },
+            "description": "Gets the matching protocol entries."
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the total matching entry count.",
+            "format": "int64"
+          }
+        },
+        "description": "Contains a filtered page of hosting-finance protocol entries."
       },
       "HostingLedgerEntryDto": {
         "required": [

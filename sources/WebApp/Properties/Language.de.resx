@@ -16080,4 +16080,43 @@ Beginne hier mit dem Schreiben.</value>
   <data name="React_ServerFiles_Status_failed" xml:space="preserve"><value>Fehlgeschlagen</value></data>
   <data name="React_ServerFiles_Status_cancelled" xml:space="preserve"><value>Abgebrochen</value></data>
   <data name="React_ServerFiles_Status_rejected" xml:space="preserve"><value>Abgelehnt</value></data>
+  <data name="HostingFinance_ProtocolSearchPlaceholder" xml:space="preserve"><value>Referenzen, Gründe, Anbieter, Konten, Server oder IDs durchsuchen</value></data>
+  <data name="HostingFinance_FilterAll" xml:space="preserve"><value>Alle</value></data>
+  <data name="HostingFinance_FilterFrom" xml:space="preserve"><value>Von</value></data>
+  <data name="HostingFinance_FilterTo" xml:space="preserve"><value>Bis (exklusiv)</value></data>
+  <data name="HostingFinance_ProtocolAccount" xml:space="preserve"><value>Konto</value></data>
+  <data name="HostingFinance_RelatedServer" xml:space="preserve"><value>Server / Bereitstellung</value></data>
+  <data name="HostingFinance_ProviderCostReason" xml:space="preserve"><value>Hostingkosten des Anbieters</value></data>
+  <data name="HostingFinance_CloseDetails" xml:space="preserve"><value>Protokolldetails schließen</value></data>
+  <data name="HostingFinance_Close" xml:space="preserve"><value>Schließen</value></data>
+  <data name="HostingFinance_ReversalEntry" xml:space="preserve"><value>Stornobuchung</value></data>
+  <data name="HostingFinance_ServerId" xml:space="preserve"><value>Server-ID</value></data>
+  <data name="HostingFinance_ProviderIdentifier" xml:space="preserve"><value>Anbieterkennung</value></data>
+  <data name="HostingFinance_HourlyRate" xml:space="preserve"><value>Stundensatz</value></data>
+  <data name="HostingFinance_SliceInterval" xml:space="preserve"><value>Abrechnungszeitraum</value></data>
+  <data name="HostingFinance_Counterparty" xml:space="preserve"><value>Gegenkonto</value></data>
+  <data name="HostingFinance_OverviewDescription" xml:space="preserve"><value>Alle Hosting-Abrechnungskonten verwalten und ihre vollständige Finanzposition öffnen.</value></data>
+  <data name="HostingFinance_GlobalSettings" xml:space="preserve"><value>Globale Verwaltung</value></data>
+  <data name="HostingFinance_AddAccount" xml:space="preserve"><value>Konto hinzufügen</value></data>
+  <data name="HostingFinance_AccountType" xml:space="preserve"><value>Typ</value></data>
+  <data name="HostingFinance_AccountStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="HostingFinance_LastUpdate" xml:space="preserve"><value>Letzte Änderung</value></data>
+  <data name="HostingFinance_CreateAccount" xml:space="preserve"><value>Konto erstellen</value></data>
+  <data name="HostingFinance_EligibleUser" xml:space="preserve"><value>Verfügbarer Benutzer</value></data>
+  <data name="HostingFinance_SelectUser" xml:space="preserve"><value>Benutzer auswählen</value></data>
+  <data name="HostingFinance_VereinUnavailable" xml:space="preserve"><value>Das Abrechnungskonto des Vereins besteht bereits und kann nicht erneut erstellt werden.</value></data>
+  <data name="HostingFinance_OrganizationName" xml:space="preserve"><value>Name der Organisation</value></data>
+  <data name="HostingFinance_BackToAccounts" xml:space="preserve"><value>Abrechnungskonten</value></data>
+  <data name="HostingFinance_RenameAccount" xml:space="preserve"><value>Konto umbenennen</value></data>
+  <data name="HostingFinance_UnfreezeAccount" xml:space="preserve"><value>Konto entsperren</value></data>
+  <data name="HostingFinance_FreezeAccount" xml:space="preserve"><value>Konto sperren</value></data>
+  <data name="HostingFinance_SelectDeployment" xml:space="preserve"><value>Abgeschlossene Bereitstellung auswählen</value></data>
+  <data name="HostingFinance_SearchDestination" xml:space="preserve"><value>Zielkonten durchsuchen</value></data>
+  <data name="HostingFinance_DestinationAccount" xml:space="preserve"><value>Zielkonto</value></data>
+  <data name="HostingFinance_SelectAccount" xml:space="preserve"><value>Konto auswählen</value></data>
+  <data name="HostingFinance_EffectiveAt" xml:space="preserve"><value>Wirksames Buchungsdatum und -zeit</value></data>
+  <data name="HostingFinance_UnfreezeDescription" xml:space="preserve"><value>Darf dieses Konto wieder neue Hosting-Aktivitäten finanzieren?</value></data>
+  <data name="HostingFinance_FreezeDescription" xml:space="preserve"><value>Soll dieses Konto künftig keine Hosting-Aktivitäten mehr finanzieren dürfen?</value></data>
+  <data name="HostingFinance_GlobalDescription" xml:space="preserve"><value>Installationsweite Finanzrichtlinie bearbeiten und das vollständige Finanzprotokoll einsehen.</value></data>
+  <data name="HostingFinance_SearchAccounts" xml:space="preserve"><value>Konten durchsuchen</value></data>
 </root>

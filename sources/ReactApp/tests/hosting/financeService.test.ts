@@ -127,4 +127,62 @@ describe("hosting finance API adapter", () => {
       reason: "Mistaken payment",
     });
   });
+
+  it("serializes account filters and creates every account kind", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ owners: [], totalCount: 0 }))
+      .mockResolvedValue(
+        jsonResponse({
+          costOwnerId: "owner-1",
+          kind: "ExternalOrganization",
+          recentLedgerEntries: [],
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    initializeApiClient(configuration);
+
+    await financeService.owners("club", 20, 20, "ExternalOrganization", true);
+    await financeService.createOwner("ExternalOrganization", undefined, "  Partner  ");
+
+    const [listUrl] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    const [createUrl, createInit] = fetchMock.mock.calls[1] as [URL, RequestInit];
+    expect(listUrl.searchParams.get("kind")).toBe("ExternalOrganization");
+    expect(listUrl.searchParams.get("isFrozen")).toBe("true");
+    expect(createUrl.pathname).toBe("/api/cost-owners");
+    expect(JSON.parse(String(createInit.body))).toMatchObject({
+      kind: "ExternalOrganization",
+      userId: null,
+      displayName: "Partner",
+    });
+  });
+
+  it("serializes protocol filters and normalizes enriched rows", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        entries: [{ id: "entry-1", kind: 0, costOwnerKind: 1, isReversible: false }],
+        totalCount: 1,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    initializeApiClient(configuration);
+
+    const page = await financeService.protocol({
+      search: "provider-42",
+      kind: "ProviderCostSlice",
+      from: "2026-01-01T00:00:00.000Z",
+      to: "2026-02-01T00:00:00.000Z",
+      costOwnerId: "owner-1",
+      skip: 50,
+      take: 50,
+    });
+
+    expect(page.entries[0]?.kind).toBe("ProviderCostSlice");
+    expect(page.entries[0]?.costOwnerKind).toBe("Verein");
+    const [url] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe("/api/cost-owners/ledger-entries");
+    expect(url.searchParams.get("search")).toBe("provider-42");
+    expect(url.searchParams.get("costOwnerId")).toBe("owner-1");
+    expect(url.searchParams.get("skip")).toBe("50");
+  });
 });

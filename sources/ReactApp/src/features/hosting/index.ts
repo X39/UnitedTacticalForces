@@ -9,6 +9,8 @@ export * from "@/features/hosting/CreateServerPage";
 export * from "@/features/hosting/FleetPages";
 export * from "@/features/hosting/HostingAuditFeed";
 export * from "@/features/hosting/HostingFinancePage";
+export * from "@/features/hosting/HostingFinanceAccountPage";
+export * from "@/features/hosting/HostingFinanceSettingsPage";
 export * from "@/features/hosting/financeAuthorization";
 export * from "@/features/hosting/financeModel";
 export * from "@/features/hosting/financeService";

@@ -571,6 +571,8 @@ export interface paths {
             parameters: {
                 query?: {
                     search?: string;
+                    kind?: components["schemas"]["ECostOwnerKind"];
+                    isFrozen?: boolean;
                     skip?: number;
                     take?: number;
                 };
@@ -594,7 +596,68 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /** Creates a user, Verein, or external-organization cost owner. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CostOwnerCreationPayload"];
+                    "text/json": components["schemas"]["CostOwnerCreationPayload"];
+                    "application/*+json": components["schemas"]["CostOwnerCreationPayload"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["HostingCostOwnerDto"];
+                        "application/json": components["schemas"]["HostingCostOwnerDto"];
+                        "text/json": components["schemas"]["HostingCostOwnerDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -765,6 +828,328 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-owners/user-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists active users who do not yet have a hosting-finance cost owner. */
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["HostingCostOwnerUserCandidatePageDto"];
+                        "application/json": components["schemas"]["HostingCostOwnerUserCandidatePageDto"];
+                        "text/json": components["schemas"]["HostingCostOwnerUserCandidatePageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-owners/{costOwnerId}/display-name": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Renames an external-organization cost owner. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    costOwnerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CostOwnerDisplayNameUpdatePayload"];
+                    "text/json": components["schemas"]["CostOwnerDisplayNameUpdatePayload"];
+                    "application/*+json": components["schemas"]["CostOwnerDisplayNameUpdatePayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["HostingCostOwnerDto"];
+                        "application/json": components["schemas"]["HostingCostOwnerDto"];
+                        "text/json": components["schemas"]["HostingCostOwnerDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-owners/{costOwnerId}/ledger-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the append-only finance protocol for one cost owner. */
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    kind?: components["schemas"]["EHostingLedgerEntryKind"];
+                    from?: string;
+                    to?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    costOwnerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["HostingFinanceProtocolPageDto"];
+                        "application/json": components["schemas"]["HostingFinanceProtocolPageDto"];
+                        "text/json": components["schemas"]["HostingFinanceProtocolPageDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-owners/ledger-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the installation-wide append-only hosting-finance protocol. */
+        get: {
+            parameters: {
+                query?: {
+                    costOwnerId?: string;
+                    search?: string;
+                    kind?: components["schemas"]["EHostingLedgerEntryKind"];
+                    from?: string;
+                    to?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["HostingFinanceProtocolPageDto"];
+                        "application/json": components["schemas"]["HostingFinanceProtocolPageDto"];
+                        "text/json": components["schemas"]["HostingFinanceProtocolPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-owners/{costOwnerId}/correctable-deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists completed deployments whose remaining provider cost may be corrected to another owner. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    costOwnerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["HostingCorrectableDeploymentDto"][];
+                        "application/json": components["schemas"]["HostingCorrectableDeploymentDto"][];
+                        "text/json": components["schemas"]["HostingCorrectableDeploymentDto"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-owners/{costOwnerId}/frozen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Freezes or unfreezes a cost owner for future spending. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    costOwnerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CostOwnerFreezeUpdatePayload"];
+                    "text/json": components["schemas"]["CostOwnerFreezeUpdatePayload"];
+                    "application/*+json": components["schemas"]["CostOwnerFreezeUpdatePayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["HostingCostOwnerDto"];
+                        "application/json": components["schemas"]["HostingCostOwnerDto"];
+                        "text/json": components["schemas"]["HostingCostOwnerDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6117,6 +6502,23 @@ export interface components {
             allowance: null | number;
             reason: string;
         };
+        /** @description Describes a finance-controlled cost-owner creation request. */
+        CostOwnerCreationPayload: {
+            /** @description Gets the kind of cost owner to create. */
+            kind?: components["schemas"]["ECostOwnerKind"];
+            userId?: null | string;
+            displayName?: null | string;
+        };
+        /** @description Renames an external-organization cost owner. */
+        CostOwnerDisplayNameUpdatePayload: {
+            /** @description Gets the new display name. */
+            displayName?: string;
+        };
+        /** @description Changes whether a cost owner may fund new hosting activity. */
+        CostOwnerFreezeUpdatePayload: {
+            /** @description Gets whether the cost owner should be frozen. */
+            isFrozen?: boolean;
+        };
         /** @description Retry-safe record of a bank transfer already received by the Verein for one cost owner. */
         CostOwnerPaymentPayload: {
             /** Format: uuid */
@@ -6179,7 +6581,7 @@ export interface components {
         /** @enum {integer} */
         EGameServerSecretOrigin: "Generated" | "UserProvided" | "ExternalProvider";
         /** @enum {integer} */
-        EHostingAuditEventKind: "ServerCreated" | "ServerUpdated" | "ServerArchived" | "ServerLaunchDisabled" | "ServerLaunchEnabled" | "CostOwnerAssigned" | "LifecycleRequested" | "LifecycleStarted" | "LifecycleSucceeded" | "LifecycleFailed" | "LifecycleRetried" | "LifecycleSkipped" | "LifecycleCancelledByCostStop" | "TerminateRequested" | "WorkerRegistered" | "WorkerDegraded" | "WorkerRecovered" | "WorkerStopped" | "WorkerCommandUpdated" | "PreservationSelectionAdded" | "PreservationSelectionUpdated" | "PreservationSelectionRemoved" | "FileCreated" | "FileUpdated" | "FileDeleted" | "DeploymentResourceObserved" | "DeploymentResourceReleased" | "ManualCleanupRecorded" | "CostOwnerChanged" | "DeploymentCreated" | "LifecycleJobQueued" | "LifecycleJobClaimed" | "LifecycleJobSucceeded" | "LifecycleJobRetryPending" | "LifecycleJobFailed" | "LifecycleJobSkipped" | "CommandsCancelledByCostStop" | "WorkerProvisioned" | "WorkerHeartbeat" | "WorkerCommandQueued" | "WorkerCommandSucceeded" | "WorkerCommandFailed" | "DeploymentStopped" | "DeploymentTerminated" | "AccessGranted" | "AccessRevoked" | "FileChanged" | "PreservationPublished" | "PreservationFailed" | "PersistentDataDeleted" | "Recovery" | "ProviderReconciliationDegraded" | "DeploymentResourceAdopted" | "DanglingResourceDetected" | "DanglingResourceCleanupFailed" | "DanglingResourceCleanupSucceeded" | "WorkerCredentialRotationIssued" | "ProviderCostSliceCharged" | "ProviderCostSliceReserved" | "ProviderCostSliceReservationReleased" | "BankTransferPaymentRecorded" | "CostOwnerAllowanceChanged" | "ExternalRefundRecorded" | "DeploymentCostOwnerCorrected" | "HostingLedgerEntryReversed" | "DeploymentResourceProvisioningRequested" | "DeploymentResourceProvisioningFailed" | "DeploymentResourceReleaseRequested" | "DeploymentResourceReleaseFailed" | "ServerConfigurationChanged" | "ServerConfigurationProfileChanged" | "ConfigurationProfileCreated" | "ConfigurationProfileRevisionCreated" | "ConfigurationProfileArchived" | "HostingFinancePolicyChanged" | "ServerSecretCreated" | "ServerSecretRotated" | "ServerSecretRevealed" | "ServerSecretUpdated";
+        EHostingAuditEventKind: "ServerCreated" | "ServerUpdated" | "ServerArchived" | "ServerLaunchDisabled" | "ServerLaunchEnabled" | "CostOwnerAssigned" | "LifecycleRequested" | "LifecycleStarted" | "LifecycleSucceeded" | "LifecycleFailed" | "LifecycleRetried" | "LifecycleSkipped" | "LifecycleCancelledByCostStop" | "TerminateRequested" | "WorkerRegistered" | "WorkerDegraded" | "WorkerRecovered" | "WorkerStopped" | "WorkerCommandUpdated" | "PreservationSelectionAdded" | "PreservationSelectionUpdated" | "PreservationSelectionRemoved" | "FileCreated" | "FileUpdated" | "FileDeleted" | "DeploymentResourceObserved" | "DeploymentResourceReleased" | "ManualCleanupRecorded" | "CostOwnerChanged" | "DeploymentCreated" | "LifecycleJobQueued" | "LifecycleJobClaimed" | "LifecycleJobSucceeded" | "LifecycleJobRetryPending" | "LifecycleJobFailed" | "LifecycleJobSkipped" | "CommandsCancelledByCostStop" | "WorkerProvisioned" | "WorkerHeartbeat" | "WorkerCommandQueued" | "WorkerCommandSucceeded" | "WorkerCommandFailed" | "DeploymentStopped" | "DeploymentTerminated" | "AccessGranted" | "AccessRevoked" | "FileChanged" | "PreservationPublished" | "PreservationFailed" | "PersistentDataDeleted" | "Recovery" | "ProviderReconciliationDegraded" | "DeploymentResourceAdopted" | "DanglingResourceDetected" | "DanglingResourceCleanupFailed" | "DanglingResourceCleanupSucceeded" | "WorkerCredentialRotationIssued" | "ProviderCostSliceCharged" | "ProviderCostSliceReserved" | "ProviderCostSliceReservationReleased" | "BankTransferPaymentRecorded" | "CostOwnerAllowanceChanged" | "ExternalRefundRecorded" | "DeploymentCostOwnerCorrected" | "HostingLedgerEntryReversed" | "DeploymentResourceProvisioningRequested" | "DeploymentResourceProvisioningFailed" | "DeploymentResourceReleaseRequested" | "DeploymentResourceReleaseFailed" | "ServerConfigurationChanged" | "ServerConfigurationProfileChanged" | "ConfigurationProfileCreated" | "ConfigurationProfileRevisionCreated" | "ConfigurationProfileArchived" | "HostingFinancePolicyChanged" | "ServerSecretCreated" | "ServerSecretRotated" | "ServerSecretRevealed" | "ServerSecretUpdated" | "CostOwnerCreated" | "CostOwnerRenamed" | "CostOwnerFrozen" | "CostOwnerUnfrozen";
         /** @enum {integer} */
         EHostingFileModificationMode: "None" | "RawFile" | "StructuredConfiguration";
         /** @enum {integer} */
@@ -6833,6 +7235,30 @@ export interface components {
             /** @description Exact direct permissions assigned for the server. */
             permissions?: string[];
         };
+        /** @description Describes a completed deployment with provider cost that may still be corrected. */
+        HostingCorrectableDeploymentDto: {
+            /**
+             * Format: uuid
+             * @description Gets the deployment identifier.
+             */
+            deploymentId?: string;
+            /**
+             * Format: uuid
+             * @description Gets the server identifier.
+             */
+            serverId?: string;
+            /** @description Gets the server title. */
+            serverTitle?: string;
+            /**
+             * Format: double
+             * @description Gets the provider cost still attributed to the original owner.
+             */
+            remainingCorrectableAmount?: number;
+            /** @description Gets the currency code. */
+            currency?: string;
+            /** @description Gets when the deployment was resolved. */
+            timeStampResolved?: components["schemas"]["Instant"];
+        };
         /** @description Current hosting-finance position for one cost owner. */
         HostingCostOwnerDto: {
             /** Format: uuid */
@@ -6859,6 +7285,26 @@ export interface components {
             /**
              * Format: int64
              * @description Total number of cost owners matching the filter.
+             */
+            totalCount?: number;
+        };
+        /** @description Identifies an active user who does not yet have a hosting cost owner. */
+        HostingCostOwnerUserCandidateDto: {
+            /**
+             * Format: uuid
+             * @description Gets the user identifier.
+             */
+            userId?: string;
+            /** @description Gets the current user nickname. */
+            displayName?: string;
+        };
+        /** @description Contains a filtered page of users eligible for cost-owner creation. */
+        HostingCostOwnerUserCandidatePageDto: {
+            /** @description Gets the matching candidates. */
+            users?: components["schemas"]["HostingCostOwnerUserCandidateDto"][];
+            /**
+             * Format: int64
+             * @description Gets the total matching candidate count.
              */
             totalCount?: number;
         };
@@ -6921,6 +7367,72 @@ export interface components {
             minimumSafetyRangeEur: number;
             /** Format: int32 */
             reservationSliceMinutes: number;
+        };
+        /** @description Presents one append-only hosting-finance ledger entry with related operational context. */
+        HostingFinanceProtocolEntryDto: {
+            /**
+             * Format: uuid
+             * @description Gets the ledger-entry identifier.
+             */
+            id?: string;
+            /**
+             * Format: uuid
+             * @description Gets the cost-owner identifier.
+             */
+            costOwnerId?: string;
+            /** @description Gets the current cost-owner display name. */
+            costOwnerDisplayName?: string;
+            /** @description Gets the cost-owner kind. */
+            costOwnerKind?: components["schemas"]["ECostOwnerKind"];
+            deploymentId?: null | string;
+            serverId?: null | string;
+            serverTitle?: null | string;
+            /** @description Gets the ledger-entry kind. */
+            kind?: components["schemas"]["EHostingLedgerEntryKind"];
+            /**
+             * Format: double
+             * @description Gets the signed balance delta.
+             */
+            amount?: number;
+            /**
+             * Format: double
+             * @description Gets the balance after the entry.
+             */
+            balanceAfter?: number;
+            /** @description Gets the entry currency. */
+            currency?: string;
+            /** @description Gets the effective booking time. */
+            timeStampEffective?: components["schemas"]["Instant"];
+            /** @description Gets the recorded timestamp. */
+            timeStampRecorded?: components["schemas"]["Instant"];
+            recordedById?: null | string;
+            recordedByDisplayName?: null | string;
+            recordIdentifier?: null | string;
+            financeOperationId?: null | string;
+            reversedEntryId?: null | string;
+            reversalEntryId?: null | string;
+            /** @description Gets whether a new reversal may be requested. */
+            isReversible?: boolean;
+            externalReference?: null | string;
+            reason?: null | string;
+            providerIdentifier?: null | string;
+            estimatedHourlyRate?: null | number;
+            sliceStartsAt?: null | components["schemas"]["Instant"];
+            sliceEndsAt?: null | components["schemas"]["Instant"];
+            previousAllowance?: null | number;
+            newAllowance?: null | number;
+            counterpartyCostOwnerId?: null | string;
+            counterpartyDisplayName?: null | string;
+        };
+        /** @description Contains a filtered page of hosting-finance protocol entries. */
+        HostingFinanceProtocolPageDto: {
+            /** @description Gets the matching protocol entries. */
+            entries?: components["schemas"]["HostingFinanceProtocolEntryDto"][];
+            /**
+             * Format: int64
+             * @description Gets the total matching entry count.
+             */
+            totalCount?: number;
         };
         /** @description One append-only hosting finance entry returned after a manual mutation. */
         HostingLedgerEntryDto: {

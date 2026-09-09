@@ -16,6 +16,7 @@ export const paymentSchema = z.object({
   amount: z.number().finite().positive(),
   externalReference: z.string().trim().min(1).max(128),
   reason: z.string().trim().max(512),
+  timeStampEffective: z.string().datetime(),
 });
 
 export const allowanceSchema = z.object({
@@ -27,6 +28,7 @@ export const refundSchema = z.object({
   amount: z.number().finite().positive(),
   externalReference: z.string().trim().min(1).max(128),
   reason: z.string().trim().min(1).max(512),
+  timeStampEffective: z.string().datetime(),
 });
 
 export const correctionSchema = z
@@ -36,6 +38,7 @@ export const correctionSchema = z
     correctCostOwnerId: z.string().uuid(),
     amount: z.number().finite().positive(),
     reason: z.string().trim().min(1).max(512),
+    timeStampEffective: z.string().datetime(),
   })
   .refine((value) => value.sourceCostOwnerId !== value.correctCostOwnerId, {
     path: ["correctCostOwnerId"],
@@ -43,6 +46,11 @@ export const correctionSchema = z
 
 export const reversalSchema = z.object({
   reason: z.string().trim().min(1).max(512),
+  timeStampEffective: z.string().datetime(),
+});
+
+export const externalOrganizationSchema = z.object({
+  displayName: z.string().trim().min(1).max(256),
 });
 
 const ownerKinds = ["User", "Verein", "ExternalOrganization"] as const;
