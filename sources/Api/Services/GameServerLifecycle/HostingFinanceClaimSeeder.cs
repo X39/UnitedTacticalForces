@@ -19,6 +19,7 @@ internal static class HostingFinanceClaimSeeder
         new(Claims.Finance.CorrectLedger, "Correct hosting ledger", "Append reversals and compensating hosting entries."),
         new(Claims.Finance.ManageAllowance, "Manage hosting allowances", "Grant, change, or revoke finite allowances."),
         new(Claims.Finance.FreezeCostOwner, "Freeze hosting cost owners", "Freeze or unfreeze cost owners for new spending."),
+        new(Claims.Finance.ManageCostOwners, "Manage hosting cost owners", "Create and rename hosting cost owners."),
         new(Claims.Finance.ManagePolicy, "Manage hosting finance policy", "Change installation-wide hosting finance policy."),
     ];
 

@@ -84,4 +84,8 @@ public enum EHostingAuditEventKind
     ServerSecretRotated = 76,
     ServerSecretRevealed = 77,
     ServerSecretUpdated = 78,
+    CostOwnerCreated = 79,
+    CostOwnerRenamed = 80,
+    CostOwnerFrozen = 81,
+    CostOwnerUnfrozen = 82,
 }

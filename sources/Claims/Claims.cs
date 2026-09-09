@@ -80,6 +80,7 @@ public static class Claims
         public const string CorrectLedger   = "fin:correct-ledger";
         public const string ManageAllowance = "fin:manage-allowance";
         public const string FreezeCostOwner = "fin:freeze-cost-owner";
+        public const string ManageCostOwners = "fin:manage-cost-owners";
         public const string ManagePolicy    = "fin:manage-policy";
     }
 

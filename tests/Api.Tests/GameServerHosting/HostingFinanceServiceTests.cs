@@ -27,7 +27,7 @@ public sealed class HostingFinanceServiceTests
         var claims = await store.DbContext.Claims
             .Where(q => q.Identifier.StartsWith("fin"))
             .ToArrayAsync();
-        Assert.Equal(8, claims.Length);
+        Assert.Equal(9, claims.Length);
         Assert.All(claims, claim =>
         {
             Assert.Null(claim.Value);
@@ -200,8 +200,23 @@ public sealed class HostingFinanceServiceTests
             GetAuthorizePolicy(
                 nameof(CostOwnersController.GetAllAsync),
                 typeof(string),
+                typeof(ECostOwnerKind?),
+                typeof(bool?),
                 typeof(int),
                 typeof(int),
+                typeof(CancellationToken)));
+        Assert.Equal(
+            Claims.Finance.ManageCostOwners,
+            GetAuthorizePolicy(
+                nameof(CostOwnersController.CreateAsync),
+                typeof(CostOwnerCreationPayload),
+                typeof(CancellationToken)));
+        Assert.Equal(
+            Claims.Finance.FreezeCostOwner,
+            GetAuthorizePolicy(
+                nameof(CostOwnersController.SetFrozenAsync),
+                typeof(Guid),
+                typeof(CostOwnerFreezeUpdatePayload),
                 typeof(CancellationToken)));
         Assert.Equal(
             Claims.Finance.ManagePolicy,
@@ -230,6 +245,12 @@ public sealed class HostingFinanceServiceTests
         Assert.False(await IsSatisfiedAsync(new FinanceManagePolicyRequirement(), Claims.Finance.ViewAll));
         Assert.True(await IsSatisfiedAsync(new FinanceViewAllRequirement(), Claims.Finance.All));
         Assert.True(await IsSatisfiedAsync(new FinanceManagePolicyRequirement(), Claims.Finance.All));
+        Assert.True(await IsSatisfiedAsync(new FinanceManageCostOwnersRequirement(), Claims.Finance.ManageCostOwners));
+        Assert.False(await IsSatisfiedAsync(new FinanceManageCostOwnersRequirement(), Claims.Finance.FreezeCostOwner));
+        Assert.True(await IsSatisfiedAsync(new FinanceFreezeCostOwnerRequirement(), Claims.Finance.FreezeCostOwner));
+        Assert.False(await IsSatisfiedAsync(new FinanceFreezeCostOwnerRequirement(), Claims.Finance.ManageCostOwners));
+        Assert.True(await IsSatisfiedAsync(new FinanceManageCostOwnersRequirement(), Claims.Finance.All));
+        Assert.True(await IsSatisfiedAsync(new FinanceFreezeCostOwnerRequirement(), Claims.Finance.All));
         Assert.True(await IsSatisfiedAsync(new FinanceRecordPaymentRequirement(), Claims.Administrative.All));
         Assert.True(await IsSatisfiedAsync(new FinanceManageAllowanceRequirement(), Claims.Administrative.All));
         Assert.True(await IsSatisfiedAsync(new FinanceRecordRefundRequirement(), Claims.Administrative.All));
