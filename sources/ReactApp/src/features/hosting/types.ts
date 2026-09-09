@@ -171,6 +171,13 @@ export interface ConfigurationDefinition {
   minimum: number | null;
   maximum: number | null;
   allowedValues: string[];
+  choices?: ConfigurationChoice[];
+}
+
+export interface ConfigurationChoice {
+  value: unknown;
+  label: string;
+  description: string | null;
 }
 
 export interface ConfigurationDefinitionSet {
@@ -187,8 +194,17 @@ export interface ConfigurationProfileRevision {
   primaryKey: string;
   revisionNumber: number;
   timeStampCreated: string;
+  createdById?: string;
+  createdByNickname?: string;
   values: Record<string, unknown>;
-  redactedKeys: string[];
+  sensitiveConfiguredKeys?: string[];
+  changes?: ConfigurationProfileRevisionChange[];
+  redactedKeys?: string[];
+}
+
+export interface ConfigurationProfileRevisionChange {
+  key: string;
+  kind: "Added" | "Changed" | "Removed";
 }
 
 export interface ConfigurationProfileDetails {
@@ -217,6 +233,22 @@ export interface ConfigurationProfileAccess {
   allowedPermissions: string[];
   users: ConfigurationProfileUserAccessGrant[];
   roles: ConfigurationProfileRoleAccessGrant[];
+}
+
+export interface ConfigurationProfileUserCandidate {
+  userId: string;
+  nickname: string;
+}
+
+export interface ConfigurationProfileRoleCandidate {
+  roleId: number;
+  title: string;
+  description: string;
+}
+
+export interface ConfigurationProfileAccessMatrix {
+  users: Array<{ userId: string; permissions: string[] }>;
+  roles: Array<{ roleId: number; permissions: string[] }>;
 }
 
 export type ConfigurationProfileOption = ConfigurationProfileSummary;

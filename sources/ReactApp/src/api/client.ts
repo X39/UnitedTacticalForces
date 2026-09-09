@@ -2,6 +2,7 @@ import type { PublicConfiguration } from "@/app/config";
 import { resolveApiBaseUrl } from "@/app/config";
 
 interface ProblemDetails {
+  error?: string;
   title?: string;
   detail?: string;
   status?: number;
@@ -59,7 +60,11 @@ async function readProblem(response: Response): Promise<ProblemDetails | undefin
 async function responseError(response: Response, fallback?: string): Promise<ApiError> {
   const problem = await readProblem(response);
   return new ApiError(
-    problem?.detail ?? problem?.title ?? fallback ?? `Request failed with HTTP ${response.status}.`,
+    problem?.detail ??
+      problem?.error ??
+      problem?.title ??
+      fallback ??
+      `Request failed with HTTP ${response.status}.`,
     response.status,
     statusCode(response.status),
     problem?.traceId,

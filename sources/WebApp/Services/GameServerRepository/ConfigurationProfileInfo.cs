@@ -57,7 +57,8 @@ public sealed record ConfigurationProfileRevisionInfo
     public DateTimeOffset TimeStampCreated { get; init; }
     public IReadOnlyDictionary<string, JsonElement?> Values { get; init; }
         = new Dictionary<string, JsonElement?>(StringComparer.Ordinal);
-    public IReadOnlyList<string> RedactedKeys { get; init; } = [];
+    /// <summary>Gets the sensitive keys whose values are stored but redacted.</summary>
+    public IReadOnlyList<string> SensitiveConfiguredKeys { get; init; } = [];
 }
 
 public sealed record ConfigurationProfileAccessInfo

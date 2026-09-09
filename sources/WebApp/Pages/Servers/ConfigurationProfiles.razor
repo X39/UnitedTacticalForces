@@ -245,7 +245,7 @@
                                             </div>
                                         }
                                     </dl>
-                                    @if (revision.RedactedKeys.Count > 0)
+                                    @if (revision.SensitiveConfiguredKeys.Count > 0)
                                     {
                                         <p class="configuration-redacted">@Localizer["Hosting_ConfigurationProfiles_RedactedNotice"]</p>
                                     }
@@ -671,7 +671,7 @@
         ConfigurationProfileRevisionInfo revision,
         GameConfigurationDefinitionInfo definition)
     {
-        if (revision.RedactedKeys.Contains(definition.Key, StringComparer.Ordinal))
+        if (revision.SensitiveConfiguredKeys.Contains(definition.Key, StringComparer.Ordinal))
             return Localizer["Hosting_ConfigurationProfiles_StoredSecurely"];
         if (!revision.Values.TryGetValue(definition.Key, out var value) || value is null)
             return Localizer["Hosting_ConfigurationProfiles_NotSet"];

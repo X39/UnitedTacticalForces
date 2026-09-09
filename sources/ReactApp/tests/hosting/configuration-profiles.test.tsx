@@ -5,6 +5,7 @@ import { I18nextProvider } from "react-i18next";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach } from "vitest";
 import i18n, { i18nReady } from "@/app/i18n";
+import { AppToastProvider } from "@/components/AppToasts";
 import { ConfigurationProfileCreatePage } from "@/features/hosting/ConfigurationProfileCreatePage";
 import { ConfigurationProfileWorkspacePage } from "@/features/hosting/ConfigurationProfileWorkspacePage";
 import { ConfigurationProfilesPage } from "@/features/hosting/ConfigurationProfilesPage";
@@ -138,7 +139,9 @@ function renderPage(initialEntry = "/command/configuration-profiles") {
   render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <AppToastProvider>
+          <RouterProvider router={router} />
+        </AppToastProvider>
       </QueryClientProvider>
     </I18nextProvider>,
   );
@@ -165,6 +168,9 @@ describe("configuration-profile routes", () => {
     vi.spyOn(hostingService, "archiveProfile").mockResolvedValue(undefined);
     vi.spyOn(hostingService, "changeProfileUserAccess").mockResolvedValue(undefined);
     vi.spyOn(hostingService, "changeProfileRoleAccess").mockResolvedValue(undefined);
+    vi.spyOn(hostingService, "profileUserCandidates").mockResolvedValue([]);
+    vi.spyOn(hostingService, "profileRoleCandidates").mockResolvedValue([]);
+    vi.spyOn(hostingService, "updateProfileAccessMatrix").mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
@@ -234,10 +240,29 @@ describe("configuration-profile routes", () => {
     await user.click(screen.getByRole("button", { name: "Publish revision" }));
 
     await waitFor(() =>
-      expect(hostingService.createProfileRevision).toHaveBeenCalledWith(profile.primaryKey, [
-        { key: "hostname", value: "UTF Updated" },
-        { key: "password", value: "secret" },
-      ]),
+      expect(hostingService.createProfileRevision).toHaveBeenCalledWith(
+        profile.primaryKey,
+        1,
+        [{ key: "hostname", value: "UTF Updated" }],
+        [],
+      ),
+    );
+  });
+
+  it("shows revision publishing failures as an alert toast", async () => {
+    vi.mocked(hostingService.createProfileRevision).mockRejectedValue(
+      new Error("The latest revision must be reloaded."),
+    );
+    const user = userEvent.setup();
+    renderPage(`/command/configuration-profiles/${profile.primaryKey}`);
+
+    const hostname = await screen.findByLabelText("Hostname");
+    await user.clear(hostname);
+    await user.type(hostname, "UTF Updated");
+    await user.click(screen.getByRole("button", { name: "Publish revision" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The latest revision must be reloaded.",
     );
   });
 
@@ -252,7 +277,8 @@ describe("configuration-profile routes", () => {
             revisionNumber: 1,
             timeStampCreated: "2026-08-13T12:00:00Z",
             values: { hostname: "UTF", password: null },
-            redactedKeys: ["password"],
+            sensitiveConfiguredKeys: ["password"],
+            changes: [],
           },
         ],
       }),
@@ -263,7 +289,8 @@ describe("configuration-profile routes", () => {
     expect(await screen.findByRole("heading", { name: "Profile is read-only" })).toBeVisible();
     expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "Revisions" }));
-    expect(await screen.findByText("Stored securely")).toBeVisible();
+    await user.click(await screen.findByText("View complete snapshot"));
+    expect(await screen.findByText("Configured securely")).toBeVisible();
   });
 
   it("falls back from an unauthorized access deep link", async () => {
@@ -277,28 +304,42 @@ describe("configuration-profile routes", () => {
     await waitFor(() => expect(router.state.location.search).toBe("?tab=configuration"));
   });
 
-  it("loads grants and sends exact scoped access changes", async () => {
+  it("searches principals and saves the desired access matrix", async () => {
     vi.mocked(hostingService.profile).mockResolvedValue(details({ canManageAccess: true }));
     vi.mocked(hostingService.profileAccess).mockResolvedValue({
-      allowedPermissions: ["cfg:view"],
+      allowedPermissions: ["cfg", "cfg:view"],
       users: [],
       roles: [
         { roleId: 7, title: "Operators", description: "Hosting team", permissions: ["cfg:view"] },
       ],
     });
+    vi.mocked(hostingService.profileUserCandidates).mockResolvedValue([
+      {
+        userId: "40000000-0000-4000-8000-000000000004",
+        nickname: "Quartermaster",
+      },
+    ]);
     const user = userEvent.setup();
     renderPage(`/command/configuration-profiles/${profile.primaryKey}?tab=access`);
 
-    expect(await screen.findByRole("heading", { name: "Direct role grants" })).toBeVisible();
-    await user.type(screen.getByLabelText("User ID"), "40000000-0000-4000-8000-000000000004");
-    await user.click(screen.getByRole("button", { name: "Grant" }));
+    expect(await screen.findByRole("heading", { name: "Who can use this profile" })).toBeVisible();
+    expect(await screen.findByText("Operators")).toBeVisible();
+    const search = screen.getByRole("combobox", { name: "Search people" });
+    await user.type(search, "Quarter");
+    expect(await screen.findByRole("option", { name: /Quartermaster/ })).toBeVisible();
+    await user.type(search, "{ArrowDown}{Enter}");
+    await user.click(screen.getByRole("checkbox", { name: "Quartermaster: View" }));
+    await user.click(screen.getByRole("button", { name: "Save access" }));
     await waitFor(() =>
-      expect(hostingService.changeProfileUserAccess).toHaveBeenCalledWith(
-        profile.primaryKey,
-        "40000000-0000-4000-8000-000000000004",
-        "cfg:view",
-        true,
-      ),
+      expect(hostingService.updateProfileAccessMatrix).toHaveBeenCalledWith(profile.primaryKey, {
+        users: [
+          {
+            userId: "40000000-0000-4000-8000-000000000004",
+            permissions: ["cfg:view"],
+          },
+        ],
+        roles: [{ roleId: 7, permissions: ["cfg:view"] }],
+      }),
     );
   });
 

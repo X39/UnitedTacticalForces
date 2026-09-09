@@ -4,13 +4,10 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation, useParams, useSearchParams } from "react-router";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
-import { useAppRouteToast, useAppToastOnChange } from "@/components/AppToasts";
+import { useAppRouteToast, useAppToast, useAppToastOnChange } from "@/components/AppToasts";
 import { ConfirmDialog, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
 import { getHostingPermissions } from "@/features/hosting/authorization";
-import {
-  ConfigurationProfileAccessSection,
-  type ConfigurationProfileAccessChange,
-} from "@/features/hosting/ConfigurationProfileAccessSection";
+import { ConfigurationProfileAccessSection } from "@/features/hosting/ConfigurationProfileAccessSection";
 import {
   ConfigurationProfileFields,
   gameLabel,
@@ -24,7 +21,10 @@ import {
   type ConfigurationValidationIssue,
 } from "@/features/hosting/model";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
-import type { ConfigurationProfileDetails } from "@/features/hosting/types";
+import type {
+  ConfigurationProfileAccessMatrix,
+  ConfigurationProfileDetails,
+} from "@/features/hosting/types";
 
 type ProfileTab = "configuration" | "revisions" | "access";
 
@@ -39,8 +39,10 @@ export function ConfigurationProfileWorkspacePage() {
   const { user, isLoading: authLoading } = useAuth();
   const permissions = getHostingPermissions(user);
   const queryClient = useQueryClient();
+  const { showToast } = useAppToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [clearedKeys, setClearedKeys] = useState<string[]>([]);
   const [issues, setIssues] = useState<ConfigurationValidationIssue[]>([]);
   const [message, setMessage] = useState<string>();
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -80,12 +82,15 @@ export function ConfigurationProfileWorkspacePage() {
     [definitions, latest],
   );
   const effectiveDraft = { ...baseDraft, ...draft };
-  const dirty = isConfigurationDraftDirty(definitions, baseDraft, draft);
-  const changeCount = definitions.filter(
-    (definition) =>
-      (draft[definition.key] ?? baseDraft[definition.key] ?? "") !==
-      (baseDraft[definition.key] ?? ""),
-  ).length;
+  const dirty = isConfigurationDraftDirty(definitions, baseDraft, draft) || clearedKeys.length > 0;
+  const changedDraftKeys = definitions
+    .filter(
+      (definition) =>
+        (draft[definition.key] ?? baseDraft[definition.key] ?? "") !==
+        (baseDraft[definition.key] ?? ""),
+    )
+    .map((definition) => definition.key);
+  const changeCount = new Set([...changedDraftKeys, ...clearedKeys]).size;
   useUnsavedChanges(dirty);
   useAppRouteToast((location.state as { message?: string } | null)?.message);
   useAppToastOnChange(message);
@@ -97,14 +102,27 @@ export function ConfigurationProfileWorkspacePage() {
   }, [profile.data, setSearchParams, tabRequest]);
 
   const publish = useMutation({
-    mutationFn: (values: ReturnType<typeof buildConfigurationValues>) =>
-      hostingService.createProfileRevision(profileId, values),
+    mutationFn: ({
+      values,
+      resetKeys,
+    }: {
+      values: ReturnType<typeof buildConfigurationValues>;
+      resetKeys: string[];
+    }) =>
+      hostingService.createProfileRevision(
+        profileId,
+        profile.data?.profile.latestRevisionNumber ?? 0,
+        values,
+        resetKeys,
+      ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: hostingQueryKeys.profile(profileId) });
       setDraft({});
+      setClearedKeys([]);
       setIssues([]);
       setMessage(t("Hosting_ConfigurationProfiles_Published"));
     },
+    onError: (error: Error) => showToast(error.message, "error"),
   });
   const archive = useMutation({
     mutationFn: () => hostingService.archiveProfile(profileId),
@@ -117,39 +135,40 @@ export function ConfigurationProfileWorkspacePage() {
       setDraft({});
       setMessage(t("Hosting_ConfigurationProfiles_ArchivedSuccess"));
     },
+    onError: (error: Error) => showToast(error.message, "error"),
   });
   const changeAccess = useMutation({
-    mutationFn: (change: ConfigurationProfileAccessChange) =>
-      change.subject === "user"
-        ? hostingService.changeProfileUserAccess(
-            profileId,
-            change.id,
-            change.permission,
-            change.grant,
-          )
-        : hostingService.changeProfileRoleAccess(
-            profileId,
-            Number(change.id),
-            change.permission,
-            change.grant,
-          ),
-    onSuccess: async (_result, change) => {
+    mutationFn: (matrix: ConfigurationProfileAccessMatrix) =>
+      hostingService.updateProfileAccessMatrix(profileId, matrix),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: hostingQueryKeys.profileAccess(profileId) });
-      setMessage(
-        change.grant
-          ? t("Hosting_ConfigurationProfiles_AccessGranted")
-          : t("Hosting_ConfigurationProfiles_AccessRevoked"),
-      );
+      setMessage(t("React_ConfigurationProfiles_AccessSaved"));
     },
+    onError: (error: Error) => showToast(error.message, "error"),
   });
-  const operationError = publish.error ?? archive.error ?? changeAccess.error;
   const selectTab = (nextTab: ProfileTab) => setSearchParams({ tab: nextTab });
   const submit = () => {
     const nextIssues = validateConfigurationDraft(definitions, effectiveDraft);
     setIssues(nextIssues);
     setMessage(undefined);
-    if (nextIssues.length === 0)
-      publish.mutate(buildConfigurationValues(definitions, effectiveDraft));
+    if (nextIssues.length !== 0) return;
+    const resetKeys = definitions
+      .filter(
+        (definition) =>
+          clearedKeys.includes(definition.key) ||
+          (changedDraftKeys.includes(definition.key) && !effectiveDraft[definition.key]?.trim()),
+      )
+      .map((definition) => definition.key);
+    const changedDefinitions = definitions.filter(
+      (definition) =>
+        changedDraftKeys.includes(definition.key) &&
+        !resetKeys.includes(definition.key) &&
+        Boolean(effectiveDraft[definition.key]?.trim()),
+    );
+    publish.mutate({
+      values: buildConfigurationValues(changedDefinitions, effectiveDraft),
+      resetKeys,
+    });
   };
 
   if (!permissions.accessConfigurationProfiles)
@@ -226,14 +245,6 @@ export function ConfigurationProfileWorkspacePage() {
           )}
         </div>
       </header>
-      {operationError && (
-        <StatePanel
-          kind="error"
-          title={t("Hosting_ConfigurationProfiles_OperationFailed").replace(": {0}", "")}
-        >
-          {operationError.message}
-        </StatePanel>
-      )}
       <nav
         className="next-hosting-profile-tabs"
         role="tablist"
@@ -284,7 +295,18 @@ export function ConfigurationProfileWorkspacePage() {
                 definitions={definitions}
                 values={effectiveDraft}
                 issues={issues}
-                onChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}
+                configuredSensitiveKeys={
+                  latest?.sensitiveConfiguredKeys ?? latest?.redactedKeys ?? []
+                }
+                clearedKeys={clearedKeys}
+                onChange={(key, value) => {
+                  setClearedKeys((current) => current.filter((item) => item !== key));
+                  setDraft((current) => ({ ...current, [key]: value }));
+                }}
+                onClear={(key) => {
+                  setDraft((current) => ({ ...current, [key]: "" }));
+                  setClearedKeys((current) => [...new Set([...current, key])]);
+                }}
               />
             </>
           ) : (
@@ -305,9 +327,9 @@ export function ConfigurationProfileWorkspacePage() {
           error={access.error}
           pending={changeAccess.isPending}
           onRetry={() => void access.refetch()}
-          onChange={(change) => {
+          onSave={(matrix) => {
             setMessage(undefined);
-            changeAccess.mutate(change);
+            changeAccess.mutate(matrix);
           }}
         />
       )}
@@ -333,6 +355,7 @@ export function ConfigurationProfileWorkspacePage() {
               disabled={publish.isPending}
               onClick={() => {
                 setDraft({});
+                setClearedKeys([]);
                 setIssues([]);
               }}
             >

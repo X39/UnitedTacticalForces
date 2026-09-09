@@ -220,6 +220,7 @@ public sealed class GameServerConfigurationController(
                 Minimum = q.Definition.Minimum,
                 Maximum = q.Definition.Maximum,
                 AllowedValues = q.Definition.AllowedValues ?? [],
+                Choices = q.Definition.Choices ?? [],
                 Value = q.Definition.Sensitive && !includeSensitive ? null : q.Value,
                 Source = q.Source,
                 IsCompatible = q.IsCompatible,

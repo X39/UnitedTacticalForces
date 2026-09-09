@@ -27,6 +27,8 @@ public sealed record GameConfigurationEntryDto
     public decimal? Minimum { get; init; }
     public decimal? Maximum { get; init; }
     public IReadOnlyList<string> AllowedValues { get; init; } = [];
+    /// <summary>Gets the typed choices supported by the setting.</summary>
+    public IReadOnlyList<GameConfigurationChoice> Choices { get; init; } = [];
     public JsonElement? Value { get; init; }
     public string Source { get; init; } = string.Empty;
     public bool IsCompatible { get; init; }
@@ -49,8 +51,17 @@ public sealed record ConfigurationProfileRevisionDto
     public Guid PrimaryKey { get; init; }
     public int RevisionNumber { get; init; }
     public Instant TimeStampCreated { get; init; }
-    public IReadOnlyDictionary<string, JsonElement> Values { get; init; } =
-        new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+    /// <summary>Gets the identifier of the user who created the revision.</summary>
+    public Guid CreatedById { get; init; }
+    /// <summary>Gets the display name of the user who created the revision.</summary>
+    public string CreatedByNickname { get; init; } = string.Empty;
+    /// <summary>Gets the non-sensitive configuration snapshot.</summary>
+    public IReadOnlyDictionary<string, JsonElement?> Values { get; init; } =
+        new Dictionary<string, JsonElement?>(StringComparer.Ordinal);
+    /// <summary>Gets the sensitive keys that have a stored value.</summary>
+    public IReadOnlyList<string> SensitiveConfiguredKeys { get; init; } = [];
+    /// <summary>Gets the changes relative to the preceding revision.</summary>
+    public IReadOnlyList<ConfigurationProfileRevisionChangeDto> Changes { get; init; } = [];
 }
 
 public sealed record ConfigurationProfileDefinitionCatalogDto

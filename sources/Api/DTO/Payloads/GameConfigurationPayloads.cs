@@ -27,7 +27,11 @@ public sealed record ConfigurationProfileCreationPayload
 
 public sealed record ConfigurationProfileRevisionCreationPayload
 {
+    /// <summary>Gets the latest revision number observed by the editor.</summary>
+    public int? BaseRevisionNumber { get; init; }
     public IReadOnlyList<ConfigurationValuePayload> Values { get; init; } = [];
+    /// <summary>Gets the keys whose persisted values must be removed.</summary>
+    public IReadOnlyList<string> ResetKeys { get; init; } = [];
 }
 
 public sealed record GameServerConfigurationProfileSelectionPayload

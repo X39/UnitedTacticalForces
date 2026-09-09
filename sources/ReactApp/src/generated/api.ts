@@ -395,6 +395,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/configuration-profiles/{profileId}/access/users/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Searches verified user candidates for profile-scoped access. */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The optional nickname search term. */
+                    search?: string;
+                    /** @description The maximum number of candidates to return. */
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description The configuration profile identifier. */
+                    profileId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The matching access candidates. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/configuration-profiles/{profileId}/access/roles/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Searches role candidates for profile-scoped access. */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The optional role-title search term. */
+                    search?: string;
+                    /** @description The maximum number of candidates to return. */
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description The configuration profile identifier. */
+                    profileId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The matching access candidates. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/configuration-profiles/{profileId}/access/matrix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replaces all direct profile grants with one validated desired matrix. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The configuration profile identifier. */
+                    profileId: string;
+                };
+                cookie?: never;
+            };
+            /** @description The request cancellation token. */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfigurationProfileAccessMatrixPayload"];
+                    "text/json": components["schemas"]["ConfigurationProfileAccessMatrixPayload"];
+                    "application/*+json": components["schemas"]["ConfigurationProfileAccessMatrixPayload"];
+                };
+            };
+            responses: {
+                /** @description No content when the matrix was saved. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/configuration-profiles/{profileId}/access/users/grant": {
         parameters: {
             query?: never;
@@ -6467,13 +6595,43 @@ export interface components {
             /** @description Matching wiki page rows for the current query. */
             pages?: components["schemas"]["CommandCenterWikiMediaPageDto"][];
         };
+        /** @description Replaces the complete direct-access matrix of one configuration profile. */
+        ConfigurationProfileAccessMatrixPayload: {
+            /** @description Gets the desired user rows. */
+            users?: components["schemas"]["ConfigurationProfileUserAccessRowPayload"][];
+            /** @description Gets the desired role rows. */
+            roles?: components["schemas"]["ConfigurationProfileRoleAccessRowPayload"][];
+        };
         ConfigurationProfileCreationPayload: {
             title: string;
             gameIdentifier: string;
             values?: components["schemas"]["ConfigurationValuePayload"][];
         };
         ConfigurationProfileRevisionCreationPayload: {
+            baseRevisionNumber?: null | number;
             values?: components["schemas"]["ConfigurationValuePayload"][];
+            /** @description Gets the keys whose persisted values must be removed. */
+            resetKeys?: string[];
+        };
+        /** @description Describes the desired direct profile permissions for one role. */
+        ConfigurationProfileRoleAccessRowPayload: {
+            /**
+             * Format: int64
+             * @description Gets the role identity.
+             */
+            roleId?: number;
+            /** @description Gets the desired exact permissions. */
+            permissions?: string[];
+        };
+        /** @description Describes the desired direct profile permissions for one user. */
+        ConfigurationProfileUserAccessRowPayload: {
+            /**
+             * Format: uuid
+             * @description Gets the user identity.
+             */
+            userId?: string;
+            /** @description Gets the desired exact permissions. */
+            permissions?: string[];
         };
         ConfigurationValuePayload: {
             key: string;

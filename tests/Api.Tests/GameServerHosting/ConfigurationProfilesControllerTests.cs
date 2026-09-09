@@ -42,6 +42,49 @@ public sealed class ConfigurationProfilesControllerTests
         Assert.True(catalog.CanCreate);
     }
 
+    /// <summary>Verifies that the declared Arma V1 surface includes every operational target and typed policies.</summary>
+    [Fact]
+    public void Definitions_ExposeCompleteArmaV1InventoryAndTypedPolicies()
+    {
+        var implementation = GameConfigurationImplementations.Get(Arma3ConfigurationImplementation.Identifier);
+        var keys = implementation.Definitions.Select(q => q.Key).ToHashSet(StringComparer.Ordinal);
+
+        var expectedKeys = new[]
+        {
+                    "server.cfg@hostname",
+                    "server.cfg@verifySignatures",
+                    "server.cfg@allowedFilePatching",
+                    "server.cfg@allowedLoadFileExtensions[]",
+                    "server.cfg@forcedDifficulty",
+                    "basic.cfg@MaxBandwidth",
+                    "basic.cfg@MinErrorToSendNear",
+                    "utfserver.arma3profile@thirdPersonView",
+                    "utfserver.arma3profile@aiLevelPreset",
+                    "utfserver.arma3profile@skillAI",
+                    "beserver.cfg@RConPassword",
+                    "beserver.cfg@MaxPing",
+        };
+        Assert.All(expectedKeys, key => Assert.Contains(key, keys));
+        Assert.Equal(
+            42,
+            implementation.Definitions.Count(q => q.TargetPath == Arma3ConfigurationImplementation.ServerTarget));
+        Assert.Equal(
+            8,
+            implementation.Definitions.Count(q => q.TargetPath == Arma3ConfigurationImplementation.BasicTarget));
+        Assert.Equal(
+            26,
+            implementation.Definitions.Count(q => q.TargetPath == Arma3ConfigurationImplementation.ProfileTarget));
+        Assert.Equal(
+            5,
+            implementation.Definitions.Count(q => q.TargetPath == Arma3ConfigurationImplementation.BattlEyeTarget));
+        Assert.Equal(4, implementation.Definitions.Select(q => q.TargetPath).Distinct().Count());
+
+        var signatures = Assert.Single(implementation.Definitions, q => q.Setting == "verifySignatures");
+        Assert.Equal(EGameConfigurationValueKind.Integer, signatures.Kind);
+        Assert.Equal([0, 1, 2], signatures.Choices!.Select(q => q.Value.GetInt32()));
+        Assert.Equal("Require v2 only", signatures.Choices![2].Label);
+    }
+
     private static ConfigurationProfilesController CreateController(ClaimsPrincipal principal)
     {
         var controller = new ConfigurationProfilesController(null!, null!, null!);

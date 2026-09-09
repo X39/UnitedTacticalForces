@@ -34,12 +34,18 @@ export function ConfigurationProfileFields({
   definitions,
   values,
   issues,
+  configuredSensitiveKeys = [],
+  clearedKeys = [],
   onChange,
+  onClear,
 }: {
   definitions: ConfigurationDefinition[];
   values: Record<string, string>;
   issues: ConfigurationValidationIssue[];
+  configuredSensitiveKeys?: string[];
+  clearedKeys?: string[];
   onChange(key: string, value: string): void;
+  onClear?(key: string): void;
 }) {
   const { t } = useTranslation();
   const targets = Object.entries(
@@ -80,6 +86,11 @@ export function ConfigurationProfileFields({
                   const value = values[definition.key] ?? "";
                   const issue = issueByKey.get(definition.key);
                   const kind = definition.kind.toLowerCase();
+                  const choices = definition.choices ?? [];
+                  const sensitiveConfigured =
+                    definition.sensitive &&
+                    configuredSensitiveKeys.includes(definition.key) &&
+                    !clearedKeys.includes(definition.key);
                   const describedBy = issue ? `${descriptionId} ${errorId}` : descriptionId;
                   const common = {
                     id,
@@ -117,7 +128,7 @@ export function ConfigurationProfileFields({
                               : t("Hosting_ConfigurationProfiles_Disabled")}
                           </span>
                         </label>
-                      ) : (definition.allowedValues?.length ?? 0) > 0 ? (
+                      ) : choices.length > 0 || (definition.allowedValues?.length ?? 0) > 0 ? (
                         <select
                           {...common}
                           value={value}
@@ -126,11 +137,27 @@ export function ConfigurationProfileFields({
                           {!definition.required && (
                             <option value="">{t("Hosting_ConfigurationProfiles_NotSet")}</option>
                           )}
-                          {(definition.allowedValues ?? []).map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
+                          {choices.map((option) => {
+                            const optionValue =
+                              typeof option.value === "string"
+                                ? option.value
+                                : JSON.stringify(option.value);
+                            return (
+                              <option
+                                key={optionValue}
+                                value={optionValue}
+                                title={option.description ?? undefined}
+                              >
+                                {option.label}
+                              </option>
+                            );
+                          })}
+                          {choices.length === 0 &&
+                            (definition.allowedValues ?? []).map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
                         </select>
                       ) : kind === "stringarray" ? (
                         <textarea
@@ -165,12 +192,18 @@ export function ConfigurationProfileFields({
                         />
                       )}
                       <div className="next-hosting-configuration-field-meta">
-                        <small id={descriptionId}>{definition.description}</small>
-                        {!definition.required && value !== "" && (
+                        <small id={descriptionId}>
+                          {definition.description}
+                          {sensitiveConfigured &&
+                            ` ${t("React_ConfigurationProfiles_Configured")}.`}
+                        </small>
+                        {!definition.required && (value !== "" || sensitiveConfigured) && (
                           <button
                             className="button button--ghost button--small"
                             type="button"
-                            onClick={() => onChange(definition.key, "")}
+                            onClick={() =>
+                              onClear ? onClear(definition.key) : onChange(definition.key, "")
+                            }
                           >
                             {t("Hosting_ConfigurationProfiles_ClearValue")}
                           </button>

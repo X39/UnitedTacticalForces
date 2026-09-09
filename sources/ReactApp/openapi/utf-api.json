@@ -580,6 +580,140 @@
         }
       }
     },
+    "/configuration-profiles/{profileId}/access/users/options": {
+      "get": {
+        "tags": [
+          "ConfigurationProfiles"
+        ],
+        "summary": "Searches verified user candidates for profile-scoped access.",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "description": "The configuration profile identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "The optional nickname search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "description": "The maximum number of candidates to return.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The matching access candidates."
+          }
+        }
+      }
+    },
+    "/configuration-profiles/{profileId}/access/roles/options": {
+      "get": {
+        "tags": [
+          "ConfigurationProfiles"
+        ],
+        "summary": "Searches role candidates for profile-scoped access.",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "description": "The configuration profile identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "The optional role-title search term.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "description": "The maximum number of candidates to return.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The matching access candidates."
+          }
+        }
+      }
+    },
+    "/configuration-profiles/{profileId}/access/matrix": {
+      "post": {
+        "tags": [
+          "ConfigurationProfiles"
+        ],
+        "summary": "Replaces all direct profile grants with one validated desired matrix.",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "description": "The configuration profile identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The request cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigurationProfileAccessMatrixPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigurationProfileAccessMatrixPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigurationProfileAccessMatrixPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "No content when the matrix was saved."
+          }
+        }
+      }
+    },
     "/configuration-profiles/{profileId}/access/users/grant": {
       "post": {
         "tags": [
@@ -13642,6 +13776,26 @@
         },
         "description": "Represents the aggregate Command Center snapshot for wiki and media administration."
       },
+      "ConfigurationProfileAccessMatrixPayload": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigurationProfileUserAccessRowPayload"
+            },
+            "description": "Gets the desired user rows."
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigurationProfileRoleAccessRowPayload"
+            },
+            "description": "Gets the desired role rows."
+          }
+        },
+        "description": "Replaces the complete direct-access matrix of one configuration profile."
+      },
       "ConfigurationProfileCreationPayload": {
         "required": [
           "title",
@@ -13668,13 +13822,70 @@
       "ConfigurationProfileRevisionCreationPayload": {
         "type": "object",
         "properties": {
+          "baseRevisionNumber": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the latest revision number observed by the editor.",
+                "format": "int32"
+              }
+            ]
+          },
           "values": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ConfigurationValuePayload"
             }
+          },
+          "resetKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Gets the keys whose persisted values must be removed."
           }
         }
+      },
+      "ConfigurationProfileRoleAccessRowPayload": {
+        "type": "object",
+        "properties": {
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the role identity.",
+            "format": "int64"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Gets the desired exact permissions."
+          }
+        },
+        "description": "Describes the desired direct profile permissions for one role."
+      },
+      "ConfigurationProfileUserAccessRowPayload": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "Gets the user identity.",
+            "format": "uuid"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Gets the desired exact permissions."
+          }
+        },
+        "description": "Describes the desired direct profile permissions for one user."
       },
       "ConfigurationValuePayload": {
         "required": [

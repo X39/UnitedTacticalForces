@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
@@ -34,7 +35,7 @@ public sealed class ConfigurationProfilesController(
                 .Select(q => new GameConfigurationDefinitionSetDto
                 {
                     GameIdentifier = q.GameIdentifier,
-                    Definitions = q.Definitions.Where(d => !d.Sensitive).OrderBy(d => d.Order).ToArray(),
+                    Definitions = q.Definitions.OrderBy(d => d.Order).ToArray(),
                 })
                 .ToArray(),
         });
@@ -101,15 +102,25 @@ public sealed class ConfigurationProfilesController(
             .AsNoTracking()
             .Include(q => q.Revisions)
             .ThenInclude(q => q.Values)
+            .Include(q => q.Revisions)
+            .ThenInclude(q => q.CreatedBy)
             .SingleOrDefaultAsync(q => q.PrimaryKey == profileId, cancellationToken)
             .ConfigureAwait(false);
         if (profile is null)
             return NotFound();
-        var includeSensitive = HasPermission(User, profileId, Claims.ResourceBased.ConfigurationProfile.Modify);
         var sensitiveKeys = GameConfigurationImplementations.Get(profile.GameIdentifier).Definitions
             .Where(q => q.Sensitive)
             .Select(q => q.Key)
             .ToHashSet(StringComparer.Ordinal);
+        var projectedRevisions = new List<ConfigurationProfileRevisionDto>();
+        IReadOnlyDictionary<string, JsonElement> previousValues =
+            new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        foreach (var revision in profile.Revisions.OrderBy(q => q.RevisionNumber))
+        {
+            var currentValues = RevisionValues(revision);
+            projectedRevisions.Add(ProjectRevision(revision, previousValues, currentValues, sensitiveKeys));
+            previousValues = currentValues;
+        }
         return Ok(new
         {
             Profile = new ConfigurationProfileSummaryDto
@@ -128,23 +139,7 @@ public sealed class ConfigurationProfilesController(
                 Claims.ResourceBased.ConfigurationProfile.ManageAccess),
             CanArchive = HasPermission(User, profileId, Claims.ResourceBased.ConfigurationProfile.Archive),
             Definitions = GameConfigurationImplementations.Get(profile.GameIdentifier).Definitions,
-            Revisions = profile.Revisions.OrderByDescending(q => q.RevisionNumber).Select(q => new
-            {
-                q.PrimaryKey,
-                q.RevisionNumber,
-                q.TimeStampCreated,
-                Values = q.Values.ToDictionary(
-                    v => v.DefinitionKey,
-                    v => sensitiveKeys.Contains(v.DefinitionKey) && !includeSensitive
-                        ? (JsonElement?) null
-                        : Parse(v.ValueJson),
-                    StringComparer.Ordinal),
-                RedactedKeys = includeSensitive
-                    ? Array.Empty<string>()
-                    : q.Values.Where(v => sensitiveKeys.Contains(v.DefinitionKey))
-                        .Select(v => v.DefinitionKey)
-                        .ToArray(),
-            }),
+            Revisions = projectedRevisions.OrderByDescending(q => q.RevisionNumber),
         });
     }
 
@@ -221,17 +216,38 @@ public sealed class ConfigurationProfilesController(
             return Unauthorized();
         if (!HasPermission(User, profileId, Claims.ResourceBased.ConfigurationProfile.Modify))
             return Forbid();
-        var profile = await dbContext.ConfigurationProfiles.Include(q => q.Revisions)
+        var profile = await dbContext.ConfigurationProfiles
+            .Include(q => q.Revisions)
+            .ThenInclude(q => q.Values)
             .SingleOrDefaultAsync(q => q.PrimaryKey == profileId && !q.IsArchived, cancellationToken)
             .ConfigureAwait(false);
         if (profile is null)
             return NotFound();
-        if (!TryValidateValues(profile.GameIdentifier, payload.Values, out var values, out var error))
-            return BadRequest(new { error });
+        var latest = profile.Revisions.MaxBy(q => q.RevisionNumber);
+        var latestNumber = latest?.RevisionNumber ?? 0;
+        if (payload.BaseRevisionNumber is { } baseRevisionNumber && baseRevisionNumber != latestNumber)
+            return Conflict(new ProblemDetails
+            {
+                Title = "The configuration profile has changed.",
+                Detail = "Reload the latest revision before publishing your changes.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        if (!TryValidateRevisionChanges(
+                profile.GameIdentifier,
+                latest,
+                payload,
+                out var values,
+                out var error))
+            return BadRequest(new ProblemDetails
+            {
+                Title = "The configuration revision is invalid.",
+                Detail = error,
+                Status = StatusCodes.Status400BadRequest,
+            });
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         var revision = CreateRevision(
             profile,
-            (profile.Revisions.Max(q => (int?) q.RevisionNumber) ?? 0) + 1,
+            latestNumber + 1,
             actorId,
             now,
             values!);
@@ -243,8 +259,36 @@ public sealed class ConfigurationProfilesController(
             "Configuration profile revision created.",
             actorId,
             details: $"ProfileId={profileId}; Revision={revision.RevisionNumber}.");
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return Ok(ProjectRevision(revision));
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: not null,
+            } postgresException
+            && postgresException.ConstraintName.Contains(
+                "ConfigurationProfileRevisions",
+                StringComparison.Ordinal))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "The configuration profile has changed.",
+                Detail = "Reload the latest revision before publishing your changes.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+        var sensitiveKeys = GameConfigurationImplementations.Get(profile.GameIdentifier).Definitions
+            .Where(q => q.Sensitive)
+            .Select(q => q.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        return Ok(ProjectRevision(
+            revision,
+            latest is null ? new Dictionary<string, JsonElement>() : RevisionValues(latest),
+            values!,
+            sensitiveKeys));
     }
 
     [HttpPost("{profileId:guid}/archive")]
@@ -319,6 +363,170 @@ public sealed class ConfigurationProfilesController(
                 Permissions = q.Claims!.Select(c => c.Identifier).OrderBy(c => c).ToArray(),
             }).ToArray(),
         });
+    }
+
+    /// <summary>Searches verified user candidates for profile-scoped access.</summary>
+    /// <param name="profileId">The configuration profile identifier.</param>
+    /// <param name="search">The optional nickname search term.</param>
+    /// <param name="take">The maximum number of candidates to return.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>The matching access candidates.</returns>
+    [HttpGet("{profileId:guid}/access/users/options")]
+    public async Task<IActionResult> GetUserAccessOptionsAsync(
+        [FromRoute] Guid profileId,
+        [FromQuery] string? search,
+        [FromQuery] int take = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (!HasPermission(User, profileId, Claims.ResourceBased.ConfigurationProfile.ManageAccess))
+            return Forbid();
+        if (take is < 1 or > 50)
+            return BadRequest(new ProblemDetails
+            {
+                Title = "The candidate limit is invalid.",
+                Detail = "Take must be between 1 and 50.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        var query = dbContext.Users.AsNoTracking().Where(q => !q.IsDeleted && !q.IsBanned && q.IsVerified);
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(q => EF.Functions.ILike(q.Nickname, $"%{search.Trim()}%"));
+        return Ok(await query.OrderBy(q => q.Nickname).Take(take)
+            .Select(q => new ConfigurationProfileUserCandidateDto
+            {
+                UserId = q.PrimaryKey,
+                Nickname = q.Nickname,
+            })
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false));
+    }
+
+    /// <summary>Searches role candidates for profile-scoped access.</summary>
+    /// <param name="profileId">The configuration profile identifier.</param>
+    /// <param name="search">The optional role-title search term.</param>
+    /// <param name="take">The maximum number of candidates to return.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>The matching access candidates.</returns>
+    [HttpGet("{profileId:guid}/access/roles/options")]
+    public async Task<IActionResult> GetRoleAccessOptionsAsync(
+        [FromRoute] Guid profileId,
+        [FromQuery] string? search,
+        [FromQuery] int take = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (!HasPermission(User, profileId, Claims.ResourceBased.ConfigurationProfile.ManageAccess))
+            return Forbid();
+        if (take is < 1 or > 50)
+            return BadRequest(new ProblemDetails
+            {
+                Title = "The candidate limit is invalid.",
+                Detail = "Take must be between 1 and 50.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        var query = dbContext.Roles.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(q => EF.Functions.ILike(q.Title, $"%{search.Trim()}%"));
+        return Ok(await query.OrderBy(q => q.Title).Take(take)
+            .Select(q => new ConfigurationProfileRoleCandidateDto
+            {
+                RoleId = q.PrimaryKey,
+                Title = q.Title,
+                Description = q.Description,
+            })
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false));
+    }
+
+    /// <summary>Replaces all direct profile grants with one validated desired matrix.</summary>
+    /// <param name="profileId">The configuration profile identifier.</param>
+    /// <param name="payload">The complete desired direct-access matrix.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>No content when the matrix was saved.</returns>
+    [HttpPost("{profileId:guid}/access/matrix")]
+    public async Task<IActionResult> UpdateAccessMatrixAsync(
+        [FromRoute] Guid profileId,
+        [FromBody] ConfigurationProfileAccessMatrixPayload payload,
+        CancellationToken cancellationToken)
+    {
+        if (!User.TryGetUserId(out var actorId))
+            return Unauthorized();
+        if (!HasPermission(User, profileId, Claims.ResourceBased.ConfigurationProfile.ManageAccess))
+            return Forbid();
+        if (!await dbContext.ConfigurationProfiles.AnyAsync(q => q.PrimaryKey == profileId, cancellationToken)
+                .ConfigureAwait(false))
+            return NotFound();
+        if (payload.Users.Select(q => q.UserId).Distinct().Count() != payload.Users.Count
+            || payload.Roles.Select(q => q.RoleId).Distinct().Count() != payload.Roles.Count)
+            return InvalidAccessMatrix("Each user and role may appear only once.");
+        if (payload.Users.Any(q => !TryNormalizePermissions(q.Permissions, out _))
+            || payload.Roles.Any(q => !TryNormalizePermissions(q.Permissions, out _)))
+            return InvalidAccessMatrix("The access matrix contains an unsupported permission.");
+
+        var value = profileId.ToString();
+        var desiredUserIds = payload.Users.Select(q => q.UserId).ToArray();
+        var desiredRoleIds = payload.Roles.Select(q => q.RoleId).ToArray();
+        var users = await dbContext.Users.Include(q => q.Claims)
+            .Where(q => !q.IsDeleted && (desiredUserIds.Contains(q.PrimaryKey)
+                                         || q.Claims!.Any(c => ProfilePermissions.Contains(c.Identifier)
+                                                               && c.Value == value)))
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var roles = await dbContext.Roles.Include(q => q.Claims)
+            .Where(q => desiredRoleIds.Contains(q.PrimaryKey)
+                        || q.Claims!.Any(c => ProfilePermissions.Contains(c.Identifier) && c.Value == value))
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (desiredUserIds.Any(id => users.All(q => q.PrimaryKey != id))
+            || desiredRoleIds.Any(id => roles.All(q => q.PrimaryKey != id)))
+            return InvalidAccessMatrix("A selected user or role no longer exists.");
+
+        var grantClaims = await dbContext.Claims
+            .Where(q => ProfilePermissions.Contains(q.Identifier) && q.Value == value && q.ValueType == null)
+            .ToDictionaryAsync(q => q.Identifier, StringComparer.Ordinal, cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var permission in payload.Users.SelectMany(q => q.Permissions)
+                     .Concat(payload.Roles.SelectMany(q => q.Permissions)).Distinct(StringComparer.Ordinal))
+        {
+            if (grantClaims.ContainsKey(permission))
+                continue;
+            var claim = new DatabaseClaim
+            {
+                Identifier = permission,
+                Value = value,
+                Category = "Configuration profiles",
+                Title = permission,
+                Description = "Configuration-profile-scoped permission.",
+            };
+            dbContext.Claims.Add(claim);
+            grantClaims.Add(permission, claim);
+        }
+
+        foreach (var user in users)
+        {
+            user.Claims ??= [];
+            RemoveProfileGrants(user.Claims, value);
+            var row = payload.Users.SingleOrDefault(q => q.UserId == user.PrimaryKey);
+            if (row is not null && TryNormalizePermissions(row.Permissions, out var permissions))
+                foreach (var permission in permissions)
+                    user.Claims.Add(grantClaims[permission]);
+        }
+        foreach (var role in roles)
+        {
+            role.Claims ??= [];
+            RemoveProfileGrants(role.Claims, value);
+            var row = payload.Roles.SingleOrDefault(q => q.RoleId == role.PrimaryKey);
+            if (row is not null && TryNormalizePermissions(row.Permissions, out var permissions))
+                foreach (var permission in permissions)
+                    role.Claims.Add(grantClaims[permission]);
+        }
+
+        auditWriter.Add(
+            dbContext,
+            EHostingAuditEventKind.AccessGranted,
+            "Configuration-profile access matrix updated.",
+            actorId,
+            details: $"ProfileId={profileId}; Users={payload.Users.Count}; Roles={payload.Roles.Count}.");
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return NoContent();
     }
 
     [HttpPost("{profileId:guid}/access/users/grant")]
@@ -462,6 +670,36 @@ public sealed class ConfigurationProfilesController(
             actorId,
             details: $"ProfileId={profileId}; {subjectKind}={subjectId}; Permission={permission}.");
 
+    private BadRequestObjectResult InvalidAccessMatrix(string detail)
+        => BadRequest(new ProblemDetails
+        {
+            Title = "The access matrix is invalid.",
+            Detail = detail,
+            Status = StatusCodes.Status400BadRequest,
+        });
+
+    private static bool TryNormalizePermissions(
+        IReadOnlyList<string> requested,
+        out IReadOnlyList<string> permissions)
+    {
+        permissions = [];
+        if (requested.Any(q => !ProfilePermissions.Contains(q, StringComparer.Ordinal)))
+            return false;
+        permissions = requested.Contains(Claims.ResourceBased.ConfigurationProfile.All, StringComparer.Ordinal)
+            ? [Claims.ResourceBased.ConfigurationProfile.All]
+            : requested.Distinct(StringComparer.Ordinal).Order().ToArray();
+        return true;
+    }
+
+    private static void RemoveProfileGrants(ICollection<DatabaseClaim> claims, string profileId)
+    {
+        foreach (var claim in claims.Where(q => ProfilePermissions.Contains(q.Identifier)
+                                                 && q.Value == profileId
+                                                 && q.ValueType == null
+                                                 && !q.IsPrefix).ToArray())
+            claims.Remove(claim);
+    }
+
     private bool TryValidateValues(
         string gameIdentifier,
         IReadOnlyList<ConfigurationValuePayload> payload,
@@ -491,6 +729,67 @@ public sealed class ConfigurationProfilesController(
         }
     }
 
+    private bool TryValidateRevisionChanges(
+        string gameIdentifier,
+        ConfigurationProfileRevision? latest,
+        ConfigurationProfileRevisionCreationPayload payload,
+        out IReadOnlyDictionary<string, JsonElement>? values,
+        out string? error)
+    {
+        values = null;
+        error = null;
+        var resetKeys = payload.ResetKeys.ToHashSet(StringComparer.Ordinal);
+        if (resetKeys.Count != payload.ResetKeys.Count)
+        {
+            error = "Configuration reset keys must be unique.";
+            return false;
+        }
+        if (payload.Values.Any(q => resetKeys.Contains(q.Key)))
+        {
+            error = "A configuration key cannot be updated and reset in the same revision.";
+            return false;
+        }
+        if (!TryValidateValues(gameIdentifier, payload.Values, out var updates, out error))
+            return false;
+
+        var implementation = GameConfigurationImplementations.Get(gameIdentifier);
+        var definitions = implementation.Definitions.ToDictionary(q => q.Key, StringComparer.Ordinal);
+        if (resetKeys.Any(q => !definitions.ContainsKey(q)))
+        {
+            error = "A configuration reset key is not supported by the selected game.";
+            return false;
+        }
+
+        var merged = latest is null
+            ? new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            : RevisionValues(latest).ToDictionary(q => q.Key, q => q.Value, StringComparer.Ordinal);
+        foreach (var key in resetKeys)
+            merged.Remove(key);
+        foreach (var (key, value) in updates!)
+            merged[key] = value;
+
+        var missingRequired = implementation.Definitions
+            .Where(q => q.Required && !merged.ContainsKey(q.Key))
+            .Select(q => q.DisplayName)
+            .ToArray();
+        if (missingRequired.Length > 0)
+        {
+            error = $"Required configuration values are missing: {string.Join(", ", missingRequired)}.";
+            return false;
+        }
+
+        var original = latest is null
+            ? new Dictionary<string, JsonElement>(StringComparer.Ordinal)
+            : RevisionValues(latest);
+        if (DictionariesEqual(original, merged))
+        {
+            error = "The revision does not change any configuration values.";
+            return false;
+        }
+        values = merged;
+        return true;
+    }
+
     private static ConfigurationProfileRevision CreateRevision(
         ConfigurationProfile profile,
         int number,
@@ -513,17 +812,48 @@ public sealed class ConfigurationProfilesController(
             }).ToArray(),
         };
 
-    private static ConfigurationProfileRevisionDto ProjectRevision(ConfigurationProfileRevision revision)
+    private static ConfigurationProfileRevisionDto ProjectRevision(
+        ConfigurationProfileRevision revision,
+        IReadOnlyDictionary<string, JsonElement> previousValues,
+        IReadOnlyDictionary<string, JsonElement> currentValues,
+        IReadOnlySet<string> sensitiveKeys)
         => new()
         {
             PrimaryKey = revision.PrimaryKey,
             RevisionNumber = revision.RevisionNumber,
             TimeStampCreated = revision.TimeStampCreated,
-            Values = revision.Values.ToDictionary(
-                q => q.DefinitionKey,
-                q => Parse(q.ValueJson),
+            CreatedById = revision.CreatedByFk,
+            CreatedByNickname = revision.CreatedBy?.Nickname ?? string.Empty,
+            Values = currentValues.ToDictionary(
+                q => q.Key,
+                q => sensitiveKeys.Contains(q.Key) ? (JsonElement?) null : q.Value,
                 StringComparer.Ordinal),
+            SensitiveConfiguredKeys = currentValues.Keys.Where(sensitiveKeys.Contains).Order().ToArray(),
+            Changes = previousValues.Keys.Union(currentValues.Keys, StringComparer.Ordinal)
+                .Where(key => !previousValues.TryGetValue(key, out var previous)
+                              || !currentValues.TryGetValue(key, out var current)
+                              || !JsonElement.DeepEquals(previous, current))
+                .Order()
+                .Select(key => new ConfigurationProfileRevisionChangeDto
+                {
+                    Key = key,
+                    Kind = !previousValues.ContainsKey(key)
+                        ? EConfigurationProfileRevisionChangeKind.Added
+                        : !currentValues.ContainsKey(key)
+                            ? EConfigurationProfileRevisionChangeKind.Removed
+                            : EConfigurationProfileRevisionChangeKind.Changed,
+                })
+                .ToArray(),
         };
+
+    private static Dictionary<string, JsonElement> RevisionValues(ConfigurationProfileRevision revision)
+        => revision.Values.ToDictionary(q => q.DefinitionKey, q => Parse(q.ValueJson), StringComparer.Ordinal);
+
+    private static bool DictionariesEqual(
+        IReadOnlyDictionary<string, JsonElement> left,
+        IReadOnlyDictionary<string, JsonElement> right)
+        => left.Count == right.Count
+           && left.All(q => right.TryGetValue(q.Key, out var value) && JsonElement.DeepEquals(q.Value, value));
 
     private static JsonElement Parse(string json)
     {

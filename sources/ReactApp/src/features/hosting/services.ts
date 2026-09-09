@@ -2,10 +2,13 @@ import { getApiClient } from "@/api/client";
 import { apiMethod, apiPath, apiPathWithQuery, fillApiPath } from "@/api/contract";
 import type {
   ConfigurationProfileAccess,
+  ConfigurationProfileAccessMatrix,
   ConfigurationProfileCatalog,
   ConfigurationProfileDetails,
   ConfigurationProfileOption,
+  ConfigurationProfileRoleCandidate,
   ConfigurationProfileSummary,
+  ConfigurationProfileUserCandidate,
   ConfigurationValue,
   GameConfiguration,
   GameContentOption,
@@ -650,13 +653,60 @@ export const hostingService = {
 
   async createProfileRevision(
     profileId: string,
+    baseRevisionNumber: number,
     values: ConfigurationValue[],
+    resetKeys: string[],
     signal?: AbortSignal,
   ): Promise<void> {
     const path = "/configuration-profiles/{profileId}/revisions" as const;
     await getApiClient().request<void>(fillApiPath(path, { profileId }), {
       method: apiMethod(path, "post"),
-      body: { values },
+      body: { baseRevisionNumber, values, resetKeys },
+      signal,
+    });
+  },
+
+  async profileUserCandidates(
+    profileId: string,
+    search: string,
+    signal?: AbortSignal,
+  ): Promise<ConfigurationProfileUserCandidate[]> {
+    const route = "/configuration-profiles/{profileId}/access/users/options" as const;
+    const path = fillApiPath(route, { profileId });
+    const query = new URLSearchParams({ search, take: "20" });
+    return (
+      (await getApiClient().request<ConfigurationProfileUserCandidate[]>(
+        `${path}?${query.toString()}`,
+        { method: apiMethod(route, "get"), signal },
+      )) ?? []
+    );
+  },
+
+  async profileRoleCandidates(
+    profileId: string,
+    search: string,
+    signal?: AbortSignal,
+  ): Promise<ConfigurationProfileRoleCandidate[]> {
+    const route = "/configuration-profiles/{profileId}/access/roles/options" as const;
+    const path = fillApiPath(route, { profileId });
+    const query = new URLSearchParams({ search, take: "20" });
+    return (
+      (await getApiClient().request<ConfigurationProfileRoleCandidate[]>(
+        `${path}?${query.toString()}`,
+        { method: apiMethod(route, "get"), signal },
+      )) ?? []
+    );
+  },
+
+  async updateProfileAccessMatrix(
+    profileId: string,
+    matrix: ConfigurationProfileAccessMatrix,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const route = "/configuration-profiles/{profileId}/access/matrix" as const;
+    await getApiClient().request<void>(fillApiPath(route, { profileId }), {
+      method: apiMethod(route, "post"),
+      body: matrix,
       signal,
     });
   },

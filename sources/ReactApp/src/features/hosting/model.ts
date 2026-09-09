@@ -189,7 +189,20 @@ export function validateConfigurationDraft(
       }
     }
 
-    if ((definition.allowedValues?.length ?? 0) > 0 && !definition.allowedValues.includes(raw)) {
+    const choices = definition.choices ?? [];
+    if (
+      choices.length > 0 &&
+      !choices.some((choice) => configurationDraftValue(definition, choice.value) === raw)
+    ) {
+      issues.push({
+        key: definition.key,
+        displayName: definition.displayName,
+        code: "selection",
+      });
+    } else if (
+      (definition.allowedValues?.length ?? 0) > 0 &&
+      !definition.allowedValues.includes(raw)
+    ) {
       issues.push({
         key: definition.key,
         displayName: definition.displayName,

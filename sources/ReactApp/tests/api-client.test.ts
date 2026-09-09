@@ -55,6 +55,25 @@ describe("API request adapter", () => {
     });
   });
 
+  it("uses the message from legacy error envelopes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "The revision contains an invalid value." }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await expect(
+      new ApiClient(configuration).request("configuration-profiles"),
+    ).rejects.toMatchObject({
+      message: "The revision contains an invalid value.",
+      status: 400,
+    });
+  });
+
   it("normalizes transport failures", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
     await expect(new ApiClient(configuration).request("events")).rejects.toMatchObject({

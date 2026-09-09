@@ -111,4 +111,59 @@ describe("hosting API service", () => {
     expect(roleUrl.pathname).toBe("/api/configuration-profiles/profile-1/access/roles/revoke");
     expect(roleInit.body).toBe(JSON.stringify({ roleId: 42, permission: "cfg:archive" }));
   });
+
+  it("publishes sparse revisions with a baseline and explicit resets", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    initializeApiClient(configuration);
+
+    await hostingService.createProfileRevision(
+      "profile-1",
+      7,
+      [{ key: "verifySignatures", value: 2 }],
+      ["password"],
+    );
+
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe("/api/configuration-profiles/profile-1/revisions");
+    expect(init.body).toBe(
+      JSON.stringify({
+        baseRevisionNumber: 7,
+        values: [{ key: "verifySignatures", value: 2 }],
+        resetKeys: ["password"],
+      }),
+    );
+  });
+
+  it("searches access candidates and saves the matrix atomically", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ userId: "user-1", nickname: "Operator" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    initializeApiClient(configuration);
+
+    await hostingService.profileUserCandidates("profile-1", "oper");
+    await hostingService.updateProfileAccessMatrix("profile-1", {
+      users: [{ userId: "user-1", permissions: ["cfg:view"] }],
+      roles: [],
+    });
+
+    const [searchUrl] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    const [matrixUrl, matrixInit] = fetchMock.mock.calls[1] as [URL, RequestInit];
+    expect(searchUrl.pathname).toBe("/api/configuration-profiles/profile-1/access/users/options");
+    expect(searchUrl.searchParams.get("search")).toBe("oper");
+    expect(matrixUrl.pathname).toBe("/api/configuration-profiles/profile-1/access/matrix");
+    expect(matrixInit.body).toBe(
+      JSON.stringify({
+        users: [{ userId: "user-1", permissions: ["cfg:view"] }],
+        roles: [],
+      }),
+    );
+  });
 });

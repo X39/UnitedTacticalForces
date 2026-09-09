@@ -124,4 +124,27 @@ describe("hosting storage and configuration models", () => {
     ]);
     expect(validateConfigurationDraft(definitions, { players: "2.5" })[0]?.code).toBe("integer");
   });
+
+  it("keeps typed choice values numeric", () => {
+    const definitions = [
+      {
+        key: "verifySignatures",
+        displayName: "Verify signatures",
+        kind: "Integer",
+        required: true,
+        choices: [
+          { value: 0, label: "Disabled" },
+          { value: 2, label: "Require v2 only" },
+        ],
+      },
+    ] as ConfigurationDefinition[];
+
+    expect(validateConfigurationDraft(definitions, { verifySignatures: "2" })).toEqual([]);
+    expect(buildConfigurationValues(definitions, { verifySignatures: "2" })).toEqual([
+      { key: "verifySignatures", value: 2 },
+    ]);
+    expect(validateConfigurationDraft(definitions, { verifySignatures: "1" })[0]?.code).toBe(
+      "selection",
+    );
+  });
 });

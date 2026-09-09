@@ -15485,6 +15485,37 @@ Start writing here.</value>
   <data name="React_ConfigurationProfiles_BackToProfiles" xml:space="preserve"><value>Back to profiles</value></data>
   <data name="React_ConfigurationProfiles_BasicsDescription" xml:space="preserve"><value>Name the profile and choose the game whose configuration schema it will use.</value></data>
   <data name="React_ConfigurationProfiles_ChangeCount" xml:space="preserve"><value>{0} unsaved change(s)</value></data>
+  <data name="React_ConfigurationProfiles_RevisionHistoryDescription" xml:space="preserve"><value>Review what changed in every immutable revision.</value></data>
+  <data name="React_ConfigurationProfiles_Baseline" xml:space="preserve"><value>Initial baseline</value></data>
+  <data name="React_ConfigurationProfiles_CurrentRevision" xml:space="preserve"><value>Current</value></data>
+  <data name="React_ConfigurationProfiles_ChangedBy" xml:space="preserve"><value>Published by {0} on {1}</value></data>
+  <data name="React_ConfigurationProfiles_UnknownAuthor" xml:space="preserve"><value>Unknown author</value></data>
+  <data name="React_ConfigurationProfiles_NoRevisionChanges" xml:space="preserve"><value>No value differences were recorded for this revision.</value></data>
+  <data name="React_ConfigurationProfiles_ChangeAdded" xml:space="preserve"><value>Added</value></data>
+  <data name="React_ConfigurationProfiles_ChangeChanged" xml:space="preserve"><value>Changed</value></data>
+  <data name="React_ConfigurationProfiles_ChangeRemoved" xml:space="preserve"><value>Removed</value></data>
+  <data name="React_ConfigurationProfiles_FullSnapshot" xml:space="preserve"><value>View complete snapshot</value></data>
+  <data name="React_ConfigurationProfiles_AccessMatrixTitle" xml:space="preserve"><value>Who can use this profile</value></data>
+  <data name="React_ConfigurationProfiles_AccessMatrixDescription" xml:space="preserve"><value>Give people and roles only the profile permissions they need. Full control replaces individual permissions.</value></data>
+  <data name="React_ConfigurationProfiles_AddPrincipal" xml:space="preserve"><value>Add a person or role</value></data>
+  <data name="React_ConfigurationProfiles_AddPrincipalDescription" xml:space="preserve"><value>Search by name, add a row, then choose its permissions.</value></data>
+  <data name="React_ConfigurationProfiles_SearchUsers" xml:space="preserve"><value>Search people</value></data>
+  <data name="React_ConfigurationProfiles_SearchRoles" xml:space="preserve"><value>Search roles</value></data>
+  <data name="React_ConfigurationProfiles_PrincipalSearchPlaceholder" xml:space="preserve"><value>Start typing a name…</value></data>
+  <data name="React_ConfigurationProfiles_NoPrincipalMatches" xml:space="preserve"><value>No matching people or roles are available.</value></data>
+  <data name="React_ConfigurationProfiles_NoDirectAccessDescription" xml:space="preserve"><value>No direct profile permissions have been assigned yet.</value></data>
+  <data name="React_ConfigurationProfiles_Principal" xml:space="preserve"><value>Person or role</value></data>
+  <data name="React_ConfigurationProfiles_RemovePrincipal" xml:space="preserve"><value>Remove</value></data>
+  <data name="React_ConfigurationProfiles_UnsavedAccessChanges" xml:space="preserve"><value>Unpublished access changes</value></data>
+  <data name="React_ConfigurationProfiles_SavingAccess" xml:space="preserve"><value>Saving access…</value></data>
+  <data name="React_ConfigurationProfiles_SaveAccess" xml:space="preserve"><value>Save access</value></data>
+  <data name="React_ConfigurationProfiles_AccessSaved" xml:space="preserve"><value>Profile access was updated.</value></data>
+  <data name="React_ConfigurationProfiles_RevisionChangeCount" xml:space="preserve"><value>{0} change(s)</value></data>
+  <data name="React_ConfigurationProfiles_PermissionFullControlDescription" xml:space="preserve"><value>Includes every profile permission and supersedes the individual choices.</value></data>
+  <data name="React_ConfigurationProfiles_PermissionViewDescription" xml:space="preserve"><value>Open the profile and inspect its revisions.</value></data>
+  <data name="React_ConfigurationProfiles_PermissionModifyDescription" xml:space="preserve"><value>Edit configuration and publish revisions.</value></data>
+  <data name="React_ConfigurationProfiles_PermissionManageAccessDescription" xml:space="preserve"><value>Change who can use or administer the profile.</value></data>
+  <data name="React_ConfigurationProfiles_PermissionArchiveDescription" xml:space="preserve"><value>Archive the profile after confirmation.</value></data>
   <data name="React_ConfigurationProfiles_ChangeGameWarning" xml:space="preserve"><value>Changing the game discards the configuration values already entered. Continue?</value></data>
   <data name="React_ConfigurationProfiles_ConfigurationTab" xml:space="preserve"><value>Configuration</value></data>
   <data name="React_ConfigurationProfiles_Configured" xml:space="preserve"><value>Configured securely</value></data>

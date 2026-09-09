@@ -33,6 +33,13 @@ public static class GameConfigurationValueValidator
             }
         }
 
+        if (definition.Choices is { Count: > 0 }
+            && !definition.Choices.Any(q => JsonElement.DeepEquals(q.Value, value)))
+        {
+            error = $"Configuration value '{definition.Key}' is not an allowed choice.";
+            return false;
+        }
+
         if (definition.AllowedValues is { Count: > 0 })
         {
             var selected = value.GetString();
