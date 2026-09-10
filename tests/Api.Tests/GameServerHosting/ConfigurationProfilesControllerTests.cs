@@ -1,10 +1,17 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.Controllers;
 using X39.UnitedTacticalForces.Api.DTO;
+using X39.UnitedTacticalForces.Api.DTO.Payloads;
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
+using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
+using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.GameServerImplementations;
 using Xunit;
+using DatabaseUser = X39.UnitedTacticalForces.Database.Authority.User;
 
 namespace Api.Tests.GameServerHosting;
 
@@ -40,6 +47,92 @@ public sealed class ConfigurationProfilesControllerTests
         var catalog = Assert.IsType<ConfigurationProfileDefinitionCatalogDto>(result.Value);
 
         Assert.True(catalog.CanCreate);
+    }
+
+    /// <summary>Verifies that publishing a revision persists its complete merged snapshot.</summary>
+    [Fact]
+    public async Task CreateRevisionAsync_PersistsMergedSnapshot()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var actorId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var actor = new DatabaseUser
+        {
+            PrimaryKey = actorId,
+            Nickname = "configuration-profile-author",
+        };
+        var profile = new ConfigurationProfile
+        {
+            PrimaryKey = profileId,
+            Title = "Operations",
+            GameIdentifier = Arma3ConfigurationImplementation.Identifier,
+            CreatedBy = actor,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+            Revisions =
+            [
+                new ConfigurationProfileRevision
+                {
+                    PrimaryKey = Guid.NewGuid(),
+                    RevisionNumber = 1,
+                    CreatedBy = actor,
+                    TimeStampCreated = now,
+                    Values =
+                    [
+                        new ConfigurationProfileValue
+                        {
+                            PrimaryKey = Guid.NewGuid(),
+                            DefinitionKey = "server.cfg@hostname",
+                            ValueJson = JsonSerializer.Serialize("UTF"),
+                        },
+                    ],
+                },
+            ],
+        };
+        store.DbContext.Add(profile);
+        await store.DbContext.SaveChangesAsync();
+        store.DbContext.ChangeTracker.Clear();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(System.Security.Claims.ClaimTypes.Name, actorId.ToString()),
+                new Claim(X39.UnitedTacticalForces.Claims.Administrative.All, string.Empty),
+            ],
+            X39.UnitedTacticalForces.Api.Constants.AuthorizationSchemas.Api,
+            System.Security.Claims.ClaimTypes.Name,
+            System.Security.Claims.ClaimTypes.Role));
+        var controller = new ConfigurationProfilesController(
+            store.DbContext,
+            new GameServerConfigurationService(store.DbContext),
+            new HostingAuditWriter())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = principal },
+            },
+        };
+
+        var result = await controller.CreateRevisionAsync(
+            profileId,
+            new ConfigurationProfileRevisionCreationPayload
+            {
+                BaseRevisionNumber = 1,
+                Values =
+                [
+                    new ConfigurationValuePayload
+                    {
+                        Key = "server.cfg@maxPlayers",
+                        Value = JsonSerializer.SerializeToElement(80),
+                    },
+                ],
+            },
+            CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        var revision = await store.DbContext.ConfigurationProfileRevisions
+            .Include(q => q.Values)
+            .SingleAsync(q => q.ConfigurationProfileFk == profileId && q.RevisionNumber == 2);
+        Assert.Equal(2, revision.Values.Count);
     }
 
     /// <summary>Verifies that the declared Arma V1 surface includes every operational target and typed policies.</summary>

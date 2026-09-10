@@ -251,7 +251,7 @@ public sealed class ConfigurationProfilesController(
             actorId,
             now,
             values!);
-        profile.Revisions.Add(revision);
+        dbContext.ConfigurationProfileRevisions.Add(revision);
         profile.TimeStampUpdated = now;
         auditWriter.Add(
             dbContext,
@@ -263,6 +263,10 @@ public sealed class ConfigurationProfilesController(
         {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
+        catch (DbUpdateConcurrencyException)
+        {
+            return RevisionConflict();
+        }
         catch (DbUpdateException exception) when (
             exception.InnerException is PostgresException
             {
@@ -273,12 +277,7 @@ public sealed class ConfigurationProfilesController(
                 "ConfigurationProfileRevisions",
                 StringComparison.Ordinal))
         {
-            return Conflict(new ProblemDetails
-            {
-                Title = "The configuration profile has changed.",
-                Detail = "Reload the latest revision before publishing your changes.",
-                Status = StatusCodes.Status409Conflict,
-            });
+            return RevisionConflict();
         }
         var sensitiveKeys = GameConfigurationImplementations.Get(profile.GameIdentifier).Definitions
             .Where(q => q.Sensitive)
@@ -676,6 +675,16 @@ public sealed class ConfigurationProfilesController(
             Title = "The access matrix is invalid.",
             Detail = detail,
             Status = StatusCodes.Status400BadRequest,
+        });
+
+    /// <summary>Creates the response used when a competing revision wins publication.</summary>
+    /// <returns>A conflict response instructing the editor to reload.</returns>
+    private ConflictObjectResult RevisionConflict()
+        => Conflict(new ProblemDetails
+        {
+            Title = "The configuration profile has changed.",
+            Detail = "Reload the latest revision before publishing your changes.",
+            Status = StatusCodes.Status409Conflict,
         });
 
     private static bool TryNormalizePermissions(
