@@ -197,7 +197,7 @@ describe("configuration-profile routes", () => {
     );
   });
 
-  it("validates the creation wizard and serializes string arrays", async () => {
+  it("validates the creation wizard, serializes arrays, and excludes server secrets", async () => {
     const user = userEvent.setup();
     const router = renderPage("/command/configuration-profiles/create");
 
@@ -209,17 +209,14 @@ describe("configuration-profile routes", () => {
 
     await user.type(screen.getByLabelText("Hostname"), "UTF Public");
     await user.type(screen.getByLabelText("Message of the day"), "Alpha\nBravo");
-    await user.type(screen.getByLabelText("Password"), "secret");
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Review profile" }));
-    expect(await screen.findByText("Configured securely")).toBeVisible();
-    expect(screen.queryByText("secret")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Create profile" }));
 
     await waitFor(() =>
       expect(hostingService.createProfile).toHaveBeenCalledWith("Public operations", "arma3", [
         { key: "hostname", value: "UTF Public" },
         { key: "motd[]", value: ["Alpha", "Bravo"] },
-        { key: "password", value: "secret" },
       ]),
     );
     await waitFor(() =>
@@ -234,6 +231,7 @@ describe("configuration-profile routes", () => {
     renderPage(`/command/configuration-profiles/${profile.primaryKey}`);
 
     const hostname = await screen.findByLabelText("Hostname");
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
     await user.clear(hostname);
     await user.type(hostname, "UTF Updated");
     expect(screen.getByText("1 unsaved change(s)")).toBeVisible();

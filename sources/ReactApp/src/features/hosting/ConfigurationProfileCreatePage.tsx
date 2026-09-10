@@ -44,7 +44,10 @@ export function ConfigurationProfileCreatePage() {
   const [allowNavigation, setAllowNavigation] = useState(false);
   const activeGame = game || games[0]?.gameIdentifier || "";
   const definitions = useMemo(
-    () => games.find((item) => item.gameIdentifier === activeGame)?.definitions ?? [],
+    () =>
+      (games.find((item) => item.gameIdentifier === activeGame)?.definitions ?? []).filter(
+        (definition) => !definition.sensitive,
+      ),
     [activeGame, games],
   );
   const defaults = useMemo(

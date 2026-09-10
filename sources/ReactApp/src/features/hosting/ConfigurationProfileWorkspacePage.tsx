@@ -61,7 +61,14 @@ export function ConfigurationProfileWorkspacePage() {
     queryFn: ({ signal }) => hostingService.profileAccess(profileId, signal),
     enabled: Boolean(profileId && profile.data?.canManageAccess && tab === "access"),
   });
-  const definitions = useMemo(() => profile.data?.definitions ?? [], [profile.data?.definitions]);
+  const allDefinitions = useMemo(
+    () => profile.data?.definitions ?? [],
+    [profile.data?.definitions],
+  );
+  const definitions = useMemo(
+    () => allDefinitions.filter((definition) => !definition.sensitive),
+    [allDefinitions],
+  );
   const latest = useMemo(
     () =>
       profile.data?.revisions.reduce(
@@ -323,7 +330,7 @@ export function ConfigurationProfileWorkspacePage() {
         </section>
       )}
       {tab === "revisions" && (
-        <ConfigurationProfileRevisionHistory profile={data} definitions={definitions} />
+        <ConfigurationProfileRevisionHistory profile={data} definitions={allDefinitions} />
       )}
       {tab === "access" && data.canManageAccess && (
         <ConfigurationProfileAccessSection
