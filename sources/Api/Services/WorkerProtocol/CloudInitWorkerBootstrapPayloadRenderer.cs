@@ -48,7 +48,8 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements,
         RuntimeStoragePlan storagePlan)
     {
-        ValidateOptions();
+        var containerImage = ResolveContainerImage(gameIdentifier);
+        ValidateOptions(containerImage);
         var steamCredentials = ResolveSteamCredentials(gameIdentifier);
         if (!IsSafeAbsolutePath(storagePlan.DeploymentRoot)
             || storagePlan.RequiredCapacityBytes < 0
@@ -93,7 +94,8 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
             serviceName,
             inboundNetworkRequirements,
             storagePlan.DeploymentRoot,
-            steamCredentials);
+            steamCredentials,
+            containerImage);
         var storageService = RenderStorageService(storagePlan);
         var storageScript = RenderStorageScript(storagePlan, bootstrap.DeploymentId);
         var registryConfig = RenderRegistryConfig();
@@ -268,7 +270,8 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         string serviceName,
         IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements,
         string deploymentRoot,
-        (string Username, string Password)? steamCredentials)
+        (string Username, string Password)? steamCredentials,
+        string containerImage)
     {
         var publishedPorts = string.Join(' ', inboundNetworkRequirements.Select(RenderPublishedPort));
         var steamArguments = steamCredentials is null
@@ -289,7 +292,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
            Type=simple
            Restart=always
            RestartSec=5
-           ExecStartPre=/bin/sh -c '/usr/bin/docker image inspect {_options.ContainerImage} >/dev/null 2>&1 || /usr/bin/docker --config {GetAbsoluteParentPath(_options.RegistryConfigPath)} pull {_options.ContainerImage}'
+           ExecStartPre=/bin/sh -c '/usr/bin/docker image inspect {containerImage} >/dev/null 2>&1 || /usr/bin/docker --config {GetAbsoluteParentPath(_options.RegistryConfigPath)} pull {containerImage}'
            ExecStartPre=-/usr/bin/docker rm -f {serviceName}
            ExecStartPre=/bin/sh -c '/usr/sbin/iptables -C DOCKER-USER -d 169.254.169.254/32 -j REJECT >/dev/null 2>&1 || /usr/sbin/iptables -I DOCKER-USER -d 169.254.169.254/32 -j REJECT'
            ExecStart=/usr/bin/docker run --rm --name {serviceName} --user 0:{RuntimeGroupId} \
@@ -303,7 +306,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
              --mount type=bind,src={_options.StateDirectory},dst=/var/lib/united-tactical-forces/worker \
              --mount type=bind,src={deploymentRoot},dst=/srv/united-tactical-forces/runtime \
              {steamArguments}
-             {_options.ContainerImage}
+             {containerImage}
            ExecStop=/usr/bin/docker stop --time 30 {serviceName}
            TimeoutStopSec=45
 
@@ -326,10 +329,26 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         return $"--publish {ports}:{ports}/{protocol}";
     }
 
-    private void ValidateOptions()
+    private string ResolveContainerImage(string gameIdentifier)
     {
-        if (!IsSafeContainerImage(_options.ContainerImage)
-            || !environment.IsDevelopment() && !HasImmutableSha256Digest(_options.ContainerImage)
+        var imageIdentifier = gameDefinitions?.Find(gameIdentifier)?.WorkerImageIdentifier;
+        if (imageIdentifier is null)
+            return _options.ContainerImage;
+        if (_options.GameContainerImages.TryGetValue(imageIdentifier, out var image)
+            && !string.IsNullOrWhiteSpace(image))
+        {
+            return image;
+        }
+
+        throw new InvalidOperationException(
+            $"Hosting:WorkerProvisioning:GameContainerImages:{imageIdentifier} must be configured before a "
+            + $"'{gameIdentifier}' worker can be provisioned.");
+    }
+
+    private void ValidateOptions(string containerImage)
+    {
+        if (!IsSafeContainerImage(containerImage)
+            || !environment.IsDevelopment() && !HasImmutableSha256Digest(containerImage)
             || !IsSafeAbsolutePath(_options.BootstrapPath)
             || !IsSafeRegistryServer(_options.RegistryServer)
             || !IsSafeRegistryCredentialPair()

@@ -13,6 +13,13 @@ public sealed class WorkerProvisioningOptions
     public string ContainerImage { get; set; } = "ghcr.io/x39/united-tactical-forces-cloud-worker:development";
 
     /// <summary>
+    /// Gets or sets dedicated worker images keyed by the game definition's worker-image identifier.
+    /// Production values must use immutable SHA-256 digests.
+    /// </summary>
+    public Dictionary<string, string> GameContainerImages { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Registry authority used for the worker-image pull credentials.
     /// </summary>
     public string RegistryServer { get; set; } = "ghcr.io";

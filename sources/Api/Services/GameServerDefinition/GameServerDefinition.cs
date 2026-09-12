@@ -39,6 +39,11 @@ public sealed record GameServerDefinition(
     public IReadOnlyList<GameSecretDefinition> Secrets { get; init; } = [];
 
     /// <summary>
+    /// Optional key of a dedicated worker image required by this game. Games without a key use the default image.
+    /// </summary>
+    public string? WorkerImageIdentifier { get; init; }
+
+    /// <summary>
     /// Independently provisioned worker nodes that form one game-server deployment. Definitions that do not
     /// declare a topology retain the traditional single primary worker.
     /// </summary>

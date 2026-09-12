@@ -28,7 +28,16 @@ export function configurationValidationMessage(
 }
 
 export function gameLabel(identifier: string): string {
-  return identifier.toLowerCase() === "arma3" ? "Arma 3" : identifier;
+  switch (identifier.toLowerCase()) {
+    case "arma3":
+      return "Arma 3";
+    case "aska":
+      return "ASKA";
+    case "cs2":
+      return "Counter-Strike 2";
+    default:
+      return identifier;
+  }
 }
 
 function ConfigurationBooleanField({
