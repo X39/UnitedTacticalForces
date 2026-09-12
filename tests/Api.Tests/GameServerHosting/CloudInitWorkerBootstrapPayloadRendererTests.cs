@@ -3,6 +3,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using Xunit;
@@ -174,6 +175,45 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
     }
 
     [Fact]
+    public void Aska_UsesRequiredDedicatedGameImage()
+    {
+        const string askaImage = "utf-cloud-worker-aska:development";
+        var renderer = CreateRenderer(
+            Environments.Development,
+            "utf-cloud-worker:development",
+            options => options.GameContainerImages["aska"] = askaImage,
+            gameDefinitions: new GameServerDefinitionCatalog(
+                [new AskaGameServerDefinitionRegistration()]));
+
+        var payload = renderer.Render(Bootstrap(), Guid.NewGuid(), "aska",
+        [
+            new(ERuntimeNetworkProtocol.Udp, 27015, 27015, "ASKA game"),
+            new(ERuntimeNetworkProtocol.Udp, 27016, 27016, "ASKA query"),
+        ]);
+        var service = DecodeSystemdService(payload.CloudInit);
+
+        Assert.Contains(askaImage, service, StringComparison.Ordinal);
+        Assert.DoesNotContain("utf-cloud-worker:development", service, StringComparison.Ordinal);
+        Assert.Contains("--publish 27015:27015/udp", service, StringComparison.Ordinal);
+        Assert.Contains("--publish 27016:27016/udp", service, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Aska_RejectsMissingDedicatedGameImageBeforeBootstrapRendering()
+    {
+        var renderer = CreateRenderer(
+            Environments.Development,
+            "utf-cloud-worker:development",
+            gameDefinitions: new GameServerDefinitionCatalog(
+                [new AskaGameServerDefinitionRegistration()]));
+
+        var exception = Assert.Throws<InvalidOperationException>(() => renderer.Render(
+            Bootstrap(), Guid.NewGuid(), "aska", NetworkPlan()));
+
+        Assert.Contains("GameContainerImages:aska", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Provisioning_RejectsInvalidDockerSizeValues()
     {
         var renderer = CreateRenderer(
@@ -268,7 +308,8 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
         string image,
         Action<WorkerProvisioningOptions>? configure = null,
         string? steamUsername = "utf_steam_test",
-        string? steamPassword = "synthetic-password")
+        string? steamPassword = "synthetic-password",
+        IGameServerDefinitionCatalog? gameDefinitions = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -285,7 +326,8 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
             configuration,
             new TestHostEnvironment { EnvironmentName = environmentName },
             wrappedOptions,
-            new AdministrativeSshAccess(wrappedOptions));
+            new AdministrativeSshAccess(wrappedOptions),
+            gameDefinitions);
     }
 
     private static WorkerBootstrapConfiguration Bootstrap()

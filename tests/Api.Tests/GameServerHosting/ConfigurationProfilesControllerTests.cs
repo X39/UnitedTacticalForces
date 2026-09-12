@@ -25,7 +25,9 @@ public sealed class ConfigurationProfilesControllerTests
         var result = Assert.IsType<OkObjectResult>(controller.GetDefinitions());
         var catalog = Assert.IsType<ConfigurationProfileDefinitionCatalogDto>(result.Value);
 
-        Assert.Equal(2, catalog.Games.Count);
+        Assert.Equal(3, catalog.Games.Count);
+        var aska = Assert.Single(catalog.Games, q => q.GameIdentifier == AskaConfigurationImplementation.Identifier);
+        Assert.NotEmpty(aska.Definitions);
         var arma = Assert.Single(catalog.Games, q => q.GameIdentifier == Arma3ConfigurationImplementation.Identifier);
         Assert.Equal(Arma3ConfigurationImplementation.Identifier, arma.GameIdentifier);
         Assert.NotEmpty(arma.Definitions);

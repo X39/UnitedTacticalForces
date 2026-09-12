@@ -190,3 +190,20 @@ Optional emergency SSH access is configured under `Hosting:WorkerProvisioning`. 
 key-only `utf-admin` account; password login and root login remain disabled. The server detail page returns the SSH
 command and bootstrap/worker diagnostic commands only to users carrying the global `adm` claim. Existing deployment
 hosts are not modified retroactively.
+
+## ASKA dedicated servers
+
+ASKA deployments use the provider-neutral cloud lifecycle and the official Windows dedicated server under Wine
+and Xvfb. They require the dedicated image configured at `Hosting:WorkerProvisioning:GameContainerImages:aska`;
+production references must use immutable SHA-256 digests. Build the image with
+`docker build -f sources/CloudWorker/Dockerfile.Aska -t utf-cloud-worker-aska .`. Aspire development workers select
+it with `Hosting:DevelopmentWorker:ImageVariant` set to `aska` and an ASKA bootstrap file.
+
+The server exposes UDP `27015` for gameplay and UDP `27016` for queries. Enter the required Steam authentication
+token through the game-server secret workflow; never put it in AppHost configuration or a bootstrap file. The
+worker generates the token-bearing properties file outside the file/preservation capabilities, then preserves only
+the validated save identifier and ASKA world directory. Configuration profiles cover names, seed, region,
+keep-world-alive, autosave, and game mode; the optional join password remains revealable through the authorized
+secret workflow. Wine prefix initialization and startup readiness are bounded, and authentication failures are
+reported without token content. ASKA initially shares the standard 7 GiB worker memory cap, so deployment profiles
+must leave adequate operating headroom. Custom game preset upload is not supported in this version.
