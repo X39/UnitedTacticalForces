@@ -55,10 +55,18 @@ static void AddDevelopmentCloudWorker(
             bootstrapPath);
     }
 
+    var imageVariant = section["ImageVariant"]?.Trim().ToLowerInvariant() ?? "default";
+    var dockerfileName = imageVariant switch
+    {
+        "default" => "Dockerfile",
+        "aska" => "Dockerfile.Aska",
+        _ => throw new InvalidOperationException(
+            $"{sectionName}:ImageVariant must be either 'default' or 'aska'."),
+    };
     var repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", ".."));
-    var dockerfilePath = Path.Combine(repositoryRoot, "sources", "CloudWorker", "Dockerfile");
+    var dockerfilePath = Path.Combine(repositoryRoot, "sources", "CloudWorker", dockerfileName);
     if (!File.Exists(dockerfilePath))
-        throw new FileNotFoundException("The CloudWorker Dockerfile does not exist.", dockerfilePath);
+        throw new FileNotFoundException("The selected CloudWorker Dockerfile does not exist.", dockerfilePath);
 
     builder.AddDockerfile(
             "cloud-worker-development",

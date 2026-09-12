@@ -23,6 +23,14 @@ public sealed record CloudWorkerOptions(
         TimeSpan.FromMinutes(5));
 
     public CounterStrike2WorkerOptions CounterStrike2 { get; init; } = new("game/bin/linuxsteamrt64/cs2");
+    /// <summary>Gets ASKA-specific Wine runtime options.</summary>
+    public AskaWorkerOptions Aska { get; init; } = new(
+        "AskaServer.exe",
+        "/usr/bin/wine",
+        "/usr/bin/wineboot",
+        "/usr/bin/xvfb-run",
+        "/usr/bin/setsid",
+        TimeSpan.FromMinutes(3));
     public SteamCmdWorkerOptions SteamCmd => new(
         Arma3.SteamCmdPath,
         Arma3.TemporaryDirectory,
@@ -79,6 +87,7 @@ public sealed record CloudWorkerOptions(
             Arma3WorkerOptions.Create(values, getEnvironmentVariable))
         {
             CounterStrike2 = CounterStrike2WorkerOptions.Create(values, getEnvironmentVariable),
+            Aska = AskaWorkerOptions.Create(values, getEnvironmentVariable),
             Git = GitContentOptions.Create(values, getEnvironmentVariable),
         };
     }

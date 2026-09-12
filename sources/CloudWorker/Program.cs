@@ -57,6 +57,7 @@ try
     var executorRegistry = new WorkerGameExecutorRegistry(
     [
         new("arma3", () => new Arma3WorkerCommandExecutor(connection, options, storageTransfer: storageTransfer)),
+        new("aska", () => new AskaWorkerCommandExecutor(connection, options, storage: storageTransfer)),
         new("cs2", () => new CounterStrike2WorkerCommandExecutor(connection, options, storage: storageTransfer)),
     ]);
     var executor = executorRegistry.Create(connection.GameIdentifier);
