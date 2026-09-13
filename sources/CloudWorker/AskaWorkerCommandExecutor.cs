@@ -51,6 +51,10 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
         _configurationRenderer = configurationRenderer ?? new AskaConfigurationRenderer();
     }
 
+    /// <summary>Gets the runtime log reader, which tests may replace to reproduce diagnostic read failures.</summary>
+    internal Func<string, CancellationToken, Task<string>> LogReader { get; init; }
+        = (path, token) => File.ReadAllTextAsync(path, token);
+
     /// <inheritdoc />
     public async Task<WorkerCommandExecutionResult> ExecuteAsync(
         WorkerCommandClaimResponse command,
@@ -239,6 +243,28 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
         {
             var logs = await CollectLogsAsync(command.Secrets.Values, bounded.Token).ConfigureAwait(false);
             diagnostics = logs.Output ?? logs.Stage;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+                                                  or InvalidDataException)
+        {
+            diagnostics = "Fault diagnostics unavailable: "
+                          + (WorkerSecretRedactor.Redact(exception.Message, command.Secrets.Values)
+                             ?? "log collection failed");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
+                                                  && bounded.IsCancellationRequested)
+        {
+            return WorkerCommandExecutionResult.Failure(
+                "fault-evidence-window-expired",
+                "fault-evidence-deadline-expired",
+                "The bounded fault-evidence deadline expired; provider teardown may continue.") with
+            {
+                Output = diagnostics,
+            };
+        }
+
+        try
+        {
             var stopped = await StopAndPreserveAsync(command, payload, bounded.Token).ConfigureAwait(false);
             return stopped with { Output = $"{diagnostics}\n{stopped.Output}" };
         }
@@ -346,7 +372,7 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
     {
         if (!File.Exists(_paths.RuntimeLogPath))
             return WorkerCommandExecutionResult.Success("logs-empty", "No ASKA logs are available.");
-        var text = await File.ReadAllTextAsync(_paths.RuntimeLogPath, cancellationToken).ConfigureAwait(false);
+        var text = await LogReader(_paths.RuntimeLogPath, cancellationToken).ConfigureAwait(false);
         if (text.Length > 16 * 1024)
             text = text[^16384..];
         return WorkerCommandExecutionResult.Success(

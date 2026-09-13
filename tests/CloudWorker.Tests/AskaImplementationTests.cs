@@ -378,6 +378,47 @@ public sealed class AskaImplementationTests
         Assert.Equal("fault-evidence-deadline-expired", result.ErrorCode);
     }
 
+    /// <summary>
+    /// Verifies that an unreadable runtime log remains best-effort and cannot prevent fault stop preservation.
+    /// </summary>
+    /// <returns>A task that completes after fault stop execution.</returns>
+    [Fact]
+    public async Task Execute_FaultStopLogReadFails_StopsAndPublishesPreservation()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var options = Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh"));
+        var paths = new AskaRuntimePaths(
+            options.RuntimeRoot,
+            options.StateDirectory,
+            connection.DeploymentId,
+            options.Aska.ExecutableRelativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(paths.RuntimeLogPath)!);
+        await File.WriteAllTextAsync(paths.RuntimeLogPath, "runtime log");
+        var processController = new AskaReplayProcessController();
+        var storage = new AskaReplayStorageTransfer();
+        var executor = new AskaWorkerCommandExecutor(
+            connection,
+            options,
+            process: processController,
+            storage: storage)
+        {
+            LogReader = (_, _) => throw new IOException("Cannot read test-token from the runtime log."),
+        };
+        var command = Command(
+            connection,
+            "fault-stop",
+            faultEvidenceDeadline: DateTimeOffset.UtcNow.AddSeconds(10));
+
+        var result = await executor.ExecuteAsync(command, CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Equal(1, processController.StopCount);
+        Assert.Equal(1, storage.PublishCount);
+        Assert.Contains("Fault diagnostics unavailable", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("test-token", result.Output, StringComparison.Ordinal);
+    }
+
     private static IReadOnlyDictionary<string, JsonElement> DefaultConfiguration()
         => new AskaConfigurationImplementation().Definitions.ToDictionary(
             q => q.Key,
