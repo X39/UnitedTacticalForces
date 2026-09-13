@@ -116,9 +116,15 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
             return WorkerCommandExecutionResult.Success(
                 "reconciled-running", processId: identity.ProcessId, processStartedAt: identity.ProcessStartedAt);
         if (action is "stop" && !observation.IsRunning && !payload.Command.PreserveOnStop)
+        {
+            _configurationRenderer.DeleteRuntimeConfiguration(_paths);
             return WorkerCommandExecutionResult.Success("reconciled-stopped");
+        }
         if (action is "terminate" && !observation.IsRunning)
+        {
+            _configurationRenderer.DeleteRuntimeConfiguration(_paths);
             return WorkerCommandExecutionResult.Success("reconciled-stopped");
+        }
         return null;
     }
 

@@ -240,6 +240,104 @@ public sealed class AskaImplementationTests
     }
 
     /// <summary>
+    /// Verifies that a redelivered non-preserving stop removes an ephemeral properties file after a crash.
+    /// </summary>
+    /// <returns>A task that completes after reconciliation removes the runtime configuration.</returns>
+    [Fact]
+    public async Task ReconcileRedelivery_StopWithoutPreservation_RemovesRuntimeConfiguration()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var options = Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh"));
+        var paths = new AskaRuntimePaths(
+            options.RuntimeRoot,
+            options.StateDirectory,
+            connection.DeploymentId,
+            options.Aska.ExecutableRelativePath);
+        var processController = new AskaReplayProcessController();
+        var storage = new AskaReplayStorageTransfer();
+        var renderer = new AskaConfigurationRenderer();
+        await renderer.RenderAsync(
+            paths,
+            DefaultConfiguration(),
+            new Dictionary<string, string>
+            {
+                ["authentication-token"] = "crash-test-token",
+                ["join-password"] = "crash-test-password",
+            },
+            CancellationToken.None);
+        Assert.True(File.Exists(paths.PropertiesPath));
+
+        var executor = new AskaWorkerCommandExecutor(
+            connection,
+            options,
+            process: processController,
+            storage: storage,
+            configurationRenderer: renderer);
+
+        var result = await executor.ReconcileRedeliveryAsync(
+            Command(connection, "stop", preserveOnStop: false),
+            JournalEntry(connection),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Equal("reconciled-stopped", result.Stage);
+        Assert.False(File.Exists(paths.PropertiesPath));
+        Assert.Equal(0, processController.StopCount);
+        Assert.Equal(0, storage.PublishCount);
+    }
+
+    /// <summary>
+    /// Verifies that a redelivered termination removes an ephemeral properties file after a crash.
+    /// </summary>
+    /// <returns>A task that completes after reconciliation removes the runtime configuration.</returns>
+    [Fact]
+    public async Task ReconcileRedelivery_Terminate_RemovesRuntimeConfiguration()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var options = Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh"));
+        var paths = new AskaRuntimePaths(
+            options.RuntimeRoot,
+            options.StateDirectory,
+            connection.DeploymentId,
+            options.Aska.ExecutableRelativePath);
+        var processController = new AskaReplayProcessController();
+        var storage = new AskaReplayStorageTransfer();
+        var renderer = new AskaConfigurationRenderer();
+        await renderer.RenderAsync(
+            paths,
+            DefaultConfiguration(),
+            new Dictionary<string, string>
+            {
+                ["authentication-token"] = "crash-test-token",
+                ["join-password"] = "crash-test-password",
+            },
+            CancellationToken.None);
+        Assert.True(File.Exists(paths.PropertiesPath));
+
+        var executor = new AskaWorkerCommandExecutor(
+            connection,
+            options,
+            process: processController,
+            storage: storage,
+            configurationRenderer: renderer);
+
+        var result = await executor.ReconcileRedeliveryAsync(
+            Command(connection, "terminate"),
+            JournalEntry(connection),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Equal("reconciled-stopped", result.Stage);
+        Assert.False(File.Exists(paths.PropertiesPath));
+        Assert.Equal(0, processController.StopCount);
+        Assert.Equal(0, storage.PublishCount);
+    }
+
+    /// <summary>
     /// Verifies that a redelivered fault-stop reexecutes diagnostics, stop, and preservation as one bounded handler.
     /// </summary>
     /// <returns>A task that completes after reconciliation and replay.</returns>
