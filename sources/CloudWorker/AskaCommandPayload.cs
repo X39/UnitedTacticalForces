@@ -42,6 +42,9 @@ public sealed record AskaCommandPayload
             throw new InvalidDataException("ASKA command game attribution is invalid.");
         if (!string.Equals(Command.ActionIdentifier, envelope.ActionIdentifier, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("ASKA action attribution is invalid.");
+        var isFaultStop = string.Equals(Command.ActionIdentifier, "fault-stop", StringComparison.OrdinalIgnoreCase);
+        if (isFaultStop != Command.FaultEvidenceDeadline.HasValue)
+            throw new InvalidDataException("Only an ASKA fault-stop command may carry its required evidence deadline.");
         if (Command.GracefulStopAttempts is < 1 or > 16 || Command.GracefulStopTimeoutSeconds is < 1 or > 900)
             throw new InvalidDataException("ASKA graceful-stop policy is outside worker safety limits.");
         if (Command.Port is not (null or 27015))

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text;
-using System.Text.Json.Nodes;
 using System.Text.Json;
 using X39.UnitedTacticalForces.CloudWorker;
 using X39.UnitedTacticalForces.GameServerImplementations;
@@ -93,6 +92,23 @@ public sealed class AskaImplementationTests
             connection with { DeploymentId = Guid.NewGuid() }, envelope));
     }
 
+    /// <summary>Verifies that only fault-stop commands carry their mandatory evidence deadline.</summary>
+    [Fact]
+    public void Payload_RequiresFaultEvidenceDeadlineExactlyForFaultStop()
+    {
+        var connection = Connection();
+        var missingDeadline = Command(connection, "fault-stop");
+        var unexpectedDeadline = Command(
+            connection,
+            "stop",
+            faultEvidenceDeadline: DateTimeOffset.UtcNow.AddMinutes(1));
+
+        Assert.Throws<InvalidDataException>(() =>
+            AskaCommandPayload.Parse(missingDeadline.Payload).Validate(connection, missingDeadline));
+        Assert.Throws<InvalidDataException>(() =>
+            AskaCommandPayload.Parse(unexpectedDeadline.Payload).Validate(connection, unexpectedDeadline));
+    }
+
     [Fact]
     public async Task Install_ForcesWindowsSteamPlatformAndInitializesWineBeforePreparedMarker()
     {
@@ -171,8 +187,12 @@ public sealed class AskaImplementationTests
         Assert.False(File.Exists(paths.PreparationMarkerPath));
     }
 
+    /// <summary>
+    /// Verifies that a redelivered stop reexecutes its handler when preservation may have been interrupted.
+    /// </summary>
+    /// <returns>A task that completes after reconciliation and replay.</returns>
     [Fact]
-    public async Task ReconcileRedelivery_Stop_RepublishesPreservationIfProcessStoppedBeforeStopHandlerFinished()
+    public async Task ReconcileRedelivery_Stop_ReexecutesHandlerIfPreservationMayNotHaveFinished()
     {
         using var directory = new TemporaryDirectory();
         var connection = Connection();
@@ -207,15 +227,24 @@ public sealed class AskaImplementationTests
                 null),
             CancellationToken.None);
 
-        Assert.NotNull(result);
-        Assert.True(result.Succeeded, result.ErrorMessage);
-        Assert.Equal("already-stopped", result.Stage);
+        Assert.Null(result);
+        Assert.Equal(0, processController.StopCount);
+        Assert.Equal(0, storage.PublishCount);
+
+        var replayed = await executor.ExecuteAsync(Command(connection, "stop"), CancellationToken.None);
+
+        Assert.True(replayed.Succeeded, replayed.ErrorMessage);
+        Assert.Equal("already-stopped", replayed.Stage);
         Assert.Equal(1, processController.StopCount);
-        Assert.True(storage.PublishCount > 0);
+        Assert.Equal(1, storage.PublishCount);
     }
 
+    /// <summary>
+    /// Verifies that a redelivered fault-stop reexecutes diagnostics, stop, and preservation as one bounded handler.
+    /// </summary>
+    /// <returns>A task that completes after reconciliation and replay.</returns>
     [Fact]
-    public async Task ReconcileRedelivery_FaultStop_RepublishesPreservationWhenAlreadyStopped()
+    public async Task ReconcileRedelivery_FaultStop_ReexecutesCompleteBoundedHandlerWhenAlreadyStopped()
     {
         using var directory = new TemporaryDirectory();
         var connection = Connection();
@@ -232,12 +261,10 @@ public sealed class AskaImplementationTests
             process: processController,
             storage: storage);
 
-        var payload = JsonNode.Parse(Command(connection, "fault-stop").Payload)!.AsObject();
-        payload["faultEvidenceDeadline"] = JsonValue.Create(DateTimeOffset.UtcNow.AddSeconds(10));
-        var command = Command(connection, "fault-stop") with
-        {
-            Payload = payload.ToJsonString(CloudWorkerJson.Options),
-        };
+        var command = Command(
+            connection,
+            "fault-stop",
+            faultEvidenceDeadline: DateTimeOffset.UtcNow.AddSeconds(10));
 
         var result = await executor.ReconcileRedeliveryAsync(
             command,
@@ -257,11 +284,98 @@ public sealed class AskaImplementationTests
                 null),
             CancellationToken.None);
 
-        Assert.NotNull(result);
-        Assert.True(result.Succeeded, result.ErrorMessage);
-        Assert.Equal("already-stopped", result.Stage);
+        Assert.Null(result);
+        Assert.Equal(0, processController.StopCount);
+        Assert.Equal(0, storage.PublishCount);
+
+        var replayed = await executor.ExecuteAsync(command, CancellationToken.None);
+
+        Assert.True(replayed.Succeeded, replayed.ErrorMessage);
+        Assert.Equal("already-stopped", replayed.Stage);
         Assert.Equal(1, processController.StopCount);
-        Assert.True(storage.PublishCount > 0);
+        Assert.Equal(1, storage.PublishCount);
+    }
+
+    /// <summary>
+    /// Verifies that an expired fault-evidence deadline takes precedence over process observation during recovery.
+    /// </summary>
+    /// <returns>A task that completes after reconciliation.</returns>
+    [Fact]
+    public async Task ReconcileRedelivery_FaultStopExpired_DoesNotObserveOrReplay()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var processController = new AskaReplayProcessController();
+        var storage = new AskaReplayStorageTransfer();
+        var executor = new AskaWorkerCommandExecutor(
+            connection,
+            Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh")),
+            process: processController,
+            storage: storage);
+        var command = Command(connection, "fault-stop", faultEvidenceDeadline: DateTimeOffset.UtcNow.AddMinutes(-1));
+
+        var result = await executor.ReconcileRedeliveryAsync(
+            command,
+            JournalEntry(connection),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.False(result.Succeeded);
+        Assert.Equal("fault-evidence-deadline-expired", result.ErrorCode);
+        Assert.Equal(0, processController.ObserveCount);
+        Assert.Equal(0, processController.StopCount);
+        Assert.Equal(0, storage.PublishCount);
+    }
+
+    /// <summary>Verifies that ASKA obeys the shared preservation ownership flag during an ordinary stop.</summary>
+    /// <returns>A task that completes after stop execution.</returns>
+    [Fact]
+    public async Task Execute_StopWithoutPreservationOwnership_DoesNotPublishSnapshot()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var processController = new AskaReplayProcessController();
+        var storage = new AskaReplayStorageTransfer();
+        var executor = new AskaWorkerCommandExecutor(
+            connection,
+            Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh")),
+            process: processController,
+            storage: storage);
+
+        var result = await executor.ExecuteAsync(
+            Command(connection, "stop", preserveOnStop: false),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Equal(1, processController.StopCount);
+        Assert.Equal(0, storage.PublishCount);
+    }
+
+    /// <summary>Verifies that fault-stop reports deadline expiry when bounded stop work runs out of time.</summary>
+    /// <returns>A task that completes after the evidence deadline expires.</returns>
+    [Fact]
+    public async Task Execute_FaultStopDeadlineExpiresDuringStop_ReturnsDeadlineFailure()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var processController = new AskaReplayProcessController
+        {
+            StopDelay = TimeSpan.FromSeconds(5),
+        };
+        var executor = new AskaWorkerCommandExecutor(
+            connection,
+            Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh")),
+            process: processController,
+            storage: new AskaReplayStorageTransfer());
+        var command = Command(
+            connection,
+            "fault-stop",
+            faultEvidenceDeadline: DateTimeOffset.UtcNow.AddMilliseconds(100));
+
+        var result = await executor.ExecuteAsync(command, CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("fault-evidence-deadline-expired", result.ErrorCode);
     }
 
     private static IReadOnlyDictionary<string, JsonElement> DefaultConfiguration()
@@ -280,7 +394,11 @@ public sealed class AskaImplementationTests
             GameIdentifier = "aska",
         };
 
-    private static WorkerCommandClaimResponse Command(CloudWorkerConnectionConfig connection, string action)
+    private static WorkerCommandClaimResponse Command(
+        CloudWorkerConnectionConfig connection,
+        string action,
+        bool preserveOnStop = true,
+        DateTimeOffset? faultEvidenceDeadline = null)
     {
         var payload = new WorkerCommandPayload
         {
@@ -288,6 +406,8 @@ public sealed class AskaImplementationTests
             DeploymentId = connection.DeploymentId,
             GameIdentifier = "aska",
             ActionIdentifier = action,
+            PreserveOnStop = preserveOnStop,
+            FaultEvidenceDeadline = faultEvidenceDeadline,
             GracefulStopAttempts = 2,
             GracefulStopTimeoutSeconds = 30,
             Port = 27015,
@@ -309,6 +429,25 @@ public sealed class AskaImplementationTests
             Attempt = 1,
         };
     }
+
+    /// <summary>Creates a running journal entry for redelivery tests.</summary>
+    /// <param name="connection">Deployment-scoped worker connection.</param>
+    /// <returns>A running command journal entry.</returns>
+    private static WorkerCommandJournalEntry JournalEntry(CloudWorkerConnectionConfig connection)
+        => new(
+            Guid.NewGuid(),
+            connection.DeploymentId,
+            connection.WorkerId,
+            1,
+            "hash",
+            "payload-hash",
+            EWorkerCommandJournalState.Running,
+            "running",
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            1234,
+            DateTimeOffset.UtcNow,
+            null);
 
     private static CloudWorkerOptions Options(string root, string steamCmd, int? steamUserId = null)
         => new(
@@ -391,24 +530,36 @@ public sealed class AskaImplementationTests
 
     private sealed class AskaReplayProcessController : IAskaProcessController
     {
+        /// <summary>Gets the number of process observations.</summary>
+        public int ObserveCount { get; private set; }
+
+        /// <summary>Gets the number of stop attempts.</summary>
         public int StopCount { get; private set; }
 
+        /// <summary>Gets the optional delay applied to stop attempts.</summary>
+        public TimeSpan StopDelay { get; init; }
+
         public Task<AskaProcessObservation> ObserveAsync(CancellationToken cancellationToken)
-            => Task.FromResult(new AskaProcessObservation(false, null, null, null));
+        {
+            ObserveCount++;
+            return Task.FromResult(new AskaProcessObservation(false, null, null, null));
+        }
 
         public Task<WorkerCommandExecutionResult> StartAsync(
             IEnumerable<string> secrets,
             CancellationToken cancellationToken)
             => Task.FromResult(WorkerCommandExecutionResult.Success("not-used"));
 
-        public Task<WorkerCommandExecutionResult> StopAsync(
+        public async Task<WorkerCommandExecutionResult> StopAsync(
             bool force,
             TimeSpan timeout,
             int attempts,
             CancellationToken cancellationToken)
         {
             StopCount++;
-            return Task.FromResult(WorkerCommandExecutionResult.Success("already-stopped"));
+            if (StopDelay > TimeSpan.Zero)
+                await Task.Delay(StopDelay, cancellationToken);
+            return WorkerCommandExecutionResult.Success("already-stopped");
         }
 
         public Task<WorkerCommandExecutionResult> TerminateAsync(CancellationToken cancellationToken)

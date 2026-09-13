@@ -95,33 +95,24 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
     {
         var payload = AskaCommandPayload.Parse(command.Payload);
         payload.Validate(_connection, command);
+        var action = command.ActionIdentifier.Trim().ToLowerInvariant();
+        if (action is "fault-stop"
+            && payload.Command.FaultEvidenceDeadline <= DateTimeOffset.UtcNow)
+        {
+            return WorkerCommandExecutionResult.Failure(
+                "fault-evidence-window-expired",
+                "fault-evidence-deadline-expired",
+                "The persisted fault-evidence deadline expired before redelivery reconciliation.");
+        }
         using var observation = await _process.ObserveAsync(cancellationToken).ConfigureAwait(false);
         if (observation.Error is not null)
             return WorkerCommandExecutionResult.Failure(
                 "redelivery-reconcile-failed", "process-identity-invalid", observation.Error);
-        var action = command.ActionIdentifier.Trim().ToLowerInvariant();
         if (action is "start" && observation.IsRunning && observation.Identity is { Ready: true } identity)
             return WorkerCommandExecutionResult.Success(
                 "reconciled-running", processId: identity.ProcessId, processStartedAt: identity.ProcessStartedAt);
-        if (action is "fault-stop")
-        {
-            var deadline = payload.Command.FaultEvidenceDeadline
-                           ?? throw new InvalidDataException("Fault stop has no evidence deadline.");
-            if (deadline <= DateTimeOffset.UtcNow)
-                return WorkerCommandExecutionResult.Failure(
-                    "fault-evidence-window-expired",
-                    "fault-evidence-deadline-expired",
-                    "The persisted fault-evidence deadline expired before redelivery reconciliation.");
-            if (!observation.IsRunning)
-                return await StopAndPreserveAsync(command, payload, cancellationToken).ConfigureAwait(false);
-        }
-        if (action is "stop")
-        {
-            if (!observation.IsRunning)
-                return payload.Command.PreserveOnStop
-                    ? await StopAndPreserveAsync(command, payload, cancellationToken).ConfigureAwait(false)
-                    : WorkerCommandExecutionResult.Success("reconciled-stopped");
-        }
+        if (action is "stop" && !observation.IsRunning && !payload.Command.PreserveOnStop)
+            return WorkerCommandExecutionResult.Success("reconciled-stopped");
         if (action is "terminate" && !observation.IsRunning)
             return WorkerCommandExecutionResult.Success("reconciled-stopped");
         return null;
@@ -207,6 +198,11 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
             false, StopTimeout(payload), payload.Command.GracefulStopAttempts, cancellationToken).ConfigureAwait(false);
         if (!stopped.Succeeded)
             return stopped;
+        if (!payload.Command.PreserveOnStop)
+        {
+            _configurationRenderer.DeleteRuntimeConfiguration(_paths);
+            return stopped;
+        }
         try
         {
             await _configurationRenderer.SynchronizeSaveIdAsync(_paths, cancellationToken).ConfigureAwait(false);
@@ -233,12 +229,30 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
         var remaining = deadline - DateTimeOffset.UtcNow;
         if (remaining <= TimeSpan.Zero)
             return WorkerCommandExecutionResult.Failure(
-                "fault-evidence-window-expired", "fault-evidence-deadline-expired", "The fault evidence deadline expired.");
+                "fault-evidence-window-expired",
+                "fault-evidence-deadline-expired",
+                "The bounded fault-evidence deadline expired before worker execution began.");
         using var bounded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         bounded.CancelAfter(remaining);
-        var logs = await CollectLogsAsync(command.Secrets.Values, bounded.Token).ConfigureAwait(false);
-        var stopped = await StopAndPreserveAsync(command, payload, bounded.Token).ConfigureAwait(false);
-        return stopped with { Output = $"{logs.Output}\n{stopped.Output}" };
+        var diagnostics = "Fault diagnostics unavailable.";
+        try
+        {
+            var logs = await CollectLogsAsync(command.Secrets.Values, bounded.Token).ConfigureAwait(false);
+            diagnostics = logs.Output ?? logs.Stage;
+            var stopped = await StopAndPreserveAsync(command, payload, bounded.Token).ConfigureAwait(false);
+            return stopped with { Output = $"{diagnostics}\n{stopped.Output}" };
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested
+                                                  && bounded.IsCancellationRequested)
+        {
+            return WorkerCommandExecutionResult.Failure(
+                "fault-evidence-window-expired",
+                "fault-evidence-deadline-expired",
+                "The bounded fault-evidence deadline expired; provider teardown may continue.") with
+            {
+                Output = diagnostics,
+            };
+        }
     }
 
     private async Task<WorkerCommandExecutionResult> TerminateAsync(CancellationToken cancellationToken)
