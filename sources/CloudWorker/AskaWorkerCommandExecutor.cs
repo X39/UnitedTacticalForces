@@ -103,7 +103,26 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
         if (action is "start" && observation.IsRunning && observation.Identity is { Ready: true } identity)
             return WorkerCommandExecutionResult.Success(
                 "reconciled-running", processId: identity.ProcessId, processStartedAt: identity.ProcessStartedAt);
-        if (action is "stop" or "terminate" or "fault-stop" && !observation.IsRunning)
+        if (action is "fault-stop")
+        {
+            var deadline = payload.Command.FaultEvidenceDeadline
+                           ?? throw new InvalidDataException("Fault stop has no evidence deadline.");
+            if (deadline <= DateTimeOffset.UtcNow)
+                return WorkerCommandExecutionResult.Failure(
+                    "fault-evidence-window-expired",
+                    "fault-evidence-deadline-expired",
+                    "The persisted fault-evidence deadline expired before redelivery reconciliation.");
+            if (!observation.IsRunning)
+                return await StopAndPreserveAsync(command, payload, cancellationToken).ConfigureAwait(false);
+        }
+        if (action is "stop")
+        {
+            if (!observation.IsRunning)
+                return payload.Command.PreserveOnStop
+                    ? await StopAndPreserveAsync(command, payload, cancellationToken).ConfigureAwait(false)
+                    : WorkerCommandExecutionResult.Success("reconciled-stopped");
+        }
+        if (action is "terminate" && !observation.IsRunning)
             return WorkerCommandExecutionResult.Success("reconciled-stopped");
         return null;
     }
@@ -251,6 +270,8 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
         using var temporary = await RestrictedTemporaryFile.CreateAsync(
             _options.SteamCmd.TemporaryDirectory, "utf-aska-steamcmd", ".runscript", script, cancellationToken)
             .ConfigureAwait(false);
+        if (_options.SteamCmd.SteamUserId is { } steamUserId)
+            temporary.RestrictToUnixOwner(steamUserId);
         var steam = _launcher.CreateSteamCmd(
             _options.SteamCmd.SteamCmdPath,
             _paths.InstallPath,

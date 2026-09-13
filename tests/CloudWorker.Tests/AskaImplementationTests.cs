@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.Json;
 using X39.UnitedTacticalForces.CloudWorker;
 using X39.UnitedTacticalForces.GameServerImplementations;
@@ -117,6 +118,38 @@ public sealed class AskaImplementationTests
         Assert.True(runner.WinePrefixExistedAfterInitialization);
     }
 
+    /// <summary>
+    /// Verifies that ASKA SteamCMD runscripts are transferred to the configured Steam identity without granting
+    /// group or other access.
+    /// </summary>
+    /// <returns>A task that completes after the install command is exercised.</returns>
+    [Fact]
+    public async Task Install_OnLinux_TransfersRunScriptToSteamIdentityWithOwnerReadOnlyAccess()
+    {
+        if (!OperatingSystem.IsLinux())
+            return;
+
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var steamCmd = Path.Combine(directory.Path, "steamcmd.sh");
+        await File.WriteAllTextAsync(steamCmd, "fixture");
+        var effectiveUserId = int.Parse(
+            (await File.ReadAllLinesAsync("/proc/self/status"))
+            .Single(q => q.StartsWith("Uid:", StringComparison.Ordinal))
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[1]);
+        var options = Options(directory.Path, steamCmd, effectiveUserId);
+        var paths = new AskaRuntimePaths(
+            options.RuntimeRoot, options.StateDirectory, connection.DeploymentId, options.Aska.ExecutableRelativePath);
+        var runner = new PreparingRunner(paths);
+        var executor = new AskaWorkerCommandExecutor(
+            connection, options, runner, new StoppedProcessController(), new NoOpStorageTransfer());
+
+        var result = await executor.ExecuteAsync(Command(connection, "install"), CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.True(runner.SteamScriptWasOwnerReadOnly);
+    }
+
     [Fact]
     public async Task Install_WhenWineInitializationFails_DoesNotMarkRuntimePrepared()
     {
@@ -136,6 +169,99 @@ public sealed class AskaImplementationTests
         Assert.False(result.Succeeded);
         Assert.Equal("aska-wine-prefix-failed", result.ErrorCode);
         Assert.False(File.Exists(paths.PreparationMarkerPath));
+    }
+
+    [Fact]
+    public async Task ReconcileRedelivery_Stop_RepublishesPreservationIfProcessStoppedBeforeStopHandlerFinished()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var paths = new AskaRuntimePaths(
+            Path.Combine(directory.Path, "runtime"),
+            Path.Combine(directory.Path, "agent"),
+            connection.DeploymentId,
+            "AskaServer.exe");
+        var processController = new AskaReplayProcessController();
+        var storage = new AskaReplayStorageTransfer();
+        var executor = new AskaWorkerCommandExecutor(
+            connection,
+            Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh")),
+            process: processController,
+            storage: storage);
+
+        var result = await executor.ReconcileRedeliveryAsync(
+            Command(connection, "stop"),
+            new WorkerCommandJournalEntry(
+                Guid.NewGuid(),
+                connection.DeploymentId,
+                connection.WorkerId,
+                1,
+                "hash",
+                "payload-hash",
+                EWorkerCommandJournalState.Running,
+                "running",
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                1234,
+                DateTimeOffset.UtcNow,
+                null),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Equal("already-stopped", result.Stage);
+        Assert.Equal(1, processController.StopCount);
+        Assert.True(storage.PublishCount > 0);
+    }
+
+    [Fact]
+    public async Task ReconcileRedelivery_FaultStop_RepublishesPreservationWhenAlreadyStopped()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var paths = new AskaRuntimePaths(
+            Path.Combine(directory.Path, "runtime"),
+            Path.Combine(directory.Path, "agent"),
+            connection.DeploymentId,
+            "AskaServer.exe");
+        var processController = new AskaReplayProcessController();
+        var storage = new AskaReplayStorageTransfer();
+        var executor = new AskaWorkerCommandExecutor(
+            connection,
+            Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh")),
+            process: processController,
+            storage: storage);
+
+        var payload = JsonNode.Parse(Command(connection, "fault-stop").Payload)!.AsObject();
+        payload["faultEvidenceDeadline"] = JsonValue.Create(DateTimeOffset.UtcNow.AddSeconds(10));
+        var command = Command(connection, "fault-stop") with
+        {
+            Payload = payload.ToJsonString(CloudWorkerJson.Options),
+        };
+
+        var result = await executor.ReconcileRedeliveryAsync(
+            command,
+            new WorkerCommandJournalEntry(
+                Guid.NewGuid(),
+                connection.DeploymentId,
+                connection.WorkerId,
+                1,
+                "hash",
+                "payload-hash",
+                EWorkerCommandJournalState.Running,
+                "running",
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow,
+                1234,
+                DateTimeOffset.UtcNow,
+                null),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Equal("already-stopped", result.Stage);
+        Assert.Equal(1, processController.StopCount);
+        Assert.True(storage.PublishCount > 0);
     }
 
     private static IReadOnlyDictionary<string, JsonElement> DefaultConfiguration()
@@ -184,7 +310,7 @@ public sealed class AskaImplementationTests
         };
     }
 
-    private static CloudWorkerOptions Options(string root, string steamCmd)
+    private static CloudWorkerOptions Options(string root, string steamCmd, int? steamUserId = null)
         => new(
             Path.Combine(root, "bootstrap.json"),
             Path.Combine(root, "agent"),
@@ -193,7 +319,14 @@ public sealed class AskaImplementationTests
             TimeSpan.FromSeconds(1),
             true,
             false,
-            new Arma3WorkerOptions(steamCmd, "anonymous", null, null, "arma3server_x64", TimeSpan.FromSeconds(30))
+            new Arma3WorkerOptions(
+                steamCmd,
+                "anonymous",
+                null,
+                null,
+                "arma3server_x64",
+                TimeSpan.FromSeconds(30),
+                SteamUserId: steamUserId)
             {
                 TemporaryDirectory = Path.Combine(root, "tmp"),
             })
@@ -207,6 +340,8 @@ public sealed class AskaImplementationTests
     {
         public int RunCount { get; private set; }
         public string SteamScript { get; private set; } = string.Empty;
+        /// <summary>Gets whether the SteamCMD runscript had owner-read-only permissions when execution began.</summary>
+        public bool SteamScriptWasOwnerReadOnly { get; private set; }
         public bool WinePrefixExistedAfterInitialization { get; private set; }
 
         public async Task<ProcessCommandResult> RunAsync(
@@ -216,6 +351,9 @@ public sealed class AskaImplementationTests
             RunCount++;
             if (RunCount == 1)
             {
+                if (!OperatingSystem.IsWindows())
+                    SteamScriptWasOwnerReadOnly = File.GetUnixFileMode(startInfo.ArgumentList[^1])
+                                                  == UnixFileMode.UserRead;
                 SteamScript = await File.ReadAllTextAsync(startInfo.ArgumentList[^1], cancellationToken);
                 Directory.CreateDirectory(paths.InstallPath);
                 await File.WriteAllTextAsync(paths.ExecutablePath, "fixture", cancellationToken);
@@ -231,6 +369,7 @@ public sealed class AskaImplementationTests
 
     private sealed class StoppedProcessController : IAskaProcessController
     {
+        public int StopCount { get; private set; }
         public Task<AskaProcessObservation> ObserveAsync(CancellationToken cancellationToken)
             => Task.FromResult(new AskaProcessObservation(false, null, null, null));
         public Task<WorkerCommandExecutionResult> StartAsync(
@@ -242,9 +381,61 @@ public sealed class AskaImplementationTests
             TimeSpan timeout,
             int attempts,
             CancellationToken cancellationToken)
-            => Task.FromResult(WorkerCommandExecutionResult.Success("already-stopped"));
+        {
+            StopCount++;
+            return Task.FromResult(WorkerCommandExecutionResult.Success("already-stopped"));
+        }
         public Task<WorkerCommandExecutionResult> TerminateAsync(CancellationToken cancellationToken)
             => Task.FromResult(WorkerCommandExecutionResult.Success("already-stopped"));
+    }
+
+    private sealed class AskaReplayProcessController : IAskaProcessController
+    {
+        public int StopCount { get; private set; }
+
+        public Task<AskaProcessObservation> ObserveAsync(CancellationToken cancellationToken)
+            => Task.FromResult(new AskaProcessObservation(false, null, null, null));
+
+        public Task<WorkerCommandExecutionResult> StartAsync(
+            IEnumerable<string> secrets,
+            CancellationToken cancellationToken)
+            => Task.FromResult(WorkerCommandExecutionResult.Success("not-used"));
+
+        public Task<WorkerCommandExecutionResult> StopAsync(
+            bool force,
+            TimeSpan timeout,
+            int attempts,
+            CancellationToken cancellationToken)
+        {
+            StopCount++;
+            return Task.FromResult(WorkerCommandExecutionResult.Success("already-stopped"));
+        }
+
+        public Task<WorkerCommandExecutionResult> TerminateAsync(CancellationToken cancellationToken)
+            => Task.FromResult(WorkerCommandExecutionResult.Success("not-used"));
+    }
+
+    private sealed class AskaReplayStorageTransfer : ICloudWorkerStorageTransfer
+    {
+        public int PublishCount { get; private set; }
+
+        public Task ResetPersistentOverlayAsync(string deploymentRoot, CancellationToken cancellationToken)
+            => Task.CompletedTask;
+
+        public Task ApplyPersistentSnapshotAsync(
+            WorkerCommandClaimResponse command,
+            string deploymentRoot,
+            CancellationToken cancellationToken)
+            => Task.CompletedTask;
+
+        public Task PublishPreservationAsync(
+            WorkerCommandClaimResponse command,
+            string deploymentRoot,
+            CancellationToken cancellationToken)
+        {
+            PublishCount++;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class NoOpStorageTransfer : ICloudWorkerStorageTransfer
