@@ -85,6 +85,19 @@ BREAKING CHANGE: Explain what changed and what users must update.
 
 For non-breaking commits, keep any body short and explain only what changed and why.
 
+## Subagent delegation
+
+Subagent delegation is explicitly requested by this AGENTS.md.
+
+If work can be divided into concrete, independent tasks and delegation could save time or improve quality, the root
+agent should spawn subagents with the collaboration tools and run those tasks in parallel. This applies especially to
+independent codebase exploration, test execution, log analysis, review, and validation. Do not wait for the user to
+repeat the request.
+
+Give every subagent a bounded task, relevant constraints, and a required result. Keep short tasks, tightly ordered
+steps, and conflicting edits in the root agent. Coordinate agents that share a filesystem, wait for all required
+results, and synthesize their evidence before reporting completion.
+
 ## Project
 
 **United Tactical Forces - Cloud Game Server Orchestration**
