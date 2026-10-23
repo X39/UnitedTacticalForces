@@ -4,9 +4,17 @@
 !sources/**
 !deploy/
 !deploy/**
+!X39.UnitedTacticalForces.slnx
+!ReadMe.md
+!tests/
+!tests/**
+!.mozaic/
+!.mozaic/check-dotnet-release.sh
 
 sources/**/bin/
 sources/**/obj/
+tests/**/bin/
+tests/**/obj/
 sources/ReactApp/node_modules/
 sources/ReactApp/dist/
 sources/ReactApp/playwright-report/

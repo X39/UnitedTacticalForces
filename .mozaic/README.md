@@ -37,6 +37,10 @@ any denied package host in bounded logs before reviewing allowlist changes.
 
 ## Full release continuation
 
+The separate `release.yml` definition and `RELEASE.md` now contain the full
+component pipeline, registry bindings and activation gates. The original static
+definition remains unchanged.
+
 The static acceptance pipeline is the first handoff, not full application release
 approval. Keep API, web, native CloudWorker and ASKA images in the full release.
 CloudWorker and ASKA are per-deployment release dependencies; they must not become
@@ -48,8 +52,8 @@ and runtime digest
 `ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe`,
 which are absent from the approved seven-image profile. Operator approval and
 preloading, exact component repository IDs, package download host review, and
-native builder compatibility/capacity acceptance are required before adding their
-publication jobs. Do not silently substitute unrelated bases or enlarge limits.
+native builder compatibility/capacity acceptance are required before enabling
+their publication jobs. Do not silently substitute unrelated bases or enlarge limits.
 
 Full release checks still include solution build/tests, API and Blazor publishing,
 React CI and Chromium tests, OpenAPI snapshot comparison, actual component OCI

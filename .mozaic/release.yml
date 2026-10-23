@@ -1,0 +1,331 @@
+# Full release definition. Register only after component bindings and worker base approvals are verified.
+# Require every job and all four same-run immutable publication receipts before activation.
+version: 1
+triggers:
+  - trusted_branch
+jobs:
+  react-tests:
+    image: docker.io/library/node@sha256:fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e
+    runs_on:
+      labels:
+        host-profile: debian-13-trusted-organization-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 1536
+      scratch_mib: 1024
+      pids: 256
+      log_mib: 32
+    network:
+      mode: http_https
+      allow_hosts:
+        - registry.npmjs.org
+    timeout_minutes: 30
+    steps:
+      - name: Check React contracts, locales, types, tests and static assets
+        run: |
+          set -eu
+          export HOME=/workspace/.home npm_config_cache=/workspace/.npm-cache
+          mkdir -p "$HOME"
+          # Source transfer excludes .git. Establish a local, credential-free
+          # baseline so UTF's generated-file checks can use git diff.
+          git init --quiet
+          git -c core.autocrlf=false add --all
+          git -c user.name='Mozaic snapshot' -c user.email=snapshot@mozaic.invalid commit --quiet -m baseline
+          cd sources/ReactApp
+          npm ci
+          npm run contracts:check
+          npm run locales:check
+          npm run format:check
+          npm run lint
+          npm run typecheck
+          npm test -- --maxWorkers=1
+          npm run build:assets
+  dotnet-release:
+    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    needs:
+      - react-tests
+    runs_on:
+      labels:
+        host-profile: debian-13-trusted-organization-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 1536
+      scratch_mib: 1024
+      pids: 256
+      log_mib: 32
+    network:
+      mode: http_https
+      allow_hosts:
+        - deb.debian.org
+        - security.debian.org
+        - registry.npmjs.org
+        - cdn.playwright.dev
+        - playwright.download.prss.microsoft.com
+        - api.nuget.org
+        - globalcdn.nuget.org
+    timeout_minutes: 30
+    steps:
+      - name: Build and verify proof
+        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
+        with:
+          dockerfile: .mozaic/dotnet-release.Containerfile
+          target: proof
+          output: image.tar
+          base-images: >-
+            {"node:24.11.1-bookworm":"docker.io/library/node@sha256:fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e","mcr.microsoft.com/dotnet/sdk:10.0.201":"mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c"}
+  react-browser:
+    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    needs:
+      - dotnet-release
+    runs_on:
+      labels:
+        host-profile: debian-13-trusted-organization-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 1536
+      scratch_mib: 1024
+      pids: 256
+      log_mib: 32
+    network:
+      mode: http_https
+      allow_hosts:
+        - deb.debian.org
+        - security.debian.org
+        - registry.npmjs.org
+        - cdn.playwright.dev
+        - playwright.download.prss.microsoft.com
+    timeout_minutes: 30
+    steps:
+      - name: Build and verify proof
+        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
+        with:
+          dockerfile: .mozaic/react-browser.Containerfile
+          target: proof
+          output: image.tar
+          base-images: >-
+            {"node:24.11.1-bookworm":"docker.io/library/node@sha256:fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e"}
+  utf-ownership:
+    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    needs:
+      - react-browser
+    runs_on:
+      labels:
+        host-profile: debian-13-trusted-organization-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 1536
+      scratch_mib: 1024
+      pids: 256
+      log_mib: 32
+    network:
+      mode: http_https
+      allow_hosts:
+        - deb.debian.org
+        - security.debian.org
+        - pypi.org
+        - files.pythonhosted.org
+    timeout_minutes: 30
+    steps:
+      - name: Verify native package installation and filesystem ownership
+        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
+        with:
+          dockerfile: .mozaic/native-package-ownership.Containerfile
+          target: utf-ownership
+          output: ownership.tar
+          base-images: >-
+            {"mcr.microsoft.com/dotnet/aspnet:10.0":"mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b","python:3.11-slim-bookworm":"docker.io/library/python@sha256:8fb0b110b022c70cbe09d3ff1fb313654f31f9c814abb0d48180af56d906a199"}
+  media-ownership:
+    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    needs:
+      - utf-ownership
+    runs_on:
+      labels:
+        host-profile: debian-13-trusted-organization-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 1536
+      scratch_mib: 1024
+      pids: 256
+      log_mib: 32
+    network:
+      mode: http_https
+      allow_hosts:
+        - deb.debian.org
+        - security.debian.org
+        - pypi.org
+        - files.pythonhosted.org
+    timeout_minutes: 30
+    steps:
+      - name: Verify native package installation and filesystem ownership
+        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
+        with:
+          dockerfile: .mozaic/native-package-ownership.Containerfile
+          target: media-ownership
+          output: ownership.tar
+          base-images: >-
+            {"mcr.microsoft.com/dotnet/aspnet:10.0":"mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b","python:3.11-slim-bookworm":"docker.io/library/python@sha256:8fb0b110b022c70cbe09d3ff1fb313654f31f9c814abb0d48180af56d906a199"}
+  build-worker:
+    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    needs:
+      - media-ownership
+    runs_on:
+      labels:
+        host-profile: debian-13-trusted-organization-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 1536
+      scratch_mib: 1024
+      pids: 256
+      log_mib: 32
+    network:
+      mode: http_https
+      allow_hosts:
+        - deb.debian.org
+        - security.debian.org
+        - api.nuget.org
+        - globalcdn.nuget.org
+        - steamcdn-a.akamaihd.net
+    timeout_minutes: 30
+    steps:
+      - name: Build and verify runtime
+        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
+        with:
+          dockerfile: sources/CloudWorker/Dockerfile
+          target: runtime
+          output: image.tar
+          base-images: >-
+            {"mcr.microsoft.com/dotnet/sdk:10.0@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f":"mcr.microsoft.com/dotnet/sdk@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f","mcr.microsoft.com/dotnet/runtime:10.0@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe":"mcr.microsoft.com/dotnet/runtime@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe"}
+      - name: Publish the exact successful trusted image through the native importer
+        publish_in_package_registry:
+          registry:
+            id: 01a166b4-bc34-7973-a711-bf840c866313
+          source:
+            adapter: oci
+            repository: utf/cloud-worker
+            path: image.tar
+            format: oci_image_layout_tar_v1
+            tags:
+              - release
+  build-aska:
+    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    needs:
+      - build-worker
+    runs_on:
+      labels:
+        host-profile: debian-13-trusted-organization-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 1536
+      scratch_mib: 1024
+      pids: 256
+      log_mib: 32
+    network:
+      mode: http_https
+      allow_hosts:
+        - deb.debian.org
+        - security.debian.org
+        - api.nuget.org
+        - globalcdn.nuget.org
+        - steamcdn-a.akamaihd.net
+    timeout_minutes: 30
+    steps:
+      - name: Build and verify runtime
+        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
+        with:
+          dockerfile: sources/CloudWorker/Dockerfile.Aska
+          target: runtime
+          output: image.tar
+          base-images: >-
+            {"mcr.microsoft.com/dotnet/sdk:10.0@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f":"mcr.microsoft.com/dotnet/sdk@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f","mcr.microsoft.com/dotnet/runtime:10.0@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe":"mcr.microsoft.com/dotnet/runtime@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe"}
+      - name: Publish the exact successful trusted image through the native importer
+        publish_in_package_registry:
+          registry:
+            id: 01a166b4-bc34-7973-a711-bf840c866313
+          source:
+            adapter: oci
+            repository: utf/cloud-worker-aska
+            path: image.tar
+            format: oci_image_layout_tar_v1
+            tags:
+              - release
+  build-api:
+    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    needs:
+      - build-aska
+    runs_on:
+      labels:
+        host-profile: debian-13-trusted-organization-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 1536
+      scratch_mib: 1024
+      pids: 256
+      log_mib: 32
+    network:
+      mode: http_https
+      allow_hosts:
+        - deb.debian.org
+        - security.debian.org
+        - api.nuget.org
+        - globalcdn.nuget.org
+    timeout_minutes: 30
+    steps:
+      - name: Build and verify api
+        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
+        with:
+          dockerfile: Dockerfile
+          target: api
+          output: image.tar
+          base-images: >-
+            {"mcr.microsoft.com/dotnet/sdk:10.0.201":"mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c","mcr.microsoft.com/dotnet/aspnet:10.0":"mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b","node:24.11.1-alpine":"docker.io/library/node@sha256:b3c2a6ebd4b9b3d1a3f8a58252c07b680e442e61ce1306ebdbc408ddf27cec14","nginx:1.29-alpine":"docker.io/library/nginx@sha256:3bcf852aed06467cf075c6105892e4d5a6ebbbafa0ce22d35062db9e90ddef4c"}
+      - name: Publish the exact successful trusted image through the native importer
+        publish_in_package_registry:
+          registry:
+            id: 01a166b4-bc34-7973-a711-bf840c866313
+          source:
+            adapter: oci
+            repository: utf/api
+            path: image.tar
+            format: oci_image_layout_tar_v1
+            tags:
+              - release
+  build-web:
+    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    needs:
+      - build-api
+    runs_on:
+      labels:
+        host-profile: debian-13-trusted-organization-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 1536
+      scratch_mib: 1024
+      pids: 256
+      log_mib: 32
+    network:
+      mode: http_https
+      allow_hosts:
+        - api.nuget.org
+        - globalcdn.nuget.org
+        - registry.npmjs.org
+    timeout_minutes: 30
+    steps:
+      - name: Build the existing Dockerfile web target without a host socket
+        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
+        with:
+          dockerfile: Dockerfile
+          target: web
+          output: image.tar
+          base-images: >-
+            {"mcr.microsoft.com/dotnet/sdk:10.0.201":"mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c","mcr.microsoft.com/dotnet/aspnet:10.0":"mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b","node:24.11.1-alpine":"docker.io/library/node@sha256:b3c2a6ebd4b9b3d1a3f8a58252c07b680e442e61ce1306ebdbc408ddf27cec14","nginx:1.29-alpine":"docker.io/library/nginx@sha256:3bcf852aed06467cf075c6105892e4d5a6ebbbafa0ce22d35062db9e90ddef4c"}
+      - name: Publish the exact successful trusted image through the native importer
+        publish_in_package_registry:
+          registry:
+            id: 01a166b4-bc34-7973-a711-bf840c866313
+          source:
+            adapter: oci
+            repository: utf/web
+            path: image.tar
+            format: oci_image_layout_tar_v1
+            tags:
+              - release
