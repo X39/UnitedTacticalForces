@@ -112,17 +112,14 @@ test("renders the event workflow and confirms attendance changes that release a 
       ],
     }),
   );
-  await page.route(
-    `**/api/events/${eventId}/mod-pack-formats/arma3-launcher-html`,
-    (route) => {
-      formatDownloadPaths.push(new URL(route.request().url()).pathname);
-      return route.fulfill({
-        status: 200,
-        contentType: "text/html",
-        body: "<!doctype html><title>UTF Main</title>",
-      });
-    },
-  );
+  await page.route(`**/api/events/${eventId}/mod-pack-formats/arma3-launcher-html`, (route) => {
+    formatDownloadPaths.push(new URL(route.request().url()).pathname);
+    return route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: "<!doctype html><title>UTF Main</title>",
+    });
+  });
   await page.route(`**/api/events/${eventId}/slotting/all`, (route) =>
     route.fulfill({ json: slots }),
   );
@@ -175,9 +172,9 @@ test("renders the event workflow and confirms attendance changes that release a 
 
   const formatDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Arma 3 Launcher" }).click();
-  await expect.poll(() => formatDownloadPaths).toEqual([
-    `/api/events/${eventId}/mod-pack-formats/arma3-launcher-html`,
-  ]);
+  await expect
+    .poll(() => formatDownloadPaths)
+    .toEqual([`/api/events/${eventId}/mod-pack-formats/arma3-launcher-html`]);
   expect((await formatDownload).suggestedFilename()).toBe("UTF Main.html");
 
   await page.getByRole("button", { name: /Pending/ }).click();
