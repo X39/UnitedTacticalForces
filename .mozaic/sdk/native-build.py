@@ -24,6 +24,41 @@ ARCHIVES = {"archives/" + name for name in
             ("api.oci.tar", "worker.oci.tar", "aska.oci.tar", "nginx.oci.tar", "SHA256SUMS")}
 
 
+class OwnershipFailure(ValueError):
+    """A source, host, stage or cleanup identity failed its existing fence."""
+
+
+class CommandFailure(ValueError):
+    """A bounded native command returned an unaccepted status."""
+
+
+class FutureHeartbeat(TimeoutError):
+    """The observed shared-file timestamp is ahead of the native clock."""
+
+
+class StaleHeartbeat(TimeoutError):
+    """The observed heartbeat exceeded the existing freshness bound."""
+
+
+def failure_message(error):
+    """Return only a fixed reason code; never interpolate exception data."""
+    if isinstance(error, FutureHeartbeat):
+        code = "HEARTBEAT_FUTURE"
+    elif isinstance(error, StaleHeartbeat):
+        code = "HEARTBEAT_STALE"
+    elif isinstance(error, OwnershipFailure):
+        code = "OWNERSHIP_FAILURE"
+    elif isinstance(error, (CommandFailure, subprocess.CalledProcessError)):
+        code = "COMMAND_NONZERO"
+    elif isinstance(error, InterruptedError):
+        code = "CANCELLED"
+    elif isinstance(error, (TimeoutError, subprocess.TimeoutExpired)):
+        code = "TIMEOUT"
+    else:
+        code = "INTERNAL_ERROR"
+    return "Native preparation failed [" + code + "]; retain attempt logs/stage and inspect exact owned scope."
+
+
 def required_files(profile):
     if profile not in PROFILES:
         raise ValueError("unknown dependency profile")
@@ -64,7 +99,7 @@ def run(arguments, request, seconds=30, capture=True, accepted=(0,)):
                                stdout=subprocess.PIPE if capture else None,
                                stderr=subprocess.PIPE if capture else None)
     if completed.returncode not in accepted:
-        raise ValueError("native preparation command failed")
+        raise CommandFailure("native preparation command failed")
     return completed.stdout
 
 
@@ -75,11 +110,11 @@ def validate_host(info, graph_root, uid, gid):
             or host["cgroupManager"] != "systemd" or host["cgroupVersion"] != "v2"
             or info["store"]["graphRoot"] != graph_root
             or not {"cpu", "memory", "pids"}.issubset(host["cgroupControllers"])):
-        raise ValueError("native engine does not match inspected rootless release identity")
+        raise OwnershipFailure("native engine does not match inspected rootless release identity")
     for kind in ("uidmap", "gidmap"):
         roots = [item for item in host["idMappings"][kind] if item["container_id"] == 0]
         if roots != [{"container_id": 0, "host_id": 1000, "size": 1}]:
-            raise ValueError("native engine identity mapping changed")
+            raise OwnershipFailure("native engine identity mapping changed")
 
 
 def preflight(request):
@@ -90,29 +125,29 @@ def preflight(request):
     info = json.loads(run(["/usr/bin/podman", "--remote=false", "info", "--format=json"], request))
     validate_host(info, request["graph_root"], os.getuid(), os.getgid())
     if os.stat("/var/tmp").st_dev != os.stat(request["graph_root"]).st_dev:
-        raise ValueError("native staging must share the monitored image-store filesystem")
+        raise OwnershipFailure("native staging must share the monitored image-store filesystem")
     observed = run(["/usr/bin/systemctl", "--user", "show", request["slice"],
                     "--property=ControlGroup", "--value"], request).strip()
     if observed != request["cgroup_path"]:
-        raise ValueError("systemd slice and inspected cgroup path differ")
+        raise OwnershipFailure("systemd slice and inspected cgroup path differ")
     parent = Path("/sys/fs/cgroup" + observed)
     expected = {"cpu.max": "600000 100000", "memory.max": "12884901888",
                 "memory.swap.max": "0", "pids.max": "512"}
     for name, value in expected.items():
         if (parent / name).read_text().strip() != value:
-            raise ValueError("parent resource bounds differ from accepted six-CPU/12-GiB/512-PID contract")
+            raise OwnershipFailure("parent resource bounds differ from accepted six-CPU/12-GiB/512-PID contract")
     if ("populated 0" not in (parent / "cgroup.events").read_text().splitlines()
             or not {"cpu", "memory", "pids"}.issubset((parent / "cgroup.controllers").read_text().split())):
-        raise ValueError("preparation parent is occupied or lacks resource controllers")
+        raise OwnershipFailure("preparation parent is occupied or lacks resource controllers")
     return parent
 
 
 def plain_file(path):
     for ancestor in [path, *path.parents]:
         if ancestor.is_symlink():
-            raise ValueError("native source ancestry contains a symlink")
+            raise OwnershipFailure("native source ancestry contains a symlink")
     if not stat.S_ISREG(path.lstat().st_mode):
-        raise ValueError("native context input is not a regular file")
+        raise OwnershipFailure("native context input is not a regular file")
 
 
 def stage_context(source, destination, files, deadline):
@@ -131,15 +166,17 @@ def stage_context(source, destination, files, deadline):
                 hasher.update(block)
                 outgoing.write(block)
         if hasher.hexdigest() != expected:
-            raise ValueError("staged dependency input hash differs from reviewed context")
+            raise OwnershipFailure("staged dependency input hash differs from reviewed context")
 
 
 def check_heartbeat(request):
     path = Path(request["heartbeat"])
     plain_file(path)
     age = time.time() - path.stat().st_mtime
-    if not 0 <= age <= 45:
-        raise TimeoutError("operator heartbeat is stale; stop the owned attempt")
+    if age < 0:
+        raise FutureHeartbeat("operator heartbeat timestamp is ahead of the native clock")
+    if not age <= 45:
+        raise StaleHeartbeat("operator heartbeat is stale; stop the owned attempt")
 
 
 def stop_owned_scope(parent, scope):
@@ -153,9 +190,9 @@ def stop_owned_scope(parent, scope):
         subprocess.run(["/usr/bin/systemctl", "--user", "stop", scope],
                        capture_output=True, timeout=5, check=True)
         if (parent / scope).exists():
-            raise ValueError("owned scope remains after stop; retain failed attempt for inspection")
+            raise OwnershipFailure("owned scope remains after stop; retain failed attempt for inspection")
     elif observed or (parent / scope).exists():
-        raise ValueError("scope identity changed; refuse broad cleanup and retain stage")
+        raise OwnershipFailure("scope identity changed; refuse broad cleanup and retain stage")
 
 
 def observe_leader_exit(process):
@@ -205,7 +242,7 @@ def supervise(command, request, parent, scope):
         if pending_cancel is not None:
             raise InterruptedError("native preparation cancelled before completion")
         if returncode != 0:
-            raise ValueError("native dependency build failed")
+            raise CommandFailure("native dependency build failed")
         success = True
     finally:
         # Finalize every launched group, including normal leader exit. Nonreaping
@@ -249,11 +286,11 @@ def build(request):
     scope = "mozaic-sdk-" + name + ".scope"
     state = run(["/usr/bin/systemctl", "--user", "show", scope, "--property=LoadState", "--value"], request, accepted=(0, 1)).strip()
     if state != "not-found" or (parent / scope).exists():
-        raise ValueError("attempt-owned build scope is stale or already exists")
+        raise OwnershipFailure("attempt-owned build scope is stale or already exists")
     stage = Path("/var/tmp/utf-sdk-" + identity + "-" + profile)
     stage_context(Path(request["context"]), stage, request["files"], request["deadline"])
     if (stage.stat().st_uid, stage.stat().st_gid, stat.S_IMODE(stage.stat().st_mode)) != (1000, 1000, 0o700):
-        raise ValueError("native stage ownership or permissions changed")
+        raise OwnershipFailure("native stage ownership or permissions changed")
     tag = "localhost/utf-dependencies-" + profile + ":" + identity
     # All names are generated from validated profile/GUID fields. No caller-supplied
     # Podman arguments, application files, host mounts or engine socket enter RUN.
@@ -276,9 +313,9 @@ def build(request):
     supervise(command, request, parent, scope)
     if (parent / scope).exists():
         stop_owned_scope(parent, scope)
-        raise ValueError("native build scope remains after successful CLI exit; retain stage for inspection")
+        raise OwnershipFailure("native build scope remains after successful CLI exit; retain stage for inspection")
     if stage.parent != Path("/var/tmp") or stage.name != "utf-sdk-" + identity + "-" + profile or stage.is_symlink():
-        raise ValueError("unexpected native cleanup path")
+        raise OwnershipFailure("unexpected native cleanup path")
     shutil.rmtree(stage)
 
 
@@ -294,5 +331,5 @@ if __name__ == "__main__":
             print("Native rootless engine, graph root and empty bounded parent verified.")
         else:
             build(request)
-    except (ValueError, OSError, KeyError, TypeError, TimeoutError, subprocess.SubprocessError):
-        raise SystemExit("Native preparation failed; retain attempt logs/stage and inspect exact owned scope.") from None
+    except Exception as error:
+        raise SystemExit(failure_message(error)) from None

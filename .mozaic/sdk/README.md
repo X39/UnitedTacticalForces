@@ -295,6 +295,7 @@ $env:UTF_OCI_VALIDATOR = 'A:/releases/mozaic-oci-independent-20261024/validate.e
 <trusted-python.exe> -B .mozaic/sdk/test_archive.py -v
 <trusted-python.exe> -B .mozaic/sdk/test_canonicalize.py -v
 <trusted-python.exe> -B .mozaic/sdk/test_native.py -v
+<trusted-python.exe> -B .mozaic/sdk/test_native_build.py -v
 ```
 
 The Windows tests use actual junction and competing-process output claims plus
@@ -321,6 +322,20 @@ The native tests also cover closed context selection, staged byte hashes, stale
 context refusal, graph-root/identity binding, heartbeat age and exact own-scope
 cancellation routing. Their supervision test uses substitutes only to check
 control flow; it does not claim that real cgroup descendants have terminated.
+The diagnostic fixtures additionally use actual future/stale heartbeat files,
+nonzero and timed-out child commands, a source-hash refusal and malformed CLI
+input. On Linux, the exact-scope cleanup callback must have run and real
+supervised nonzero/deadline children must be reaped before supervision returns
+or raises. That callback is substituted
+in this fixture; the separate POSIX and actual RUN acceptance remain required.
+
+The native helper reports only fixed failure codes: `HEARTBEAT_FUTURE`,
+`HEARTBEAT_STALE`, `OWNERSHIP_FAILURE`, `COMMAND_NONZERO`, `TIMEOUT`, `CANCELLED`
+or `INTERNAL_ERROR`. No exception text, command arguments, environment or paths
+are interpolated into that diagnostic. Unknown exceptions fail closed as
+`INTERNAL_ERROR`. These codes distinguish the failed guard without changing its
+behavior: any future heartbeat timestamp still fails, and the existing 45-second
+freshness limit, deadlines, process-group reservation and scope cleanup apply.
 
 The POSIX regressions use real test-owned processes: one combines a leader exiting
 on TERM, a TERM-resistant descendant and a real hung DBus-query substitute; the
@@ -368,6 +383,28 @@ CPU6/memory12GiB/swap0/PID512 limits, no added container or image, and both exis
 containers and all 64 preexisting image IDs preserved. No pruning or storage
 removal was needed. The local callback regression above covers the correction;
 it does not substitute for a later full preparation run.
+
+The next full dependency-only attempt used committed source
+`4c18da5701a7a3a1acef8eaf17c114184016bf15`. Evidence is retained at
+`A:/releases/utf-canonical-preparation-20261024-4c18da57`. It stopped after
+297.218 seconds with no retry. API and worker archives passed canonical and real
+protocol validation. ASKA installed its Wine/i386 dependencies and verified the
+SteamCMD archive, then stopped during final receipt generation. The retained
+receipt for `libpython3.12t64:amd64=3.12.3-1ubuntu0.17` has an empty authenticated
+index file; the old generic native diagnostic does not prove whether its
+`apt-cache` query failed or supervision interrupted it. No APT or timestamp fence
+has been changed on that evidence. Nginx, the combined SDK and browser smokes did
+not run. The fixed diagnostic codes above prepare a later attempt to distinguish
+those outcomes; their tests do not establish the earlier failure's cause.
+
+That attempt's final ownership audit preserved all 69 image IDs returned by the
+initial image inventory and both unrelated containers, including their IDs,
+base images, PIDs and states. The parent was released empty with its original
+bounds, all three attempt scopes and owned processes absent, and no OOM/PID-limit
+events. Two completed images, the exact PID0 failed Buildah storage container,
+and its mode0700 source-only stage remain for diagnosis. Sampled combined growth
+peaked at 2,361,406,500 bytes, with at least 220,129,906,688 bytes free on A:.
+These are sampled monitoring results, not a hard whole-engine storage quota.
 
 Future application work must use `utf-dotnet-201` in the root context and
 `utf-dotnet-302` in an isolated worker context with its own explicit 10.0.302
