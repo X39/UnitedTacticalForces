@@ -128,6 +128,21 @@ its systemd ControlGroup identity. Cleanup has finite process and systemctl caps
 and sends group KILL unconditionally after the two-second TERM grace, even when
 the group leader exited. This occurs before the systemd query, so a hung query
 cannot skip group termination.
+Cancellation is deferred and recorded while `Popen` establishes its process
+object and POSIX exec/session handshake, throughout supervision and through owned
+cleanup. The same nonraising callbacks remain installed for that entire lifetime;
+there is no per-signal transition to raising handlers or SIG_IGN during cleanup.
+The loop checks pending cancellation, including after leader exit before reporting
+success. Group and exact-scope finalization run unconditionally for every launched
+process, including a successful leader exit. Linux `waitid(..., WNOWAIT)` observes
+that exit without reaping the leader, reserving its PID/PGID until the final group
+KILL and scope-stop attempt; this prevents signaling an unrelated recycled group.
+Preflight requires default SIGCHLD handling so that reservation cannot be lost to
+automatic or custom-handler reaping. The leader is then reaped before restoring
+prior handlers. If group/scope release cannot be verified, the attempt fails with
+its fence retained and nonraising callbacks remain installed until CLI exit.
+This defers Python callbacks without blocking OS signals or using a child pre-exec
+hook, so the child retains normal signal behavior.
 It reserves 15 seconds before the work deadline and has a 15-second host kill grace.
 The Windows wrapper separately bounds local client-tree cleanup. The dated
 acceptance below covers actual scope cleanup with a responsive user manager.
@@ -145,15 +160,15 @@ storage guards.
 
 ## Actual native-helper acceptance (2026-10-24)
 
-The unchanged `native-build.py` with SHA256
-`30beab4aa488b8176cf5a6625e30fdda5d0052ba567650eac0f72d938dae5cdd`
+The `native-build.py` snapshot with SHA256
+`3955c6c1e63be83a405eef8f5096e5991c9c6edb49da2d7d660993bc7ff5e4fb`
 passed these individually bounded public-fixture cases on the existing release VM:
 
 | Case | Elapsed | Result |
 | --- | ---: | --- |
-| Successful small public RUN | 11.98 s | Scope and owned processes absent after success |
-| Hung RUN with short deadline | 19.81 s | Nonzero exit; scope and owned processes absent |
-| Windows SSH client killed, heartbeat stopped | 54.64 s | Scope and owned processes absent |
+| Successful small public RUN | 12.86 s | Scope and owned processes absent after success |
+| TERM-resistant RUN with short deadline | 20.41 s | Nonzero exit; scope and owned processes absent |
+| Windows SSH client killed, heartbeat stopped | 56.41 s | Scope and owned processes absent |
 
 Each case had a 120-second absolute watchdog and used only the already cached
 pinned Fedora 44 image, with RUN networking disabled. The actual source
@@ -168,12 +183,21 @@ Forced SSH loss did not isolate whether an SSH signal or heartbeat expiry caused
 cancellation; the result does not claim a separately measured heartbeat-only gate.
 
 Private evidence is retained at
-`A:/releases/utf-native-helper-acceptance-20261024-2f31`, including per-case
+`A:/releases/utf-native-helper-repeat-20261024-3955`, including per-case
 requests, source-guard logs, RUN output, active/final cgroup observations, process
 audits and results. The harness assembled the helper requests directly; the
 complete `prepare.ps1` CLI, dependency recipes, image export/validation chain and
 SDK browser smokes were not executed by these cases. No application code, game
 files, credentials, SDK pulls or SDK builds entered the fixture.
+
+Before these cases, the retained transient slice was active in systemd but its
+empty kernel cgroup had been garbage-collected. Restarting that exact leaf
+recreated the path without realizing resource-controller files, so the guards
+refused to proceed. The operator then stopped only the identity/property-verified
+empty leaf and invoked the original reviewed `create-slice.sh` unchanged. All
+exact bounds and controller availability were reverified before any RUN. No
+manual ancestor write or weaker bound was used; this fixture maintenance is not
+an automatic fallback in `prepare.ps1`.
 
 Both canceled cases left nonrunning Buildah storage-container metadata with PID0.
 Process/scope cleanup therefore does not imply storage cleanup. The operator
@@ -181,10 +205,25 @@ attributed each exact container ID using its pinned base image ID, creation time
 between that case's request/result, and both mounted unique fixture file hashes.
 Only after rechecking PID0/storage state were those exact IDs removed. The unique
 success image and hash-verified failed stages were also removed. The final audit
-found no owned processes, container metadata, image tag or native stages, and the parent remained empty with its
-limits preserved. This was explicit, identity-verified manual cleanup, recorded in
+found no owned processes, container metadata, image tag or native stages, and the
+parent was released empty with its limits preserved. The two unrelated containers
+retained their IDs, PIDs, states and base images; every pre-existing image ID and
+the exact public base were preserved. This was explicit, identity-verified manual
+cleanup, recorded in
 `owned-storage-proof.json` and `cleanup-result.json`; there is no automatic prune,
 blanket retry or whole-engine resource-bound claim.
+
+Additional POSIX regressions cover a signal arriving inside the `Popen` launch
+gap. Its real POSIX regression creates the child session, queues an actual TERM
+before the constructor wrapper returns, and proves the leader and TERM-resistant
+descendant are reaped while child cancellation signals remain unblocked. A second
+regression sends actual HUP and INT during TERM grace and at scope-query entry,
+verifies cleanup continues, and checks prior handlers are restored afterward.
+Another uses a successful leader with a remaining TERM-resistant descendant and
+delivers HUP during handler restoration: group/scope finalization and leader
+reaping must already have completed before cancellation raises. These focused
+regressions complement the current-source three-case helper result above; they
+do not establish full SDK preparation or unavailable-DBus scope cleanup.
 
 ## Receipts and dependency smoke
 
@@ -242,12 +281,17 @@ context refusal, graph-root/identity binding, heartbeat age and exact own-scope
 cancellation routing. Their supervision test uses substitutes only to check
 control flow; it does not claim that real cgroup descendants have terminated.
 
-The POSIX regression uses real test-owned processes: the leader exits on TERM,
-a descendant ignores TERM, and the DBus-query substitute is a real hung process.
+The POSIX regressions use real test-owned processes: one combines a leader exiting
+on TERM, a TERM-resistant descendant and a real hung DBus-query substitute; the
+second delivers TERM in the constructor/assignment gap after a real child session
+exists and checks descendant cleanup and the child's unblocked signal mask; the
+third sends HUP and INT during cleanup and verifies handler restoration afterward;
+the fourth covers successful leader exit with a remaining descendant and late
+cancellation at restoration, while checking the reserved PID during group signals.
 Run it on the existing release VM under a finite outer timeout:
 
 ```powershell
-podman machine ssh --username user mozaic-release-2a599af '/usr/bin/timeout --signal=TERM --kill-after=5 20 /usr/bin/python3 -B /mnt/a/dev/git/UnitedTacticalForces/.mozaic/sdk/test_posix_cancel.py -v'
+podman machine ssh --username user mozaic-release-2a599af '/usr/bin/timeout --signal=TERM --kill-after=5 40 /usr/bin/python3 -B /mnt/a/dev/git/UnitedTacticalForces/.mozaic/sdk/test_posix_cancel.py -v'
 ```
 
 It proves the group descendant dies even when the query times out. It runs no

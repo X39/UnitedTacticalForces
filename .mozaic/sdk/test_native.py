@@ -115,8 +115,10 @@ class NativeContracts(unittest.TestCase):
         child.poll.return_value = None
         with (patch.object(native, "check_heartbeat", side_effect=[None, TimeoutError("stale")]),
               patch.object(native.subprocess, "Popen", return_value=child) as start,
+              patch.object(native, "observe_leader_exit", side_effect=lambda process: process.poll()),
               patch.object(native.os, "killpg", create=True) as kill,
               patch.object(native, "stop_owned_scope") as stop,
+              patch.object(native.signal, "getsignal", return_value=native.signal.SIG_DFL),
               patch.object(native.signal, "signal"),
               patch.object(native.signal, "SIGKILL", 9, create=True),
               patch.object(native.signal, "SIGHUP", 1, create=True)):
@@ -128,6 +130,31 @@ class NativeContracts(unittest.TestCase):
             stop.assert_called_once_with(Path("/sys/fs/cgroup/parent"), "owned.scope")
         # This checks routing only. The real process-tree/scope termination gate
         # must still run against the accepted release VM before SDK preparation.
+
+    def test_cancellation_coincident_with_leader_exit_cannot_report_success(self):
+        child = MagicMock(pid=12345, returncode=0)
+        installed = {}
+
+        def install(event, handler):
+            installed[event] = handler
+
+        def exited():
+            installed[1](1, None)
+            return 0
+
+        child.poll.side_effect = exited
+        with (patch.object(native, "check_heartbeat"),
+              patch.object(native.subprocess, "Popen", return_value=child),
+              patch.object(native, "observe_leader_exit", side_effect=lambda process: process.poll()),
+              patch.object(native.os, "killpg", create=True),
+              patch.object(native, "stop_owned_scope") as stop,
+              patch.object(native.signal, "getsignal", return_value=native.signal.SIG_DFL),
+              patch.object(native.signal, "signal", side_effect=install),
+              patch.object(native.signal, "SIGKILL", 9, create=True),
+              patch.object(native.signal, "SIGHUP", 1, create=True)):
+            with self.assertRaises(InterruptedError):
+                native.supervise(["dependency-probe"], request(), Path("/sys/fs/cgroup/parent"), "owned.scope")
+            stop.assert_called_once()
 
 
 if __name__ == "__main__":

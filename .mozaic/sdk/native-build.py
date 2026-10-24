@@ -83,6 +83,10 @@ def validate_host(info, graph_root, uid, gid):
 
 
 def preflight(request):
+    if sys.platform != "linux" or not hasattr(os, "waitid") or not hasattr(os, "WNOWAIT"):
+        raise ValueError("native supervision requires Linux nonreaping child-exit observation")
+    if signal.getsignal(signal.SIGCHLD) != signal.SIG_DFL:
+        raise ValueError("native supervision requires default SIGCHLD handling to reserve owned PIDs")
     info = json.loads(run(["/usr/bin/podman", "--remote=false", "info", "--format=json"], request))
     validate_host(info, request["graph_root"], os.getuid(), os.getgid())
     if os.stat("/var/tmp").st_dev != os.stat(request["graph_root"]).st_dev:
@@ -148,51 +152,94 @@ def stop_owned_scope(parent, scope):
     if observed == expected:
         subprocess.run(["/usr/bin/systemctl", "--user", "stop", scope],
                        capture_output=True, timeout=5, check=True)
+        if (parent / scope).exists():
+            raise ValueError("owned scope remains after stop; retain failed attempt for inspection")
     elif observed or (parent / scope).exists():
         raise ValueError("scope identity changed; refuse broad cleanup and retain stage")
+
+
+def observe_leader_exit(process):
+    """Peek without reaping, reserving the owned PID/PGID until finalization."""
+    observed = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+    if observed is None:
+        return None
+    if observed.si_code == os.CLD_EXITED:
+        return observed.si_status
+    if observed.si_code in (os.CLD_KILLED, os.CLD_DUMPED):
+        return -observed.si_status
+    raise ValueError("unexpected native leader state")
 
 
 def supervise(command, request, parent, scope):
     """A silent client loss stops RUN through the attempt scope after 45 seconds."""
     check_heartbeat(request)
-    process = subprocess.Popen(command, start_new_session=True)
+    process = None
     success = False
+    events = (signal.SIGTERM, signal.SIGHUP, signal.SIGINT)
+    previous_handlers = {event: signal.getsignal(event) for event in events}
+    pending_cancel = None
+
+    def defer_cancel(number, _frame):
+        nonlocal pending_cancel
+        pending_cancel = number
+
     try:
-        while process.poll() is None:
+        # Defer Python cancellation, not the OS signal mask. Popen's POSIX
+        # exec-error-pipe handshake returns only after setsid/exec, so assignment
+        # establishes the owned process/group before cancellation can raise.
+        # Child exec retains normal unblocked signal behavior; no preexec hook is used.
+        for event in events:
+            signal.signal(event, defer_cancel)
+        if pending_cancel is not None:
+            raise InterruptedError("native preparation cancelled before process launch")
+        process = subprocess.Popen(command, start_new_session=True)
+        if pending_cancel is not None:
+            raise InterruptedError("native preparation cancelled during process launch")
+        while (returncode := observe_leader_exit(process)) is None:
+            if pending_cancel is not None:
+                raise InterruptedError("native preparation cancelled during supervision")
             check_heartbeat(request)
             if time.time() >= request["deadline"] - 15:
                 raise TimeoutError("native work deadline reached; preserve cleanup allowance")
             time.sleep(0.25)
-        if process.returncode != 0:
+        if pending_cancel is not None:
+            raise InterruptedError("native preparation cancelled before completion")
+        if returncode != 0:
             raise ValueError("native dependency build failed")
         success = True
     finally:
-        # A second termination signal cannot interrupt the bounded owned cleanup.
-        for event in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
-            signal.signal(event, signal.SIG_IGN)
-        if not success:
-            try:
-                grace_deadline = time.monotonic() + 2
+        # Finalize every launched group, including normal leader exit. Nonreaping
+        # observation above keeps its PID reserved, preventing PGID reuse before
+        # the final KILL. Every callback remains nonraising until release.
+        released = process is None
+        try:
+            if process is not None:
                 try:
-                    os.killpg(process.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    pass
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    pass
-                finally:
-                    # Leader exit does not prove its descendants exited. Complete
-                    # the grace period and KILL the group before any DBus query,
-                    # even if waiting for the leader failed or returned early.
-                    time.sleep(max(0, grace_deadline - time.monotonic()))
+                    grace_deadline = time.monotonic() + 2
                     try:
-                        os.killpg(process.pid, signal.SIGKILL)
+                        os.killpg(process.pid, signal.SIGTERM)
                     except ProcessLookupError:
                         pass
-                process.wait(timeout=1)
-            finally:
-                stop_owned_scope(parent, scope)
+                    finally:
+                        # Do not reap the leader during grace: even a successful
+                        # leader can leave descendants in its reserved group.
+                        time.sleep(max(0, grace_deadline - time.monotonic()))
+                        try:
+                            os.killpg(process.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                finally:
+                    try:
+                        stop_owned_scope(parent, scope)
+                    finally:
+                        process.wait(timeout=1)
+                released = True
+        finally:
+            if released:
+                for event, handler in previous_handlers.items():
+                    signal.signal(event, handler)
+        if success and pending_cancel is not None:
+            raise InterruptedError("native preparation cancelled during completion")
 
 
 def build(request):
