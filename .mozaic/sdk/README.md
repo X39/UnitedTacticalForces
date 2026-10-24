@@ -337,6 +337,18 @@ are interpolated into that diagnostic. Unknown exceptions fail closed as
 behavior: any future heartbeat timestamp still fails, and the existing 45-second
 freshness limit, deadlines, process-group reservation and scope cleanup apply.
 
+Heartbeat age samples the file's modification time before sampling the native
+clock. A concurrent Windows refresh during the shared-filesystem `stat` can
+otherwise make that timestamp appear newer than a clock sampled before `stat`.
+The deterministic regression schedules a real writer inside that interval and
+still requires genuine future and stale timestamps to fail; no clock-skew
+tolerance is added. A bounded read-only observation during the `a1401936`
+attempt captured a -0.000580-second age using the old order and a positive
+0.001289-second age after the same `stat`. Evidence remains in
+`A:/releases/utf-diagnostic-preparation-20261024-a1401936/live-heartbeat-observation.json`.
+That observation proves the refresh window exists, not the cause of an earlier
+preparation failure.
+
 The POSIX regressions use real test-owned processes: one combines a leader exiting
 on TERM, a TERM-resistant descendant and a real hung DBus-query substitute; the
 second delivers TERM in the constructor/assignment gap after a real child session

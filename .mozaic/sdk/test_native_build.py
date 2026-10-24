@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -39,6 +40,45 @@ class NativeDiagnostics(unittest.TestCase):
             with self.assertRaises(kind) as result:
                 native.check_heartbeat(value)
             self.assert_code(result.exception, code)
+
+    def test_concurrent_refresh_during_stat_does_not_look_like_future_time(self):
+        requested = threading.Event()
+        refreshed = threading.Event()
+        original_stat = Path.stat
+        observations = {"before_request": time.time()}
+        failures = []
+
+        def writer():
+            try:
+                if not requested.wait(3):
+                    raise AssertionError("Reader did not reach the heartbeat stat")
+                time.sleep(0.025)
+                self.heartbeat.write_text("concurrent refresh")
+                observations["refreshed_mtime"] = original_stat(self.heartbeat).st_mtime
+            except BaseException as error:
+                failures.append(error)
+            finally:
+                refreshed.set()
+
+        def stat_after_refresh(path, *, follow_symlinks=True):
+            if path == self.heartbeat and follow_symlinks:
+                requested.set()
+                if not refreshed.wait(3):
+                    raise AssertionError("Heartbeat writer did not finish")
+            return original_stat(path, follow_symlinks=follow_symlinks)
+
+        thread = threading.Thread(target=writer, daemon=True)
+        thread.start()
+        try:
+            with patch.object(Path, "stat", stat_after_refresh):
+                native.check_heartbeat({"heartbeat": str(self.heartbeat)})
+        finally:
+            requested.set()
+            thread.join(3)
+        self.assertFalse(thread.is_alive())
+        self.assertFalse(failures, failures)
+        # A clock sampled before this real concurrent refresh would reject it.
+        self.assertLess(observations["before_request"], observations["refreshed_mtime"])
 
     def test_real_nonzero_command_is_sanitized(self):
         with self.assertRaises(native.CommandFailure) as result:

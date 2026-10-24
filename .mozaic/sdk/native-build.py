@@ -172,7 +172,9 @@ def stage_context(source, destination, files, deadline):
 def check_heartbeat(request):
     path = Path(request["heartbeat"])
     plain_file(path)
-    age = time.time() - path.stat().st_mtime
+    # A concurrent refresh during stat must precede the clock sample.
+    modified_at = path.stat().st_mtime
+    age = time.time() - modified_at
     if age < 0:
         raise FutureHeartbeat("operator heartbeat timestamp is ahead of the native clock")
     if not age <= 45:
