@@ -67,7 +67,7 @@ function Get-Storage {
     return (Invoke-Engine -EngineArguments @('info', '--format', '{{json .Store}}') | ConvertFrom-Json)
 }
 $pythonVersion = Invoke-Local -Executable $python -Arguments @('-B','-c','import sys; assert sys.version_info >= (3, 11); print(sys.version)') -Capture
-$verificationFiles = foreach ($file in @('prepare.ps1','safety.ps1','validate-archive.py','native-build.py')) {
+$verificationFiles = foreach ($file in @('prepare.ps1','safety.ps1','validate-archive.py','canonicalize-archive.py','native-build.py')) {
     [ordered]@{path=$file; sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $source $file)).Hash.ToLowerInvariant()}
 }
 [ordered]@{protocol_validator_sha256=$inputs.protocol_validator_sha256; python_version=$pythonVersion.Trim(); source=$verificationFiles} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $output 'verification-tools.json') -Encoding utf8NoBOM
@@ -99,6 +99,19 @@ function Test-Archive([string]$Archive, [string]$ImageId) {
     Invoke-Local -Executable $validator -Arguments @($Archive) -Seconds 600 -Poll { Assert-Budget }
     $receipt = Invoke-Local -Executable $python -Arguments @('-B',(Join-Path $source 'validate-archive.py'),$Archive,$ImageId) -Seconds 600 -Poll { Assert-Budget } -Capture
     return ($receipt | ConvertFrom-Json)
+}
+function Convert-Archive([string]$RawArchive, [string]$Archive, [string]$ImageId, [string]$Profile) {
+    foreach ($name in @('canonicalize-archive.py','validate-archive.py')) {
+        $recorded = @($verificationFiles | Where-Object { $_.path -ceq $name })[0].sha256
+        if ((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $source $name)).Hash.ToLowerInvariant() -cne $recorded) { throw 'Local transport verification source changed during preparation.' }
+    }
+    $receipt = Invoke-Local -Executable $python -Arguments @('-B',(Join-Path $source 'canonicalize-archive.py'),$RawArchive,$Archive,$ImageId,"localhost/utf-dependencies-$Profile") -Seconds 600 -Poll { Assert-Budget } -Capture
+    $transport = $receipt | ConvertFrom-Json
+    $checked = Test-Archive $Archive $ImageId
+    if ($checked.archive_sha256 -cne $transport.archive_sha256 -or $checked.manifest_digest -cne $transport.manifest_digest) { throw 'Canonical transport changed before the independent gate.' }
+    $transport | Add-Member -NotePropertyName protocol_validated -NotePropertyValue $true
+    $transport | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $output "receipts/transport-$Profile.json") -Encoding utf8NoBOM
+    return $transport
 }
 $heartbeat = Join-Path $output 'native-heartbeat'
 function Update-Heartbeat {
@@ -151,10 +164,11 @@ foreach ($profile in @('api','worker','aska','sdk')) {
     $tag = "localhost/utf-dependencies-${profile}:$identity"
     Invoke-Native 'build' $profile
     $image = (Invoke-Engine -EngineArguments @('image','inspect',$tag) | ConvertFrom-Json)[0]
+    $rawArchive = Join-Path $output "$profile.raw.oci.tar"
     $archive = Join-Path $output "$profile.oci.tar"
-    Invoke-Bounded -EngineArguments @('save','--format=oci-archive','--output',$archive,$image.Id)
-    $checked = Test-Archive $archive $image.Id
-    $images[$profile] = [ordered]@{local_tag=$tag; image_id=$image.Id; manifest_digest=$checked.manifest_digest; config_digest=$checked.config_digest; archive=(Split-Path -Leaf $archive); archive_sha256=$checked.archive_sha256; archive_bytes=$checked.archive_bytes; layer_count=$checked.layer_count; expanded_layer_bytes=$checked.expanded_layer_bytes}
+    Invoke-Bounded -EngineArguments @('save','--format=oci-archive','--output',$rawArchive,$image.Id)
+    $checked = Convert-Archive $rawArchive $archive $image.Id $profile
+    $images[$profile] = [ordered]@{local_tag=$tag; image_id=$image.Id; manifest_digest=$checked.manifest_digest; config_digest=$checked.config_digest; archive=(Split-Path -Leaf $archive); archive_sha256=$checked.archive_sha256; archive_bytes=$checked.archive_bytes; layer_count=$checked.layer_count; expanded_layer_bytes=$checked.expanded_layer_bytes; producer_reference=$checked.producer_reference; raw_archive=$checked.raw_archive; raw_archive_sha256=$checked.raw_archive_sha256; protocol_validated=$checked.protocol_validated}
     $container = "utf-preparation-receipts-$identity-$profile"
     try {
         $null = Invoke-Engine -EngineArguments @('create','--pull=never','--name',$container,'--entrypoint=/bin/true',$image.Id)
@@ -164,13 +178,21 @@ foreach ($profile in @('api','worker','aska','sdk')) {
         # remains explicitly inspectable by this run's unique name after failure.
         if ([DateTime]::UtcNow -lt $deadline) { $null = Invoke-Engine -EngineArguments @('rm','--force',$container) }
     }
-    if ($profile -ne 'sdk') { Copy-Item -LiteralPath $archive -Destination (Join-Path $context "archives/$profile.oci.tar") }
+    if ($profile -ne 'sdk') {
+        $embedded = Join-Path $context "archives/$profile.oci.tar"
+        Copy-Item -LiteralPath $archive -Destination $embedded
+        if ((Get-FileHash -Algorithm SHA256 -LiteralPath $embedded).Hash.ToLowerInvariant() -cne $checked.archive_sha256) { throw 'Embedded runtime differs from its validated canonical archive.' }
+    }
     if ($profile -eq 'aska') {
-        $nginx = Join-Path $context 'archives/nginx.oci.tar'
-        Invoke-Bounded -EngineArguments @('save','--format=oci-archive','--output',$nginx,$inputs.images.nginx)
+        $nginxRaw = Join-Path $output 'nginx.raw.oci.tar'
+        $nginx = Join-Path $output 'nginx.oci.tar'
+        Invoke-Bounded -EngineArguments @('save','--format=oci-archive','--output',$nginxRaw,$inputs.images.nginx)
         $nginxImage = (Invoke-Engine -EngineArguments @('image','inspect',$inputs.images.nginx) | ConvertFrom-Json)[0]
-        $checked = Test-Archive $nginx $nginxImage.Id
-        $images['nginx'] = [ordered]@{source_ref=$inputs.images.nginx; image_id=$nginxImage.Id; manifest_digest=$checked.manifest_digest; config_digest=$checked.config_digest; archive='context/archives/nginx.oci.tar'; archive_sha256=$checked.archive_sha256; archive_bytes=$checked.archive_bytes; layer_count=$checked.layer_count; expanded_layer_bytes=$checked.expanded_layer_bytes}
+        $checked = Convert-Archive $nginxRaw $nginx $nginxImage.Id 'nginx'
+        $embedded = Join-Path $context 'archives/nginx.oci.tar'
+        Copy-Item -LiteralPath $nginx -Destination $embedded
+        if ((Get-FileHash -Algorithm SHA256 -LiteralPath $embedded).Hash.ToLowerInvariant() -cne $checked.archive_sha256) { throw 'Embedded Nginx differs from its validated canonical archive.' }
+        $images['nginx'] = [ordered]@{source_ref=$inputs.images.nginx; image_id=$nginxImage.Id; manifest_digest=$checked.manifest_digest; config_digest=$checked.config_digest; archive='nginx.oci.tar'; archive_sha256=$checked.archive_sha256; archive_bytes=$checked.archive_bytes; layer_count=$checked.layer_count; expanded_layer_bytes=$checked.expanded_layer_bytes; producer_reference=$checked.producer_reference; raw_archive=$checked.raw_archive; raw_archive_sha256=$checked.raw_archive_sha256; protocol_validated=$checked.protocol_validated}
         $archiveHashes = Get-ChildItem -LiteralPath (Join-Path $context 'archives') -File | Sort-Object Name | ForEach-Object { (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant() + '  ' + $_.Name }
         [IO.File]::WriteAllText((Join-Path $context 'archives/SHA256SUMS'), ($archiveHashes -join "`n") + "`n")
     }

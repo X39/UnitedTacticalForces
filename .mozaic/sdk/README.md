@@ -249,8 +249,32 @@ smoke launches both browser closures offline as UID 65532 with a read-only root,
 no capabilities, no network, bounded tmpfs and explicit CPU/memory/PID limits. It
 loads only a static data URL. It runs no application tests or game processes.
 
-Every exported archive, including Nginx and the final SDK, must pass the pinned
-real Mozaic protocol validator before embedding or recording it. That gate checks
+Raw Podman exports are retained as `<profile>.raw.oci.tar`, including Nginx and
+the final SDK. They are evidence, not deliverable runtime archives. Podman's two
+empty outer `blobs` directories violate the strict regular-only transport contract.
+`canonicalize-archive.py` first validates every raw USTAR header, extent, checksum,
+padding and terminator, then the complete graph, image identity and actual layer
+diffIDs. It permits only those two known empty directories; links, other paths,
+duplicate names, PAX/GNU extensions, specials and trailing archives fail closed.
+There is no extraction. Bounds remain 16 GiB per archive, 8 GiB per file, 1026
+regular files and 32 GiB expanded layers.
+
+The helper exclusively creates a new external `<profile>.oci.tar` under plain
+non-reparse ancestry and refuses existing destinations, including competing
+writers. It writes regular-only USTAR with normalized outer metadata. All
+manifest/config/layer blob bytes remain unchanged, with the same exported root,
+config digest and diffIDs. Only the index reference annotation is set to
+`localhost/utf-dependencies-<profile>@<exported-manifest-digest>`; an engine store
+digest is not used because export can produce a different manifest digest.
+Raw and canonical archive hashes, sizes, removed directories, graph inventory,
+diffIDs and the producer reference are recorded in `receipts/transport-*.json`.
+`verification-tools.json` binds the local canonicalizer and validator sources.
+These local tools are not copied into a native build context.
+
+Every canonical archive must pass the unchanged pinned real Mozaic protocol
+validator before recording success or copying runtime archives into the SDK.
+`context/archives/SHA256SUMS` covers only those validated canonical runtime
+archives. The independent gate checks
 the bounded tar envelope, safe members, duplicate entries, OCI schemas, descriptor
 sizes, hashes and complete graph. `validate-archive.py` then independently walks
 the single-image manifest/config/layer closure, requires Linux amd64, binds the
@@ -266,6 +290,7 @@ Run the source-only negative fixtures on Windows before review:
 ./.mozaic/sdk/test-safety.ps1
 $env:UTF_OCI_VALIDATOR = 'A:/releases/mozaic-oci-independent-20261024/validate.exe'
 <trusted-python.exe> -B .mozaic/sdk/test_archive.py -v
+<trusted-python.exe> -B .mozaic/sdk/test_canonicalize.py -v
 <trusted-python.exe> -B .mozaic/sdk/test_native.py -v
 ```
 
@@ -276,6 +301,11 @@ execute the pinned real protocol validator against synthetic raw/gzip layouts,
 unsafe members, duplicates, links, malformed schemas, descriptors, absent/altered
 and unreferenced blobs, then test additional image/config/diffID and expansion
 failures. They perform no Podman mutation or application build.
+Canonical transport tests additionally prove full blob byte preservation and
+exported-root reference binding, strong raw-envelope rejection before output,
+existing-file protection, a real Windows junction refusal, and exactly one winner
+between two concurrent writer processes. A reduced test cap exercises the archive
+size rejection without allocating a 16 GiB fixture.
 The native tests also cover closed context selection, staged byte hashes, stale
 context refusal, graph-root/identity binding, heartbeat age and exact own-scope
 cancellation routing. Their supervision test uses substitutes only to check
@@ -297,6 +327,22 @@ podman machine ssh --username user mozaic-release-2a599af '/usr/bin/timeout --si
 It proves the group descendant dies even when the query times out. It runs no
 Podman build, cgroup mutation or real DBus request and does not replace the
 separate actual RUN/transport-loss acceptance gate.
+
+On 2026-10-24 the existing public Bantapop API dependency raw export was tested
+read-only through this transport step. Evidence is retained at
+`A:/releases/utf-oci-transport-proof-6306128533e8/result.json` and its neighboring
+script/logs. The raw archive (SHA256
+`12d4d1eb2d6212d5ad5afa41bb1533c471633a6a9ea42a74df136d27411411c5`)
+failed the pinned strict validator, while the canonical archive (SHA256
+`03d0f94d8869ed07aea871490ec92e131a843f61c904b727389045b461080ede`)
+passed. All four blob streams were compared byte-for-byte; the raw file's hash,
+length and modification time were unchanged. Both uncompressed layer diffIDs
+were verified, preserving manifest
+`sha256:67f72efbaad67d0cd9c8321a723cb1ec9e29a0fdf45f21ff4522b47f4b3e85e5`
+and the inspected config/image ID. The helper and strict gate completed in
+4.000 seconds. This local file-transport proof did not run an engine, dependency
+recipe, publication or the complete `prepare.ps1` CLI. The earlier native-helper
+three-case acceptance remains separate historical evidence for its exact source.
 
 Future application work must use `utf-dotnet-201` in the root context and
 `utf-dotnet-302` in an isolated worker context with its own explicit 10.0.302
