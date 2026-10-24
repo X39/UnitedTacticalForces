@@ -15,7 +15,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 $source = $PSScriptRoot
 . (Join-Path $source 'safety.ps1')
 $repository = [IO.Path]::GetFullPath((Join-Path $source '../..'))
-$output = New-ExclusiveOutput $OutputDirectory $repository
+$script:output = New-ExclusiveOutput $OutputDirectory $repository
 if ($ParentCgroupPath.Contains('/../') -or $ParentCgroupPath.Contains('/./') -or -not $ParentCgroupPath.EndsWith('/' + $CgroupParent)) {
     throw 'The verified parent cgroup path must end in the selected slice.'
 }
@@ -28,8 +28,8 @@ $null = [IO.Directory]::CreateDirectory((Join-Path $context 'archives'))
 $null = [IO.Directory]::CreateDirectory((Join-Path $output 'logs'))
 $null = [IO.Directory]::CreateDirectory((Join-Path $output 'receipts'))
 $podman = (Get-Command podman -CommandType Application).Source
-$started = [DateTime]::UtcNow
-$deadline = $started.AddMinutes(120)
+$script:preparationStartedAt = [DateTime]::UtcNow
+$script:deadline = $script:preparationStartedAt.AddMinutes(120)
 $sequence = 0
 $inputs = Get-Content -Raw -LiteralPath (Join-Path $source 'inputs.json') | ConvertFrom-Json
 if ((Get-FileHash -Algorithm SHA256 -LiteralPath $ProtocolValidator).Hash.ToLowerInvariant() -cne $inputs.protocol_validator_sha256) {
@@ -57,8 +57,8 @@ $authfile = Join-Path $output 'anonymous-auth.json'
 
 function Invoke-Local([string]$Executable, [string[]]$Arguments, [double]$Seconds = 30, [scriptblock]$Poll, [switch]$Capture) {
     $script:sequence += 1
-    $log = Join-Path $output ('logs/{0:D4}-process' -f $script:sequence)
-    Invoke-DeadlineProcess -Executable $Executable -Arguments $Arguments -Deadline $deadline -LogPrefix $log -CallSeconds $Seconds -OnPoll $Poll -Capture:$Capture
+    $log = Join-Path $script:output ('logs/{0:D4}-process' -f $script:sequence)
+    Invoke-DeadlineProcess -Executable $Executable -Arguments $Arguments -Deadline $script:deadline -LogPrefix $log -CallSeconds $Seconds -OnPoll $Poll -Capture:$Capture
 }
 function Invoke-Engine([string[]]$EngineArguments) {
     return (Invoke-Local -Executable $podman -Arguments (@('--connection', $Connection) + $EngineArguments) -Capture)
@@ -76,14 +76,16 @@ $connections = Invoke-Engine -EngineArguments @('system','connection','list','--
 Assert-RootlessEngine $engine $connections $Connection
 $machineSsh = Invoke-Local -Executable $podman -Arguments @('machine','inspect',$Connection,'--format','{{json .SSHConfig}}') -Capture | ConvertFrom-Json
 Assert-MachineBinding $machineSsh $connections $Connection
-$baseline = $engine.store
+$script:baseline = $engine.store
 $engine.host | Select-Object os,arch,cgroupManager,cgroupVersion,idMappings,security | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $output 'engine-preflight.json') -Encoding utf8NoBOM
 if (($baseline.graphRootAllocated - $baseline.graphRootUsed) -lt 80GB) { throw 'Preparation requires at least 80 GiB free in the release VM.' }
 function Assert-Budget {
-    if (([DateTime]::UtcNow - $started).TotalMinutes -gt 120) { throw 'Preparation exceeded its 120-minute operator deadline.' }
+    # Poll callbacks run beneath the subprocess helper's dynamic local scope.
+    # Shared preparation state must not resolve to that helper's launch variables.
+    if (([DateTime]::UtcNow - $script:preparationStartedAt).TotalMinutes -gt 120) { throw 'Preparation exceeded its 120-minute operator deadline.' }
     $store = Get-Storage
-    $externalBytes = (Get-ChildItem -LiteralPath $output -File -Recurse | Measure-Object -Property Length -Sum).Sum
-    if ([Math]::Max(0, ($store.graphRootUsed - $baseline.graphRootUsed)) + $externalBytes -gt 64GB) {
+    $externalBytes = (Get-ChildItem -LiteralPath $script:output -File -Recurse | Measure-Object -Property Length -Sum).Sum
+    if ([Math]::Max([long]0, [long]($store.graphRootUsed - $script:baseline.graphRootUsed)) + $externalBytes -gt 64GB) {
         throw 'Preparation exceeded its monitored 64 GiB incremental storage budget.'
     }
     if (($store.graphRootAllocated - $store.graphRootUsed) -lt 32GB) { throw 'Release VM free-space floor reached.' }
@@ -113,9 +115,9 @@ function Convert-Archive([string]$RawArchive, [string]$Archive, [string]$ImageId
     $transport | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $output "receipts/transport-$Profile.json") -Encoding utf8NoBOM
     return $transport
 }
-$heartbeat = Join-Path $output 'native-heartbeat'
+$script:heartbeat = Join-Path $script:output 'native-heartbeat'
 function Update-Heartbeat {
-    [IO.File]::WriteAllText($heartbeat, [DateTime]::UtcNow.ToString('O'))
+    [IO.File]::WriteAllText($script:heartbeat, [DateTime]::UtcNow.ToString('O'))
 }
 function Invoke-Native([string]$Mode, [string]$Profile) {
     Update-Heartbeat

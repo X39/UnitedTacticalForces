@@ -1,7 +1,9 @@
 # Dependency preparation for an ordinary UTF release job
 
 **Execution boundary:** source review and the three small native-helper cases
-below passed. Full SDK recipes and the complete `prepare.ps1` CLI have not run.
+below passed. Full SDK preparation and the complete `prepare.ps1` CLI have not
+completed. The first full CLI attempt stopped at the polling failure recorded
+below, before any dependency image was completed.
 Actual dependency preparation, browser/ABI smoke and immutable transport remain
 separate gates; the small public fixture does not establish those results.
 
@@ -288,6 +290,7 @@ Run the source-only negative fixtures on Windows before review:
 
 ```powershell
 ./.mozaic/sdk/test-safety.ps1
+./.mozaic/sdk/test-budget.ps1
 $env:UTF_OCI_VALIDATOR = 'A:/releases/mozaic-oci-independent-20261024/validate.exe'
 <trusted-python.exe> -B .mozaic/sdk/test_archive.py -v
 <trusted-python.exe> -B .mozaic/sdk/test_canonicalize.py -v
@@ -306,6 +309,14 @@ exported-root reference binding, strong raw-envelope rejection before output,
 existing-file protection, a real Windows junction refusal, and exactly one winner
 between two concurrent writer processes. A reduced test cap exercises the archive
 size rejection without allocating a 16 GiB fixture.
+The budget test extracts the actual `Assert-Budget` function and invokes it from
+the real `Invoke-DeadlineProcess` polling callback with a short-lived local
+PowerShell child. Only storage readings are substituted. It verifies successful
+polling despite the subprocess helper's local Boolean launch state, preparation
+and subprocess deadlines, the 64 GiB incremental-storage fence, the VM free-space
+floor, and child cleanup on failure. Callback timestamp, baseline, output,
+deadline and heartbeat references use script-owned state; storage arithmetic uses
+explicit Int64 operands rather than PowerShell's Int32 overload inference.
 The native tests also cover closed context selection, staged byte hashes, stale
 context refusal, graph-root/identity binding, heartbeat age and exact own-scope
 cancellation routing. Their supervision test uses substitutes only to check
@@ -343,6 +354,20 @@ and the inspected config/image ID. The helper and strict gate completed in
 4.000 seconds. This local file-transport proof did not run an engine, dependency
 recipe, publication or the complete `prepare.ps1` CLI. The earlier native-helper
 three-case acceptance remains separate historical evidence for its exact source.
+
+The first full dependency-only CLI attempt used committed source
+`14a0144ba6aeffbe159a80b0ea00e9336ae49fbb` on 2026-10-24. Evidence remains at
+`A:/releases/utf-full-dependency-preparation-20261024-7e986b11c262`. It stopped
+after 19.282 seconds during the first API APT step because PowerShell's dynamic
+scope resolved the callback's start time to the subprocess helper's Boolean
+`started` variable. This is an orchestration failure, not a dependency validation
+result. No dependency image or archive was completed, and there was no retry.
+`PREPARATION-INCOMPLETE`, the source context, failed native stage and logs remain.
+The final audit found no owned scope or process, an empty parent with unchanged
+CPU6/memory12GiB/swap0/PID512 limits, no added container or image, and both existing
+containers and all 64 preexisting image IDs preserved. No pruning or storage
+removal was needed. The local callback regression above covers the correction;
+it does not substitute for a later full preparation run.
 
 Future application work must use `utf-dotnet-201` in the root context and
 `utf-dotnet-302` in an isolated worker context with its own explicit 10.0.302
