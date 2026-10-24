@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "platform": "linux/amd64",
+  "protocol_validator_sha256": "e5efcf60b242855df46e1a3274c5d9b2e598fd0a48e9085d5ff219784b7c6d66",
+  "images": {
+    "sdk201": "mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c",
+    "sdk302": "mcr.microsoft.com/dotnet/sdk@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f",
+    "api": "mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b",
+    "worker": "mcr.microsoft.com/dotnet/runtime@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe",
+    "node": "docker.io/library/node@sha256:fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e",
+    "rust": "docker.io/library/rust@sha256:8bf7188ae46ad73b801c8d405eedc13ce63a7852b562885743a56890723549a8",
+    "nginx": "docker.io/library/nginx@sha256:3bcf852aed06467cf075c6105892e4d5a6ebbbafa0ce22d35062db9e90ddef4c"
+  },
+  "steamcmd_url": "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz",
+  "steamcmd_sha256": "cebf0046bfd08cf45da6bc094ae47aa39ebf4155e5ede41373b579b8f1071e7c",
+  "playwright_dotnet": "1.61.0",
+  "playwright_react": "1.62.1"
+}

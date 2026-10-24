@@ -64,6 +64,13 @@ replace controlled proxy access with host networking.
 
 ## Runner inputs and activation gates
 
+Dependency-only preparation for a future ordinary cloud job is documented in
+[`sdk/README.md`](sdk/README.md). It preserves both pinned SDK/runtime families,
+prepares normal signed-package closures outside application CI, and records
+actual OCI identities. It does not activate that route or replace the current
+native pipeline. SDK transport/publication, independent review, application
+checks, all four image assemblies and real workspace isolation remain gates.
+
 The worker Dockerfiles preserve their existing complete pinned FROM aliases and
 linux/amd64 requirement. Their SDK digest `3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f`
 and runtime digest `ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe`
