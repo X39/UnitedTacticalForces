@@ -1,48 +1,35 @@
-# Full release definition. Register only after component bindings and worker base approvals are verified.
-# Require every job and all four same-run immutable publication receipts before activation.
+# Ordinary worker checks and deterministic OCI publication; no container builder action.
 version: 1
 triggers:
   - trusted_branch
 jobs:
   react-tests:
-    image: docker.io/library/node@sha256:fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e
+    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     runs_on:
       labels:
         host-profile: fedora-44-cloud-v1
         workspace-storage: bounded-disk-v1
     resources:
-      cpu_millis: 1000
-      memory_mib: 1536
+      cpu_millis: 2000
+      memory_mib: 4096
       scratch_mib: 65536
-      pids: 256
-      log_mib: 32
+      pids: 512
+      log_mib: 64
     network:
       mode: http_https
       allow_hosts:
+        - index.crates.io
+        - static.crates.io
+        - auth.docker.io
+        - registry-1.docker.io
+        - production.cloudfront.docker.com
         - registry.npmjs.org
     timeout_minutes: 30
     steps:
-      - name: Check React contracts, locales, types, tests and static assets
-        run: |
-          set -eu
-          export HOME=/workspace/.home npm_config_cache=/workspace/.npm-cache
-          mkdir -p "$HOME"
-          # Source transfer excludes .git. Establish a local, credential-free
-          # baseline so UTF's generated-file checks can use git diff.
-          git init --quiet
-          git -c core.autocrlf=false add --all
-          git -c user.name='Mozaic snapshot' -c user.email=snapshot@mozaic.invalid commit --quiet -m baseline
-          cd sources/ReactApp
-          npm ci
-          npm run contracts:check
-          npm run locales:check
-          npm run format:check
-          npm run lint
-          npm run typecheck
-          npm test -- --maxWorkers=1
-          npm run build:assets
+      - name: Check and assemble react-tests in ordinary worker scratch
+        run: sh .mozaic/build.sh react-tests
   dotnet-release:
-    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     needs:
       - react-tests
     runs_on:
@@ -50,33 +37,35 @@ jobs:
         host-profile: fedora-44-cloud-v1
         workspace-storage: bounded-disk-v1
     resources:
-      cpu_millis: 1000
-      memory_mib: 1536
+      cpu_millis: 2000
+      memory_mib: 4096
       scratch_mib: 65536
-      pids: 256
-      log_mib: 32
+      pids: 512
+      log_mib: 64
     network:
       mode: http_https
       allow_hosts:
-        - deb.debian.org
-        - security.debian.org
+        - index.crates.io
+        - static.crates.io
+        - auth.docker.io
+        - registry-1.docker.io
+        - production.cloudfront.docker.com
+        - mcr.microsoft.com
+        - mcrprod.azureedge.net
         - registry.npmjs.org
-        - cdn.playwright.dev
-        - playwright.download.prss.microsoft.com
         - api.nuget.org
         - globalcdn.nuget.org
+        - cdn.playwright.dev
+        - playwright.download.prss.microsoft.com
     timeout_minutes: 30
     steps:
-      - name: Build and verify proof
-        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
-        with:
-          dockerfile: .mozaic/dotnet-release.Containerfile
-          target: proof
-          output: image.tar
-          base-images: >-
-            {"node:24.11.1-bookworm":"docker.io/library/node@sha256:fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e","mcr.microsoft.com/dotnet/sdk:10.0.201":"mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c"}
+      - name: Check and assemble dotnet-release in ordinary worker scratch
+        run: sh .mozaic/build.sh dotnet-release
+    test_results:
+      - path: test-results/test-results/*.trx
+        format: trx
   react-browser:
-    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     needs:
       - dotnet-release
     runs_on:
@@ -84,31 +73,30 @@ jobs:
         host-profile: fedora-44-cloud-v1
         workspace-storage: bounded-disk-v1
     resources:
-      cpu_millis: 1000
-      memory_mib: 1536
+      cpu_millis: 2000
+      memory_mib: 4096
       scratch_mib: 65536
-      pids: 256
-      log_mib: 32
+      pids: 512
+      log_mib: 64
     network:
       mode: http_https
       allow_hosts:
-        - deb.debian.org
-        - security.debian.org
+        - index.crates.io
+        - static.crates.io
+        - auth.docker.io
+        - registry-1.docker.io
+        - production.cloudfront.docker.com
+        - mcr.microsoft.com
+        - mcrprod.azureedge.net
         - registry.npmjs.org
         - cdn.playwright.dev
         - playwright.download.prss.microsoft.com
     timeout_minutes: 30
     steps:
-      - name: Build and verify proof
-        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
-        with:
-          dockerfile: .mozaic/react-browser.Containerfile
-          target: proof
-          output: image.tar
-          base-images: >-
-            {"node:24.11.1-bookworm":"docker.io/library/node@sha256:fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e"}
-  utf-ownership:
-    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+      - name: Check and assemble react-browser in ordinary worker scratch
+        run: sh .mozaic/build.sh react-browser
+  build-worker:
+    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     needs:
       - react-browser
     runs_on:
@@ -116,92 +104,30 @@ jobs:
         host-profile: fedora-44-cloud-v1
         workspace-storage: bounded-disk-v1
     resources:
-      cpu_millis: 1000
-      memory_mib: 1536
+      cpu_millis: 2000
+      memory_mib: 4096
       scratch_mib: 65536
-      pids: 256
-      log_mib: 32
+      pids: 512
+      log_mib: 64
     network:
       mode: http_https
       allow_hosts:
-        - deb.debian.org
-        - security.debian.org
-        - pypi.org
-        - files.pythonhosted.org
-    timeout_minutes: 30
-    steps:
-      - name: Verify native package installation and filesystem ownership
-        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
-        with:
-          dockerfile: .mozaic/native-package-ownership.Containerfile
-          target: utf-ownership
-          output: ownership.tar
-          base-images: >-
-            {"mcr.microsoft.com/dotnet/aspnet:10.0":"mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b","python:3.11-slim-bookworm":"docker.io/library/python@sha256:8fb0b110b022c70cbe09d3ff1fb313654f31f9c814abb0d48180af56d906a199"}
-  media-ownership:
-    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
-    needs:
-      - utf-ownership
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 1000
-      memory_mib: 1536
-      scratch_mib: 65536
-      pids: 256
-      log_mib: 32
-    network:
-      mode: http_https
-      allow_hosts:
-        - deb.debian.org
-        - security.debian.org
-        - pypi.org
-        - files.pythonhosted.org
-    timeout_minutes: 30
-    steps:
-      - name: Verify native package installation and filesystem ownership
-        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
-        with:
-          dockerfile: .mozaic/native-package-ownership.Containerfile
-          target: media-ownership
-          output: ownership.tar
-          base-images: >-
-            {"mcr.microsoft.com/dotnet/aspnet:10.0":"mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b","python:3.11-slim-bookworm":"docker.io/library/python@sha256:8fb0b110b022c70cbe09d3ff1fb313654f31f9c814abb0d48180af56d906a199"}
-  build-worker:
-    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
-    needs:
-      - media-ownership
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 1000
-      memory_mib: 1536
-      scratch_mib: 65536
-      pids: 256
-      log_mib: 32
-    network:
-      mode: http_https
-      allow_hosts:
-        - deb.debian.org
-        - security.debian.org
+        - index.crates.io
+        - static.crates.io
+        - auth.docker.io
+        - registry-1.docker.io
+        - production.cloudfront.docker.com
+        - mcr.microsoft.com
+        - mcrprod.azureedge.net
         - api.nuget.org
         - globalcdn.nuget.org
+        - snapshot.ubuntu.com
         - steamcdn-a.akamaihd.net
     timeout_minutes: 30
     steps:
-      - name: Build and verify runtime
-        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
-        with:
-          dockerfile: sources/CloudWorker/Dockerfile
-          target: runtime
-          output: image.tar
-          base-images: >-
-            {"mcr.microsoft.com/dotnet/sdk:10.0@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f":"mcr.microsoft.com/dotnet/sdk@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f","mcr.microsoft.com/dotnet/runtime:10.0@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe":"mcr.microsoft.com/dotnet/runtime@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe"}
-      - name: Publish the exact successful trusted image through the native importer
+      - name: Check and assemble build-worker in ordinary worker scratch
+        run: sh .mozaic/build.sh worker
+      - name: Publish the successful trusted OCI archive
         publish_in_package_registry:
           registry:
             id: 01a166b4-bc34-7973-a711-bf840c866313
@@ -213,7 +139,7 @@ jobs:
             tags:
               - release
   build-aska:
-    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     needs:
       - build-worker
     runs_on:
@@ -221,30 +147,30 @@ jobs:
         host-profile: fedora-44-cloud-v1
         workspace-storage: bounded-disk-v1
     resources:
-      cpu_millis: 1000
-      memory_mib: 1536
+      cpu_millis: 2000
+      memory_mib: 4096
       scratch_mib: 65536
-      pids: 256
-      log_mib: 32
+      pids: 512
+      log_mib: 64
     network:
       mode: http_https
       allow_hosts:
-        - deb.debian.org
-        - security.debian.org
+        - index.crates.io
+        - static.crates.io
+        - auth.docker.io
+        - registry-1.docker.io
+        - production.cloudfront.docker.com
+        - mcr.microsoft.com
+        - mcrprod.azureedge.net
         - api.nuget.org
         - globalcdn.nuget.org
+        - snapshot.ubuntu.com
         - steamcdn-a.akamaihd.net
     timeout_minutes: 30
     steps:
-      - name: Build and verify runtime
-        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
-        with:
-          dockerfile: sources/CloudWorker/Dockerfile.Aska
-          target: runtime
-          output: image.tar
-          base-images: >-
-            {"mcr.microsoft.com/dotnet/sdk:10.0@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f":"mcr.microsoft.com/dotnet/sdk@sha256:3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f","mcr.microsoft.com/dotnet/runtime:10.0@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe":"mcr.microsoft.com/dotnet/runtime@sha256:ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe"}
-      - name: Publish the exact successful trusted image through the native importer
+      - name: Check and assemble build-aska in ordinary worker scratch
+        run: sh .mozaic/build.sh aska
+      - name: Publish the successful trusted OCI archive
         publish_in_package_registry:
           registry:
             id: 01a166b4-bc34-7973-a711-bf840c866313
@@ -256,7 +182,7 @@ jobs:
             tags:
               - release
   build-api:
-    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     needs:
       - build-aska
     runs_on:
@@ -264,29 +190,29 @@ jobs:
         host-profile: fedora-44-cloud-v1
         workspace-storage: bounded-disk-v1
     resources:
-      cpu_millis: 1000
-      memory_mib: 1536
+      cpu_millis: 2000
+      memory_mib: 4096
       scratch_mib: 65536
-      pids: 256
-      log_mib: 32
+      pids: 512
+      log_mib: 64
     network:
       mode: http_https
       allow_hosts:
-        - deb.debian.org
-        - security.debian.org
+        - index.crates.io
+        - static.crates.io
+        - auth.docker.io
+        - registry-1.docker.io
+        - production.cloudfront.docker.com
+        - mcr.microsoft.com
+        - mcrprod.azureedge.net
         - api.nuget.org
         - globalcdn.nuget.org
+        - snapshot.ubuntu.com
     timeout_minutes: 30
     steps:
-      - name: Build and verify api
-        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
-        with:
-          dockerfile: Dockerfile
-          target: api
-          output: image.tar
-          base-images: >-
-            {"mcr.microsoft.com/dotnet/sdk:10.0.201":"mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c","mcr.microsoft.com/dotnet/aspnet:10.0":"mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b","node:24.11.1-alpine":"docker.io/library/node@sha256:b3c2a6ebd4b9b3d1a3f8a58252c07b680e442e61ce1306ebdbc408ddf27cec14","nginx:1.29-alpine":"docker.io/library/nginx@sha256:3bcf852aed06467cf075c6105892e4d5a6ebbbafa0ce22d35062db9e90ddef4c"}
-      - name: Publish the exact successful trusted image through the native importer
+      - name: Check and assemble build-api in ordinary worker scratch
+        run: sh .mozaic/build.sh api
+      - name: Publish the successful trusted OCI archive
         publish_in_package_registry:
           registry:
             id: 01a166b4-bc34-7973-a711-bf840c866313
@@ -298,7 +224,7 @@ jobs:
             tags:
               - release
   build-web:
-    image: mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c
+    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     needs:
       - build-api
     runs_on:
@@ -306,28 +232,29 @@ jobs:
         host-profile: fedora-44-cloud-v1
         workspace-storage: bounded-disk-v1
     resources:
-      cpu_millis: 1000
-      memory_mib: 1536
+      cpu_millis: 2000
+      memory_mib: 4096
       scratch_mib: 65536
-      pids: 256
-      log_mib: 32
+      pids: 512
+      log_mib: 64
     network:
       mode: http_https
       allow_hosts:
+        - index.crates.io
+        - static.crates.io
+        - auth.docker.io
+        - registry-1.docker.io
+        - production.cloudfront.docker.com
+        - mcr.microsoft.com
+        - mcrprod.azureedge.net
+        - registry.npmjs.org
         - api.nuget.org
         - globalcdn.nuget.org
-        - registry.npmjs.org
     timeout_minutes: 30
     steps:
-      - name: Build the existing Dockerfile web target without a host socket
-        uses: oci://mozaic.invalid/native/dockerfile@sha256:6793151849d27767c8d363a651ae1f20fc6b784cb17db4305ff0c3201e4e16be
-        with:
-          dockerfile: Dockerfile
-          target: web
-          output: image.tar
-          base-images: >-
-            {"mcr.microsoft.com/dotnet/sdk:10.0.201":"mcr.microsoft.com/dotnet/sdk@sha256:c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c","mcr.microsoft.com/dotnet/aspnet:10.0":"mcr.microsoft.com/dotnet/aspnet@sha256:f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b","node:24.11.1-alpine":"docker.io/library/node@sha256:b3c2a6ebd4b9b3d1a3f8a58252c07b680e442e61ce1306ebdbc408ddf27cec14","nginx:1.29-alpine":"docker.io/library/nginx@sha256:3bcf852aed06467cf075c6105892e4d5a6ebbbafa0ce22d35062db9e90ddef4c"}
-      - name: Publish the exact successful trusted image through the native importer
+      - name: Check and assemble build-web in ordinary worker scratch
+        run: sh .mozaic/build.sh web
+      - name: Publish the successful trusted OCI archive
         publish_in_package_registry:
           registry:
             id: 01a166b4-bc34-7973-a711-bf840c866313
