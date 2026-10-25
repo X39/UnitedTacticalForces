@@ -48,6 +48,7 @@ services:
       Hosting__WorkerProvisioning__RegistryToken: ${GHCR_PULL_TOKEN:-}
       Hosting__WorkerProvisioning__RegistryAuthenticationRequired: "true"
       Hosting__PersistentStorage__BasePath: /var/lib/united-tactical-forces/hosting
+      Hosting__Secrets__KeyRingPath: /home/app/.aspnet/DataProtection-Keys
     volumes:
       - api_media:/app/App_Data
       - api_hosting:/var/lib/united-tactical-forces/hosting

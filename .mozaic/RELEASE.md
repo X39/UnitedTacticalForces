@@ -1,8 +1,11 @@
 # Full UTF release pipeline
 
+See [the current deployment handoff](DEPLOYMENT.md) for runtime boundaries,
+required input names, publication receipts and the next cloud gate.
+
 Register `.mozaic/release.yml` as a separate named pipeline on trusted `main`
 after verifying the applied full-fleet runner configuration. The original
-`.mozaic/pipeline.yml` remains the unchanged first static acceptance definition.
+`.mozaic/pipeline.yml` remains the first static acceptance definition.
 The full definition uses the same fixed native action and resource ceilings:
 1 CPU, 1536 MiB memory, 1024 MiB scratch, 256 PIDs, 32 MiB logs and 30 minutes
 per job. Nine jobs form one serial chain; no companion service is declared.
