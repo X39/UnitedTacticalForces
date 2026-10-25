@@ -172,7 +172,8 @@ def stage(key, prefix):
         prefix.mkdir()
         for archive, member in base.entries():
             name = checked_path(member.name)
-            selected = name.startswith('usr/local/') if key == 'node' else name.startswith('usr/share/dotnet/')
+            selected = (name in ('usr/local/bin/node', 'usr/local/bin/npm', 'usr/local/bin/npx')
+                        or name.startswith('usr/local/lib/node_modules/npm/')) if key == 'node' else name.startswith('usr/share/dotnet/')
             if not selected:
                 continue
             require(not any(part.startswith('.wh.') for part in PurePosixPath(name).parts), 'toolchain whiteout unsupported')
