@@ -18,13 +18,13 @@ export UTF_REACT_PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 mkdir -p "$HOME" /workspace/.browser-tools "$UTF_PROOF_DIRECTORY" "$UTF_CHECK_PUBLISH_DIRECTORY"
 
 # Verify the official Node release bytes before extracting into writable scratch.
-node_archive=/workspace/.browser-tools/node-v24.11.1-linux-x64.tar.xz
+node_archive=/workspace/.browser-tools/node-v24.11.1-linux-x64.tar.gz
 curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
-    https://nodejs.org/dist/v24.11.1/node-v24.11.1-linux-x64.tar.xz --output "$node_archive"
-printf '%s  %s\n' '60e3b0a8500819514aca603487c254298cd776de0698d3cd08f11dba5b8289a8' \
+    https://nodejs.org/dist/v24.11.1/node-v24.11.1-linux-x64.tar.gz --output "$node_archive"
+printf '%s  %s\n' '58a5ff5cc8f2200e458bea22e329d5c1994aa1b111d499ca46ec2411d58239ca' \
     "$node_archive" | sha256sum --check --status
 mkdir -p /workspace/.node
-tar -xJf "$node_archive" --strip-components=1 -C /workspace/.node
+tar -xzf "$node_archive" --strip-components=1 -C /workspace/.node
 export PATH="/workspace/.node/bin:$PATH"
 
 if [ "$mode" = dotnet-release ]; then
