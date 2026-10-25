@@ -13,7 +13,7 @@ jobs:
     resources:
       cpu_millis: 1000
       memory_mib: 1536
-      scratch_mib: 1024
+      scratch_mib: 65536
       pids: 256
       log_mib: 32
     network:
@@ -52,7 +52,7 @@ jobs:
     resources:
       cpu_millis: 1000
       memory_mib: 1536
-      scratch_mib: 1024
+      scratch_mib: 65536
       pids: 256
       log_mib: 32
     network:
@@ -86,7 +86,7 @@ jobs:
     resources:
       cpu_millis: 1000
       memory_mib: 1536
-      scratch_mib: 1024
+      scratch_mib: 65536
       pids: 256
       log_mib: 32
     network:
@@ -118,7 +118,7 @@ jobs:
     resources:
       cpu_millis: 1000
       memory_mib: 1536
-      scratch_mib: 1024
+      scratch_mib: 65536
       pids: 256
       log_mib: 32
     network:
@@ -149,7 +149,7 @@ jobs:
     resources:
       cpu_millis: 1000
       memory_mib: 1536
-      scratch_mib: 1024
+      scratch_mib: 65536
       pids: 256
       log_mib: 32
     network:
@@ -180,7 +180,7 @@ jobs:
     resources:
       cpu_millis: 1000
       memory_mib: 1536
-      scratch_mib: 1024
+      scratch_mib: 65536
       pids: 256
       log_mib: 32
     network:
@@ -223,7 +223,7 @@ jobs:
     resources:
       cpu_millis: 1000
       memory_mib: 1536
-      scratch_mib: 1024
+      scratch_mib: 65536
       pids: 256
       log_mib: 32
     network:
@@ -266,7 +266,7 @@ jobs:
     resources:
       cpu_millis: 1000
       memory_mib: 1536
-      scratch_mib: 1024
+      scratch_mib: 65536
       pids: 256
       log_mib: 32
     network:
@@ -308,7 +308,7 @@ jobs:
     resources:
       cpu_millis: 1000
       memory_mib: 1536
-      scratch_mib: 1024
+      scratch_mib: 65536
       pids: 256
       log_mib: 32
     network:
