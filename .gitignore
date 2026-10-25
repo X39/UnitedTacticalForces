@@ -528,3 +528,9 @@ appsettings.user.json
 .env
 /sources/Api/App_Data/*
 AGENTS.md
+
+# These application inputs share names with generic build-output directories.
+!/sources/WebApp/UtfApi/GameContent/Servers/Item/Artifacts/
+!/sources/WebApp/UtfApi/GameContent/Servers/Item/Artifacts/**
+!/sources/Api/SeedAssets/Debug/
+!/sources/Api/SeedAssets/Debug/*.jpg
