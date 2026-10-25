@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic, unprivileged OCI assembly; no engine or target execution."""
 import copy
+import ctypes
 import functools
 import gzip
 import hashlib
@@ -332,6 +333,66 @@ def deb_data(data):
     raise ValueError('Debian payload missing')
 
 
+class ZstdReader(io.RawIOBase):
+    """Bounded streaming decoder using the admitted worker's existing libzstd."""
+    class Input(ctypes.Structure):
+        _fields_ = [('src', ctypes.c_void_p), ('size', ctypes.c_size_t), ('pos', ctypes.c_size_t)]
+
+    class Output(ctypes.Structure):
+        _fields_ = [('dst', ctypes.c_void_p), ('size', ctypes.c_size_t), ('pos', ctypes.c_size_t)]
+
+    def __init__(self, data):
+        super().__init__()
+        self.data = data
+        try:
+            self.library = ctypes.CDLL('libzstd.so.1')
+        except OSError:
+            raise ValueError('admitted worker lacks required system libzstd') from None
+        self.library.ZSTD_createDStream.restype = ctypes.c_void_p
+        self.library.ZSTD_initDStream.argtypes = [ctypes.c_void_p]
+        self.library.ZSTD_initDStream.restype = ctypes.c_size_t
+        self.library.ZSTD_freeDStream.argtypes = [ctypes.c_void_p]
+        self.library.ZSTD_freeDStream.restype = ctypes.c_size_t
+        self.library.ZSTD_isError.argtypes = [ctypes.c_size_t]
+        self.library.ZSTD_isError.restype = ctypes.c_uint
+        self.library.ZSTD_decompressStream.argtypes = [ctypes.c_void_p, ctypes.POINTER(self.Output), ctypes.POINTER(self.Input)]
+        self.library.ZSTD_decompressStream.restype = ctypes.c_size_t
+        self.context = self.library.ZSTD_createDStream()
+        require(self.context, 'cannot allocate bounded zstd decoder')
+        require(not self.library.ZSTD_isError(self.library.ZSTD_initDStream(self.context)), 'zstd decoder initialization failed')
+        self.source = self.Input(ctypes.cast(ctypes.c_char_p(self.data), ctypes.c_void_p), len(data), 0)
+        self.total = 0
+        self.finished = False
+
+    def readable(self):
+        return True
+
+    def readinto(self, target):
+        if self.finished or not target:
+            return 0
+        buffer = (ctypes.c_char * len(target)).from_buffer(target)
+        output = self.Output(ctypes.cast(buffer, ctypes.c_void_p), len(target), 0)
+        while output.pos == 0:
+            previous = self.source.pos
+            result = self.library.ZSTD_decompressStream(self.context, ctypes.byref(output), ctypes.byref(self.source))
+            require(not self.library.ZSTD_isError(result), 'invalid zstd package payload')
+            if result == 0:
+                require(self.source.pos == self.source.size, 'trailing zstd package data')
+                self.finished = True
+                break
+            require(output.pos or self.source.pos != previous, 'truncated zstd package payload')
+        self.total += output.pos
+        require(self.total <= 4 * 1024**3, 'expanded package exceeds 4 GiB limit')
+        return output.pos
+
+    def close(self):
+        context = getattr(self, 'context', None)
+        if context:
+            self.library.ZSTD_freeDStream(context)
+            self.context = None
+        super().close()
+
+
 class Overlay:
     def __init__(self, path):
         self.archive = tarfile.open(path, 'w', format=tarfile.PAX_FORMAT)
@@ -358,7 +419,8 @@ class Overlay:
                 self.put(destination + '/' + child.name, child.read_bytes(), 0o755 if child.stat().st_mode & 0o111 else 0o644)
 
     def payload(self, data):
-        with tarfile.open(fileobj=io.BytesIO(data), mode='r|*') as archive:
+        source = io.BufferedReader(ZstdReader(data), 64 * 1024) if data.startswith(b'\x28\xb5\x2f\xfd') else io.BytesIO(data)
+        with source, tarfile.open(fileobj=source, mode='r|*') as archive:
             for item in archive:
                 name = checked_path(item.name)
                 if name == '.':
