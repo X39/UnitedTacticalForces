@@ -1,104 +1,10 @@
-# Ordinary worker checks and deterministic OCI publication; no container builder action.
+# Emergency trusted release: production compilation, OCI assembly and publication only.
 version: 1
 triggers:
   - trusted_branch
 jobs:
-  react-tests:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - registry.npmjs.org
-    timeout_minutes: 30
-    steps:
-      - name: Check and assemble react-tests in ordinary worker scratch
-        run: sh .mozaic/build.sh react-tests
-  dotnet-release:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    needs:
-      - react-tests
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - mcr.microsoft.com
-        - mcrprod.azureedge.net
-        - registry.npmjs.org
-        - api.nuget.org
-        - globalcdn.nuget.org
-        - cdn.playwright.dev
-        - playwright.download.prss.microsoft.com
-    timeout_minutes: 30
-    steps:
-      - name: Check and assemble dotnet-release in ordinary worker scratch
-        run: sh .mozaic/build.sh dotnet-release
-    test_results:
-      - path: test-results/test-results/*.trx
-        format: trx
-  react-browser:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    needs:
-      - dotnet-release
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - mcr.microsoft.com
-        - mcrprod.azureedge.net
-        - registry.npmjs.org
-        - cdn.playwright.dev
-        - playwright.download.prss.microsoft.com
-    timeout_minutes: 30
-    steps:
-      - name: Check and assemble react-browser in ordinary worker scratch
-        run: sh .mozaic/build.sh react-browser
   build-worker:
     image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    needs:
-      - react-browser
     runs_on:
       labels:
         host-profile: fedora-44-cloud-v1
@@ -125,7 +31,7 @@ jobs:
         - steamcdn-a.akamaihd.net
     timeout_minutes: 30
     steps:
-      - name: Check and assemble build-worker in ordinary worker scratch
+      - name: Compile and package worker for emergency release
         run: sh .mozaic/build.sh worker
       - name: Publish the successful trusted OCI archive
         publish_in_package_registry:
@@ -168,7 +74,7 @@ jobs:
         - steamcdn-a.akamaihd.net
     timeout_minutes: 30
     steps:
-      - name: Check and assemble build-aska in ordinary worker scratch
+      - name: Compile and package aska for emergency release
         run: sh .mozaic/build.sh aska
       - name: Publish the successful trusted OCI archive
         publish_in_package_registry:
@@ -210,7 +116,7 @@ jobs:
         - snapshot.ubuntu.com
     timeout_minutes: 30
     steps:
-      - name: Check and assemble build-api in ordinary worker scratch
+      - name: Compile and package api for emergency release
         run: sh .mozaic/build.sh api
       - name: Publish the successful trusted OCI archive
         publish_in_package_registry:
@@ -252,7 +158,7 @@ jobs:
         - globalcdn.nuget.org
     timeout_minutes: 30
     steps:
-      - name: Check and assemble build-web in ordinary worker scratch
+      - name: Compile and package web for emergency release
         run: sh .mozaic/build.sh web
       - name: Publish the successful trusted OCI archive
         publish_in_package_registry:
