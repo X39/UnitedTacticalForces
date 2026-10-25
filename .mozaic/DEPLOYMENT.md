@@ -9,6 +9,25 @@ are excluded and remain unrelated work. Existing remotes are preserved.
 
 ## Source and publication inputs
 
+Broker verification at 20:58 UTC on 25 October returned `ok=true`, HTTP 200
+for project, source repository, pipeline registration and OCI repository lists.
+The existing project and source are private; the repository is active with
+default branch `refs/heads/main`. All four OCI repositories below are private,
+active and unquarantined. No duplicate resource was created.
+
+The sole pipeline registration is `01a16867-883d-7033-a542-87081c09c572`,
+named `UTF complete tested immutable release`, pointing to `.mozaic/release.yml`.
+Listing without a revision returns `revision: null`, empty triggers and zero
+jobs by design; it is registration evidence, not compilation evidence.
+The documented GET with both
+`?revision=8435057ddd1cf2d4c3340d1a5709093a82fe941d&repository_type=git`
+was rejected by the broker with `ok=false`, `httpStatus: 0`,
+`code: request_rejected`. Central handling must permit this exact read-only
+validation query or perform it through the supported private API channel.
+No browser MFA or new token is needed for the already verified setup routes.
+Derived Git/pull credentials, branch policy, triggers and deployment remain
+outside this delegated broker subset; central ownership is unchanged.
+
 Use the existing private X39 project `01a166ad-9024-7b30-a9bc-cd03ac37f2e8`,
 repository `01a166ad-93f3-7fa2-a4f0-e57014752726`, trusted `refs/heads/main`,
 and full definition `.mozaic/release.yml`. Do not register the static pilot as
