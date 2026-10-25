@@ -1,9 +1,20 @@
 # Mozaic CI handoff
 
+## Current cloud job placement (2026-10-25)
+
+Pipeline selectors request `host-profile: fedora-44-cloud-v1` and
+`workspace-storage: bounded-disk-v1`. Existing checks, immutable image pins,
+resource limits and trusted-branch-only publication are preserved. These
+selectors establish placement requirements; they do not establish image
+admission or native Dockerfile support. The current Fedora worker rejects
+Debian-only native actions; retain that failure and do not claim publication
+until a compatible build path and actual cloud run pass. No host provisioning,
+SDK build, runtime credential or deployment change is included here.
+
 This definition follows the deployed Mozaic `1d8d568` static pilot and native
-package-ownership fixture. It uses runner configuration
+package-ownership fixture. Its historical Debian runner configuration was
 `f464e4f4-e627-4be1-abda-fa23f63c5bf7`, revision 1, with the
-`debian-13-trusted-organization-v1` profile. The profile makes no per-container
+`debian-13-trusted-organization-v1` profile. That profile makes no per-container
 AppArmor claim. Jobs are serialized and require no runtime credentials.
 
 ## Registration

@@ -1,4 +1,4 @@
-# Reviewed against Mozaic 1d8d568 and runner configuration f464e4f4-e627-4be1-abda-fa23f63c5bf7 revision 1.
+# Job placement targets the current Fedora cloud worker and bounded workspace.
 # Trusted organization jobs only; runtime credentials never enter this pipeline.
 version: 1
 triggers: [trusted_branch]
@@ -7,7 +7,8 @@ jobs:
     image: docker.io/library/node@sha256:fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -42,7 +43,8 @@ jobs:
     needs: [react-tests]
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -71,7 +73,8 @@ jobs:
     needs: [media-ownership]
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -106,7 +109,8 @@ jobs:
     needs: [dotnet-tests]
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -130,7 +134,8 @@ jobs:
     needs: [utf-ownership]
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536

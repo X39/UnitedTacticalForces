@@ -8,7 +8,8 @@ jobs:
     image: docker.io/library/node@sha256:fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -46,7 +47,8 @@ jobs:
       - react-tests
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -79,7 +81,8 @@ jobs:
       - dotnet-release
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -110,7 +113,8 @@ jobs:
       - react-browser
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -140,7 +144,8 @@ jobs:
       - utf-ownership
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -170,7 +175,8 @@ jobs:
       - media-ownership
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -212,7 +218,8 @@ jobs:
       - build-worker
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -254,7 +261,8 @@ jobs:
       - build-aska
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
@@ -295,7 +303,8 @@ jobs:
       - build-api
     runs_on:
       labels:
-        host-profile: debian-13-trusted-organization-v1
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 1000
       memory_mib: 1536
