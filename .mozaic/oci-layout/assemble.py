@@ -30,6 +30,9 @@ PINS = {
     'worker': ('mcr.microsoft.com/dotnet/runtime', 'ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe'),
 }
 SNAPSHOT = 'https://snapshot.ubuntu.com/ubuntu/20261024T000000Z/'
+SNAPSHOT_DELIVERY = 'https://app.mozaic.space/mozaic-release-inputs/ubuntu-snapshot-20261024T000000Z/'
+STEAMCMD_DELIVERY = ('https://app.mozaic.space/mozaic-release-inputs/'
+                    'cebf0046bfd08cf45da6bc094ae47aa39ebf4155e5ede41373b579b8f1071e7c/steamcmd_linux.tar.gz')
 RELEASES = {
     'noble': '26758a13cecfaff9ff274d31ea9a4633674a999bd130c09f6ecd66a4b8071184',
     'noble-updates': 'b0ce6f04d05c105454c4f3b6747230e1486618f4f167a616b54b643d9a58ff06',
@@ -37,6 +40,7 @@ RELEASES = {
 }
 HOSTS = {'auth.docker.io', 'registry-1.docker.io', 'production.cloudfront.docker.com',
          'mcr.microsoft.com', 'mcrprod.azureedge.net', 'westeurope.data.mcr.microsoft.com', 'snapshot.ubuntu.com',
+         'app.mozaic.space',
          'steamcdn-a.akamaihd.net'}
 
 
@@ -86,12 +90,19 @@ def fetch_failure(url, error, kind='content'):
 
 def fetch(url, expected=None, maximum=1024 * 1024 * 1024, headers=None):
     check_url(url)
+    # Deliver unchanged pinned IPv4-only inputs through the existing CI-restricted IPv6 mirror.
+    delivery_url = url
+    if url.startswith(SNAPSHOT):
+        delivery_url = SNAPSHOT_DELIVERY + url.removeprefix(SNAPSHOT)
+    elif url == 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz':
+        delivery_url = STEAMCMD_DELIVERY
+    check_url(delivery_url)
     try:
         with urllib.request.build_opener(Redirect()).open(
-                urllib.request.Request(url, headers=headers or {}), timeout=300) as response:
+                urllib.request.Request(delivery_url, headers=headers or {}), timeout=300) as response:
             data = response.read(maximum + 1)
     except Exception as error:
-        raise fetch_failure(url, error) from None
+        raise fetch_failure(delivery_url, error) from None
     require(len(data) <= maximum, 'download exceeds limit')
     if expected:
         require(sha(data) == expected.removeprefix('sha256:'), 'content digest mismatch')

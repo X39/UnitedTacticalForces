@@ -1,8 +1,8 @@
 # Ordinary UTF OCI assembly
 
 This helper adapts the accepted Jodel registry verifier. The ordinary admitted
-glibc Rust job compiles it in CI. It stages the existing digest-pinned Python
-toolchain, then runs the standard-library assembler without an engine, socket,
+job uses its native Python and stages the existing digest-pinned toolchains.
+It runs the standard-library assembler without an engine, socket,
 chroot, package manager, target executable, or package maintainer script.
 
 Commands are `stage-node PREFIX`, `stage-dotnet PREFIX [201|302]`,
@@ -14,6 +14,14 @@ Commands are `stage-node PREFIX`, `stage-dotnet PREFIX [201|302]`,
 Runtime base manifests, configs, layer digests and uncompressed identities are
 verified. Ubuntu Noble package indexes chain to SHA-256-pinned Release documents
 at snapshot `20261024T000000Z`; each package payload is SHA-256 verified.
+The original snapshot URL and every Release, index and package digest remain
+authoritative. CI downloads those same bytes from the existing CI-restricted
+`https://app.mozaic.space/mozaic-release-inputs/ubuntu-snapshot-20261024T000000Z/`
+mirror because the upstream snapshot service is IPv4-only. The mirror preserves
+the upstream relative paths and cannot replace the pinned integrity checks.
+The same restricted input service delivers the unchanged SteamCMD installer at
+its existing digest-named path; its original upstream URL and SHA-256 remain
+in the assembly request. Neither delivery path is an arbitrary proxy.
 Required and pre-required dependencies are resolved against the base's installed
 package metadata, including i386 worker dependencies. Package maintainer scripts
 are deliberately not run. Runtime users, Wine command links and data ownership

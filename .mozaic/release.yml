@@ -30,6 +30,7 @@ jobs:
         - globalcdn.nuget.org
         - registry.npmjs.org
         - snapshot.ubuntu.com
+        - app.mozaic.space
         - steamcdn-a.akamaihd.net
         - cdn.playwright.dev
         - playwright.download.prss.microsoft.com
