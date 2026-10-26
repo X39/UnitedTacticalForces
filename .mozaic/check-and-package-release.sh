@@ -34,6 +34,8 @@ printf '{"sdk":{"version":"10.0.302","rollForward":"disable"}}\n' \
     dotnet test tests/CloudWorker.Tests/CloudWorker.Tests.csproj --configuration Release \
         --no-build --no-restore --maxcpucount:1 --logger trx \
         --results-directory "$UTF_PROOF_DIRECTORY/worker-test-results"
+    "$helper" python /workspace/.mozaic/verify-test-results.py \
+        "$UTF_PROOF_DIRECTORY/worker-test-results" CloudWorker.Tests
     dotnet publish sources/CloudWorker/CloudWorker.csproj --configuration Release \
         --no-build --no-restore --no-self-contained --maxcpucount:1 \
         --output "$UTF_CHECK_PUBLISH_DIRECTORY/worker"

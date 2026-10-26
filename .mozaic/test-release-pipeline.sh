@@ -5,7 +5,7 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 
-for failure in none react-tests dotnet-release react-browser worker-test; do
+for failure in none react-tests dotnet-release react-browser worker-test worker-evidence; do
     workspace=$temporary/$failure
     mkdir -p "$workspace/.mozaic" "$workspace/.oci-target/release" "$workspace/bin" \
         "$workspace/sources/ReactApp" "$workspace/sources/HostingContracts" \
@@ -24,6 +24,7 @@ CHECK
 set -eu
 printf '%s\n' "$*" >> "$TRACE"
 if [ "$1" = assemble ]; then printf 'checked archive\n' > "$4"; fi
+if [ "$1" = python ]; then test "$FAILURE" != worker-evidence; fi
 HELPER
     cat > "$workspace/bin/dotnet" <<'DOTNET'
 #!/bin/sh

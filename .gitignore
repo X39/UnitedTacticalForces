@@ -520,6 +520,7 @@ gh-pages/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+/.mozaic-work/
 appsettings.Secret.json
 appsettings.secret.json
 appsettings.User.json

@@ -38,6 +38,8 @@ if [ "$ready" != true ]; then
 fi
 dotnet test X39.UnitedTacticalForces.slnx --configuration Release --no-build \
     --maxcpucount:1 --logger trx --results-directory "$proof_directory/test-results"
+/workspace/.oci-target/release/utf-oci-layout python .mozaic/verify-test-results.py \
+    "$proof_directory/test-results" Api.Tests CloudWorker.Tests Ui.Tests X39.BI.Config.Parsing.Tests
 dotnet publish sources/Api/Api.csproj --configuration Release --no-build --no-restore \
     --maxcpucount:1 --output "$publish_directory/api" /p:UseAppHost=false
 dotnet publish sources/WebApp/WebApp.csproj --configuration Release --no-build --no-restore \

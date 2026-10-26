@@ -12,6 +12,14 @@ retain their separately pinned SDK; their test project is rebuilt and tested
 under that SDK before publishing its binaries with `--no-build`. SDK201 build
 products are excluded from the worker source copy.
 
+Release validation requires nonzero passing TRX results from every .NET test
+assembly, including the Blazor Chromium scenarios, and from the separate worker
+SDK run. Missing reports, zero execution, failed tests and skipped tests block
+packaging. Local inert orchestration and TRX regression checks also run in CI.
+Browser API responses are isolated test fixtures; API persistence tests execute
+against SQLite. Neither suite proves real PostgreSQL migration/startup or remote
+worker operation, which remain explicit acceptance gates.
+
 All four archives are assembled only after these checks succeed. Terminal
 publication declarations bind distinct `images/api.tar`, `images/web.tar`,
 `images/worker.tar`, and `images/aska.tar` inputs to `utf/api`, `utf/web`,

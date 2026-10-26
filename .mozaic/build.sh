@@ -32,6 +32,8 @@ case "$mode" in
 esac
 case "$mode" in
     release)
+        sh .mozaic/test-release-pipeline.sh
+        "$helper" python -B .mozaic/test_verify_test_results.py
         sh .mozaic/check-and-package-release.sh
         ;;
     react-tests)
