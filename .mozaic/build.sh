@@ -1,6 +1,18 @@
 #!/bin/sh
 # Check and package only inside an ordinary Mozaic worker job.
 set -eu
+report_resources()
+{
+    # Best-effort observations from this necessary job, without changing its limits.
+    for name in memory.peak memory.events pids.peak pids.events; do
+        path=/sys/fs/cgroup/$name
+        if [ -r "$path" ]; then
+            printf '[utf] cgroup %s\n' "$name"
+            head -c 512 "$path" || true
+        fi
+    done
+}
+trap 'status=$?; set +e; report_resources; exit "$status"' EXIT
 cd /workspace
 mode=${1:?A check or component name is required}
 export HOME=/workspace/.home
