@@ -29,7 +29,8 @@ host_pid=$!
 trap 'kill "$host_pid" 2>/dev/null || true; wait "$host_pid" 2>/dev/null || true' EXIT HUP INT TERM
 ready=false
 for attempt in $(seq 1 90); do
-    if curl --fail --silent "$UTF_UI_TEST_BASE_URL" > /dev/null; then
+    # Staged browser libraries must not replace host curl's matching libcurl.
+    if LD_LIBRARY_PATH= curl --fail --silent "$UTF_UI_TEST_BASE_URL" > /dev/null; then
         ready=true
         break
     fi
