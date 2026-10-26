@@ -1073,6 +1073,7 @@
           "CostOwners"
         ],
         "summary": "Returns one cost owner's current hosting-finance position when the caller may inspect it.",
+        "operationId": "GetAsync",
         "parameters": [
           {
             "name": "costOwnerId",
@@ -2643,7 +2644,7 @@
           "Events"
         ],
         "summary": "Returns the upcoming Event's.",
-        "description": "An Event is considered upcoming for the whole day of its Instant Event.ScheduledFor time.\r\nThis means that if an Event is scheduled for 2023-02-22T18:00:00+00:00, the event will stay\r\nin the upcoming list until 2023-02-23T00:00:00+00:00.",
+        "description": "An Event is considered upcoming for the whole day of its Instant Event.ScheduledFor time.\nThis means that if an Event is scheduled for 2023-02-22T18:00:00+00:00, the event will stay\nin the upcoming list until 2023-02-23T00:00:00+00:00.",
         "operationId": "GetUpcomingEventsAsync",
         "responses": {
           "200": {
@@ -2834,7 +2835,7 @@
           {
             "name": "acceptance",
             "in": "query",
-            "description": "If provided, only User's with the given\r\nEEventAcceptance UserEventMeta.Acceptance will be returned.",
+            "description": "If provided, only User's with the given\nEEventAcceptance UserEventMeta.Acceptance will be returned.",
             "schema": {
               "$ref": "#/components/schemas/EEventAcceptance"
             }
@@ -2884,7 +2885,7 @@
         "summary": "Creates a new Event.",
         "operationId": "CreateEventAsync",
         "requestBody": {
-          "description": "A CancellationToken to cancel the operation.\r\nPassed automatically by ASP.Net framework.",
+          "description": "A CancellationToken to cancel the operation.\nPassed automatically by ASP.Net framework.",
           "content": {
             "application/json": {
               "schema": {
@@ -3140,7 +3141,7 @@
         "tags": [
           "EventSlotting"
         ],
-        "summary": "Receives all slots currently available on an Event, identified via the\r\neventId.",
+        "summary": "Receives all slots currently available on an Event, identified via the\neventId.",
         "operationId": "AllAsync",
         "parameters": [
           {
@@ -3189,7 +3190,7 @@
         "tags": [
           "EventSlotting"
         ],
-        "summary": "Receives the slot of the calling user (if available) on an Event, identified via the\r\neventId.",
+        "summary": "Receives the slot of the calling user (if available) on an Event, identified via the\neventId.",
         "operationId": "MySlotAsync",
         "parameters": [
           {
@@ -3240,7 +3241,7 @@
         "tags": [
           "EventSlotting"
         ],
-        "summary": "Unassign the user from a possibly slotted Event, identified via the eventId.\r\nIf the user is not slotted, nothing will be done.",
+        "summary": "Unassign the user from a possibly slotted Event, identified via the eventId.\nIf the user is not slotted, nothing will be done.",
         "operationId": "UnassignIfAssignedAsync",
         "parameters": [
           {
@@ -3285,7 +3286,7 @@
         "tags": [
           "EventSlotting"
         ],
-        "summary": "Assign the user to an EventSlot, identified via the slotNumber\r\nin an Event, identified via the eventId.\r\nIf the user is already slotted, the old slot will be unassigned.",
+        "summary": "Assign the user to an EventSlot, identified via the slotNumber\nin an Event, identified via the eventId.\nIf the user is already slotted, the old slot will be unassigned.",
         "operationId": "AssignEventSlotToSelf",
         "parameters": [
           {
@@ -3343,7 +3344,7 @@
         "tags": [
           "EventSlotting"
         ],
-        "summary": "Assign a User, identified via userId,\r\nto an EventSlot, identified via the slotNumber\r\nin an Event, identified via the eventId.\r\nIf the user is already slotted, the old slot will be unassigned.",
+        "summary": "Assign a User, identified via userId,\nto an EventSlot, identified via the slotNumber\nin an Event, identified via the eventId.\nIf the user is already slotted, the old slot will be unassigned.",
         "operationId": "AssignEventSlotToUserAsync",
         "parameters": [
           {
@@ -3411,7 +3412,7 @@
         "tags": [
           "EventSlotting"
         ],
-        "summary": "Assign a User, identified via userId,\r\nto an EventSlot, identified via the slotNumber\r\nin an Event, identified via the eventId.\r\nIf the user is already slotted, the old slot will be unassigned.",
+        "summary": "Assign a User, identified via userId,\nto an EventSlot, identified via the slotNumber\nin an Event, identified via the eventId.\nIf the user is already slotted, the old slot will be unassigned.",
         "operationId": "UnassignEventSlotToUserAsync",
         "parameters": [
           {
@@ -3494,7 +3495,7 @@
           }
         ],
         "requestBody": {
-          "description": "A CancellationToken to cancel the operation.\r\nPassed automatically by ASP.Net framework.",
+          "description": "A CancellationToken to cancel the operation.\nPassed automatically by ASP.Net framework.",
           "content": {
             "application/json": {
               "schema": {
@@ -3583,7 +3584,7 @@
           }
         ],
         "requestBody": {
-          "description": "A CancellationToken to cancel the operation.\r\nPassed automatically by ASP.Net framework.",
+          "description": "A CancellationToken to cancel the operation.\nPassed automatically by ASP.Net framework.",
           "content": {
             "application/json": {
               "schema": {
@@ -3642,7 +3643,7 @@
         "tags": [
           "EventSlotting"
         ],
-        "summary": "Delete an EventSlot, identified via the slotNumber\r\nin an Event, identified via the eventId.",
+        "summary": "Delete an EventSlot, identified via the slotNumber\nin an Event, identified via the eventId.",
         "operationId": "DeleteEventSlotAsync",
         "parameters": [
           {
@@ -8516,7 +8517,7 @@
           {
             "name": "mode",
             "in": "path",
-            "description": "If `true`, the roleId will be given to the User.\r\nIf  `false`, the roleId will be removed from the User.",
+            "description": "If `true`, the roleId will be given to the User.\nIf  `false`, the roleId will be removed from the User.",
             "required": true,
             "schema": {
               "type": "boolean"
@@ -8564,7 +8565,7 @@
           {
             "name": "mode",
             "in": "path",
-            "description": "If `true`, the claimId will be given to the Role.\r\nIf  `false`, the claimId will be removed from the Role.",
+            "description": "If `true`, the claimId will be given to the Role.\nIf  `false`, the claimId will be removed from the Role.",
             "required": true,
             "schema": {
               "type": "boolean"
@@ -9036,7 +9037,7 @@
         "summary": "Creates a new Terrain.",
         "operationId": "CreateTerrainAsync",
         "requestBody": {
-          "description": "A CancellationToken to cancel the operation.\r\nPassed automatically by ASP.Net framework.",
+          "description": "A CancellationToken to cancel the operation.\nPassed automatically by ASP.Net framework.",
           "content": {
             "application/json": {
               "schema": {
@@ -9086,7 +9087,7 @@
           "Terrain"
         ],
         "summary": "Allows to change the contents of a Terrain.",
-        "description": "        Only non-system properties are allowed:\r\n        * string Terrain.Title\r\n* Guid? Terrain.ImageAssetFk",
+        "description": "        Only non-system properties are allowed:\n        * string Terrain.Title\n* Guid? Terrain.ImageAssetFk",
         "operationId": "UpdateTerrainAsync",
         "parameters": [
           {
@@ -9102,7 +9103,7 @@
           }
         ],
         "requestBody": {
-          "description": "A CancellationToken to cancel the operation.\r\nPassed automatically by ASP.Net framework.",
+          "description": "A CancellationToken to cancel the operation.\nPassed automatically by ASP.Net framework.",
           "content": {
             "application/json": {
               "schema": {
@@ -9239,7 +9240,7 @@
           "Terrain"
         ],
         "summary": "Makes a Terrain unavailable for further usage.",
-        "description": "To not break data consistency, this call will not actually delete a Terrain but rather make it not appear in\r\nany call but a direct one.",
+        "description": "To not break data consistency, this call will not actually delete a Terrain but rather make it not appear in\nany call but a direct one.",
         "operationId": "DeleteTerrainAsync",
         "parameters": [
           {
@@ -9471,7 +9472,7 @@
         "tags": [
           "Users"
         ],
-        "summary": "Change location to this URL to start the steam login process.\r\nOnly valid for browser clients as a redirect to the steam login page is mandatory.\r\nIf a user logs in using steam and was not yet registered, he will be auto-registered.",
+        "summary": "Change location to this URL to start the steam login process.\nOnly valid for browser clients as a redirect to the steam login page is mandatory.\nIf a user logs in using steam and was not yet registered, he will be auto-registered.",
         "operationId": "LoginSteamAsync_GET",
         "parameters": [
           {
@@ -9497,7 +9498,7 @@
         "tags": [
           "Users"
         ],
-        "summary": "Change location to this URL to start the steam login process.\r\nOnly valid for browser clients as a redirect to the steam login page is mandatory.\r\nIf a user logs in using steam and was not yet registered, he will be auto-registered.",
+        "summary": "Change location to this URL to start the steam login process.\nOnly valid for browser clients as a redirect to the steam login page is mandatory.\nIf a user logs in using steam and was not yet registered, he will be auto-registered.",
         "operationId": "LoginSteamAsync_POST",
         "parameters": [
           {
@@ -9525,7 +9526,7 @@
         "tags": [
           "Users"
         ],
-        "summary": "Change location to this URL to start the discord login process.\r\nOnly valid for browser clients as a redirect to the discord login page is mandatory.\r\nIf a user logs in using discord and was not yet registered, he will be auto-registered.",
+        "summary": "Change location to this URL to start the discord login process.\nOnly valid for browser clients as a redirect to the discord login page is mandatory.\nIf a user logs in using discord and was not yet registered, he will be auto-registered.",
         "operationId": "LoginDiscordAsync_GET",
         "parameters": [
           {
@@ -9551,7 +9552,7 @@
         "tags": [
           "Users"
         ],
-        "summary": "Change location to this URL to start the discord login process.\r\nOnly valid for browser clients as a redirect to the discord login page is mandatory.\r\nIf a user logs in using discord and was not yet registered, he will be auto-registered.",
+        "summary": "Change location to this URL to start the discord login process.\nOnly valid for browser clients as a redirect to the discord login page is mandatory.\nIf a user logs in using discord and was not yet registered, he will be auto-registered.",
         "operationId": "LoginDiscordAsync_POST",
         "parameters": [
           {
@@ -9891,7 +9892,7 @@
           "Users"
         ],
         "summary": "Returns a User if one exists with the given id.",
-        "description": "Full user information is only available if it is the own User or the user\r\nrequesting has the admin role.",
+        "description": "Full user information is only available if it is the own User or the user\nrequesting has the admin role.",
         "operationId": "GetUserAsync",
         "parameters": [
           {
@@ -10170,7 +10171,7 @@
           {
             "name": "mode",
             "in": "path",
-            "description": "If `true`, the claimId will be given to the User.\r\nIf `false`, the claimId will be removed from the User.",
+            "description": "If `true`, the claimId will be given to the User.\nIf `false`, the claimId will be removed from the User.",
             "required": true,
             "schema": {
               "type": "boolean"
@@ -10613,7 +10614,7 @@
           {
             "name": "includeRolesAndClaims",
             "in": "query",
-            "description": "If `true`, the User's returned will contain their Role's\r\nand Claim's.",
+            "description": "If `true`, the User's returned will contain their Role's\nand Claim's.",
             "schema": {
               "type": "boolean",
               "default": false
@@ -15467,7 +15468,7 @@
             "$ref": "#/components/schemas/EArmaSide"
           }
         },
-        "description": "Represents a plain data transfer object for an event slot in the system.\r\nThis DTO is used for transferring data related to specific slots within an event."
+        "description": "Represents a plain data transfer object for an event slot in the system.\nThis DTO is used for transferring data related to specific slots within an event."
       },
       "EventSlotUpdate": {
         "type": "object",
@@ -15479,7 +15480,7 @@
               },
               {
                 "type": "string",
-                "description": "Represents the title of the event slot.\r\nCan be used to specify or update the label or description for an individual slot in an event."
+                "description": "Represents the title of the event slot.\nCan be used to specify or update the label or description for an individual slot in an event."
               }
             ]
           },
@@ -15490,7 +15491,7 @@
               },
               {
                 "type": "string",
-                "description": "Represents the group or category associated with an event slot.\r\nCan be used to classify or organize event slots under a specific label or grouping."
+                "description": "Represents the group or category associated with an event slot.\nCan be used to classify or organize event slots under a specific label or grouping."
               }
             ]
           },
@@ -15512,7 +15513,7 @@
               },
               {
                 "type": "boolean",
-                "description": "Indicates whether the event slot can be assigned to the user themselves without requiring admin intervention.\r\nThis property manages the self-assignment capability of a given event slot."
+                "description": "Indicates whether the event slot can be assigned to the user themselves without requiring admin intervention.\nThis property manages the self-assignment capability of a given event slot."
               }
             ]
           },
@@ -15523,7 +15524,7 @@
               },
               {
                 "type": "boolean",
-                "description": "Indicates whether the event slot should be visible to users.\r\nThis property can be used to toggle the visibility of specific event slots\r\nwithin an event, allowing for dynamic control over their display."
+                "description": "Indicates whether the event slot should be visible to users.\nThis property can be used to toggle the visibility of specific event slots\nwithin an event, allowing for dynamic control over their display."
               }
             ]
           },
@@ -15533,7 +15534,7 @@
                 "type": "null"
               },
               {
-                "description": "Gets or initializes the side associated with the event slot in the context of Arma game mechanics.\r\nRepresents what side the event slot belongs to, such as East, West, Civilian, etc.,\r\nusing the EArmaSide enumeration.",
+                "description": "Gets or initializes the side associated with the event slot in the context of Arma game mechanics.\nRepresents what side the event slot belongs to, such as East, West, Civilian, etc.,\nusing the EArmaSide enumeration.",
                 "$ref": "#/components/schemas/EArmaSide"
               }
             ]
@@ -16238,7 +16239,7 @@
               {
                 "pattern": "^-?(?:0|[1-9]\\d*)$",
                 "type": "integer",
-                "description": "Represents the primary key of an entity within the context of the application's data model.\r\nThis property is used as a unique identifier for the associated record in the database.",
+                "description": "Represents the primary key of an entity within the context of the application's data model.\nThis property is used as a unique identifier for the associated record in the database.",
                 "format": "int64"
               }
             ]
@@ -19957,7 +19958,7 @@
           "primaryKey": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
-            "description": "Represents the unique identifier for an entity.\r\nThis property is used to distinguish individual entities across different contexts\r\nor within a specific collection, enabling accurate referencing and management.",
+            "description": "Represents the unique identifier for an entity.\nThis property is used to distinguish individual entities across different contexts\nor within a specific collection, enabling accurate referencing and management.",
             "format": "int64"
           },
           "category": {
@@ -20159,7 +20160,7 @@
                 "type": "null"
               },
               {
-                "description": "Represents the calculated or system-determined level of acceptance for an event,\r\nbased on user responses such as accepted, maybe, or rejected.",
+                "description": "Represents the calculated or system-determined level of acceptance for an event,\nbased on user responses such as accepted, maybe, or rejected.",
                 "$ref": "#/components/schemas/EEventAcceptance"
               }
             ]
@@ -20220,7 +20221,7 @@
             "$ref": "#/components/schemas/EArmaSide"
           }
         },
-        "description": "Represents a plain data transfer object for an event slot in the system.\r\nThis DTO is used for transferring data related to specific slots within an event."
+        "description": "Represents a plain data transfer object for an event slot in the system.\nThis DTO is used for transferring data related to specific slots within an event."
       },
       "PlainRoleDto": {
         "type": "object",
@@ -20228,7 +20229,7 @@
           "primaryKey": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
-            "description": "Represents the unique identifier for this entity.\r\nThis property is used to differentiate each instance of the associated record or object from others within the system.\r\nDepending on the context, it might correspond to a value in the database or serve as a reference for operations such as updates or deletions.",
+            "description": "Represents the unique identifier for this entity.\nThis property is used to differentiate each instance of the associated record or object from others within the system.\nDepending on the context, it might correspond to a value in the database or serve as a reference for operations such as updates or deletions.",
             "format": "int64"
           },
           "title": {
@@ -20252,7 +20253,7 @@
           "primaryKey": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
-            "description": "Represents the primary key of an entity within the context of the application's data model.\r\nThis property is used as a unique identifier for the associated record in the database.",
+            "description": "Represents the primary key of an entity within the context of the application's data model.\nThis property is used as a unique identifier for the associated record in the database.",
             "format": "int64"
           },
           "title": {
@@ -21137,7 +21138,7 @@
           "primaryKey": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
-            "description": "Represents the unique identifier for this entity.\r\nThis property is used to differentiate each instance of the associated record or object from others within the system.\r\nDepending on the context, it might correspond to a value in the database or serve as a reference for operations such as updates or deletions.",
+            "description": "Represents the unique identifier for this entity.\nThis property is used to differentiate each instance of the associated record or object from others within the system.\nDepending on the context, it might correspond to a value in the database or serve as a reference for operations such as updates or deletions.",
             "format": "int64"
           },
           "title": {
@@ -21708,7 +21709,7 @@
               },
               {
                 "type": "string",
-                "description": "Represents the title of the terrain.\r\nThis property is used as a descriptive name or identifier for the terrain in the application."
+                "description": "Represents the title of the terrain.\nThis property is used as a descriptive name or identifier for the terrain in the application."
               }
             ]
           },
@@ -21831,7 +21832,7 @@
                 "type": "null"
               },
               {
-                "description": "Represents the calculated or system-determined level of acceptance for an event,\r\nbased on user responses such as accepted, maybe, or rejected.",
+                "description": "Represents the calculated or system-determined level of acceptance for an event,\nbased on user responses such as accepted, maybe, or rejected.",
                 "$ref": "#/components/schemas/EEventAcceptance"
               }
             ]
@@ -22696,7 +22697,7 @@
                 "items": {
                   "$ref": "#/components/schemas/WikiPageRevisionDto"
                 },
-                "description": "The content of the page and its revisions.\r\nThe latest revision is always the one with the highest TimeStampCreated."
+                "description": "The content of the page and its revisions.\nThe latest revision is always the one with the highest TimeStampCreated."
               }
             ]
           },

@@ -800,52 +800,7 @@ export interface paths {
             cookie?: never;
         };
         /** Returns one cost owner's current hosting-finance position when the caller may inspect it. */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    costOwnerId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["HostingCostOwnerDto"];
-                        "application/json": components["schemas"]["HostingCostOwnerDto"];
-                        "text/json": components["schemas"]["HostingCostOwnerDto"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProblemDetails"];
-                        "application/json": components["schemas"]["ProblemDetails"];
-                        "text/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Not Found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProblemDetails"];
-                        "application/json": components["schemas"]["ProblemDetails"];
-                        "text/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
+        get: operations["GetAsync"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9288,6 +9243,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    GetAsync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                costOwnerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["HostingCostOwnerDto"];
+                    "application/json": components["schemas"]["HostingCostOwnerDto"];
+                    "text/json": components["schemas"]["HostingCostOwnerDto"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
