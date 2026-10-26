@@ -16,11 +16,15 @@ trap 'status=$?; set +e; report_resources; exit "$status"' EXIT
 cd /workspace
 mode=${1:?A check or component name is required}
 export HOME=/workspace/.home
+# Browser profiles and compiler scratch must fit the bounded disk workspace, not the small /tmp mount.
+export TMPDIR=/workspace/.mozaic-work/tmp
+export TEMP="$TMPDIR" TMP="$TMPDIR"
 export npm_config_cache=/workspace/.npm-cache NUGET_PACKAGES=/workspace/.nuget/packages
 export DOTNET_CLI_HOME=/workspace/.dotnet-home DOTNET_PROCESSOR_COUNT=1
 export UTF_PROOF_DIRECTORY=/workspace/test-results
 export UTF_CHECK_PUBLISH_DIRECTORY=/workspace/.publish
-mkdir -p "$HOME" "$UTF_PROOF_DIRECTORY" "$UTF_CHECK_PUBLISH_DIRECTORY"
+mkdir -p "$HOME" "$UTF_PROOF_DIRECTORY" "$UTF_CHECK_PUBLISH_DIRECTORY" "$TMPDIR"
+chmod 700 "$TMPDIR"
 # Native Python comes from the admitted job image; no compiler bootstrap is required.
 helper=/workspace/.mozaic/oci-layout/run.sh
 case "$mode" in
