@@ -35,7 +35,10 @@ if [ "$1" = --version ]; then
     grep -q '"version":"10.0.302"' global.json
     printf '10.0.302\n'
 fi
-if [ "$1" = test ]; then test "$FAILURE" != worker-test; fi
+if [ "$1" = test ]; then
+    test "$TMPDIR" = /tmp && test "$TEMP" = /tmp && test "$TMP" = /tmp
+    test "$FAILURE" != worker-test
+fi
 DOTNET
     cat > "$workspace/bin/npm" <<'NPM'
 #!/bin/sh

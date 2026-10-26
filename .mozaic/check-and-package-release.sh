@@ -31,7 +31,8 @@ printf '{"sdk":{"version":"10.0.302","rollForward":"disable"}}\n' \
     dotnet restore tests/CloudWorker.Tests/CloudWorker.Tests.csproj --disable-parallel
     dotnet build tests/CloudWorker.Tests/CloudWorker.Tests.csproj --configuration Release \
         --no-restore --maxcpucount:1
-    dotnet test tests/CloudWorker.Tests/CloudWorker.Tests.csproj --configuration Release \
+    # Match the worker's fixed credential-run-script boundary while retaining disk scratch for builds/browsers.
+    TMPDIR=/tmp TEMP=/tmp TMP=/tmp dotnet test tests/CloudWorker.Tests/CloudWorker.Tests.csproj --configuration Release \
         --no-build --no-restore --maxcpucount:1 --logger trx \
         --results-directory "$UTF_PROOF_DIRECTORY/worker-test-results"
     sh "$helper" python /workspace/.mozaic/verify-test-results.py \

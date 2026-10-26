@@ -51,8 +51,16 @@ dotnet test tests/Api.Tests/Api.Tests.csproj --configuration Debug --no-restore 
 sh /workspace/.mozaic/oci-layout/run.sh python .mozaic/verify-test-results.py \
     "$proof_directory/auth-debug-results" Api.Tests
 
-dotnet test X39.UnitedTacticalForces.slnx --configuration Release --no-build \
-    --maxcpucount:1 --logger trx --results-directory "$proof_directory/test-results"
+for project in Api.Tests CloudWorker.Tests Ui.Tests X39.BI.Config.Parsing.Tests; do
+    (
+        # Worker credential runscripts deliberately require the runtime's fixed /tmp boundary.
+        if [ "$project" = CloudWorker.Tests ]; then
+            export TMPDIR=/tmp TEMP=/tmp TMP=/tmp
+        fi
+        dotnet test "tests/$project/$project.csproj" --configuration Release --no-build \
+            --maxcpucount:1 --logger trx --results-directory "$proof_directory/test-results"
+    )
+done
 sh /workspace/.mozaic/oci-layout/run.sh python .mozaic/verify-test-results.py \
     "$proof_directory/test-results" Api.Tests CloudWorker.Tests Ui.Tests X39.BI.Config.Parsing.Tests
 
