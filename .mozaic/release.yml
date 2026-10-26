@@ -11,7 +11,7 @@ jobs:
         workspace-storage: bounded-disk-v1
     resources:
       cpu_millis: 2000
-      memory_mib: 4096
+      memory_mib: 8192
       scratch_mib: 65536
       pids: 512
       log_mib: 64
