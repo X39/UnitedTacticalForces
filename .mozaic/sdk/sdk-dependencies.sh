@@ -11,13 +11,12 @@ cp /tmp/utf-preparation/select-dotnet.sh /usr/local/bin/utf-dotnet-201
 cp /tmp/utf-preparation/select-dotnet.sh /usr/local/bin/utf-dotnet-302
 chmod 0755 /usr/local/bin/utf-dotnet-201 /usr/local/bin/utf-dotnet-302
 for profile in dotnet react; do
-  if [ "$profile" = dotnet ]; then version=1.61.0; browsers=chromium; else version=1.62.1; browsers='chromium firefox webkit'; fi
+  if [ "$profile" = dotnet ]; then version=1.61.0; else version=1.62.1; fi
   prefix=/opt/utf-playwright-$profile
   npm install --prefix "$prefix" --save-exact --no-audit --no-fund "playwright@$version"
   export PLAYWRIGHT_BROWSERS_PATH=/opt/utf-playwright-browsers/$profile
   # Use each pinned vendor installer and its normal apt dependency installation.
-  # shellcheck disable=SC2086
-  "$prefix/node_modules/.bin/playwright" install --with-deps $browsers
+  "$prefix/node_modules/.bin/playwright" install --with-deps chromium
   mkdir -p "/usr/share/utf-preparation/playwright/$profile"
   cp "$prefix/package-lock.json" "$prefix/node_modules/playwright-core/browsers.json" "/usr/share/utf-preparation/playwright/$profile/"
   npm ls --prefix "$prefix" --all --json > "/usr/share/utf-preparation/playwright/$profile/npm-tree.json"

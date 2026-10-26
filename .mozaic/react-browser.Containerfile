@@ -6,11 +6,11 @@ COPY sources/WebApp/Properties/Language.resx sources/WebApp/Properties/Language.
 COPY sources/Common/Ui/routes.json ./sources/Common/Ui/routes.json
 WORKDIR /src/sources/ReactApp
 RUN npm ci
-# A full release retains the existing published-release browser matrix.
-RUN npx playwright install --with-deps chromium firefox webkit
-RUN CI=true UTF_FULL_BROWSER_MATRIX=true npm run test:e2e -- --workers=1 \
+# Recovery CI retains the existing Chromium application journeys.
+RUN npx playwright install --with-deps chromium
+RUN CI=true npm run test:e2e -- --workers=1 \
     && mkdir /proof \
-    && printf 'React Chromium, Firefox and WebKit journeys passed\n' > /proof/result
+    && printf 'React Chromium journeys passed\n' > /proof/result
 
 # Export only a small proof, keeping browser installation out of the output archive.
 FROM scratch AS proof

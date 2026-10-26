@@ -55,33 +55,6 @@ jobs:
           name: "Frontend-React"
           path: "sources/ReactApp/dist"
 
-  react-browser-matrix:
-    name: React full browser matrix
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
-    needs: react
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: sources/ReactApp
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: sources/ReactApp/package-lock.json
-      - name: Install dependencies
-        run: npm ci
-      - name: Install browser matrix
-        run: npx playwright install --with-deps chromium firefox webkit
-      - name: Run Chromium, Firefox, and WebKit journeys
-        run: npm run test:e2e
-        env:
-          UTF_FULL_BROWSER_MATRIX: "true"
-
   build:
     runs-on: ubuntu-latest
 

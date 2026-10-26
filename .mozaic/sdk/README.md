@@ -31,7 +31,7 @@ the preparation tool does not run its updater or download game files. Applicatio
 outputs, entrypoints, credentials and release configuration are absent.
 
 The SDK contains both SDK installations, Node, the Rust compiler, separate vendor
-Playwright 1.61.0 Chromium and 1.62.1 Chromium/Firefox/WebKit caches, and read-only
+Playwright 1.61.0 and 1.62.1 Chromium caches, and read-only
 OCI archives for API, worker, ASKA and the unchanged Nginx base. These archives
 contain no application output. No engine socket, OCI engine or deployment token is
 provided for an eventual ordinary job.

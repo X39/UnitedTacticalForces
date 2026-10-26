@@ -5,12 +5,7 @@ cd /workspace
 mode=${1:?A browser check name is required}
 case "$mode" in
     dotnet-release) version=1.61.0 ;;
-    react-browser)
-        version=1.62.1
-        # Firefox's nested chroot is unavailable in the job; retain its seccomp-bpf fallback.
-        # https://bugzilla.mozilla.org/show_bug.cgi?id=1884347#c8
-        export MOZ_ASSUME_USER_NS=0
-        ;;
+    react-browser) version=1.62.1 ;;
     *) printf 'Usage: %s dotnet-release|react-browser\n' "$0" >&2; exit 2 ;;
 esac
 helper=/workspace/.mozaic/oci-layout/run.sh

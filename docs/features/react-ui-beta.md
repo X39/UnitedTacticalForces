@@ -84,7 +84,7 @@ when either localization files or TypeScript declarations drift from their sourc
 
 The React CI job runs `npm ci`, generation drift checks, Prettier, ESLint, TypeScript, Vitest, a production build, and
 Playwright Chromium tests, then publishes the distinct `Frontend-React` artifact. Scheduled, manual, and release runs
-also execute the journeys in Firefox and WebKit. The existing .NET job remains independent, and the `Frontend` and
+use the same Chromium journeys. The existing .NET job remains independent, and the `Frontend` and
 `Backend` artifacts retain their existing names and contents. The Docker image is the integrated side-by-side
 deployment; archive-based installations deploy the distinct React artifact at `/next/` beside the classic frontend.
 Tests and local end-to-end environments must use seeded

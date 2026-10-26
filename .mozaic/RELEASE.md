@@ -13,7 +13,7 @@ are unused; the image remains the already verified ordinary Python/SSH toolbox.
 
 The release runs React contract/localization generation checks, formatting,
 lint, TypeScript, unit/component tests, the full Release .NET solution suite,
-the exported OpenAPI comparison, and Chromium/Firefox/WebKit journeys. API and
+the exported OpenAPI comparison, and Chromium journeys. API and
 Blazor publishing uses `--no-build` after the checked Release build. Workers
 retain their separately pinned SDK; their test project is rebuilt and tested
 under that SDK before publishing its binaries with `--no-build`. SDK201 build

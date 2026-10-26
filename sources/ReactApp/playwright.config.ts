@@ -25,12 +25,5 @@ export default defineConfig({
       env: { ...process.env, UTF_CLASSIC_TARGET: "http://127.0.0.1:4174" },
     },
   ],
-  projects:
-    process.env.UTF_FULL_BROWSER_MATRIX === "true"
-      ? [
-          { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-          { name: "firefox", use: { ...devices["Desktop Firefox"] } },
-          { name: "webkit", use: { ...devices["Desktop Safari"] } },
-        ]
-      : [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

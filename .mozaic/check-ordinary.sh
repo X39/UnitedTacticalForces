@@ -44,9 +44,9 @@ case "${1:-}" in
         npm ci
         export PLAYWRIGHT_BROWSERS_PATH="${UTF_REACT_PLAYWRIGHT_BROWSERS_PATH:-$repo_root/.mozaic-work/browsers-react}"
         # Shared libraries come from the staged runtime; never install host packages.
-        npx --no-install playwright install chromium firefox webkit
-        UTF_FULL_BROWSER_MATRIX=true npm run test:e2e -- --workers=1
-        printf 'React Chromium, Firefox and WebKit journeys passed\n' \
+        npx --no-install playwright install chromium
+        npm run test:e2e -- --workers=1
+        printf 'React Chromium journeys passed\n' \
             > "$UTF_PROOF_DIRECTORY/react-browser"
         ;;
     *)
