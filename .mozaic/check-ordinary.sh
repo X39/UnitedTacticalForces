@@ -37,6 +37,9 @@ case "${1:-}" in
         sh .mozaic/check-dotnet-release.sh
         ;;
     react-browser)
+        # Playwright's readiness probes must reach the same job's loopback servers.
+        export NO_PROXY=localhost,127.0.0.1
+        export no_proxy="$NO_PROXY"
         cd sources/ReactApp
         npm ci
         export PLAYWRIGHT_BROWSERS_PATH="${UTF_REACT_PLAYWRIGHT_BROWSERS_PATH:-$repo_root/.mozaic-work/browsers-react}"
