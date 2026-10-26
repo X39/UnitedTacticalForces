@@ -18,7 +18,7 @@ strict known-host validation and HTTP CONNECT through the job's explicitly
 allowed proxy destination. The private invoke-only key stays in a protected file.
 Runtime/evidence credentials remain on the target.
 
-`deploy/production.json` binds the reviewed Helsinki public endpoint, `utf-deploy`
+`deploy/production.json` binds the reviewed Nuremberg public endpoint, `utf-deploy`
 SSH account, protected `/run/mozaic/secrets/ssh_key` path and checked-in public
 host-key file. The ordinary `activate-release` job uses secret reference
 `utf_target_invoke`, requires `checked-artifacts` through normal `needs`, and

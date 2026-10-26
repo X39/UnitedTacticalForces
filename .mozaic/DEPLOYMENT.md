@@ -7,7 +7,7 @@ that owner's responsibility. The application worker must complete acceptance
 against the actual accepted run; prepared YAML is not deployment evidence.
 
 The ordinary `activate-release` job invokes `ci/deploy.sh` using the reviewed
-Helsinki endpoint, `utf-deploy` account, protected `utf_target_invoke` reference
+Nuremberg endpoint, `utf-deploy` account, protected `utf_target_invoke` reference
 and public host key in `deploy/production.*`. Its successful `checked-artifacts`
 dependency must supply all four exact receipts. The coordinator owns installation,
 private input activation, actual plan binding and the release slot.

@@ -102,12 +102,12 @@ jobs:
     network:
       mode: http_https
       allow_connect:
-        - host: '2a01:4f9:c01e:152::1'
+        - host: '2a01:4f8:1c1c:6beb::1'
           port: 22
     timeout_minutes: 15
     steps:
       - name: Wait for the complete checked release and healthy target
         run: >-
-          sh ci/deploy.sh --target helsinki
+          sh ci/deploy.sh --target nuremberg
           --manifest deploy/production.json --release-job checked-artifacts
           --attempt "$MOZAIC_ATTEMPT_ID" --wait --timeout 600

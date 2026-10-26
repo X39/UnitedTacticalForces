@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "target": "helsinki",
-  "host": "2a01:4f9:c01e:152::1",
+  "target": "nuremberg",
+  "host": "2a01:4f8:1c1c:6beb::1",
   "port": 22,
   "user": "utf-deploy",
   "key_file": "/run/mozaic/secrets/ssh_key",
