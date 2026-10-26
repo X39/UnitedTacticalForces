@@ -33,11 +33,12 @@ browser execution, image runtime compatibility, archive-size admission and
 publication remain unverified until a required CI attempt succeeds. Local
 syntax/orchestration checks cannot replace those checks.
 
-The checkout's intended branch is `master`. The coordinator must reconcile the
-Mozaic trusted branch and canonical push destination before release; historical
-`main` handoffs do not establish the current source binding. Ordinary downstream
-SSH deployment will be added only against the coordinator's published generic
-credential, networking, invocation and manifest contract.
+The checkout's intended branch is `master`. The verified canonical destination is
+`https://x39.mozaic.space/git/x39/united-tactical-forces.git`; its existing refs are
+ancestors of the prepared source. Source push authorization and supported trusted
+default selection from `main` to `master` remain coordinator prerequisites.
+Ordinary downstream SSH deployment will be added only against the coordinator's
+published generic credential, networking, invocation and manifest contract.
 
 See [runtime requirements](DEPLOYMENT.md). Superseded native-builder and emergency
 release instructions remain in Git history and are not activation instructions.
