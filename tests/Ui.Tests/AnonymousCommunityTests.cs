@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Xunit;
 using Xunit.Abstractions;
@@ -119,7 +120,13 @@ public sealed class AnonymousCommunityTests : IClassFixture<WebAppHostFixture>
     private async Task ConfigureNetworkAsync(IBrowserContext context, ConcurrentQueue<string> unexpectedRequests)
     {
         var origin = new Uri(_host.BaseUrl).GetLeftPart(UriPartial.Authority);
-        await context.RouteAsync("**/*", async route =>
+        // Leave framework downloads native while keeping all external requests blocked.
+        await context.RouteAsync(
+            new Regex("^(?!" + Regex.Escape(origin) + "/)", RegexOptions.CultureInvariant),
+            route => route.AbortAsync());
+        var mockedRequests = new Regex(
+            "^" + Regex.Escape(origin) + "/(?:api/|appsettings)", RegexOptions.CultureInvariant);
+        await context.RouteAsync(mockedRequests, async route =>
         {
             var uri = new Uri(route.Request.Url);
             if (uri.GetLeftPart(UriPartial.Authority) != origin)
