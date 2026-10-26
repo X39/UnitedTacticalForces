@@ -7,7 +7,7 @@ trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 
 for failure in none react-tests dotnet-release react-browser worker-test worker-evidence; do
     workspace=$temporary/$failure
-    mkdir -p "$workspace/.mozaic" "$workspace/.oci-target/release" "$workspace/bin" \
+    mkdir -p "$workspace/.mozaic/oci-layout" "$workspace/bin" \
         "$workspace/sources/ReactApp" "$workspace/sources/HostingContracts" \
         "$workspace/sources/GameServerImplementations" "$workspace/sources/CloudWorker" \
         "$workspace/tests/CloudWorker.Tests"
@@ -19,7 +19,7 @@ printf '%s\n' "$1" >> "$TRACE"
 test "$FAILURE" != "$1"
 CHECK
     cp "$workspace/.mozaic/check-ordinary.sh" "$workspace/.mozaic/check-browser.sh"
-    cat > "$workspace/.oci-target/release/utf-oci-layout" <<'HELPER'
+    cat > "$workspace/.mozaic/oci-layout/run.sh" <<'HELPER'
 #!/bin/sh
 set -eu
 printf '%s\n' "$*" >> "$TRACE"
@@ -40,7 +40,7 @@ DOTNET
 #!/bin/sh
 printf 'npm %s\n' "$*" >> "$TRACE"
 NPM
-    chmod +x "$workspace/bin/"* "$workspace/.oci-target/release/utf-oci-layout"
+    chmod +x "$workspace/bin/"* "$workspace/.mozaic/oci-layout/run.sh"
     export TRACE=$workspace/trace FAILURE=$failure
     export UTF_PROOF_DIRECTORY=$workspace/proof UTF_CHECK_PUBLISH_DIRECTORY=$workspace/.publish
     if PATH="$workspace/bin:$PATH" sh "$workspace/release.sh"; then

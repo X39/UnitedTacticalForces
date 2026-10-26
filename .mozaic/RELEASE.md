@@ -4,6 +4,13 @@ The active trusted definition is `.mozaic/release.yml`. Its ordinary
 `checked-artifacts` job checks and packages all four components in one workspace.
 `.mozaic/pipeline.yml` retains the same check suites for pull-request feedback.
 
+The admitted job image supplies native Python 3.11 and its system libraries.
+`build.sh` invokes `oci-layout/run.sh`, which calls that Python directly to stage
+the pinned Node 24 and .NET SDK 10.0.201/10.0.302 toolchains and reuse the existing
+OCI assembly code. No Rust compilation or transported Python bootstrap is part
+of the active workflow. The image's Rust tooling and historical helper sources
+are unused; the image remains the already verified ordinary Python/SSH toolbox.
+
 The release runs React contract/localization generation checks, formatting,
 lint, TypeScript, unit/component tests, the full Release .NET solution suite,
 the exported OpenAPI comparison, and Chromium/Firefox/WebKit journeys. API and

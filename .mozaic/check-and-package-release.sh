@@ -2,7 +2,7 @@
 # Keep required checks and the four publication inputs in the same job workspace.
 set -eu
 cd /workspace
-helper=/workspace/.oci-target/release/utf-oci-layout
+helper=/workspace/.mozaic/oci-layout/run.sh
 
 sh .mozaic/check-ordinary.sh react-tests
 sh .mozaic/check-browser.sh dotnet-release
@@ -15,7 +15,7 @@ sh .mozaic/check-browser.sh react-browser
 )
 
 # Preserve the worker's pinned SDK family and test its actual Release binaries.
-"$helper" stage-dotnet /workspace/.dotnet-worker 302
+sh "$helper" stage-dotnet /workspace/.dotnet-worker 302
 mkdir -p /workspace/.worker-source
 # Exclude the SDK201 build products so SDK302 must compile the worker afresh.
 tar --exclude=bin --exclude=obj -cf /workspace/.worker-source/source.tar \
@@ -34,7 +34,7 @@ printf '{"sdk":{"version":"10.0.302","rollForward":"disable"}}\n' \
     dotnet test tests/CloudWorker.Tests/CloudWorker.Tests.csproj --configuration Release \
         --no-build --no-restore --maxcpucount:1 --logger trx \
         --results-directory "$UTF_PROOF_DIRECTORY/worker-test-results"
-    "$helper" python /workspace/.mozaic/verify-test-results.py \
+    sh "$helper" python /workspace/.mozaic/verify-test-results.py \
         "$UTF_PROOF_DIRECTORY/worker-test-results" CloudWorker.Tests
     dotnet publish sources/CloudWorker/CloudWorker.csproj --configuration Release \
         --no-build --no-restore --no-self-contained --maxcpucount:1 \
@@ -43,5 +43,5 @@ printf '{"sdk":{"version":"10.0.302","rollForward":"disable"}}\n' \
 
 mkdir -p /workspace/images
 for component in api web worker aska; do
-    "$helper" assemble "$component" /workspace "/workspace/images/$component.tar"
+    sh "$helper" assemble "$component" /workspace "/workspace/images/$component.tar"
 done

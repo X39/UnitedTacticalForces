@@ -8,8 +8,8 @@ case "$mode" in
     react-browser) version=1.62.1 ;;
     *) printf 'Usage: %s dotnet-release|react-browser\n' "$0" >&2; exit 2 ;;
 esac
-helper=/workspace/.oci-target/release/utf-oci-layout
+helper=/workspace/.mozaic/oci-layout/run.sh
 prefix=/workspace/.browser-deps-$version
-"$helper" python .mozaic/stage-browser-deps.py "$version" "$prefix"
+sh "$helper" python .mozaic/stage-browser-deps.py "$version" "$prefix"
 . "$prefix/environment.sh"
 sh .mozaic/check-ordinary.sh "$mode"

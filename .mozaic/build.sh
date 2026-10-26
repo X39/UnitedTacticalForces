@@ -1,39 +1,36 @@
 #!/bin/sh
-# Compile and package only inside an ordinary Mozaic worker job.
+# Check and package only inside an ordinary Mozaic worker job.
 set -eu
 cd /workspace
 mode=${1:?A check or component name is required}
-export HOME=/workspace/.home CARGO_HOME=/workspace/.cargo RUSTUP_HOME=/usr/local/rustup
-export RUSTUP_AUTO_INSTALL=0 CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0
-export CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0
+export HOME=/workspace/.home
 export npm_config_cache=/workspace/.npm-cache NUGET_PACKAGES=/workspace/.nuget/packages
 export DOTNET_CLI_HOME=/workspace/.dotnet-home DOTNET_PROCESSOR_COUNT=1
-export CARGO_TARGET_DIR=/workspace/.oci-target
 export UTF_PROOF_DIRECTORY=/workspace/test-results
 export UTF_CHECK_PUBLISH_DIRECTORY=/workspace/.publish
 mkdir -p "$HOME" "$UTF_PROOF_DIRECTORY" "$UTF_CHECK_PUBLISH_DIRECTORY"
-cargo build --locked --release --manifest-path .mozaic/oci-layout/Cargo.toml
-helper=/workspace/.oci-target/release/utf-oci-layout
+# Native Python comes from the admitted job image; no compiler bootstrap is required.
+helper=/workspace/.mozaic/oci-layout/run.sh
 case "$mode" in
     react-tests|react-browser|web|dotnet-release|release)
-        "$helper" stage-node /workspace/.node
+        sh "$helper" stage-node /workspace/.node
         export PATH="/workspace/.node/bin:$PATH"
         ;;
 esac
 case "$mode" in
     dotnet-release|api|web|release)
-        "$helper" stage-dotnet /workspace/.dotnet 201
+        sh "$helper" stage-dotnet /workspace/.dotnet 201
         export DOTNET_ROOT=/workspace/.dotnet PATH="/workspace/.dotnet:$PATH"
         ;;
     worker|aska)
-        "$helper" stage-dotnet /workspace/.dotnet 302
+        sh "$helper" stage-dotnet /workspace/.dotnet 302
         export DOTNET_ROOT=/workspace/.dotnet PATH="/workspace/.dotnet:$PATH"
         ;;
 esac
 case "$mode" in
     release)
         sh .mozaic/test-release-pipeline.sh
-        "$helper" python -B .mozaic/test_verify_test_results.py
+        sh "$helper" python -B .mozaic/test_verify_test_results.py
         sh .mozaic/check-and-package-release.sh
         ;;
     react-tests)
@@ -46,7 +43,7 @@ case "$mode" in
         dotnet restore sources/Api/Api.csproj --disable-parallel
         dotnet publish sources/Api/Api.csproj --configuration Release --no-restore \
             --maxcpucount:1 --output /workspace/.publish/api /p:UseAppHost=false
-        "$helper" assemble api /workspace /workspace/image.tar
+        sh "$helper" assemble api /workspace /workspace/image.tar
         ;;
     web)
         dotnet restore sources/WebApp/WebApp.csproj --disable-parallel
@@ -58,7 +55,7 @@ case "$mode" in
             npm run build
             UTF_REACT_BASE_PATH=/ npm run build:assets
         )
-        "$helper" assemble web /workspace /workspace/image.tar
+        sh "$helper" assemble web /workspace /workspace/image.tar
         ;;
     worker|aska)
         # The worker recipes build without the repository SDK201 global.json.
@@ -74,7 +71,7 @@ case "$mode" in
             dotnet publish sources/CloudWorker/CloudWorker.csproj --configuration Release \
                 --output /workspace/.publish/worker --no-restore --no-self-contained --maxcpucount:1
         )
-        "$helper" assemble "$mode" /workspace /workspace/image.tar
+        sh "$helper" assemble "$mode" /workspace /workspace/image.tar
         ;;
     *) printf 'Unsupported ordinary job: %s\n' "$mode" >&2; exit 2 ;;
 esac

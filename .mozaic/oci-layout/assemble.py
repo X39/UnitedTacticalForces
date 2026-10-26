@@ -56,7 +56,11 @@ def file_sha(path):
 
 class Redirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, request, fp, code, message, headers, url):
-        check_url(url)
+        try:
+            check_url(url)
+        except ValueError as error:
+            error.download_host = urllib.parse.urlsplit(url).hostname
+            raise
         result = super().redirect_request(request, fp, code, message, headers, url)
         if urllib.parse.urlsplit(url).hostname != urllib.parse.urlsplit(request.full_url).hostname:
             result.remove_header('Authorization')
@@ -70,14 +74,24 @@ def check_url(url):
             'unapproved download destination')
 
 
+def fetch_failure(url, error, kind='content'):
+    """Describe a public transport failure without exposing URLs, headers or response bodies."""
+    host = getattr(error, 'download_host', None) or urllib.parse.urlsplit(getattr(error, 'url', url)).hostname
+    status = getattr(error, 'code', None)
+    status = status if isinstance(status, int) else 'none'
+    reason = getattr(error, 'reason', error)
+    return ValueError(f'bounded public {kind} fetch failed: host={host}; status={status}; '
+                      f'category={type(error).__name__}/{type(reason).__name__}')
+
+
 def fetch(url, expected=None, maximum=1024 * 1024 * 1024, headers=None):
     check_url(url)
     try:
         with urllib.request.build_opener(Redirect()).open(
                 urllib.request.Request(url, headers=headers or {}), timeout=300) as response:
             data = response.read(maximum + 1)
-    except Exception:
-        raise ValueError('bounded public content fetch failed') from None
+    except Exception as error:
+        raise fetch_failure(url, error) from None
     require(len(data) <= maximum, 'download exceeds limit')
     if expected:
         require(sha(data) == expected.removeprefix('sha256:'), 'content digest mismatch')
@@ -132,10 +146,12 @@ class Base:
                         total += len(data)
                         require(total <= descriptor['size'] <= 1024**3, 'blob exceeds descriptor limit')
                         target.write(data)
-            except ValueError:
+            except ValueError as error:
+                if getattr(error, 'download_host', None):
+                    raise fetch_failure(self.url, error, 'layer') from None
                 raise
-            except Exception:
-                raise ValueError('bounded public layer fetch failed') from None
+            except Exception as error:
+                raise fetch_failure(self.url, error, 'layer') from None
             require(path.stat().st_size == descriptor['size'] and 'sha256:' + file_sha(path) == descriptor['digest'], 'base blob identity mismatch')
             self.blobs[descriptor['digest']] = path
             digest, expanded = hashlib.sha256(), 0
