@@ -242,7 +242,9 @@ def version_compare(a, b):
         upstream, separator, revision = rest.rpartition('-')
         return epoch, upstream if separator else rest, revision if separator else '0'
     def order(char):
-        return -1 if char == '~' else 0 if not char else ord(char) if char.isalpha() else ord(char) + 256
+        # Debian treats digits like an empty span while comparing non-digit characters.
+        return (-1 if char == '~' else 0 if not char or char.isdigit()
+                else ord(char) if char.isalpha() else ord(char) + 256)
     def segment(a, b):
         while a or b:
             while (a and not a[0].isdigit()) or (b and not b[0].isdigit()):
