@@ -10,7 +10,14 @@ dotnet restore X39.UnitedTacticalForces.slnx --disable-parallel
 dotnet build X39.UnitedTacticalForces.slnx --configuration Release --no-restore --maxcpucount:1
 dotnet run --project sources/Api/Api.csproj --configuration Release --no-build -- \
     --export-openapi "$proof_directory/utf-api.json"
-cmp sources/ReactApp/openapi/utf-api.json "$proof_directory/utf-api.json"
+if ! cmp sources/ReactApp/openapi/utf-api.json "$proof_directory/utf-api.json"; then
+    # Preserve a bounded public-schema diagnostic before failed-job scratch is cleaned.
+    diff -u sources/ReactApp/openapi/utf-api.json "$proof_directory/utf-api.json" \
+        > "$proof_directory/utf-api.diff" || test "$?" = 1
+    head -n 160 "$proof_directory/utf-api.diff"
+    sha256sum sources/ReactApp/openapi/utf-api.json "$proof_directory/utf-api.json"
+    exit 1
+fi
 
 # Ui.Tests normally starts a Debug host. Supply a dedicated Release host instead.
 export UTF_UI_TEST_BASE_URL=http://127.0.0.1:4183/
