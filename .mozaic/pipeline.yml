@@ -52,6 +52,7 @@ jobs:
         - production.cloudfront.docker.com
         - mcr.microsoft.com
         - mcrprod.azureedge.net
+        - westeurope.data.mcr.microsoft.com
         - registry.npmjs.org
         - api.nuget.org
         - globalcdn.nuget.org
@@ -88,6 +89,7 @@ jobs:
         - production.cloudfront.docker.com
         - mcr.microsoft.com
         - mcrprod.azureedge.net
+        - westeurope.data.mcr.microsoft.com
         - registry.npmjs.org
         - cdn.playwright.dev
         - playwright.download.prss.microsoft.com

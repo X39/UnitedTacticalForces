@@ -36,7 +36,7 @@ RELEASES = {
     'noble-security': '08ee8b6333cd5d57d555a77a58b911165742adc54240d8f2ed757fbedbc91f4a',
 }
 HOSTS = {'auth.docker.io', 'registry-1.docker.io', 'production.cloudfront.docker.com',
-         'mcr.microsoft.com', 'mcrprod.azureedge.net', 'snapshot.ubuntu.com',
+         'mcr.microsoft.com', 'mcrprod.azureedge.net', 'westeurope.data.mcr.microsoft.com', 'snapshot.ubuntu.com',
          'steamcdn-a.akamaihd.net'}
 
 
