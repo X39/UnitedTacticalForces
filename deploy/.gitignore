@@ -2,3 +2,5 @@
 !.gitignore
 !nginx.conf
 !webapp.appsettings.json
+!production.json
+!production.known_hosts

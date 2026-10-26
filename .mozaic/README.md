@@ -7,14 +7,15 @@ feedback. See [RELEASE.md](RELEASE.md) for checks and immutable publication rule
 and [DEPLOYMENT.md](DEPLOYMENT.md) for data, worker and acceptance requirements.
 
 The ordinary generic deployment client is checked in under [ci](../ci/README.md).
-Its target manifest and downstream invocation require the shared owner's reviewed
-target/account/known-host values and an executable infrastructure contract.
+Its downstream invocation uses the shared owner's public endpoint/account and
+verified host key in `deploy/production.*`. Target/input readiness, exact CI
+credential binding and the serialized UTF slot remain coordinator prerequisites.
 
 The canonical source is `https://x39.mozaic.space/git/x39/united-tactical-forces.git`
 (repository `01a166ad-93f3-7fa2-a4f0-e57014752726`). The existing `main` and
 `master` refs are ancestors of the prepared local `master`; preserve that complete
-history through an authorized regular fast-forward. The current default is `main`;
-the coordinator must select trusted `master` through the supported policy flow.
+history through an authorized regular fast-forward. The default is now `master`,
+selected through the audited operator path with governed push policy preserved.
 GitHub origin remains preserved. Do not create a replacement source repository,
 flatten history, force-push, or dispatch an emergency release.
 

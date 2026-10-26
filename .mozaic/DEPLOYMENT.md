@@ -6,6 +6,12 @@ owner. Target mutation, nginx, databases, credentials and shared capacity remain
 that owner's responsibility. The application worker must complete acceptance
 against the actual accepted run; prepared YAML is not deployment evidence.
 
+The ordinary `activate-release` job invokes `ci/deploy.sh` using the reviewed
+Helsinki endpoint, `utf-deploy` account, protected `utf_target_invoke` reference
+and public host key in `deploy/production.*`. Its successful `checked-artifacts`
+dependency must supply all four exact receipts. The coordinator owns installation,
+private input activation, actual plan binding and the release slot.
+
 ## Release inputs
 
 Accept all four publications from the same checked source/run in applications
@@ -24,12 +30,20 @@ workers are outbound agents for individual game deployments.
 
 ## Data and startup
 
-Preserve the existing PostgreSQL database and its major version. Compose specifies
-PostgreSQL 17; historical mentions of PostgreSQL 18 are not upgrade authorization.
+Preserve the existing PostgreSQL databases and their major version. The retained
+operator provisioning receipt records separately authorized fresh
+`utf_fresh_20261025` on the PostgreSQL 18 primary, while preserving original `utf`.
+The coordinator must verify that authority and the staged private input activation
+before startup. Compose's PostgreSQL 17 declaration does not authorize a downgrade,
+reset, standby promotion or replacement of either retained database.
 API startup applies EF migrations, seed updates and legacy secret migration before
 listening. Before activation the runtime owner must quiesce the writer, take a
 coherent database/files/key-ring backup and verify isolated restore. Image rollback
 cannot reverse database changes.
+
+Startup also starts durable lifecycle processing and provider reconciliation.
+Isolated restore checks must fence provider access and remain separate from the
+sole writable production control plane; publication does not authorize a game VM.
 
 API runs UID/GID `1654:1654` and needs durable writable paths:
 

@@ -33,12 +33,22 @@ browser execution, image runtime compatibility, archive-size admission and
 publication remain unverified until a required CI attempt succeeds. Local
 syntax/orchestration checks cannot replace those checks.
 
-The checkout's intended branch is `master`. The verified canonical destination is
+The trusted default branch is `master`. The verified canonical destination is
 `https://x39.mozaic.space/git/x39/united-tactical-forces.git`; its existing refs are
-ancestors of the prepared source. Source push authorization and supported trusted
-default selection from `main` to `master` remain coordinator prerequisites.
-Ordinary downstream SSH deployment will be added only against the coordinator's
-published generic credential, networking, invocation and manifest contract.
+ancestors of the prepared source. The coordinator reconciled default selection
+and governed push policy through the audited operator path.
+
+The ordinary `activate-release` job requires `checked-artifacts` and invokes
+the generic SSH client with its exact requesting attempt. Its protected key
+reference is `utf_target_invoke`; endpoint and host-key bindings are checked in
+under `deploy/production.*`. The target must accept all four same-run publication
+receipts, activate their exact worker dependency pins and finish its coherent
+stateful backup/startup/health checks before the command succeeds. Runtime and
+registry credentials stay on the target.
+
+The coordinator must verify target/input readiness, bind the actual server plan
+and release the UTF CI slot before the trusted source update. Prepared invocation
+configuration does not establish an installed target or successful deployment.
 
 See [runtime requirements](DEPLOYMENT.md). Superseded native-builder and emergency
 release instructions remain in Git history and are not activation instructions.

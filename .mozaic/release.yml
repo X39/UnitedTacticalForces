@@ -85,3 +85,29 @@ jobs:
         format: trx
       - path: test-results/worker-test-results/*.trx
         format: trx
+  activate-release:
+    needs: [checked-artifacts]
+    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
+    runs_on:
+      labels:
+        host-profile: fedora-44-cloud-v1
+        workspace-storage: bounded-disk-v1
+    resources:
+      cpu_millis: 1000
+      memory_mib: 512
+      scratch_mib: 65536
+      pids: 128
+      log_mib: 8
+    secret_files: {ssh_key: utf_target_invoke}
+    network:
+      mode: http_https
+      allow_connect:
+        - host: '2a01:4f9:c01e:152::1'
+          port: 22
+    timeout_minutes: 15
+    steps:
+      - name: Wait for the complete checked release and healthy target
+        run: >-
+          sh ci/deploy.sh --target helsinki
+          --manifest deploy/production.json --release-job checked-artifacts
+          --attempt "$MOZAIC_ATTEMPT_ID" --wait --timeout 600
