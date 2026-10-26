@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Playwright;
 using Xunit;
+using Xunit.Abstractions;
 using static Microsoft.Playwright.Assertions;
 
 namespace Ui.Tests;
@@ -14,11 +15,16 @@ public sealed class AnonymousCommunityTests : IClassFixture<WebAppHostFixture>
     /// <summary>Provides the running Blazor host and real Chromium browser for each scenario.</summary>
     private readonly WebAppHostFixture _host;
 
+    /// <summary>Records bounded browser diagnostics from the isolated fixture session.</summary>
+    private readonly ITestOutputHelper _output;
+
     /// <summary>Connects the scenarios to the shared host without sharing browser session state.</summary>
     /// <param name="host">The fixture that starts Chromium and supplies the Blazor origin.</param>
-    public AnonymousCommunityTests(WebAppHostFixture host)
+    /// <param name="output">The test output receiving startup errors from mocked browser sessions.</param>
+    public AnonymousCommunityTests(WebAppHostFixture host, ITestOutputHelper output)
     {
         _host = host;
+        _output = output;
     }
 
     /// <summary>Verifies startup data binding and anonymous navigation through the rendered application.</summary>
@@ -29,7 +35,7 @@ public sealed class AnonymousCommunityTests : IClassFixture<WebAppHostFixture>
         await using var context = await CreateContextAsync();
         var unexpectedRequests = new ConcurrentQueue<string>();
         await ConfigureNetworkAsync(context, unexpectedRequests);
-        var page = await context.NewPageAsync();
+        var page = await CreatePageAsync(context);
         await page.GotoAsync(_host.BaseUrl);
 
         await Expect(page.Locator("h1")).ToHaveTextAsync("CI community operation");
@@ -53,7 +59,7 @@ public sealed class AnonymousCommunityTests : IClassFixture<WebAppHostFixture>
         await using var context = await CreateContextAsync();
         var unexpectedRequests = new ConcurrentQueue<string>();
         await ConfigureNetworkAsync(context, unexpectedRequests);
-        var page = await context.NewPageAsync();
+        var page = await CreatePageAsync(context);
         await page.GotoAsync(_host.BaseUrl);
 
         await page.Locator(".utf-sign-in-button").ClickAsync();
@@ -67,6 +73,28 @@ public sealed class AnonymousCommunityTests : IClassFixture<WebAppHostFixture>
         await Expect(dialog).ToHaveCountAsync(0);
         await Expect(page).ToHaveURLAsync(_host.BaseUrl);
         Assert.Empty(unexpectedRequests);
+    }
+
+    /// <summary>Creates a page that reports startup failures without extending assertion timeouts.</summary>
+    /// <param name="context">The isolated context whose API responses are supplied by the fixture.</param>
+    /// <returns>A page with bounded console and uncaught-error diagnostics attached before navigation.</returns>
+    private async Task<IPage> CreatePageAsync(IBrowserContext context)
+    {
+        var page = await context.NewPageAsync();
+        var diagnosticCount = 0;
+        page.PageError += (_, error) => Report("Browser page error: " + error);
+        page.Console += (_, message) =>
+        {
+            if (message.Type == "error")
+                Report("Browser console error: " + message.Text);
+        };
+        return page;
+
+        void Report(string message)
+        {
+            if (Interlocked.Increment(ref diagnosticCount) <= 20)
+                _output.WriteLine(message[..Math.Min(message.Length, 4000)]);
+        }
     }
 
     /// <summary>Creates an English desktop session with service workers disabled so every API request is intercepted.</summary>
