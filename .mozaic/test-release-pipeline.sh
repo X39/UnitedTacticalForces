@@ -2,7 +2,8 @@
 # Exercise orchestration with inert commands; no application build or network access.
 set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-temporary=$(mktemp -d)
+# The runner deliberately mounts /tmp noexec; command doubles need executable scratch.
+temporary=$(mktemp -d "$repo_root/.mozaic-release-test.XXXXXX")
 trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 
 for failure in none react-tests dotnet-release react-browser worker-test worker-evidence; do
@@ -41,6 +42,9 @@ DOTNET
 printf 'npm %s\n' "$*" >> "$TRACE"
 NPM
     chmod +x "$workspace/bin/"* "$workspace/.mozaic/oci-layout/run.sh"
+    for command in npm dotnet; do
+        test "$(PATH="$workspace/bin:$PATH" command -v "$command")" = "$workspace/bin/$command"
+    done
     export TRACE=$workspace/trace FAILURE=$failure
     export UTF_PROOF_DIRECTORY=$workspace/proof UTF_CHECK_PUBLISH_DIRECTORY=$workspace/.publish
     if PATH="$workspace/bin:$PATH" sh "$workspace/release.sh"; then
