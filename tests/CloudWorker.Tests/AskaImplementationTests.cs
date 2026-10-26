@@ -149,11 +149,25 @@ public sealed class AskaImplementationTests
         var connection = Connection();
         var steamCmd = Path.Combine(directory.Path, "steamcmd.sh");
         await File.WriteAllTextAsync(steamCmd, "fixture");
+        var identities = await File.ReadAllLinesAsync("/proc/self/status");
         var effectiveUserId = int.Parse(
-            (await File.ReadAllLinesAsync("/proc/self/status"))
+            identities
             .Single(q => q.StartsWith("Uid:", StringComparison.Ordinal))
-            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[1]);
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[2]);
+        var effectiveGroupId = int.Parse(
+            identities
+            .Single(q => q.StartsWith("Gid:", StringComparison.Ordinal))
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[2]);
         var options = Options(directory.Path, steamCmd, effectiveUserId);
+        options = options with
+        {
+            Arma3 = options.Arma3 with
+            {
+                GameUserId = effectiveUserId == 10002 ? 10003 : 10002,
+                GameGroupId = effectiveGroupId,
+                PrivilegeDropPath = "/usr/bin/setpriv",
+            },
+        };
         var paths = new AskaRuntimePaths(
             options.RuntimeRoot, options.StateDirectory, connection.DeploymentId, options.Aska.ExecutableRelativePath);
         var runner = new PreparingRunner(paths);
