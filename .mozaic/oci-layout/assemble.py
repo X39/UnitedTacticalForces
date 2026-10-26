@@ -294,9 +294,13 @@ def package_closure(base, roots, architectures):
     for mapping in (installed, catalog):
         for package in mapping.values():
             for provided in package.get('Provides', '').split(','):
-                name = provided.strip().split(' ')[0]
-                if name:
-                    providers.setdefault((name, package['Architecture']), []).append(package)
+                if not provided.strip():
+                    continue
+                match = re.fullmatch(r'\s*([a-z0-9+.-]+)(?:\s*\(=\s*([^ )]+)\))?\s*', provided)
+                require(match is not None, 'unsupported package provide grammar')
+                name, provided_version = match.groups()
+                providers.setdefault((name, package['Architecture']), []).append(
+                    (package, mapping is catalog, provided_version))
     pending = [(root, 'amd64') for root in roots]
     while pending:
         dependency, parent_architecture = pending.pop()
@@ -317,11 +321,16 @@ def package_closure(base, roots, architectures):
                 if valid:
                     chosen = package, mapping is catalog
                     break
-            if not chosen and not operator:
+            if not chosen:
                 available = providers.get((name, architecture), []) + providers.get((name, 'all'), [])
-                if available:
-                    package = available[0]
-                    chosen = package, (package['Package'], package['Architecture']) not in installed
+                for package, new, provided_version in available:
+                    comparison = version_compare(provided_version, minimum) if provided_version and minimum else 0
+                    valid = not operator or provided_version is not None and {
+                        '<<': comparison < 0, '<=': comparison <= 0, '=': comparison == 0,
+                        '>=': comparison >= 0, '>>': comparison > 0}[operator]
+                    if valid:
+                        chosen = package, new
+                        break
             if chosen:
                 break
         require(chosen is not None, 'package dependency unavailable: ' + dependency)
