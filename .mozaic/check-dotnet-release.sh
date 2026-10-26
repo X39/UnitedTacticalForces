@@ -38,8 +38,8 @@ if [ "$ready" != true ]; then
 fi
 dotnet test X39.UnitedTacticalForces.slnx --configuration Release --no-build \
     --maxcpucount:1 --logger trx --results-directory "$proof_directory/test-results"
-dotnet publish sources/Api/Api.csproj --configuration Release --no-restore \
+dotnet publish sources/Api/Api.csproj --configuration Release --no-build --no-restore \
     --maxcpucount:1 --output "$publish_directory/api" /p:UseAppHost=false
-dotnet publish sources/WebApp/WebApp.csproj --configuration Release --no-restore \
+dotnet publish sources/WebApp/WebApp.csproj --configuration Release --no-build --no-restore \
     --maxcpucount:1 --output "$publish_directory/web" /p:UseAppHost=false
 printf 'Release solution, OpenAPI, tests and publishing passed\n' > "$proof_directory/result"

@@ -9,7 +9,7 @@ case "$mode" in
     *) printf 'Usage: %s dotnet-release|react-browser\n' "$0" >&2; exit 2 ;;
 esac
 helper=/workspace/.oci-target/release/utf-oci-layout
-prefix=/workspace/.browser-deps
+prefix=/workspace/.browser-deps-$version
 "$helper" python .mozaic/stage-browser-deps.py "$version" "$prefix"
 . "$prefix/environment.sh"
 sh .mozaic/check-ordinary.sh "$mode"

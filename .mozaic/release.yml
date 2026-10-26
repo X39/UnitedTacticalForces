@@ -1,9 +1,9 @@
-# Emergency trusted release: production compilation, OCI assembly and publication only.
+# Trusted release: required checks and all publication inputs share one workspace.
 version: 1
 triggers:
   - trusted_branch
 jobs:
-  build-worker:
+  checked-artifacts:
     image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     runs_on:
       labels:
@@ -27,147 +27,61 @@ jobs:
         - mcrprod.azureedge.net
         - api.nuget.org
         - globalcdn.nuget.org
+        - registry.npmjs.org
         - snapshot.ubuntu.com
         - steamcdn-a.akamaihd.net
+        - cdn.playwright.dev
+        - playwright.download.prss.microsoft.com
     timeout_minutes: 30
     steps:
-      - name: Compile and package worker for emergency release
-        run: sh .mozaic/build.sh worker
-      - name: Publish the successful trusted OCI archive
-        publish_in_package_registry:
-          registry:
-            id: 01a166b4-bc34-7973-a711-bf840c866313
-          source:
-            adapter: oci
-            repository: utf/cloud-worker
-            path: image.tar
-            format: oci_image_layout_tar_v1
-            tags:
-              - release
-  build-aska:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    needs:
-      - build-worker
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - mcr.microsoft.com
-        - mcrprod.azureedge.net
-        - api.nuget.org
-        - globalcdn.nuget.org
-        - snapshot.ubuntu.com
-        - steamcdn-a.akamaihd.net
-    timeout_minutes: 30
-    steps:
-      - name: Compile and package aska for emergency release
-        run: sh .mozaic/build.sh aska
-      - name: Publish the successful trusted OCI archive
-        publish_in_package_registry:
-          registry:
-            id: 01a166b4-bc34-7973-a711-bf840c866313
-          source:
-            adapter: oci
-            repository: utf/cloud-worker-aska
-            path: image.tar
-            format: oci_image_layout_tar_v1
-            tags:
-              - release
-  build-api:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    needs:
-      - build-aska
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - mcr.microsoft.com
-        - mcrprod.azureedge.net
-        - api.nuget.org
-        - globalcdn.nuget.org
-        - snapshot.ubuntu.com
-    timeout_minutes: 30
-    steps:
-      - name: Compile and package api for emergency release
-        run: sh .mozaic/build.sh api
-      - name: Publish the successful trusted OCI archive
+      - name: Check Release binaries and package the complete component set
+        run: sh .mozaic/build.sh release
+      - name: Publish the checked API
         publish_in_package_registry:
           registry:
             id: 01a166b4-bc34-7973-a711-bf840c866313
           source:
             adapter: oci
             repository: utf/api
-            path: image.tar
+            path: images/api.tar
             format: oci_image_layout_tar_v1
             tags:
               - release
-  build-web:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    needs:
-      - build-api
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - mcr.microsoft.com
-        - mcrprod.azureedge.net
-        - registry.npmjs.org
-        - api.nuget.org
-        - globalcdn.nuget.org
-    timeout_minutes: 30
-    steps:
-      - name: Compile and package web for emergency release
-        run: sh .mozaic/build.sh web
-      - name: Publish the successful trusted OCI archive
+      - name: Publish the checked web application
         publish_in_package_registry:
           registry:
             id: 01a166b4-bc34-7973-a711-bf840c866313
           source:
             adapter: oci
             repository: utf/web
-            path: image.tar
+            path: images/web.tar
             format: oci_image_layout_tar_v1
             tags:
               - release
+      - name: Publish the checked standard worker
+        publish_in_package_registry:
+          registry:
+            id: 01a166b4-bc34-7973-a711-bf840c866313
+          source:
+            adapter: oci
+            repository: utf/cloud-worker
+            path: images/worker.tar
+            format: oci_image_layout_tar_v1
+            tags:
+              - release
+      - name: Publish the checked ASKA worker
+        publish_in_package_registry:
+          registry:
+            id: 01a166b4-bc34-7973-a711-bf840c866313
+          source:
+            adapter: oci
+            repository: utf/cloud-worker-aska
+            path: images/aska.tar
+            format: oci_image_layout_tar_v1
+            tags:
+              - release
+    test_results:
+      - path: test-results/test-results/*.trx
+        format: trx
+      - path: test-results/worker-test-results/*.trx
+        format: trx

@@ -15,13 +15,13 @@ mkdir -p "$HOME" "$UTF_PROOF_DIRECTORY" "$UTF_CHECK_PUBLISH_DIRECTORY"
 cargo build --locked --release --manifest-path .mozaic/oci-layout/Cargo.toml
 helper=/workspace/.oci-target/release/utf-oci-layout
 case "$mode" in
-    react-tests|react-browser|web|dotnet-release)
+    react-tests|react-browser|web|dotnet-release|release)
         "$helper" stage-node /workspace/.node
         export PATH="/workspace/.node/bin:$PATH"
         ;;
 esac
 case "$mode" in
-    dotnet-release|api|web)
+    dotnet-release|api|web|release)
         "$helper" stage-dotnet /workspace/.dotnet 201
         export DOTNET_ROOT=/workspace/.dotnet PATH="/workspace/.dotnet:$PATH"
         ;;
@@ -31,6 +31,9 @@ case "$mode" in
         ;;
 esac
 case "$mode" in
+    release)
+        sh .mozaic/check-and-package-release.sh
+        ;;
     react-tests)
         sh .mozaic/check-ordinary.sh "$mode"
         ;;
@@ -60,8 +63,11 @@ case "$mode" in
         mkdir -p /workspace/.worker-source/sources
         cp -R sources/HostingContracts sources/GameServerImplementations sources/CloudWorker \
             /workspace/.worker-source/sources/
+        printf '{"sdk":{"version":"10.0.302","rollForward":"disable"}}\n' \
+            > /workspace/.worker-source/global.json
         (
             cd /workspace/.worker-source
+            test "$(dotnet --version)" = 10.0.302
             dotnet restore sources/CloudWorker/CloudWorker.csproj --disable-parallel
             dotnet publish sources/CloudWorker/CloudWorker.csproj --configuration Release \
                 --output /workspace/.publish/worker --no-restore --no-self-contained --maxcpucount:1

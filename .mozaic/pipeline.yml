@@ -1,4 +1,4 @@
-# Separate pull-request checks; these suites are not emergency release prerequisites.
+# Pull-request feedback; the trusted release also requires these suites.
 version: 1
 triggers:
   - pull_request
