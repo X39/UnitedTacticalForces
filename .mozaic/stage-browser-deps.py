@@ -59,6 +59,11 @@ def remove(path):
 
 def extract(archive, member, root):
     """Apply selected overlay entries, relocating links into scratch."""
+    candidate = str(PurePosixPath(member.name))
+    candidate = 'usr/' + candidate if candidate.startswith('lib/') else candidate
+    # Unselected image files are never written; systemd unit names may contain backslashes.
+    if not selected(candidate) and not PurePosixPath(candidate).name.startswith('.wh.'):
+        return
     name = canonical(member.name)
     path = PurePosixPath(name)
     if path.name.startswith('.wh.'):
