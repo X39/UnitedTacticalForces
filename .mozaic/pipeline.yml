@@ -65,6 +65,8 @@ jobs:
     test_results:
       - path: test-results/test-results/*.trx
         format: trx
+      - path: test-results/auth-debug-results/*.trx
+        format: trx
   react-browser:
     image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     needs:

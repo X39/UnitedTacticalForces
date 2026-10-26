@@ -44,10 +44,18 @@ if [ "$ready" != true ]; then
     cat "$proof_directory/blazor-host.log"
     exit 1
 fi
+# The bypass feature is Debug-only; require its enabled behavior as well as Release rejection.
+dotnet test tests/Api.Tests/Api.Tests.csproj --configuration Debug --no-restore --maxcpucount:1 \
+    --filter FullyQualifiedName~DevelopmentAuthorizationBypassAuthenticationHandlerTests \
+    --logger trx --results-directory "$proof_directory/auth-debug-results"
+sh /workspace/.mozaic/oci-layout/run.sh python .mozaic/verify-test-results.py \
+    "$proof_directory/auth-debug-results" Api.Tests
+
 dotnet test X39.UnitedTacticalForces.slnx --configuration Release --no-build \
     --maxcpucount:1 --logger trx --results-directory "$proof_directory/test-results"
 sh /workspace/.mozaic/oci-layout/run.sh python .mozaic/verify-test-results.py \
     "$proof_directory/test-results" Api.Tests CloudWorker.Tests Ui.Tests X39.BI.Config.Parsing.Tests
+
 dotnet publish sources/Api/Api.csproj --configuration Release --no-build --no-restore \
     --maxcpucount:1 --output "$publish_directory/api" /p:UseAppHost=false
 dotnet publish sources/WebApp/WebApp.csproj --configuration Release --no-build --no-restore \

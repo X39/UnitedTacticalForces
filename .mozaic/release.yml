@@ -84,6 +84,8 @@ jobs:
     test_results:
       - path: test-results/test-results/*.trx
         format: trx
+      - path: test-results/auth-debug-results/*.trx
+        format: trx
       - path: test-results/worker-test-results/*.trx
         format: trx
   activate-release:

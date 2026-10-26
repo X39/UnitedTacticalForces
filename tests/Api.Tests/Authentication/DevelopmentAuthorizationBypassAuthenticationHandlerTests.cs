@@ -21,15 +21,19 @@ using DataClaim = X39.UnitedTacticalForces.Database.Authority.Claim;
 
 namespace Api.Tests.Authentication;
 
+/// <summary>Verifies development-only authentication and the Release build's unconditional bypass rejection.</summary>
 public class DevelopmentAuthorizationBypassAuthenticationHandlerTests
 {
     private static readonly Guid DefaultUserId = Guid.Parse(Constants.AuthorizationBypass.DefaultUserId);
 
+    /// <summary>Checks the configured administrator in Debug and rejects the enabled bypass in Release.</summary>
+    /// <returns>A task that completes after the build-specific authentication contract is verified.</returns>
     [Fact]
     public async Task AuthenticateAsync_ReturnsConfiguredApiUserWithAdminClaim()
     {
         await using var context = await AuthenticationTestContext.CreateAsync(CreateUser(DefaultUserId));
 
+#if DEBUG
         var result = await context.AuthenticateAsync();
 
         Assert.True(result.Succeeded);
@@ -39,12 +43,18 @@ public class DevelopmentAuthorizationBypassAuthenticationHandlerTests
         Assert.Contains(
             result.Principal.Claims,
             q => q.Type == Claims.Administrative.All && q.Value == string.Empty);
+#else
+        await AssertReleaseBuildRejectsBypassAsync(context);
+#endif
     }
 
+    /// <summary>Checks Debug resource authorization while preserving the Release bypass prohibition.</summary>
+    /// <returns>A task that completes after the build-specific authorization behavior is verified.</returns>
     [Fact]
     public async Task AuthenticateAsync_PrincipalSatisfiesResourcePolicy()
     {
         await using var context = await AuthenticationTestContext.CreateAsync(CreateUser(DefaultUserId));
+#if DEBUG
         var result = await context.AuthenticateAsync();
         Assert.True(result.Succeeded);
 
@@ -53,19 +63,32 @@ public class DevelopmentAuthorizationBypassAuthenticationHandlerTests
             Claims.ResourceBased.ModPack.Modify);
 
         Assert.True(authorizationResult.Succeeded);
+#else
+        await AssertReleaseBuildRejectsBypassAsync(context);
+#endif
     }
 
+    /// <summary>Rejects an absent Debug user and an enabled Release bypass before user lookup.</summary>
+    /// <returns>A task that completes after the invalid authentication request is rejected.</returns>
     [Fact]
     public async Task AuthenticateAsync_FailsWhenConfiguredUserDoesNotExist()
     {
         await using var context = await AuthenticationTestContext.CreateAsync();
 
+#if DEBUG
         var result = await context.AuthenticateAsync();
 
         Assert.False(result.Succeeded);
         Assert.NotNull(result.Failure);
+#else
+        await AssertReleaseBuildRejectsBypassAsync(context);
+#endif
     }
 
+    /// <summary>Rejects unusable Debug users and the enabled bypass in every Release user state.</summary>
+    /// <param name="isDeleted">Whether the configured fixture user has been deleted.</param>
+    /// <param name="isBanned">Whether the configured fixture user has been banned.</param>
+    /// <returns>A task that completes after authentication is rejected.</returns>
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]
@@ -74,10 +97,23 @@ public class DevelopmentAuthorizationBypassAuthenticationHandlerTests
         await using var context = await AuthenticationTestContext.CreateAsync(
             CreateUser(DefaultUserId, isDeleted, isBanned));
 
+#if DEBUG
         var result = await context.AuthenticateAsync();
 
         Assert.False(result.Succeeded);
         Assert.NotNull(result.Failure);
+#else
+        await AssertReleaseBuildRejectsBypassAsync(context);
+#endif
+    }
+
+    /// <summary>Requires the production artifact to reject the development bypass at its build guard.</summary>
+    /// <param name="context">The fixture with bypass explicitly enabled and a development environment.</param>
+    /// <returns>A task that completes after the Release-only rejection and its reason are verified.</returns>
+    private static async Task AssertReleaseBuildRejectsBypassAsync(AuthenticationTestContext context)
+    {
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(context.AuthenticateAsync);
+        Assert.Contains("only be enabled in DEBUG builds", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
