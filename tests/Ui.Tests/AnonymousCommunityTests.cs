@@ -122,10 +122,10 @@ public sealed class AnonymousCommunityTests : IClassFixture<WebAppHostFixture>
         var origin = new Uri(_host.BaseUrl).GetLeftPart(UriPartial.Authority);
         // Leave framework downloads native while keeping all external requests blocked.
         await context.RouteAsync(
-            new Regex("^(?!" + Regex.Escape(origin) + "/)", RegexOptions.CultureInvariant),
+            new Regex("^(?!" + Regex.Escape(origin) + "/)"),
             route => route.AbortAsync());
         var mockedRequests = new Regex(
-            "^" + Regex.Escape(origin) + "/(?:api/|appsettings)", RegexOptions.CultureInvariant);
+            "^" + Regex.Escape(origin) + "/(?:api/|appsettings)");
         await context.RouteAsync(mockedRequests, async route =>
         {
             var uri = new Uri(route.Request.Url);
