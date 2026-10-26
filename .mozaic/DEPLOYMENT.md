@@ -8,7 +8,8 @@ against the actual accepted run; prepared YAML is not deployment evidence.
 
 The ordinary `activate-release` job invokes `ci/deploy.sh` using the reviewed
 Nuremberg endpoint, `utf-deploy` account, protected `utf_target_invoke` reference
-and public host key in `deploy/production.*`. Its successful `checked-artifacts`
+and public host key in `deploy/known_hosts`, with manifest `deploy/production.json`.
+Its successful `checked-artifacts`
 dependency must supply all four exact receipts. The coordinator owns installation,
 private input activation, actual plan binding and the release slot.
 

@@ -20,7 +20,7 @@ Runtime/evidence credentials remain on the target.
 
 `deploy/production.json` binds the reviewed Nuremberg public endpoint, `utf-deploy`
 SSH account, protected `/run/mozaic/secrets/ssh_key` path and checked-in public
-host-key file. The ordinary `activate-release` job uses secret reference
+host-key file `deploy/known_hosts`. The ordinary `activate-release` job uses secret reference
 `utf_target_invoke`, requires `checked-artifacts` through normal `needs`, and
 declares no artifacts, caches or test-report outputs. The target resolves all four
 immutable publications using the exact requesting attempt.

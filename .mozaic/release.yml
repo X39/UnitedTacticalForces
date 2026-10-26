@@ -108,6 +108,6 @@ jobs:
     steps:
       - name: Wait for the complete checked release and healthy target
         run: >-
-          sh ci/deploy.sh --target nuremberg
+          sh ci/deploy.sh --target nurnberg
           --manifest deploy/production.json --release-job checked-artifacts
           --attempt "$MOZAIC_ATTEMPT_ID" --wait --timeout 600

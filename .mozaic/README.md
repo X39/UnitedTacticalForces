@@ -8,7 +8,8 @@ and [DEPLOYMENT.md](DEPLOYMENT.md) for data, worker and acceptance requirements.
 
 The ordinary generic deployment client is checked in under [ci](../ci/README.md).
 Its downstream invocation uses the shared owner's public endpoint/account and
-verified host key in `deploy/production.*`. Target/input readiness, exact CI
+verified host key in `deploy/production.json` and `deploy/known_hosts`.
+Target/input readiness, exact CI
 credential binding and the serialized UTF slot remain coordinator prerequisites.
 
 The canonical source is `https://x39.mozaic.space/git/x39/united-tactical-forces.git`

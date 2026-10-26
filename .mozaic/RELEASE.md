@@ -41,7 +41,7 @@ and governed push policy through the audited operator path.
 The ordinary `activate-release` job requires `checked-artifacts` and invokes
 the generic SSH client with its exact requesting attempt. Its protected key
 reference is `utf_target_invoke`; endpoint and host-key bindings are checked in
-under `deploy/production.*`. The target must accept all four same-run publication
+in `deploy/production.json` and `deploy/known_hosts`. The target must accept all four same-run publication
 receipts, activate their exact worker dependency pins and finish its coherent
 stateful backup/startup/health checks before the command succeeds. Runtime and
 registry credentials stay on the target.
