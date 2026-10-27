@@ -25,6 +25,7 @@ RUN test "$(dpkg --print-architecture)" = "amd64" \
         bash \
         ca-certificates \
         curl \
+        fonts-liberation \
         git \
         libc6:i386 \
         libgcc-s1 \
@@ -34,6 +35,11 @@ RUN test "$(dpkg --print-architecture)" = "amd64" \
         tar \
         tini \
         util-linux \
+        wine \
+        wine64 \
+        winbind \
+        xauth \
+        xvfb \
     && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /opt/steamcmd \
     && curl --fail --location --silent --show-error \
@@ -72,7 +78,11 @@ ENV UTF_WORKER_BOOTSTRAP_PATH=/run/secrets/utf-worker-bootstrap.json \
     UTF_STEAM_UID=10003 \
     UTF_GAME_UID=10002 \
     UTF_GAME_GID=10001 \
-    UTF_GAME_PRIVILEGE_DROP_PATH=/usr/bin/setpriv
+    UTF_GAME_PRIVILEGE_DROP_PATH=/usr/bin/setpriv \
+    UTF_ASKA_WINE_PATH=/usr/bin/wine \
+    UTF_ASKA_WINEBOOT_PATH=/usr/bin/wineboot \
+    UTF_ASKA_XVFB_RUN_PATH=/usr/bin/xvfb-run \
+    UTF_ASKA_SETSID_PATH=/usr/bin/setsid
 VOLUME ["/var/lib/united-tactical-forces/worker", "/srv/united-tactical-forces/runtime"]
 USER root
 ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/app/docker-entrypoint.sh"]

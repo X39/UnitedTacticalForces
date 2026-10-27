@@ -194,10 +194,11 @@ hosts are not modified retroactively.
 ## ASKA dedicated servers
 
 ASKA deployments use the provider-neutral cloud lifecycle and the official Windows dedicated server under Wine
-and Xvfb. They require the dedicated image configured at `Hosting:WorkerProvisioning:GameContainerImages:aska`;
-production references must use immutable SHA-256 digests. Build the image with
-`docker build -f sources/CloudWorker/Dockerfile.Aska -t utf-cloud-worker-aska .`. Aspire development workers select
-it with `Hosting:DevelopmentWorker:ImageVariant` set to `aska` and an ASKA bootstrap file.
+and Xvfb. The standard worker includes this runtime support alongside Arma 3 and Counter-Strike 2 support.
+Configure its single immutable reference at `Hosting:WorkerProvisioning:ContainerImage`; build it with
+`docker build -f sources/CloudWorker/Dockerfile -t utf-cloud-worker .`. The bootstrap's game identifier selects
+the executor. Aspire development workers use this same Dockerfile with the selected game's bootstrap file.
+Game binaries are installed later on the dedicated deployment worker, never while building the image.
 
 The server exposes UDP `27015` for gameplay and UDP `27016` for queries. Enter the required Steam authentication
 token through the game-server secret workflow; never put it in AppHost configuration or a bootstrap file. The

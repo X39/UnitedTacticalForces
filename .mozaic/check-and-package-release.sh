@@ -1,5 +1,5 @@
 #!/bin/sh
-# Keep required checks and the four publication inputs in the same job workspace.
+# Keep required checks and the three publication inputs in the same job workspace.
 set -eu
 cd /workspace
 helper=/workspace/.mozaic/oci-layout/run.sh
@@ -43,6 +43,6 @@ printf '{"sdk":{"version":"10.0.302","rollForward":"disable"}}\n' \
 )
 
 mkdir -p /workspace/images
-for component in api web worker aska; do
+for component in api web worker; do
     sh "$helper" assemble "$component" /workspace "/workspace/images/$component.tar"
 done

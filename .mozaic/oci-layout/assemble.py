@@ -539,27 +539,25 @@ class Overlay:
 
 
 def assemble(component, source, output):
-    component = 'worker-aska' if component == 'aska' else component
-    require(component in ('api', 'web', 'worker', 'worker-aska'), 'unknown component')
+    require(component in ('api', 'web', 'worker'), 'unknown component')
     source, output = Path(source), Path(output)
     require(not output.exists(), 'output already exists')
     with tempfile.TemporaryDirectory(dir=output.parent) as temporary:
         work = Path(temporary)
-        base = Base('worker' if component.startswith('worker') else component, work)
+        base = Base(component, work)
         layer = work / 'application.tar'
         overlay = Overlay(layer)
         config = copy.deepcopy(base.config.get('config', {}))
         environment = dict(value.split('=', 1) for value in config.get('Env', []))
         config.update({'WorkingDir': '/app', 'Cmd': [], 'User': 'root'})
         roots = ['libgssapi-krb5-2'] if component == 'api' else []
-        if component.startswith('worker'):
+        if component == 'worker':
             roots = ['bash', 'ca-certificates', 'curl', 'git', 'libc6:i386', 'libgcc-s1',
-                     'libgcc-s1:i386', 'libstdc++6', 'libstdc++6:i386', 'tar', 'tini', 'util-linux']
-            if component == 'worker-aska':
-                roots += ['fonts-liberation', 'wine', 'wine64', 'winbind', 'xauth', 'xvfb']
+                     'libgcc-s1:i386', 'libstdc++6', 'libstdc++6:i386', 'tar', 'tini', 'util-linux',
+                     'fonts-liberation', 'wine', 'wine64', 'winbind', 'xauth', 'xvfb']
         if roots:
             require(base.config['config'].get('Labels', {}).get('org.opencontainers.image.version') == '24.04', 'package base is not noble')
-            packages = package_closure(base, roots, ['amd64', 'i386'] if component.startswith('worker') else ['amd64'])
+            packages = package_closure(base, roots, ['amd64', 'i386'] if component == 'worker' else ['amd64'])
             for package in packages:
                 overlay.payload(deb_data(fetch(SNAPSHOT + package['Filename'], package['SHA256'])))
             # Essential package manager triggers are represented directly in OCI;
@@ -602,11 +600,10 @@ def assemble(component, source, output):
                 'UTF_STEAMCMD_PATH': '/srv/united-tactical-forces/runtime/.utf-tooling/steamcmd/steamcmd.sh',
                 'UTF_STEAM_HOME': '/srv/united-tactical-forces/runtime/.utf-tooling/steam-home', 'UTF_STEAM_UID': '10003',
                 'UTF_GAME_UID': '10002', 'UTF_GAME_GID': '10001', 'UTF_GAME_PRIVILEGE_DROP_PATH': '/usr/bin/setpriv'})
-            if component == 'worker-aska':
-                for executable in ('wine', 'wineboot'):
-                    overlay.put('usr/bin/' + executable, kind=tarfile.SYMTYPE, link=executable + '-stable')
-                environment.update({'UTF_ASKA_WINE_PATH': '/usr/bin/wine', 'UTF_ASKA_WINEBOOT_PATH': '/usr/bin/wineboot',
-                    'UTF_ASKA_XVFB_RUN_PATH': '/usr/bin/xvfb-run', 'UTF_ASKA_SETSID_PATH': '/usr/bin/setsid'})
+            for executable in ('wine', 'wineboot'):
+                overlay.put('usr/bin/' + executable, kind=tarfile.SYMTYPE, link=executable + '-stable')
+            environment.update({'UTF_ASKA_WINE_PATH': '/usr/bin/wine', 'UTF_ASKA_WINEBOOT_PATH': '/usr/bin/wineboot',
+                'UTF_ASKA_XVFB_RUN_PATH': '/usr/bin/xvfb-run', 'UTF_ASKA_SETSID_PATH': '/usr/bin/setsid'})
             config.update({'Entrypoint': ['/usr/bin/tini', '-g', '--', '/app/docker-entrypoint.sh'],
                 'Volumes': {'/var/lib/united-tactical-forces/worker': {}, '/srv/united-tactical-forces/runtime': {}}})
         config['Env'] = [key + '=' + value for key, value in sorted(environment.items())]
@@ -652,8 +649,7 @@ def assemble(component, source, output):
 
 def verify(component, output):
     """Inspect the serialized artifact, including ownership without host chown."""
-    component = 'worker-aska' if component == 'aska' else component
-    require(component in ('api', 'web', 'worker', 'worker-aska'), 'unknown component')
+    require(component in ('api', 'web', 'worker'), 'unknown component')
     with tarfile.open(output, 'r:') as archive:
         index = json.load(archive.extractfile('index.json'))
         require(len(index['manifests']) == 1, 'archive must contain one platform')
@@ -712,9 +708,12 @@ def verify(component, output):
             require('/srv/united-tactical-forces/runtime' in config['Volumes']
                     and '/var/lib/united-tactical-forces/worker' in config['Volumes'], 'worker volume contract changed')
             require('app/X39.UnitedTacticalForces.CloudWorker.dll' in members and 'opt/steamcmd/steamcmd.sh' in members, 'worker payload missing')
-            if component == 'worker-aska':
-                require(environment['UTF_ASKA_WINE_PATH'] == '/usr/bin/wine' and 'usr/bin/wine' in members
-                        and 'usr/bin/wineboot' in members, 'ASKA Wine command contract missing')
+            require(environment['UTF_ASKA_WINE_PATH'] == '/usr/bin/wine'
+                    and environment['UTF_ASKA_WINEBOOT_PATH'] == '/usr/bin/wineboot'
+                    and environment['UTF_ASKA_XVFB_RUN_PATH'] == '/usr/bin/xvfb-run'
+                    and environment['UTF_ASKA_SETSID_PATH'] == '/usr/bin/setsid'
+                    and all(name in members for name in ('usr/bin/wine', 'usr/bin/wineboot', 'usr/bin/xvfb-run')),
+                    'shared worker Wine/Xvfb command contract missing')
     print('Verified serialized OCI launch and ownership contract: ' + component)
 
 

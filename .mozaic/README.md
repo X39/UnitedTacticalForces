@@ -1,7 +1,7 @@
 # Mozaic CI
 
 The active trusted release definition is [release.yml](release.yml). Its
-`checked-artifacts` job runs the required suites and assembles all four publication
+`checked-artifacts` job runs the required suites and assembles all three publication
 inputs in the same workspace. [pipeline.yml](pipeline.yml) retains pull-request
 feedback. See [RELEASE.md](RELEASE.md) for checks and immutable publication rules,
 and [DEPLOYMENT.md](DEPLOYMENT.md) for data, worker and acceptance requirements.

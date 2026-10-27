@@ -15,7 +15,6 @@ public sealed class AskaGameServerDefinitionTests
         Assert.Equal("aska", definition.GameIdentifier);
         Assert.Equal("3246670", definition.RuntimeInstallation?.ApplicationIdentifier);
         Assert.Equal("1898300", definition.RuntimeInstallation?.WorkshopApplicationIdentifier);
-        Assert.Equal("aska", definition.WorkerImageIdentifier);
         Assert.Contains(definition.InboundNetworkRequirements,
             q => q.Protocol == ERuntimeNetworkProtocol.Udp && q.StartPort == 27015 && q.EndPort == 27015);
         Assert.Contains(definition.InboundNetworkRequirements,

@@ -10,20 +10,20 @@ The ordinary `activate-release` job invokes `ci/deploy.sh` using the reviewed
 Nuremberg endpoint, `utf-deploy` account, protected `utf_target_invoke` reference
 and public host key in `deploy/known_hosts`, with manifest `deploy/production.json`.
 Its successful `checked-artifacts`
-dependency must supply all four exact receipts. The coordinator owns installation,
-private input activation, actual plan binding and the release slot.
+dependency must supply all three exact receipts. The coordinator owns installation,
+private input activation and actual plan binding. Ordinary resource admission
+handles scheduling without per-push slot permits.
 
 ## Release inputs
 
-Accept all four publications from the same checked source/run in applications
+Accept all three publications from the same checked source/run in applications
 registry `01a166b4-bc34-7973-a711-bf840c866313`:
 
 | Component | OCI repository | Output archive |
 | --- | --- | --- |
 | API | `utf/api` | `images/api.tar` |
 | Web | `utf/web` | `images/web.tar` |
-| Standard worker | `utf/cloud-worker` | `images/worker.tar` |
-| ASKA worker | `utf/cloud-worker-aska` | `images/aska.tar` |
+| Shared worker for Arma 3, ASKA, and CS2 | `utf/cloud-worker` | `images/worker.tar` |
 
 Runtime references use `x39.mozaic.space/applications/<repository>@sha256:<digest>`.
 Do not resolve mutable tags. Only API and web run on the shared application target;
@@ -61,19 +61,38 @@ private runtime credentials; none belongs in CI or frontend settings.
 
 ## Worker bindings
 
-Bind these API settings to the two exact accepted worker receipts:
+Bind these API settings to the single exact accepted shared worker receipt:
 
-- `Hosting__WorkerProvisioning__ContainerImage`: standard worker digest.
-- `Hosting__WorkerProvisioning__GameContainerImages__aska`: ASKA digest.
+- `Hosting__WorkerProvisioning__ContainerImage`: shared worker digest.
 - `Hosting__WorkerProvisioning__RegistryServer`: `x39.mozaic.space`.
 - `Hosting__WorkerProvisioning__RegistryUsername` and `RegistryToken`: private
-  read-only authority restricted to the two worker repositories.
+  read-only authority restricted to the shared worker repository.
 - `Hosting__WorkerProvisioning__RegistryAuthenticationRequired`: `true`.
 
-Both production image defaults are intentionally empty, and the registry-server
+The production image default is intentionally empty, and the registry-server
 default is `ghcr.io`; runtime configuration must override them. Preserve the
 provider token privately. Never substitute API/web pull authority for worker
 bootstrap authority. Compose is not the authoritative protected-target manifest.
+
+### Migration from the separate ASKA image
+
+Before releasing this source, the infrastructure owner must update its reviewed
+immutable target helper and private input binding through the intended activation
+program. Require exactly API, web, and worker receipts from the current generation;
+`dependency_image_repositories` must contain only `worker`. Derive only
+`Hosting__WorkerProvisioning__ContainerImage` from that accepted dependency.
+Remove `Hosting__WorkerProvisioning__GameContainerImages__aska` and its old dependency
+from the protected environment schema, effective environment hash and readiness
+validation together. Preserve registry credentials, all other secrets, backup,
+recovery, source/run/generation and provenance fences. Do not merely skip the
+fourth receipt in an old helper or reuse an older worker lacking Wine support.
+
+The public server-side properties `GameServerDefinition.WorkerImageIdentifier`
+and `WorkerProvisioningOptions.GameContainerImages` were removed. Use the one
+`ContainerImage`; remove the old game-image settings and development `ImageVariant`.
+The shared `sources/CloudWorker/Dockerfile` replaces `Dockerfile.Aska` and contains
+the former Wine/Xvfb dependencies. Existing deployed game workers are not changed
+by this source edit; their replacement requires its own normal lifecycle operation.
 
 Each worker keeps private journal state at `/var/lib/united-tactical-forces/worker`
 and separate runtime data at `/srv/united-tactical-forces/runtime`. Game UID 10002

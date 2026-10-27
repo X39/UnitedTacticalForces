@@ -40,7 +40,6 @@ public sealed class AskaGameServerDefinitionRegistration : IGameServerDefinition
         ],
         PrimaryConnection = new(ERuntimeNetworkProtocol.Udp, 27015, "ASKA server"),
         RuntimeInstallation = new("3246670", 8L * 1024 * 1024 * 1024, "ASKA dedicated server runtime", "1898300"),
-        WorkerImageIdentifier = GameIdentifier,
         Secrets =
         [
             new("authentication-token", "Steam authentication token", true, false, false, true),

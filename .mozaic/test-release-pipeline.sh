@@ -52,13 +52,14 @@ NPM
     export UTF_PROOF_DIRECTORY=$workspace/proof UTF_CHECK_PUBLISH_DIRECTORY=$workspace/.publish
     if PATH="$workspace/bin:$PATH" sh "$workspace/release.sh"; then
         test "$failure" = none
-        for component in api web worker aska; do test -s "$workspace/images/$component.tar"; done
+        for component in api web worker; do test -s "$workspace/images/$component.tar"; done
+        test ! -e "$workspace/images/aska.tar"
         grep -q '^dotnet publish .*--no-build --no-restore' "$TRACE"
-        test "$(grep -c '^assemble ' "$TRACE")" = 4
+        test "$(grep -c '^assemble ' "$TRACE")" = 3
     else
         test "$failure" != none
         test ! -d "$workspace/images"
         if grep -q '^assemble ' "$TRACE"; then exit 1; fi
     fi
 done
-printf 'Release orchestration passed: four outputs; every required suite fails closed.\n'
+printf 'Release orchestration passed: three outputs; every required suite fails closed.\n'

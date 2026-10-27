@@ -10,6 +10,11 @@ namespace X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 /// <summary>
 /// Installs Docker on a fresh Linux VM and starts the dedicated worker container through systemd.
 /// </summary>
+/// <param name="configuration">The private installation configuration used for control-plane and Steam access.</param>
+/// <param name="environment">The environment determining whether immutable worker references are required.</param>
+/// <param name="options">The common worker image, registry authentication, and host storage settings.</param>
+/// <param name="administrativeSshAccess">The explicitly authorized emergency-access policy.</param>
+/// <param name="gameDefinitions">The game metadata used to preserve installation credential requirements.</param>
 [Singleton<CloudInitWorkerBootstrapPayloadRenderer, IWorkerBootstrapPayloadRenderer>]
 public sealed class CloudInitWorkerBootstrapPayloadRenderer(
     IConfiguration configuration,
@@ -24,6 +29,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
     private const string ContainerSteamPasswordPath = "/run/secrets/utf-steam-password";
     private readonly WorkerProvisioningOptions _options = options.Value;
 
+    /// <inheritdoc />
     public WorkerBootstrapPayload Render(
         WorkerBootstrapConfiguration bootstrap,
         Guid serverId,
@@ -41,6 +47,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
                 _options.RuntimeDirectory,
                 0));
 
+    /// <inheritdoc />
     public WorkerBootstrapPayload Render(
         WorkerBootstrapConfiguration bootstrap,
         Guid serverId,
@@ -48,7 +55,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
         IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements,
         RuntimeStoragePlan storagePlan)
     {
-        var containerImage = ResolveContainerImage(gameIdentifier);
+        var containerImage = _options.ContainerImage;
         ValidateOptions(containerImage);
         var steamCredentials = ResolveSteamCredentials(gameIdentifier);
         if (!IsSafeAbsolutePath(storagePlan.DeploymentRoot)
@@ -327,22 +334,6 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
             ? requirement.StartPort.ToString(System.Globalization.CultureInfo.InvariantCulture)
             : $"{requirement.StartPort.ToString(System.Globalization.CultureInfo.InvariantCulture)}-{requirement.EndPort.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
         return $"--publish {ports}:{ports}/{protocol}";
-    }
-
-    private string ResolveContainerImage(string gameIdentifier)
-    {
-        var imageIdentifier = gameDefinitions?.Find(gameIdentifier)?.WorkerImageIdentifier;
-        if (imageIdentifier is null)
-            return _options.ContainerImage;
-        if (_options.GameContainerImages.TryGetValue(imageIdentifier, out var image)
-            && !string.IsNullOrWhiteSpace(image))
-        {
-            return image;
-        }
-
-        throw new InvalidOperationException(
-            $"Hosting:WorkerProvisioning:GameContainerImages:{imageIdentifier} must be configured before a "
-            + $"'{gameIdentifier}' worker can be provisioned.");
     }
 
     private void ValidateOptions(string containerImage)

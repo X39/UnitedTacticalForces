@@ -72,17 +72,6 @@ jobs:
             format: oci_image_layout_tar_v1
             tags:
               - release
-      - name: Publish the checked ASKA worker
-        publish_in_package_registry:
-          registry:
-            id: 01a166b4-bc34-7973-a711-bf840c866313
-          source:
-            adapter: oci
-            repository: utf/cloud-worker-aska
-            path: images/aska.tar
-            format: oci_image_layout_tar_v1
-            tags:
-              - release
     test_results:
       - path: test-results/test-results/*.trx
         format: trx

@@ -38,7 +38,7 @@ case "$mode" in
         sh "$helper" stage-dotnet /workspace/.dotnet 201
         export DOTNET_ROOT=/workspace/.dotnet PATH="/workspace/.dotnet:$PATH"
         ;;
-    worker|aska)
+    worker)
         sh "$helper" stage-dotnet /workspace/.dotnet 302
         export DOTNET_ROOT=/workspace/.dotnet PATH="/workspace/.dotnet:$PATH"
         ;;
@@ -50,6 +50,7 @@ case "$mode" in
         sh "$helper" python -B .mozaic/test_stage_browser_deps.py
         sh "$helper" python -B .mozaic/test_oci_layer_download.py
         sh "$helper" python -B .mozaic/test_stage_node.py
+        sh "$helper" python -B .mozaic/test_worker_image.py
         sh .mozaic/check-and-package-release.sh
         ;;
     react-tests)
@@ -76,7 +77,7 @@ case "$mode" in
         )
         sh "$helper" assemble web /workspace /workspace/image.tar
         ;;
-    worker|aska)
+    worker)
         # The worker recipes build without the repository SDK201 global.json.
         mkdir -p /workspace/.worker-source/sources
         cp -R sources/HostingContracts sources/GameServerImplementations sources/CloudWorker \

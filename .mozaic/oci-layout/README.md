@@ -6,7 +6,7 @@ It runs the standard-library assembler without an engine, socket,
 chroot, package manager, target executable, or package maintainer script.
 
 Commands are `stage-node PREFIX`, `stage-dotnet PREFIX [201|302]`,
-`assemble api|web|worker|aska SOURCE OUTPUT`, `verify COMPONENT ARCHIVE`, and
+`assemble api|web|worker SOURCE OUTPUT`, `verify COMPONENT ARCHIVE`, and
 `python SCRIPT ARGS`. The .NET executable is at `PREFIX/dotnet`; Node is at
 `PREFIX/bin/node`. Compiled application inputs are `.publish/api`,
 `.publish/web/wwwroot`, `.publish/worker`, and the existing React outputs.
@@ -33,8 +33,11 @@ SteamCMD and managed applications before deployment.
 Assembly verifies the serialized archive's launch configuration, payloads,
 ownership and modes. Base fetching, diff-ID verification and output tar writing
 stream large layers; individual package downloads remain bounded to 1 GiB.
-The ASKA image's final size must also satisfy the registry's publication limit;
+The shared worker includes Wine/Xvfb support for ASKA as well as the Linux game
+executors. It contains runtime tooling, not installed game files. Its final size
+must satisfy the registry's publication limit;
 the helper cannot establish that limit by source inspection.
 
-Only metadata and syntax checks are run locally. Compilation, tests, toolchain
-execution and application builds run exclusively on the paid Mozaic worker.
+Focused inert metadata and unit checks may run locally. Real application image
+builds, required full release tests and toolchain runtime acceptance run through
+the ordinary Mozaic worker. Local checks do not authorize deployment or imports.

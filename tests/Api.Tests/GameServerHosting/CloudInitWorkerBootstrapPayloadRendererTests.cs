@@ -10,10 +10,16 @@ using Xunit;
 
 namespace Api.Tests.GameServerHosting;
 
+/// <summary>Verifies isolated worker bootstrap, image trust, and game-specific deployment settings.</summary>
 public sealed class CloudInitWorkerBootstrapPayloadRendererTests
 {
-    [Fact]
-    public void Production_RejectsMutableWorkerImageTag()
+    /// <summary>Requires immutable shared images regardless of the selected game executor.</summary>
+    /// <param name="gameIdentifier">The game retained in the deployment bootstrap.</param>
+    [Theory]
+    [InlineData("arma3")]
+    [InlineData("aska")]
+    [InlineData("cs2")]
+    public void Production_RejectsMutableWorkerImageTag(string gameIdentifier)
     {
         var renderer = CreateRenderer(
             Environments.Production,
@@ -22,20 +28,30 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
         var exception = Assert.Throws<InvalidOperationException>(() => renderer.Render(
             Bootstrap(),
             Guid.NewGuid(),
-            "arma3",
+            gameIdentifier,
             NetworkPlan()));
 
         Assert.Contains("immutable", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
-    public void Production_AcceptsDigestAndDoesNotUnconditionallyPullOnRestart()
+    /// <summary>Uses the same trusted image while preserving each game's runtime dispatch identity.</summary>
+    /// <param name="gameIdentifier">The executor selected by the dedicated worker.</param>
+    [Theory]
+    [InlineData("arma3")]
+    [InlineData("aska")]
+    [InlineData("cs2")]
+    public void Production_AcceptsDigestAndDoesNotUnconditionallyPullOnRestart(string gameIdentifier)
     {
         var digest = new string('a', 64);
         var image = $"ghcr.io/x39/united-tactical-forces-cloud-worker@sha256:{digest}";
         var renderer = CreateRenderer(Environments.Production, image);
 
-        var payload = renderer.Render(Bootstrap(), Guid.NewGuid(), "arma3", NetworkPlan());
+        var payload = renderer.Render(Bootstrap(), Guid.NewGuid(), gameIdentifier, NetworkPlan());
+
+        var bootstrapDocument = DecodeWrittenFiles(payload.CloudInit)
+            .Single(value => value.Contains("\"bootstrapCredential\"", StringComparison.Ordinal));
+        using var bootstrapJson = System.Text.Json.JsonDocument.Parse(bootstrapDocument);
+        Assert.Equal(gameIdentifier, bootstrapJson.RootElement.GetProperty("gameIdentifier").GetString());
 
         var service = DecodeSystemdService(payload.CloudInit);
         Assert.Contains($"docker image inspect {image}", service, StringComparison.Ordinal);
@@ -174,14 +190,14 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>Keeps ASKA's network plan while using the shared worker without a game image override.</summary>
     [Fact]
-    public void Aska_UsesRequiredDedicatedGameImage()
+    public void Aska_UsesSharedWorkerImageAndGamePorts()
     {
-        const string askaImage = "utf-cloud-worker-aska:development";
+        const string sharedImage = "utf-cloud-worker:development";
         var renderer = CreateRenderer(
             Environments.Development,
-            "utf-cloud-worker:development",
-            options => options.GameContainerImages["aska"] = askaImage,
+            sharedImage,
             gameDefinitions: new GameServerDefinitionCatalog(
                 [new AskaGameServerDefinitionRegistration()]));
 
@@ -192,25 +208,25 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
         ]);
         var service = DecodeSystemdService(payload.CloudInit);
 
-        Assert.Contains(askaImage, service, StringComparison.Ordinal);
-        Assert.DoesNotContain("utf-cloud-worker:development", service, StringComparison.Ordinal);
+        Assert.Contains(sharedImage, service, StringComparison.Ordinal);
         Assert.Contains("--publish 27015:27015/udp", service, StringComparison.Ordinal);
         Assert.Contains("--publish 27016:27016/udp", service, StringComparison.Ordinal);
     }
 
+    /// <summary>Fails closed when ASKA has no immutable shared image configured in production.</summary>
     [Fact]
-    public void Aska_RejectsMissingDedicatedGameImageBeforeBootstrapRendering()
+    public void Aska_RejectsMissingSharedProductionImage()
     {
         var renderer = CreateRenderer(
-            Environments.Development,
-            "utf-cloud-worker:development",
+            Environments.Production,
+            string.Empty,
             gameDefinitions: new GameServerDefinitionCatalog(
                 [new AskaGameServerDefinitionRegistration()]));
 
         var exception = Assert.Throws<InvalidOperationException>(() => renderer.Render(
             Bootstrap(), Guid.NewGuid(), "aska", NetworkPlan()));
 
-        Assert.Contains("GameContainerImages:aska", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("immutable", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
