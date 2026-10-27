@@ -589,14 +589,14 @@ def assemble(component, source, output):
                                 'Hosting__ControlPlane__Paused': 'true'})
         elif component == 'web':
             excluded = [child.name for child in (source / '.publish/web/wwwroot').glob('appsettings*')
-                        if child.name == 'appsettings.Production.json' or child.name.endswith(('.json.br', '.json.gz'))]
+                        if child.name.endswith(('.json.br', '.json.gz'))]
             overlay.tree(source / '.publish/web/wwwroot', 'usr/share/nginx/html', excluded)
             overlay.tree(source / 'sources/ReactApp/dist', 'usr/share/nginx/html/next')
             overlay.tree(source / 'sources/ReactApp/dist-root', 'usr/share/nginx/html/canary')
             overlay.put('etc/nginx/nginx.conf', (source / 'deploy/nginx.conf').read_bytes())
             overlay.put('usr/share/nginx/html/appsettings.json', (source / 'deploy/webapp.appsettings.json').read_bytes())
             for child in (source / '.publish/web/wwwroot').glob('appsettings*'):
-                if child.name == 'appsettings.Production.json' or child.name.endswith(('.json.br', '.json.gz')):
+                if child.name.endswith(('.json.br', '.json.gz')):
                     overlay.put('usr/share/nginx/html/.wh.' + child.name)
             config.update({'User': 'nginx', 'WorkingDir': '/', 'Entrypoint': ['nginx', '-g', 'daemon off;'], 'ExposedPorts': {'8080/tcp': {}}})
         else:
@@ -698,7 +698,8 @@ def verify(component, output):
                 name = checked_path(entry.name)
                 require(name not in members, 'serialized overlay contains duplicate normalized paths')
                 members[name] = entry
-                if entry.isfile() and entry.name in ('usr/share/nginx/html/appsettings.json', 'etc/nginx/nginx.conf'):
+                if entry.isfile() and entry.name in ('usr/share/nginx/html/appsettings.json',
+                                                    'usr/share/nginx/html/appsettings.Production.json', 'etc/nginx/nginx.conf'):
                     contents[entry.name] = overlay.extractfile(entry).read()
         def ownership(name, uid, gid, mode):
             entry = members[name]
@@ -715,7 +716,9 @@ def verify(component, output):
             require(config['User'] == 'nginx' and config['Entrypoint'] == ['nginx', '-g', 'daemon off;']
                     and '8080/tcp' in config['ExposedPorts'], 'web launch contract changed')
             require('usr/share/nginx/html/next/index.html' in members and 'usr/share/nginx/html/canary/index.html' in members, 'React assets missing')
-            require('usr/share/nginx/html/appsettings.Production.json' not in members, 'stale production settings copied')
+            require('usr/share/nginx/html/appsettings.Production.json' in contents, 'Blazor production settings missing')
+            require(json.loads(contents['usr/share/nginx/html/appsettings.Production.json']) == {},
+                    'production settings must preserve runtime base configuration')
             require(not any(name.startswith('usr/share/nginx/html/appsettings') and name.endswith(('.json.gz', '.json.br')) for name in members), 'stale compressed settings copied')
             require(contents['usr/share/nginx/html/appsettings.json'] and contents['etc/nginx/nginx.conf'], 'web runtime configuration missing')
         else:

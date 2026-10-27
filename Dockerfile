@@ -71,11 +71,10 @@ COPY --from=react-build /src/sources/ReactApp/dist/ /usr/share/nginx/html/next/
 COPY --from=react-build /src/sources/ReactApp/dist-root/ /usr/share/nginx/html/canary/
 COPY deploy/webapp.appsettings.json /usr/share/nginx/html/appsettings.json
 
-# Runtime configuration is mounted over appsettings.json in production. Remove
-# publish-generated environment overrides and compressed sidecars so nginx's
-# gzip_static handling cannot serve stale build-time configuration instead.
+# Runtime configuration is mounted over appsettings.json in production. Keep the
+# empty production override required by Blazor's boot configuration. Remove
+# compressed sidecars so gzip_static cannot serve stale build-time configuration.
 RUN rm -f \
-        /usr/share/nginx/html/appsettings.Production.json \
         /usr/share/nginx/html/appsettings*.json.br \
         /usr/share/nginx/html/appsettings*.json.gz
 
