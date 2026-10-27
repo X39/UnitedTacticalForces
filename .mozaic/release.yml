@@ -18,6 +18,7 @@ jobs:
     network:
       mode: http_https
       allow_hosts:
+        - nodejs.org
         - index.crates.io
         - static.crates.io
         - auth.docker.io

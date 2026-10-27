@@ -21,8 +21,11 @@ MANIFEST = 'application/vnd.oci.image.manifest.v1+json'
 INDEX = 'application/vnd.oci.image.index.v1+json'
 CONFIG = 'application/vnd.oci.image.config.v1+json'
 LAYER = 'application/vnd.oci.image.layer.v1.tar'
+NODE_VERSION = '24.11.1'
+NODE_ARCHIVE = f'node-v{NODE_VERSION}-linux-x64'
+NODE_ARCHIVE_SIZE = 30747116
+NODE_ARCHIVE_SHA256 = '60e3b0a8500819514aca603487c254298cd776de0698d3cd08f11dba5b8289a8'
 PINS = {
-    'node': ('docker.io/library/node', 'fe306151aeafaf7c94e03dd3aff2435c91621f71a58bba3a09579c89d3ba730e'),
     '201': ('mcr.microsoft.com/dotnet/sdk', 'c804b88aaca8d6b76f65998427adec3101dcbbf2e52e705e2509eb81263aab0c'),
     '302': ('mcr.microsoft.com/dotnet/sdk', '3dae2f7699441af56216ff64d5c9b6dfce7cd7dc7f4f71d353d29662b10a384f'),
     'api': ('mcr.microsoft.com/dotnet/aspnet', 'f879b8a9cb3f6694b8b0c9fa530eb0c39d8920db09c05a7edbd6c4c6c104ae1b'),
@@ -39,6 +42,7 @@ RELEASES = {
     'noble-security': '08ee8b6333cd5d57d555a77a58b911165742adc54240d8f2ed757fbedbc91f4a',
 }
 HOSTS = {'auth.docker.io', 'registry-1.docker.io', 'production.cloudfront.docker.com',
+         'nodejs.org',
          'mcr.microsoft.com', 'mcrprod.azureedge.net', 'westeurope.data.mcr.microsoft.com', 'snapshot.ubuntu.com',
          'app.mozaic.space',
          'steamcdn-a.akamaihd.net'}
@@ -214,20 +218,72 @@ class Base:
                     yield archive, member
 
 
+def stage_node(prefix):
+    """Stage the same Node/npm version without downloading unrelated container layers."""
+    data = fetch(f'https://nodejs.org/dist/v{NODE_VERSION}/{NODE_ARCHIVE}.tar.xz',
+                 NODE_ARCHIVE_SHA256, NODE_ARCHIVE_SIZE)
+    require(len(data) == NODE_ARCHIVE_SIZE, 'Node archive size mismatch')
+    with tempfile.TemporaryDirectory(dir=prefix.parent) as temporary:
+        staged = Path(temporary) / 'node'
+        staged.mkdir()
+        seen, expanded = set(), 0
+        with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as archive:
+            for index, member in enumerate(archive):
+                expanded += member.size
+                require(index < 10000 and 0 <= member.size and expanded <= 256 * 1024**2,
+                        'Node archive expansion limit exceeded')
+                name = checked_path(member.name)
+                require(name == NODE_ARCHIVE or name.startswith(NODE_ARCHIVE + '/'),
+                        'unexpected Node archive root')
+                relative = name.removeprefix(NODE_ARCHIVE + '/')
+                selected = (relative in ('bin/node', 'bin/npm', 'bin/npx')
+                            or relative.startswith('lib/node_modules/npm/'))
+                if not selected:
+                    continue
+                require(relative not in seen, 'duplicate Node archive entry')
+                seen.add(relative)
+                destination = staged / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                if member.isdir():
+                    destination.mkdir(exist_ok=True)
+                elif member.isfile():
+                    with archive.extractfile(member) as source, destination.open('xb') as output:
+                        shutil.copyfileobj(source, output)
+                    destination.chmod(member.mode & 0o777)
+                elif member.issym() and relative in ('bin/npm', 'bin/npx'):
+                    tool = relative.split('/')[1]
+                    require(member.linkname == f'../lib/node_modules/npm/bin/{tool}-cli.js',
+                            'unexpected npm link')
+                else:
+                    raise ValueError('unsupported Node archive entry')
+        require(all((staged / name).is_file() for name in (
+            'bin/node', 'lib/node_modules/npm/bin/npm-cli.js', 'lib/node_modules/npm/bin/npx-cli.js')),
+            'Node toolchain payload missing')
+        for name in ('npm', 'npx'):
+            target = staged / 'bin' / name
+            target.write_text('#!/bin/sh\nprefix=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)\n'
+                              'exec "$prefix/bin/node" "$prefix/lib/node_modules/npm/bin/'
+                              + name + '-cli.js" "$@"\n')
+            target.chmod(0o755)
+        staged.rename(prefix)
+
+
 def stage(key, prefix):
     prefix = Path(prefix)
     require(not prefix.exists(), 'toolchain prefix already exists')
+    if key == 'node':
+        stage_node(prefix)
+        return
     with tempfile.TemporaryDirectory(dir=prefix.parent) as temporary:
         base = Base(key, Path(temporary))
         prefix.mkdir()
         for archive, member in base.entries():
             name = checked_path(member.name)
-            selected = (name in ('usr/local/bin/node', 'usr/local/bin/npm', 'usr/local/bin/npx')
-                        or name.startswith('usr/local/lib/node_modules/npm/')) if key == 'node' else name.startswith('usr/share/dotnet/')
+            selected = name.startswith('usr/share/dotnet/')
             if not selected:
                 continue
             require(not any(part.startswith('.wh.') for part in PurePosixPath(name).parts), 'toolchain whiteout unsupported')
-            relative = name.removeprefix('usr/local/' if key == 'node' else 'usr/share/dotnet/')
+            relative = name.removeprefix('usr/share/dotnet/')
             destination = prefix / relative
             require(not destination.is_symlink() and not any(p.is_symlink() for p in destination.parents if p != prefix.parent), 'toolchain symlink ancestry')
             if member.isdir():
@@ -239,21 +295,11 @@ def stage(key, prefix):
                 destination.chmod(member.mode & 0o777)
             elif member.issym():
                 target = member.linkname
-                if key == 'node' and relative in ('bin/npm', 'bin/npx'):
-                    require(target == '../lib/node_modules/npm/bin/' + relative.split('/')[1] + '-cli.js', 'unexpected npm link')
-                    continue
                 require(not target.startswith('/') and '..' not in PurePosixPath(target).parts, 'unsupported toolchain link')
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.symlink_to(target)
             else:
                 raise ValueError('unsupported toolchain entry')
-        if key == 'node':
-            for name in ('npm', 'npx'):
-                target = prefix / 'bin' / name
-                if target.is_symlink():
-                    target.unlink()
-                target.write_text('#!/bin/sh\nprefix=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)\nexec "$prefix/bin/node" "$prefix/lib/node_modules/npm/bin/' + name + '-cli.js" "$@"\n')
-                target.chmod(0o755)
 
 
 def paragraphs(data):

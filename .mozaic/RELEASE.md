@@ -11,6 +11,12 @@ OCI assembly code. No Rust compilation or transported Python bootstrap is part
 of the active workflow. The image's Rust tooling and historical helper sources
 are unused; the image remains the already verified ordinary Python/SSH toolbox.
 
+Node 24.11.1 is staged from the official Linux x64 `.tar.xz` distribution,
+pinned by SHA-256 and exact size. This transfers 30,747,116 bytes instead of
+407,538,358 bytes of Node container layers. Only Node/npm/npx are extracted;
+archive paths, entry types and expansion are bounded before the toolchain is
+made available. The .NET and runtime OCI inputs retain their existing pins.
+
 The release runs React contract/localization generation checks, formatting,
 lint, TypeScript, unit/component tests, the full Release .NET solution suite,
 the exported OpenAPI comparison, and Chromium journeys. API and
