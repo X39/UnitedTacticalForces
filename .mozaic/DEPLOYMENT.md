@@ -176,6 +176,10 @@ callback registered for each interface host. Relative authentication return path
 preserve navigation on old without expanding the API's absolute redirect allowlist.
 An existing main-host session remains on main; old requires its own host session.
 The Blazor boot-declared empty `appsettings.Production.json` must remain packaged.
+The existing UTF rootless network is `10.89.0.0/24`; production
+`ReverseProxy:KnownNetworks` trusts that isolated nginx-to-API hop so forwarded
+HTTPS produces HTTPS provider callbacks. Match this setting to the actual private
+proxy subnet when moving the application; do not trust arbitrary public proxies.
 
 Verify the accepted running API/web digests, then private and public behavior:
 

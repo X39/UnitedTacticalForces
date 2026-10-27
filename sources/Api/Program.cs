@@ -239,6 +239,9 @@ internal class Program
         builder.Services.AddHttpClient();
     }
 
+    /// <summary>Trusts forwarding metadata only from loopback and explicitly configured proxy networks.</summary>
+    /// <param name="builder">The API builder providing deployment-specific proxy configuration.</param>
+    /// <exception cref="FormatException">A configured trusted proxy network is not a valid CIDR.</exception>
     private static void AddForwardedHeaders(WebApplicationBuilder builder)
     {
         builder.Services.Configure<ForwardedHeadersOptions>(
@@ -246,6 +249,9 @@ internal class Program
             {
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
                 options.ForwardLimit     = 1;
+                foreach (var network in builder.Configuration.GetSection("ReverseProxy:KnownNetworks")
+                             .Get<string[]>() ?? [])
+                    options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
             });
     }
 
