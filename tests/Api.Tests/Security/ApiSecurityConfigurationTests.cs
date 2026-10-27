@@ -128,6 +128,7 @@ public class ApiSecurityConfigurationTests
         Assert.DoesNotContain("\"DatabaseContext\": \"YOUR_POSTGRES_CONNECTION_STRING\"", template, StringComparison.Ordinal);
     }
 
+    /// <summary>Guards configuration provider ordering independently of the command-line argument variable name.</summary>
     [Fact]
     public void ApiConfiguration_RuntimeOverridesSecretAndUserJson()
     {
@@ -135,7 +136,7 @@ public class ApiSecurityConfigurationTests
         var secretIndex = source.IndexOf("AddJsonFile(\"appsettings.secret.json\"", StringComparison.Ordinal);
         var userIndex = source.IndexOf("AddJsonFile(\"appsettings.user.json\"", StringComparison.Ordinal);
         var environmentIndex = source.IndexOf("AddEnvironmentVariables();", StringComparison.Ordinal);
-        var commandLineIndex = source.IndexOf("AddCommandLine(args);", StringComparison.Ordinal);
+        var commandLineIndex = source.IndexOf("builder.Configuration.AddCommandLine(", StringComparison.Ordinal);
 
         Assert.True(secretIndex >= 0, "Program.cs must load optional appsettings.secret.json.");
         Assert.True(userIndex > secretIndex, "Program.cs must load appsettings.user.json after appsettings.secret.json.");
