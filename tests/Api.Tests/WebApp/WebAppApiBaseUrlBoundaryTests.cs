@@ -11,14 +11,7 @@ public class WebAppApiBaseUrlBoundaryTests
         var source = ReadRepoFile("sources/WebApp/wwwroot/appsettings.Production.json");
         using var document = JsonDocument.Parse(source);
 
-        Assert.Equal(
-            "/api/",
-            document.RootElement
-                .GetProperty("Api")
-                .GetProperty("BaseUrl")
-                .GetString()
-        );
-        Assert.False(document.RootElement.TryGetProperty("Features", out _));
+        Assert.Empty(document.RootElement.EnumerateObject());
     }
 
     [Fact]
@@ -32,7 +25,7 @@ public class WebAppApiBaseUrlBoundaryTests
         Assert.Contains("new Uri(fallbackBaseUri, trimmedUrl)", source, StringComparison.Ordinal);
         Assert.Contains("EnsureTrailingSlash", source, StringComparison.Ordinal);
         Assert.Contains("ResolveApiUrlWithReturnUrl", source, StringComparison.Ordinal);
-        Assert.Contains("Uri.EscapeDataString(ResolveSelfUrl(returnPath))", source, StringComparison.Ordinal);
+        Assert.Contains("returnUri.PathAndQuery + returnUri.Fragment", source, StringComparison.Ordinal);
     }
 
     [Fact]

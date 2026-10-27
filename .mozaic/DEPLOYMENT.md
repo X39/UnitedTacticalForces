@@ -162,14 +162,28 @@ worker process execution; runtime acceptance remains required.
 
 Both API and web listen on TCP 8080. Preserve internal DNS `api:8080`; web nginx
 forwards `/api/` without stripping its prefix. PostgreSQL TCP 5432 stays private.
-Host ingress supplies HTTPS for `unitedtacticalforces.de` and its `www` alias.
+Host ingress supplies HTTPS for `unitedtacticalforces.de`, its `www` alias,
+`old.unitedtacticalforces.de`, and the retired canary hostname. Preserve the incoming
+host when proxying to web nginx. Main serves the existing root-built React assets;
+only `old.unitedtacticalforces.de` selects Blazor. Redirect www and canary to main.
+`/next` also redirects to main instead of exposing another optional interface.
+
+Both interfaces load same-origin `/api/` from the public configuration endpoint.
+Keep the existing API path base `/api`, secure host-only authentication cookies,
+database and data-protection keys. Steam callbacks are `/api/signin-steam` on the
+requesting host; enabled Discord requires its corresponding `/api/signin-discord`
+callback registered for each interface host. Relative authentication return paths
+preserve navigation on old without expanding the API's absolute redirect allowlist.
+An existing main-host session remains on main; old requires its own host session.
+The Blazor boot-declared empty `appsettings.Production.json` must remain packaged.
 
 Verify the accepted running API/web digests, then private and public behavior:
 
 - `/`: HTTP 200 HTML.
 - `/api/events/upcoming`: HTTP 200 JSON array from the anonymous database-backed
   API route, proving startup/migration/database access.
-- `/next/`: React HTML and working referenced assets.
+- Main `/`: React HTML and working referenced assets; `/next/` redirects to main.
+- Old `/`: Blazor HTML, boot resources and production configuration load successfully.
 - `/appsettings.json`: correct public API origin and no private configuration.
 
 Production does not expose `/health` or `/alive`. Full external worker operation
