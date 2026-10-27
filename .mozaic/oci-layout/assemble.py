@@ -78,14 +78,24 @@ def check_url(url):
             'unapproved download destination')
 
 
-def fetch_failure(url, error, kind='content'):
+def fetch_failure(url, error, kind='content', layer=None):
     """Describe a public transport failure without exposing URLs, headers or response bodies."""
     host = getattr(error, 'download_host', None) or urllib.parse.urlsplit(getattr(error, 'url', url)).hostname
     status = getattr(error, 'code', None)
     status = status if isinstance(status, int) else 'none'
     reason = getattr(error, 'reason', error)
-    return ValueError(f'bounded public {kind} fetch failed: host={host}; status={status}; '
-                      f'category={type(error).__name__}/{type(reason).__name__}')
+    message = (f'bounded public {kind} fetch failed: host={host}; status={status}; '
+               f'category={type(error).__name__}/{type(reason).__name__}')
+    if layer is not None:
+        descriptor, written, stage, response_host = layer
+        digest = descriptor.get('digest')
+        digest = digest if isinstance(digest, str) and re.fullmatch(r'sha256:[0-9a-f]{64}', digest) else 'invalid'
+        size = descriptor.get('size')
+        size = size if type(size) is int and 0 <= size <= 1024**3 else 'invalid'
+        message += f'; digest={digest}; expected_bytes={size}; written_bytes={written}; stage={stage}'
+        if response_host is not None:
+            message += f'; response_host={response_host}'
+    return ValueError(message)
 
 
 def fetch(url, expected=None, maximum=1024 * 1024 * 1024, headers=None):
@@ -148,21 +158,7 @@ class Base:
         self.metadata = {}
         for index, descriptor in enumerate(self.layers):
             path = work / descriptor['digest'].split(':')[1]
-            check_url(self.url + 'blobs/' + descriptor['digest'])
-            try:
-                with urllib.request.build_opener(Redirect()).open(urllib.request.Request(
-                        self.url + 'blobs/' + descriptor['digest'], headers=self.headers), timeout=300) as response, path.open('xb') as target:
-                    total = 0
-                    while data := response.read(64 * 1024):
-                        total += len(data)
-                        require(total <= descriptor['size'] <= 1024**3, 'blob exceeds descriptor limit')
-                        target.write(data)
-            except ValueError as error:
-                if getattr(error, 'download_host', None):
-                    raise fetch_failure(self.url, error, 'layer') from None
-                raise
-            except Exception as error:
-                raise fetch_failure(self.url, error, 'layer') from None
+            self.download_layer(descriptor, path)
             require(path.stat().st_size == descriptor['size'] and 'sha256:' + file_sha(path) == descriptor['digest'], 'base blob identity mismatch')
             self.blobs[descriptor['digest']] = path
             digest, expanded = hashlib.sha256(), 0
@@ -177,6 +173,33 @@ class Base:
                     name = checked_path(member.name)
                     if name in ('etc/passwd', 'etc/group', 'var/lib/dpkg/status', 'etc/os-release') and member.isfile():
                         self.metadata[name] = archive.extractfile(member).read()
+
+    def download_layer(self, descriptor, path):
+        """Stream the pinned layer with bounded, credential-free failure context."""
+        check_url(self.url + 'blobs/' + descriptor['digest'])
+        written, response_host = 0, None
+        # urllib.open covers both connection and response headers; do not infer which timed out.
+        stage = 'connect/headers'
+        try:
+            with urllib.request.build_opener(Redirect()).open(urllib.request.Request(
+                    self.url + 'blobs/' + descriptor['digest'], headers=self.headers), timeout=300) as response:
+                stage = 'headers'
+                response_host = urllib.parse.urlsplit(response.geturl()).hostname
+                with path.open('xb') as target:
+                    total = 0
+                    stage = 'body'
+                    while data := response.read(64 * 1024):
+                        total += len(data)
+                        require(total <= descriptor['size'] <= 1024**3, 'blob exceeds descriptor limit')
+                        written += target.write(data)
+        except ValueError as error:
+            if getattr(error, 'download_host', None):
+                raise fetch_failure(self.url, error, 'layer',
+                                    (descriptor, written, stage, response_host)) from None
+            raise
+        except Exception as error:
+            raise fetch_failure(self.url, error, 'layer',
+                                (descriptor, written, stage, response_host)) from None
 
     def blob(self, descriptor, kind='blobs'):
         require(0 < descriptor['size'] <= 1024**3, 'blob size exceeded')

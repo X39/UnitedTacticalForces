@@ -48,6 +48,7 @@ case "$mode" in
         sh .mozaic/test-release-pipeline.sh
         sh "$helper" python -B .mozaic/test_verify_test_results.py
         sh "$helper" python -B .mozaic/test_stage_browser_deps.py
+        sh "$helper" python -B .mozaic/test_oci_layer_download.py
         sh .mozaic/check-and-package-release.sh
         ;;
     react-tests)
