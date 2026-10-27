@@ -1636,6 +1636,7 @@
   "Hosting_ProfileCatalog_UnavailableTitle": "Profilkatalog vorübergehend nicht verfügbar",
   "Hosting_ServerMessage_ActionUnavailableForState": "Diese Aktion ist im aktuellen Bereitstellungsstatus nicht verfügbar.",
   "Hosting_ServerMessage_ConfirmAction": "Diese Serveraktion bestätigen.",
+  "Hosting_ServerMessage_ExecutionPaused": "Die Ausführung von Hosting-Aktionen wurde vom Betreiber pausiert. Ausstehende Aufträge bleiben erhalten.",
   "Hosting_ServerMessage_LaunchDisabled": "Der Serverstart ist deaktiviert.",
   "Hosting_ServerMessage_LiveDataWillBeLost": "Nicht veröffentlichte Live-Daten gehen verloren.",
   "Hosting_ServerMessage_OperatePermissionRequired": "Die Berechtigung „Server bedienen“ ist erforderlich.",

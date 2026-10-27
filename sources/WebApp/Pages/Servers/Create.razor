@@ -677,6 +677,7 @@
     private string ProviderUnavailableDescription(RuntimeProviderInfo provider)
         => provider.AvailabilityStatus.Trim().ToLowerInvariant() switch
         {
+            "paused" => Localizer["Hosting_ServerMessage_ExecutionPaused"].Value,
             "configuration-required" => Localizer[
                 "Hosting_ProfileCatalog_ConfigurationRequiredDescription",
                 provider.Identifier].Value,

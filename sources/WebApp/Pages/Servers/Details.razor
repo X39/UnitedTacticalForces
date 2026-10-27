@@ -34,6 +34,11 @@
     }
     else
     {
+        @if (_server.Actions.Any(action => action.UnavailableReason
+                                          == "Hosting lifecycle execution is paused by the operator."))
+        {
+            <UtfAlert Intent="MessageIntent.Warning">@Localizer["Hosting_ServerMessage_ExecutionPaused"]</UtfAlert>
+        }
         <UtfCommandPageHeader Title="@_server.Title"
                               Description="@(Localizer["Hosting_Detail_Description"])" >
             <Actions>
@@ -3106,6 +3111,8 @@
         => message switch
         {
             null or "" => string.Empty,
+            "Hosting lifecycle execution is paused by the operator." =>
+                Localizer["Hosting_ServerMessage_ExecutionPaused"],
             "Server Operate permission is required." => Localizer["Hosting_ServerMessage_OperatePermissionRequired"],
             "Another lifecycle operation is pending." => Localizer["Hosting_ServerMessage_OperationPending"],
             "Server launch is disabled." => Localizer["Hosting_ServerMessage_LaunchDisabled"],

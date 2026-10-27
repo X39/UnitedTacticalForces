@@ -153,6 +153,7 @@
     private string UnavailableTitle
         => Provider?.AvailabilityStatus?.Trim().ToLowerInvariant() switch
         {
+            "paused" => Localizer["Hosting_ServerMessage_ExecutionPaused"].Value,
             "configuration-required" => Localizer["Hosting_ProfileCatalog_ConfigurationRequiredTitle"].Value,
             "catalog-unavailable" => Localizer["Hosting_ProfileCatalog_UnavailableTitle"].Value,
             _ => Localizer["Hosting_ProfileCatalog_EmptyTitle"].Value,
@@ -161,6 +162,7 @@
     private string UnavailableDescription
         => Provider?.AvailabilityStatus?.Trim().ToLowerInvariant() switch
         {
+            "paused" => Localizer["Hosting_ServerMessage_ExecutionPaused"].Value,
             "configuration-required" => Localizer[
                 "Hosting_ProfileCatalog_ConfigurationRequiredDescription",
                 ProviderIdentifier].Value,

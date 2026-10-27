@@ -16242,4 +16242,7 @@ Beginne hier mit dem Schreiben.</value>
   <data name="ModPacks_VersionRef" xml:space="preserve"><value>Versionsreferenz</value></data>
   <data name="ModPacks_WorkspaceDescription" xml:space="preserve"><value>Direkte und effektive Inhalte sowie unveränderliche Revisionen verwalten</value></data>
   <data name="ModPacks_WorkspaceNavigation" xml:space="preserve"><value>Modpaket-Navigation</value></data>
+  <data name="Hosting_ServerMessage_ExecutionPaused" xml:space="preserve">
+    <value>Die Ausführung von Hosting-Aktionen wurde vom Betreiber pausiert. Ausstehende Aufträge bleiben erhalten.</value>
+  </data>
 </root>

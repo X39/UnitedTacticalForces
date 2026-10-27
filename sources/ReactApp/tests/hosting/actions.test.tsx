@@ -53,4 +53,28 @@ describe("hosting lifecycle action confirmation", () => {
     expect(screen.getByRole("button", { name: "Terminate now" })).toBeDisabled();
     expect(screen.getByText("Worker offline")).toBeInTheDocument();
   });
+
+  it("explains operator pause and prevents lifecycle action submission", async () => {
+    const execute = vi.fn();
+    render(
+      <I18nextProvider i18n={i18n}>
+        <ServerActions
+          actions={[
+            {
+              ...terminate,
+              enabled: false,
+              unavailableReason: "Hosting lifecycle execution is paused by the operator.",
+            },
+          ]}
+          busy={false}
+          onExecute={execute}
+        />
+      </I18nextProvider>,
+    );
+    const button = screen.getByRole("button", { name: "Terminate now" });
+    expect(button).toBeDisabled();
+    expect(screen.getByText(/Queued work is preserved/)).toBeInTheDocument();
+    await userEvent.setup().click(button);
+    expect(execute).not.toHaveBeenCalled();
+  });
 });

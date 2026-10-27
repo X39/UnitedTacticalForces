@@ -11,6 +11,8 @@ const copy = {
     refresh: "Refresh",
     createServer: "Create server",
     loading: "Loading hosting data…",
+    executionPaused:
+      "Hosting lifecycle execution is paused by the operator. Queued work is preserved.",
     loadFailed: "Hosting data could not be loaded.",
     retry: "Try again",
     forbidden: "You do not have permission to access this hosting workspace.",
@@ -117,6 +119,8 @@ const copy = {
     save: "Save",
   },
   de: {
+    executionPaused:
+      "Die Ausführung von Hosting-Aktionen wurde vom Betreiber pausiert. Ausstehende Aufträge bleiben erhalten.",
     commandTitle: "Kommandoübersicht",
     commandDescription: "Aktuelle Hosting-Lage, Kostenrisiken und Operator-Kurzbefehle.",
     fleet: "Serverflotte",

@@ -1636,6 +1636,7 @@
   "Hosting_ProfileCatalog_UnavailableTitle": "Profile catalog temporarily unavailable",
   "Hosting_ServerMessage_ActionUnavailableForState": "This action is unavailable in the current deployment state.",
   "Hosting_ServerMessage_ConfirmAction": "Confirm this server action.",
+  "Hosting_ServerMessage_ExecutionPaused": "Hosting lifecycle execution is paused by the operator. Queued work is preserved.",
   "Hosting_ServerMessage_LaunchDisabled": "Server launch is disabled.",
   "Hosting_ServerMessage_LiveDataWillBeLost": "Live unpublished data will be lost.",
   "Hosting_ServerMessage_OperatePermissionRequired": "Server Operate permission is required.",

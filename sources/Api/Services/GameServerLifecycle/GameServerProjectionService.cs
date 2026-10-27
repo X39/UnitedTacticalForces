@@ -24,7 +24,8 @@ internal sealed class GameServerProjectionService(
     IHostingAuthorizationService authorizationService,
     AdministrativeSshAccess administrativeSshAccess,
     IOptions<StorageDemandOptions> storageDemandOptions,
-    ILogger<GameServerProjectionService> logger) : IGameServerProjectionService
+    ILogger<GameServerProjectionService> logger,
+    HostingControlPlaneState? controlPlane = null) : IGameServerProjectionService
 {
     private readonly StorageDemandOptions _storageDemandOptions = storageDemandOptions.Value;
     public async Task<IReadOnlyCollection<GameServerCapabilityDto>> GetCapabilitiesAsync(
@@ -35,6 +36,16 @@ internal sealed class GameServerProjectionService(
         foreach (var provider in runtimeProviders
                      .OrderBy(q => q.ProviderIdentifier, StringComparer.OrdinalIgnoreCase))
         {
+            if (controlPlane?.IsPaused is true)
+            {
+                providers.Add(new RuntimeProviderDto
+                {
+                    Identifier = provider.ProviderIdentifier,
+                    AvailabilityStatus = RuntimeProviderAvailabilityStatuses.Paused,
+                });
+                continue;
+            }
+
             if (!provider.Capabilities.IsReady)
             {
                 providers.Add(new RuntimeProviderDto
@@ -543,7 +554,8 @@ internal sealed class GameServerProjectionService(
             AttemptCount = lifecycleJob.Attempt,
             FailureCode = lifecycleJob.FailureCode,
             FailureReason = lifecycleJob.FailureMessage,
-            CanRetry = lifecycleJob.Status is ELifecycleJobStatus.Failed
+            CanRetry = controlPlane?.IsPaused is not true
+                       && lifecycleJob.Status is ELifecycleJobStatus.Failed
                        && !(lifecycleJob.FailureCode?.StartsWith(
                            "permanent-",
                            StringComparison.OrdinalIgnoreCase) ?? false)
@@ -551,7 +563,8 @@ internal sealed class GameServerProjectionService(
                            principal,
                            lifecycleJob.GameServerFk,
                            Claims.ResourceBased.Server.Operate),
-            CanSkip = lifecycleJob.Status is ELifecycleJobStatus.Failed
+            CanSkip = controlPlane?.IsPaused is not true
+                      && lifecycleJob.Status is ELifecycleJobStatus.Failed
                       && !(lifecycleJob.FailureCode?.StartsWith(
                           "permanent-",
                           StringComparison.OrdinalIgnoreCase) ?? false)
@@ -868,7 +881,12 @@ internal sealed class GameServerProjectionService(
                 CostDescription = "Stops all attributable runtime cost after release is verified.",
             });
         }
-        return result.OrderBy(q => q.Order).ToArray();
+        return result
+            .Select(action => controlPlane?.IsPaused is true
+                ? action with { Enabled = false, UnavailableReason = HostingControlPlaneState.PausedReason }
+                : action)
+            .OrderBy(q => q.Order)
+            .ToArray();
     }
 
     private static GameServerActionDto ProjectAction(
@@ -915,7 +933,7 @@ internal sealed class GameServerProjectionService(
         };
     }
 
-    private static GameServerActionDto ProjectStaticAction(GameServerActionDefinition action)
+    private GameServerActionDto ProjectStaticAction(GameServerActionDefinition action)
         => new()
         {
             Id = action.ActionId,
@@ -924,7 +942,8 @@ internal sealed class GameServerProjectionService(
             Icon = action.Icon,
             Group = action.Group,
             Order = action.Order,
-            Enabled = true,
+            Enabled = controlPlane?.IsPaused is not true,
+            UnavailableReason = controlPlane?.IsPaused is true ? HostingControlPlaneState.PausedReason : null,
             Dangerous = action.IsDangerous,
             ExpectedDurationSeconds = action.ExpectedDuration is null
                 ? null

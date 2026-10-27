@@ -1637,6 +1637,7 @@ export const localeKeys = [
   "Hosting_ProfileCatalog_UnavailableTitle",
   "Hosting_ServerMessage_ActionUnavailableForState",
   "Hosting_ServerMessage_ConfirmAction",
+  "Hosting_ServerMessage_ExecutionPaused",
   "Hosting_ServerMessage_LaunchDisabled",
   "Hosting_ServerMessage_LiveDataWillBeLost",
   "Hosting_ServerMessage_OperatePermissionRequired",

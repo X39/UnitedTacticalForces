@@ -214,7 +214,12 @@ export function ServerActions({
                 <strong>{action.label || humanizeToken(action.id)}</strong>
                 <p>{action.description}</p>
                 {action.unavailableReason && !action.enabled && (
-                  <small>{action.unavailableReason}</small>
+                  <small>
+                    {action.unavailableReason ===
+                    "Hosting lifecycle execution is paused by the operator."
+                      ? c.executionPaused
+                      : action.unavailableReason}
+                  </small>
                 )}
               </div>
               <button

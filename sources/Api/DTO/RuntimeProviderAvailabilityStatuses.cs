@@ -5,6 +5,9 @@ namespace X39.UnitedTacticalForces.Api.DTO;
 /// </summary>
 public static class RuntimeProviderAvailabilityStatuses
 {
+    /// <summary>Hosting execution is paused and provider catalogs are not queried.</summary>
+    public const string Paused = "paused";
+
     /// <summary>The provider catalog is available and exposes at least one selectable profile.</summary>
     public const string Available = "available";
 

@@ -31,6 +31,63 @@ workers are outbound agents for individual game deployments.
 
 ## Data and startup
 
+### Hosting execution pause
+
+The API defaults to a paused hosting control plane. Both API image packaging paths
+set the public image environment `Hosting__ControlPlane__Paused=true`; the application
+also defaults to paused when `Hosting:ControlPlane:Paused` is absent. A malformed
+boolean rejects startup. The decision is immutable for the process lifetime.
+
+While paused, the API does not register the lifecycle processor, deployment health,
+hosting cost, or provider resource reconciliation services. Retained queued jobs,
+future retries, waiting commands, and expired leases are preserved without claiming
+or executing them. Hosting mutation requests and every deployment-worker protocol
+request receive HTTP 503 with code `hosting_control_plane_paused`; the API never
+pretends an operation succeeded. Existing action/provider projections show the
+pause in both user interfaces and disable action, retry, and skip controls.
+
+Verify the effective state without credentials or private configuration through
+`GET /api/hosting/control-plane`: it returns `{"paused":true}` with `Cache-Control:
+no-store`. This endpoint reports the same validated singleton used for processor
+registration and request admission. The API startup log records the boolean too.
+Database migrations and application catalog seeding still run normally.
+
+Before the first API start, run the accepted API image with the additional argument
+`--check-hosting-paused` through the intended native configuration consumer. This
+supported diagnostic loads the same application JSON files, optional secret/user
+JSON, environment variables, and command-line overrides in their normal order, and
+reuses the runtime pause validator. It exits before service registration, database
+access, migrations, hosted services, provider access, or Steam work. A successful
+check prints only `{"paused":true}` and exits zero. An enabled/invalid pause value or
+configuration loading error exits nonzero without printing configuration content.
+The diagnostic does not start an HTTP listener.
+
+Use a read-only, network-disabled probe with the same effective configuration as
+the intended API start. Feed private environment input through the existing native
+consumer's `--env-file` support; never read or print its contents. The image default
+needs no override. Match all intended file mounts and argument overrides, if any:
+a probe that omits a future override is not proof of that future configuration.
+Remove only the probe container created for this check before the operator's
+zero-runtime inventory proof. Successful diagnostics do not authorize game-worker
+execution or a provider machine; verify the HTTP status again after the API starts.
+
+Only API and web containers start on the shared application target; the accepted
+worker image remains a remote deployment dependency. A pause does not terminate
+already-running external game processes or withdraw commands already delivered by
+another API instance. Before relying on paused startup, the operator must ensure
+there are no running deployment workers/other enabled API instances with accepted
+commands. Provider cleanup and billing reconciliation are also paused, so existing
+billable resources require explicit operator handling.
+
+Future authorized game execution requires an explicit operator override
+`Hosting__ControlPlane__Paused=false` (or `Hosting:ControlPlane:Paused=false` in the
+supported configuration consumer) and an API restart. There is no UI or HTTP resume
+switch. Enabling resumes retained work using the existing authorization, ownership,
+lease, and provider guards; audit the backlog before doing so. The current protected
+native private-input schema need not change merely to start API/web paused. Any
+future native-input override must be added through its reviewed schema/version
+transition rather than inserting an unsupported key into the private map.
+
 Preserve the existing PostgreSQL databases and their major version. The retained
 operator provisioning receipt records separately authorized fresh
 `utf_fresh_20261025` on the PostgreSQL 18 primary, while preserving original `utf`.

@@ -568,7 +568,8 @@ def assemble(component, source, output):
                               'var/lib/united-tactical-forces', 'var/lib/united-tactical-forces/hosting'):
                 overlay.put(directory, mode=0o755, uid=1654, gid=1654, kind=tarfile.DIRTYPE)
             config.update({'User': '1654:1654', 'Entrypoint': ['dotnet', 'X39.UnitedTacticalForces.Api.dll'], 'ExposedPorts': {'8080/tcp': {}}})
-            environment.update({'ASPNETCORE_HTTP_PORTS': '8080', 'DOTNET_EnableDiagnostics': '0'})
+            environment.update({'ASPNETCORE_HTTP_PORTS': '8080', 'DOTNET_EnableDiagnostics': '0',
+                                'Hosting__ControlPlane__Paused': 'true'})
         elif component == 'web':
             excluded = [child.name for child in (source / '.publish/web/wwwroot').glob('appsettings*')
                         if child.name == 'appsettings.Production.json' or child.name.endswith(('.json.br', '.json.gz'))]
@@ -687,6 +688,7 @@ def verify(component, output):
             require(config['User'] == '1654:1654' and config['WorkingDir'] == '/app'
                     and config['Entrypoint'] == ['dotnet', 'X39.UnitedTacticalForces.Api.dll'], 'API launch contract changed')
             require(environment['ASPNETCORE_HTTP_PORTS'] == '8080' and environment['DOTNET_EnableDiagnostics'] == '0', 'API environment changed')
+            require(environment.get('Hosting__ControlPlane__Paused') == 'true', 'API hosting execution must default paused')
             require('8080/tcp' in config['ExposedPorts'] and 'app/X39.UnitedTacticalForces.Api.dll' in members, 'API payload missing')
             for name in ('app/App_Data', 'home/app/.aspnet/DataProtection-Keys', 'var/lib/united-tactical-forces/hosting'):
                 ownership(name, 1654, 1654, 0o755)

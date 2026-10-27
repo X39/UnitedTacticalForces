@@ -12,6 +12,7 @@ import { useAuth } from "@/auth/auth";
 import { PageHeader, StatePanel, useUnsavedChanges } from "@/components/primitives";
 import { getHostingPermissions } from "@/features/hosting/authorization";
 import { HostingError, HostingLoading } from "@/features/hosting/components";
+import { useHostingCopy } from "@/features/hosting/copy";
 import {
   combinedHourlyCost,
   createServerCreationSchema,
@@ -255,6 +256,7 @@ function StorageDemandSummary({
 }
 
 export function CreateServerPage() {
+  const c = useHostingCopy();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -1023,10 +1025,12 @@ export function CreateServerPage() {
                       <article key={item.identifier}>
                         <strong>{item.identifier}</strong>
                         <span>
-                          {formatResource(
-                            t(providerStatusKey(item.availabilityStatus)),
-                            item.identifier,
-                          )}
+                          {item.availabilityStatus === "paused"
+                            ? c.executionPaused
+                            : formatResource(
+                                t(providerStatusKey(item.availabilityStatus)),
+                                item.identifier,
+                              )}
                         </span>
                       </article>
                     ))}

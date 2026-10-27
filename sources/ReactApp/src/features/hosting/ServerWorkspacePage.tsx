@@ -369,6 +369,10 @@ export function ServerWorkspaceView({
   ];
   return (
     <>
+      {server.actions.some(
+        (action) =>
+          action.unavailableReason === "Hosting lifecycle execution is paused by the operator.",
+      ) && <p role="status">{c.executionPaused}</p>}
       <nav className="next-hosting-tabs" aria-label={t("Hosting_Detail_WorkspaceNavigation")}>
         {tabs.map(([id, label]) => (
           <button
@@ -393,6 +397,14 @@ export function ServerWorkspaceView({
                 <h2>{primary.label || humanizeToken(primary.id)}</h2>
                 <p>{primary.description}</p>
                 {primary.costDescription && <small>{primary.costDescription}</small>}
+                {!primary.enabled && primary.unavailableReason && (
+                  <small>
+                    {primary.unavailableReason ===
+                    "Hosting lifecycle execution is paused by the operator."
+                      ? c.executionPaused
+                      : primary.unavailableReason}
+                  </small>
+                )}
               </div>
               <button
                 type="button"

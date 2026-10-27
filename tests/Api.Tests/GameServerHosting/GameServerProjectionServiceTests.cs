@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -18,6 +19,122 @@ namespace Api.Tests.GameServerHosting;
 
 public sealed class GameServerProjectionServiceTests
 {
+    /// <summary>The real pause state controls whether provider profile discovery is attempted.</summary>
+    /// <param name="paused">Whether the operator has suspended hosting operations.</param>
+    /// <returns>A task completing after provider discovery and capability projection are verified.</returns>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ExplicitPause_ControlsProviderProfileDiscovery(bool paused)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var provider = (CapabilityRuntimeProvider)Provider(
+            "available-cloud",
+            profiles: [new RuntimeProfile("standard", "Standard", "General-purpose test profile.")]);
+        var projection = Projection(
+            store.DbContext,
+            [provider],
+            NullLogger<GameServerProjectionService>.Instance,
+            PauseState(paused));
+
+        var capability = Assert.Single(
+            await projection.GetCapabilitiesAsync(new System.Security.Claims.ClaimsPrincipal()));
+
+        Assert.Equal(paused ? 0 : 1, provider.ProfileCalls);
+        Assert.Equal(
+            paused ? RuntimeProviderAvailabilityStatuses.Paused : RuntimeProviderAvailabilityStatuses.Available,
+            Assert.Single(capability.RuntimeProviderProfiles).AvailabilityStatus);
+        Assert.All(capability.Actions, action => Assert.Equal(!paused, action.Enabled));
+        if (paused)
+        {
+            Assert.Empty(capability.RuntimeProviders);
+            Assert.All(
+                capability.Actions,
+                action => Assert.Equal(HostingControlPlaneState.PausedReason, action.UnavailableReason));
+        }
+        else
+        {
+            Assert.Equal(["available-cloud"], capability.RuntimeProviders);
+        }
+    }
+
+    /// <summary>Paused projection disables even normally available Start and emergency Terminate actions.</summary>
+    /// <param name="paused">Whether the operator has suspended hosting operations.</param>
+    /// <param name="activeDeployment">Whether a running deployment makes Terminate applicable instead of Start.</param>
+    /// <returns>A task completing after the operator-facing action has been projected.</returns>
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public async Task ExplicitPause_ControlsStartAndTerminateActions(bool paused, bool activeDeployment)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: activeDeployment);
+        var projection = Projection(
+            store.DbContext,
+            [new TestRuntimeProvider()],
+            NullLogger<GameServerProjectionService>.Instance,
+            PauseState(paused));
+        var principal = HostingTestData.ServerPrincipal(
+            seed.User,
+            seed.Server,
+            Claims.ResourceBased.Server.View,
+            Claims.ResourceBased.Server.Operate);
+
+        var server = await projection.GetServerAsync(seed.Server.PrimaryKey, principal);
+
+        Assert.NotNull(server);
+        var action = Assert.Single(
+            server.Actions,
+            q => q.Id == (activeDeployment ? GameServerActions.Terminate : GameServerActions.Start));
+        Assert.Equal(!paused, action.Enabled);
+        if (paused)
+            Assert.Equal(HostingControlPlaneState.PausedReason, action.UnavailableReason);
+    }
+
+    /// <summary>Retained failed jobs keep their state while operator retry and skip are disabled by the pause.</summary>
+    /// <param name="paused">Whether the operator has suspended hosting operations.</param>
+    /// <returns>A task completing after the failed-job projection is verified.</returns>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ExplicitPause_ControlsRetryAndSkipWithoutChangingJob(bool paused)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        var projection = Projection(
+            store.DbContext,
+            [new TestRuntimeProvider()],
+            NullLogger<GameServerProjectionService>.Instance,
+            PauseState(paused));
+        var principal = HostingTestData.ServerPrincipal(
+            seed.User,
+            seed.Server,
+            Claims.ResourceBased.Server.Operate);
+        var job = new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            DeploymentFk = seed.Deployment!.PrimaryKey,
+            Kind = ELifecycleJobKind.Start,
+            ActionIdentifier = GameServerActions.Start,
+            Status = ELifecycleJobStatus.Failed,
+            Stage = "failed",
+            Attempt = 1,
+            FailureCode = "transient-provider-failure",
+        };
+
+        var dto = projection.ProjectJob(job, principal);
+
+        Assert.Equal(!paused, dto.CanRetry);
+        Assert.Equal(!paused, dto.CanSkip);
+        Assert.Equal(ELifecycleJobStatus.Failed, dto.Status);
+        Assert.Equal(1, dto.AttemptCount);
+        Assert.Equal("transient-provider-failure", dto.FailureCode);
+        Assert.Equal(ELifecycleJobStatus.Failed, job.Status);
+    }
+
     [Fact]
     public async Task Capabilities_KeepEveryRegisteredProviderButSelectOnlyProvidersWithProfiles()
     {
@@ -480,10 +597,17 @@ public sealed class GameServerProjectionServiceTests
         params IRuntimeProvider[] providers)
         => Projection(dbContext, providers, NullLogger<GameServerProjectionService>.Instance);
 
+    /// <summary>Builds a projection with controlled providers and optional production pause state.</summary>
+    /// <param name="dbContext">The isolated test database.</param>
+    /// <param name="providers">The provider catalog available to this projection.</param>
+    /// <param name="logger">The logger receiving sanitized discovery failures.</param>
+    /// <param name="state">An explicit pause state, or the legacy fixture default when omitted.</param>
+    /// <returns>The service used to project hosting capabilities and operations.</returns>
     private static GameServerProjectionService Projection(
         X39.UnitedTacticalForces.Database.DatabaseContext dbContext,
         IReadOnlyCollection<IRuntimeProvider> providers,
-        ILogger<GameServerProjectionService> logger)
+        ILogger<GameServerProjectionService> logger,
+        HostingControlPlaneState? state = null)
         => new(
             dbContext,
             new TestGameServerDefinitionCatalog(),
@@ -492,7 +616,17 @@ public sealed class GameServerProjectionServiceTests
             new HostingAuthorizationService(dbContext),
             new AdministrativeSshAccess(Options.Create(new WorkerProvisioningOptions())),
             Options.Create(new StorageDemandOptions()),
-            logger);
+            logger,
+            state);
+
+    /// <summary>Creates the production state from an explicit public operator setting.</summary>
+    /// <param name="paused">Whether hosting operations must be paused.</param>
+    /// <returns>The validated production pause state.</returns>
+    private static HostingControlPlaneState PauseState(bool paused)
+        => new(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [HostingControlPlaneState.ConfigurationKey] = paused.ToString(),
+        }).Build());
 
     private static IRuntimeProvider Provider(
         string identifier,
@@ -521,11 +655,19 @@ public sealed class GameServerProjectionServiceTests
 
         public RuntimeProviderCapabilities Capabilities => capabilities;
 
+        /// <summary>Gets the number of profile requests made by the capability projection.</summary>
+        /// <value>Zero until profile discovery is invoked.</value>
+        public int ProfileCalls { get; private set; }
+
+        /// <inheritdoc />
         public Task<IReadOnlyCollection<RuntimeProfile>> GetProfilesAsync(
             CancellationToken cancellationToken = default)
-            => profileFailure is null
+        {
+            ProfileCalls++;
+            return profileFailure is null
                 ? Task.FromResult(profiles)
                 : Task.FromException<IReadOnlyCollection<RuntimeProfile>>(profileFailure);
+        }
 
         public Task<RuntimeProvisionResult> ProvisionAsync(
             RuntimeProvisionRequest request,

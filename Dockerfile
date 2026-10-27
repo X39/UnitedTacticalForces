@@ -42,7 +42,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
 
 ENV ASPNETCORE_HTTP_PORTS=8080 \
-    DOTNET_EnableDiagnostics=0
+    DOTNET_EnableDiagnostics=0 \
+    Hosting__ControlPlane__Paused=true
 
 COPY --from=api-publish /out/api/ ./
 

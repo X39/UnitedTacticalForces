@@ -16194,4 +16194,7 @@ Start writing here.</value>
   <data name="ModPacks_None" xml:space="preserve"><value>None</value></data>
   <data name="ModPacks_InstallerUnavailable" xml:space="preserve"><value>No compatible installer is available for this artifact.</value></data>
   <data name="ModPacks_InstallerFor" xml:space="preserve"><value>Installer for {0}</value></data>
+  <data name="Hosting_ServerMessage_ExecutionPaused" xml:space="preserve">
+    <value>Hosting lifecycle execution is paused by the operator. Queued work is preserved.</value>
+  </data>
 </root>

@@ -39,11 +39,30 @@ internal class Program
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
-        var builder = WebApplication.CreateBuilder(args);
-        builder.Configuration.AddJsonFile("appsettings.secret.json", optional: true);
-        builder.Configuration.AddJsonFile("appsettings.user.json", optional: true);
-        builder.Configuration.AddEnvironmentVariables();
-        builder.Configuration.AddCommandLine(args);
+        var checkHostingPaused = args.Contains("--check-hosting-paused", StringComparer.Ordinal);
+        var configurationArguments = checkHostingPaused
+            ? args.Where(argument => argument != "--check-hosting-paused").ToArray()
+            : args;
+        WebApplicationBuilder builder;
+        try
+        {
+            builder = WebApplication.CreateBuilder(configurationArguments);
+            builder.Configuration.AddJsonFile("appsettings.secret.json", optional: true);
+            builder.Configuration.AddJsonFile("appsettings.user.json", optional: true);
+            builder.Configuration.AddEnvironmentVariables();
+            builder.Configuration.AddCommandLine(configurationArguments);
+        }
+        catch (Exception) when (checkHostingPaused)
+        {
+            // A configuration diagnostic must never print private configuration parsing failures.
+            Environment.ExitCode = 1;
+            return;
+        }
+        if (checkHostingPaused)
+        {
+            Environment.ExitCode = HostingControlPlaneConfigurationCheck.Run(builder.Configuration, Console.Out);
+            return;
+        }
 
         // Add services to the container.
 
@@ -83,9 +102,19 @@ internal class Program
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseMiddleware<HostingControlPlanePauseMiddleware>();
 
         app.MapDefaultEndpoints();
         app.MapControllers();
+        app.MapGet("/hosting/control-plane", (HttpContext context, HostingControlPlaneState state) =>
+            {
+                context.Response.Headers.CacheControl = "no-store";
+                return Results.Ok(new { paused = state.IsPaused });
+            })
+            .AllowAnonymous()
+            .ExcludeFromDescription();
+        app.Logger.LogInformation("Hosting control plane paused: {HostingControlPlanePaused}",
+            app.Services.GetRequiredService<HostingControlPlaneState>().IsPaused);
 
         if (openApiOutputPath is not null)
         {
@@ -191,10 +220,7 @@ internal class Program
             });
         builder.Services.AddSingleton<DiscordBot>();
         builder.Services.AddHostedService<DiscordBot>(serviceProvider => serviceProvider.GetRequiredService<DiscordBot>());
-        builder.Services.AddHostedService<GameServerControlPlaneWorker>();
-        builder.Services.AddHostedService<DeploymentHealthReconciliationWorker>();
-        builder.Services.AddHostedService<HostingCostReconciliationWorker>();
-        builder.Services.AddHostedService<ProviderResourceReconciliationWorker>();
+        builder.Services.AddHostingControlPlane(builder.Configuration);
         builder.Services.AddSingleton(new BaseUrl(
             builder.Configuration[Constants.Configuration.General.ApiBaseUrl] ?? string.Empty,
             builder.Configuration[Constants.Configuration.General.ClientBaseUrl] ?? string.Empty));
