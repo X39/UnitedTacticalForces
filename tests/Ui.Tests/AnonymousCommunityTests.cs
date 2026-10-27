@@ -39,7 +39,10 @@ public sealed class AnonymousCommunityTests : IClassFixture<WebAppHostFixture>
         var page = await CreatePageAsync(context);
         await page.GotoAsync(_host.BaseUrl);
 
-        await Expect(page.Locator("h1")).ToHaveTextAsync("CI community operation");
+        // Browser action timeouts do not apply to assertions. Allow cold WebAssembly startup and asynchronous
+        // fixture binding the same bounded readiness window as the browser actions below.
+        await Expect(page.Locator("h1")).ToHaveTextAsync(
+            "CI community operation", new() { Timeout = 60000 });
         await Expect(page.Locator(".utf-landing-hero__summary")).ToContainTextAsync("Deterministic briefing");
         await Expect(page.Locator(".utf-sign-in-button")).ToHaveTextAsync("Login");
         await Expect(page.Locator(".utf-command-entry")).ToHaveCountAsync(0);
