@@ -503,7 +503,24 @@ class ZstdReader(io.RawIOBase):
 
 class Overlay:
     def __init__(self, path):
-        self.archive = tarfile.open(path, 'w', format=tarfile.PAX_FORMAT)
+        self.path = Path(path)
+        self.raw = self.path.with_suffix('.raw.tar')
+        self.archive = tarfile.open(self.raw, 'w', format=tarfile.PAX_FORMAT)
+
+    def close(self):
+        """Emit each normalized path once, retaining the final requested content and metadata."""
+        self.archive.close()
+        # Packages share directories, and application configuration/ownership deliberately overrides earlier
+        # entries. Keep payloads on disk rather than buffering expanded packages in memory.
+        with tarfile.open(self.raw, 'r:') as source:
+            latest = {}
+            for item in source:
+                item.name = checked_path(item.name)
+                latest[item.name] = item
+            with tarfile.open(self.path, 'w', format=tarfile.PAX_FORMAT) as target:
+                for item in latest.values():
+                    target.addfile(item, source.extractfile(item) if item.isfile() else None)
+        self.raw.unlink()
 
     def put(self, name, data=b'', mode=0o644, uid=0, gid=0, kind=tarfile.REGTYPE, link=''):
         item = tarfile.TarInfo(checked_path(name))
@@ -608,7 +625,7 @@ def assemble(component, source, output):
             config.update({'Entrypoint': ['/usr/bin/tini', '-g', '--', '/app/docker-entrypoint.sh'],
                 'Volumes': {'/var/lib/united-tactical-forces/worker': {}, '/srv/united-tactical-forces/runtime': {}}})
         config['Env'] = [key + '=' + value for key, value in sorted(environment.items())]
-        overlay.archive.close()
+        overlay.close()
         diff_id = 'sha256:' + file_sha(layer)
         compressed = work / 'application.tar.gz'
         with layer.open('rb') as original, compressed.open('xb') as target:
@@ -678,7 +695,9 @@ def verify(component, output):
             require('sha256:' + hashlib.file_digest(expanded, 'sha256').hexdigest() == image['rootfs']['diff_ids'][-1], 'serialized diff ID mismatch')
         with tarfile.open(fileobj=archive.extractfile(member), mode='r|*') as overlay:
             for entry in overlay:
-                members[entry.name] = entry
+                name = checked_path(entry.name)
+                require(name not in members, 'serialized overlay contains duplicate normalized paths')
+                members[name] = entry
                 if entry.isfile() and entry.name in ('usr/share/nginx/html/appsettings.json', 'etc/nginx/nginx.conf'):
                     contents[entry.name] = overlay.extractfile(entry).read()
         def ownership(name, uid, gid, mode):

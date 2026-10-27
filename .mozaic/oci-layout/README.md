@@ -33,6 +33,10 @@ SteamCMD and managed applications before deployment.
 Assembly verifies the serialized archive's launch configuration, payloads,
 ownership and modes. Base fetching, diff-ID verification and output tar writing
 stream large layers; individual package downloads remain bounded to 1 GiB.
+Each application overlay emits a normalized path exactly once. Repeated package
+directories and deliberate application overrides retain their final content and
+metadata through a disk-backed normalization pass; serialized verification rejects
+duplicate paths before publication.
 The shared worker includes Wine/Xvfb support for ASKA as well as the Linux game
 executors. It contains runtime tooling, not installed game files. Its final size
 must satisfy the registry's publication limit;
