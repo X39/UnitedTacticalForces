@@ -45,3 +45,11 @@ the helper cannot establish that limit by source inspection.
 Focused inert metadata and unit checks may run locally. Real application image
 builds, required full release tests and toolchain runtime acceptance run through
 the ordinary Mozaic worker. Local checks do not authorize deployment or imports.
+
+## Bootstrap access on managed runners
+
+The Ubuntu snapshot and SteamCMD inputs are immutable, checksum-pinned bootstrap
+assets. The runner needs TLS access to those exact assets at
+app.mozaic.space. If verification passes and assembly returns HTTP 403, match
+the request to the active runner generation and check the ingress allowlist
+before retrying. The target host does not download these build inputs.
