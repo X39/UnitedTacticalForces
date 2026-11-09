@@ -116,8 +116,9 @@ class InvokeBoundaryTests(unittest.TestCase):
             size = sum(map(len, files.values()))
             with TRANSFER.open_release(manifest, workspace, size) as (reference, archives):
                 digest_set = "".join(f"{role}={receipts[role]['digest']}\n" for role in files)
+                digest_set += "retained_worker=sha256:2adb5fdefde4e5f1410c2cc2d87eac08a7d7238a59f8d741d84494c42a7c5be3\n"
                 self.assertEqual(reference, hashlib.sha256(digest_set.encode("ascii")).hexdigest())
-                data = TRANSFER.MAGIC + struct.pack("!QQQ", *map(len, files.values())) + b"".join(files.values())
+                data = b"mozaic-utf-local-oci-v1\n" + struct.pack("!QQ", *map(len, files.values())) + b"".join(files.values())
                 command = [sys.executable, "-c", f"import sys; sys.exit(sys.stdin.buffer.read() != {data!r})"]
                 self.assertEqual(TRANSFER.send_release(command, archives, 5), 0)
             with self.assertRaises(ValueError), TRANSFER.open_release(manifest, workspace, size - 1):

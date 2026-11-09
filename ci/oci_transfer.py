@@ -13,8 +13,9 @@ import subprocess
 import time
 
 
-ROLES = ("api", "web", "worker")
-MAGIC = b"mozaic-utf-oci-v1\n"
+ROLES = ("api", "web")
+MAGIC = b"mozaic-utf-local-oci-v1\n"
+RETAINED_WORKER = "sha256:2adb5fdefde4e5f1410c2cc2d87eac08a7d7238a59f8d741d84494c42a7c5be3"
 CHUNK = 1024 * 1024
 
 
@@ -33,7 +34,7 @@ def open_release(manifest, workspace, max_bytes):
         raise ValueError("Invalid OCI transfer manifest")
     values = json.loads(contents)
     if not isinstance(values, dict) or set(values) != set(ROLES):
-        raise ValueError("OCI transfer requires all three components")
+        raise ValueError("UTF transfer requires exactly API and web")
     digests, archives = [], []
     with contextlib.ExitStack() as files:
         for role in ROLES:
@@ -52,6 +53,7 @@ def open_release(manifest, workspace, max_bytes):
             max_bytes -= metadata.st_size
             archives.append((archive, metadata.st_size))
             digests.append(f"{role}={item['digest']}\n")
+        digests.append(f"retained_worker={RETAINED_WORKER}\n")
         reference = hashlib.sha256("".join(digests).encode("ascii")).hexdigest()
         yield reference, archives
 
@@ -59,7 +61,7 @@ def open_release(manifest, workspace, max_bytes):
 def release_chunks(archives, prefix):
     if prefix:
         yield prefix
-    yield MAGIC + struct.pack("!QQQ", *(size for _, size in archives))
+    yield MAGIC + struct.pack("!QQ", *(size for _, size in archives))
     for archive, size in archives:
         remaining = size
         while remaining:
@@ -74,7 +76,7 @@ def release_chunks(archives, prefix):
 
 def send_release(command, archives, timeout, *, evidence=None):
     if len(archives) != len(ROLES):
-        raise ValueError("OCI transfer requires all three components")
+        raise ValueError("UTF transfer requires exactly API and web")
     prefix = b""
     if evidence is not None:
         if not isinstance(evidence, str) or not re.fullmatch(r"mzdeploy_[A-Za-z0-9_-]{16,471}", evidence):

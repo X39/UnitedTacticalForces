@@ -111,6 +111,8 @@ def main():
         parser.error("OCI transfer requires a manifest and --max-archive-bytes")
     if args.attempt_evidence_file is not None and release_manifest is None:
         parser.error("Attempt evidence requires OCI transfer")
+    if release_manifest is not None and args.attempt_evidence_file is None:
+        parser.error("UTF OCI transfer requires owner-key attempt evidence")
     if release_manifest is None:
         command = ssh_arguments(manifest, args.target, args.attempt, args.release_job, args.timeout)
         result = subprocess.run(command, stdin=subprocess.DEVNULL, check=False, timeout=args.timeout + 30)

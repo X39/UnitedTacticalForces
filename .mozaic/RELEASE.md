@@ -50,8 +50,9 @@ The shared worker includes Wine/Xvfb for ASKA and the same executor registry for
 Arma 3 and Counter-Strike 2. No game files are installed during image assembly.
 Consolidation avoids a duplicate worker artifact; it does not make Wine small or
 replace importer size, extraction, and resource limits.
-The mutable `release` tag is only an alias: acceptance requires all three exact
-manifest receipts from this source and run.
+The mutable `release` tag is an alias. The first Amsel successor verifies
+the exact API and web receipts from this source and run, and binds the
+existing worker publication independently.
 
 The existing job resource and timeout limits are retained. Actual cloud timing,
 browser execution, image runtime compatibility, archive-size admission and
@@ -64,7 +65,7 @@ ancestors of the prepared source. The coordinator reconciled default selection
 and governed push policy through the audited operator path.
 
 The ordinary `activate-release` job requires `checked-artifacts` and sends
-the exact three OCI publications to the pinned Amsel endpoint. It uses the
+the exact API and web publications to the pinned Amsel endpoint. It uses the
 Amsel-owned SSH key in project secret `managed-utf-ssh` and short-lived
 job-side OCI credentials. The UTF-specific receiver independently checks
 the active attempt and receipts. Receive-only is the initial mode.
