@@ -19,7 +19,9 @@ class ExportTest(unittest.TestCase):
         self.origin = "https://registry.example.test"
         self.attempt = str(uuid.uuid4())
         self.responses = {}
-        self.credential = {"origin": self.origin, "attempt_id": self.attempt, "images": []}
+        self.credential = {"origin": self.origin, "attempt_id": self.attempt,
+                           "release_job": "checked-artifacts", "images": []}
+        producer = str(uuid.uuid4())
         self.workspace = Path(self.enterContext(tempfile.TemporaryDirectory()))
         for role in download.ROLES:
             config = json.dumps({"os": "linux", "architecture": "amd64", "role": role}).encode()
@@ -30,7 +32,8 @@ class ExportTest(unittest.TestCase):
                 "layers": [{"mediaType": download.LAYER, "size": len(layer), "digest": digest(layer)}],
             }).encode()
             repository = download.REPOSITORIES[role]
-            self.credential["images"].append({"repository": repository, "digest": digest(manifest), "token": role})
+            self.credential["images"].append({"repository": repository, "digest": digest(manifest), "token": role,
+                "producer_attempt_id": producer, "publication_id": str(uuid.uuid4())})
             self.responses[f"{self.origin}/v2/{repository}/manifests/{digest(manifest)}"] = (role, manifest)
             for blob in (config, layer):
                 self.responses[f"{self.origin}/v2/{repository}/blobs/{digest(blob)}"] = (role, blob)
@@ -71,6 +74,18 @@ class ExportTest(unittest.TestCase):
         self.credential["images"][0]["repository"] = "applications/other/api"
         with self.assertRaisesRegex(ValueError, "Invalid OCI reader scope"):
             self.export()
+
+
+    def test_refuses_worker_scope_or_a_second_producer(self):
+        images = self.credential["images"]
+        images.append(dict(images[0], repository="applications/utf/cloud-worker"))
+        with self.assertRaisesRegex(ValueError, "API and web reader scopes"):
+            self.export()
+        images.pop()
+        images[1]["producer_attempt_id"] = str(uuid.uuid4())
+        with self.assertRaisesRegex(ValueError, "one exact producer"):
+            self.export()
+        self.assertEqual(list(self.workspace.iterdir()), [])
 
 
 if __name__ == "__main__":

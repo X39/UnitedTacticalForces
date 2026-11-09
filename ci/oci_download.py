@@ -15,8 +15,8 @@ import urllib.request
 import uuid
 
 
-ROLES = ("api", "web", "worker")
-REPOSITORIES = {"api": "applications/utf/api", "web": "applications/utf/web", "worker": "applications/utf/cloud-worker"}
+ROLES = ("api", "web")
+REPOSITORIES = {"api": "applications/utf/api", "web": "applications/utf/web"}
 MANIFEST = "application/vnd.oci.image.manifest.v1+json"
 CONFIG = "application/vnd.oci.image.config.v1+json"
 LAYER = "application/vnd.oci.image.layer.v1.tar"
@@ -134,19 +134,28 @@ def export_image(opener, origin, image, archive_path, budget):
 def export_release(credential, origin, attempt, workspace, budget, opener=None):
     if (credential.get("origin") != origin or credential.get("attempt_id") != attempt
             or not re.fullmatch(r"https://[a-z0-9.-]+", origin)
-            or str(uuid.UUID(attempt)) != attempt or budget <= 0):
+            or str(uuid.UUID(attempt)) != attempt or budget <= 0
+            or credential.get("release_job") != "checked-artifacts"):
         raise ValueError("OCI reader scope does not match this job")
     images = credential["images"]
     if not isinstance(images, list) or len(images) != len(ROLES):
-        raise ValueError("OCI release requires exactly three reader scopes")
-    by_repository = {}
+        raise ValueError("UTF delivery requires exactly the API and web reader scopes")
+    by_repository, producers, publications = {}, set(), set()
     for image in images:
         repository, digest, token = (image[name] for name in ("repository", "digest", "token"))
         if (repository not in REPOSITORIES.values() or repository in by_repository
                 or not isinstance(digest, str) or not DIGEST.fullmatch(digest)
                 or not isinstance(token, str) or not re.fullmatch(r"[A-Za-z0-9._~-]{1,16384}", token)):
             raise ValueError("Invalid OCI reader scope")
+        producer, publication = (image[name] for name in ("producer_attempt_id", "publication_id"))
+        if (str(uuid.UUID(producer)) != producer or producer == attempt
+                or str(uuid.UUID(publication)) != publication):
+            raise ValueError("Invalid OCI publication identity")
+        producers.add(producer)
+        publications.add(publication)
         by_repository[repository] = image
+    if len(producers) != 1 or len(publications) != len(ROLES):
+        raise ValueError("UTF images require one exact producer and distinct publications")
     opener = opener or urllib.request.build_opener(NoRedirect())
     output = Path(tempfile.mkdtemp(prefix=".release-oci-", dir=workspace))
     result = {}

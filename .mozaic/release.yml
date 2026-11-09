@@ -99,7 +99,7 @@ jobs:
       target_id: c2cf220f-3b1e-4967-b413-87e9119d08bc
       environment: production
       release_job: checked-artifacts
-      image_repositories: [applications/utf/api, applications/utf/web, applications/utf/cloud-worker]
+      image_repositories: [applications/utf/api, applications/utf/web]
     network:
       mode: http_https
       allow_hosts: [x39.mozaic.space]
@@ -108,5 +108,5 @@ jobs:
           port: 22
     timeout_minutes: 15
     steps:
-      - name: Deliver the exact checked UTF cohort to Amsel
+      - name: Deliver the exact checked API and web images to Amsel
         run: sh ci/deliver-release.sh
