@@ -1,34 +1,23 @@
-# Ordinary deployment client
+# Amsel release preflight
 
-`deploy.sh`, `invoke-protected-deploy.py`, and `ssh-connect-proxy.py` are exact
-copies of the generic Mozaic client from shared commit
-`56832f9b9cd7c3bbc3c0125246a42a010e5ed870`. The shell source is named
-`tools/invoke-protected-deploy.sh` upstream and is renamed here to `deploy.sh`;
-its contents are unchanged.
+The ordinary deployment job obtains only the exact `applications/utf/api`, `applications/utf/web`,
+and `applications/utf/cloud-worker` publications from its own `checked-artifacts` job.
+It transfers the immutable OCI archives through the job's explicit CONNECT
+route and strict checked-in Amsel host key. The target scope is
+`c2cf220f-3b1e-4967-b413-87e9119d08bc` and the exact job grant expects
+the Amsel-owned key in project secret `managed-utf-ssh`.
 
-| Local path | Git blob identity |
-| --- | --- |
-| `deploy.sh` | `026ad5407057199c47524aca6932cb278707f623` |
-| `invoke-protected-deploy.py` | `5b6144ddd3af2d9d087717b7efdb28995681977e` |
-| `ssh-connect-proxy.py` | `1ff86fd3f278d168e654ae8f57e18a9e9f1b6fda` |
+This client requires the UTF-specific receiver profile. The versioned stream
+magic is `mozaic-utf-oci-v1` with fixed roles `api`, `web`, `worker`
+in that order. The worker role names `applications/utf/cloud-worker`. The receiver must
+check all three against one live Verified attempt.
 
-The ordinary command accepts `--target`, `--manifest`, `--release-job`,
-`--attempt`, `--wait`, and an optional bounded `--timeout`. It uses OpenSSH with
-strict known-host validation and HTTP CONNECT through the job's explicitly
-allowed proxy destination. The private invoke-only key stays in a protected file.
-Runtime/evidence credentials remain on the target.
+`ci/oci-mode` defaults to `receive`. A successful transfer validates the
+cohort without replacing the live service. Enable activation only after
+the UTF controller has adopted the retained API/web containers, can make
+a coherent backup, and can apply the accepted worker digest to protected
+provisioning inputs. UTF starts API/web on Amsel. Its worker publication
+is a dependency for remote provisioning.
 
-`deploy/production.json` binds the reviewed Nuremberg public endpoint, `utf-deploy`
-SSH account, protected `/run/mozaic/secrets/ssh_key` path and checked-in public
-host-key file `deploy/known_hosts`. The ordinary `activate-release` job uses secret reference
-`utf_target_invoke`, requires `checked-artifacts` through normal `needs`, and
-declares no artifacts, caches or test-report outputs. The target resolves all four
-immutable publications using the exact requesting attempt.
-
-The shared infrastructure owner must confirm the installed stateful target/input
-binding, actual server plan credential binding and UTF queue slot before a release
-push. Configuration in source is not evidence of target or deployment acceptance.
-
-Do not replace this client with a polling process, mutable image lookup, direct
-SSH networking, or application-specific runner dispatch. Update the shared source
-first when generic behavior needs to change, then synchronize these copies.
+Run the focused transport tests with
+`python3 -m unittest discover -s ci -p 'test_*.py'`.

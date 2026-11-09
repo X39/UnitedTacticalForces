@@ -92,16 +92,21 @@ jobs:
       scratch_mib: 65536
       pids: 128
       log_mib: 8
-    secret_files: {ssh_key: utf_target_invoke}
+    secret_files:
+      ssh_key: managed-utf-ssh
+      deployment_oci_read: deployment_oci_read
+    deployment:
+      target_id: c2cf220f-3b1e-4967-b413-87e9119d08bc
+      environment: production
+      release_job: checked-artifacts
+      image_repositories: [applications/utf/api, applications/utf/web, applications/utf/cloud-worker]
     network:
       mode: http_https
+      allow_hosts: [x39.mozaic.space]
       allow_connect:
-        - host: '2a01:4f8:1c1c:6beb::1'
+        - host: '2a01:4f8:c0c:e2e::1'
           port: 22
     timeout_minutes: 15
     steps:
-      - name: Wait for the complete checked release and healthy target
-        run: >-
-          sh ci/deploy.sh --target nurnberg
-          --manifest deploy/production.json --release-job checked-artifacts
-          --attempt "$MOZAIC_ATTEMPT_ID" --wait --timeout 600
+      - name: Deliver the exact checked UTF cohort to Amsel
+        run: sh ci/deliver-release.sh

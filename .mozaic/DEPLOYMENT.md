@@ -6,13 +6,12 @@ owner. Target mutation, nginx, databases, credentials and shared capacity remain
 that owner's responsibility. The application worker must complete acceptance
 against the actual accepted run; prepared YAML is not deployment evidence.
 
-The ordinary `activate-release` job invokes `ci/deploy.sh` using the reviewed
-Nuremberg endpoint, `utf-deploy` account, protected `utf_target_invoke` reference
-and public host key in `deploy/known_hosts`, with manifest `deploy/production.json`.
-Its successful `checked-artifacts`
-dependency must supply all three exact receipts. The coordinator owns installation,
-private input activation and actual plan binding. Ordinary resource admission
-handles scheduling without per-push slot permits.
+The ordinary `activate-release` job uses the pinned Amsel endpoint,
+`utf-deploy` account, and the host-owned key in project secret
+`managed-utf-ssh`. Its `checked-artifacts` dependency supplies all three
+exact receipts to the UTF-specific receiver. It defaults to receive-only
+validation. Require retained runtime adoption, coherent backup and scoped
+worker digest acceptance before enabling activation.
 
 ## Release inputs
 
