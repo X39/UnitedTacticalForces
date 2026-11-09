@@ -22,6 +22,14 @@ class LayerDownloadTests(unittest.TestCase):
         self.base.headers = {'Authorization': 'Bearer credential-sentinel'}
         self.descriptor = {'digest': 'sha256:' + 'a' * 64, 'size': 131072}
 
+    def test_docker_gzip_layer_is_published_with_the_oci_media_type(self):
+        descriptor = {**self.descriptor, 'mediaType': 'application/vnd.docker.image.rootfs.diff.tar.gzip'}
+        normalized = assembly.oci_layer(descriptor)
+        self.assertEqual(normalized, {**self.descriptor, 'mediaType': assembly.LAYER + '+gzip'})
+        self.assertEqual(descriptor['mediaType'], 'application/vnd.docker.image.rootfs.diff.tar.gzip')
+        with self.assertRaisesRegex(ValueError, 'unsupported base layer media type'):
+            assembly.oci_layer({**descriptor, 'mediaType': 'application/octet-stream'})
+
     def response(self, reads):
         """Supply a response whose URL contains deliberately sensitive query text."""
         response = MagicMock()
