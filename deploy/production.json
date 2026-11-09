@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "target": "nurnberg",
-  "host": "2a01:4f8:1c1c:6beb::1",
+  "target": "amsel",
+  "host": "2a01:4f8:c0c:e2e::1",
   "port": 22,
   "user": "utf-deploy",
   "key_file": "/run/mozaic/secrets/ssh_key",
