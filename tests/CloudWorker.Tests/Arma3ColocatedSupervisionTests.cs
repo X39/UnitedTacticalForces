@@ -35,6 +35,9 @@ public sealed class Arma3ColocatedSupervisionTests
         Assert.Contains("-connect=127.0.0.1", fixture.Auxiliary.Arguments);
         Assert.Contains("-profiles=" + fixture.AuxiliaryPaths.ProfilePath, fixture.Auxiliary.Arguments);
         Assert.Contains("-profiles=" + fixture.Paths.ProfilePath, fixture.Primary.Arguments);
+        Assert.Contains("-serverMod=" + Arma3JoinAddon.GetModPath(fixture.Paths), fixture.Primary.Arguments);
+        Assert.True(File.Exists(Path.Combine(Arma3JoinAddon.GetModPath(fixture.Paths), "addons", "utf_hc_join.pbo")));
+        Assert.DoesNotContain(fixture.Auxiliary.Arguments, argument => argument.StartsWith("-serverMod="));
         Assert.NotEqual(fixture.Primary.Identity!.ProcessId, fixture.Auxiliary.Identity!.ProcessId);
         Assert.Equal(["start-game-server", "start-headless-client"], fixture.Events.Where(q => q.StartsWith("start-")));
         Assert.Contains("hostname = \"restored\";", fixture.Primary.ConfigurationAtStart);

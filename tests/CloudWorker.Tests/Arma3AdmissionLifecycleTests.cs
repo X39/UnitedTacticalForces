@@ -26,6 +26,8 @@ public sealed class Arma3AdmissionLifecycleTests
         Assert.Contains("localClient[] = {};", fixture.Process.ConfigurationAtStart, StringComparison.Ordinal);
         Assert.DoesNotContain("192.0.2.99", fixture.Process.ConfigurationAtStart, StringComparison.Ordinal);
         Assert.Equal(1, fixture.Storage.RestoreCount);
+        Assert.Contains("-serverMod=" + Arma3JoinAddon.GetModPath(fixture.Paths), fixture.Process.ArgumentsAtStart);
+        Assert.True(File.Exists(Path.Combine(Arma3JoinAddon.GetModPath(fixture.Paths), "addons", "utf_hc_join.pbo")));
     }
 
     /// <summary>Refuses to launch when an overlay prevents reliable admission reconciliation.</summary>
@@ -60,6 +62,8 @@ public sealed class Arma3AdmissionLifecycleTests
         Assert.Equal(2, fixture.Process.StartCount);
         Assert.Equal(0, fixture.Storage.ResetCount);
         Assert.Equal(0, fixture.Storage.RestoreCount);
+        Assert.DoesNotContain(fixture.Process.ArgumentsAtStart, argument => argument.StartsWith("-serverMod="));
+        Assert.False(Directory.Exists(Arma3JoinAddon.GetModPath(fixture.Paths)));
     }
 
     /// <summary>Uses the same loopback address for colocated client connections as the managed allowlist.</summary>
@@ -154,6 +158,29 @@ public sealed class Arma3AdmissionLifecycleTests
         Assert.False(result.Succeeded);
         Assert.Equal("arma-exited", result.ErrorCode);
         Assert.False(fixture.Process.IsRunning);
+    }
+
+    /// <summary>A primary without an assigned HC does not install or load the managed readiness addon.</summary>
+    /// <returns>The asynchronous optional-instrumentation verification.</returns>
+    [Fact]
+    public async Task Start_WithoutHeadlessAssignmentDoesNotEnableAddon()
+    {
+        using var fixture = new Fixture();
+        var command = fixture.Command("start");
+        var payload = JsonSerializer.Deserialize<WorkerCommandPayload>(command.Payload, CloudWorkerJson.Options)!;
+        command = command with
+        {
+            Payload = JsonSerializer.Serialize(payload with
+            {
+                Topology = payload.Topology.Where(endpoint => endpoint.IsPrimary).ToArray(),
+            }, CloudWorkerJson.Options),
+        };
+
+        var result = await fixture.CreateExecutor().ExecuteAsync(command, CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.DoesNotContain(fixture.Process.ArgumentsAtStart, argument => argument.StartsWith("-serverMod="));
+        Assert.False(Directory.Exists(Arma3JoinAddon.GetModPath(fixture.Paths)));
     }
 
     /// <summary>A live primary and a previously logged success cannot satisfy the new readiness command.</summary>
