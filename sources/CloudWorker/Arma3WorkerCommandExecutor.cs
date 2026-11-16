@@ -136,6 +136,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         }
     }
 
+    /// <inheritdoc />
     public async Task<WorkerCommandExecutionResult?> ReconcileRedeliveryAsync(
         WorkerCommandClaimResponse command,
         WorkerCommandJournalEntry journalEntry,
@@ -160,6 +161,14 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 "redelivery-reconcile-failed",
                 "process-identity-invalid",
                 observation.Error);
+        }
+        if (action is "start" or "restart" or "install" or "update"
+            && observation.IsRunning && observation.Identity is not null
+            && (action is "start" || !IsOriginalProcess(journalEntry, observation.Identity))
+            && !await Arma3LaunchTopologyContext.MatchesAsync(payload, _paths, cancellationToken)
+                .ConfigureAwait(false))
+        {
+            return TopologyRestartRequired();
         }
         if (action is "start" && observation.IsRunning && observation.Identity is not null)
         {
@@ -264,16 +273,26 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 storage.ControlledBytes);
     }
 
+    /// <summary>Renders current settings and reconciles admission before a maintenance relaunch.</summary>
+    /// <param name="payload">The authorized launch configuration.</param>
+    /// <param name="cancellationToken">Cancels preparation and process creation.</param>
+    /// <returns>The process launch outcome; this does not assert a Headless Client joined.</returns>
     private async Task<WorkerCommandExecutionResult> StartAsync(
         Arma3CommandPayload payload,
         CancellationToken cancellationToken)
     {
         await _renderer.RenderAsync(payload, _paths, cancellationToken).ConfigureAwait(false);
+        await PrepareAdmissionAsync(payload, cancellationToken).ConfigureAwait(false);
         return await _processController
             .StartAsync(BuildLaunchArguments(payload), cancellationToken)
             .ConfigureAwait(false);
     }
 
+    /// <summary>Prepares content and restored data, then applies current admission before starting Arma.</summary>
+    /// <param name="command">The immutable command authorizing preparation.</param>
+    /// <param name="payload">The attributed configuration and endpoints.</param>
+    /// <param name="cancellationToken">Cancels preparation and process creation.</param>
+    /// <returns>The launch outcome or a failure requiring explicit restart for changed endpoints.</returns>
     private async Task<WorkerCommandExecutionResult> StartWithPreparationAsync(
         WorkerCommandClaimResponse command,
         Arma3CommandPayload payload,
@@ -289,6 +308,9 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         }
         if (observation.IsRunning && observation.Identity is not null)
         {
+            if (!await Arma3LaunchTopologyContext.MatchesAsync(payload, _paths, cancellationToken)
+                    .ConfigureAwait(false))
+                return TopologyRestartRequired();
             return WorkerCommandExecutionResult.Success(
                 "already-running",
                 processId: observation.Identity.ProcessId,
@@ -348,6 +370,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 .ConfigureAwait(false))
             .Concat(ObserveWorkshopVersions(payload.Command.Content, payload.Command.IsPrimaryService))
             .ToArray();
+        await PrepareAdmissionAsync(payload, cancellationToken).ConfigureAwait(false);
         var started = await _processController
             .StartAsync(BuildLaunchArguments(payload), cancellationToken)
             .ConfigureAwait(false);
@@ -472,6 +495,11 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         return string.IsNullOrWhiteSpace(stopped.Output) ? evidence : $"{stopped.Output}\n{evidence}";
     }
 
+    /// <summary>Stops the process and reapplies current endpoints after restoring primary-owned data.</summary>
+    /// <param name="command">The authorized restart command.</param>
+    /// <param name="payload">The immutable replacement launch configuration.</param>
+    /// <param name="cancellationToken">Cancels restoration and process creation.</param>
+    /// <returns>The stop, preparation, or launch outcome.</returns>
     private async Task<WorkerCommandExecutionResult> RestartAsync(
         WorkerCommandClaimResponse command,
         Arma3CommandPayload payload,
@@ -495,13 +523,19 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         }
         try
         {
-            await _storageTransfer
-                .ResetPersistentOverlayAsync(_paths.DeploymentRoot, cancellationToken)
-                .ConfigureAwait(false);
+            if (payload.Command.IsPrimaryService)
+            {
+                await _storageTransfer
+                    .ResetPersistentOverlayAsync(_paths.DeploymentRoot, cancellationToken)
+                    .ConfigureAwait(false);
+            }
             await _renderer.RenderAsync(payload, _paths, cancellationToken).ConfigureAwait(false);
-            await _storageTransfer
-                .ApplyPersistentSnapshotAsync(command, _paths.DeploymentRoot, cancellationToken)
-                .ConfigureAwait(false);
+            if (payload.Command.IsPrimaryService)
+            {
+                await _storageTransfer
+                    .ApplyPersistentSnapshotAsync(command, _paths.DeploymentRoot, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
         catch (Exception ex) when (IsStorageTransferFailure(ex))
         {
@@ -523,6 +557,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 .ConfigureAwait(false))
             .Concat(ObserveWorkshopVersions(payload.Command.Content, payload.Command.IsPrimaryService))
             .ToArray();
+        await PrepareAdmissionAsync(payload, cancellationToken).ConfigureAwait(false);
         var started = await _processController
             .StartAsync(BuildLaunchArguments(payload), cancellationToken)
             .ConfigureAwait(false);
@@ -815,6 +850,10 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         return arguments;
     }
 
+    /// <summary>Builds an HC connection to the assigned primary, using loopback for colocated endpoints.</summary>
+    /// <param name="payload">The validated HC topology and typed configuration.</param>
+    /// <returns>Arguments passed separately to the process launcher.</returns>
+    /// <exception cref="InvalidDataException">The assigned service, port, password, or content is invalid.</exception>
     private IReadOnlyList<string> BuildAuxiliaryLaunchArguments(Arma3CommandPayload payload)
     {
         if (!string.Equals(payload.Command.ServiceIdentifier, "headless-client", StringComparison.Ordinal))
@@ -822,10 +861,18 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         var primary = payload.Command.Topology.Single(q => q.IsPrimary);
         if (primary.Port is not { } port)
             throw new InvalidDataException("Arma Headless Client topology has no primary game port.");
+        var ownEndpoint = payload.Command.Topology.SingleOrDefault(q =>
+            q.ServiceIdentifier == payload.Command.ServiceIdentifier
+            && q.ServiceOrdinal == payload.Command.ServiceOrdinal);
+        var connectAddress = ownEndpoint is not null
+                             && IPAddress.Parse(ownEndpoint.Address).MapToIPv6()
+                                 .Equals(IPAddress.Parse(primary.Address).MapToIPv6())
+            ? IPAddress.Loopback.ToString()
+            : primary.Address;
         var arguments = new List<string>
         {
             "-client",
-            $"-connect={primary.Address}",
+            $"-connect={connectAddress}",
             $"-port={port.ToString(CultureInfo.InvariantCulture)}",
             "-nosound",
             $"-name=UTFHC{(payload.Command.ServiceOrdinal + 1).ToString(CultureInfo.InvariantCulture)}",

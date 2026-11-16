@@ -135,7 +135,9 @@ public class Arma3WorkerCommandExecutorTests
         Assert.True(processController.ExecutableExistedAtStart);
         Assert.True(storageTransfer.PersistentOverlayResetBeforeConfigurationRender);
         Assert.True(storageTransfer.PersistentSnapshotAppliedAfterConfigurationRender);
-        Assert.Equal("persistent-server-config", processController.ServerConfigurationAtStart);
+        Assert.Contains("hostname = \"persistent-server-config\";", processController.ServerConfigurationAtStart);
+        Assert.Contains("headlessClients[] = {};", processController.ServerConfigurationAtStart);
+        Assert.Contains("localClient[] = {};", processController.ServerConfigurationAtStart);
         Assert.True(File.Exists(paths.PreparationMarkerPath));
         Assert.False(Directory.Exists(staleTemporaryDirectory));
         Assert.False(File.Exists(legacyRunScript));
@@ -785,7 +787,7 @@ public class Arma3WorkerCommandExecutorTests
             CancellationToken cancellationToken)
         {
             PersistentSnapshotAppliedAfterConfigurationRender = File.Exists(serverConfigurationPath);
-            await File.WriteAllTextAsync(serverConfigurationPath, "persistent-server-config", cancellationToken);
+            await File.WriteAllTextAsync(serverConfigurationPath, "hostname = \"persistent-server-config\";", cancellationToken);
         }
 
         public Task PublishPreservationAsync(
