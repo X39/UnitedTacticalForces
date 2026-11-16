@@ -8530,6 +8530,7 @@ export interface components {
             peakPreparationRequiredBytes?: number;
             minimumExternalCapacityGiB?: null | number;
             recommendedExternalUsableBytes?: null | number;
+            placementEstimate?: null | components["schemas"]["WorkloadPlacementEstimateDto"];
             status?: components["schemas"]["EStorageEstimateStatus"];
             calculatedAt?: components["schemas"]["Instant"];
             measurementTimestamp?: null | components["schemas"]["Instant"];
@@ -8942,6 +8943,34 @@ export interface components {
             timeStampCreated?: components["schemas"]["Instant"];
             timeStampStarted?: null | components["schemas"]["Instant"];
             timeStampCompleted?: null | components["schemas"]["Instant"];
+        };
+        /** @description Describes the current aggregate price of saved workload placement without accepting a deployment. */
+        WorkloadPlacementEstimateDto: {
+            /**
+             * Format: int32
+             * @description Gets the number of distinct hosts required by the placement.
+             *     The number of separately priced compute allocations.
+             */
+            hostCount?: number;
+            /**
+             * Format: double
+             * @description Gets the aggregate hourly compute estimate.
+             *     The sum of compute charges for all planned hosts in EUR.
+             */
+            estimatedComputeHourlyCostEur?: number;
+            /**
+             * Format: double
+             * @description Gets the aggregate hourly external-storage estimate.
+             *     The sum of charges for the planned volumes in EUR.
+             */
+            estimatedStorageHourlyCostEur?: number;
+            /**
+             * Format: double
+             * @description Gets the combined hourly estimate for the next deployment.
+             *     Compute and external-storage charges in EUR; Start revalidates this estimate.
+             */
+            estimatedHourlyCostEur?: number;
+            estimatedMonthlyCostEur?: null | number;
         };
     };
     responses: never;

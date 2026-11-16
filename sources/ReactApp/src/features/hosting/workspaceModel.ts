@@ -199,6 +199,12 @@ export function validateConfigurationEntry(
         return `${entry.displayName} must be at most ${entry.maximum}.`;
     }
     if (
+      entry.choices?.length &&
+      !entry.choices.some((choice) => JSON.stringify(choice.value) === JSON.stringify(value))
+    ) {
+      return `${entry.displayName} has an unsupported value.`;
+    }
+    if (
       entry.allowedValues.length > 0 &&
       typeof value === "string" &&
       !entry.allowedValues.includes(value)

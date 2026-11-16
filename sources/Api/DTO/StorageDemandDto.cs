@@ -17,6 +17,10 @@ public sealed record StorageDemandDto
     /// <value>Usable bytes after filesystem headroom, or null when no allocation is available.</value>
     public long? RecommendedExternalUsableBytes { get; init; }
 
+    /// <summary>Gets the aggregate next-deployment estimate for saved workload placement.</summary>
+    /// <value>A current estimate, or null for creation-only requests or unavailable configuration and pricing.</value>
+    public WorkloadPlacementEstimateDto? PlacementEstimate { get; init; }
+
     public EStorageEstimateStatus Status { get; init; }
     public Instant CalculatedAt { get; init; }
     public Instant? MeasurementTimestamp { get; init; }

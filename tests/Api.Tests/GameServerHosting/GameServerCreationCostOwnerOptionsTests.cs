@@ -1,3 +1,4 @@
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -76,7 +77,9 @@ public sealed class GameServerCreationCostOwnerOptionsTests
             null!,
             new AdministrativeSshAccess(Options.Create(new WorkerProvisioningOptions())),
             Options.Create(new StorageDemandOptions()),
-            NullLogger<GameServerProjectionService>.Instance);
+            NullLogger<GameServerProjectionService>.Instance,
+            new GameServerConfigurationService(dbContext),
+            Options.Create(new HostingFinanceOptions()));
 
     private static CostOwner Owner(Guid id, string displayName, Guid? userId, bool frozen = false)
         => new()

@@ -16248,4 +16248,12 @@ Beginne hier mit dem Schreiben.</value>
   <data name="Hosting_Storage_RecommendedRawCapacity" xml:space="preserve"><value>Empfohlene externe Rohkapazität</value></data>
   <data name="Hosting_Storage_RecommendedUsableCapacity" xml:space="preserve"><value>Geschätzte nutzbare Kapazität der Empfehlung</value></data>
   <data name="Hosting_Storage_SelectedRawCapacity" xml:space="preserve"><value>Gewählte externe Rohkapazität</value></data>
+  <data name="React_Placement_SameServer" xml:space="preserve"><value>Gleicher Server</value></data>
+  <data name="React_Placement_SeparateServer" xml:space="preserve"><value>Separater Server</value></data>
+  <data name="React_Placement_NextDeployment" xml:space="preserve"><value>Die Platzierung gilt für die nächste Bereitstellung. Die aktive Bereitstellung bleibt unverändert.</value></data>
+  <data name="React_Placement_Estimate" xml:space="preserve"><value>Kostenschätzung der nächsten Bereitstellung</value></data>
+  <data name="React_Placement_SaveEstimate" xml:space="preserve"><value>Konfigurationsänderungen speichern, um die Kostenschätzung zu aktualisieren.</value></data>
+  <data name="React_Placement_Unavailable" xml:space="preserve"><value>Kostenschätzung nicht verfügbar</value></data>
+  <data name="React_Placement_HostCount" xml:space="preserve"><value>{0} Hosts</value></data>
+  <data name="React_Placement_ControlPlane" xml:space="preserve"><value>Bereitstellungseinstellungen</value></data>
 </root>

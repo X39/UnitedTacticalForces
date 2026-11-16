@@ -5,6 +5,7 @@ using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
@@ -25,6 +26,8 @@ internal sealed class GameServerProjectionService(
     AdministrativeSshAccess administrativeSshAccess,
     IOptions<StorageDemandOptions> storageDemandOptions,
     ILogger<GameServerProjectionService> logger,
+    IGameServerConfigurationService configurationService,
+    IOptions<HostingFinanceOptions> financeOptions,
     HostingControlPlaneState? controlPlane = null) : IGameServerProjectionService
 {
     private readonly StorageDemandOptions _storageDemandOptions = storageDemandOptions.Value;
@@ -305,12 +308,6 @@ internal sealed class GameServerProjectionService(
         var server = await dbContext.GameServers
             .AsNoTracking()
             .Where(q => q.PrimaryKey == gameServerId && !q.IsArchived)
-            .Select(q => new
-            {
-                q.GameIdentifier,
-                q.SelectedModPackDefinitionFk,
-                q.RuntimeProviderIdentifier,
-            })
             .SingleOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         if (server is null)
@@ -322,7 +319,7 @@ internal sealed class GameServerProjectionService(
                 true,
                 cancellationToken)
             .ConfigureAwait(false);
-        return await ProjectStorageDemandAsync(demand, server.RuntimeProviderIdentifier, cancellationToken)
+        return await ProjectStorageDemandAsync(demand, server.RuntimeProviderIdentifier, cancellationToken, server)
             .ConfigureAwait(false);
     }
 
@@ -344,7 +341,8 @@ internal sealed class GameServerProjectionService(
     private async Task<StorageDemandDto> ProjectStorageDemandAsync(
         StorageDemandResult demand,
         string runtimeProviderIdentifier,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        GameServer? server = null)
     {
         var provider = runtimeProviders.SingleOrDefault(q => string.Equals(
             q.ProviderIdentifier,
@@ -371,6 +369,10 @@ internal sealed class GameServerProjectionService(
         }
         return new StorageDemandDto
         {
+            PlacementEstimate = server is null
+                ? null
+                : await ProjectPlacementEstimateAsync(server, demand, provider, profiles, cancellationToken)
+                    .ConfigureAwait(false),
             MinimumExternalCapacityGiB = minimumExternalGiB,
             RecommendedExternalUsableBytes = recommendedExternalUsableBytes,
             SteadyStateRequiredBytes = demand.SteadyStateRequiredBytes,
@@ -412,6 +414,76 @@ internal sealed class GameServerProjectionService(
                 };
             }).ToArray(),
         };
+    }
+
+    /// <summary>Quotes saved workload placement without accepting a deployment or changing its frozen quote.</summary>
+    /// <param name="server">The saved server allocation and content selections.</param>
+    /// <param name="demand">Current preparation capacity requirements.</param>
+    /// <param name="provider">The configured runtime provider, when available.</param>
+    /// <param name="profiles">The current provider catalog already read for storage fit.</param>
+    /// <param name="cancellationToken">A token to cancel effective configuration reads.</param>
+    /// <returns>The aggregate estimate, or null when configuration, allocation, or pricing is unavailable.</returns>
+    private async Task<WorkloadPlacementEstimateDto?> ProjectPlacementEstimateAsync(
+        GameServer server,
+        StorageDemandResult demand,
+        IRuntimeProvider? provider,
+        IReadOnlyCollection<RuntimeProfile> profiles,
+        CancellationToken cancellationToken)
+    {
+        if (provider is null || !provider.Capabilities.IsReady || controlPlane?.IsPaused is true)
+            return null;
+        var definition = gameDefinitions.Find(server.GameIdentifier);
+        var profile = profiles.SingleOrDefault(q => string.Equals(
+                          q.Identifier, server.RuntimeProfileIdentifier, StringComparison.OrdinalIgnoreCase))
+                      ?? (string.IsNullOrWhiteSpace(server.RuntimeProfileIdentifier) && profiles.Count == 1
+                          ? profiles.Single()
+                          : null);
+        if (definition is null || profile is null)
+            return null;
+        try
+        {
+            var configuration = await configurationService.ResolveAsync(server.PrimaryKey, cancellationToken)
+                .ConfigureAwait(false);
+            var storagePlan = provider.Capabilities.Storage is null
+                              && profile.DiskGiB is null
+                              && server.RuntimeStorageStrategy is ERuntimeStorageStrategy.IncludedDisk
+                ? new RuntimeStoragePlan(
+                    ERuntimeStorageStrategy.IncludedDisk,
+                    demand.PeakPreparationRequiredBytes,
+                    demand.PeakPreparationRequiredBytes,
+                    "/srv/united-tactical-forces/runtime",
+                    0m)
+                : RuntimeStoragePlanResolver.Resolve(
+                    server.RuntimeStorageStrategy,
+                    server.ExternalStorageSizeGiB,
+                    demand.PeakPreparationRequiredBytes,
+                    demand.ProfileSystemReserveBytes,
+                    profile,
+                    provider.Capabilities.Storage ?? new RuntimeStorageCapabilities(false));
+            var placement = WorkloadPlacementResolver.Resolve(
+                definition,
+                configuration,
+                profile,
+                storagePlan,
+                profile.EstimatedHourlyCostEur is > 0m
+                    ? null
+                    : financeOptions.Value.GetHourlyRate(provider.ProviderIdentifier),
+                demand.ProfileSystemReserveBytes);
+            return new WorkloadPlacementEstimateDto
+            {
+                HostCount = placement.Hosts.Count,
+                EstimatedComputeHourlyCostEur = placement.EstimatedComputeHourlyCostEur,
+                EstimatedStorageHourlyCostEur = placement.EstimatedStorageHourlyCostEur,
+                EstimatedHourlyCostEur = placement.EstimatedHourlyCostEur,
+                EstimatedMonthlyCostEur = placement.EstimatedMonthlyCostEur,
+            };
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or FileNotFoundException
+                                  or OverflowException)
+        {
+            // Allocation validation can reject a next deployment while storage evidence remains useful.
+            return null;
+        }
     }
 
     private static long? IncludedStorageBytes(RuntimeProfile profile)

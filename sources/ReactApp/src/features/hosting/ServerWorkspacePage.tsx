@@ -554,7 +554,11 @@ export function ServerWorkspaceView({
       )}
       {tab === "files" && <ServerFilesPanel server={server} />}
       {tab === "configuration" && (
-        <ServerConfigurationPanel serverId={server.primaryKey} canModify={server.canModify} />
+        <ServerConfigurationPanel
+          serverId={server.primaryKey}
+          gameIdentifier={server.gameIdentifier}
+          canModify={server.canModify}
+        />
       )}
       {tab === "credentials" && <ServerSecretsPanel server={server} />}
       {tab === "jobs" && (

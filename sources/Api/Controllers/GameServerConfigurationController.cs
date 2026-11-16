@@ -216,6 +216,7 @@ public sealed class GameServerConfigurationController(
                 Kind = q.Definition.Kind,
                 Required = q.Definition.Required,
                 Sensitive = q.Definition.Sensitive,
+                IsControlPlaneOnly = q.Definition.IsControlPlaneOnly,
                 Order = q.Definition.Order,
                 Minimum = q.Definition.Minimum,
                 Maximum = q.Definition.Maximum,

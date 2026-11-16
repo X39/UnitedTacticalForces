@@ -38,6 +38,14 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>The peakPreparationRequiredBytes property</summary>
         public long? PeakPreparationRequiredBytes { get; set; }
+        /// <summary>Describes the current aggregate price of saved workload placement without accepting a deployment.</summary>
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
+#nullable enable
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.WorkloadPlacementEstimateDto? PlacementEstimate { get; set; }
+#nullable restore
+#else
+        public global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.WorkloadPlacementEstimateDto PlacementEstimate { get; set; }
+#endif
         /// <summary>The preparationWorkspaceBytes property</summary>
         public long? PreparationWorkspaceBytes { get; set; }
         /// <summary>Gets the estimated writable capacity of the recommended external allocation.Usable bytes after filesystem headroom, or null when no allocation is available.</summary>
@@ -89,6 +97,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "minimumExternalCapacityGiB", n => { MinimumExternalCapacityGiB = n.GetLongValue(); } },
                 { "missingComponents", n => { MissingComponents = n.GetCollectionOfPrimitiveValues<string>()?.AsList(); } },
                 { "peakPreparationRequiredBytes", n => { PeakPreparationRequiredBytes = n.GetLongValue(); } },
+                { "placementEstimate", n => { PlacementEstimate = n.GetObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.WorkloadPlacementEstimateDto>(global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.WorkloadPlacementEstimateDto.CreateFromDiscriminatorValue); } },
                 { "preparationWorkspaceBytes", n => { PreparationWorkspaceBytes = n.GetLongValue(); } },
                 { "recommendedExternalUsableBytes", n => { RecommendedExternalUsableBytes = n.GetLongValue(); } },
                 { "runtimeProfiles", n => { RuntimeProfiles = n.GetCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.RuntimeProfileStorageFitDto>(global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.RuntimeProfileStorageFitDto.CreateFromDiscriminatorValue)?.AsList(); } },
@@ -111,6 +120,7 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteLongValue("minimumExternalCapacityGiB", MinimumExternalCapacityGiB);
             writer.WriteCollectionOfPrimitiveValues<string>("missingComponents", MissingComponents);
             writer.WriteLongValue("peakPreparationRequiredBytes", PeakPreparationRequiredBytes);
+            writer.WriteObjectValue<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.WorkloadPlacementEstimateDto>("placementEstimate", PlacementEstimate);
             writer.WriteLongValue("preparationWorkspaceBytes", PreparationWorkspaceBytes);
             writer.WriteLongValue("recommendedExternalUsableBytes", RecommendedExternalUsableBytes);
             writer.WriteCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.RuntimeProfileStorageFitDto>("runtimeProfiles", RuntimeProfiles);

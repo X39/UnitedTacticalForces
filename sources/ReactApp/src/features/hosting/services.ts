@@ -245,6 +245,7 @@ export const hostingService = {
     const demand = required(result, "Server storage estimate");
     return {
       ...demand,
+      placementEstimate: demand.placementEstimate ?? null,
       components: demand.components ?? [],
       runtimeProfiles: demand.runtimeProfiles ?? [],
       missingComponents: demand.missingComponents ?? [],

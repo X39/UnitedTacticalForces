@@ -16200,4 +16200,12 @@ Start writing here.</value>
   <data name="Hosting_Storage_RecommendedRawCapacity" xml:space="preserve"><value>Recommended raw external capacity</value></data>
   <data name="Hosting_Storage_RecommendedUsableCapacity" xml:space="preserve"><value>Estimated usable capacity of recommendation</value></data>
   <data name="Hosting_Storage_SelectedRawCapacity" xml:space="preserve"><value>Selected raw external capacity</value></data>
+  <data name="React_Placement_SameServer" xml:space="preserve"><value>Same server</value></data>
+  <data name="React_Placement_SeparateServer" xml:space="preserve"><value>Separate server</value></data>
+  <data name="React_Placement_NextDeployment" xml:space="preserve"><value>Placement applies to the next deployment. The active deployment remains unchanged.</value></data>
+  <data name="React_Placement_Estimate" xml:space="preserve"><value>Next deployment estimate</value></data>
+  <data name="React_Placement_SaveEstimate" xml:space="preserve"><value>Save configuration changes to refresh the placement estimate.</value></data>
+  <data name="React_Placement_Unavailable" xml:space="preserve"><value>Estimate unavailable</value></data>
+  <data name="React_Placement_HostCount" xml:space="preserve"><value>{0} hosts</value></data>
+  <data name="React_Placement_ControlPlane" xml:space="preserve"><value>Deployment settings</value></data>
 </root>

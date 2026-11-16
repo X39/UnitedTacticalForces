@@ -71,8 +71,10 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
       demand.data?.minimumExternalCapacityGiB != null &&
       actualCapacity >= demand.data.minimumExternalCapacityGiB,
     );
-  const refresh = () =>
-    client.invalidateQueries({ queryKey: hostingQueryKeys.server(server.primaryKey) });
+  const refresh = async () => {
+    await client.cancelQueries({ queryKey: hostingQueryKeys.storageDemand(server.primaryKey) });
+    await client.invalidateQueries({ queryKey: hostingQueryKeys.server(server.primaryKey) });
+  };
   const profileMutation = useMutation({
     mutationFn: () => hostingService.changeRuntimeProfile(server.primaryKey, profileId),
     onSuccess: refresh,
@@ -88,12 +90,7 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
   });
   const modPackMutation = useMutation({
     mutationFn: () => hostingService.changeModPack(server.primaryKey, modPackId),
-    onSuccess: async () => {
-      await refresh();
-      await client.invalidateQueries({
-        queryKey: hostingQueryKeys.storageDemand(server.primaryKey),
-      });
-    },
+    onSuccess: refresh,
   });
   const contentMutation = useMutation({
     mutationFn: () =>

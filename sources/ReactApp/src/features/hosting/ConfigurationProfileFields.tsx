@@ -1,3 +1,7 @@
+import {
+  configurationContribution,
+  configurationContributionField,
+} from "./implementations/registry";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { formatResource } from "@/app/i18n";
@@ -91,6 +95,7 @@ function ConfigurationBooleanField({
 }
 
 export function ConfigurationProfileFields({
+  gameIdentifier,
   definitions,
   values,
   issues,
@@ -99,6 +104,7 @@ export function ConfigurationProfileFields({
   onChange,
   onClear,
 }: {
+  gameIdentifier?: string;
   definitions: ConfigurationDefinition[];
   values: Record<string, string>;
   issues: ConfigurationValidationIssue[];
@@ -108,10 +114,14 @@ export function ConfigurationProfileFields({
   onClear?(key: string): void;
 }) {
   const { t } = useTranslation();
+  const contribution = configurationContribution(gameIdentifier);
   const targets = Object.entries(
     definitions.reduce<Record<string, ConfigurationDefinition[]>>((result, definition) => {
-      (result[definition.targetPath || t("Hosting_ConfigurationProfiles_GeneratedFile")] ??=
-        []).push(definition);
+      (result[
+        definition.isControlPlaneOnly
+          ? t("React_Placement_ControlPlane")
+          : definition.targetPath || t("Hosting_ConfigurationProfiles_GeneratedFile")
+      ] ??= []).push(definition);
       return result;
     }, {}),
   );
@@ -122,7 +132,13 @@ export function ConfigurationProfileFields({
       {targets.map(([targetPath, targetDefinitions]) => (
         <section className="next-hosting-configuration-target" key={targetPath}>
           <header>
-            <span>{t("Hosting_ConfigurationProfiles_GeneratedFile")}</span>
+            <span>
+              {t(
+                targetDefinitions.every((definition) => definition.isControlPlaneOnly)
+                  ? "React_Placement_ControlPlane"
+                  : "Hosting_ConfigurationProfiles_GeneratedFile",
+              )}
+            </span>
             <code>{targetPath}</code>
           </header>
           {Object.entries(
@@ -146,6 +162,10 @@ export function ConfigurationProfileFields({
                   const value = values[definition.key] ?? "";
                   const issue = issueByKey.get(definition.key);
                   const kind = definition.kind.toLowerCase();
+                  const ContributionField = configurationContributionField(
+                    contribution,
+                    definition.key,
+                  );
                   const choices = definition.choices ?? [];
                   const sensitiveConfigured =
                     definition.sensitive &&
@@ -172,7 +192,17 @@ export function ConfigurationProfileFields({
                           )}
                         </span>
                       </div>
-                      {kind === "boolean" ? (
+                      {ContributionField ? (
+                        <ContributionField
+                          allowUnset
+                          id={id}
+                          value={value}
+                          required={definition.required}
+                          invalid={Boolean(issue)}
+                          describedBy={describedBy}
+                          onChange={(next) => onChange(definition.key, next)}
+                        />
+                      ) : kind === "boolean" ? (
                         <ConfigurationBooleanField
                           id={id}
                           label={definition.displayName}

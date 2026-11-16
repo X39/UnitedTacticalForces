@@ -3,6 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatResource } from "@/app/i18n";
 import { StatePanel, useUnsavedChanges } from "@/components/primitives";
+import {
+  configurationContribution,
+  configurationContributionField,
+} from "./implementations/registry";
+import { PlacementEstimate } from "./PlacementEstimate";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
 import type { ConfigurationValue, GameConfigurationEntry } from "@/features/hosting/types";
 import {
@@ -14,9 +19,11 @@ import {
 
 export function ServerConfigurationPanel({
   serverId,
+  gameIdentifier,
   canModify,
 }: {
   serverId: string;
+  gameIdentifier?: string;
   canModify: boolean;
 }) {
   const { t } = useTranslation();
@@ -24,6 +31,12 @@ export function ServerConfigurationPanel({
   const configuration = useQuery({
     queryKey: hostingQueryKeys.configuration(serverId),
     queryFn: ({ signal }) => hostingService.configuration(serverId, signal),
+  });
+  const contribution = configurationContribution(gameIdentifier);
+  const demand = useQuery({
+    queryKey: hostingQueryKeys.storageDemand(serverId),
+    queryFn: ({ signal }) => hostingService.storageDemand(serverId, signal),
+    enabled: contribution?.showPlacementEstimate === true,
   });
   const options = useQuery({
     queryKey: hostingQueryKeys.configurationOptions(serverId),
@@ -38,7 +51,13 @@ export function ServerConfigurationPanel({
 
   useEffect(() => {
     const entries = configuration.data?.entries ?? [];
-    const targets = [...new Set(entries.map((entry) => entry.targetPath))];
+    const targets = [
+      ...new Set(
+        entries
+          .filter((entry) => !entry.isControlPlaneOnly && entry.targetPath.trim())
+          .map((entry) => entry.targetPath),
+      ),
+    ];
     if (targets.length === 0) return;
     let active = true;
     void Promise.all(
@@ -65,13 +84,25 @@ export function ServerConfigurationPanel({
   }, [configuration.data?.entries, serverId]);
 
   const refresh = async () => {
-    setDraft({});
-    await client.invalidateQueries({ queryKey: hostingQueryKeys.configuration(serverId) });
+    await client.cancelQueries({ queryKey: hostingQueryKeys.storageDemand(serverId) });
+    await client.invalidateQueries({ queryKey: hostingQueryKeys.fleet });
   };
   const update = useMutation({
     mutationFn: ({ values, resetKeys }: { values: ConfigurationValue[]; resetKeys: string[] }) =>
       hostingService.updateConfiguration(serverId, values, resetKeys),
-    onSuccess: refresh,
+    onMutate: () => client.cancelQueries({ queryKey: hostingQueryKeys.storageDemand(serverId) }),
+    onSuccess: async (_, variables) => {
+      setDraft((current) =>
+        Object.fromEntries(
+          Object.entries(current).filter(
+            ([key]) =>
+              !variables.resetKeys.includes(key) &&
+              !variables.values.some((value) => value.key === key),
+          ),
+        ),
+      );
+      await refresh();
+    },
   });
   const profile = useMutation({
     mutationFn: ({
@@ -81,17 +112,19 @@ export function ServerConfigurationPanel({
       profileId: string | null;
       revisionId: string | null;
     }) => hostingService.selectConfigurationProfile(serverId, profileId, revisionId),
+    onMutate: () => client.cancelQueries({ queryKey: hostingQueryKeys.storageDemand(serverId) }),
     onSuccess: refresh,
   });
 
   const grouped = useMemo(() => {
     const targets = new Map<string, Map<string, GameConfigurationEntry[]>>();
     for (const entry of configuration.data?.entries ?? []) {
-      const groups = targets.get(entry.targetPath) ?? new Map<string, GameConfigurationEntry[]>();
+      const targetPath = entry.isControlPlaneOnly ? "" : entry.targetPath;
+      const groups = targets.get(targetPath) ?? new Map<string, GameConfigurationEntry[]>();
       const values = groups.get(entry.group) ?? [];
       values.push(entry);
       groups.set(entry.group, values);
-      targets.set(entry.targetPath, groups);
+      targets.set(targetPath, groups);
     }
     return targets;
   }, [configuration.data?.entries]);
@@ -122,7 +155,7 @@ export function ServerConfigurationPanel({
         <span>{t("React_ServerWorkspace_ConfigurationProfile")}</span>
         <select
           aria-label={t("React_ServerWorkspace_ConfigurationProfile")}
-          disabled={!canModify || profile.isPending}
+          disabled={!canModify || update.isPending || profile.isPending}
           value={configuration.data.profileId ?? ""}
           onChange={(event) =>
             profile.mutate({ profileId: event.target.value || null, revisionId: null })
@@ -141,7 +174,7 @@ export function ServerConfigurationPanel({
           <button
             type="button"
             className="button button--ghost"
-            disabled={!canModify || profile.isPending}
+            disabled={!canModify || update.isPending || profile.isPending}
             onClick={() =>
               profile.mutate({ profileId: configuration.data.profileId, revisionId: null })
             }
@@ -151,7 +184,12 @@ export function ServerConfigurationPanel({
           <button
             type="button"
             className="button button--ghost"
-            disabled={!canModify || !configuration.data.profileRevisionId || profile.isPending}
+            disabled={
+              !canModify ||
+              !configuration.data.profileRevisionId ||
+              update.isPending ||
+              profile.isPending
+            }
             onClick={() =>
               profile.mutate({
                 profileId: configuration.data.profileId,
@@ -169,11 +207,25 @@ export function ServerConfigurationPanel({
       {!configuration.data.isComplete && (
         <StatePanel kind="warning">{t("React_ServerWorkspace_ConfigurationIncomplete")}</StatePanel>
       )}
+      {contribution?.showPlacementEstimate && (
+        <PlacementEstimate
+          estimate={demand.data?.placementEstimate}
+          dirty={dirty}
+          pending={
+            update.isPending || profile.isPending || demand.isFetching || configuration.isFetching
+          }
+          unavailable={demand.isError || update.isError || profile.isError}
+        />
+      )}
       <div className="next-hosting-configuration-groups">
         {[...grouped].map(([target, groups]) => (
           <section key={target} className="next-hosting-configuration-target">
             <header>
-              <span>{t("React_ServerWorkspace_GeneratedTarget")}</span>
+              <span>
+                {t(
+                  target ? "React_ServerWorkspace_GeneratedTarget" : "React_Placement_ControlPlane",
+                )}
+              </span>
               <code>{target}</code>
             </header>
             {overriddenTargets.includes(target) ? (
@@ -189,6 +241,10 @@ export function ServerConfigurationPanel({
                       const inputId = `server-configuration-${entry.key.replace(/[^a-z0-9]/gi, "-")}`;
                       const setValue = (next: string) =>
                         setDraft((current) => ({ ...current, [entry.key]: next }));
+                      const ContributionField = configurationContributionField(
+                        contribution,
+                        entry.key,
+                      );
                       return (
                         <div className="field" key={entry.key}>
                           <div className="next-hosting-configuration-field-heading">
@@ -197,10 +253,18 @@ export function ServerConfigurationPanel({
                               {formatResource(t("React_ServerWorkspace_FromSource"), entry.source)}
                             </span>
                           </div>
-                          {entry.kind.toLowerCase() === "boolean" ? (
+                          {ContributionField ? (
+                            <ContributionField
+                              id={inputId}
+                              value={value}
+                              required={entry.required}
+                              disabled={!canModify || update.isPending || profile.isPending}
+                              onChange={setValue}
+                            />
+                          ) : entry.kind.toLowerCase() === "boolean" ? (
                             <select
                               id={inputId}
-                              disabled={!canModify}
+                              disabled={!canModify || update.isPending || profile.isPending}
                               value={value || "false"}
                               onChange={(event) => setValue(event.target.value)}
                             >
@@ -210,23 +274,26 @@ export function ServerConfigurationPanel({
                           ) : entry.kind.toLowerCase() === "selection" ? (
                             <select
                               id={inputId}
-                              disabled={!canModify}
+                              disabled={!canModify || update.isPending || profile.isPending}
                               value={value}
                               onChange={(event) => setValue(event.target.value)}
                             >
                               {!entry.required && (
                                 <option value="">{t("React_ServerWorkspace_NotSet")}</option>
                               )}
-                              {entry.allowedValues.map((option) => (
-                                <option key={option} value={option}>
-                                  {option}
+                              {(entry.choices?.length
+                                ? entry.choices
+                                : entry.allowedValues.map((value) => ({ value, label: value }))
+                              ).map((option) => (
+                                <option key={String(option.value)} value={String(option.value)}>
+                                  {option.label}
                                 </option>
                               ))}
                             </select>
                           ) : entry.kind.toLowerCase() === "stringarray" ? (
                             <textarea
                               id={inputId}
-                              disabled={!canModify}
+                              disabled={!canModify || update.isPending || profile.isPending}
                               rows={3}
                               value={value}
                               onChange={(event) => setValue(event.target.value)}
@@ -234,7 +301,7 @@ export function ServerConfigurationPanel({
                           ) : (
                             <input
                               id={inputId}
-                              disabled={!canModify}
+                              disabled={!canModify || update.isPending || profile.isPending}
                               type={
                                 entry.sensitive
                                   ? "password"
@@ -264,7 +331,7 @@ export function ServerConfigurationPanel({
                             <button
                               type="button"
                               className="button button--ghost"
-                              disabled={update.isPending}
+                              disabled={update.isPending || profile.isPending}
                               onClick={() => update.mutate({ values: [], resetKeys: [entry.key] })}
                             >
                               {t("React_ServerWorkspace_ResetInherited")}
@@ -292,7 +359,7 @@ export function ServerConfigurationPanel({
           <button
             type="button"
             className="button button--primary"
-            disabled={!dirty || update.isPending}
+            disabled={!dirty || update.isPending || profile.isPending}
             onClick={() => {
               const entries = configuration.data.entries.filter(
                 (entry) => draft[entry.key] !== undefined,

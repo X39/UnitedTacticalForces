@@ -60,11 +60,13 @@ export type ServerCreation = Schema<"GameServerCreationPayload">;
 export type ServerCreationCostOwnerOption = Required<Schema<"GameServerCostOwnerOptionDto">>;
 export type StorageDemand = Omit<
   Required<Schema<"StorageDemandDto">>,
-  "runtimeProfiles" | "components"
+  "runtimeProfiles" | "components" | "placementEstimate"
 > & {
   runtimeProfiles: Required<Schema<"RuntimeProfileStorageFitDto">>[];
   components: Required<Schema<"StorageDemandComponentDto">>[];
+  placementEstimate?: WorkloadPlacementEstimate | null;
 };
+export type WorkloadPlacementEstimate = Required<Schema<"WorkloadPlacementEstimateDto">>;
 export type LifecycleJob = Omit<Required<Schema<"LifecycleJobDto">>, "commands"> & {
   commands: Required<Schema<"WorkerCommandDto">>[];
 };
@@ -123,10 +125,12 @@ export interface GameConfigurationEntry {
   kind: string;
   required: boolean;
   sensitive: boolean;
+  isControlPlaneOnly?: boolean;
   order: number;
   minimum: number | null;
   maximum: number | null;
   allowedValues: string[];
+  choices?: ConfigurationChoice[];
   value: unknown;
   source: string;
   isCompatible: boolean;
@@ -166,6 +170,7 @@ export interface ConfigurationDefinition {
   kind: string;
   required: boolean;
   sensitive: boolean;
+  isControlPlaneOnly?: boolean;
   order: number;
   defaultValue: unknown;
   minimum: number | null;

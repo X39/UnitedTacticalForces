@@ -135,5 +135,7 @@ internal static class HostingTestData
             new HostingAuthorizationService(dbContext),
             new AdministrativeSshAccess(Options.Create(workerProvisioningOptions ?? new WorkerProvisioningOptions())),
             Options.Create(new StorageDemandOptions()),
-            NullLogger<GameServerProjectionService>.Instance);
+            NullLogger<GameServerProjectionService>.Instance,
+            new GameServerConfigurationService(dbContext),
+            Options.Create(new HostingFinanceOptions()));
 }

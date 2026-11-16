@@ -224,6 +224,7 @@ export function ConfigurationProfileCreatePage() {
                   </p>
                 </div>
                 <ConfigurationProfileFields
+                  gameIdentifier={activeGame}
                   definitions={definitions}
                   values={effectiveDraft}
                   issues={issues}

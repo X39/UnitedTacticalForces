@@ -1,3 +1,4 @@
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -735,6 +736,8 @@ public sealed class GameServerProjectionServiceTests
             new AdministrativeSshAccess(Options.Create(new WorkerProvisioningOptions())),
             Options.Create(new StorageDemandOptions()),
             logger,
+            new GameServerConfigurationService(dbContext),
+            Options.Create(new HostingFinanceOptions()),
             state);
 
     /// <summary>Creates the production state from an explicit public operator setting.</summary>

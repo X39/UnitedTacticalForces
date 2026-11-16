@@ -135,11 +135,17 @@ internal class Program
         return args[optionIndex + 1];
     }
 
+    /// <summary>Exports a deterministic API contract without starting application services.</summary>
+    /// <param name="app">The configured application providing the API metadata.</param>
+    /// <param name="outputPath">The destination for the generated JSON contract.</param>
+    /// <returns>A task that completes when the contract has been written.</returns>
     private static async Task ExportOpenApiAsync(WebApplication app, string outputPath)
     {
         var provider = app.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
         var document = await provider.GetOpenApiDocumentAsync().ConfigureAwait(false);
         var json = await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_1).ConfigureAwait(false);
+        // XML documentation inherits checkout line endings; keep exported descriptions identical on Windows and Linux.
+        json = json.Replace("\\r\\n", "\\n", StringComparison.Ordinal).ReplaceLineEndings("\n");
         var fullPath = Path.GetFullPath(outputPath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         await File.WriteAllTextAsync(fullPath, json).ConfigureAwait(false);

@@ -305,6 +305,7 @@ export function ConfigurationProfileWorkspacePage() {
                 </div>
               </header>
               <ConfigurationProfileFields
+                gameIdentifier={data.profile.gameIdentifier}
                 definitions={definitions}
                 values={effectiveDraft}
                 issues={issues}

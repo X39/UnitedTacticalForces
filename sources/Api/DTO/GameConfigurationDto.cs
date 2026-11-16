@@ -23,6 +23,9 @@ public sealed record GameConfigurationEntryDto
     public EGameConfigurationValueKind Kind { get; init; }
     public bool Required { get; init; }
     public bool Sensitive { get; init; }
+    /// <summary>Gets whether the setting controls orchestration instead of a generated game file.</summary>
+    /// <value>True when file-conflict checks and file-target presentation do not apply.</value>
+    public bool IsControlPlaneOnly { get; init; }
     public int Order { get; init; }
     public decimal? Minimum { get; init; }
     public decimal? Maximum { get; init; }

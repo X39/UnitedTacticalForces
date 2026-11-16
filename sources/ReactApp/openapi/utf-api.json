@@ -21637,6 +21637,17 @@
               }
             ]
           },
+          "placementEstimate": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the aggregate next-deployment estimate for saved workload placement.\nA current estimate, or null for creation-only requests or unavailable configuration and pricing.",
+                "$ref": "#/components/schemas/WorkloadPlacementEstimateDto"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/EStorageEstimateStatus"
           },
@@ -22908,6 +22919,49 @@
           }
         },
         "description": "Deployment-targeted worker command projection."
+      },
+      "WorkloadPlacementEstimateDto": {
+        "type": "object",
+        "properties": {
+          "hostCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the number of distinct hosts required by the placement.\nThe number of separately priced compute allocations.",
+            "format": "int32"
+          },
+          "estimatedComputeHourlyCostEur": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": "number",
+            "description": "Gets the aggregate hourly compute estimate.\nThe sum of compute charges for all planned hosts in EUR.",
+            "format": "double"
+          },
+          "estimatedStorageHourlyCostEur": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": "number",
+            "description": "Gets the aggregate hourly external-storage estimate.\nThe sum of charges for the planned volumes in EUR.",
+            "format": "double"
+          },
+          "estimatedHourlyCostEur": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": "number",
+            "description": "Gets the combined hourly estimate for the next deployment.\nCompute and external-storage charges in EUR; Start revalidates this estimate.",
+            "format": "double"
+          },
+          "estimatedMonthlyCostEur": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                "type": "number",
+                "description": "Gets the combined monthly estimate when the provider supplies monthly compute pricing.\nThe aggregate monthly estimate in EUR, or null when monthly pricing is unavailable.",
+                "format": "double"
+              }
+            ]
+          }
+        },
+        "description": "Describes the current aggregate price of saved workload placement without accepting a deployment."
       }
     }
   },
