@@ -16,6 +16,11 @@ public sealed record WorkerCommandExecutionResult(
     IReadOnlyCollection<X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol.WorkerObservedContentVersion>?
         ObservedContentVersions = null)
 {
+    /// <summary>Gets the workload observations captured when this command completed.</summary>
+    /// <value>Process evidence for each supervised workload, without implying application-level readiness.</value>
+    public IReadOnlyCollection<X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol.WorkerWorkloadObservation>
+        Workloads { get; init; } = [];
+
     public static WorkerCommandExecutionResult Success(
         string stage,
         string? output = null,

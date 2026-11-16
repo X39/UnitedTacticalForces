@@ -153,7 +153,13 @@ public sealed class FlatFileWorkerCommandJournal(string stateDirectory)
                 && existing?.State is not EWorkerCommandJournalState.Running
                     ? runtimeBeforeExecution?.ProcessStartedAt
                     : existing?.ProcessStartedAtBeforeExecution,
-                outcome is null ? null : SanitizeOutcome(outcome));
+                outcome is null ? null : SanitizeOutcome(outcome))
+            {
+                WorkloadsBeforeExecution = requestedState is EWorkerCommandJournalState.Running
+                                           && existing?.State is not EWorkerCommandJournalState.Running
+                    ? runtimeBeforeExecution?.Workloads.ToArray() ?? []
+                    : existing?.WorkloadsBeforeExecution ?? [],
+            };
             await WriteAsync(entry, cancellationToken).ConfigureAwait(false);
             return entry;
         }

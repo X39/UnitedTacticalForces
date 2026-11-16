@@ -8,6 +8,10 @@ namespace X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 /// </summary>
 public sealed record WorkerCommandPayload
 {
+    /// <summary>Gets workload evidence for this protocol message.</summary>
+    /// <value>The persisted workload assignments for the complete deployment; an empty list denotes a legacy command.</value>
+    public IReadOnlyCollection<WorkerWorkloadAssignment> Workloads { get; init; } = [];
+
     public Guid ServerId { get; init; }
 
     public Guid DeploymentId { get; init; }

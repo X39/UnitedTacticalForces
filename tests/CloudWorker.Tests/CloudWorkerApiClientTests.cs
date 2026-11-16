@@ -9,6 +9,62 @@ namespace CloudWorker.Tests;
 
 public class CloudWorkerApiClientTests
 {
+    /// <summary>Serializes independent workload states for heartbeats and both terminal command outcomes.</summary>
+    /// <returns>A task that completes after the protocol bodies are checked.</returns>
+    [Fact]
+    public async Task WorkloadObservations_AreForwardedWithoutInferringReadiness()
+    {
+        var connection = CloudWorkerBootstrapConfigTests.CreateBootstrap();
+        var bodies = new List<string>();
+        using var httpClient = new HttpClient(new RecordingHandler(async request =>
+        {
+            bodies.Add(await request.Content!.ReadAsStringAsync());
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }));
+        var client = new CloudWorkerApiClient(httpClient);
+        WorkerWorkloadObservation[] observations =
+        [
+            new()
+            {
+                ServiceIdentifier = "game-server",
+                ProcessId = 42,
+                ProcessStartedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+                State = EWorkerWorkloadState.Running,
+                ObservedAt = DateTimeOffset.UtcNow,
+            },
+            new()
+            {
+                ServiceIdentifier = "headless-client",
+                State = EWorkerWorkloadState.Failed,
+                ObservedAt = DateTimeOffset.UtcNow,
+            },
+        ];
+        await client.HeartbeatAsync(connection, "worker-token",
+            new WorkerHeartbeatRequest { DeploymentId = connection.DeploymentId, Workloads = observations },
+            CancellationToken.None);
+        foreach (var state in new[] { EWorkerCommandReportState.Succeeded, EWorkerCommandReportState.Failed })
+        {
+            await client.ReportCommandAsync(connection, "worker-token", Guid.NewGuid(),
+                new WorkerCommandReportRequest(connection.DeploymentId, state, "observed", DateTimeOffset.UtcNow,
+                    "process-missing", "A required process is missing.", null, 42, observations[0].ProcessStartedAt)
+                {
+                    Workloads = observations,
+                }, CancellationToken.None);
+        }
+
+        Assert.Equal(3, bodies.Count);
+        foreach (var body in bodies)
+        {
+            using var document = JsonDocument.Parse(body);
+            var workloads = document.RootElement.GetProperty("workloads");
+            Assert.Equal(2, workloads.GetArrayLength());
+            Assert.Equal("Running", workloads[0].GetProperty("state").GetString());
+            Assert.Equal("Failed", workloads[1].GetProperty("state").GetString());
+            Assert.Equal("headless-client", workloads[1].GetProperty("serviceIdentifier").GetString());
+            Assert.Equal(JsonValueKind.Null, workloads[1].GetProperty("processId").ValueKind);
+        }
+    }
+
     [Fact]
     public async Task Requests_MatchSharedWorkerProtocolRoutesBodiesAndHeaders()
     {

@@ -533,7 +533,7 @@ public sealed class WorkerProtocolServiceTests
         Assert.Equal(EWorkerCommandStatus.Succeeded, protocol.Command.Status);
         Assert.Equal(ELifecycleJobStatus.Running, protocol.Job.Status);
         Assert.Equal("control-plane-test", protocol.Job.LeaseOwner);
-        Assert.Equal(EDeploymentStatus.Running, protocol.Deployment.Status);
+        Assert.Equal(EDeploymentStatus.Preparing, protocol.Deployment.Status);
         Assert.Null(protocol.Deployment.TimeStampResolved);
         Assert.Equal(456, protocol.Worker.ProcessId);
         Assert.Equal(Instant.FromDateTimeOffset(processStartedAt), protocol.Worker.ProcessStartedAt);
@@ -780,6 +780,128 @@ public sealed class WorkerProtocolServiceTests
         Assert.Contains($"DiagnosticOutputLength={protocol.Command.DiagnosticOutput.Length}", audit.Details);
         Assert.DoesNotContain("collected-log-prefix", audit.Details, StringComparison.Ordinal);
         Assert.DoesNotContain("diagnostic-secret", audit.Details, StringComparison.Ordinal);
+    }
+
+    /// <summary>Requires complete workload evidence before accepting a colocated start.</summary>
+    /// <returns>A task completing after validating persistence and rejection of a missing companion.</returns>
+    [Fact]
+    public async Task ColocatedStart_RequiresBothProcessesAndPersistsObservations()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Deployment.PlacementSnapshot = WorkloadProtocolTestData.Placement();
+        protocol.Command.Payload = JsonSerializer.Serialize(new WorkerCommandPayload
+        {
+            Workloads = WorkloadProtocolTestData.Assignments(),
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await store.DbContext.SaveChangesAsync();
+        var running = WorkloadProtocolTestData.Running();
+        var request = new WorkerCommandProcessRequest
+        {
+            DeploymentId = protocol.Deployment.PrimaryKey,
+            Stage = "started",
+            ProcessId = running[0].ProcessId,
+            ProcessStartedAt = running[0].ProcessStartedAt,
+            Workloads = [running[0]],
+        };
+        await Assert.ThrowsAsync<WorkerProtocolValidationException>(() => protocol.Service.ReportSucceededAsync(
+            protocol.Worker.PrimaryKey, protocol.Command.PrimaryKey, request, protocol.WorkerCredential));
+        await protocol.Service.ReportSucceededAsync(protocol.Worker.PrimaryKey, protocol.Command.PrimaryKey,
+            request with { Workloads = running }, protocol.WorkerCredential);
+        Assert.Equal(EWorkerCommandStatus.Succeeded, protocol.Command.Status);
+        var stored = JsonSerializer.Deserialize<WorkerWorkloadObservation[]>(protocol.Worker.WorkloadObservations,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Equal(2, stored!.Length);
+    }
+
+    /// <summary>Rejects foreign, duplicate, contradictory, or future-dated workload evidence.</summary>
+    /// <param name="invalidKind">The evidence defect to inject.</param>
+    /// <returns>A task completing after observing validation rejection.</returns>
+    [Theory]
+    [InlineData("foreign")]
+    [InlineData("duplicate")]
+    [InlineData("stopped-with-pid")]
+    [InlineData("future")]
+    [InlineData("same-process")]
+    public async Task WorkloadHeartbeat_RejectsInvalidEvidence(string invalidKind)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Deployment.PlacementSnapshot = WorkloadProtocolTestData.Placement();
+        await store.DbContext.SaveChangesAsync();
+        var observations = WorkloadProtocolTestData.Running();
+        observations[1] = invalidKind switch
+        {
+            "foreign" => observations[1] with { ServiceIdentifier = "other-service" },
+            "duplicate" => observations[0],
+            "stopped-with-pid" => observations[1] with { State = EWorkerWorkloadState.Stopped },
+            "future" => observations[1] with { ObservedAt = DateTimeOffset.UtcNow.AddHours(1) },
+            "same-process" => observations[1] with { ProcessId = observations[0].ProcessId },
+            _ => throw new ArgumentOutOfRangeException(nameof(invalidKind)),
+        };
+        await Assert.ThrowsAsync<WorkerProtocolValidationException>(() => protocol.Service.HeartbeatAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerHeartbeatRequest { DeploymentId = protocol.Deployment.PrimaryKey, Workloads = observations },
+            protocol.WorkerCredential));
+    }
+
+    /// <summary>Retains compatibility for an existing worker assigned exactly one workload.</summary>
+    /// <returns>A task completing after accepting singular process evidence.</returns>
+    [Fact]
+    public async Task SingleAssignedWorkload_AcceptsLegacyProcessEvidence()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Command.Payload = JsonSerializer.Serialize(new WorkerCommandPayload
+        {
+            Workloads = [WorkloadProtocolTestData.Assignments()[0]],
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await store.DbContext.SaveChangesAsync();
+        await protocol.Service.ReportSucceededAsync(protocol.Worker.PrimaryKey, protocol.Command.PrimaryKey,
+            new WorkerCommandProcessRequest
+            {
+                DeploymentId = protocol.Deployment.PrimaryKey,
+                Stage = "started",
+                ProcessId = 123,
+                ProcessStartedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+            }, protocol.WorkerCredential);
+        Assert.Equal(EWorkerCommandStatus.Succeeded, protocol.Command.Status);
+    }
+
+    /// <summary>Accepts a historical terminal result without replacing newer heartbeat process evidence.</summary>
+    /// <returns>A task completing after comparing the retained workload observations.</returns>
+    [Fact]
+    public async Task DelayedSuccess_PreservesNewerHeartbeatObservations()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Deployment.PlacementSnapshot = WorkloadProtocolTestData.Placement();
+        protocol.Command.Payload = JsonSerializer.Serialize(new WorkerCommandPayload
+        {
+            Workloads = WorkloadProtocolTestData.Assignments(),
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        await store.DbContext.SaveChangesAsync();
+        var historical = WorkloadProtocolTestData.Running();
+        var current = historical.Select(observation => observation with
+        {
+            ObservedAt = observation.ObservedAt.AddSeconds(1),
+            State = EWorkerWorkloadState.Failed,
+        }).ToArray();
+        await protocol.Service.HeartbeatAsync(protocol.Worker.PrimaryKey,
+            new WorkerHeartbeatRequest { DeploymentId = protocol.Deployment.PrimaryKey, Workloads = current },
+            protocol.WorkerCredential);
+        var heartbeatJson = protocol.Worker.WorkloadObservations;
+
+        await protocol.Service.ReportSucceededAsync(protocol.Worker.PrimaryKey, protocol.Command.PrimaryKey,
+            new WorkerCommandProcessRequest
+            {
+                DeploymentId = protocol.Deployment.PrimaryKey,
+                Stage = "started",
+                Workloads = historical,
+            }, protocol.WorkerCredential);
+
+        Assert.Equal(EWorkerCommandStatus.Succeeded, protocol.Command.Status);
+        Assert.Equal(heartbeatJson, protocol.Worker.WorkloadObservations);
     }
 
     private static string FaultPayload(DateTimeOffset deadline)

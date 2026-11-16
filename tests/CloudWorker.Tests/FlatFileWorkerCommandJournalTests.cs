@@ -7,6 +7,50 @@ namespace CloudWorker.Tests;
 
 public class FlatFileWorkerCommandJournalTests
 {
+    /// <summary>Retains every original workload incarnation and terminal observation across process restarts.</summary>
+    /// <returns>A task that completes after durable journal recovery is verified.</returns>
+    [Fact]
+    public async Task Workloads_SurviveRestartWithoutReplacingOriginalExecutionEvidence()
+    {
+        using var directory = new TemporaryDirectory();
+        var journal = new FlatFileWorkerCommandJournal(directory.Path);
+        var command = CreateCommand(action: "restart");
+        var before = new[]
+        {
+            new WorkerWorkloadObservation
+            {
+                ServiceIdentifier = "game-server",
+                ProcessId = 123,
+                ProcessStartedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+                State = EWorkerWorkloadState.Running,
+                ObservedAt = DateTimeOffset.UtcNow,
+            },
+            new WorkerWorkloadObservation
+            {
+                ServiceIdentifier = "headless-client",
+                State = EWorkerWorkloadState.Stopped,
+                ObservedAt = DateTimeOffset.UtcNow,
+            },
+        };
+        await journal.RecordRunningAsync(command, "stopping",
+            new WorkerRuntimeStatus("running", 123, before[0].ProcessStartedAt, null) { Workloads = before });
+        var after = new[] { before[0] with { ProcessId = 456 }, before[1] };
+        journal = new FlatFileWorkerCommandJournal(directory.Path);
+        await journal.RecordRunningAsync(command, "recovering",
+            new WorkerRuntimeStatus("running", 456, after[0].ProcessStartedAt, null) { Workloads = after });
+        await journal.RecordFailedAsync(command,
+            WorkerCommandExecutionResult.Failure("partial-start", "process-missing", "A required process is missing.") with
+            {
+                Workloads = after,
+            });
+
+        var restored = await new FlatFileWorkerCommandJournal(directory.Path).ReadAsync(command.CommandId);
+
+        Assert.NotNull(restored);
+        Assert.Equal(before, restored.WorkloadsBeforeExecution);
+        Assert.Equal(after, restored.Outcome!.Workloads);
+    }
+
     [Fact]
     public async Task TerminalOutcome_SurvivesRestartAndPreventsRegression()
     {

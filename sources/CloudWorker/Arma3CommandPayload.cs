@@ -57,7 +57,8 @@ public sealed record Arma3CommandPayload
         }
         var topology = Command.Topology
                        ?? throw new InvalidDataException("Arma command topology is missing.");
-        var isLegacySinglePrimary = topology.Count == 0 && Command.IsPrimaryService;
+        var isLegacySinglePrimary = topology.Count == 0 && (Command.IsPrimaryService
+            || Command.ActionIdentifier is "stop" or "fault-stop" or "terminate");
         if (!isLegacySinglePrimary
             && (topology.Count is < 1 or > 32
             || topology.Count(q => q.IsPrimary) != 1

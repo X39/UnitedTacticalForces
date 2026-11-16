@@ -51,13 +51,22 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         init;
     }
 
+    /// <summary>Creates deployment-scoped Arma execution with independently attributed local processes.</summary>
+    /// <param name="connection">The authenticated host identity.</param>
+    /// <param name="options">Restricted runtime and tool configuration.</param>
+    /// <param name="renderer">Optional typed configuration renderer.</param>
+    /// <param name="commandRunner">Optional installation process runner.</param>
+    /// <param name="processController">Optional primary process controller.</param>
+    /// <param name="storageTransfer">Command-bound preservation and content transport.</param>
+    /// <param name="auxiliaryProcessController">Optional colocated dependent process controller.</param>
     public Arma3WorkerCommandExecutor(
         CloudWorkerConnectionConfig connection,
         CloudWorkerOptions options,
         Arma3ConfigurationRenderer? renderer = null,
         IProcessCommandRunner? commandRunner = null,
         IArma3ProcessController? processController = null,
-        ICloudWorkerStorageTransfer? storageTransfer = null)
+        ICloudWorkerStorageTransfer? storageTransfer = null,
+        IArma3ProcessController? auxiliaryProcessController = null)
     {
         _connection = connection;
         _options = options;
@@ -77,6 +86,13 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                                   _paths,
                                   identityStore,
                                   _processLauncher);
+        _auxiliaryPaths = new Arma3RuntimePaths(
+            options.RuntimeRoot, options.StateDirectory, connection.DeploymentId,
+            options.Arma3.ExecutableName, "headless-client", 0);
+        _auxiliaryProcessController = auxiliaryProcessController ?? new Arma3ProcessController(
+            connection.ServerId, connection.DeploymentId, _auxiliaryPaths,
+            new Arma3ProcessIdentityStore(connection.ServerId, connection.DeploymentId, _auxiliaryPaths),
+            _processLauncher);
         _storageTransfer = storageTransfer ?? new UnavailableCloudWorkerStorageTransfer();
         _contentAcquisition = new WorkerContentAcquisitionService(options, _storageTransfer, _commandRunner);
         _steamTemporaryRoot = PrepareSteamTemporaryRoot(options.Arma3.TemporaryDirectory);
@@ -84,6 +100,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         CleanupStaleSteamTemporaryArtifacts();
     }
 
+    /// <inheritdoc />
     public async Task<WorkerCommandExecutionResult> ExecuteAsync(
         WorkerCommandClaimResponse command,
         CancellationToken cancellationToken)
@@ -102,6 +119,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             payload = AddSecretConfiguration(payload, command.Secrets);
             payload.ValidateAttribution(_connection, command);
             RememberPayloadSecrets(payload);
+            if (HasColocatedWorkloads(payload))
+                return await ExecuteColocatedAsync(command, payload, cancellationToken).ConfigureAwait(false);
             return command.ActionIdentifier.Trim().ToLowerInvariant() switch
             {
                 "install" => await MaintainAsync(payload, payload.Validate, cancellationToken).ConfigureAwait(false),
@@ -145,6 +164,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         command.Validate(_connection);
         var payload = Arma3CommandPayload.Parse(command.Payload);
         payload.ValidateAttribution(_connection, command);
+        if (HasColocatedWorkloads(payload))
+            return null; // The durable group phase is resumed by ExecuteColocatedAsync.
         var action = command.ActionIdentifier.Trim().ToLowerInvariant();
         if (action is "fault-stop"
             && payload.Command.FaultEvidenceDeadline <= DateTimeOffset.UtcNow)
@@ -223,6 +244,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         return null;
     }
 
+    /// <inheritdoc />
     public async Task CompensateSupersededAsync(
         WorkerCommandClaimResponse command,
         CancellationToken cancellationToken)
@@ -231,6 +253,13 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         var action = command.ActionIdentifier.Trim().ToLowerInvariant();
         if (action is not ("start" or "restart" or "install" or "update"))
             return;
+        if (HasColocatedWorkloads(Arma3CommandPayload.Parse(command.Payload)))
+        {
+            var stopped = await StopColocatedProcessesAsync(null, true, cancellationToken).ConfigureAwait(false);
+            if (!stopped.Succeeded)
+                throw new InvalidOperationException(stopped.ErrorMessage);
+            return;
+        }
         var terminated = await _processController.TerminateAsync(cancellationToken).ConfigureAwait(false);
         if (!terminated.Succeeded)
         {
@@ -239,8 +268,11 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
         }
     }
 
+    /// <inheritdoc />
     public async Task<WorkerRuntimeStatus?> ObserveRuntimeAsync(CancellationToken cancellationToken)
     {
+        if (File.Exists(SupervisionStatePath))
+            return await ObserveColocatedRuntimeAsync(cancellationToken).ConfigureAwait(false);
         var storage = ObserveDeploymentStorage();
         using var observation = await _processController.ObserveAsync(cancellationToken).ConfigureAwait(false);
         if (observation.Error is not null)
@@ -910,7 +942,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
 
     private async Task<WorkerCommandExecutionResult> CollectLogsAsync(CancellationToken cancellationToken)
     {
-        var candidates = new[] { _paths.LogPath, _paths.ProfilePath, _paths.InstallPath }
+        var candidates = new[]
+            { _paths.LogPath, _paths.ProfilePath, _paths.InstallPath, _auxiliaryPaths.LogPath, _auxiliaryPaths.ProfilePath }
             .Where(Directory.Exists)
             .SelectMany(path => Directory.EnumerateFiles(path, "*", SearchOption.TopDirectoryOnly))
             .Where(path => (File.GetAttributes(path) & FileAttributes.ReparsePoint) == 0)

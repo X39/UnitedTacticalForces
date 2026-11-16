@@ -1432,6 +1432,9 @@ public sealed class LifecycleJobExecutorCloudTests
         Assert.Equal(
             (deployment.TimeStampFaulted!.Value + Duration.FromMilliseconds(20)).ToDateTimeOffset(),
             payload!.FaultEvidenceDeadline);
+        Assert.True(payload.IsPrimaryService);
+        Assert.True(payload.PreserveOnStop);
+        Assert.Equal("game-server", payload.ServiceIdentifier);
     }
 
     [Fact]

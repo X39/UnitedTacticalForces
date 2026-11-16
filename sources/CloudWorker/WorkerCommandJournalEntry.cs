@@ -17,4 +17,10 @@ public sealed record WorkerCommandJournalEntry(
     DateTimeOffset TimeStampUpdated,
     int? ProcessIdBeforeExecution,
     DateTimeOffset? ProcessStartedAtBeforeExecution,
-    WorkerCommandExecutionResult? Outcome);
+    WorkerCommandExecutionResult? Outcome)
+{
+    /// <summary>Gets the workload incarnations observed before the first execution attempt.</summary>
+    /// <value>Original process evidence retained across redelivery and worker restarts.</value>
+    public IReadOnlyCollection<X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol.WorkerWorkloadObservation>
+        WorkloadsBeforeExecution { get; init; } = [];
+}

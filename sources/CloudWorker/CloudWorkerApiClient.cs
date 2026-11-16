@@ -132,6 +132,7 @@ public sealed class CloudWorkerApiClient(HttpClient httpClient) : ICloudWorkerAp
                     Output = request.Output,
                     StorageMeasurements = request.StorageMeasurements ?? [],
                     ObservedContentVersions = request.ObservedContentVersions ?? [],
+                    Workloads = request.Workloads,
                 },
                 options: CloudWorkerJson.Options),
             EWorkerCommandReportState.Failed => JsonContent.Create(
@@ -142,6 +143,7 @@ public sealed class CloudWorkerApiClient(HttpClient httpClient) : ICloudWorkerAp
                     ErrorCode = request.ErrorCode ?? "worker-command-failed",
                     ErrorMessage = request.ErrorMessage ?? "Worker command failed.",
                     Output = request.Output,
+                    Workloads = request.Workloads,
                 },
                 options: CloudWorkerJson.Options),
             _ => throw new ArgumentOutOfRangeException(nameof(request), request.State, "Unknown command report state."),

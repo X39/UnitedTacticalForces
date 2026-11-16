@@ -1929,6 +1929,14 @@ internal sealed class LifecycleJobExecutor(
             IsPrimaryService          = isPrimaryService,
             PreserveOnStop            = isPrimaryService,
             Topology                  = endpoints,
+            Workloads                 = placement?.Workloads.Select(assignment => new WorkerWorkloadAssignment
+            {
+                ServiceIdentifier = assignment.WorkloadKey.ServiceIdentifier,
+                ServiceOrdinal = assignment.WorkloadKey.ServiceOrdinal,
+                HostServiceIdentifier = assignment.HostKey.ServiceIdentifier,
+                HostServiceOrdinal = assignment.HostKey.ServiceOrdinal,
+                IsPrimary = assignment.WorkloadKey == primaryHost,
+            }).ToArray() ?? [],
             GracefulStopAttempts      = server.GracefulStopAttempts,
             GracefulStopTimeoutSeconds = server.GracefulStopTimeoutSeconds,
             Port                      = primaryPort,
@@ -2301,8 +2309,24 @@ internal sealed class LifecycleJobExecutor(
             .Where(q => q.DeploymentFk == job.DeploymentFk)
             .MaxAsync(q => (long?) q.Sequence, cancellationToken)
             .ConfigureAwait(false) ?? 0) + 1;
+        var placement = WorkloadPlacementPlan.TryDeserialize(deployment.PlacementSnapshot);
+        var primaryHost = placement?.PrimaryHostKey ?? ResolvePrimaryHostKey(server, deployment);
+        var isPrimaryService = worker.ServiceIdentifier == primaryHost.ServiceIdentifier
+                               && worker.ServiceOrdinal == primaryHost.ServiceOrdinal;
         var payload = new WorkerCommandPayload
         {
+            IsPrimaryService           = isPrimaryService,
+            PreserveOnStop             = isPrimaryService,
+            ServiceIdentifier          = worker.ServiceIdentifier,
+            ServiceOrdinal             = worker.ServiceOrdinal,
+            Workloads                  = placement?.Workloads.Select(assignment => new WorkerWorkloadAssignment
+            {
+                ServiceIdentifier = assignment.WorkloadKey.ServiceIdentifier,
+                ServiceOrdinal = assignment.WorkloadKey.ServiceOrdinal,
+                HostServiceIdentifier = assignment.HostKey.ServiceIdentifier,
+                HostServiceOrdinal = assignment.HostKey.ServiceOrdinal,
+                IsPrimary = assignment.WorkloadKey == placement.PrimaryHostKey,
+            }).ToArray() ?? [],
             ServerId                   = server.PrimaryKey,
             DeploymentId               = job.DeploymentFk,
             GameIdentifier             = server.GameIdentifier,

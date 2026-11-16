@@ -65,7 +65,18 @@ public class CloudWorkerRuntimeTests
                 null,
                 null,
                 10_000,
-                4_000),
+                4_000)
+            {
+                Workloads =
+                [
+                    new WorkerWorkloadObservation
+                    {
+                        ServiceIdentifier = "headless-client",
+                        State = EWorkerWorkloadState.Stopped,
+                        ObservedAt = DateTimeOffset.UtcNow,
+                    },
+                ],
+            },
         };
         var runtime = new CloudWorkerRuntime(
             api,
@@ -96,6 +107,7 @@ public class CloudWorkerRuntimeTests
         Assert.Equal("persisted-worker-token", api.LastCredential);
         Assert.Equal(10_000, api.LastHeartbeatRequest?.DeploymentStorageTotalBytes);
         Assert.Equal(4_000, api.LastHeartbeatRequest?.DeploymentStorageAvailableBytes);
+        Assert.Equal(executor.RuntimeStatus.Workloads, api.LastHeartbeatRequest?.Workloads);
     }
 
     [Fact]
@@ -168,7 +180,20 @@ public class CloudWorkerRuntimeTests
                 "started",
                 output: "collected-log-output",
                 processId: 8123,
-                processStartedAt: DateTimeOffset.UtcNow),
+                processStartedAt: DateTimeOffset.UtcNow) with
+            {
+                Workloads =
+                [
+                    new WorkerWorkloadObservation
+                    {
+                        ServiceIdentifier = "headless-client",
+                        ProcessId = 8124,
+                        ProcessStartedAt = DateTimeOffset.UtcNow,
+                        State = EWorkerWorkloadState.Running,
+                        ObservedAt = DateTimeOffset.UtcNow,
+                    },
+                ],
+            },
         };
         var journal = new FlatFileWorkerCommandJournal(directory.Path);
         var runtime = new CloudWorkerRuntime(
@@ -188,6 +213,8 @@ public class CloudWorkerRuntimeTests
         Assert.Equal(EWorkerCommandJournalState.Succeeded, entry?.State);
         Assert.Equal(1, executor.ExecuteCount);
         Assert.Equal("collected-log-output", api.Reports[^1].Request.Output);
+        Assert.Equal(executor.ExecutionResult.Workloads, api.Reports[^1].Request.Workloads);
+        Assert.Equal(executor.ExecutionResult.Workloads, entry?.Outcome?.Workloads);
         Assert.Equal(
             [
                 EWorkerCommandReportState.Received,
@@ -207,12 +234,23 @@ public class CloudWorkerRuntimeTests
             bootstrap.DeploymentId,
             bootstrap.ServerId);
         var journal = new FlatFileWorkerCommandJournal(directory.Path);
+        var workload = new WorkerWorkloadObservation
+        {
+            ServiceIdentifier = "headless-client",
+            ProcessId = 10,
+            ProcessStartedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+            State = EWorkerWorkloadState.Running,
+            ObservedAt = DateTimeOffset.UtcNow,
+        };
         await journal.RecordSucceededAsync(
             command,
             WorkerCommandExecutionResult.Success(
                 "already-started",
                 processId: 9,
-                processStartedAt: DateTimeOffset.UtcNow));
+                processStartedAt: DateTimeOffset.UtcNow) with
+            {
+                Workloads = [workload],
+            });
         var api = new FakeApiClient();
         var executor = new FakeExecutor();
         var runtime = new CloudWorkerRuntime(
@@ -233,6 +271,7 @@ public class CloudWorkerRuntimeTests
         Assert.Single(api.Reports);
         Assert.Equal(EWorkerCommandReportState.Succeeded, api.Reports[0].Request.State);
         Assert.Equal(9, api.Reports[0].Request.ProcessId);
+        Assert.Equal(workload, Assert.Single(api.Reports[0].Request.Workloads));
     }
 
     [Fact]

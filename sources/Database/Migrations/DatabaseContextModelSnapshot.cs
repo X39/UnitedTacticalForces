@@ -2791,6 +2791,10 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Instant?>("WorkerCredentialRevokedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("WorkloadObservations")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
                     b.HasKey("PrimaryKey");
 
                     b.HasIndex("BootstrapCredentialExpiresAt");

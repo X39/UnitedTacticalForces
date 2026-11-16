@@ -7,6 +7,10 @@ namespace X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 /// </summary>
 public sealed record WorkerCommandFailureRequest
 {
+    /// <summary>Gets workload evidence for this protocol message.</summary>
+    /// <value>Observed workloads when execution failed, including surviving processes.</value>
+    public IReadOnlyCollection<WorkerWorkloadObservation> Workloads { get; init; } = [];
+
     public Guid DeploymentId { get; init; }
 
     [Required, MaxLength(128)]

@@ -93,6 +93,11 @@ public class LifecycleWorker : IPrimaryKey<Guid>, ITimeStampCreated
 
     public Instant? LeaseExpires { get; set; }
 
+    /// <summary>Gets or sets the latest complete per-workload process observations.</summary>
+    /// <value>A JSON array of provider-neutral workload observations.</value>
+    [Column(TypeName = "jsonb")]
+    public string WorkloadObservations { get; set; } = "[]";
+
     public int? ProcessId { get; set; }
 
     public Instant? ProcessStartedAt { get; set; }

@@ -7,6 +7,10 @@ namespace X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 /// </summary>
 public sealed record WorkerHeartbeatRequest : IValidatableObject
 {
+    /// <summary>Gets workload evidence for this protocol message.</summary>
+    /// <value>Complete observations of workloads assigned to this worker host.</value>
+    public IReadOnlyCollection<WorkerWorkloadObservation> Workloads { get; init; } = [];
+
     public Guid DeploymentId { get; init; }
 
     [MaxLength(128)]

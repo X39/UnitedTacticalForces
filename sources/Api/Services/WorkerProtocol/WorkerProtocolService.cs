@@ -7,6 +7,7 @@ using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.GameServerSecrets;
+using WorkloadPlacementPlan = X39.UnitedTacticalForces.Api.Services.HostingRuntime.WorkloadPlacementPlan;
 using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 using X39.Util.DependencyInjection.Attributes;
@@ -182,6 +183,9 @@ internal sealed class WorkerProtocolService(
                 now,
                 cancellationToken)
             .ConfigureAwait(false);
+        var expectedWorkloads = GetAssignedWorkloads(worker);
+        ValidateWorkloadEvidence(request.Workloads, expectedWorkloads, now);
+        worker.WorkloadObservations = JsonSerializer.Serialize(request.Workloads, CommandJsonOptions);
         var recovered = worker.Status is EWorkerStatus.Provisioning or EWorkerStatus.Degraded;
         if (recovered)
             worker.Status = EWorkerStatus.Online;
@@ -374,7 +378,8 @@ internal sealed class WorkerProtocolService(
             null,
             null,
             null,
-            cancellationToken);
+            cancellationToken,
+            request.Workloads);
     }
 
     public Task ReportSucceededAsync(
@@ -399,7 +404,8 @@ internal sealed class WorkerProtocolService(
             request.Output,
             request.StorageMeasurements,
             request.ObservedContentVersions,
-            cancellationToken);
+            cancellationToken,
+            request.Workloads);
     }
 
     public Task ReportFailedAsync(
@@ -425,7 +431,8 @@ internal sealed class WorkerProtocolService(
             request.Output,
             null,
             null,
-            cancellationToken);
+            cancellationToken,
+            request.Workloads);
     }
 
     private async Task UpdateCommandAsync(
@@ -442,7 +449,8 @@ internal sealed class WorkerProtocolService(
         string? diagnosticOutput,
         IReadOnlyCollection<WorkerStorageMeasurement>? storageMeasurements,
         IReadOnlyCollection<WorkerObservedContentVersion>? observedContentVersions,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyCollection<WorkerWorkloadObservation>? workloads = null)
     {
         stage = BoundStage(stage);
         await using var transaction = await BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
@@ -497,10 +505,36 @@ internal sealed class WorkerProtocolService(
         if (targetStatus is EWorkerCommandStatus.Succeeded
             && command.LifecycleJob?.Kind is ELifecycleJobKind.Start or ELifecycleJobKind.Restart
             && !IsFaultStop(command.ActionIdentifier)
-            && processId is null)
+            && processId is null
+            && (workloads is null || workloads.Count == 0))
         {
             throw new WorkerProtocolValidationException(
                 "A successful process-starting command requires process identity evidence.");
+        }
+
+        var commandPayload = JsonSerializer.Deserialize<WorkerCommandPayload>(command.Payload, CommandJsonOptions)
+                             ?? throw new WorkerProtocolValidationException("The command payload is invalid.");
+        var expectedWorkloads = commandPayload.Workloads
+            .Where(assignment => assignment.HostServiceIdentifier == worker.ServiceIdentifier
+                                 && assignment.HostServiceOrdinal == worker.ServiceOrdinal)
+            .Select(assignment => (assignment.ServiceIdentifier, assignment.ServiceOrdinal))
+            .ToHashSet();
+        if (workloads is not null)
+            ValidateWorkloadEvidence(workloads, expectedWorkloads, now);
+        if (targetStatus is EWorkerCommandStatus.Succeeded && expectedWorkloads.Count > 0
+            && !(expectedWorkloads.Count == 1 && workloads is { Count: 0 }))
+        {
+            var startsProcesses = command.ActionIdentifier is "start" or "restart";
+            var stopsProcesses = command.ActionIdentifier is "stop" or "fault-stop" or "terminate";
+            if ((startsProcesses || stopsProcesses)
+                && (workloads is null || workloads.Count != expectedWorkloads.Count
+                    || workloads.Any(observation => observation.State != (startsProcesses
+                        ? EWorkerWorkloadState.Running
+                        : EWorkerWorkloadState.Stopped))))
+            {
+                throw new WorkerProtocolValidationException(
+                    "Successful lifecycle commands require every assigned workload's expected process state.");
+            }
         }
 
         var changed = ApplyCommandTransition(
@@ -530,6 +564,10 @@ internal sealed class WorkerProtocolService(
             processStartedAt);
         if (changed)
         {
+            if (workloads is not null
+                && (targetStatus is not EWorkerCommandStatus.Running || workloads.Count > 0)
+                && IsCurrentWorkloadEvidence(workloads, worker.WorkloadObservations))
+                worker.WorkloadObservations = JsonSerializer.Serialize(workloads, CommandJsonOptions);
             ApplyLifecycleEvidence(command, deployment, targetStatus, stage, now);
             auditWriter.Add(
                 dbContext,
@@ -545,6 +583,77 @@ internal sealed class WorkerProtocolService(
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Prevents a delayed terminal report from replacing newer heartbeat process observations.</summary>
+    /// <param name="reported">Observations captured for the command outcome.</param>
+    /// <param name="persistedJson">Latest persisted heartbeat or command observations.</param>
+    /// <returns>Whether the complete report is at least as recent as existing workload evidence.</returns>
+    private static bool IsCurrentWorkloadEvidence(
+        IReadOnlyCollection<WorkerWorkloadObservation> reported,
+        string persistedJson)
+    {
+        var persisted = JsonSerializer.Deserialize<WorkerWorkloadObservation[]>(persistedJson, CommandJsonOptions) ?? [];
+        if (persisted.Length == 0)
+            return true;
+        return reported.Count > 0 && persisted.All(previous => reported.Any(current =>
+            current.ServiceIdentifier == previous.ServiceIdentifier
+            && current.ServiceOrdinal == previous.ServiceOrdinal
+            && current.ObservedAt >= previous.ObservedAt));
+    }
+
+    /// <summary>Resolves workload identities from the immutable deployment placement.</summary>
+    /// <param name="worker">The authenticated host worker.</param>
+    /// <returns>The workload keys assigned to this host, or an empty set for legacy placement.</returns>
+    /// <exception cref="WorkerProtocolValidationException">Stored placement cannot be interpreted.</exception>
+    private static HashSet<(string ServiceIdentifier, int ServiceOrdinal)> GetAssignedWorkloads(LifecycleWorker worker)
+    {
+        if (worker.Deployment!.PlacementSnapshot is null)
+            return [];
+        var placement = WorkloadPlacementPlan.TryDeserialize(worker.Deployment.PlacementSnapshot)
+                        ?? throw new WorkerProtocolValidationException("The persisted workload placement is invalid.");
+        return placement.Workloads
+            .Where(assignment => assignment.HostKey.ServiceIdentifier == worker.ServiceIdentifier
+                                 && assignment.HostKey.ServiceOrdinal == worker.ServiceOrdinal)
+            .Select(assignment => (assignment.WorkloadKey.ServiceIdentifier, assignment.WorkloadKey.ServiceOrdinal))
+            .ToHashSet();
+    }
+
+    /// <summary>Rejects malformed or foreign workload observations before persisting worker evidence.</summary>
+    /// <param name="observations">The complete observation batch supplied by the worker.</param>
+    /// <param name="expected">Workloads attributed to the authenticated host.</param>
+    /// <param name="now">Control-plane receipt time.</param>
+    /// <exception cref="WorkerProtocolValidationException">Evidence is malformed, duplicated, or unattributed.</exception>
+    private static void ValidateWorkloadEvidence(
+        IReadOnlyCollection<WorkerWorkloadObservation> observations,
+        HashSet<(string ServiceIdentifier, int ServiceOrdinal)> expected,
+        Instant now)
+    {
+        if (observations is null || observations.Count > 32)
+            throw new WorkerProtocolValidationException("Workload observations must be a bounded collection.");
+        var seen = new HashSet<(string, int)>();
+        var processIds = new HashSet<int>();
+        foreach (var observation in observations)
+        {
+            if (observation is null
+                || !expected.Contains((observation.ServiceIdentifier, observation.ServiceOrdinal))
+                || !seen.Add((observation.ServiceIdentifier, observation.ServiceOrdinal))
+                || !Enum.IsDefined(observation.State)
+                || observation.ObservedAt == default
+                || observation.ObservedAt > now.ToDateTimeOffset().AddMinutes(1))
+            {
+                throw new WorkerProtocolValidationException("Workload observation attribution or timestamp is invalid.");
+            }
+            ValidateProcessEvidence(observation.ProcessId, observation.ProcessStartedAt);
+            if (observation.ProcessId is { } pid && !processIds.Add(pid))
+                throw new WorkerProtocolValidationException("Workloads must have distinct attributed process identities.");
+            if (observation.State is EWorkerWorkloadState.Running && observation.ProcessId is null
+                || observation.State is EWorkerWorkloadState.Stopped && observation.ProcessId is not null
+                || observation.ProcessStartedAt > observation.ObservedAt)
+            {
+                throw new WorkerProtocolValidationException("Workload process evidence contradicts its observed state.");
+            }
+        }
     }
 
     private static bool CanExecuteCommand(
@@ -873,11 +982,8 @@ internal sealed class WorkerProtocolService(
         }
         else if (job?.Kind is ELifecycleJobKind.Start)
         {
-            deployment.Status = status is EWorkerCommandStatus.Succeeded
-                ? EDeploymentStatus.Running
-                : EDeploymentStatus.Preparing;
-            if (status is EWorkerCommandStatus.Succeeded)
-                deployment.TimeStampStarted ??= now;
+            // The lifecycle executor promotes the deployment only after every required worker succeeds.
+            deployment.Status = EDeploymentStatus.Preparing;
         }
         else if (job?.Kind is ELifecycleJobKind.Stop)
         {
