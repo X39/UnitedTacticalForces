@@ -229,7 +229,7 @@
                         <dl class="hosting-storage-selection-facts">
                             <div><dt>@Localizer["Hosting_Create_IncludedProfileDisk"]</dt><dd>@(SelectedProfile.DiskGiB?.ToString(CultureInfo.CurrentCulture) ?? "—") GiB</dd></div>
                             <div><dt>@Localizer["Hosting_Create_EstimatedPeakRequirement"]</dt><dd>@(_storageDemand is { } demand ? FormatBytes(demand.PeakPreparationRequiredBytes) : Localizer["Hosting_Create_Calculating"])</dd></div>
-                            <div><dt>@Localizer["Hosting_Create_SelectedDeploymentCapacity"]</dt><dd>@FormatBytes(SelectedStorageBytes())</dd></div>
+                            <div><dt>@Localizer[_runtimeStorageStrategy == "IncludedDisk" ? "Hosting_Create_SelectedDeploymentCapacity" : "Hosting_Storage_SelectedRawCapacity"]</dt><dd>@FormatBytes(SelectedStorageBytes())</dd></div>
                             <div><dt>@Localizer["Hosting_Create_CombinedPrice"]</dt><dd>@FormatCombinedPrice()</dd></div>
                         </dl>
                         <p class="hosting-storage-filesystem">@StorageFilesystemDescription()</p>
@@ -622,8 +622,10 @@
         return selectedGiB is { } value
                && value >= storage.MinimumCapacityGiB
                && value <= storage.MaximumCapacityGiB
+               && storage.CapacityIncrementGiB > 0
                && value % storage.CapacityIncrementGiB == 0
-               && checked(value * 1_073_741_824L) >= _storageDemand.PeakPreparationRequiredBytes;
+               && _storageDemand.MinimumExternalCapacityGiB is { } minimum
+               && value >= minimum;
     }
 
     private long? SelectedStorageBytes()
@@ -640,12 +642,7 @@
 
     private long? AutomaticStorageGiB(RuntimeStorageCapabilitiesInfo storage)
     {
-        if (_storageDemand is null)
-            return null;
-        var required = (_storageDemand.PeakPreparationRequiredBytes + 1_073_741_823L) / 1_073_741_824L;
-        var minimum = Math.Max(required, storage.MinimumCapacityGiB);
-        return ((minimum + storage.CapacityIncrementGiB - 1) / storage.CapacityIncrementGiB)
-               * storage.CapacityIncrementGiB;
+        return _storageDemand?.MinimumExternalCapacityGiB;
     }
 
     private string StorageFilesystemDescription()

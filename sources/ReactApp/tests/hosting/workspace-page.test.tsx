@@ -562,6 +562,8 @@ describe("certified server workspace", () => {
     vi.spyOn(hostingService, "capabilities").mockResolvedValue([capability]);
     vi.spyOn(hostingService, "storageDemand").mockResolvedValue({
       peakPreparationRequiredBytes: 90 * 1_073_741_824,
+      minimumExternalCapacityGiB: 110,
+      recommendedExternalUsableBytes: 98 * 1_073_741_824,
       runtimeProfiles: [],
       components: [],
       missingComponents: [],
@@ -583,6 +585,9 @@ describe("certified server workspace", () => {
     await user.selectOptions(screen.getByLabelText("Storage strategy"), "FixedExternal");
     await user.clear(screen.getByLabelText("External capacity (GiB)"));
     await user.type(screen.getByLabelText("External capacity (GiB)"), "100");
+    expect(screen.getByRole("button", { name: "Save deployment storage" })).toBeDisabled();
+    await user.clear(screen.getByLabelText("External capacity (GiB)"));
+    await user.type(screen.getByLabelText("External capacity (GiB)"), "110");
     await user.click(screen.getByRole("button", { name: "Save deployment storage" }));
     await user.selectOptions(screen.getByLabelText("Mod pack"), "2");
     await user.click(screen.getByRole("button", { name: "Save mod pack" }));
@@ -592,7 +597,7 @@ describe("certified server workspace", () => {
       expect(hostingService.changeRuntimeStorage).toHaveBeenCalledWith(
         server.primaryKey,
         "FixedExternal",
-        100,
+        110,
       );
       expect(hostingService.changeModPack).toHaveBeenCalledWith(server.primaryKey, 2);
     });

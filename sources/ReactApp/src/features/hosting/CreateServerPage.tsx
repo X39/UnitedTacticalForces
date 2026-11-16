@@ -184,6 +184,18 @@ function StorageDemandSummary({
           <dt>{t("Hosting_Create_RecommendedPeak")}</dt>
           <dd>{formatBytes(demand.peakPreparationRequiredBytes)}</dd>
         </div>
+        {demand.minimumExternalCapacityGiB != null && (
+          <>
+            <div>
+              <dt>{t("Hosting_Storage_RecommendedRawCapacity")}</dt>
+              <dd>{number(demand.minimumExternalCapacityGiB, 0)} GiB</dd>
+            </div>
+            <div>
+              <dt>{t("Hosting_Storage_RecommendedUsableCapacity")}</dt>
+              <dd>{formatBytes(demand.recommendedExternalUsableBytes)}</dd>
+            </div>
+          </>
+        )}
       </dl>
       <p className="next-hosting-muted">
         <strong>{t("Hosting_Create_Confidence")}</strong> {statusLabel}.
@@ -954,7 +966,13 @@ export function CreateServerPage() {
                         </dd>
                       </div>
                       <div>
-                        <dt>{t("Hosting_Create_SelectedDeploymentCapacity")}</dt>
+                        <dt>
+                          {t(
+                            storageStrategy === "IncludedDisk"
+                              ? "Hosting_Create_SelectedDeploymentCapacity"
+                              : "Hosting_Storage_SelectedRawCapacity",
+                          )}
+                        </dt>
                         <dd>{formatBytes(capacity)}</dd>
                       </div>
                       <div>

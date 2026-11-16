@@ -66,7 +66,10 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
       actualCapacity !== null &&
       actualCapacity >= storage.minimumCapacityGiB &&
       actualCapacity <= storage.maximumCapacityGiB &&
-      actualCapacity % storage.capacityIncrementGiB === 0,
+      actualCapacity % storage.capacityIncrementGiB === 0 &&
+      Number.isSafeInteger(actualCapacity) &&
+      demand.data?.minimumExternalCapacityGiB != null &&
+      actualCapacity >= demand.data.minimumExternalCapacityGiB,
     );
   const refresh = () =>
     client.invalidateQueries({ queryKey: hostingQueryKeys.server(server.primaryKey) });
@@ -243,8 +246,20 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
               <dt>{t("React_ServerWorkspace_PeakRequirement")}</dt>
               <dd>{formatBytes(demand.data?.peakPreparationRequiredBytes)}</dd>
             </div>
+            {strategy !== "IncludedDisk" && (
+              <div>
+                <dt>{t("Hosting_Storage_RecommendedUsableCapacity")}</dt>
+                <dd>{formatBytes(demand.data?.recommendedExternalUsableBytes)}</dd>
+              </div>
+            )}
             <div>
-              <dt>{t("React_ServerWorkspace_SelectedCapacity")}</dt>
+              <dt>
+                {t(
+                  strategy === "IncludedDisk"
+                    ? "React_ServerWorkspace_SelectedCapacity"
+                    : "Hosting_Storage_SelectedRawCapacity",
+                )}
+              </dt>
               <dd>
                 {strategy === "IncludedDisk"
                   ? formatBytes(selectedProfile?.usableStorageBytes)

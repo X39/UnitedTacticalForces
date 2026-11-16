@@ -9,6 +9,14 @@ public sealed record StorageDemandDto
     public decimal SafetyMarginPercent { get; init; }
     public long SafetyMarginBytes { get; init; }
     public long PeakPreparationRequiredBytes { get; init; }
+    /// <summary>Gets the smallest provider-supported raw external allocation that covers peak demand after filesystem overhead.</summary>
+    /// <value>The allocation in GiB, or null when external storage cannot satisfy the demand.</value>
+    public long? MinimumExternalCapacityGiB { get; init; }
+
+    /// <summary>Gets the estimated writable capacity of the recommended external allocation.</summary>
+    /// <value>Usable bytes after filesystem headroom, or null when no allocation is available.</value>
+    public long? RecommendedExternalUsableBytes { get; init; }
+
     public EStorageEstimateStatus Status { get; init; }
     public Instant CalculatedAt { get; init; }
     public Instant? MeasurementTimestamp { get; init; }

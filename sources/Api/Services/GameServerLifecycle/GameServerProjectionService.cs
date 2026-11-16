@@ -353,8 +353,26 @@ internal sealed class GameServerProjectionService(
         IReadOnlyCollection<RuntimeProfile> profiles = provider is null
             ? []
             : await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+        long? minimumExternalGiB = null;
+        long? recommendedExternalUsableBytes = null;
+        if (provider?.Capabilities.Storage is { SupportsExternalBlockStorage: true } storage)
+        {
+            try
+            {
+                minimumExternalGiB = RuntimeStoragePlanResolver.GetMinimumExternalCapacityGiB(
+                    demand.PeakPreparationRequiredBytes, storage);
+                recommendedExternalUsableBytes = RuntimeStorageCapacityPolicy.EstimateUsableBytes(
+                    checked(minimumExternalGiB.Value * RuntimeStoragePlanResolver.GiB));
+            }
+            catch (InvalidOperationException)
+            {
+                // An unavailable recommendation must not fall back to a raw-capacity comparison in clients.
+            }
+        }
         return new StorageDemandDto
         {
+            MinimumExternalCapacityGiB = minimumExternalGiB,
+            RecommendedExternalUsableBytes = recommendedExternalUsableBytes,
             SteadyStateRequiredBytes = demand.SteadyStateRequiredBytes,
             PreparationWorkspaceBytes = demand.PreparationWorkspaceBytes,
             SafetyMarginPercent = demand.SafetyMarginPercent,

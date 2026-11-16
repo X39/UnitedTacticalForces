@@ -26,6 +26,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
 #endif
         /// <summary>The measurementTimestamp property</summary>
         public DateTimeOffset? MeasurementTimestamp { get; set; }
+        /// <summary>Gets the smallest provider-supported raw external allocation that covers peak demand after filesystem overhead.The allocation in GiB, or null when external storage cannot satisfy the demand.</summary>
+        public long? MinimumExternalCapacityGiB { get; set; }
         /// <summary>The missingComponents property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -38,6 +40,8 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
         public long? PeakPreparationRequiredBytes { get; set; }
         /// <summary>The preparationWorkspaceBytes property</summary>
         public long? PreparationWorkspaceBytes { get; set; }
+        /// <summary>Gets the estimated writable capacity of the recommended external allocation.Usable bytes after filesystem headroom, or null when no allocation is available.</summary>
+        public long? RecommendedExternalUsableBytes { get; set; }
         /// <summary>The runtimeProfiles property</summary>
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
 #nullable enable
@@ -82,9 +86,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
                 { "calculatedAt", n => { CalculatedAt = n.GetDateTimeOffsetValue(); } },
                 { "components", n => { Components = n.GetCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.StorageDemandComponentDto>(global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.StorageDemandComponentDto.CreateFromDiscriminatorValue)?.AsList(); } },
                 { "measurementTimestamp", n => { MeasurementTimestamp = n.GetDateTimeOffsetValue(); } },
+                { "minimumExternalCapacityGiB", n => { MinimumExternalCapacityGiB = n.GetLongValue(); } },
                 { "missingComponents", n => { MissingComponents = n.GetCollectionOfPrimitiveValues<string>()?.AsList(); } },
                 { "peakPreparationRequiredBytes", n => { PeakPreparationRequiredBytes = n.GetLongValue(); } },
                 { "preparationWorkspaceBytes", n => { PreparationWorkspaceBytes = n.GetLongValue(); } },
+                { "recommendedExternalUsableBytes", n => { RecommendedExternalUsableBytes = n.GetLongValue(); } },
                 { "runtimeProfiles", n => { RuntimeProfiles = n.GetCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.RuntimeProfileStorageFitDto>(global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.RuntimeProfileStorageFitDto.CreateFromDiscriminatorValue)?.AsList(); } },
                 { "safetyMarginBytes", n => { SafetyMarginBytes = n.GetLongValue(); } },
                 { "safetyMarginPercent", n => { SafetyMarginPercent = n.GetDoubleValue(); } },
@@ -102,9 +108,11 @@ namespace X39.UnitedTacticalForces.WebApp.UtfApi.Models
             writer.WriteDateTimeOffsetValue("calculatedAt", CalculatedAt);
             writer.WriteCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.StorageDemandComponentDto>("components", Components);
             writer.WriteDateTimeOffsetValue("measurementTimestamp", MeasurementTimestamp);
+            writer.WriteLongValue("minimumExternalCapacityGiB", MinimumExternalCapacityGiB);
             writer.WriteCollectionOfPrimitiveValues<string>("missingComponents", MissingComponents);
             writer.WriteLongValue("peakPreparationRequiredBytes", PeakPreparationRequiredBytes);
             writer.WriteLongValue("preparationWorkspaceBytes", PreparationWorkspaceBytes);
+            writer.WriteLongValue("recommendedExternalUsableBytes", RecommendedExternalUsableBytes);
             writer.WriteCollectionOfObjectValues<global::X39.UnitedTacticalForces.WebApp.UtfApi.Models.RuntimeProfileStorageFitDto>("runtimeProfiles", RuntimeProfiles);
             writer.WriteLongValue("safetyMarginBytes", SafetyMarginBytes);
             writer.WriteDoubleValue("safetyMarginPercent", SafetyMarginPercent);

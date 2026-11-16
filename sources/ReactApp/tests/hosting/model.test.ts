@@ -24,13 +24,15 @@ const storage = {
 } as RuntimeStorageCapabilities;
 const demand = {
   peakPreparationRequiredBytes: 41 * 1_073_741_824,
+  minimumExternalCapacityGiB: 50,
+  recommendedExternalUsableBytes: 44 * 1_073_741_824,
   runtimeProfiles: [{ runtimeProfileIdentifier: "cx32", isSufficient: false }],
   components: [],
   missingComponents: [],
 } as unknown as StorageDemand;
 
 describe("hosting storage and configuration models", () => {
-  it("rounds automatic storage up to the provider increment", () => {
+  it("uses the server recommendation including filesystem headroom", () => {
     expect(automaticExternalStorageGiB(demand, storage)).toBe(50);
     expect(isStorageSelectionValid("IncludedDisk", profile, demand, storage, undefined)).toBe(
       false,
@@ -45,6 +47,32 @@ describe("hosting storage and configuration models", () => {
     expect(isStorageSelectionValid("FixedExternal", profile, demand, storage, 45)).toBe(false);
     expect(isStorageSelectionValid("FixedExternal", profile, demand, storage, 50)).toBe(true);
     expect(isStorageSelectionValid("FixedExternal", profile, demand, storage, 110)).toBe(false);
+  });
+
+  it("rejects raw capacity that fits peak but is below the usable-capacity recommendation", () => {
+    const constrained = {
+      ...demand,
+      peakPreparationRequiredBytes: 50 * 1_073_741_824,
+      minimumExternalCapacityGiB: 60,
+    };
+    expect(isStorageSelectionValid("FixedExternal", profile, constrained, storage, 50)).toBe(false);
+    expect(isStorageSelectionValid("FixedExternal", profile, constrained, storage, 60)).toBe(true);
+    expect(automaticExternalStorageGiB(constrained, storage)).toBe(60);
+  });
+
+  it("fails closed when the server cannot recommend external capacity", () => {
+    const unavailable = {
+      ...demand,
+      minimumExternalCapacityGiB: null,
+      recommendedExternalUsableBytes: null,
+    };
+    expect(automaticExternalStorageGiB(unavailable, storage)).toBeUndefined();
+    expect(
+      isStorageSelectionValid("AutomaticExternal", profile, unavailable, storage, undefined),
+    ).toBe(false);
+    expect(isStorageSelectionValid("FixedExternal", profile, unavailable, storage, 100)).toBe(
+      false,
+    );
   });
 
   it("parses typed configuration values and rejects missing required fields", () => {

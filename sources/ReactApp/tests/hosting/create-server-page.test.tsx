@@ -82,6 +82,8 @@ const storageDemand = {
   safetyMarginPercent: 10,
   safetyMarginBytes: 5 * 1_073_741_824,
   peakPreparationRequiredBytes: 55 * 1_073_741_824,
+  minimumExternalCapacityGiB: 70,
+  recommendedExternalUsableBytes: 62 * 1_073_741_824,
   status: "Estimated",
   calculatedAt: "2026-08-13T12:00:00Z",
   measurementTimestamp: null,

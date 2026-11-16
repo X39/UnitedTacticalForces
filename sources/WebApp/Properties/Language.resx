@@ -16197,4 +16197,7 @@ Start writing here.</value>
   <data name="Hosting_ServerMessage_ExecutionPaused" xml:space="preserve">
     <value>Hosting lifecycle execution is paused by the operator. Queued work is preserved.</value>
   </data>
+  <data name="Hosting_Storage_RecommendedRawCapacity" xml:space="preserve"><value>Recommended raw external capacity</value></data>
+  <data name="Hosting_Storage_RecommendedUsableCapacity" xml:space="preserve"><value>Estimated usable capacity of recommendation</value></data>
+  <data name="Hosting_Storage_SelectedRawCapacity" xml:space="preserve"><value>Selected raw external capacity</value></data>
 </root>

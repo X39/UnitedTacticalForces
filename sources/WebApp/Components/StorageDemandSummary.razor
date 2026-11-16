@@ -14,6 +14,11 @@
         <div><dt>@Localizer["Hosting_Create_PreparationWorkspace"]</dt><dd>@FormatBytes(Demand.PreparationWorkspaceBytes)</dd></div>
         <div><dt>@Localizer["Hosting_Create_SafetyMargin", Demand.SafetyMarginPercent.ToString("0.#", CultureInfo.CurrentCulture)]</dt><dd>@FormatBytes(Demand.SafetyMarginBytes)</dd></div>
         <div><dt>@Localizer["Hosting_Create_RecommendedPeak"]</dt><dd>@FormatBytes(Demand.PeakPreparationRequiredBytes)</dd></div>
+        @if (Demand.MinimumExternalCapacityGiB is { } minimumExternalGiB)
+        {
+            <div><dt>@Localizer["Hosting_Storage_RecommendedRawCapacity"]</dt><dd>@minimumExternalGiB.ToString("N0", CultureInfo.CurrentCulture) GiB</dd></div>
+            <div><dt>@Localizer["Hosting_Storage_RecommendedUsableCapacity"]</dt><dd>@FormatOptionalBytes(Demand.RecommendedExternalUsableBytes)</dd></div>
+        }
     </dl>
 
     <p class="storage-demand__status">

@@ -21611,6 +21611,32 @@
             "type": "integer",
             "format": "int64"
           },
+          "minimumExternalCapacityGiB": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the smallest provider-supported raw external allocation that covers peak demand after filesystem overhead.\nThe allocation in GiB, or null when external storage cannot satisfy the demand.",
+                "format": "int64"
+              }
+            ]
+          },
+          "recommendedExternalUsableBytes": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the estimated writable capacity of the recommended external allocation.\nUsable bytes after filesystem headroom, or null when no allocation is available.",
+                "format": "int64"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/EStorageEstimateStatus"
           },

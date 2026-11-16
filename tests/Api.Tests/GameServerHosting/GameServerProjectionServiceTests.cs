@@ -19,6 +19,41 @@ namespace Api.Tests.GameServerHosting;
 
 public sealed class GameServerProjectionServiceTests
 {
+    /// <summary>External recommendations expose the raw allocation and its distinct usable-capacity estimate.</summary>
+    /// <param name="ready">Whether external storage is configured and available.</param>
+    /// <returns>A task completing after the projected capacity recommendation is verified.</returns>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task StorageDemand_ProjectsUsableCapacityRecommendation(bool ready)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var provider = new CapabilityRuntimeProvider(
+            "capacity-cloud",
+            new RuntimeProviderCapabilities(true, true, true, Storage: new RuntimeStorageCapabilities(
+                true, 10, 100, 1, ReadinessFailure: ready ? null : "Storage unavailable.")),
+            [],
+            null);
+        var projection = Projection(store.DbContext, provider);
+
+        var demand = await projection.EstimateStorageDemandAsync(new()
+        {
+            GameIdentifier = "arma3",
+            RuntimeProviderIdentifier = provider.ProviderIdentifier,
+        });
+
+        if (ready)
+        {
+            Assert.Equal(10, demand.MinimumExternalCapacityGiB);
+            Assert.Equal(8 * RuntimeStoragePlanResolver.GiB, demand.RecommendedExternalUsableBytes);
+        }
+        else
+        {
+            Assert.Null(demand.MinimumExternalCapacityGiB);
+            Assert.Null(demand.RecommendedExternalUsableBytes);
+        }
+    }
+
     /// <summary>The real pause state controls whether provider profile discovery is attempted.</summary>
     /// <param name="paused">Whether the operator has suspended hosting operations.</param>
     /// <returns>A task completing after provider discovery and capability projection are verified.</returns>

@@ -8528,6 +8528,8 @@ export interface components {
             safetyMarginBytes?: number;
             /** Format: int64 */
             peakPreparationRequiredBytes?: number;
+            minimumExternalCapacityGiB?: null | number;
+            recommendedExternalUsableBytes?: null | number;
             status?: components["schemas"]["EStorageEstimateStatus"];
             calculatedAt?: components["schemas"]["Instant"];
             measurementTimestamp?: null | components["schemas"]["Instant"];

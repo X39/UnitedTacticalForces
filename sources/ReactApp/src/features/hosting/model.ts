@@ -19,9 +19,8 @@ export function automaticExternalStorageGiB(
   storage: RuntimeStorageCapabilities | null | undefined,
 ): number | undefined {
   if (!demand || !storage || storage.capacityIncrementGiB <= 0) return undefined;
-  const required = Math.ceil(demand.peakPreparationRequiredBytes / bytesPerGiB);
-  const minimum = Math.max(required, storage.minimumCapacityGiB);
-  return Math.ceil(minimum / storage.capacityIncrementGiB) * storage.capacityIncrementGiB;
+  const minimum = demand.minimumExternalCapacityGiB;
+  return minimum != null && Number.isSafeInteger(minimum) ? minimum : undefined;
 }
 
 export function selectedStorageBytes(
@@ -64,7 +63,9 @@ export function isStorageSelectionValid(
     selectedGiB >= storage.minimumCapacityGiB &&
     selectedGiB <= storage.maximumCapacityGiB &&
     selectedGiB % storage.capacityIncrementGiB === 0 &&
-    selectedGiB * bytesPerGiB >= demand.peakPreparationRequiredBytes
+    Number.isSafeInteger(selectedGiB) &&
+    demand.minimumExternalCapacityGiB != null &&
+    selectedGiB >= demand.minimumExternalCapacityGiB
   );
 }
 
