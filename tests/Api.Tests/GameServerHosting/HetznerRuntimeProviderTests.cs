@@ -3,7 +3,11 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.UnitedTacticalForces.Hosting.Contracts;
@@ -873,6 +877,96 @@ public sealed class HetznerRuntimeProviderTests
         Assert.DoesNotContain(TestToken, create.Body, StringComparison.Ordinal);
     }
 
+    /// <summary>Verifies that real bootstrap output binds the attributed device before booting the VM.</summary>
+    [Fact]
+    public async Task Provision_ExternalStorageBindsRenderedMountScriptBeforePowerOn()
+    {
+        var request = CreateExternalProvisionRequest();
+        var handler = CreateExternalProvisionHandler(request, VolumeResponseJson(73, request, 20, 42))
+            .Respond(HttpStatusCode.Created, "{}")
+            .Respond(HttpStatusCode.OK, ServerResponseJson(42, request))
+            .Respond(HttpStatusCode.OK, PrimaryIpResponseJson(91, request, assigneeId: 42))
+            .Respond(HttpStatusCode.OK, FirewallResponseJson(19, request, 42));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal("provisioned", result.Stage);
+        Assert.Contains(result.ProvisionedResources, resource => resource.ResourceIdentifier == "volume:73");
+        var serverCreate = Assert.Single(handler.Requests, q => q.Method == HttpMethod.Post && q.Path == "/v1/servers");
+        using var serverBody = JsonDocument.Parse(serverCreate.Body);
+        Assert.False(serverBody.RootElement.GetProperty("start_after_create").GetBoolean());
+        var userData = Assert.IsType<string>(serverBody.RootElement.GetProperty("user_data").GetString());
+        var originalContent = ExtractStorageScriptContent(request.CloudInit!);
+        var originalScript = Encoding.UTF8.GetString(Convert.FromBase64String(originalContent));
+        var deliveredContent = ExtractStorageScriptContent(userData);
+        var deliveredScript = Encoding.UTF8.GetString(Convert.FromBase64String(deliveredContent));
+        Assert.Contains(
+            $"device='{CloudInitWorkerBootstrapPayloadRenderer.ExternalBlockDeviceToken}'",
+            originalScript,
+            StringComparison.Ordinal);
+        Assert.Equal(
+            originalScript.Replace(
+                CloudInitWorkerBootstrapPayloadRenderer.ExternalBlockDeviceToken,
+                "/dev/disk/by-id/scsi-0HC_Volume_73",
+                StringComparison.Ordinal),
+            deliveredScript);
+        Assert.True(
+            string.Equals(
+                request.CloudInit,
+                userData.Replace(deliveredContent, originalContent, StringComparison.Ordinal),
+                StringComparison.Ordinal),
+            "Binding the device should change only the mount script.");
+        Assert.Equal(
+            [
+                (HttpMethod.Post, "/v1/volumes/73/actions/attach"),
+                (HttpMethod.Get, "/v1/volumes/73"),
+                (HttpMethod.Post, "/v1/servers/42/actions/poweron"),
+            ],
+            handler.Requests
+                .Where(q => q.Path is "/v1/volumes/73/actions/attach"
+                    or "/v1/volumes/73" or "/v1/servers/42/actions/poweron")
+                .Select(q => (q.Method, q.Path))
+                .ToArray());
+    }
+
+    /// <summary>Verifies that a conflicting device identity prevents the server from booting.</summary>
+    [Fact]
+    public async Task Provision_ExternalStorageDoesNotPowerOnWhenAttachedDeviceIdentityDiffers()
+    {
+        var request = CreateExternalProvisionRequest();
+        var attachedVolume = VolumeResponseJson(73, request, 20, 42)
+            .Replace("scsi-0HC_Volume_73", "scsi-0HC_Volume_74", StringComparison.Ordinal);
+        var handler = CreateExternalProvisionHandler(request, attachedVolume);
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.Unknown, result.Outcome);
+        Assert.Equal("volume-attachment-unverified", result.Stage);
+        Assert.DoesNotContain(handler.Requests, q => q.Path == "/v1/servers/42/actions/poweron");
+    }
+
+    /// <summary>Verifies that a malformed mount script is rejected before any provider request.</summary>
+    /// <param name="script">The unbound replacement script, or an invalid Base64 value when null.</param>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("#!/bin/sh\ndevice='/dev/sdb'")]
+    [InlineData("device='__UTF_EXTERNAL_BLOCK_DEVICE__'\n# __UTF_EXTERNAL_BLOCK_DEVICE__")]
+    public async Task Provision_RejectsMalformedExternalStorageBootstrapBeforeProviderRequests(string? script)
+    {
+        var request = CreateExternalProvisionRequest();
+        var content = ExtractStorageScriptContent(request.CloudInit!);
+        var replacement = script is null ? "A" : Convert.ToBase64String(Encoding.UTF8.GetBytes(script));
+        request = request with { CloudInit = request.CloudInit!.Replace(content, replacement, StringComparison.Ordinal) };
+        var handler = new SequencedHttpMessageHandler();
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.Equal(ERuntimeProviderOutcome.PermanentFailure, result.Outcome);
+        Assert.Equal("provision-validation", result.Stage);
+        Assert.Empty(handler.Requests);
+    }
+
     [Fact]
     public async Task Discover_WhenProviderRepeatsPaginationCursor_FailsAfterOnePage()
     {
@@ -1317,17 +1411,97 @@ public sealed class HetznerRuntimeProviderTests
                 new(ERuntimeNetworkProtocol.Udp, 30110, 30112, "Secondary test traffic"),
             ]);
 
+    /// <summary>Creates an external-storage request using the same bootstrap renderer as the lifecycle executor.</summary>
+    /// <returns>A request and its rendered mount script with fixture-specific identities and network requirements.</returns>
     private static RuntimeProvisionRequest CreateExternalProvisionRequest()
-        => CreateProvisionRequest() with
-        {
-            CloudInit = $"#cloud-config\n{CloudInitWorkerBootstrapPayloadRenderer.ExternalBlockDeviceToken}",
-            StoragePlan = new RuntimeStoragePlan(
-                ERuntimeStorageStrategy.AutomaticExternal,
-                18L * RuntimeStoragePlanResolver.GiB,
-                20L * RuntimeStoragePlanResolver.GiB,
-                "/srv/united-tactical-forces/runtime",
-                20m * 0.000061m),
-        };
+    {
+        var request = CreateProvisionRequest() with { GameIdentifier = "arma3" };
+        var storagePlan = new RuntimeStoragePlan(
+            ERuntimeStorageStrategy.AutomaticExternal,
+            18L * RuntimeStoragePlanResolver.GiB,
+            20L * RuntimeStoragePlanResolver.GiB,
+            "/srv/united-tactical-forces/runtime",
+            20m * 0.000061m);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["General:ApiBaseUrl"] = "https://control-plane.example/api/",
+                ["Steam:Username"] = "utf_steam_test",
+                ["Steam:Password"] = "synthetic-steam-password",
+            })
+            .Build();
+        var options = Options.Create(new WorkerProvisioningOptions { ContainerImage = "utf-cloud-worker:development" });
+        var renderer = new CloudInitWorkerBootstrapPayloadRenderer(
+            configuration,
+            new BootstrapHostEnvironment(),
+            options,
+            new AdministrativeSshAccess(options));
+        var bootstrap = new WorkerBootstrapConfiguration(
+            request.WorkerId,
+            request.DeploymentId,
+            "synthetic-bootstrap-credential",
+            DateTimeOffset.UtcNow.AddMinutes(30),
+            $"/lifecycle-workers/{request.WorkerId:D}/register",
+            request.ServiceIdentifier,
+            request.ServiceOrdinal);
+        var payload = renderer.Render(
+            bootstrap,
+            request.ServerId,
+            request.GameIdentifier,
+            request.InboundNetworkRequirements!,
+            storagePlan);
+        return request with { CloudInit = payload.CloudInit, StoragePlan = storagePlan };
+    }
+
+    /// <summary>Creates the response sequence through attached-volume verification.</summary>
+    /// <param name="request">The provisioning request used for expected resource attribution.</param>
+    /// <param name="attachedVolume">The response body returned after the attach action.</param>
+    /// <returns>The handler with responses queued through volume verification.</returns>
+    private static SequencedHttpMessageHandler CreateExternalProvisionHandler(
+        RuntimeProvisionRequest request,
+        string attachedVolume)
+        => new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.OK, VolumeListJson())
+            .Respond(HttpStatusCode.Created, VolumeResponseJson(73, request, 20, null))
+            .Respond(HttpStatusCode.Created, FirewallResponseJson(19, request))
+            .Respond(HttpStatusCode.Created, PrimaryIpResponseJson(91, request))
+            .Respond(HttpStatusCode.Created, ServerResponseJson(42, request, status: "off"))
+            .Respond(HttpStatusCode.Created, "{}")
+            .Respond(HttpStatusCode.OK, attachedVolume);
+
+    /// <summary>Reads the inline Base64 content from the mount script's cloud-init write-files entry.</summary>
+    /// <param name="cloudInit">The rendered cloud-config document.</param>
+    /// <returns>The Base64 content cloud-init will decode into the mount script.</returns>
+    private static string ExtractStorageScriptContent(string cloudInit)
+    {
+        var entry = cloudInit.Split('\n')
+            .Select(q => q.Trim())
+            .SkipWhile(q => q != "- path: /usr/local/sbin/utf-prepare-runtime-storage")
+            .Skip(1)
+            .TakeWhile(q => !q.StartsWith("- path:", StringComparison.Ordinal))
+            .ToArray();
+        Assert.Contains("encoding: b64", entry);
+        return Assert.Single(entry, q => q.StartsWith("content: ", StringComparison.Ordinal))["content: ".Length..];
+    }
+
+    /// <summary>Provides the development environment used by the bootstrap renderer fixture.</summary>
+    private sealed class BootstrapHostEnvironment : IHostEnvironment
+    {
+        /// <inheritdoc />
+        public string EnvironmentName { get; set; } = Environments.Development;
+
+        /// <inheritdoc />
+        public string ApplicationName { get; set; } = "Api.Tests";
+
+        /// <inheritdoc />
+        public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
+
+        /// <inheritdoc />
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
 
     private static HetznerRuntimeProvider CreateProvider(
         SequencedHttpMessageHandler handler,

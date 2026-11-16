@@ -5,6 +5,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.Api.Services.HostingRuntime;
@@ -148,6 +149,13 @@ public sealed class HetznerRuntimeProvider(
             request.ServerId,
             request.DeploymentId);
         var validationFailure = ValidateProvisionRequest(request);
+        ExternalStorageBootstrapBinding? storageBinding = null;
+        if (validationFailure is null
+            && request.StoragePlan?.UsesExternalStorage == true
+            && !ExternalStorageBootstrapBinding.TryRead(request.CloudInit!, out storageBinding))
+        {
+            validationFailure = "External-storage bootstrap does not contain a valid device binding.";
+        }
         if (validationFailure is not null)
         {
             var validationResult = new RuntimeProvisionResult(
@@ -169,7 +177,8 @@ public sealed class HetznerRuntimeProvider(
         {
             try
             {
-                var result = await ProvisionCoreAsync(request, cancellationToken).ConfigureAwait(false);
+                var result = await ProvisionCoreAsync(request, storageBinding, cancellationToken)
+                    .ConfigureAwait(false);
                 if (!result.Succeeded)
                 {
                     logger.LogWarning(
@@ -212,8 +221,14 @@ public sealed class HetznerRuntimeProvider(
         }
     }
 
+    /// <summary>Discovers or provisions the attributed resources for a validated deployment intent.</summary>
+    /// <param name="request">The deployment intent and requested runtime configuration.</param>
+    /// <param name="storageBinding">The validated bootstrap binding for an external Volume, when requested.</param>
+    /// <param name="cancellationToken">Cancels provider operations.</param>
+    /// <returns>The provisioning outcome and any attributed resources.</returns>
     private async Task<RuntimeProvisionResult> ProvisionCoreAsync(
         RuntimeProvisionRequest request,
+        ExternalStorageBootstrapBinding? storageBinding,
         CancellationToken cancellationToken)
     {
         var intent = await FindIntentResourcesAsync(request, cancellationToken).ConfigureAwait(false);
@@ -319,15 +334,20 @@ public sealed class HetznerRuntimeProvider(
                 "The provisioning intent has an external Volume but the resolved storage plan uses included disk.",
                 intent);
         }
-        if (volume is not null && VerifyVolumeConfiguration(volume, request) is not EProviderConfigurationVerification.Verified)
+        if (volume is not null
+            && (volume.Id <= 0
+                || VerifyVolumeConfiguration(volume, request) is not EProviderConfigurationVerification.Verified))
         {
             return ProvisionFailure(
                 ERuntimeProviderOutcome.PermanentFailure,
                 "volume-configuration-mismatch",
-                "The attributed Volume does not match the requested location, size, or protection state.",
+                "The attributed Volume does not match the required identity, location, size, or protection state.",
                 intent with { Volume = volume });
         }
         intent = intent with { Volume = volume };
+        var volumeDevicePath = volume is null
+            ? null
+            : $"/dev/disk/by-id/scsi-0HC_Volume_{volume.Id.ToString(CultureInfo.InvariantCulture)}";
         var firewall = intent.Firewall;
         if (firewall is null)
         {
@@ -516,14 +536,9 @@ public sealed class HetznerRuntimeProvider(
         {
             var options = optionsProvider.Value;
             var labels = BuildLabels(request, ServerResourceType);
-            var cloudInit = request.CloudInit!;
-            if (volume is not null)
-            {
-                cloudInit = cloudInit.Replace(
-                    WorkerProtocol.CloudInitWorkerBootstrapPayloadRenderer.ExternalBlockDeviceToken,
-                    $"/dev/disk/by-id/scsi-0HC_Volume_{volume.Id}",
-                    StringComparison.Ordinal);
-            }
+            var cloudInit = volumeDevicePath is null
+                ? request.CloudInit!
+                : storageBinding!.Bind(request.CloudInit!, volumeDevicePath);
             var guardedResult = await provisioningMutationGuard.ExecuteCreateAsync(
                     request.ServerId,
                     request.DeploymentId,
@@ -657,10 +672,20 @@ public sealed class HetznerRuntimeProvider(
                     verifiedVolume.Error,
                     intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server, Volume = volume });
             }
-            volume = verifiedVolume.Value;
+            var attachedVolume = verifiedVolume.Value;
+            if (attachedVolume.Id != volume.Id
+                || !HasExpectedAttribution(attachedVolume.Labels, request, VolumeResourceType))
+            {
+                return ProvisionFailure(
+                    ERuntimeProviderOutcome.PermanentFailure,
+                    "volume-attachment-unverified",
+                    "The Volume attachment readback did not match the attributed Volume.",
+                    intent with { Firewall = firewall, PrimaryIp = primaryIp, Server = server, Volume = volume });
+            }
+            volume = attachedVolume;
             if (VerifyVolumeConfiguration(volume, request) is not EProviderConfigurationVerification.Verified
                 || volume.ServerId != server.Id
-                || string.IsNullOrWhiteSpace(volume.LinuxDevice))
+                || !string.Equals(volume.LinuxDevice, volumeDevicePath, StringComparison.Ordinal))
             {
                 return ProvisionFailure(
                     volume.ServerId.HasValue && volume.ServerId != server.Id
@@ -1485,6 +1510,9 @@ public sealed class HetznerRuntimeProvider(
             result.Value);
     }
 
+    /// <summary>Checks the provider configuration and required deployment inputs.</summary>
+    /// <param name="request">The requested deployment intent and runtime configuration.</param>
+    /// <returns>A validation failure message, or null when the required inputs are valid.</returns>
     private string? ValidateProvisionRequest(RuntimeProvisionRequest request)
     {
         var configurationFailure = optionsProvider.Value.ValidateProvisioning();
@@ -1510,14 +1538,6 @@ public sealed class HetznerRuntimeProvider(
         var networkFailure = RuntimeInboundNetworkPlanValidator.Validate(request.InboundNetworkRequirements);
         if (networkFailure is not null)
             return networkFailure;
-        if (request.StoragePlan?.UsesExternalStorage == true
-            && !request.CloudInit.Contains(
-                X39.UnitedTacticalForces.Api.Services.WorkerProtocol.CloudInitWorkerBootstrapPayloadRenderer
-                    .ExternalBlockDeviceToken,
-                StringComparison.Ordinal))
-        {
-            return "External-storage bootstrap is missing its provider device placeholder.";
-        }
         return null;
     }
 

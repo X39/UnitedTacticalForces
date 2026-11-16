@@ -23,6 +23,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
     AdministrativeSshAccess administrativeSshAccess,
     IGameServerDefinitionCatalog? gameDefinitions = null) : IWorkerBootstrapPayloadRenderer
 {
+    /// <summary>Marks the device assignment awaiting the runtime provider's attributed volume ID.</summary>
     internal const string ExternalBlockDeviceToken = "__UTF_EXTERNAL_BLOCK_DEVICE__";
     private const int RuntimeGroupId = 10001;
     private const string SteamPasswordPath = "/etc/united-tactical-forces/steam-password";
@@ -134,7 +135,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
                             permissions: '0644'
                             encoding: b64
                             content: {Base64(service)}
-                          - path: /usr/local/sbin/utf-prepare-runtime-storage
+                          - path: {ExternalStorageBootstrapBinding.ScriptPath}
                             owner: root:root
                             permissions: '0700'
                             encoding: b64
@@ -219,7 +220,7 @@ public sealed class CloudInitWorkerBootstrapPayloadRenderer(
 
            [Service]
            Type=oneshot
-           ExecStart=/usr/local/sbin/utf-prepare-runtime-storage
+           ExecStart={ExternalStorageBootstrapBinding.ScriptPath}
            RemainAfterExit=yes
 
            [Install]
