@@ -43,6 +43,14 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
     private readonly string _steamHomeDirectory;
     private readonly WorkerContentAcquisitionService _contentAcquisition;
 
+    /// <summary>Supplies deterministic filesystem observations when validating worker capacity in tests.</summary>
+    /// <value>An optional observer; production executions measure the deployment filesystem directly.</value>
+    internal Func<(long? TotalBytes, long? AvailableBytes, long? ControlledBytes)>? StorageObservationOverride
+    {
+        get;
+        init;
+    }
+
     public Arma3WorkerCommandExecutor(
         CloudWorkerConnectionConfig connection,
         CloudWorkerOptions options,
@@ -1168,6 +1176,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
 
     private (long? TotalBytes, long? AvailableBytes, long? ControlledBytes) ObserveDeploymentStorage()
     {
+        if (StorageObservationOverride is { } observe)
+            return observe();
         try
         {
             var storagePath = Path.GetFullPath(_paths.DeploymentRoot);

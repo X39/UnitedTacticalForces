@@ -24,6 +24,88 @@ namespace Api.Tests.GameServerHosting;
 
 public sealed class LifecycleJobExecutorCloudTests
 {
+    /// <summary>Rejects a frozen raw allocation that cannot meet peak demand after formatting.</summary>
+    /// <param name="hasSnapshot">Whether the old allocation already has a placement snapshot.</param>
+    /// <returns>A task that completes after checking rejection before financial or provider mutations.</returns>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Start_RejectsInsufficientFrozenExternalCapacityBeforeMutation(bool hasSnapshot)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var deployment = seed.Deployment!;
+        deployment.RuntimeStorageStrategy = ERuntimeStorageStrategy.AutomaticExternal;
+        deployment.SelectedExternalStorageBytes = 10 * RuntimeStoragePlanResolver.GiB;
+        deployment.PeakStorageRequiredBytes = 10 * RuntimeStoragePlanResolver.GiB;
+        var catalog = new TestGameServerDefinitionCatalog();
+        if (hasSnapshot)
+        {
+            var storage = new RuntimeStoragePlan(
+                ERuntimeStorageStrategy.AutomaticExternal,
+                deployment.PeakStorageRequiredBytes.Value,
+                deployment.SelectedExternalStorageBytes.Value,
+                "/srv/united-tactical-forces/runtime",
+                0.20m);
+            deployment.PlacementSnapshot = WorkloadPlacementResolver.Resolve(
+                catalog.GetDefinitions().Single(), null,
+                new RuntimeProfile("default", "Default", "Accepted profile", DiskGiB: 80,
+                    EstimatedHourlyCostEur: 0.1m), storage).Serialize();
+        }
+        await store.DbContext.SaveChangesAsync();
+        var provider = new ExecutorTestProvider { SupportsExternalStorage = true };
+        var costs = new RecordingCostSliceService();
+
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(
+            () => CreateExecutor(store, provider, costs, catalog).ExecuteAsync(job));
+
+        Assert.Equal(0, provider.ProvisionCalls);
+        Assert.Equal(0, costs.ReserveCalls);
+        Assert.Equal(10 * RuntimeStoragePlanResolver.GiB, deployment.SelectedExternalStorageBytes);
+        Assert.False(deployment.PossibleCost);
+        Assert.NotNull(deployment.TimeStampResolved);
+    }
+
+    /// <summary>Preserves the persisted capacity evidence and quote when a fresh executor resumes a Start.</summary>
+    /// <returns>A task that completes after inspecting the provider request and unchanged snapshot.</returns>
+    [Fact]
+    public async Task Start_UsesFrozenExternalCapacityAndPriceAfterRestart()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var catalog = new TestGameServerDefinitionCatalog();
+        var profile = new RuntimeProfile("default", "Default", "Accepted profile", DiskGiB: 80,
+            EstimatedHourlyCostEur: 0.1m);
+        var storage = RuntimeStoragePlanResolver.Resolve(
+            ERuntimeStorageStrategy.AutomaticExternal, null, 10 * RuntimeStoragePlanResolver.GiB,
+            5 * RuntimeStoragePlanResolver.GiB, profile, new RuntimeStorageCapabilities(true, 10, 100, 1, 0.02m));
+        var placement = WorkloadPlacementResolver.Resolve(catalog.GetDefinitions().Single(), null, profile, storage);
+        var snapshot = placement.Serialize();
+        var deployment = seed.Deployment!;
+        deployment.PlacementSnapshot = snapshot;
+        deployment.RuntimeStorageStrategy = storage.Strategy;
+        deployment.SelectedExternalStorageBytes = storage.SelectedCapacityBytes;
+        deployment.PeakStorageRequiredBytes = storage.RequiredCapacityBytes;
+        deployment.EstimatedHourlyCostEur = placement.EstimatedHourlyCostEur;
+        await store.DbContext.SaveChangesAsync();
+        store.DbContext.ChangeTracker.Clear();
+        var reloadedJob = await store.DbContext.LifecycleJobs.SingleAsync(q => q.PrimaryKey == job.PrimaryKey);
+        var provider = new ExecutorTestProvider { SupportsExternalStorage = true };
+        var costs = new RecordingCostSliceService();
+
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(
+            () => CreateExecutor(store, provider, costs, catalog).ExecuteAsync(reloadedJob));
+
+        var request = Assert.IsType<RuntimeProvisionRequest>(provider.LastProvisionRequest);
+        Assert.Equal(storage, request.StoragePlan);
+        Assert.NotNull(request.StoragePlan.CapacityPolicyVersion);
+        Assert.True(request.StoragePlan.EstimatedUsableCapacityBytes >= storage.RequiredCapacityBytes);
+        Assert.Equal(1, costs.ReserveCalls);
+        var persisted = await store.DbContext.GameServerDeployments.SingleAsync(q => q.PrimaryKey == deployment.PrimaryKey);
+        Assert.Equal(snapshot, persisted.PlacementSnapshot);
+        Assert.Equal(placement.EstimatedHourlyCostEur, persisted.EstimatedHourlyCostEur);
+    }
+
     [Fact]
     public async Task WaitForCommand_WhenWorkerProtocolAdvancesDeployment_DoesNotWriteStalePollingState()
     {
@@ -1672,14 +1754,28 @@ public sealed class LifecycleJobExecutorCloudTests
 
         public string ProviderIdentifier => Identifier;
 
-        public RuntimeProviderCapabilities Capabilities { get; } = new(
+        /// <summary>Gets whether this fixture exposes block storage and a known root disk capacity.</summary>
+        /// <value>Whether external-storage allocation validation can run against this provider.</value>
+        public bool SupportsExternalStorage { get; init; }
+
+        /// <inheritdoc />
+        public Task<IReadOnlyCollection<RuntimeProfile>> GetProfilesAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyCollection<RuntimeProfile>>(
+            [
+                new RuntimeProfile("default", "Default", "Current provider profile",
+                    DiskGiB: SupportsExternalStorage ? 80 : null, EstimatedHourlyCostEur: 0.10m),
+            ]);
+
+        /// <inheritdoc />
+        public RuntimeProviderCapabilities Capabilities => new(
             SupportsStableProvisioningIntent: true,
             SupportsProviderWideDiscovery: true,
             SupportsVerifiedRelease: true,
             SupportsPlatformManagedDanglingRelease: true,
             IsReady: true,
             EstimatedHourlyCostEur: 0.10m,
-            RequiredProvisionedResourceTypes: ["server", "primary-ip", "firewall"]);
+            RequiredProvisionedResourceTypes: ["server", "primary-ip", "firewall"],
+            Storage: SupportsExternalStorage ? new RuntimeStorageCapabilities(true, 10, 100, 1, 0.05m) : null);
 
         public bool ReturnPartialFirewallOnUnknown { get; init; }
 

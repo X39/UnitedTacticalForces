@@ -277,6 +277,59 @@ public sealed class WorkerProtocolServiceTests
         Assert.Contains("external storage", protocol.Command.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Compares usable mounted bytes with the persisted peak before delivering preparation.</summary>
+    /// <param name="availableBytes">The free bytes reported by the deployment filesystem.</param>
+    /// <param name="expectedFailure">The expected rejection code, or null when capacity suffices.</param>
+    /// <returns>The asynchronous verification.</returns>
+    [Theory]
+    [InlineData(5_999L, "storage-capacity-insufficient")]
+    [InlineData(6_000L, null)]
+    [InlineData(6_001L, null)]
+    [InlineData(null, "storage-capacity-unavailable")]
+    public async Task ClaimCommand_MountedUsableCapacityHonorsPeakBoundary(
+        long? availableBytes,
+        string? expectedFailure)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Command.Payload = JsonSerializer.Serialize(new WorkerCommandPayload
+        {
+            GameIdentifier = "arma3",
+            PeakStorageRequiredBytes = 8_000,
+        });
+        await store.DbContext.SaveChangesAsync();
+        if (availableBytes.HasValue)
+        {
+            await protocol.Service.HeartbeatAsync(
+                protocol.Worker.PrimaryKey,
+                new WorkerHeartbeatRequest
+                {
+                    DeploymentId = protocol.Deployment.PrimaryKey,
+                    DeploymentStorageTotalBytes = 10_000,
+                    DeploymentStorageAvailableBytes = availableBytes,
+                    ControlledDeploymentBytes = 2_000,
+                },
+                protocol.WorkerCredential);
+        }
+
+        var claimed = await protocol.Service.ClaimCommandAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerCommandClaimRequest { DeploymentId = protocol.Deployment.PrimaryKey },
+            protocol.WorkerCredential);
+
+        if (expectedFailure is null)
+        {
+            Assert.NotNull(claimed);
+            Assert.Null(protocol.Command.ErrorCode);
+        }
+        else
+        {
+            Assert.Null(claimed);
+            Assert.Equal(EWorkerCommandStatus.Failed, protocol.Command.Status);
+            Assert.Equal(expectedFailure, protocol.Command.ErrorCode);
+        }
+    }
+
     [Fact]
     public async Task SuccessfulPreparationMeasurements_PersistAndReplayIdempotently()
     {

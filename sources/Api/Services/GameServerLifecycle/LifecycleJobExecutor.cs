@@ -869,9 +869,20 @@ internal sealed class LifecycleJobExecutor(
                     server.GameIdentifier, server.SelectedModPackDefinitionFk, server.PrimaryKey, true, cancellationToken)
                 .ConfigureAwait(false);
             systemReserveBytes = demand.ProfileSystemReserveBytes;
+            // A historical automatic selection is already an accepted allocation. Validate it as fixed rather
+            // than silently increasing its size and cost when filesystem headroom is introduced.
+            var hasAcceptedExternalAllocation = storage.UsesExternalStorage
+                                                && deployment.SelectedExternalStorageBytes.HasValue;
+            if (hasAcceptedExternalAllocation
+                && deployment.SelectedExternalStorageBytes % RuntimeStoragePlanResolver.GiB != 0)
+            {
+                throw new InvalidOperationException("The legacy external-storage allocation is not a whole GiB.");
+            }
             var fixedCapacityGiB = deployment.SelectedExternalStorageBytes / RuntimeStoragePlanResolver.GiB;
             storage = RuntimeStoragePlanResolver.Resolve(
-                deployment.RuntimeStorageStrategy,
+                hasAcceptedExternalAllocation
+                    ? ERuntimeStorageStrategy.FixedExternal
+                    : deployment.RuntimeStorageStrategy,
                 fixedCapacityGiB,
                 deployment.PeakStorageRequiredBytes ?? demand.PeakPreparationRequiredBytes,
                 systemReserveBytes,

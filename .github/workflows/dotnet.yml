@@ -76,6 +76,8 @@ jobs:
           cmp --silent sources/ReactApp/openapi/utf-api.json "$RUNNER_TEMP/utf-api.json"
       - name: Test
         run: dotnet test X39.UnitedTacticalForces.slnx --no-build --verbosity normal
+      - name: Verify formatted external storage capacity
+        run: sudo unshare --mount --propagation private python3 tests/Api.Tests/GameServerHosting/verify_ext4_capacity.py
       - name: Publish Backend
         run: dotnet publish sources/Api/Api.csproj -c Release --no-restore
       - name: Upload backend artifact

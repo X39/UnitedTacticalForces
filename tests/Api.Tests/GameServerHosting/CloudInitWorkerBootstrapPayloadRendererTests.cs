@@ -288,6 +288,31 @@ public sealed class CloudInitWorkerBootstrapPayloadRendererTests
         Assert.Equal(["203.0.113.10/32", "2001:db8::/64"], requirement.SourceCidrs);
     }
 
+    /// <summary>Retains distinct raw-allocation and usable-demand thresholds around formatting.</summary>
+    [Fact]
+    public void ExternalStorage_SeparatesRawAllocationFromUsablePreparationPeak()
+    {
+        var renderer = CreateRenderer(Environments.Development, "utf-cloud-worker:development");
+        var plan = new RuntimeStoragePlan(
+            ERuntimeStorageStrategy.AutomaticExternal,
+            10L * RuntimeStoragePlanResolver.GiB,
+            13L * RuntimeStoragePlanResolver.GiB,
+            "/srv/utf/deployment",
+            0.013m);
+
+        var payload = renderer.Render(Bootstrap(), Guid.NewGuid(), "arma3", NetworkPlan(), plan);
+        var script = DecodeWrittenFiles(payload.CloudInit)
+            .Single(value => value.Contains("mkfs.ext4", StringComparison.Ordinal));
+
+        Assert.Contains("test \"$actual_bytes\" -ge '13958643712'", script, StringComparison.Ordinal);
+        Assert.Contains("test \"$available\" -ge '10737418240'", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("test \"$available\" -ge '13958643712'", script, StringComparison.Ordinal);
+        Assert.True(script.IndexOf("blockdev --getsize64", StringComparison.Ordinal)
+                    < script.IndexOf("mkfs.ext4", StringComparison.Ordinal));
+        Assert.True(script.IndexOf("mounted_source", StringComparison.Ordinal)
+                    < script.IndexOf("available=", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void ExternalStorage_FormatsOnlyUninitializedDeviceAndFailsClosedBeforeWorkerStarts()
     {

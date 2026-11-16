@@ -6,6 +6,7 @@ using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.GameServerImplementations;
 using X39.UnitedTacticalForces.Hosting.Contracts;
@@ -16,6 +17,28 @@ namespace Api.Tests.GameServerHosting;
 /// <summary>Verifies that Start persists workload placement and quotes its actual host allocations.</summary>
 public sealed class WorkloadPlacementEnqueueTests
 {
+    /// <summary>Rejects a fixed raw allocation when only its unformatted size can cover peak installation demand.</summary>
+    /// <returns>A task that completes after checking that no deployment, job, or cost ledger entry was created.</returns>
+    [Fact]
+    public async Task Start_RejectsFixedRawCapacityBeforeCreatingDeployment()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        seed.Server.GameIdentifier = Arma3ConfigurationImplementation.Identifier;
+        seed.Server.RuntimeStorageStrategy = ERuntimeStorageStrategy.FixedExternal;
+        seed.Server.ExternalStorageSizeGiB = 10;
+        await store.DbContext.SaveChangesAsync();
+        var service = CreateArmaService(store, false, 10 * RuntimeStoragePlanResolver.GiB);
+
+        await Assert.ThrowsAsync<HostingConflictException>(() => service.EnqueueActionAsync(
+            seed.Server.PrimaryKey, GameServerActions.Start, null,
+            HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.Operate)));
+
+        Assert.Empty(await store.DbContext.GameServerDeployments.ToArrayAsync());
+        Assert.Empty(await store.DbContext.LifecycleJobs.ToArrayAsync());
+        Assert.Empty(await store.DbContext.HostingCostLedgerEntries.ToArrayAsync());
+    }
+
     /// <summary>Verifies that placement determines the estimate and stays fixed after the setting changes.</summary>
     /// <param name="sameHost">Whether to opt in to sharing the primary host.</param>
     /// <param name="externalStorage">Whether each allocated host receives an external volume.</param>
@@ -123,8 +146,12 @@ public sealed class WorkloadPlacementEnqueueTests
     /// <summary>Creates the enqueue service with known profile and volume rates.</summary>
     /// <param name="store">The store supplying lifecycle state.</param>
     /// <param name="fallbackRate">Whether the compute profile omits its hourly rate.</param>
+    /// <param name="peakDemandBytes">Peak installation demand used to exercise preflight sizing.</param>
     /// <returns>The lifecycle service using Arma's actual placement definition.</returns>
-    private static GameServerLifecycleService CreateArmaService(HostingTestStore store, bool fallbackRate)
+    private static GameServerLifecycleService CreateArmaService(
+        HostingTestStore store,
+        bool fallbackRate,
+        long peakDemandBytes = 0)
         => new(
             store.DbContext,
             new GameServerDefinitionCatalog([new Arma3GameServerDefinitionRegistration()]),
@@ -148,7 +175,7 @@ public sealed class WorkloadPlacementEnqueueTests
                         Storage: new RuntimeStorageCapabilities(true, 10, 100, 1, 0.02m)),
                 },
             ],
-            new TestStorageDemandService(),
+            new PeakStorageDemandService(peakDemandBytes),
             new HostingAuthorizationService(store.DbContext),
             new HostingAuditWriter(),
             new TestGameServerSecretService(),
@@ -157,6 +184,25 @@ public sealed class WorkloadPlacementEnqueueTests
             {
                 EstimatedHourlyCostEur = new Dictionary<string, decimal> { [TestRuntimeProvider.Identifier] = 0.30m },
             }));
+
+    /// <summary>Supplies a known installation peak without network metadata dependencies.</summary>
+    /// <param name="peakDemandBytes">Peak bytes required by the deployment.</param>
+    private sealed class PeakStorageDemandService(long peakDemandBytes) : IStorageDemandService
+    {
+        /// <inheritdoc />
+        public Task<StorageDemandResult> EstimateAsync(
+            string gameIdentifier,
+            long? modPackDefinitionId,
+            Guid? gameServerId,
+            bool refreshMetadata,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new StorageDemandResult
+            {
+                PeakPreparationRequiredBytes = peakDemandBytes,
+                Status = EStorageEstimateStatus.Estimated,
+                CalculatedAt = NodaSystemClock.Instance.GetCurrentInstant(),
+            });
+    }
 
     /// <summary>Tracks a persisted server override for the placement setting.</summary>
     /// <param name="store">The store tracking changes for the test.</param>

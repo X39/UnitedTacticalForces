@@ -9,6 +9,64 @@ namespace CloudWorker.Tests;
 
 public class Arma3WorkerCommandExecutorTests
 {
+    /// <summary>Checks measured capacity immediately before SteamCMD, independently of control-plane approval.</summary>
+    /// <param name="availableBytes">The actual free bytes observed after formatting and mounting.</param>
+    /// <param name="expectedFailure">The expected rejection code, or null for sufficient capacity.</param>
+    /// <returns>The asynchronous verification.</returns>
+    [Theory]
+    [InlineData(5_999L, "storage-capacity-insufficient")]
+    [InlineData(6_000L, null)]
+    [InlineData(6_001L, null)]
+    [InlineData(null, "storage-capacity-unavailable")]
+    public async Task Start_MountedUsableCapacityHonorsPeakBoundary(
+        long? availableBytes,
+        string? expectedFailure)
+    {
+        using var directory = new TemporaryDirectory();
+        var bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap();
+        var steamCmdPath = System.IO.Path.Combine(directory.Path, "steamcmd.sh");
+        await File.WriteAllTextAsync(steamCmdPath, "test executable placeholder");
+        var options = new CloudWorkerOptions(
+            System.IO.Path.Combine(directory.Path, "bootstrap.json"),
+            System.IO.Path.Combine(directory.Path, "state"),
+            System.IO.Path.Combine(directory.Path, "runtime"),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(15),
+            true,
+            false,
+            new Arma3WorkerOptions(steamCmdPath, "anonymous", null, null, "arma3server_x64", TimeSpan.FromSeconds(30))
+            {
+                TemporaryDirectory = System.IO.Path.Combine(directory.Path, "tmp"),
+            });
+        var paths = new Arma3RuntimePaths(
+            options.RuntimeRoot, options.StateDirectory, bootstrap.DeploymentId, options.Arma3.ExecutableName);
+        var runner = new PreparingCommandRunner(paths.ExecutablePath);
+        var process = new RecordingProcessController(paths.ExecutablePath, paths.ServerConfigurationPath);
+        var executor = new Arma3WorkerCommandExecutor(
+            bootstrap.ToConnectionConfig(),
+            options,
+            commandRunner: runner,
+            processController: process,
+            storageTransfer: new RecordingStorageTransfer(paths.ServerConfigurationPath))
+        {
+            StorageObservationOverride = () => availableBytes.HasValue
+                ? (10_000L, availableBytes, 2_000L)
+                : (null, null, null),
+        };
+        var command = FlatFileWorkerCommandJournalTests.CreateCommand(
+            bootstrap.WorkerId, bootstrap.DeploymentId, bootstrap.ServerId);
+        var payload = JsonNode.Parse(command.Payload)!.AsObject();
+        payload["peakStorageRequiredBytes"] = 8_000L;
+        command = command with { Payload = payload.ToJsonString() };
+
+        var result = await executor.ExecuteAsync(command, CancellationToken.None);
+
+        Assert.Equal(expectedFailure is null, result.Succeeded);
+        Assert.Equal(expectedFailure, result.ErrorCode);
+        Assert.Equal(expectedFailure is null ? 1 : 0, runner.RunCount);
+        Assert.Equal(expectedFailure is null ? 1 : 0, process.StartCount);
+    }
+
     [Fact]
     public async Task Start_OnFreshRuntime_PreparesWithSteamCmdBeforeLaunching()
     {
