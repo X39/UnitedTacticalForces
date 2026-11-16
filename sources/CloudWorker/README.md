@@ -18,11 +18,59 @@ requires an explicit Restart. A new authorized Restart applies its new endpoints
 Redelivery never substitutes current provider addresses into an already delivered command. Configuration is not
 rewritten beneath a running process and presented as if the engine had reloaded it.
 
-Process outcomes do not prove that an HC has joined or occupied a mission slot. Runtime join detection and live-engine
-connectivity evidence are not acceptance gates for this ticket. A later manual run should verify separate-host and
-same-host connectivity, password/mod compatibility, mission HC slot occupation, restoration with stale addresses,
-and reconnection after an authorized restart. If that run exposes a connectivity problem, add an Arma-specific probe
-based on verified engine evidence without introducing Arma fields into generic workload contracts.
+## Engine-confirmed Headless Client readiness
+
+When a primary has an HC in its frozen workload plan, preparation automatically packages the embedded
+`Arma3JoinAddonAssets` into `server-instance/@utf_hc_join/addons/utf_hc_join.pbo` and supplies it through `-serverMod`.
+This server-only addon requires Arma 3 2.06 or later. It does not change the user's modpack, disable signature checks,
+require a client addon, or transfer AI. The selected mission must still support a playable HC slot and AI delegation.
+
+The addon initializes through `CfgFunctions`, observes user connection/state/disconnection events, and reconciles
+`allUsers` every two seconds. Readiness requires exactly one engine-classified HC named `UTFHC1`, network owner above
+two, and client state exactly ten (ready to play). Ordinary players, login/lobby states, duplicate matches and
+debriefing do not satisfy the check. Mission initialization/end invalidates old evidence. The sequence is retained
+across missions in `uiNamespace` and incremented without scheduled-script interruption.
+
+Each primary preparation creates a new random, non-secret launch marker. Bounded `diag_log` records carry this marker,
+sequence, owner and readiness. Linux stdout/stderr are appended to the workload's `arma3-runtime.log` through inherited
+file descriptors, opened after privilege dropping; capture survives worker restarts. Windows reads bounded RPT tails
+under the controlled profile directory. Complete records with no timestamp, short timestamps, or full date/time
+timestamps are recognized. Truncated lines, prior launch markers and replayed sequences cannot establish freshness.
+Diagnostic collection continues to redact sensitive content through the existing log collection path.
+The native output file remains deployment-local and append-only; bounded reads do not rotate or cap its disk usage.
+
+Primary Start deliberately completes after process launch so the control plane can start a separate HC. Only after
+all workload launch commands finish does the API send the durable `verify-readiness` command to the primary worker.
+This order applies to both placements, Restart and running maintenance. Stopped maintenance does not require a join.
+The optional readiness action is generic game-definition metadata; all parsing, instrumentation and HC semantics stay
+in the Arma worker. No shared worker contract or provider-specific path was added.
+
+Verification requires a new positive record after the verification baseline and the same observed primary process
+incarnation throughout the wait. The default deadline is 180 seconds, configurable with
+`UTF_ARMA3_HC_JOIN_TIMEOUT_SECONDS` (positive integer, capped at 900). Failure uses normal lifecycle fault teardown.
+Restart must reinstall instrumentation before an older, uninstrumented process can be verified.
+
+Successful verification persists its primary PID and creation time outside preserved game files. Heartbeats then
+require advancing positive evidence within `UTF_ARMA3_HC_EVIDENCE_GRACE_SECONDS` (default 30, capped at 300).
+Worker reconstruction starts one bounded grace period and requires a new sequence to renew it. Expiry reports the
+primary workload as `Failed` while retaining its real PID; existing required-workload health reconciliation performs
+cost-stop and diagnostic collection. New launch preparation disarms the old observation before a replacement process
+starts. Brief mission transitions have the same grace; longer transitions may intentionally fail readiness.
+
+This is trusted game-runtime telemetry, not authentication against hostile mission/addon code, which shares the SQF
+and diagnostic environment. The marker is not a credential. No native extension, inbound port, remote execution
+permission or API/worker secret is exposed to the addon. Join detection does not prove AI ownership or workload offload.
+
+Automated tests cover packaging, parser bounds, fresh/stale evidence, process incarnation changes, cancellation,
+recovery and lifecycle failure cleanup. Actual addon execution, native Linux capture and both placements still require
+the separately authorized live acceptance run; unit tests do not claim engine validation.
+
+Implementation references: [Functions library](https://community.bistudio.com/wiki/CfgFunctions),
+[getUserInfo](https://community.bistudio.com/wiki/getUserInfo),
+[client states](https://community.bistudio.com/wiki/getClientState),
+[mission handlers](https://community.bistudio.com/wiki/Arma_3:_Mission_Event_Handlers),
+[Linux RPT output](https://community.bistudio.com/wiki/arma.RPT), and
+[PBO format](https://community.bistudio.com/wiki/PBO).
 
 ## Colocated process supervision
 
@@ -34,7 +82,7 @@ for a missing companion on a multi-workload host. Historical single-workload wor
 The worker prepares one shared installation with the union of selected content while both processes are stopped, then
 publishes its completed preparation phase atomically. Each launch uses role-filtered mod arguments, independent process
 identity, and separate mutable profiles and logs. The primary launches first; the HC follows using loopback. Successful
-command completion means both processes are observed running; engine-level join remains subject to the manual checks above.
+launch-command completion means both processes are observed running; the subsequent readiness command must confirm the join.
 
 Stop attempts both processes in dependent-first order and publishes preservation only after both exits are verified.
 Restart and maintenance stop all consumers before changing shared files. Maintenance of a stopped group does not start it.

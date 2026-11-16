@@ -156,6 +156,95 @@ public sealed class Arma3AdmissionLifecycleTests
         Assert.False(fixture.Process.IsRunning);
     }
 
+    /// <summary>A live primary and a previously logged success cannot satisfy the new readiness command.</summary>
+    /// <returns>The asynchronous readiness verification.</returns>
+    [Fact]
+    public async Task VerifyReadiness_RejectsReplayedPositiveEvidence()
+    {
+        using var fixture = new Fixture(joinTimeout: TimeSpan.FromMilliseconds(100));
+        var executor = fixture.CreateExecutor();
+        Assert.True((await executor.ExecuteAsync(fixture.Command("start"), CancellationToken.None)).Succeeded);
+        var monitor = new Arma3JoinMonitor(fixture.Paths, TimeProvider.System);
+        var session = Assert.IsType<Arma3JoinSession>(await monitor.ReadSessionAsync(CancellationToken.None));
+        await File.WriteAllTextAsync(fixture.Paths.RuntimeLogPath, $"UTFHC|1|{session.Nonce}|1|3|1\n");
+
+        var result = await executor.ExecuteAsync(fixture.Command("verify-readiness"), CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("hc-join-timeout", result.ErrorCode);
+        Assert.True(fixture.Process.IsRunning);
+        Assert.Null((await monitor.ReadSessionAsync(CancellationToken.None))!.VerifiedProcessId);
+    }
+
+    /// <summary>Fresh server evidence arms health monitoring and survives executor reconstruction without relaunch.</summary>
+    /// <returns>The asynchronous engine-evidence simulation.</returns>
+    [Fact]
+    public async Task VerifyReadiness_FreshEvidenceSucceedsAndExpiryReportsFailedWithRealPid()
+    {
+        using var fixture = new Fixture(joinTimeout: TimeSpan.FromSeconds(3));
+        var executor = fixture.CreateExecutor();
+        Assert.True((await executor.ExecuteAsync(fixture.Command("start"), CancellationToken.None)).Succeeded);
+        Assert.Contains("-serverMod=" + Arma3JoinAddon.GetModPath(fixture.Paths), fixture.Process.ArgumentsAtStart);
+        var monitor = new Arma3JoinMonitor(fixture.Paths, TimeProvider.System);
+        var session = Assert.IsType<Arma3JoinSession>(await monitor.ReadSessionAsync(CancellationToken.None));
+        var verification = executor.ExecuteAsync(fixture.Command("verify-readiness"), CancellationToken.None);
+        for (var sequence = 1; sequence <= 20 && !verification.IsCompleted; sequence++)
+        {
+            await Task.Delay(30);
+            await File.AppendAllTextAsync(fixture.Paths.RuntimeLogPath, $"UTFHC|1|{session.Nonce}|{sequence}|3|1\n");
+        }
+        var result = await verification;
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Equal("hc-joined", result.Stage);
+
+        executor = fixture.CreateExecutor();
+        await executor.ObserveRuntimeAsync(CancellationToken.None);
+        await Task.Delay(80);
+        var expired = Assert.IsType<WorkerRuntimeStatus>(await executor.ObserveRuntimeAsync(CancellationToken.None));
+        Assert.Equal(123, expired.ProcessId);
+        Assert.Equal(EWorkerWorkloadState.Failed, Assert.Single(expired.Workloads).State);
+        Assert.Equal(123, Assert.Single(expired.Workloads).ProcessId);
+        Assert.Equal(1, fixture.Process.StartCount);
+    }
+
+    /// <summary>A new primary incarnation cannot consume the preceding launch's addon output.</summary>
+    /// <returns>The asynchronous restart verification.</returns>
+    [Fact]
+    public async Task VerifyReadiness_RestartRejectsPreviousLaunchNonce()
+    {
+        using var fixture = new Fixture(joinTimeout: TimeSpan.FromMilliseconds(100));
+        var executor = fixture.CreateExecutor();
+        Assert.True((await executor.ExecuteAsync(fixture.Command("start"), CancellationToken.None)).Succeeded);
+        var monitor = new Arma3JoinMonitor(fixture.Paths, TimeProvider.System);
+        var previous = Assert.IsType<Arma3JoinSession>(await monitor.ReadSessionAsync(CancellationToken.None));
+        Assert.True((await executor.ExecuteAsync(fixture.Command("restart"), CancellationToken.None)).Succeeded);
+        var current = Assert.IsType<Arma3JoinSession>(await monitor.ReadSessionAsync(CancellationToken.None));
+        Assert.NotEqual(previous.Nonce, current.Nonce);
+        await File.WriteAllTextAsync(fixture.Paths.RuntimeLogPath, $"UTFHC|1|{previous.Nonce}|99|3|1\n");
+
+        var result = await executor.ExecuteAsync(fixture.Command("verify-readiness"), CancellationToken.None);
+
+        Assert.Equal("hc-join-timeout", result.ErrorCode);
+        Assert.Equal(2, fixture.Process.StartCount);
+    }
+
+    /// <summary>A stopped process fails immediately, and command cancellation never arms a readiness claim.</summary>
+    /// <returns>The asynchronous failure and cancellation checks.</returns>
+    [Fact]
+    public async Task VerifyReadiness_ProcessExitAndCancellationDoNotPass()
+    {
+        using var fixture = new Fixture();
+        var executor = fixture.CreateExecutor();
+        Assert.True((await executor.ExecuteAsync(fixture.Command("start"), CancellationToken.None)).Succeeded);
+        using var cancellation = new CancellationTokenSource();
+        var waiting = executor.ExecuteAsync(fixture.Command("verify-readiness"), cancellation.Token);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting);
+        fixture.Process.IsRunning = false;
+        var result = await executor.ExecuteAsync(fixture.Command("verify-readiness"), CancellationToken.None);
+        Assert.Equal("hc-primary-not-running", result.ErrorCode);
+    }
+
     // These private test doubles are nested because their lifetimes and assertions belong only to this fixture.
     /// <summary>Creates a prepared deployment and injectable process/storage doubles without running native tools.</summary>
     private sealed class Fixture : IDisposable
@@ -169,7 +258,8 @@ public sealed class Arma3AdmissionLifecycleTests
 
         /// <summary>Creates a prepared primary or auxiliary worker fixture.</summary>
         /// <param name="headless">Whether this worker is assigned the client role.</param>
-        public Fixture(bool headless = false)
+        /// <param name="joinTimeout">Optional short deadline for readiness failure tests.</param>
+        public Fixture(bool headless = false, TimeSpan? joinTimeout = null)
         {
             _bootstrap = CloudWorkerBootstrapConfigTests.CreateBootstrap() with
             {
@@ -183,6 +273,8 @@ public sealed class Arma3AdmissionLifecycleTests
                     "arma3server_x64", TimeSpan.FromSeconds(30))
                 {
                     TemporaryDirectory = Path.Combine(_directory.Path, "tmp"),
+                    HeadlessClientJoinTimeout = joinTimeout ?? TimeSpan.FromSeconds(2),
+                    HeadlessClientEvidenceGrace = TimeSpan.FromMilliseconds(50),
                 });
             Paths = new Arma3RuntimePaths(_options.RuntimeRoot, _options.StateDirectory,
                 _bootstrap.DeploymentId, _options.Arma3.ExecutableName);

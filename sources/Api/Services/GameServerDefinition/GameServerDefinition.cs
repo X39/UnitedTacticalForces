@@ -66,6 +66,10 @@ public sealed record GameServerDefinition(
             []),
     ];
 
+    /// <summary>Gets the internal worker action that verifies readiness after all deployment workloads start.</summary>
+    /// <value>An optional primary-worker verification action, excluded from user-invokable actions.</value>
+    internal string? ReadinessVerificationActionIdentifier { get; init; }
+
     /// <summary>Resolves the host assignment of a workload from effective control-plane configuration.</summary>
     /// <value>An optional policy. When unset, each workload gets its own host with the same key.</value>
     internal Func<ResolvedGameConfiguration, WorkloadPlacementKey, WorkloadPlacementKey>? ResolveWorkloadHost

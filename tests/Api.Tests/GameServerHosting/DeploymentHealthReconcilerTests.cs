@@ -140,6 +140,7 @@ public sealed class DeploymentHealthReconcilerTests
     [InlineData("missing")]
     [InlineData("empty")]
     [InlineData("failed")]
+    [InlineData("primary-failed")]
     [InlineData("stale")]
     public async Task ColocatedWorkloads_RequireFreshRunningEvidence(string mode)
     {
@@ -155,6 +156,8 @@ public sealed class DeploymentHealthReconcilerTests
             observations = [];
         else if (mode == "failed")
             observations[1] = observations[1] with { State = EWorkerWorkloadState.Failed };
+        else if (mode == "primary-failed")
+            observations[0] = observations[0] with { State = EWorkerWorkloadState.Failed };
         else if (mode == "stale")
             observations[1] = observations[1] with { ObservedAt = DateTimeOffset.UtcNow.AddMinutes(-10) };
         worker.WorkloadObservations = JsonSerializer.Serialize(observations,

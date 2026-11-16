@@ -1471,6 +1471,127 @@ public sealed class LifecycleJobExecutorCloudTests
         Assert.Equal(2, provider.DiscoveryCalls);
     }
 
+    /// <summary>Requires a distinct readiness command only after all frozen host starts have completed.</summary>
+    /// <param name="sameHost">Whether the primary worker hosts both Arma processes.</param>
+    /// <param name="failReadiness">Whether authoritative engine readiness never arrives.</param>
+    /// <returns>A task completing after checking the final readiness or fault teardown boundary.</returns>
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task Start_VerifiesReadinessAfterEveryHostStarts(bool sameHost, bool failReadiness)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var definition = new Arma3GameServerDefinitionRegistration();
+        await SaveArmaPlacementAsync(store, seed, definition, sameHost);
+        var interceptor = new ReadinessWorkerCommandInterceptor { FailReadiness = failReadiness };
+        var databaseOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(store.Connection).AddInterceptors(interceptor).Options;
+        await using var context = new NodaTimeSqliteApiDbContext(databaseOptions);
+        var provider = new ExecutorTestProvider { AllocateReadyResources = true };
+        var executor = CreateExecutor(context, provider, new RecordingCostSliceService(),
+            new GameServerDefinitionCatalog([definition]));
+        var persistedJob = await context.LifecycleJobs.SingleAsync(candidate => candidate.PrimaryKey == job.PrimaryKey);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+        if (failReadiness)
+            await Assert.ThrowsAsync<PermanentLifecycleExecutionException>(() => executor.ExecuteAsync(persistedJob, timeout.Token));
+        else
+            await executor.ExecuteAsync(persistedJob, timeout.Token);
+
+        var starts = interceptor.Commands.Where(command => command.ActionIdentifier == "start").ToArray();
+        var readiness = Assert.Single(interceptor.Commands, command => command.ActionIdentifier == "verify-readiness");
+        Assert.Equal(sameHost ? 1 : 2, starts.Length);
+        Assert.All(starts, command => Assert.True(command.Sequence < readiness.Sequence));
+        Assert.Equal(starts[0].WorkerFk, readiness.WorkerFk);
+        Assert.NotEqual(starts[0].PrimaryKey, readiness.PrimaryKey);
+        Assert.Equal("verify-readiness", JsonSerializer.Deserialize<WorkerCommandPayload>(readiness.Payload,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!.ActionIdentifier);
+        var deployment = await context.GameServerDeployments.SingleAsync();
+        Assert.Equal(failReadiness ? EDeploymentStatus.TerminatedDueToFault : EDeploymentStatus.Running, deployment.Status);
+        if (failReadiness)
+        {
+            Assert.Equal("arma-hc-not-joined", deployment.FaultCode);
+            Assert.True(provider.ReleaseCalls > 0);
+            Assert.False(deployment.PossibleCost);
+        }
+    }
+
+    /// <summary>Rechecks readiness after runtime mutations and reuses the same command on executor redelivery.</summary>
+    /// <param name="action">The runtime mutation or diagnostic action to execute.</param>
+    /// <param name="kind">The lifecycle kind matching the selected action.</param>
+    /// <param name="expectReadiness">Whether the action requires application readiness.</param>
+    /// <param name="stopped">Whether maintenance begins with no running primary process.</param>
+    /// <param name="failReadiness">Whether runtime verification should trigger fault cleanup.</param>
+    /// <returns>A task completing after checking durable action separation and idempotent replay.</returns>
+    [Theory]
+    [InlineData("restart", ELifecycleJobKind.Restart, true, false, false)]
+    [InlineData("install", ELifecycleJobKind.Install, true, false, false)]
+    [InlineData("update", ELifecycleJobKind.Update, true, false, false)]
+    [InlineData("collect-logs", ELifecycleJobKind.CollectLogs, false, false, false)]
+    [InlineData("install", ELifecycleJobKind.Install, false, true, false)]
+    [InlineData("update", ELifecycleJobKind.Update, false, true, false)]
+    [InlineData("restart", ELifecycleJobKind.Restart, true, false, true)]
+    public async Task RuntimeAction_VerifiesReadinessWithoutDuplicatingCommands(
+        string action, ELifecycleJobKind kind, bool expectReadiness, bool stopped, bool failReadiness)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var definition = new Arma3GameServerDefinitionRegistration();
+        await SaveArmaPlacementAsync(store, seed, definition, false);
+        var interceptor = new ReadinessWorkerCommandInterceptor();
+        var databaseOptions = new DbContextOptionsBuilder<NodaTimeSqliteApiDbContext>()
+            .UseSqlite(store.Connection).AddInterceptors(interceptor).Options;
+        await using var context = new NodaTimeSqliteApiDbContext(databaseOptions);
+        var executor = CreateExecutor(context, new ExecutorTestProvider { AllocateReadyResources = true },
+            new RecordingCostSliceService(), new GameServerDefinitionCatalog([definition]));
+        var persistedJob = await context.LifecycleJobs.SingleAsync(candidate => candidate.PrimaryKey == job.PrimaryKey);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await executor.ExecuteAsync(persistedJob, timeout.Token);
+        persistedJob.Status = ELifecycleJobStatus.Succeeded;
+        if (stopped)
+        {
+            foreach (var worker in await context.LifecycleWorkers.ToArrayAsync())
+            {
+                worker.ProcessId = null;
+                worker.ProcessStartedAt = null;
+            }
+        }
+        interceptor.FailReadiness = failReadiness;
+        var runtimeJob = new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(), GameServerFk = seed.Server.PrimaryKey,
+            DeploymentFk = seed.Deployment!.PrimaryKey, RequestedByFk = seed.User.PrimaryKey,
+            Kind = kind, ActionIdentifier = action, Sequence = 2, Status = ELifecycleJobStatus.Running,
+            Stage = "claimed", Attempt = 1, MaxAttempts = 3,
+            TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+            TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant(),
+        };
+        context.LifecycleJobs.Add(runtimeJob);
+        await context.SaveChangesAsync();
+
+        if (failReadiness)
+        {
+            await Assert.ThrowsAsync<PermanentLifecycleExecutionException>(() => executor.ExecuteAsync(runtimeJob, timeout.Token));
+            var deployment = await context.GameServerDeployments.SingleAsync();
+            Assert.Equal(EDeploymentStatus.TerminatedDueToFault, deployment.Status);
+            Assert.Equal("arma-hc-not-joined", deployment.FaultCode);
+            Assert.False(deployment.PossibleCost);
+            return;
+        }
+        await executor.ExecuteAsync(runtimeJob, timeout.Token);
+        var commands = interceptor.Commands.Where(command => command.LifecycleJobFk == runtimeJob.PrimaryKey).ToArray();
+        Assert.Equal(expectReadiness ? 3 : 2, commands.Length);
+        Assert.All(commands.Take(2), command => Assert.Equal(action, command.ActionIdentifier));
+        if (expectReadiness)
+            Assert.Equal("verify-readiness", commands[2].ActionIdentifier);
+        await executor.ExecuteAsync(runtimeJob, timeout.Token);
+        Assert.Equal(commands.Select(command => command.PrimaryKey), interceptor.Commands
+            .Where(command => command.LifecycleJobFk == runtimeJob.PrimaryKey).Select(command => command.PrimaryKey));
+    }
+
     private static LifecycleJobExecutor CreateExecutor(
         HostingTestStore store,
         IRuntimeProvider provider,

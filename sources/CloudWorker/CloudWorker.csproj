@@ -12,6 +12,10 @@
     <ProjectReference Include="..\HostingContracts\HostingContracts.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Arma3JoinAddonAssets\config.cpp" LogicalName="Arma3JoinAddonAssets.config.cpp" />
+    <EmbeddedResource Include="Arma3JoinAddonAssets\fn_init.sqf" LogicalName="Arma3JoinAddonAssets.fn_init.sqf" />
+  </ItemGroup>
+  <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>CloudWorker.Tests</_Parameter1>
     </AssemblyAttribute>

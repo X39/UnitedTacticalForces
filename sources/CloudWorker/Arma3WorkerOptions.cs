@@ -20,6 +20,14 @@ public sealed record Arma3WorkerOptions(
 {
     public string TemporaryDirectory { get; init; } = "/tmp/united-tactical-forces";
 
+    /// <summary>Gets the bounded wait for engine-confirmed HC readiness after all hosts have started.</summary>
+    /// <value>A positive duration; production defaults to three minutes.</value>
+    public TimeSpan HeadlessClientJoinTimeout { get; init; } = TimeSpan.FromMinutes(3);
+
+    /// <summary>Gets the allowed silence in previously verified server-addon evidence.</summary>
+    /// <value>A positive duration allowing brief mission transitions and worker reconstruction.</value>
+    public TimeSpan HeadlessClientEvidenceGrace { get; init; } = TimeSpan.FromSeconds(30);
+
     internal static Arma3WorkerOptions Create(
         IReadOnlyDictionary<string, string> values,
         Func<string, string?> getEnvironmentVariable)
@@ -36,6 +44,10 @@ public sealed record Arma3WorkerOptions(
             ParseOptionalPositiveInt(getEnvironmentVariable("UTF_STEAM_UID")),
             GetOptional(values, "steam-home", "UTF_STEAM_HOME", getEnvironmentVariable))
         {
+            HeadlessClientJoinTimeout = TimeSpan.FromSeconds(Math.Min(900,
+                ParsePositiveInt(getEnvironmentVariable("UTF_ARMA3_HC_JOIN_TIMEOUT_SECONDS"), 180))),
+            HeadlessClientEvidenceGrace = TimeSpan.FromSeconds(Math.Min(300,
+                ParsePositiveInt(getEnvironmentVariable("UTF_ARMA3_HC_EVIDENCE_GRACE_SECONDS"), 30))),
             TemporaryDirectory = Get(
                 values,
                 "temporary-directory",

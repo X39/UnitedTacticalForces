@@ -429,14 +429,15 @@ public sealed partial class Arma3WorkerCommandExecutor
         using var primary = await _processController.ObserveAsync(cancellationToken).ConfigureAwait(false);
         using var auxiliary = await _auxiliaryProcessController.ObserveAsync(cancellationToken).ConfigureAwait(false);
         var storage = ObserveDeploymentStorage();
-        return new WorkerRuntimeStatus(primary.IsRunning && auxiliary.IsRunning ? "processes-running" : "group-incomplete",
+        var status = new WorkerRuntimeStatus(primary.IsRunning && auxiliary.IsRunning ? "processes-running" : "group-incomplete",
             primary.IsRunning && primary.Error is null ? primary.Identity?.ProcessId : null,
             primary.IsRunning && primary.Error is null ? primary.Identity?.ProcessStartedAt : null,
-            "Process observations do not verify an Arma Headless Client join.",
+            null,
             storage.TotalBytes, storage.AvailableBytes, storage.ControlledBytes)
         {
             Workloads = [ToWorkloadObservation("game-server", primary), ToWorkloadObservation("headless-client", auxiliary)],
         };
+        return await WithJoinHealthAsync(status, primary.Identity, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Projects exact process evidence into the generic worker protocol.</summary>

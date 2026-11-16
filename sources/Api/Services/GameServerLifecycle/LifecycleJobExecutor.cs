@@ -755,6 +755,8 @@ internal sealed class LifecycleJobExecutor(
                         cancellationToken)
                     .ConfigureAwait(false);
             }
+            await VerifyDeploymentReadinessAsync(job, server, deployment, intent.Worker, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (WorkerCommandFailedException ex)
         {
@@ -1339,7 +1341,49 @@ internal sealed class LifecycleJobExecutor(
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+        if (job.Kind is (ELifecycleJobKind.Restart or ELifecycleJobKind.Install or ELifecycleJobKind.Update)
+            && gameServerDefinitions.Find(server.GameIdentifier)?.ReadinessVerificationActionIdentifier is not null)
+        {
+            var primaryWorker = workers.Single(worker => worker.ServiceIdentifier == primaryHost.ServiceIdentifier
+                                                        && worker.ServiceOrdinal == primaryHost.ServiceOrdinal);
+            await dbContext.Entry(primaryWorker).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            if (job.Kind is ELifecycleJobKind.Restart || primaryWorker.ProcessId is > 0)
+            {
+                try
+                {
+                    await VerifyDeploymentReadinessAsync(job, server, deployment, primaryWorker, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (WorkerCommandFailedException ex)
+                {
+                    await TriggerFaultCostStopAsync(job, server, deployment, primaryWorker, ex.ErrorCode, ex.Message,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+        }
         await SetJobProgressAsync(job, "completed-by-worker", 100, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Queues a game-declared readiness check after every dependent workload command has completed.</summary>
+    /// <param name="job">The lifecycle operation that owns the durable verification command.</param>
+    /// <param name="server">The server whose game declares the optional readiness action.</param>
+    /// <param name="deployment">The allocation whose readiness must be confirmed before success.</param>
+    /// <param name="primaryWorker">The worker responsible for authoritative application readiness.</param>
+    /// <param name="cancellationToken">Cancellation for supersession or executor shutdown.</param>
+    /// <returns>A task completing once readiness succeeds, or immediately for games without a readiness action.</returns>
+    /// <exception cref="WorkerCommandFailedException">The worker could not confirm application readiness.</exception>
+    private async Task VerifyDeploymentReadinessAsync(
+        LifecycleJob job, GameServer server, GameServerDeployment deployment, LifecycleWorker primaryWorker,
+        CancellationToken cancellationToken)
+    {
+        var actionIdentifier = gameServerDefinitions.Find(server.GameIdentifier)?.ReadinessVerificationActionIdentifier;
+        if (actionIdentifier is null)
+            return;
+        var command = await EnsureCommandPersistedAsync(job, server, primaryWorker, cancellationToken, actionIdentifier)
+            .ConfigureAwait(false);
+        await WaitForCommandAsync(job, server, deployment, primaryWorker, command, null, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task ClaimProvisioningMutationAsync(
@@ -1806,12 +1850,24 @@ internal sealed class LifecycleJobExecutor(
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Persists or reuses an immutable action command under the server mutation lock.</summary>
+    /// <param name="job">The lifecycle operation that owns this command.</param>
+    /// <param name="server">The server supplying configuration and content snapshots.</param>
+    /// <param name="worker">The deployment-scoped recipient.</param>
+    /// <param name="cancellationToken">Cancellation for shutdown or supersession.</param>
+    /// <param name="actionIdentifier">An internal follow-up action, or null to use the lifecycle action.</param>
+    /// <returns>The stable command for this job, worker, and action.</returns>
+    /// <exception cref="LifecycleSupersededException">Stop or termination has superseded command creation.</exception>
+    /// <exception cref="PermanentLifecycleExecutionException">The persisted content snapshot is invalid.</exception>
+    /// <exception cref="LifecycleExecutionException">The worker topology has incomplete provider addresses.</exception>
     private async Task<WorkerCommand> EnsureCommandPersistedAsync(
         LifecycleJob job,
         GameServer server,
         LifecycleWorker worker,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? actionIdentifier = null)
     {
+        actionIdentifier ??= job.ActionIdentifier;
         await using var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
             .ConfigureAwait(false);
         await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
@@ -1837,7 +1893,8 @@ internal sealed class LifecycleJobExecutor(
 
         var existing = await dbContext.WorkerCommands
             .SingleOrDefaultAsync(
-                q => q.LifecycleJobFk == job.PrimaryKey && q.WorkerFk == worker.PrimaryKey,
+                q => q.LifecycleJobFk == job.PrimaryKey && q.WorkerFk == worker.PrimaryKey
+                     && q.ActionIdentifier == actionIdentifier,
                 cancellationToken)
             .ConfigureAwait(false);
         if (existing is not null)
@@ -1923,7 +1980,7 @@ internal sealed class LifecycleJobExecutor(
             ServerId                  = server.PrimaryKey,
             DeploymentId              = job.DeploymentFk,
             GameIdentifier            = server.GameIdentifier,
-            ActionIdentifier          = job.ActionIdentifier,
+            ActionIdentifier          = actionIdentifier,
             ServiceIdentifier         = worker.ServiceIdentifier,
             ServiceOrdinal            = worker.ServiceOrdinal,
             IsPrimaryService          = isPrimaryService,
@@ -1954,7 +2011,7 @@ internal sealed class LifecycleJobExecutor(
             WorkerFk         = worker.PrimaryKey,
             Sequence         = sequence,
             Priority         = job.Priority,
-            ActionIdentifier = job.ActionIdentifier,
+            ActionIdentifier = actionIdentifier,
             Payload          = JsonSerializer.Serialize(payload, CommandJsonOptions),
             ProtectedSecrets = await secretService.CreateProtectedSnapshotAsync(server.PrimaryKey, cancellationToken)
                 .ConfigureAwait(false),

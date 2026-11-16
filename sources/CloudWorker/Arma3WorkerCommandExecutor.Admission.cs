@@ -10,6 +10,8 @@ public sealed partial class Arma3WorkerCommandExecutor
     {
         await _renderer.ReconcileAdmissionAsync(payload, _paths, cancellationToken).ConfigureAwait(false);
         await Arma3LaunchTopologyContext.SaveAsync(payload, _paths, cancellationToken).ConfigureAwait(false);
+        if (RequiresJoinEvidence(payload))
+            await _joinMonitor.PrepareAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Refuses to adopt a live process whose loaded endpoint configuration cannot be verified.</summary>

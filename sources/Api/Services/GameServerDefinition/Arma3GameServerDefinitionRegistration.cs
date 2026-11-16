@@ -109,6 +109,7 @@ public sealed class Arma3GameServerDefinitionRegistration : IGameServerDefinitio
             new("server/battleye/scripts.txt", EPreservationScope.File, EPreservationMode.CreateOrUpdate),
         ])
     {
+        ReadinessVerificationActionIdentifier = "verify-readiness",
         InboundNetworkRequirements =
         [
             new(

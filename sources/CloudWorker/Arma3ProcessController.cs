@@ -51,7 +51,7 @@ public sealed class Arma3ProcessController(
         }
 
         paths.EnsureDirectories();
-        var startInfo = processLauncher.Create(paths.ExecutablePath, paths.InstallPath, arguments);
+        var startInfo = CreateStartInfo(arguments);
 
         Process? process = null;
         var spawnAttempted = false;
@@ -111,6 +111,21 @@ public sealed class Arma3ProcessController(
         {
             process?.Dispose();
         }
+    }
+
+    /// <summary>Persists Linux engine diagnostics through inherited file descriptors that survive worker restarts.</summary>
+    /// <param name="arguments">The worker-owned, separately escaped Arma arguments.</param>
+    /// <param name="isLinux">Optional platform override for launch-boundary tests.</param>
+    /// <returns>A restricted process launch; the shell is replaced by the attributed game executable.</returns>
+    internal ProcessStartInfo CreateStartInfo(IReadOnlyList<string> arguments, bool? isLinux = null)
+    {
+        if (!(isLinux ?? OperatingSystem.IsLinux()))
+            return processLauncher.Create(paths.ExecutablePath, paths.InstallPath, arguments);
+        // Open output only after privilege dropping, so game-writable paths cannot redirect worker-authority writes.
+        // Positional arguments preserve literal passwords and paths; no supplied value becomes shell source.
+        return processLauncher.Create("/bin/sh", paths.InstallPath,
+            new[] { "-c", "umask 0007; log=$1; shift; exec \"$@\" >> \"$log\" 2>&1",
+                "utf-arma-output", paths.RuntimeLogPath, paths.ExecutablePath }.Concat(arguments));
     }
 
     /// <inheritdoc />

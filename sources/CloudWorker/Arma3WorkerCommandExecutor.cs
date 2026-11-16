@@ -76,6 +76,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             connection.DeploymentId,
             options.Arma3.ExecutableName);
         _renderer = renderer ?? new Arma3ConfigurationRenderer();
+        _joinMonitor = new Arma3JoinMonitor(_paths, TimeProvider.System);
         _commandRunner = commandRunner ?? new ProcessCommandRunner();
         _processLauncher = new RestrictedGameProcessLauncher(options.Arma3);
         var identityStore = new Arma3ProcessIdentityStore(connection.ServerId, connection.DeploymentId, _paths);
@@ -119,6 +120,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             payload = AddSecretConfiguration(payload, command.Secrets);
             payload.ValidateAttribution(_connection, command);
             RememberPayloadSecrets(payload);
+            if (command.ActionIdentifier == "verify-readiness")
+                return await VerifyJoinAsync(payload, cancellationToken).ConfigureAwait(false);
             if (HasColocatedWorkloads(payload))
                 return await ExecuteColocatedAsync(command, payload, cancellationToken).ConfigureAwait(false);
             return command.ActionIdentifier.Trim().ToLowerInvariant() switch
@@ -286,7 +289,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 storage.AvailableBytes,
                 storage.ControlledBytes);
         }
-        return observation.IsRunning && observation.Identity is not null
+        var status = observation.IsRunning && observation.Identity is not null
             ? new WorkerRuntimeStatus(
                 "running",
                 observation.Identity.ProcessId,
@@ -303,6 +306,7 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
                 storage.TotalBytes,
                 storage.AvailableBytes,
                 storage.ControlledBytes);
+        return await WithJoinHealthAsync(status, observation.Identity, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Renders current settings and reconciles admission before a maintenance relaunch.</summary>
@@ -852,6 +856,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             $"-bepath={_paths.BattlEyePath}",
             "-autoInit",
         };
+        if (RequiresJoinEvidence(payload))
+            arguments.Add($"-serverMod={Arma3JoinAddon.GetModPath(_paths)}");
         if (payload.Command.Port is { } port)
         {
             if (port is < 1024 or > 65535)

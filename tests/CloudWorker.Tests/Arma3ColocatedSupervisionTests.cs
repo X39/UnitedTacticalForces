@@ -46,6 +46,81 @@ public sealed class Arma3ColocatedSupervisionTests
         Assert.DoesNotContain("joined", result.Stage, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Verifies colocated admission separately from launch and preserves both processes across worker recovery.</summary>
+    /// <returns>A task completing after fresh primary evidence verifies both original and reconstructed executors.</returns>
+    [Fact]
+    public async Task VerifyReadiness_UsesPrimaryEvidenceWithoutRelaunchingColocatedProcesses()
+    {
+        using var fixture = new Fixture(TimeSpan.FromSeconds(2));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var started = await fixture.Executor.ExecuteAsync(fixture.Command("start"), timeout.Token);
+        Assert.True(started.Succeeded, started.ErrorMessage);
+        Assert.DoesNotContain("joined", started.Stage, StringComparison.OrdinalIgnoreCase);
+        var sessionPath = Path.Combine(fixture.Paths.AgentStatePath, "arma3-join-session.json");
+        var session = JsonSerializer.Deserialize<Arma3JoinSession>(await File.ReadAllTextAsync(sessionPath),
+            CloudWorkerJson.Options)!;
+        var command = fixture.Command("verify-readiness");
+        var verification = fixture.Executor.ExecuteAsync(command, timeout.Token);
+        await PublishFreshJoinEvidenceAsync(fixture.Paths, session.Nonce, verification, 1, timeout.Token);
+        var verified = await verification;
+        Assert.True(verified.Succeeded, verified.ErrorMessage);
+        Assert.Equal("hc-joined", verified.Stage);
+        Assert.Equal(fixture.Primary.Identity!.ProcessId, verified.ProcessId);
+
+        var recovered = fixture.CreateExecutor();
+        var repeated = recovered.ExecuteAsync(command, timeout.Token);
+        await PublishFreshJoinEvidenceAsync(fixture.Paths, session.Nonce, repeated, 100, timeout.Token);
+        Assert.True((await repeated).Succeeded);
+        Assert.Equal(1, fixture.Primary.LaunchCount);
+        Assert.Equal(1, fixture.Auxiliary.LaunchCount);
+        Assert.Equal(1, fixture.Runner.RunCount);
+        Assert.True(fixture.Primary.Running);
+        Assert.True(fixture.Auxiliary.Running);
+        Assert.Equal(session.Nonce, JsonSerializer.Deserialize<Arma3JoinSession>(await File.ReadAllTextAsync(sessionPath),
+            CloudWorkerJson.Options)!.Nonce);
+    }
+
+    /// <summary>Living colocated processes and a stale successful record cannot satisfy the readiness command.</summary>
+    /// <returns>A task completing after a bounded explicit readiness failure without duplicate process launch.</returns>
+    [Fact]
+    public async Task VerifyReadiness_RejectsStaleColocatedEvidenceDespiteRunningProcesses()
+    {
+        using var fixture = new Fixture(TimeSpan.FromMilliseconds(100));
+        var started = await fixture.Executor.ExecuteAsync(fixture.Command("start"), CancellationToken.None);
+        Assert.True(started.Succeeded, started.ErrorMessage);
+        var session = JsonSerializer.Deserialize<Arma3JoinSession>(await File.ReadAllTextAsync(
+            Path.Combine(fixture.Paths.AgentStatePath, "arma3-join-session.json")), CloudWorkerJson.Options)!;
+        await File.WriteAllTextAsync(fixture.Paths.RuntimeLogPath, $"UTFHC|1|{session.Nonce}|1|17|1\n");
+
+        var result = await fixture.CreateExecutor().ExecuteAsync(fixture.Command("verify-readiness"), CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("hc-join-timeout", result.ErrorCode);
+        Assert.Equal(1, fixture.Primary.LaunchCount);
+        Assert.Equal(1, fixture.Auxiliary.LaunchCount);
+        // The API owns provider cleanup after this failed follow-up command.
+        Assert.True(fixture.Primary.Running);
+        Assert.True(fixture.Auxiliary.Running);
+    }
+
+    /// <summary>Emulates advancing engine output while the real readiness command is observing its log.</summary>
+    /// <param name="paths">The primary process output location.</param>
+    /// <param name="nonce">The current launch correlation marker.</param>
+    /// <param name="verification">The running readiness command.</param>
+    /// <param name="sequence">The first sequence greater than all prior fixture output.</param>
+    /// <param name="cancellationToken">Cancels a stuck test rather than leaving an output loop running.</param>
+    /// <returns>A task completing when verification finishes.</returns>
+    private static async Task PublishFreshJoinEvidenceAsync(
+        Arma3RuntimePaths paths, string nonce, Task<WorkerCommandExecutionResult> verification, long sequence,
+        CancellationToken cancellationToken)
+    {
+        while (!verification.IsCompleted)
+        {
+            await File.AppendAllTextAsync(paths.RuntimeLogPath, $"UTFHC|1|{nonce}|{sequence++}|17|1\n", cancellationToken);
+            await Task.Delay(20, cancellationToken);
+        }
+    }
+
     /// <summary>A failed dependent launch cannot leave a successful primary-only deployment.</summary>
     /// <returns>The asynchronous failure verification.</returns>
     [Fact]
@@ -379,7 +454,8 @@ public sealed class Arma3ColocatedSupervisionTests
         private long _sequence;
 
         /// <summary>Creates fixture-owned game artifacts and injectable dependencies.</summary>
-        public Fixture()
+        /// <param name="joinTimeout">An optional bounded timeout for engine-readiness tests.</param>
+        public Fixture(TimeSpan? joinTimeout = null)
         {
             var steam = Path.Combine(_directory.Path, "steamcmd");
             File.WriteAllText(steam, "placeholder");
@@ -389,6 +465,7 @@ public sealed class Arma3ColocatedSupervisionTests
                 new Arma3WorkerOptions(steam, "anonymous", null, null, "arma3server_x64", TimeSpan.FromSeconds(30))
                 {
                     TemporaryDirectory = Path.Combine(_directory.Path, "tmp"),
+                    HeadlessClientJoinTimeout = joinTimeout ?? TimeSpan.FromMinutes(3),
                 });
             Paths = new Arma3RuntimePaths(_options.RuntimeRoot, _options.StateDirectory, _bootstrap.DeploymentId,
                 _options.Arma3.ExecutableName);
