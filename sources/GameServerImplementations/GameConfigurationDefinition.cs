@@ -4,8 +4,8 @@ namespace X39.UnitedTacticalForces.GameServerImplementations;
 
 /// <summary>Describes one game-owned configuration setting.</summary>
 /// <param name="Key">The stable setting key.</param>
-/// <param name="TargetPath">The generated target file.</param>
-/// <param name="Setting">The setting name written to the target file.</param>
+/// <param name="TargetPath">The generated target file, or an empty path for control-plane settings.</param>
+/// <param name="Setting">The setting name written to the target file, or an empty name for control-plane settings.</param>
 /// <param name="Group">The UI domain group.</param>
 /// <param name="DisplayName">The human-readable label.</param>
 /// <param name="Description">The human-readable explanation.</param>
@@ -33,4 +33,8 @@ public sealed record GameConfigurationDefinition(
     decimal? Minimum = null,
     decimal? Maximum = null,
     IReadOnlyList<string>? AllowedValues = null,
-    IReadOnlyList<GameConfigurationChoice>? Choices = null);
+    IReadOnlyList<GameConfigurationChoice>? Choices = null)
+{
+    /// <summary>Gets whether the setting is consumed only by the control plane.</summary>
+    public bool IsControlPlaneOnly { get; init; }
+}

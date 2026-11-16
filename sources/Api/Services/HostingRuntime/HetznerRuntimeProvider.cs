@@ -1535,7 +1535,10 @@ public sealed class HetznerRuntimeProvider(
         }
         if (string.IsNullOrWhiteSpace(request.CloudInit))
             return "Cloud-init content is required for Hetzner worker provisioning.";
-        var networkFailure = RuntimeInboundNetworkPlanValidator.Validate(request.InboundNetworkRequirements);
+        // An explicitly empty rule set still needs an attached firewall. Hetzner drops new inbound traffic by default.
+        var networkFailure = request.InboundNetworkRequirements is { Count: 0 }
+            ? null
+            : RuntimeInboundNetworkPlanValidator.Validate(request.InboundNetworkRequirements);
         if (networkFailure is not null)
             return networkFailure;
         return null;

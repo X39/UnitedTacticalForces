@@ -1329,13 +1329,14 @@ public sealed class HetznerRuntimeProviderTests
         Assert.Contains("EstimatedHourlyCostEur", provider.Capabilities.ReadinessFailure, StringComparison.Ordinal);
     }
 
+    /// <summary>Rejects a missing ingress plan rather than guessing whether the host should accept traffic.</summary>
     [Fact]
-    public async Task Provision_RejectsEmptyInboundNetworkPlanBeforeAnyProviderRequest()
+    public async Task Provision_RejectsMissingInboundNetworkPlanBeforeAnyProviderRequest()
     {
         var handler = new SequencedHttpMessageHandler();
         var request = CreateProvisionRequest() with
         {
-            InboundNetworkRequirements = [],
+            InboundNetworkRequirements = null,
         };
 
         var result = await CreateProvider(handler).ProvisionAsync(request);
@@ -1344,6 +1345,35 @@ public sealed class HetznerRuntimeProviderTests
         Assert.Equal("provision-validation", result.Stage);
         Assert.Contains("At least one", result.Error, StringComparison.Ordinal);
         Assert.Empty(handler.Requests);
+    }
+
+    /// <summary>Attaches an empty firewall so outbound-only workloads reject new incoming traffic.</summary>
+    [Fact]
+    public async Task Provision_AttachesDenyInboundFirewallForExplicitEmptyIngress()
+    {
+        var request = CreateProvisionRequest() with
+        {
+            InboundNetworkRequirements = [],
+            ServiceIdentifier = "outbound-only",
+        };
+        var handler = new SequencedHttpMessageHandler()
+            .Respond(HttpStatusCode.OK, ServerListJson())
+            .Respond(HttpStatusCode.OK, PrimaryIpListJson())
+            .Respond(HttpStatusCode.OK, FirewallListJson())
+            .Respond(HttpStatusCode.Created, FirewallResponseJson(19, request))
+            .Respond(HttpStatusCode.Created, PrimaryIpResponseJson(91, request))
+            .Respond(HttpStatusCode.Created, ServerResponseJson(42, request))
+            .Respond(HttpStatusCode.OK, PrimaryIpResponseJson(91, request, assigneeId: 42))
+            .Respond(HttpStatusCode.OK, FirewallResponseJson(19, request, 42));
+
+        var result = await CreateProvider(handler).ProvisionAsync(request);
+
+        Assert.True(result.Succeeded, result.Error);
+        var firewallRequest = Assert.Single(handler.Requests,
+            recorded => recorded.Method == HttpMethod.Post && recorded.Path == "/v1/firewalls");
+        using var body = JsonDocument.Parse(firewallRequest.Body!);
+        Assert.Empty(body.RootElement.GetProperty("rules").EnumerateArray());
+        Assert.Contains(result.ProvisionedResources, resource => resource.ResourceIdentifier == "firewall:19");
     }
 
     [Theory]

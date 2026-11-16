@@ -124,6 +124,11 @@ public class GameServerDeployment : IPrimaryKey<Guid>, ITimeStampCreated
     [Column(TypeName = "jsonb")]
     public string? ScenarioSnapshot { get; set; }
 
+    /// <summary>Gets or sets the versioned workload placement and host allocation fixed for this deployment.</summary>
+    /// <value>The serialized placement plan, or <see langword="null"/> for a legacy deployment.</value>
+    [Column(TypeName = "jsonb")]
+    public string? PlacementSnapshot { get; set; }
+
     public ICollection<DeploymentResource> Resources { get; set; } = [];
 
     public ICollection<LifecycleWorker> Workers { get; set; } = [];

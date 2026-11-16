@@ -709,24 +709,34 @@ internal sealed class GameServerProjectionService(
                 q.GameIdentifier,
                 server.GameIdentifier,
                 StringComparison.OrdinalIgnoreCase));
-        var primaryServiceIdentifier = gameDefinition?.Nodes.Single(q => q.IsPrimary).ServiceIdentifier
+        var placement = WorkloadPlacementPlan.TryDeserialize(deployment?.PlacementSnapshot);
+        var primaryHostKey = placement?.PrimaryHostKey;
+        var primaryServiceIdentifier = primaryHostKey?.ServiceIdentifier
+                                       ?? gameDefinition?.Nodes.Single(q => q.IsPrimary).ServiceIdentifier
                                        ?? GameServerNodeDefinition.PrimaryServiceIdentifier;
         var worker = deployment?.Workers
-            .Where(q => q.TimeStampStopped == null && q.ServiceIdentifier == primaryServiceIdentifier)
+            .Where(q => q.TimeStampStopped == null
+                        && q.ServiceIdentifier == primaryServiceIdentifier
+                        && (primaryHostKey == null || q.ServiceOrdinal == primaryHostKey.ServiceOrdinal))
             .OrderByDescending(q => q.TimeStampCreated)
             .FirstOrDefault();
+        var useLegacyAddress = placement == null
+                               && (worker == null || deployment?.Resources.All(q => q.WorkerFk == null) == true);
         var publicAddress = deployment?.Resources
             .Where(q => q.State == EDeploymentResourceState.Allocated
                         && q.TimeStampReleased == null
-                        && (worker == null
-                            || q.WorkerFk == worker.PrimaryKey
-                            || deployment!.Resources.All(resource => resource.WorkerFk == null))
+                        && (useLegacyAddress || worker != null && q.WorkerFk == worker.PrimaryKey)
                         && !string.IsNullOrWhiteSpace(q.PublicAddress))
             .OrderBy(q => string.Equals(q.Kind, "primary-ip", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .ThenBy(q => q.Kind, StringComparer.OrdinalIgnoreCase)
             .Select(q => q.PublicAddress)
             .FirstOrDefault();
-        var connection = gameDefinition?.PrimaryConnection;
+        var connectionPort = placement is null
+            ? gameDefinition?.PrimaryConnection?.Port
+            : placement.PrimaryConnection?.Port;
+        var connectionProtocol = placement is null
+            ? gameDefinition?.PrimaryConnection?.Protocol
+            : placement.PrimaryConnection?.Protocol;
         return new GameServerDto
         {
             PrimaryKey = server.PrimaryKey,
@@ -805,11 +815,11 @@ internal sealed class GameServerProjectionService(
                     PublicAddress = publicAddress,
                     ConnectionEndpoint = deployment.Status == EDeploymentStatus.Running
                                          && publicAddress is not null
-                                         && connection is not null
-                        ? FormatConnectionEndpoint(publicAddress, connection.Port)
+                                         && connectionPort is { } port
+                        ? FormatConnectionEndpoint(publicAddress, port)
                         : null,
-                    ConnectionProtocol = connection?.Protocol.ToString().ToUpperInvariant(),
-                    ConnectionPort = connection?.Port,
+                    ConnectionProtocol = connectionProtocol?.ToString().ToUpperInvariant(),
+                    ConnectionPort = connectionPort,
                     AdministrativeSshCommand = principal.HasClaim(Claims.Administrative.All, string.Empty)
                         ? administrativeSshAccess.GetCommand(publicAddress ?? string.Empty)
                         : null,

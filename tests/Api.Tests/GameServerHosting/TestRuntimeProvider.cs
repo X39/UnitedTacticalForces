@@ -8,7 +8,22 @@ internal sealed class TestRuntimeProvider : IRuntimeProvider
 
     public string ProviderIdentifier => Identifier;
 
-    public RuntimeProviderCapabilities Capabilities { get; } = new(true, true, true);
+    public RuntimeProviderCapabilities Capabilities { get; init; } = new(true, true, true, EstimatedHourlyCostEur: 0.10m);
+
+    /// <summary>Gets the catalog returned by the fake provider when a test supplies explicit profiles.</summary>
+    public IReadOnlyCollection<RuntimeProfile>? Profiles { get; init; }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyCollection<RuntimeProfile>> GetProfilesAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyCollection<RuntimeProfile>>(
+            Profiles ??
+            [
+                new(
+                    "default",
+                    "Default",
+                    "Provider default compute profile.",
+                    EstimatedHourlyCostEur: Capabilities.EstimatedHourlyCostEur),
+            ]);
 
     public Task<RuntimeProvisionResult> ProvisionAsync(
         RuntimeProvisionRequest request,

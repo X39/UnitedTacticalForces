@@ -34,7 +34,7 @@ internal sealed class TestGameServerDefinitionCatalog : IGameServerDefinitionCat
                                                  "Test game traffic"),
                                          ],
             PrimaryConnection = new(
-                ERuntimeNetworkProtocol.Udp,
+                inboundNetworkRequirements?.FirstOrDefault()?.Protocol ?? ERuntimeNetworkProtocol.Udp,
                 inboundNetworkRequirements?.FirstOrDefault()?.StartPort ?? 32000,
                 "Test game server"),
         };

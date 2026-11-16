@@ -172,7 +172,10 @@ public sealed class ConfigurationProfilesControllerTests
         Assert.Equal(
             5,
             implementation.Definitions.Count(q => q.TargetPath == Arma3ConfigurationImplementation.BattlEyeTarget));
-        Assert.Equal(4, implementation.Definitions.Select(q => q.TargetPath).Distinct().Count());
+        Assert.Equal(4, implementation.Definitions.Where(q => !q.IsControlPlaneOnly).Select(q => q.TargetPath).Distinct().Count());
+        var placement = Assert.Single(implementation.Definitions, q => q.IsControlPlaneOnly);
+        Assert.Equal(Arma3ConfigurationImplementation.HeadlessClientPlacementKey, placement.Key);
+        Assert.Equal(EGameConfigurationValueKind.Selection, placement.Kind);
 
         var signatures = Assert.Single(implementation.Definitions, q => q.Setting == "verifySignatures");
         Assert.Equal(EGameConfigurationValueKind.Integer, signatures.Kind);

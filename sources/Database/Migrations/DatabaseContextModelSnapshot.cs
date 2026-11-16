@@ -2091,6 +2091,9 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<long?>("PeakStorageRequiredBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("PlacementSnapshot")
+                        .HasColumnType("jsonb");
+
                     b.Property<bool>("PossibleCost")
                         .HasColumnType("boolean");
 

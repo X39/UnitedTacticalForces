@@ -296,8 +296,13 @@ public sealed class GameServerProjectionServiceTests
         Assert.Equal(ECostImpact.StopsCost, terminate.CostImpact);
     }
 
-    [Fact]
-    public async Task RunningDeployment_ProjectsDurableProviderGraphAndConnectionEndpoint()
+    /// <summary>Uses legacy worker and connection metadata when placement is missing or unreadable.</summary>
+    /// <param name="snapshot">The stored placement data for the legacy deployment.</param>
+    /// <returns>A task completing after the provider graph and connection have been projected.</returns>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("""{"version":99}""")]
+    public async Task RunningDeployment_ProjectsDurableProviderGraphAndConnectionEndpoint(string? snapshot)
     {
         await using var store = await HostingTestStore.CreateAsync();
         var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
@@ -355,6 +360,7 @@ public sealed class GameServerProjectionServiceTests
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(q => q.RuntimeProfileIdentifier, "active-profile")
                 .SetProperty(q => q.RuntimeProfileDisplayName, "Active profile")
+                .SetProperty(q => q.PlacementSnapshot, snapshot)
                 .SetProperty(q => q.EstimatedHourlyCostEur, 0.42m));
         var projection = HostingTestData.CreateProjectionService(
             store.DbContext,
@@ -396,6 +402,83 @@ public sealed class GameServerProjectionServiceTests
             (Claims.Administrative.All, string.Empty));
         var administrativeDto = await projection.GetServerAsync(seed.Server.PrimaryKey, administrator);
         Assert.Equal("ssh utf-admin@203.0.113.91", administrativeDto?.Deployment?.AdministrativeSshCommand);
+    }
+
+    /// <summary>Projects the persisted primary host by identifier and ordinal with its stored connection.</summary>
+    /// <returns>A task completing after the selected worker and endpoint have been verified.</returns>
+    [Fact]
+    public async Task RunningDeployment_ProjectsPrimaryHostAndConnectionFromPlacement()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        var deployment = seed.Deployment!;
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var primaryKey = new WorkloadPlacementKey("game-server", 1);
+        var auxiliaryKey = new WorkloadPlacementKey("game-server", 0);
+        var primary = new LifecycleWorker
+        {
+            PrimaryKey = Guid.NewGuid(),
+            DeploymentFk = deployment.PrimaryKey,
+            Identity = "placement-primary",
+            ServiceIdentifier = primaryKey.ServiceIdentifier,
+            ServiceOrdinal = primaryKey.ServiceOrdinal,
+            Status = EWorkerStatus.Online,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        var auxiliary = new LifecycleWorker
+        {
+            PrimaryKey = Guid.NewGuid(),
+            DeploymentFk = deployment.PrimaryKey,
+            Identity = "placement-auxiliary",
+            ServiceIdentifier = auxiliaryKey.ServiceIdentifier,
+            ServiceOrdinal = auxiliaryKey.ServiceOrdinal,
+            Status = EWorkerStatus.Online,
+            TimeStampCreated = now + NodaTime.Duration.FromSeconds(1),
+            TimeStampUpdated = now,
+        };
+        store.DbContext.LifecycleWorkers.AddRange(primary, auxiliary);
+        foreach (var (worker, address) in new[] { (primary, "203.0.113.91"), (auxiliary, "203.0.113.92") })
+        {
+            store.DbContext.DeploymentResources.Add(new DeploymentResource
+            {
+                PrimaryKey = Guid.NewGuid(),
+                DeploymentFk = deployment.PrimaryKey,
+                WorkerFk = worker.PrimaryKey,
+                ProviderIdentifier = TestRuntimeProvider.Identifier,
+                ProvisioningIntentIdentifier = Guid.NewGuid().ToString("N"),
+                ProviderResourceIdentifier = $"server:{address}",
+                Kind = "server",
+                PublicAddress = address,
+                State = EDeploymentResourceState.Allocated,
+                TimeStampCreated = now,
+                TimeStampUpdated = now,
+            });
+        }
+
+        var storage = new RuntimeStoragePlan(ERuntimeStorageStrategy.IncludedDisk, 0, 0, "/srv/runtime", 0m);
+        deployment.PlacementSnapshot = new WorkloadPlacementPlan(
+            WorkloadPlacementPlan.CurrentVersion,
+            primaryKey,
+            new(ERuntimeNetworkProtocol.Tcp, 34000, "Primary connection"),
+            [
+                new(primaryKey, [new(ERuntimeNetworkProtocol.Tcp, 34000, 34000, "Primary ingress")],
+                    "standard", storage, 0.1m, null, 0),
+                new(auxiliaryKey, [], "standard", storage, 0.1m, null, 0),
+            ],
+            [new(primaryKey, primaryKey), new(auxiliaryKey, auxiliaryKey)]).Serialize();
+        await store.DbContext.SaveChangesAsync();
+
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var principal = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+        var dto = await projection.GetServerAsync(seed.Server.PrimaryKey, principal);
+
+        Assert.NotNull(dto?.Deployment);
+        Assert.Equal(primary.PrimaryKey, dto.Deployment.WorkerId);
+        Assert.Equal("203.0.113.91", dto.Deployment.PublicAddress);
+        Assert.Equal("203.0.113.91:34000", dto.Deployment.ConnectionEndpoint);
+        Assert.Equal("TCP", dto.Deployment.ConnectionProtocol);
+        Assert.Equal(34000, dto.Deployment.ConnectionPort);
     }
 
     [Fact]

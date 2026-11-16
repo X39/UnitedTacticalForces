@@ -2,10 +2,12 @@ using System.Security.Claims;
 using System.Data;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Database;
 using X39.UnitedTacticalForces.Database.Hosting;
 using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Api.Services.GameServerSecrets;
@@ -22,7 +24,9 @@ internal sealed class GameServerLifecycleService(
     IStorageDemandService storageDemandService,
     IHostingAuthorizationService authorizationService,
     IHostingAuditWriter auditWriter,
-    IGameServerSecretService secretService) : IGameServerLifecycleService
+    IGameServerSecretService secretService,
+    IGameServerConfigurationService configurationService,
+    IOptions<HostingFinanceOptions> financeOptions) : IGameServerLifecycleService
 {
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
     public async Task<GameServer> CreateAsync(
@@ -370,6 +374,8 @@ internal sealed class GameServerLifecycleService(
                                       StringComparison.OrdinalIgnoreCase))
                                   ?? throw new HostingConflictException(
                                       "The server's cloud runtime provider is unavailable.");
+            var configuration = await configurationService.ResolveAsync(server.PrimaryKey, cancellationToken)
+                .ConfigureAwait(false);
             IReadOnlyCollection<RuntimeProfile> currentProfiles;
             try
             {
@@ -426,14 +432,26 @@ internal sealed class GameServerLifecycleService(
             var includedStorageBytes = currentProfile.DiskGiB is { } diskGiB
                 ? checked((long?)Math.Max(0, diskGiB) * RuntimeStoragePlanResolver.GiB)
                 : null;
-            decimal? combinedHourly = currentProfile.EstimatedHourlyCostEur is { } computeHourly
-                ? computeHourly + storagePlan.EstimatedHourlyCostEur
-                : null;
-            decimal? combinedMonthly = currentProfile.EstimatedMonthlyCostEur is { } computeMonthly
-                ? computeMonthly + storagePlan.EstimatedHourlyCostEur * 730m
-                : null;
-            server.EstimatedHourlyCostEur = combinedHourly;
-            server.EstimatedMonthlyCostEur = combinedMonthly;
+            WorkloadPlacementPlan placement;
+            try
+            {
+                placement = WorkloadPlacementResolver.Resolve(
+                    supported,
+                    configuration,
+                    currentProfile,
+                    storagePlan,
+                    currentProfile.EstimatedHourlyCostEur is > 0m
+                        ? null
+                        : financeOptions.Value.GetHourlyRate(runtimeProvider.ProviderIdentifier),
+                    storageDemand.ProfileSystemReserveBytes);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new HostingConflictException(ex.Message);
+            }
+
+            server.EstimatedHourlyCostEur = placement.EstimatedHourlyCostEur;
+            server.EstimatedMonthlyCostEur = placement.EstimatedMonthlyCostEur;
 
             deployment = new GameServerDeployment
             {
@@ -448,9 +466,10 @@ internal sealed class GameServerLifecycleService(
                     ? storagePlan.SelectedCapacityBytes
                     : null,
                 DeploymentRoot = storagePlan.DeploymentRoot,
-                EstimatedComputeHourlyCostEur = currentProfile.EstimatedHourlyCostEur,
-                EstimatedStorageHourlyCostEur = storagePlan.EstimatedHourlyCostEur,
-                EstimatedHourlyCostEur = combinedHourly,
+                EstimatedComputeHourlyCostEur = placement.EstimatedComputeHourlyCostEur,
+                EstimatedStorageHourlyCostEur = placement.EstimatedStorageHourlyCostEur,
+                EstimatedHourlyCostEur = placement.EstimatedHourlyCostEur,
+                PlacementSnapshot = placement.Serialize(),
                 PeakStorageRequiredBytes = storageDemand.PeakPreparationRequiredBytes,
                 StorageEstimateStatus = storageDemand.Status.ToString(),
                 StorageEstimateCalculatedAt = storageDemand.CalculatedAt,
@@ -469,7 +488,7 @@ internal sealed class GameServerLifecycleService(
                 server.PrimaryKey,
                 deployment.PrimaryKey,
                 costOwnerId: deployment.CostOwnerFk,
-                details: $"PeakStorageBytes={storageDemand.PeakPreparationRequiredBytes}; "
+                details: $"Hosts={placement.Hosts.Count}; PeakStorageBytes={storageDemand.PeakPreparationRequiredBytes}; "
                          + $"StorageStatus={storageDemand.Status}; StorageStrategy={storagePlan.Strategy}; "
                          + $"SelectedStorageBytes={storagePlan.SelectedCapacityBytes}; Root={storagePlan.DeploymentRoot}",
                 costImpact: ECostImpact.NoCostImpact);

@@ -1,3 +1,4 @@
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -119,7 +120,9 @@ internal static class HostingTestData
             new TestStorageDemandService(),
             new HostingAuthorizationService(dbContext),
             new HostingAuditWriter(),
-            new TestGameServerSecretService());
+            new TestGameServerSecretService(),
+            new GameServerConfigurationService(dbContext),
+            Options.Create(new HostingFinanceOptions()));
 
     public static GameServerProjectionService CreateProjectionService(
         DatabaseContext dbContext,

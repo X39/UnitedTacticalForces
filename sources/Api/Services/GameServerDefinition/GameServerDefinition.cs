@@ -1,3 +1,4 @@
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 
 namespace X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
@@ -52,10 +53,9 @@ public sealed record GameServerDefinition(
     public IReadOnlyList<GameSecretDefinition> Secrets { get; init; } = [];
 
     /// <summary>
-    /// Independently provisioned worker nodes that form one game-server deployment. Definitions that do not
-    /// declare a topology retain the traditional single primary worker.
+    /// Workloads that form one game-server deployment. By default, each workload has its own worker host.
     /// </summary>
-    /// <value>The deployment's worker topology, using one shared image and a game-selected executor per node.</value>
+    /// <value>The declaration of workload identities, instance counts, and ingress requirements.</value>
     public IReadOnlyList<GameServerNodeDefinition> Nodes { get; init; } =
     [
         new(
@@ -65,4 +65,12 @@ public sealed record GameServerDefinition(
             true,
             []),
     ];
+
+    /// <summary>Resolves the host assignment of a workload from effective control-plane configuration.</summary>
+    /// <value>An optional policy. When unset, each workload gets its own host with the same key.</value>
+    internal Func<ResolvedGameConfiguration, WorkloadPlacementKey, WorkloadPlacementKey>? ResolveWorkloadHost
+    {
+        get;
+        init;
+    }
 }

@@ -6,9 +6,16 @@ using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 
+/// <summary>Resolves game configuration from defaults, profile revisions, and per-server overrides.</summary>
+/// <param name="dbContext">The context containing the persisted configuration values.</param>
 [Scoped<GameServerConfigurationService, IGameServerConfigurationService>]
 public sealed class GameServerConfigurationService(DatabaseContext dbContext) : IGameServerConfigurationService
 {
+    /// <summary>Resolves settings and retains validation results for control-plane decisions.</summary>
+    /// <param name="serverId">The server whose configuration to resolve.</param>
+    /// <param name="cancellationToken">A token to cancel the database reads.</param>
+    /// <returns>The effective entries and the profile revision that contributed to them.</returns>
+    /// <exception cref="FileNotFoundException">The server is missing or archived.</exception>
     public async Task<ResolvedGameConfiguration> ResolveAsync(
         Guid serverId,
         CancellationToken cancellationToken = default)
@@ -65,6 +72,7 @@ public sealed class GameServerConfigurationService(DatabaseContext dbContext) : 
                 }
                 else
                 {
+                    compatible = !definition.IsControlPlaneOnly;
                     warning = error;
                 }
             }
@@ -76,6 +84,7 @@ public sealed class GameServerConfigurationService(DatabaseContext dbContext) : 
                 {
                     value = candidate;
                     source = "Server";
+                    compatible = true;
                     warning = null;
                 }
                 else

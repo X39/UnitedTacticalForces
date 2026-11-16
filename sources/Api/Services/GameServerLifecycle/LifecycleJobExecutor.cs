@@ -38,7 +38,8 @@ internal sealed class LifecycleJobExecutor(
     IHostingCostSliceService costSliceService,
     IHostingAuditWriter auditWriter,
     IGameServerSecretService secretService,
-    IOptions<LifecycleWorkerOptions> options) : ILifecycleJobExecutor
+    IOptions<LifecycleWorkerOptions> options,
+    IOptions<HostingFinanceOptions> financeOptions) : ILifecycleJobExecutor
 {
     private static readonly JsonSerializerOptions CommandJsonOptions = new(JsonSerializerDefaults.Web);
     private readonly LifecycleWorkerOptions _options = options.Value;
@@ -80,9 +81,10 @@ internal sealed class LifecycleJobExecutor(
             {
                 await CancelNormalCommandsAsync(deployment.PrimaryKey, null, cancellationToken).ConfigureAwait(false);
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                var primaryService = ResolvePrimaryServiceIdentifier(server.GameIdentifier);
+                var primaryHost = ResolvePrimaryHostKey(server, deployment);
                 var activeWorker = deployment.Workers.SingleOrDefault(q => q.TimeStampStopped == null
-                                                                           && q.ServiceIdentifier == primaryService);
+                                                                           && q.ServiceIdentifier == primaryHost.ServiceIdentifier
+                                                                           && q.ServiceOrdinal == primaryHost.ServiceOrdinal);
                 if (activeWorker is not null)
                 {
                     await CollectBoundedFaultEvidenceAsync(job, server, deployment, activeWorker, cancellationToken)
@@ -163,37 +165,6 @@ internal sealed class LifecycleJobExecutor(
             return;
         }
 
-        IReadOnlyList<RuntimeInboundNetworkRequirement> inboundNetworkRequirements;
-        try
-        {
-            inboundNetworkRequirements = administrativeSshAccess.AddTo(gameDefinition.InboundNetworkRequirements);
-        }
-        catch (InvalidOperationException ex)
-        {
-            await RejectStartAsync(
-                    job,
-                    server,
-                    deployment,
-                    "administrative-ssh-invalid",
-                    ex.Message,
-                    cancellationToken)
-                .ConfigureAwait(false);
-            return;
-        }
-        var networkFailure = RuntimeInboundNetworkPlanValidator.Validate(inboundNetworkRequirements);
-        if (networkFailure is not null)
-        {
-            await RejectStartAsync(
-                    job,
-                    server,
-                    deployment,
-                    "game-network-plan-invalid",
-                    networkFailure,
-                    cancellationToken)
-                .ConfigureAwait(false);
-            return;
-        }
-
         var provider = ResolveProvider(server.RuntimeProviderIdentifier);
         if (!provider.Capabilities.SupportsStableProvisioningIntent
             || !provider.Capabilities.SupportsProviderWideDiscovery
@@ -211,15 +182,44 @@ internal sealed class LifecycleJobExecutor(
                 .ConfigureAwait(false);
         }
 
-        var primaryNode = gameDefinition.Nodes.Single(q => q.IsPrimary);
-        var intent = await EnsureProvisioningIntentAsync(
-                job,
-                server,
-                deployment,
-                provider,
-                primaryNode.ServiceIdentifier,
-                0,
-                cancellationToken)
+        if (deployment.PlacementSnapshot is null
+            && RuntimeInboundNetworkPlanValidator.Validate(gameDefinition.InboundNetworkRequirements) is { } legacyNetworkFailure)
+        {
+            await RejectStartAsync(
+                    job, server, deployment, "game-network-plan-invalid", legacyNetworkFailure, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        WorkloadPlacementPlan placement;
+        IReadOnlyDictionary<WorkloadPlacementKey, IReadOnlyList<RuntimeInboundNetworkRequirement>> ingress;
+        try
+        {
+            placement = await LoadStartPlacementAsync(job, server, deployment, gameDefinition, provider, cancellationToken)
+                .ConfigureAwait(false);
+            ingress = placement.Hosts.ToDictionary(q => q.Key, q => administrativeSshAccess.AddTo(q.InboundNetworkRequirements));
+            foreach (var rules in ingress.Values)
+            {
+                var networkFailure = rules.Count == 0 ? null : RuntimeInboundNetworkPlanValidator.Validate(rules);
+                if (networkFailure is not null)
+                    throw new InvalidOperationException(networkFailure);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (HasLegacyCostCommitment(deployment)
+                && deployment.Workers.FirstOrDefault(q => q.TimeStampStopped == null) is { } activeWorker)
+            {
+                await TriggerFaultCostStopAsync(
+                        job, server, deployment, activeWorker, "placement-invalid", ex.Message, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            await RejectStartAsync(job, server, deployment, "placement-invalid", ex.Message, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        var primaryHost = placement.PrimaryHost;
+        var intent = await EnsureProvisioningIntentAsync(job, server, deployment, provider, primaryHost, cancellationToken)
             .ConfigureAwait(false);
         RuntimeResource? observedResource;
         try
@@ -231,6 +231,7 @@ internal sealed class LifecycleJobExecutor(
                     intent.Worker,
                     intent.Resource,
                     provider,
+                    primaryHost.StoragePlan,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -266,76 +267,25 @@ internal sealed class LifecycleJobExecutor(
         if (observedResource is null)
         {
             await ThrowIfProvisioningBlockedAsync(deployment.PrimaryKey, cancellationToken).ConfigureAwait(false);
-            var storagePlan = new RuntimeStoragePlan(
-                deployment.RuntimeStorageStrategy,
-                deployment.PeakStorageRequiredBytes ?? 0,
-                deployment.SelectedExternalStorageBytes ?? deployment.PeakStorageRequiredBytes ?? 0,
-                string.IsNullOrWhiteSpace(deployment.DeploymentRoot)
-                    ? "/srv/united-tactical-forces/runtime"
-                    : deployment.DeploymentRoot,
-                deployment.EstimatedStorageHourlyCostEur ?? 0m);
-            if (provider.Capabilities.Storage is { } storageCapabilities)
+            var storagePlan = primaryHost.StoragePlan;
+            try
             {
-                var currentProfiles = await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
-                var currentProfile = currentProfiles.SingleOrDefault(q => string.Equals(
-                                         q.Identifier,
-                                         deployment.RuntimeProfileIdentifier,
-                                         StringComparison.OrdinalIgnoreCase))
-                                     ?? throw new PermanentLifecycleExecutionException(
-                                         "The selected cloud profile is no longer available before provisioning.");
-                var storageDemand = await storageDemandService.EstimateAsync(
-                        server.GameIdentifier,
-                        server.SelectedModPackDefinitionFk,
-                        server.PrimaryKey,
-                        true,
-                        cancellationToken)
+                await ValidateHostAllocationsAsync(placement, provider, cancellationToken).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException ex)
+            {
+                await RejectStartAsync(job, server, deployment, "runtime-allocation-unavailable", ex.Message, cancellationToken)
                     .ConfigureAwait(false);
-                try
-                {
-                    storagePlan = RuntimeStoragePlanResolver.Resolve(
-                        server.RuntimeStorageStrategy,
-                        server.ExternalStorageSizeGiB,
-                        storageDemand.PeakPreparationRequiredBytes,
-                        storageDemand.ProfileSystemReserveBytes,
-                        currentProfile,
-                        storageCapabilities);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    await RejectStartAsync(
-                            job,
-                            server,
-                            deployment,
-                            "runtime-storage-invalid",
-                            ex.Message,
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                    return;
-                }
-                deployment.RuntimeStorageStrategy = storagePlan.Strategy;
-                deployment.IncludedStorageBytes = currentProfile.DiskGiB is { } diskGiB
-                    ? checked((long?)Math.Max(0, diskGiB) * RuntimeStoragePlanResolver.GiB)
-                    : null;
-                deployment.SelectedExternalStorageBytes = storagePlan.UsesExternalStorage
-                    ? storagePlan.SelectedCapacityBytes
-                    : null;
-                deployment.DeploymentRoot = storagePlan.DeploymentRoot;
-                deployment.PeakStorageRequiredBytes = storageDemand.PeakPreparationRequiredBytes;
-                deployment.StorageEstimateStatus = storageDemand.Status.ToString();
-                deployment.StorageEstimateCalculatedAt = storageDemand.CalculatedAt;
-                deployment.ContentSnapshot = JsonSerializer.Serialize(storageDemand.EffectiveContent, CommandJsonOptions);
-                deployment.TerrainSnapshot = JsonSerializer.Serialize(
+                return;
+            }
+            if (deployment.TerrainSnapshot is null || deployment.ScenarioSnapshot is null)
+            {
+                deployment.TerrainSnapshot ??= JsonSerializer.Serialize(
                     await ResolveTerrainAsync(server, cancellationToken).ConfigureAwait(false),
                     CommandJsonOptions);
-                deployment.ScenarioSnapshot = JsonSerializer.Serialize(
+                deployment.ScenarioSnapshot ??= JsonSerializer.Serialize(
                     await ResolveScenarioAsync(server, cancellationToken).ConfigureAwait(false),
                     CommandJsonOptions);
-                var nodeCount = gameDefinition.Nodes.Sum(q => q.Count);
-                deployment.EstimatedComputeHourlyCostEur = currentProfile.EstimatedHourlyCostEur * nodeCount;
-                deployment.EstimatedStorageHourlyCostEur = storagePlan.EstimatedHourlyCostEur * nodeCount;
-                deployment.EstimatedHourlyCostEur = currentProfile.EstimatedHourlyCostEur is { } computeRate
-                    ? (computeRate + storagePlan.EstimatedHourlyCostEur) * nodeCount
-                    : null;
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
             // Validate and render all local bootstrap inputs before reserving money. A configuration failure here has
@@ -348,7 +298,7 @@ internal sealed class LifecycleJobExecutor(
                     bootstrap,
                     server.PrimaryKey,
                     server.GameIdentifier,
-                    gameDefinition.InboundNetworkRequirements,
+                    primaryHost.InboundNetworkRequirements,
                     storagePlan);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -416,8 +366,8 @@ internal sealed class LifecycleJobExecutor(
                 server.GameIdentifier,
                 intent.IntentId,
                 bootstrapPayload.CloudInit,
-                inboundNetworkRequirements,
-                deployment.RuntimeProfileIdentifier,
+                ingress[primaryHost.Key],
+                primaryHost.RuntimeProfileIdentifier,
                 storagePlan,
                 intent.Worker.ServiceIdentifier,
                 intent.Worker.ServiceOrdinal);
@@ -729,7 +679,8 @@ internal sealed class LifecycleJobExecutor(
                 job,
                 server,
                 deployment,
-                gameDefinition,
+                placement,
+                ingress,
                 provider,
                 expectedLeaseOwner,
                 expectedAttempt,
@@ -845,140 +796,361 @@ internal sealed class LifecycleJobExecutor(
         }
     }
 
+    /// <summary>Loads the accepted placement or captures the fixed topology for an uncommitted legacy Start.</summary>
+    /// <param name="job">The running Start job.</param>
+    /// <param name="server">The server whose mutation lock protects the transition.</param>
+    /// <param name="deployment">The deployment being started.</param>
+    /// <param name="definition">The historical fixed topology used when the snapshot is absent.</param>
+    /// <param name="provider">The deployment's runtime provider.</param>
+    /// <param name="cancellationToken">Cancels snapshot loading or persistence.</param>
+    /// <returns>The placement used for this execution.</returns>
+    /// <exception cref="InvalidOperationException">The snapshot or legacy allocation cannot be used.</exception>
+    /// <exception cref="LifecycleSupersededException">Stop or termination already owns the deployment.</exception>
+    private async Task<WorkloadPlacementPlan> LoadStartPlacementAsync(
+        LifecycleJob job,
+        GameServer server,
+        GameServerDeployment deployment,
+        GameServerDefinition.GameServerDefinition definition,
+        IRuntimeProvider provider,
+        CancellationToken cancellationToken)
+    {
+        if (deployment.PlacementSnapshot is { } snapshot)
+            return WorkloadPlacementPlan.Deserialize(snapshot);
+
+        await using var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        await ReloadDeploymentProviderStateAsync(deployment.PrimaryKey, cancellationToken).ConfigureAwait(false);
+        if (job.Status is not ELifecycleJobStatus.Running
+            || deployment.IsProvisioningBlocked
+            || deployment.TimeStampResolved.HasValue)
+        {
+            throw new LifecycleSupersededException("Stop or termination superseded legacy placement resolution.");
+        }
+        if (deployment.PlacementSnapshot is { } stored)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return WorkloadPlacementPlan.Deserialize(stored);
+        }
+
+        var committed = HasLegacyCostCommitment(deployment);
+        var hostCount = definition.Nodes.Sum(q => q.Count);
+        var requiredBytes = deployment.PeakStorageRequiredBytes ?? 0;
+        var storage = new RuntimeStoragePlan(
+            deployment.RuntimeStorageStrategy,
+            requiredBytes,
+            deployment.SelectedExternalStorageBytes ?? requiredBytes,
+            string.IsNullOrWhiteSpace(deployment.DeploymentRoot)
+                ? "/srv/united-tactical-forces/runtime"
+                : deployment.DeploymentRoot,
+            (deployment.EstimatedStorageHourlyCostEur ?? 0m) / (committed ? hostCount : 1));
+        RuntimeProfile? profile;
+        if (committed && !string.IsNullOrWhiteSpace(deployment.RuntimeProfileIdentifier))
+        {
+            profile = new RuntimeProfile(
+                deployment.RuntimeProfileIdentifier, deployment.RuntimeProfileDisplayName, string.Empty);
+        }
+        else
+        {
+            var profiles = await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+            profile = profiles.SingleOrDefault(q => string.Equals(
+                q.Identifier, deployment.RuntimeProfileIdentifier, StringComparison.OrdinalIgnoreCase));
+            if (profile is null && string.IsNullOrWhiteSpace(deployment.RuntimeProfileIdentifier) && profiles.Count == 1)
+                profile = profiles.Single();
+        }
+        if (profile is null)
+            throw new InvalidOperationException("The legacy deployment's compute profile is unavailable.");
+
+        var systemReserveBytes = 0L;
+        if (!committed && provider.Capabilities.Storage is { } capabilities)
+        {
+            var demand = await storageDemandService.EstimateAsync(
+                    server.GameIdentifier, server.SelectedModPackDefinitionFk, server.PrimaryKey, true, cancellationToken)
+                .ConfigureAwait(false);
+            systemReserveBytes = demand.ProfileSystemReserveBytes;
+            var fixedCapacityGiB = deployment.SelectedExternalStorageBytes / RuntimeStoragePlanResolver.GiB;
+            storage = RuntimeStoragePlanResolver.Resolve(
+                deployment.RuntimeStorageStrategy,
+                fixedCapacityGiB,
+                deployment.PeakStorageRequiredBytes ?? demand.PeakPreparationRequiredBytes,
+                systemReserveBytes,
+                profile,
+                capabilities);
+        }
+        var placement = WorkloadPlacementResolver.Resolve(
+            definition,
+            null,
+            profile,
+            storage,
+            profile.EstimatedHourlyCostEur is > 0m
+                ? null
+                : committed
+                    ? Math.Max(0.000001m, (deployment.EstimatedComputeHourlyCostEur ?? 0m) / hostCount)
+                    : financeOptions.Value.GetHourlyRate(provider.ProviderIdentifier),
+            systemReserveBytes);
+        if (!committed)
+        {
+            deployment.PlacementSnapshot = placement.Serialize();
+            deployment.EstimatedComputeHourlyCostEur = placement.EstimatedComputeHourlyCostEur;
+            deployment.EstimatedStorageHourlyCostEur = placement.EstimatedStorageHourlyCostEur;
+            deployment.EstimatedHourlyCostEur = placement.EstimatedHourlyCostEur;
+            deployment.RuntimeStorageStrategy = storage.Strategy;
+            deployment.PeakStorageRequiredBytes ??= storage.RequiredCapacityBytes;
+            deployment.SelectedExternalStorageBytes = storage.UsesExternalStorage ? storage.SelectedCapacityBytes : null;
+            deployment.DeploymentRoot = storage.DeploymentRoot;
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return placement;
+    }
+
+    /// <summary>Identifies legacy deployments whose financial state must survive an upgrade unchanged.</summary>
+    /// <param name="deployment">The deployment with its provider resources loaded.</param>
+    /// <returns>Whether provider mutation or a financial commitment has already occurred.</returns>
+    private static bool HasLegacyCostCommitment(GameServerDeployment deployment)
+        => deployment.PossibleCost
+           || deployment.ReservedProviderCostEur.HasValue
+           || deployment.CostAuthorizationExpiresAt.HasValue
+           || deployment.Resources.Any(q => q.TimeStampProvisioningRequested.HasValue
+                                            || q.ProviderResourceIdentifier is not null
+                                            || q.PossibleCost);
+
+    /// <summary>Checks current provider eligibility for the frozen allocation without repricing it.</summary>
+    /// <param name="placement">The accepted deployment placement.</param>
+    /// <param name="provider">The deployment's runtime provider.</param>
+    /// <param name="cancellationToken">Cancels the profile catalog request.</param>
+    /// <exception cref="InvalidOperationException">A frozen host allocation is no longer available.</exception>
+    private static async Task ValidateHostAllocationsAsync(
+        WorkloadPlacementPlan placement,
+        IRuntimeProvider provider,
+        CancellationToken cancellationToken)
+    {
+        var profiles = await provider.GetProfilesAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var host in placement.Hosts)
+        {
+            var profile = profiles.SingleOrDefault(q => string.Equals(
+                q.Identifier, host.RuntimeProfileIdentifier, StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException("A planned host's compute profile is no longer available.");
+            var storage = host.StoragePlan;
+            if (!storage.UsesExternalStorage && profile.DiskGiB is null && provider.Capabilities.Storage is null)
+                continue;
+
+            var current = RuntimeStoragePlanResolver.Resolve(
+                storage.UsesExternalStorage ? ERuntimeStorageStrategy.FixedExternal : ERuntimeStorageStrategy.IncludedDisk,
+                storage.SelectedCapacityBytes / RuntimeStoragePlanResolver.GiB,
+                storage.RequiredCapacityBytes,
+                host.ProfileSystemReserveBytes,
+                profile,
+                provider.Capabilities.Storage ?? new RuntimeStorageCapabilities(false));
+            if (storage.UsesExternalStorage
+                && (current.SelectedCapacityBytes != storage.SelectedCapacityBytes
+                    || !string.Equals(current.DeploymentRoot, storage.DeploymentRoot, StringComparison.Ordinal)))
+            {
+                throw new InvalidOperationException("A planned host's external storage allocation is no longer available.");
+            }
+        }
+    }
+
     private async Task<IReadOnlyList<ProvisioningIntent>> EnsureAuxiliaryNodesReadyAsync(
         LifecycleJob job,
         GameServer server,
         GameServerDeployment deployment,
-        X39.UnitedTacticalForces.Api.Services.GameServerDefinition.GameServerDefinition gameDefinition,
+        WorkloadPlacementPlan placement,
+        IReadOnlyDictionary<WorkloadPlacementKey, IReadOnlyList<RuntimeInboundNetworkRequirement>> ingress,
         IRuntimeProvider provider,
         string? expectedLeaseOwner,
         int expectedAttempt,
         CancellationToken cancellationToken)
     {
         var ready = new List<ProvisioningIntent>();
-        foreach (var node in gameDefinition.Nodes.Where(q => !q.IsPrimary))
+        foreach (var host in placement.Hosts.Where(q => q.Key != placement.PrimaryHostKey))
         {
-            for (var ordinal = 0; ordinal < node.Count; ordinal++)
+            var intent = await EnsureProvisioningIntentAsync(
+                    job,
+                    server,
+                    deployment,
+                    provider,
+                    host,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            RuntimeResource? observed;
+            try
             {
-                var intent = await EnsureProvisioningIntentAsync(
-                        job,
-                        server,
-                        deployment,
-                        provider,
-                        node.ServiceIdentifier,
-                        ordinal,
+                observed = await FindExpectedResourceAsync(
+                        job, server, deployment, intent.Worker, intent.Resource, provider, host.StoragePlan,
                         cancellationToken)
                     .ConfigureAwait(false);
-                var observed = await FindExpectedResourceAsync(
-                        job,
-                        server,
-                        deployment,
-                        intent.Worker,
-                        intent.Resource,
-                        provider,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-                if (observed is null)
-                {
-                    var storagePlan = new RuntimeStoragePlan(
-                        deployment.RuntimeStorageStrategy,
-                        deployment.PeakStorageRequiredBytes ?? 0,
-                        deployment.SelectedExternalStorageBytes ?? deployment.PeakStorageRequiredBytes ?? 0,
-                        string.IsNullOrWhiteSpace(deployment.DeploymentRoot)
-                            ? "/srv/united-tactical-forces/runtime"
-                            : deployment.DeploymentRoot,
-                        deployment.EstimatedStorageHourlyCostEur ?? 0m);
-                    var bootstrap = workerCredentialService.IssueBootstrapCredential(intent.Worker);
-                    var bootstrapPayload = bootstrapPayloadRenderer.Render(
-                        bootstrap,
-                        server.PrimaryKey,
-                        server.GameIdentifier,
-                        node.InboundNetworkRequirements,
-                        storagePlan);
-                    var inbound = administrativeSshAccess.AddTo(node.InboundNetworkRequirements);
-                    await ClaimProvisioningMutationAsync(
-                            job,
-                            server,
-                            deployment,
-                            intent.Worker,
-                            intent.Resource,
-                            provider,
-                            expectedLeaseOwner,
-                            expectedAttempt,
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                    using var timeout = new CancellationTokenSource(_options.ProviderSettlementTimeout);
-                    var provision = await provider.ProvisionAsync(
-                            new RuntimeProvisionRequest(
-                                server.PrimaryKey,
-                                deployment.PrimaryKey,
-                                intent.Worker.PrimaryKey,
-                                server.GameIdentifier,
-                                intent.IntentId,
-                                bootstrapPayload.CloudInit,
-                                inbound,
-                                deployment.RuntimeProfileIdentifier,
-                                storagePlan,
-                                node.ServiceIdentifier,
-                                ordinal),
-                            timeout.Token)
-                        .ConfigureAwait(false);
-                    if (provision.ProvisionedResources.Count > 0)
-                    {
-                        await AdoptDiscoveredResourcesAsync(
-                                deployment,
-                                provider,
-                                provision.ProvisionedResources,
-                                intent.Resource,
-                                cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    if (!provision.Succeeded || provision.Resource is null)
-                    {
-                        intent.Resource.State = EDeploymentResourceState.Unknown;
-                        intent.Resource.PossibleCost = true;
-                        deployment.PossibleCost = true;
-                        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                        await TriggerFaultCostStopAsync(
-                                job,
-                                server,
-                                deployment,
-                                intent.Worker,
-                                "auxiliary-provider-provisioning-failed",
-                                provision.Error ?? $"Auxiliary service '{node.ServiceIdentifier}' could not be provisioned.",
-                                cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    observed = provision.Resource;
-                }
-                if (observed is null)
-                    throw new LifecycleExecutionException("Auxiliary provider provisioning returned no runtime resource.");
-                if (observed.HasConfirmedOperationalFault
-                    || observed.OperationalState is not ERuntimeResourceOperationalState.Operational)
-                {
-                    await TriggerFaultCostStopAsync(
-                            job,
-                            server,
-                            deployment,
-                            intent.Worker,
-                            "auxiliary-provider-operational-fault",
-                            $"Auxiliary service '{node.ServiceIdentifier}' is not operational.",
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                await PublishAllocatedResourceAsync(
-                        job,
-                        server,
-                        deployment,
-                        intent.Worker,
-                        intent.Resource,
-                        observed,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-                ready.Add(intent);
             }
+            catch (ProviderResourceGraphFaultException ex)
+            {
+                await TriggerFaultCostStopAsync(
+                        job, server, deployment, intent.Worker, ex.FaultCode, ex.Message, cancellationToken)
+                    .ConfigureAwait(false);
+                throw;
+            }
+            if (observed is null)
+            {
+                try
+                {
+                    await ValidateHostAllocationsAsync(placement, provider, cancellationToken).ConfigureAwait(false);
+                    await costSliceService.AuthorizeNextSliceAsync(
+                            deployment.PrimaryKey, provider.ProviderIdentifier, true, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is HostingAffordabilityException or InvalidOperationException)
+                {
+                    await TriggerFaultCostStopAsync(job, server, deployment, intent.Worker,
+                            "auxiliary-allocation-unavailable", ex.Message, cancellationToken)
+                        .ConfigureAwait(false);
+                    throw;
+                }
+                var storagePlan = host.StoragePlan;
+                var bootstrap = workerCredentialService.IssueBootstrapCredential(intent.Worker);
+                var bootstrapPayload = bootstrapPayloadRenderer.Render(
+                    bootstrap,
+                    server.PrimaryKey,
+                    server.GameIdentifier,
+                    host.InboundNetworkRequirements,
+                    storagePlan);
+                await ClaimProvisioningMutationAsync(
+                        job,
+                        server,
+                        deployment,
+                        intent.Worker,
+                        intent.Resource,
+                        provider,
+                        expectedLeaseOwner,
+                        expectedAttempt,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                using var timeout = new CancellationTokenSource(_options.ProviderSettlementTimeout);
+                var provision = await provider.ProvisionAsync(
+                        new RuntimeProvisionRequest(
+                            server.PrimaryKey,
+                            deployment.PrimaryKey,
+                            intent.Worker.PrimaryKey,
+                            server.GameIdentifier,
+                            intent.IntentId,
+                            bootstrapPayload.CloudInit,
+                            ingress[host.Key],
+                            host.RuntimeProfileIdentifier,
+                            storagePlan,
+                            host.Key.ServiceIdentifier,
+                            host.Key.ServiceOrdinal),
+                        timeout.Token)
+                    .ConfigureAwait(false);
+                using var settlementTimeout = new CancellationTokenSource(_options.ProviderSettlementTimeout);
+                await SettleAuxiliaryProvisionAsync(job, server, deployment, intent, provider, provision,
+                        settlementTimeout.Token)
+                    .ConfigureAwait(false);
+                observed = provision.Resource;
+            }
+            if (observed is null)
+                throw new LifecycleExecutionException("Auxiliary provider provisioning returned no runtime resource.");
+            if (observed.HasConfirmedOperationalFault
+                || observed.OperationalState is not ERuntimeResourceOperationalState.Operational)
+            {
+                await TriggerFaultCostStopAsync(
+                        job,
+                        server,
+                        deployment,
+                        intent.Worker,
+                        "auxiliary-provider-operational-fault",
+                        $"Auxiliary service '{host.Key.ServiceIdentifier}' is not operational.",
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            await PublishAllocatedResourceAsync(
+                    job,
+                    server,
+                    deployment,
+                    intent.Worker,
+                    intent.Resource,
+                    observed,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            ready.Add(intent);
         }
         return ready;
+    }
+
+    /// <summary>Inventories auxiliary create results even when a concurrent stop has cancelled the Start lease.</summary>
+    /// <param name="job">The Start job that claimed this mutation.</param>
+    /// <param name="server">The server whose mutation lock protects inventory.</param>
+    /// <param name="deployment">The deployment owning the auxiliary host.</param>
+    /// <param name="intent">The durable host provisioning intent.</param>
+    /// <param name="provider">The provider that returned the allocation result.</param>
+    /// <param name="provision">The conclusive or ambiguous result returned by the provider.</param>
+    /// <param name="cancellationToken">An independent token bounding mandatory settlement.</param>
+    /// <exception cref="LifecycleSupersededException">Teardown already owns the deployment.</exception>
+    /// <exception cref="LifecycleExecutionException">A retryable provider preflight failure prevented the create.</exception>
+    /// <exception cref="PermanentLifecycleExecutionException">A failed allocation triggered fault teardown.</exception>
+    private async Task SettleAuxiliaryProvisionAsync(
+        LifecycleJob job,
+        GameServer server,
+        GameServerDeployment deployment,
+        ProvisioningIntent intent,
+        IRuntimeProvider provider,
+        RuntimeProvisionResult provision,
+        CancellationToken cancellationToken)
+    {
+        var failed = !provision.Succeeded || provision.Resource is null;
+        var retryPreflight = false;
+        await using (var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
+                         .ConfigureAwait(false))
+        {
+            await dbContext.Entry(deployment).ReloadAsync(cancellationToken).ConfigureAwait(false);
+            await ReloadDeploymentProviderStateAsync(deployment.PrimaryKey, cancellationToken).ConfigureAwait(false);
+            if (provision.ProvisionedResources.Count > 0)
+            {
+                await AdoptDiscoveredResourcesAsync(
+                        deployment, provider, provision.ProvisionedResources, intent.Resource, cancellationToken,
+                        updateDeploymentCostState: false)
+                    .ConfigureAwait(false);
+            }
+            if (failed && provision.IsProvisioningAttemptDefinitivelyClosed)
+            {
+                retryPreflight = !deployment.IsProvisioningBlocked
+                    && provision.ProvisionedResources.Count == 0
+                    && provision.Outcome is ERuntimeProviderOutcome.TransientFailure;
+                var now = NodaSystemClock.Instance.GetCurrentInstant();
+                foreach (var resource in deployment.Resources.Where(q =>
+                             q.ProvisioningIntentIdentifier == intent.Resource.ProvisioningIntentIdentifier
+                             && q.TimeStampReleased is null))
+                {
+                    resource.TimeStampUpdated = now;
+                    resource.TimeStampProvisioningResolved = retryPreflight ? null : now;
+                    if (resource.ProviderResourceIdentifier is not null)
+                        continue;
+                    resource.PossibleCost = false;
+                    resource.State = retryPreflight ? EDeploymentResourceState.Provisioning : EDeploymentResourceState.Released;
+                    if (retryPreflight)
+                        resource.TimeStampProvisioningRequested = null;
+                    else
+                        resource.TimeStampReleased = now;
+                }
+            }
+            else if (failed && intent.Resource.TimeStampReleased is null)
+            {
+                intent.Resource.State = EDeploymentResourceState.Unknown;
+                intent.Resource.PossibleCost = true;
+            }
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (deployment.IsProvisioningBlocked || deployment.TimeStampResolved.HasValue)
+            throw new LifecycleSupersededException("Teardown superseded auxiliary host provisioning.");
+        if (retryPreflight)
+            throw new LifecycleExecutionException("Auxiliary host provisioning failed before create.", provision.Stage);
+        if (failed)
+        {
+            await TriggerFaultCostStopAsync(job, server, deployment, intent.Worker, "auxiliary-provider-provisioning-failed",
+                    provision.Error ?? $"Auxiliary service '{intent.Worker.ServiceIdentifier}' could not be provisioned.",
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
     }
 
     private async Task ExecuteStopAsync(
@@ -987,10 +1159,11 @@ internal sealed class LifecycleJobExecutor(
         GameServerDeployment deployment,
         CancellationToken cancellationToken)
     {
-        var primaryService = ResolvePrimaryServiceIdentifier(server.GameIdentifier);
+        var primaryHost = ResolvePrimaryHostKey(server, deployment);
         var workers = deployment.Workers
             .Where(q => q.TimeStampStopped == null)
-            .OrderBy(q => q.ServiceIdentifier == primaryService)
+            .OrderBy(q => q.ServiceIdentifier == primaryHost.ServiceIdentifier
+                          && q.ServiceOrdinal == primaryHost.ServiceOrdinal)
             .ThenBy(q => q.ServiceIdentifier, StringComparer.Ordinal)
             .ThenBy(q => q.ServiceOrdinal)
             .ToArray();
@@ -1100,9 +1273,10 @@ internal sealed class LifecycleJobExecutor(
         }
         if (faultTriggered)
         {
-            var primaryService = ResolvePrimaryServiceIdentifier(server.GameIdentifier);
+            var primaryHost = ResolvePrimaryHostKey(server, deployment);
             var worker = deployment.Workers.SingleOrDefault(q => q.TimeStampStopped == null
-                                                                  && q.ServiceIdentifier == primaryService);
+                                                                  && q.ServiceIdentifier == primaryHost.ServiceIdentifier
+                                                                           && q.ServiceOrdinal == primaryHost.ServiceOrdinal);
             if (worker is not null)
             {
                 await CollectBoundedFaultEvidenceAsync(job, server, deployment, worker, cancellationToken)
@@ -1130,10 +1304,11 @@ internal sealed class LifecycleJobExecutor(
     {
         if (deployment.Status is not EDeploymentStatus.Running)
             throw new LifecycleExecutionException("The deployment is not available for runtime work.");
-        var primaryService = ResolvePrimaryServiceIdentifier(server.GameIdentifier);
+        var primaryHost = ResolvePrimaryHostKey(server, deployment);
         var workers = deployment.Workers
             .Where(q => q.TimeStampStopped == null)
-            .OrderByDescending(q => q.ServiceIdentifier == primaryService)
+            .OrderByDescending(q => q.ServiceIdentifier == primaryHost.ServiceIdentifier
+                                    && q.ServiceOrdinal == primaryHost.ServiceOrdinal)
             .ThenBy(q => q.ServiceIdentifier, StringComparer.Ordinal)
             .ThenBy(q => q.ServiceOrdinal)
             .ToArray();
@@ -1242,10 +1417,10 @@ internal sealed class LifecycleJobExecutor(
         GameServer server,
         GameServerDeployment deployment,
         IRuntimeProvider provider,
-        string serviceIdentifier,
-        int serviceOrdinal,
+        WorkloadPlacementHost host,
         CancellationToken cancellationToken)
     {
+        var (serviceIdentifier, serviceOrdinal) = host.Key;
         await using var transaction = await BeginServerMutationAsync(server.PrimaryKey, cancellationToken)
             .ConfigureAwait(false);
         await dbContext.Entry(job).ReloadAsync(cancellationToken).ConfigureAwait(false);
@@ -1333,7 +1508,7 @@ internal sealed class LifecycleJobExecutor(
             throw new PermanentLifecycleExecutionException(
                 "The persisted provider provisioning intent is invalid and cannot be reconciled safely.");
         }
-        if (deployment.RuntimeStorageStrategy is not ERuntimeStorageStrategy.IncludedDisk
+        if (host.StoragePlan.UsesExternalStorage
             && !providerResources.Any(q => string.Equals(q.Kind, "volume", StringComparison.OrdinalIgnoreCase)))
         {
             var volumePlaceholder = new DeploymentResource
@@ -1346,8 +1521,8 @@ internal sealed class LifecycleJobExecutor(
                 Kind = "volume",
                 State = EDeploymentResourceState.Provisioning,
                 PossibleCost = false,
-                ProvisionedCapacityBytes = deployment.SelectedExternalStorageBytes,
-                EstimatedHourlyCostEur = deployment.EstimatedStorageHourlyCostEur,
+                ProvisionedCapacityBytes = host.StoragePlan.SelectedCapacityBytes,
+                EstimatedHourlyCostEur = host.StoragePlan.EstimatedHourlyCostEur,
                 TimeStampCreated = now,
                 TimeStampUpdated = now,
             };
@@ -1369,11 +1544,12 @@ internal sealed class LifecycleJobExecutor(
         LifecycleWorker worker,
         DeploymentResource resource,
         IRuntimeProvider provider,
+        RuntimeStoragePlan storagePlan,
         CancellationToken cancellationToken)
     {
         var intentId = ParseIntent(resource);
         IReadOnlyList<string>? requiredResourceTypes = provider.Capabilities.RequiredProvisionedResourceTypes;
-        if (deployment.RuntimeStorageStrategy is not ERuntimeStorageStrategy.IncludedDisk
+        if (storagePlan.UsesExternalStorage
             && requiredResourceTypes?.Contains("volume", StringComparer.OrdinalIgnoreCase) is not true)
         {
             requiredResourceTypes = [.. requiredResourceTypes ?? [], "volume"];
@@ -1676,8 +1852,9 @@ internal sealed class LifecycleJobExecutor(
             ? JsonSerializer.Deserialize<WorkerSelectedContent>(deployment.ScenarioSnapshot, CommandJsonOptions)
             : await ResolveScenarioAsync(server, cancellationToken).ConfigureAwait(false);
         var gameDefinition = gameServerDefinitions.Find(server.GameIdentifier);
-        var primaryServiceIdentifier = gameDefinition?.Nodes.Single(q => q.IsPrimary).ServiceIdentifier
-                                       ?? GameServerNodeDefinition.PrimaryServiceIdentifier;
+        var placement = WorkloadPlacementPlan.TryDeserialize(deployment.PlacementSnapshot);
+        var primaryHost = placement?.PrimaryHostKey ?? ResolvePrimaryHostKey(server, deployment);
+        var primaryPort = placement is null ? gameDefinition?.PrimaryConnection?.Port : placement.PrimaryConnection?.Port;
         var topology = await dbContext.LifecycleWorkers
             .AsNoTracking()
             .Where(q => q.DeploymentFk == deployment.PrimaryKey && q.TimeStampStopped == null)
@@ -1718,16 +1895,18 @@ internal sealed class LifecycleJobExecutor(
                     ServiceIdentifier = q.ServiceIdentifier,
                     ServiceOrdinal = q.ServiceOrdinal,
                     Address = addresses[q.PrimaryKey],
-                    Port = q.ServiceIdentifier == primaryServiceIdentifier
-                        ? gameDefinition?.PrimaryConnection?.Port
+                    Port = q.ServiceIdentifier == primaryHost.ServiceIdentifier && q.ServiceOrdinal == primaryHost.ServiceOrdinal
+                        ? primaryPort
                         : null,
-                    IsPrimary = q.ServiceIdentifier == primaryServiceIdentifier,
+                    IsPrimary = q.ServiceIdentifier == primaryHost.ServiceIdentifier
+                                && q.ServiceOrdinal == primaryHost.ServiceOrdinal,
                 })
                 .OrderByDescending(q => q.IsPrimary)
                 .ThenBy(q => q.ServiceIdentifier, StringComparer.Ordinal)
                 .ThenBy(q => q.ServiceOrdinal)
                 .ToArray();
-        var isPrimaryService = worker.ServiceIdentifier == primaryServiceIdentifier;
+        var isPrimaryService = worker.ServiceIdentifier == primaryHost.ServiceIdentifier
+                               && worker.ServiceOrdinal == primaryHost.ServiceOrdinal;
         var payload = new WorkerCommandPayload
         {
             ServerId                  = server.PrimaryKey,
@@ -1741,7 +1920,7 @@ internal sealed class LifecycleJobExecutor(
             Topology                  = endpoints,
             GracefulStopAttempts      = server.GracefulStopAttempts,
             GracefulStopTimeoutSeconds = server.GracefulStopTimeoutSeconds,
-            Port                      = gameDefinition?.PrimaryConnection?.Port,
+            Port                      = primaryPort,
             Content                   = content,
             Configuration             = configuration.Values,
             PeakStorageRequiredBytes  = deployment.PeakStorageRequiredBytes,
@@ -2485,6 +2664,7 @@ internal sealed class LifecycleJobExecutor(
             : "stopped";
         deployment.TimeStampResolved = now;
         deployment.TimeStampUpdated = now;
+        var primaryHost = ResolvePrimaryHostKey(server, deployment);
         auditWriter.Add(
             dbContext,
             effectiveTerminate ? EHostingAuditEventKind.DeploymentTerminated : EHostingAuditEventKind.DeploymentStopped,
@@ -2497,7 +2677,7 @@ internal sealed class LifecycleJobExecutor(
             deploymentId: deployment.PrimaryKey,
             lifecycleJobId: job.PrimaryKey,
             workerId: activeWorkers.FirstOrDefault(q =>
-                q.ServiceIdentifier == ResolvePrimaryServiceIdentifier(server.GameIdentifier))?.PrimaryKey,
+                q.ServiceIdentifier == primaryHost.ServiceIdentifier && q.ServiceOrdinal == primaryHost.ServiceOrdinal)?.PrimaryKey,
             costOwnerId: deployment.CostOwnerFk,
             costImpact: hadPossibleCost ? ECostImpact.StopsCost : ECostImpact.NoCostImpact);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -2922,9 +3102,16 @@ internal sealed class LifecycleJobExecutor(
            ?? throw new PermanentLifecycleExecutionException(
                $"Runtime provider '{HostingFailureSanitizer.Sanitize(identifier, 128)}' is unavailable.");
 
-    private string ResolvePrimaryServiceIdentifier(string gameIdentifier)
-        => gameServerDefinitions.Find(gameIdentifier)?.Nodes.Single(q => q.IsPrimary).ServiceIdentifier
-           ?? GameServerNodeDefinition.PrimaryServiceIdentifier;
+    /// <summary>Finds the primary worker identity, including during cleanup of a legacy deployment.</summary>
+    /// <param name="server">The server supplying the legacy game definition.</param>
+    /// <param name="deployment">The deployment owning the persisted placement.</param>
+    /// <returns>The persisted primary host key or the historical primary service key.</returns>
+    private WorkloadPlacementKey ResolvePrimaryHostKey(GameServer server, GameServerDeployment deployment)
+        => WorkloadPlacementPlan.TryDeserialize(deployment.PlacementSnapshot)?.PrimaryHostKey
+           ?? new WorkloadPlacementKey(
+               gameServerDefinitions.Find(server.GameIdentifier)?.Nodes.Single(q => q.IsPrimary).ServiceIdentifier
+               ?? GameServerNodeDefinition.PrimaryServiceIdentifier,
+               0);
 
     private bool IsPostgreSql
         => dbContext.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true;

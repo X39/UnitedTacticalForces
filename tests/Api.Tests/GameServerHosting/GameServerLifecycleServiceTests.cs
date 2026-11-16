@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces;
 using X39.UnitedTacticalForces.Api.DTO.Payloads;
@@ -37,7 +39,9 @@ public sealed class GameServerLifecycleServiceTests
             new TestStorageDemandService(),
             new HostingAuthorizationService(store.DbContext),
             new HostingAuditWriter(),
-            new TestGameServerSecretService());
+            new TestGameServerSecretService(),
+            new GameServerConfigurationService(store.DbContext),
+            Options.Create(new HostingFinanceOptions()));
 
         var server = await service.CreateAsync(
             new GameServerCreationPayload

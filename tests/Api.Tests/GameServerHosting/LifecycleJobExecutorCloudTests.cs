@@ -17,6 +17,7 @@ using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.UnitedTacticalForces.Hosting.Contracts;
+using X39.UnitedTacticalForces.GameServerImplementations;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 
 namespace Api.Tests.GameServerHosting;
@@ -106,6 +107,179 @@ public sealed class LifecycleJobExecutorCloudTests
 
         var provisionRequest = Assert.IsType<RuntimeProvisionRequest>(provider.LastProvisionRequest);
         Assert.Equal(requirements, provisionRequest.InboundNetworkRequirements);
+    }
+
+    /// <summary>Verifies the same balance can fund one planned host while a two-host quote fails before create.</summary>
+    /// <param name="sameHost">Whether the Headless Client shares the primary host.</param>
+    /// <returns>A task that completes after checking the provider and financial reservation.</returns>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Start_ReservesTheFrozenAggregateBeforeCreatingAnyHost(bool sameHost)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider();
+        var definition = new Arma3GameServerDefinitionRegistration();
+        var catalog = new GameServerDefinitionCatalog([definition]);
+        var placement = await SaveArmaPlacementAsync(store, seed, definition, sameHost);
+        seed.CostOwner.Balance = 0.04m;
+        seed.CostOwner.Allowance = null;
+        await store.DbContext.SaveChangesAsync();
+        var costs = new HostingCostSliceService(
+            store.DbContext, new HostingAuditWriter(),
+            Options.Create(new HostingFinanceOptions { MinimumSafetyRangeEur = 0m }));
+        var executor = CreateExecutor(store, provider, costs, catalog);
+
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
+
+        Assert.Equal(sameHost ? 1 : 0, provider.ProvisionCalls);
+        Assert.Equal(sameHost ? 0.10m : 0.20m, placement.EstimatedHourlyCostEur);
+        Assert.Equal(placement.EstimatedHourlyCostEur, seed.Deployment!.EstimatedHourlyCostEur);
+        if (!sameHost)
+            Assert.Equal("provider-cost-unaffordable", seed.Deployment.FaultCode);
+    }
+
+    /// <summary>Verifies host allocation and commands use the accepted snapshot after configuration changes.</summary>
+    /// <param name="sameHost">Whether the accepted plan assigns both workloads to one host.</param>
+    /// <returns>A task that completes after the executor reaches the worker boundary.</returns>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Start_AllocatesOnlyFrozenHostsAfterPlacementSettingChanges(bool sameHost)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider { AllocateReadyResources = true };
+        var definition = new Arma3GameServerDefinitionRegistration();
+        var catalog = new GameServerDefinitionCatalog([definition]);
+        var placement = await SaveArmaPlacementAsync(store, seed, definition, sameHost);
+        var value = await store.DbContext.GameServerConfigurationValues.SingleAsync();
+        value.ValueJson = JsonSerializer.Serialize(sameHost
+            ? Arma3ConfigurationImplementation.SeparateHostPlacement
+            : Arma3ConfigurationImplementation.SameHostPlacement);
+        await store.DbContext.SaveChangesAsync();
+        seed.CostOwner.Balance = 10m;
+        await store.DbContext.SaveChangesAsync();
+        var costs = new HostingCostSliceService(
+            store.DbContext, new HostingAuditWriter(), Options.Create(new HostingFinanceOptions()));
+        var executor = CreateExecutor(store, provider, costs, catalog,
+            new LifecycleWorkerOptions { RegistrationGrace = TimeSpan.Zero });
+
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
+
+        var charge = Assert.Single(await store.DbContext.HostingCostLedgerEntries.ToArrayAsync());
+        Assert.Equal(placement.EstimatedHourlyCostEur, charge.EstimatedHourlyRate);
+        Assert.Equal(placement.Hosts.Select(q => q.Key), provider.ProvisionRequests.Select(
+            q => new WorkloadPlacementKey(q.ServiceIdentifier, q.ServiceOrdinal)));
+        Assert.Equal(placement.Hosts.Count, provider.ProvisionRequests.Select(q => q.WorkerId).Distinct().Count());
+        Assert.Equal(placement.Hosts.Count, provider.ProvisionRequests.Select(q => q.ProvisioningIntentId).Distinct().Count());
+        Assert.Equal(definition.Definition.InboundNetworkRequirements, provider.ProvisionRequests[0].InboundNetworkRequirements);
+        if (!sameHost)
+            Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<RuntimeInboundNetworkRequirement>>(
+                provider.ProvisionRequests[1].InboundNetworkRequirements));
+    }
+
+    /// <summary>Verifies legacy starts retain separate placement after an operator opts in to same-host placement.</summary>
+    /// <param name="committed">Whether financing was already authorized by the prior executor.</param>
+    /// <returns>A task that completes after checking legacy host allocation and the deployment quote.</returns>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Start_LegacyArmaUsesHistoricalTopologyAndPreservesCommittedRate(bool committed)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider { AllocateReadyResources = true };
+        var definition = new Arma3GameServerDefinitionRegistration();
+        await SaveArmaPlacementAsync(store, seed, definition, sameHost: true);
+        var deployment = seed.Deployment!;
+        deployment.PlacementSnapshot = null;
+        deployment.EstimatedHourlyCostEur = 0.14m;
+        if (committed)
+            deployment.CostAuthorizationExpiresAt = NodaSystemClock.Instance.GetCurrentInstant() + Duration.FromHours(1);
+        await store.DbContext.SaveChangesAsync();
+        var executor = CreateExecutor(store, provider, new RecordingCostSliceService(),
+            new GameServerDefinitionCatalog([definition]), new LifecycleWorkerOptions { RegistrationGrace = TimeSpan.Zero });
+
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
+
+        Assert.Equal(2, provider.ProvisionCalls);
+        Assert.Equal(Arma3GameServerDefinitionRegistration.HeadlessClientServiceIdentifier,
+            provider.ProvisionRequests[1].ServiceIdentifier);
+        Assert.Equal(committed ? 0.14m : 0.20m, deployment.EstimatedHourlyCostEur);
+        if (committed)
+            Assert.Null(deployment.PlacementSnapshot);
+        else
+            Assert.Equal(2, WorkloadPlacementPlan.Deserialize(Assert.IsType<string>(deployment.PlacementSnapshot)).Hosts.Count);
+    }
+
+    /// <summary>Verifies that an unknown auxiliary create remains attributable through late verified teardown.</summary>
+    /// <returns>A task that completes after the late graph is released.</returns>
+    [Fact]
+    public async Task Start_WhenAuxiliaryCreateIsAmbiguous_ReleasesLateAllocationWithoutReposting()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider { AllocateReadyResources = true, FailAuxiliaryCreate = true };
+        var definition = new Arma3GameServerDefinitionRegistration();
+        await SaveArmaPlacementAsync(store, seed, definition, sameHost: false);
+        var executor = CreateExecutor(
+            store, provider, new RecordingCostSliceService(), new GameServerDefinitionCatalog([definition]));
+
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
+        await store.DbContext.Entry(seed.Deployment!).ReloadAsync();
+        Assert.Null(seed.Deployment!.TimeStampResolved);
+        Assert.Equal(EDeploymentStatus.TerminatingDueToFault, seed.Deployment.Status);
+        Assert.Equal(2, provider.ProvisionCalls);
+        Assert.Equal(Arma3GameServerDefinitionRegistration.HeadlessClientServiceIdentifier,
+            provider.ProvisionRequests[1].ServiceIdentifier);
+
+        provider.ReturnCompleteReadyGraphAfterUnknown = true;
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(() => executor.ExecuteAsync(job));
+
+        await store.DbContext.Entry(seed.Deployment).ReloadAsync();
+        Assert.Equal(EDeploymentStatus.TerminatedDueToFault, seed.Deployment.Status);
+        Assert.Equal(2, provider.ProvisionCalls);
+        Assert.Equal(6, provider.ReleaseCalls);
+        Assert.All(await store.DbContext.DeploymentResources.ToArrayAsync(),
+            resource => Assert.NotNull(resource.TimeStampReleased));
+    }
+
+    /// <summary>Persists an Arma placement and quote for a seeded running Start job.</summary>
+    /// <param name="store">The database containing the seeded job.</param>
+    /// <param name="seed">The server and its deployment.</param>
+    /// <param name="definition">Arma's real game definition.</param>
+    /// <param name="sameHost">Whether the effective configuration selects shared placement.</param>
+    /// <returns>The placement captured before the executor runs.</returns>
+    private static async Task<WorkloadPlacementPlan> SaveArmaPlacementAsync(
+        HostingTestStore store,
+        HostingTestSeed seed,
+        Arma3GameServerDefinitionRegistration definition,
+        bool sameHost)
+    {
+        seed.Server.GameIdentifier = Arma3ConfigurationImplementation.Identifier;
+        store.DbContext.GameServerConfigurationValues.Add(new GameServerConfigurationValue
+        {
+            GameServerFk = seed.Server.PrimaryKey,
+            DefinitionKey = Arma3ConfigurationImplementation.HeadlessClientPlacementKey,
+            UpdatedByFk = seed.User.PrimaryKey,
+            TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant(),
+            ValueJson = JsonSerializer.Serialize(sameHost
+                ? Arma3ConfigurationImplementation.SameHostPlacement
+                : Arma3ConfigurationImplementation.SeparateHostPlacement),
+        });
+        await store.DbContext.SaveChangesAsync();
+        var configuration = await new GameServerConfigurationService(store.DbContext).ResolveAsync(seed.Server.PrimaryKey);
+        var placement = WorkloadPlacementResolver.Resolve(
+            definition.Definition,
+            configuration,
+            new RuntimeProfile("default", "Default", "Test compute profile", EstimatedHourlyCostEur: 0.1m),
+            new RuntimeStoragePlan(ERuntimeStorageStrategy.IncludedDisk, 0, 0, "/srv/united-tactical-forces/runtime", 0));
+        seed.Deployment!.PlacementSnapshot = placement.Serialize();
+        seed.Deployment.EstimatedHourlyCostEur = placement.EstimatedHourlyCostEur;
+        await store.DbContext.SaveChangesAsync();
+        return placement;
     }
 
     [Fact]
@@ -971,11 +1145,18 @@ public sealed class LifecycleJobExecutorCloudTests
         Assert.Equal("CBA", content.DisplayName);
     }
 
-    [Fact]
-    public async Task UserTerminate_SkipsWorkerPreservationAndPerformsVerifiedProviderTeardown()
+    /// <summary>Verifies that user termination does not depend on a readable placement snapshot.</summary>
+    /// <param name="placementSnapshot">A missing or unsupported placement snapshot.</param>
+    /// <returns>A task that completes after verified teardown.</returns>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("{\"version\":99}")]
+    public async Task UserTerminate_SkipsWorkerPreservationAndPerformsVerifiedProviderTeardown(string? placementSnapshot)
     {
         await using var store = await HostingTestStore.CreateAsync();
         var (seed, job, _) = await SeedTerminateAsync(store, faultTriggered: false);
+        seed.Deployment!.PlacementSnapshot = placementSnapshot;
+        await store.DbContext.SaveChangesAsync();
         var provider = new ExecutorTestProvider();
         var executor = CreateExecutor(store, provider, new RecordingCostSliceService());
 
@@ -1247,7 +1428,8 @@ public sealed class LifecycleJobExecutorCloudTests
                 RegistrationGrace = TimeSpan.FromMinutes(15),
                 BootstrapCredentialLifetime = TimeSpan.FromMinutes(45),
                 IdlePollInterval = TimeSpan.FromMilliseconds(5),
-             }));
+             }),
+            Options.Create(new HostingFinanceOptions()));
 
     private sealed class EmptyServerFileStorage : IServerFileStorage
     {
@@ -1472,6 +1654,19 @@ public sealed class LifecycleJobExecutorCloudTests
     private sealed class ExecutorTestProvider : IRuntimeProvider
     {
         private readonly HashSet<string> _releasedResourceIdentifiers = new(StringComparer.Ordinal);
+        private readonly List<RuntimeResource> _allocatedResources = [];
+
+        /// <summary>Gets whether provisioning returns complete, ready resource graphs.</summary>
+        /// <value>Whether the provider should return ready resources.</value>
+        public bool AllocateReadyResources { get; init; }
+
+        /// <summary>Gets whether the auxiliary create should return an ambiguous result.</summary>
+        /// <value>Whether to simulate a lost response to the auxiliary create.</value>
+        public bool FailAuxiliaryCreate { get; init; }
+
+        /// <summary>Gets all provider create requests in the order received.</summary>
+        /// <value>The captured requests in provider call order.</value>
+        public List<RuntimeProvisionRequest> ProvisionRequests { get; } = [];
 
         public const string Identifier = "executor-test-cloud";
 
@@ -1522,10 +1717,24 @@ public sealed class LifecycleJobExecutorCloudTests
         {
             ProvisionCalls++;
             LastProvisionRequest = request;
+            ProvisionRequests.Add(request);
             if (OnProvisionAsync is not null)
                 await OnProvisionAsync();
             if (!IgnoreProvisionCancellation)
                 cancellationToken.ThrowIfCancellationRequested();
+            if (AllocateReadyResources && (!FailAuxiliaryCreate || ProvisionCalls == 1))
+            {
+                var server = CreateResource(request, $"server:{ProvisionCalls}", "server", true);
+                var graph = new[]
+                {
+                    server,
+                    CreateResource(request, $"primary-ip:{ProvisionCalls}", "primary-ip", true),
+                    CreateResource(request, $"firewall:{ProvisionCalls}", "firewall", false),
+                };
+                _allocatedResources.AddRange(graph);
+                return new RuntimeProvisionResult(
+                    ERuntimeProviderOutcome.Succeeded, "allocated", null, server, graph);
+            }
             var partialResources = new List<RuntimeResource>();
             if (ReturnPartialFirewallOnUnknown)
             {
@@ -1586,7 +1795,7 @@ public sealed class LifecycleJobExecutorCloudTests
             DiscoveryCalls++;
             if (OnDiscoveryAsync is not null)
                 await OnDiscoveryAsync(DiscoveryCalls);
-            var resources = new List<RuntimeResource>();
+            var resources = _allocatedResources.Where(q => !_releasedResourceIdentifiers.Contains(q.ResourceIdentifier)).ToList();
             if (LastProvisionRequest is { } request)
             {
                 if (ReturnPartialFirewallOnUnknown

@@ -1,15 +1,23 @@
-using X39.UnitedTacticalForces.Hosting.Contracts;
+using System.Text.Json;
+using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.GameServerImplementations;
+using X39.UnitedTacticalForces.Hosting.Contracts;
 using X39.Util.DependencyInjection.Attributes;
 
 namespace X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 
+/// <summary>Registers Arma 3 metadata and its workload placement policy.</summary>
 [Singleton<Arma3GameServerDefinitionRegistration, IGameServerDefinitionRegistration>]
 public sealed class Arma3GameServerDefinitionRegistration : IGameServerDefinitionRegistration
 {
+    /// <summary>The stable identifier used to select the Arma 3 implementation.</summary>
     public const string GameIdentifier = "arma3";
+
+    /// <summary>The stable workload identifier for the Headless Client.</summary>
     public const string HeadlessClientServiceIdentifier = "headless-client";
 
+    /// <inheritdoc />
     public GameServerDefinition Definition { get; } = new(
         GameIdentifier,
         "Arma 3",
@@ -162,5 +170,32 @@ public sealed class Arma3GameServerDefinitionRegistration : IGameServerDefinitio
                 false,
                 []),
         ],
+        ResolveWorkloadHost = ResolveWorkloadHost,
     };
+
+    /// <summary>Places the Headless Client on its own host or on the primary host.</summary>
+    /// <param name="configuration">The effective server configuration selected for the deployment.</param>
+    /// <param name="workload">The workload whose host is being selected.</param>
+    /// <returns>The selected host identity.</returns>
+    /// <exception cref="InvalidOperationException">The placement setting is invalid.</exception>
+    private static WorkloadPlacementKey ResolveWorkloadHost(
+        ResolvedGameConfiguration configuration,
+        WorkloadPlacementKey workload)
+    {
+        if (workload.ServiceIdentifier != HeadlessClientServiceIdentifier)
+            return workload;
+        var entry = configuration.Entries.SingleOrDefault(value =>
+            value.Definition.Key == Arma3ConfigurationImplementation.HeadlessClientPlacementKey);
+        if (entry is null)
+            return workload;
+        if (!entry.IsCompatible || entry.Value is not { ValueKind: JsonValueKind.String } value)
+            throw new InvalidOperationException("The Headless Client placement setting is invalid.");
+        return value.GetString() switch
+        {
+            Arma3ConfigurationImplementation.SeparateHostPlacement => workload,
+            Arma3ConfigurationImplementation.SameHostPlacement =>
+                new WorkloadPlacementKey(GameServerNodeDefinition.PrimaryServiceIdentifier, 0),
+            _ => throw new InvalidOperationException("The Headless Client placement setting is invalid."),
+        };
+    }
 }

@@ -13,6 +13,15 @@ public sealed partial class Arma3ConfigurationImplementation : IGameConfiguratio
     public const string ProfileTarget = "server/profiles/UTFServer/UTFServer.Arma3Profile";
     public const string BattlEyeTarget = "server/battleye/beserver.cfg";
 
+    /// <summary>Identifies the typed Headless Client placement setting.</summary>
+    public const string HeadlessClientPlacementKey = "headlessClientPlacement";
+
+    /// <summary>Places the Headless Client workload on its own host.</summary>
+    public const string SeparateHostPlacement = "separate-host";
+
+    /// <summary>Assigns the Headless Client workload to the primary host.</summary>
+    public const string SameHostPlacement = "same-host";
+
     public string GameIdentifier => Identifier;
 
     public IReadOnlyList<GeneratedConfigurationTarget> Targets { get; } =
@@ -150,9 +159,31 @@ public sealed partial class Arma3ConfigurationImplementation : IGameConfiguratio
     private static JsonElement Json(decimal value) => JsonSerializer.SerializeToElement(value);
     private static JsonElement Json(bool value) => JsonSerializer.SerializeToElement(value);
 
+    /// <summary>Declares the typed Arma settings for generated files and server hosting.</summary>
+    /// <returns>The supported configuration definitions.</returns>
     private static IReadOnlyList<GameConfigurationDefinition> CreateDefinitions()
         =>
         [
+            new(
+                HeadlessClientPlacementKey,
+                string.Empty,
+                string.Empty,
+                "Hosting",
+                "Headless Client placement",
+                "Selects the host for the Headless Client workload on the next deployment.",
+                EGameConfigurationValueKind.Selection,
+                false,
+                false,
+                10,
+                Json(SeparateHostPlacement),
+                Choices:
+                [
+                    new(Json(SeparateHostPlacement), "Separate host"),
+                    new(Json(SameHostPlacement), "Same host"),
+                ])
+            {
+                IsControlPlaneOnly = true,
+            },
             Definition(ServerTarget, "hostname", "General", "Hostname", "Name shown in the server browser.", EGameConfigurationValueKind.String, true, false, 10, Json("United Tactical Forces")),
             Definition(ServerTarget, "password", "General", "Join password", "Password required to join the server.", EGameConfigurationValueKind.String, false, true, 20),
             Definition(ServerTarget, "passwordAdmin", "General", "Administrator password", "Password used for in-game administration.", EGameConfigurationValueKind.String, false, true, 30),
