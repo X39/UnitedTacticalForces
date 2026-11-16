@@ -27,7 +27,11 @@ public sealed class WorkloadPlacementResolverTests
             25 * RuntimeStoragePlanResolver.GiB,
             30 * RuntimeStoragePlanResolver.GiB,
             "/srv/volume",
-            0.02m);
+            0.02m)
+        {
+            CapacityPolicyVersion = RuntimeStorageCapacityPolicy.CurrentVersion,
+            EstimatedUsableCapacityBytes = RuntimeStorageCapacityPolicy.EstimateUsableBytes(30 * RuntimeStoragePlanResolver.GiB),
+        };
         var plan = WorkloadPlacementResolver.Resolve(
             definition,
             selection is null ? null : CreateConfiguration(selection, true),
@@ -79,6 +83,36 @@ public sealed class WorkloadPlacementResolverTests
 
         Assert.Throws<InvalidOperationException>(
             () => WorkloadPlacementResolver.Resolve(definition, configuration, profile, storage));
+    }
+
+    /// <summary>Rejects inconsistent capacity evidence while keeping legacy snapshots readable for cleanup.</summary>
+    /// <param name="version">The stored capacity policy version.</param>
+    /// <param name="usable">The claimed usable capacity, in GiB.</param>
+    /// <param name="valid">Whether the evidence is expected to validate.</param>
+    [Theory]
+    [InlineData(null, null, true)]
+    [InlineData(1, 17L, true)]
+    [InlineData(1, 20L, false)]
+    [InlineData(2, 17L, false)]
+    [InlineData(null, 17L, false)]
+    [InlineData(1, null, false)]
+    public void StorageEvidence_RejectsUnknownOrInconsistentForecast(int? version, long? usable, bool valid)
+    {
+        var definition = new AskaGameServerDefinitionRegistration().Definition;
+        var profile = new RuntimeProfile("general", "General", "Compute profile", EstimatedHourlyCostEur: 0.1m);
+        var storage = new RuntimeStoragePlan(ERuntimeStorageStrategy.FixedExternal,
+            17 * RuntimeStoragePlanResolver.GiB, 20 * RuntimeStoragePlanResolver.GiB, "/srv/runtime", 0.02m)
+        {
+            CapacityPolicyVersion = version,
+            EstimatedUsableCapacityBytes = usable * RuntimeStoragePlanResolver.GiB,
+        };
+        if (!valid)
+        {
+            Assert.Throws<InvalidOperationException>(() => WorkloadPlacementResolver.Resolve(definition, null, profile, storage));
+            return;
+        }
+        var plan = WorkloadPlacementResolver.Resolve(definition, null, profile, storage);
+        Assert.Equal(storage, WorkloadPlacementPlan.Deserialize(plan.Serialize()).PrimaryHost.StoragePlan);
     }
 
     /// <summary>Uses the existing primary ingress and one host for a game without a placement policy.</summary>

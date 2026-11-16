@@ -19,8 +19,8 @@ public sealed class RuntimeStoragePlanResolverTests
             Profile(40),
             Capabilities(minimumGiB: 10, maximumGiB: 100, incrementGiB: 5));
 
-        Assert.Equal(20 * GiB, plan.SelectedCapacityBytes);
-        Assert.Equal(0.02m, plan.EstimatedHourlyCostEur);
+        Assert.Equal(25 * GiB, plan.SelectedCapacityBytes);
+        Assert.Equal(0.025m, plan.EstimatedHourlyCostEur);
         Assert.True(plan.UsesExternalStorage);
     }
 

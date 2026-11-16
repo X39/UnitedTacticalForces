@@ -156,5 +156,20 @@ internal sealed record WorkloadPlacementPlan(
         => storage is { RequiredCapacityBytes: >= 0, EstimatedHourlyCostEur: >= 0 }
            && Enum.IsDefined(storage.Strategy)
            && storage.SelectedCapacityBytes >= storage.RequiredCapacityBytes
+           && HasValidCapacityEvidence(storage)
            && !string.IsNullOrWhiteSpace(storage.DeploymentRoot);
+
+    /// <summary>Validates forecast evidence while retaining historical snapshots for discovery and cleanup.</summary>
+    /// <param name="storage">The frozen storage allocation.</param>
+    /// <returns>Whether evidence is absent in a legacy plan or matches the immutable supported policy.</returns>
+    private static bool HasValidCapacityEvidence(RuntimeStoragePlan storage)
+    {
+        if (storage.CapacityPolicyVersion is null && storage.EstimatedUsableCapacityBytes is null)
+            return true;
+        return storage.UsesExternalStorage
+               && storage.CapacityPolicyVersion == RuntimeStorageCapacityPolicy.CurrentVersion
+               && storage.EstimatedUsableCapacityBytes
+               == RuntimeStorageCapacityPolicy.EstimateUsableBytes(storage.SelectedCapacityBytes)
+               && storage.EstimatedUsableCapacityBytes >= storage.RequiredCapacityBytes;
+    }
 }
