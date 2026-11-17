@@ -130,6 +130,14 @@ def checked_path(name):
     return str(path)
 
 
+def oci_layer(descriptor):
+    media = descriptor['mediaType']
+    if media == 'application/vnd.docker.image.rootfs.diff.tar.gzip':
+        media = LAYER + '+gzip'
+    require(media in (LAYER, LAYER + '+gzip'), 'unsupported base layer media type')
+    return {**descriptor, 'mediaType': media}
+
+
 class Base:
     def __init__(self, key, work):
         repository, pin = PINS[key]
@@ -156,7 +164,7 @@ class Base:
         require(document.get('schemaVersion') == 2, 'invalid base manifest')
         self.config = json.loads(self.blob(document['config']))
         require(self.config['os'] == 'linux' and self.config['architecture'] == 'amd64', 'wrong base platform')
-        self.layers = document['layers']
+        self.layers = [oci_layer(descriptor) for descriptor in document['layers']]
         require(0 < len(self.layers) <= 32, 'base layer count exceeded')
         self.blobs = {}
         self.metadata = {}

@@ -12,6 +12,9 @@ import subprocess
 import sys
 import uuid
 
+from oci_download import read_credential
+from oci_transfer import open_release, send_release
+
 
 def validate_host(host):
     """Accept DNS names or canonical unicast addresses in the public egress subset."""
@@ -42,7 +45,7 @@ def validate_host(host):
     return host
 
 
-def ssh_arguments(manifest, target, attempt, release_job, timeout):
+def ssh_arguments(manifest, target, attempt, release_job, timeout, release=None, activate=False, owner_key=False):
     if (set(manifest) != {"version", "target", "host", "port", "user", "key_file", "known_hosts_file"}
             or type(manifest["version"]) is not int or manifest["version"] != 1
             or manifest["target"] != target):
@@ -64,8 +67,16 @@ def ssh_arguments(manifest, target, attempt, release_job, timeout):
         if field == "key_file" and metadata.st_mode & 0o077:
             raise ValueError("SSH invocation key must be private")
         paths.append(str(path))
-    command = "deploy --attempt " + str(uuid.UUID(attempt)) + " --release-job " + release_job
-    command += " --wait --timeout " + str(timeout)
+    attempt = str(uuid.UUID(attempt))
+    if release is None and not activate and not owner_key:
+        command = f"deploy --attempt {attempt} --release-job {release_job} --wait --timeout {timeout}"
+    else:
+        if not isinstance(release, str) or not re.fullmatch(r"[0-9a-f]{64}", release) or len(release_job) > 63:
+            raise ValueError("Invalid OCI receive boundary")
+        mode = "activate" if activate else "receive"
+        verb = mode + ("-owner-oci-v1" if owner_key else "-oci-v1")
+        command = (f"{verb} --attempt {attempt} --release-job {release_job} "
+                   f"--release {release} --timeout {timeout}")
     proxy = " ".join(shlex.quote(part) for part in [sys.executable, "-I",
                      str(Path(__file__).resolve().with_name("ssh-connect-proxy.py")),
                      manifest["host"], str(manifest["port"])])
@@ -86,13 +97,39 @@ def main():
     parser.add_argument("--release-job", required=True)
     parser.add_argument("--wait", required=True, action="store_true")
     parser.add_argument("--timeout", default=600, type=int)
+    transfer = parser.add_mutually_exclusive_group()
+    transfer.add_argument("--receive-oci", type=Path, help="Validate a release on a receive-only target")
+    transfer.add_argument("--activate-oci", type=Path, help="Send and activate an exact OCI release")
+    parser.add_argument("--max-archive-bytes", type=int)
+    parser.add_argument("--attempt-evidence-file", type=Path)
     args = parser.parse_args()
     if args.manifest.stat().st_size > 65536:
         raise ValueError("Manifest is too large")
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
-    command = ssh_arguments(manifest, args.target, args.attempt, args.release_job, args.timeout)
-    result = subprocess.run(command, stdin=subprocess.DEVNULL, check=False, timeout=args.timeout + 30)
-    return result.returncode if result.returncode > 0 else (1 if result.returncode else 0)
+    release_manifest = args.receive_oci or args.activate_oci
+    if (release_manifest is None) != (args.max_archive_bytes is None):
+        parser.error("OCI transfer requires a manifest and --max-archive-bytes")
+    if args.attempt_evidence_file is not None and release_manifest is None:
+        parser.error("Attempt evidence requires OCI transfer")
+    if release_manifest is not None and args.attempt_evidence_file is None:
+        parser.error("UTF OCI transfer requires owner-key attempt evidence")
+    if release_manifest is None:
+        command = ssh_arguments(manifest, args.target, args.attempt, args.release_job, args.timeout)
+        result = subprocess.run(command, stdin=subprocess.DEVNULL, check=False, timeout=args.timeout + 30)
+        return max(1, result.returncode) if result.returncode else 0
+    evidence = None
+    if args.attempt_evidence_file is not None:
+        credential = read_credential(args.attempt_evidence_file)
+        if credential.get("attempt_id") != args.attempt:
+            raise ValueError("Attempt evidence does not match this job")
+        evidence = credential["attempt_evidence_token"]
+        if not isinstance(evidence, str):
+            raise ValueError("Invalid attempt evidence")
+    with open_release(release_manifest, Path.cwd(), args.max_archive_bytes) as (reference, archives):
+        command = ssh_arguments(manifest, args.target, args.attempt, args.release_job, args.timeout, reference,
+                                activate=args.activate_oci is not None, owner_key=evidence is not None)
+        result = send_release(command, archives, args.timeout + 30, evidence=evidence)
+        return max(1, result) if result else 0
 
 
 if __name__ == "__main__":
