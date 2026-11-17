@@ -202,7 +202,11 @@ foreach ($profile in @('api','worker','aska','sdk')) {
 $images | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $output 'images.json') -Encoding utf8NoBOM
 $sdk = $images.sdk.image_id
 foreach ($profile in @('dotnet','react')) {
-    Invoke-Bounded -EngineArguments @('run','--rm','--pull=never','--network=none','--read-only','--user=65532:65532','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=512','--memory=12g','--memory-swap=12g','--cpus=6','--tmpfs=/workspace:rw,nodev,nosuid,mode=1777,size=1g','--tmpfs=/tmp:rw,nodev,nosuid,mode=1777,size=1g','--env=HOME=/workspace',('--env=PLAYWRIGHT_BROWSERS_PATH=/opt/utf-playwright-browsers/'+$profile),'--entrypoint=node',$sdk,'/opt/utf-preparation/smoke-browser.cjs',$profile)
+    Assert-Budget
+    # The in-container process boundary also covers a blocked Node event loop.
+    $smokeArguments = @('run','--rm','--pull=never','--network=none','--read-only','--user=65532:65532','--cap-drop=ALL','--security-opt=no-new-privileges','--pids-limit=512','--memory=12g','--memory-swap=12g','--cpus=6','--tmpfs=/workspace:rw,nodev,nosuid,mode=1777,size=1g','--tmpfs=/tmp:rw,nodev,nosuid,mode=1777,size=1g','--env=HOME=/workspace',('--env=PLAYWRIGHT_BROWSERS_PATH=/opt/utf-playwright-browsers/'+$profile),'--entrypoint=/usr/bin/timeout',$sdk,'--signal=TERM','--kill-after=5','270','/usr/local/bin/node','/opt/utf-preparation/smoke-browser.cjs',$profile)
+    Invoke-Local -Executable $podman -Arguments (@('--connection', $Connection) + $smokeArguments) -Seconds 300 -Poll { Assert-Budget }
+    Assert-Budget
 }
 [IO.File]::WriteAllText((Join-Path $output 'PREPARATION-COMPLETE'), [DateTime]::UtcNow.ToString('O'))
 Move-Item -LiteralPath (Join-Path $output 'PREPARATION-INCOMPLETE') -Destination (Join-Path $output 'PREPARATION-FINISHED')

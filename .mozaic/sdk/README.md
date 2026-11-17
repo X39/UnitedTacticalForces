@@ -250,6 +250,22 @@ The dependency build probes compiler ABI and exact .NET/Node versions. Final
 smoke launches both browser closures offline as UID 65532 with a read-only root,
 no capabilities, no network, bounded tmpfs and explicit CPU/memory/PID limits. It
 loads only a static data URL. It runs no application tests or game processes.
+Each engine records fixed start/pass/fail messages for launch, context creation,
+page creation, navigation, title verification and close. Phase deadlines are 30
+seconds and the complete profile deadline is 240 seconds. A failed close cannot
+replace an earlier phase failure. Diagnostics never interpolate exception text,
+browser arguments, environment values or page content. The Node watchdog exits
+after a failure even if an API or close promise remains pending.
+
+An independent in-container `/usr/bin/timeout --signal=TERM --kill-after=5 270`
+process supervises Node, including a blocked event loop. The client call has a
+300-second limit clipped to the shared preparation deadline. Existing isolation
+flags and browser launch arguments remain unchanged. GNU timeout is supplied by
+the pinned SDK base's `coreutils` package; its presence and normal execution as
+UID 65532 must also be verified by the actual container acceptance gate. A new
+SDK must embed this probe before claiming full preparation acceptance. A
+diagnostic invocation against a previous SDK does not change that SDK's identity
+or establish a new full build result.
 
 Raw Podman exports are retained as `<profile>.raw.oci.tar`, including Nginx and
 the final SDK. They are evidence, not deliverable runtime archives. Podman's two
@@ -296,6 +312,7 @@ $env:UTF_OCI_VALIDATOR = 'A:/releases/mozaic-oci-independent-20261024/validate.e
 <trusted-python.exe> -B .mozaic/sdk/test_canonicalize.py -v
 <trusted-python.exe> -B .mozaic/sdk/test_native.py -v
 <trusted-python.exe> -B .mozaic/sdk/test_native_build.py -v
+<trusted-node.exe> --test .mozaic/sdk/test-smoke-browser.cjs
 ```
 
 The Windows tests use actual junction and competing-process output claims plus
@@ -328,6 +345,18 @@ input. On Linux, the exact-scope cleanup callback must have run and real
 supervised nonzero/deadline children must be reaped before supervision returns
 or raises. That callback is substituted
 in this fixture; the separate POSIX and actual RUN acceptance remain required.
+
+The Node fixtures execute actual child processes with substitute browser APIs.
+They force pending launch/context/page/close promises, preserve an original title
+failure when close also hangs, and check fixed logs, nonzero exits and absence of
+the exited Node PID. A Linux opt-in fixture additionally runs the real GNU
+timeout and Node inputs against a TERM-resistant blocked event loop. Set
+`UTF_NODE_BINARY` and `UTF_TIMEOUT_BINARY` to explicit reviewed Linux executables
+and run `test_smoke_boundary.py` under a finite outer timeout. This uses the
+existing native supervisor's reserved process-group cleanup with a substituted
+scope callback. It proves that the independent process boundary kills that Node
+process; it does not prove container PID-namespace cleanup of real browser
+descendants. That requires the separate reviewed engine acceptance gate.
 
 The native helper reports only fixed failure codes: `HEARTBEAT_FUTURE`,
 `HEARTBEAT_STALE`, `OWNERSHIP_FAILURE`, `COMMAND_NONZERO`, `TIMEOUT`, `CANCELLED`
@@ -417,6 +446,32 @@ events. Two completed images, the exact PID0 failed Buildah storage container,
 and its mode0700 source-only stage remain for diagnosis. Sampled combined growth
 peaked at 2,361,406,500 bytes, with at least 220,129,906,688 bytes free on A:.
 These are sampled monitoring results, not a hard whole-engine storage quota.
+
+The later full attempt at `a1401936ff8766077052e0f1cec062bf707e2943` completed
+all dependency builds, all five canonical/protocol transport gates and the .NET
+Chromium offline smoke. It was canceled after 2491.516 seconds while the React
+smoke remained in a quiet Firefox IPC wait. The exact awaited API was not logged,
+so the observation does not identify a browser-library root cause. Evidence is
+retained at `A:/releases/utf-diagnostic-preparation-20261024-a1401936`, including
+the immutable SDK archive and receipts. The exact owned React container and
+processes were removed, all 396 baseline image IDs and three preexisting
+containers preserved, the concurrent root-owned PostgreSQL fixture kept separate,
+and the bounded parent released empty. Full preparation acceptance remains
+incomplete; the bounded phase diagnostics above prepare a later diagnostic gate
+without changing browser sandboxing or network access.
+
+That diagnostic subsequently ran the reviewed probe against the cached `a1401936`
+SDK, with the probe bytes and combined stdin bootstrap bound by separate hashes.
+Evidence is frozen at
+`A:/releases/utf-cached-browser-diagnostic-resume-20261024-56ea569e`. The .NET
+profile and React Chromium passed. Firefox launch and context creation passed;
+page creation reached the 30-second phase deadline, close passed, and the nonzero
+result preserved the original page-creation failure. WebKit was not attempted.
+Actual UID/GID 65532, zero effective/bounding capabilities, no-new-privileges,
+seccomp, six-CPU/12-GiB/zero-swap/512-PID bounds and owned browser-process/container
+cleanup checks passed. This verifies the bounded diagnostic behavior; full SDK
+and browser acceptance still fail, and the underlying Firefox cause is unknown.
+The diagnostic performed no SDK build and created no new immutable SDK identity.
 
 Future application work must use `utf-dotnet-201` in the root context and
 `utf-dotnet-302` in an isolated worker context with its own explicit 10.0.302
