@@ -889,7 +889,7 @@ internal sealed class LifecycleJobExecutor(
                 deployment.PeakStorageRequiredBytes ?? demand.PeakPreparationRequiredBytes,
                 systemReserveBytes,
                 profile,
-                capabilities);
+                capabilities) with { Strategy = deployment.RuntimeStorageStrategy };
         }
         var placement = WorkloadPlacementResolver.Resolve(
             definition,
