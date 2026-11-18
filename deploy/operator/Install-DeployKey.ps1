@@ -76,6 +76,14 @@ $facts = Invoke-Ssh $Target "printf '%s|%s\n' `$(command -v podman) `$(getent pa
 if ($facts.Output -match '^(/[A-Za-z0-9_./-]+)\|(/[A-Za-z0-9_./-]+)$') { $podman = $Matches[1]; $userHome = $Matches[2] }
 else { Stop-Script "could not find podman and the home directory of '$User' on the host (got '$($facts.Output)')" }
 $authorized = "$userHome/.ssh/authorized_keys"
+$inHome = $true
+# sshd may read this user's keys from somewhere else (a Match User block); ask it instead of assuming the home.
+$effective = Invoke-Ssh $Target "sshd -T -C user=$User,host=localhost,addr=127.0.0.1 2>/dev/null | grep -i '^authorizedkeysfile ' | cut -d' ' -f2"
+if ($effective.Output -match '^[A-Za-z0-9_./%-]+$' -and $effective.Output -ne 'none') {
+    $path = $effective.Output.Replace('%h', $userHome).Replace('%u', $User)
+    if (-not $path.StartsWith('/')) { $path = "$userHome/$path" }
+    if ($path -ne $authorized) { $authorized = $path; $inHome = $false }
+}
 $line = "restrict,command=`"$podman load`" $keyType $keyBody utf-deploy-ci"
 
 Write-Host "Host login:        $Target"
@@ -95,7 +103,10 @@ if ($present.Output -match '^[1-9]') {
 }
 else {
     $bytes = (New-Object System.Text.UTF8Encoding($false)).GetBytes($line + "`n")
-    $add = Invoke-Ssh $Target "install -d -m 700 -o $User -g $User $userHome/.ssh && cat >> $authorized && chown $User`:$User $authorized && chmod 600 $authorized" $bytes
+    $addCommand = "install -d -m 700 -o $User -g $User $userHome/.ssh && cat >> $authorized && chown $User`:$User $authorized && chmod 600 $authorized"
+    # A file outside the home stays root-owned and world-readable, as sshd requires for such paths.
+    if (-not $inHome) { $addCommand = "cat >> $authorized && chown root:root $authorized && chmod 644 $authorized" }
+    $add = Invoke-Ssh $Target $addCommand $bytes
     if ($add.Code -ne 0) { Stop-Script "adding the key failed: $($add.Error)" }
     Write-Host 'Added the key.'
 }

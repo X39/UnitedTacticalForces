@@ -12,7 +12,7 @@ the host itself, shows what it will do, asks for confirmation, appends the line 
 your computer that the key can only run `podman load`. `-CheckOnly` shows the podman path, the deploy user's
 home and the existing key fingerprints without changing anything. The line it writes is:
 
-One line in `utf-deploy`'s `~/.ssh/authorized_keys`, replacing the retired receiver's entry. The public key
+One line in the file sshd reads for `utf-deploy` (on Amsel `/etc/ssh/mozaic-authorized-keys/utf-owner-deployment`, set by a `Match User` block; `Install-DeployKey.ps1` asks sshd for it), next to the retired receiver's entry. The public key
 is committed as `deploy/utf-deploy.pub`; the private key exists only as the trusted-branch secret pipeline
 variable `UTF_DEPLOY_SSH_KEY`:
 
