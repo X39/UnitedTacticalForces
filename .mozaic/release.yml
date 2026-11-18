@@ -79,34 +79,7 @@ jobs:
         format: trx
       - path: test-results/worker-test-results/*.trx
         format: trx
-  activate-release:
-    needs: [checked-artifacts]
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 1000
-      memory_mib: 512
-      scratch_mib: 65536
-      pids: 128
-      log_mib: 8
-    secret_files:
-      ssh_key: managed-utf-ssh
-      deployment_oci_read: deployment_oci_read
-    deployment:
-      target_id: c2cf220f-3b1e-4967-b413-87e9119d08bc
-      environment: production
-      release_job: checked-artifacts
-      image_repositories: [applications/utf/api, applications/utf/web]
-    network:
-      mode: http_https
-      allow_hosts: [x39.mozaic.space]
-      allow_connect:
-        - host: '2a01:4f8:c0c:e2e::1'
-          port: 22
-    timeout_minutes: 15
-    steps:
-      - name: Deliver the exact checked API and web images to Amsel
-        run: sh ci/deliver-release.sh
+  # Activation is intentionally not part of this definition. The former activate-release
+  # job used secret_files and a deployment OCI reader, both retired by Mozaic (migration
+  # 0260 and the deployment OCI authority removal). Add activation back with an ordinary
+  # pipeline variable for the SSH key and a host that pulls the published digest.

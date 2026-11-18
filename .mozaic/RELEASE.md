@@ -64,11 +64,14 @@ The trusted default branch is `master`. The verified canonical destination is
 ancestors of the prepared source. The coordinator reconciled default selection
 and governed push policy through the audited operator path.
 
-The ordinary `activate-release` job requires `checked-artifacts` and sends
-the exact API and web publications to the pinned Amsel endpoint. It uses the
-Amsel-owned SSH key in project secret `managed-utf-ssh` and short-lived
-job-side OCI credentials. The UTF-specific receiver independently checks
-the active attempt and receipts. Receive-only is the initial mode.
+`.mozaic/release.yml` currently builds, checks and publishes only. Its former
+`activate-release` job was removed because it declared `secret_files` and a
+deployment OCI reader, both retired by Mozaic (migration 0260 and the removal
+of the deployment OCI authority); the platform compiler rejects such a
+definition without starting a run. The `ci/` receive client is retained but
+is not wired into the pipeline. Re-adding activation needs an ordinary
+pipeline variable for the SSH key and a host that pulls the exact published
+digest with its own registry credential.
 
 The coordinator must migrate the protected target/input contract described in
 `.mozaic/DEPLOYMENT.md` and verify its readiness before an authorized source update.

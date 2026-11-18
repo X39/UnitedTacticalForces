@@ -6,13 +6,10 @@ owner. Target mutation, nginx, databases, credentials and shared capacity remain
 that owner's responsibility. The application worker must complete acceptance
 against the actual accepted run; prepared YAML is not deployment evidence.
 
-The ordinary `activate-release` job uses the pinned Amsel endpoint,
-`utf-deploy` account, and the host-owned key in project secret
-`managed-utf-ssh`. Its `checked-artifacts` dependency supplies the current
-API and web receipts to the version 12 receiver. It defaults to receive-only
-validation. The first activation retains the existing remote worker and
-version 6 inputs. Require runtime adoption, a coherent backup and an exact
-reviewed successor revision before enabling activation.
+Activation is not part of the pipeline at present; see `.mozaic/RELEASE.md`. The
+retained `ci/` receive client targets the Amsel endpoint and `utf-deploy` account
+but depends on retired Mozaic credentials. Require runtime adoption, a coherent
+backup and an exact reviewed successor revision before enabling any activation.
 
 ## Release inputs
 
