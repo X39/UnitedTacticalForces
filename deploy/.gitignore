@@ -4,3 +4,6 @@
 !webapp.appsettings.json
 !production.json
 !known_hosts
+!utf-deploy.pub
+!host/
+!host/*

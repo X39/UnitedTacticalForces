@@ -4,6 +4,6 @@
   "host": "2a01:4f8:c0c:e2e::1",
   "port": 22,
   "user": "utf-deploy",
-  "key_file": "/run/mozaic/secrets/ssh_key",
+  "key_file": "/workspace/.private/deploy_key",
   "known_hosts_file": "/workspace/deploy/known_hosts"
 }
