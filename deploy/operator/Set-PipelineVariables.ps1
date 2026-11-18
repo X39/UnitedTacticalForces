@@ -171,7 +171,7 @@ function Initialize-Remote([switch]$ReadOnly) {
         if ($made.Output -notmatch '^/var/tmp/mozaic-varset\.[A-Za-z0-9]{6}$') { Stop-Script 'unexpected temporary directory from the host' }
         $script:RemoteDir = $made.Output
         $bytes = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $AdminBin).Path)
-        $upload = Invoke-Remote "cat > $($script:RemoteDir)/mozaic-admin && chmod 700 $($script:RemoteDir)/mozaic-admin" $bytes
+        $upload = Invoke-Remote "cat > $($script:RemoteDir)/mozaic-admin && chmod 755 $($script:RemoteDir)/mozaic-admin" $bytes
         if ($upload.Code -ne 0) { Stop-Script "uploading the admin binary failed: $($upload.Error)" }
         $script:Entrypoint = '/opt/mozaic-varset/mozaic-admin'
     }
