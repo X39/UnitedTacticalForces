@@ -31,6 +31,7 @@ HERE = Path(__file__).resolve().parent
 IMAGE_ID = re.compile(r"[0-9a-f]{64}")
 REVISION = re.compile(r"[0-9a-f]{40}")
 UNITS = "utf-api.service utf-web.service"
+REVISION_PATH = "/_content/revision.json"
 
 
 def load_client():
@@ -67,30 +68,35 @@ def commands(api_id, web_id, revision):
         "rollback": (
             "set -eu; if podman image exists localhost/utf/api:previous && podman image exists localhost/utf/web:previous; then "
             "for r in api web; do podman tag localhost/utf/$r:previous localhost/utf/$r:release; done; "
-            f"systemctl --user restart {UNITS}; else systemctl --user stop {UNITS}; "
-            "systemctl --user start mozaic-utf-ordinary.service; fi"),
+            f"systemctl --user restart {UNITS}; else systemctl --user disable --now {UNITS}; "
+            "systemctl --user start mozaic-utf-ordinary.service; podman start mozaic-app-utf-api mozaic-app-utf-web; fi"),
     }
 
 
 def fetch(url, timeout=20):
-    """(status, body) without raising on HTTP error statuses."""
+    """(status, body) without raising: HTTP errors keep their status, network errors are status 0."""
     request = urllib.request.Request(url, headers={"User-Agent": "utf-release-check"})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.status, response.read(65536)
     except urllib.error.HTTPError as error:
         return error.code, b""
+    except (urllib.error.URLError, OSError) as error:
+        print(f"UTF activate: {url}: {type(error).__name__}: {str(error)[:120]}", file=sys.stderr)
+        return 0, b""
 
 
 def public_check(site, revision, fetcher=fetch):
     """Return an error string, or None when the site serves this revision and the API answers."""
-    status, body = fetcher(site + "/revision.json")
+    # The public nginx sends every unknown path to the single page app, so the revision file lives under
+    # /_content/, a prefix it already proxies to the web container.
+    status, body = fetcher(site + REVISION_PATH)
     try:
         served = json.loads(body).get("revision", "") if status == 200 else ""
     except (ValueError, AttributeError):
         served = ""
     if not served or not served.endswith(revision):
-        return "the public site does not serve this revision yet"
+        return f"the public site does not serve this revision yet (HTTP {status}, served '{served[:12]}')"
     status, _ = fetcher(site + "/api/game-content/mods")
     if status not in (200, 401):
         return f"the public API answered HTTP {status}"

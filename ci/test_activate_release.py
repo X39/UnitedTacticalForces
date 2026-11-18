@@ -35,7 +35,7 @@ class FakeHost:
 
 def site(revision=REVISION, api=401):
     def fetcher(url, timeout=20):
-        if url.endswith("/revision.json"):
+        if url.endswith(ACTIVATE.REVISION_PATH):
             return 200, json.dumps({"revision": "git:" + revision}).encode()
         return api, b""
     return fetcher
@@ -115,6 +115,9 @@ class ActivateTests(unittest.TestCase):
         self.assertIn(f"utf-{REVISION}.dump", ACTIVATE.commands(API, WEB, REVISION)["backup"])
         self.assertTrue(ACTIVATE.IMAGE_ID.fullmatch(API) and not ACTIVATE.IMAGE_ID.fullmatch("a;rm -rf /"))
         self.assertTrue(ACTIVATE.REVISION.fullmatch(REVISION) and not ACTIVATE.REVISION.fullmatch("abc; id"))
+
+    def test_the_revision_file_is_read_from_a_path_the_public_proxy_forwards(self):
+        self.assertTrue(ACTIVATE.REVISION_PATH.startswith("/_content/"))
 
     def test_the_public_check_needs_a_json_revision_not_the_single_page_fallback(self):
         html = lambda url, timeout=20: (200, b"<!doctype html><title>UTF</title>")

@@ -69,7 +69,7 @@ checks it loads the exact API and web images on Amsel over ordinary SSH (`ci/str
 `ci/activate_release.py` backs up the database (`pg_dump` with the existing backup role), moves the fixed local
 tags `localhost/utf/{api,web}:release` to the pushed image IDs, restarts the two static user units
 (`deploy/host/utf-api.service`, `utf-web.service`), checks that the running containers use those IDs and that the
-public site serves the built revision (`/revision.json`, written into the web image at build time) and that the API
+public site serves the built revision (`/_content/revision.json`, written into the web image at build time) and that the API
 answers. Any failure after the tags moved restores the previous images and fails the job. Only then are the images
 published to the registry (the compiler allows no executable step after a publication step).
 
