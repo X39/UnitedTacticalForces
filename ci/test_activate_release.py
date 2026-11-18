@@ -52,7 +52,7 @@ class Clock:
         self.now += seconds
 
 
-UNITS = {"unit_api": "[Service]\n", "unit_web": "[Service]\n"}
+UNITS = {"secrets": "A=b\n", "unit_api": "[Service]\n", "unit_web": "[Service]\n"}
 
 
 def activate(host, fetcher):
@@ -64,7 +64,7 @@ class ActivateTests(unittest.TestCase):
     def test_success_runs_every_step_in_order_and_never_rolls_back(self):
         host = FakeHost()
         self.assertEqual(activate(host, site()), 0)
-        self.assertEqual(host.calls, ["images", "backup", "unit_api", "unit_web", "reload", "tag", "stop_old", "switch", "probe", "retire_old"])
+        self.assertEqual(host.calls, ["images", "backup", "secrets", "unit_api", "unit_web", "reload", "tag", "stop_old", "switch", "probe", "retire_old"])
         self.assertFalse(host.rolled_back)
 
     def test_a_failed_backup_stops_before_anything_changes(self):
@@ -85,7 +85,7 @@ class ActivateTests(unittest.TestCase):
     def test_a_failed_stop_of_the_retired_service_rolls_back_before_starting_anything(self):
         host = FakeHost(fail={"stop_old"})
         self.assertEqual(activate(host, site()), 1)
-        self.assertEqual(host.calls, ["images", "backup", "unit_api", "unit_web", "reload", "tag", "stop_old", "rollback"])
+        self.assertEqual(host.calls, ["images", "backup", "secrets", "unit_api", "unit_web", "reload", "tag", "stop_old", "rollback"])
 
     def test_a_failed_retirement_of_old_units_does_not_fail_the_release(self):
         host = FakeHost(fail={"retire_old"})
@@ -122,6 +122,18 @@ class ActivateTests(unittest.TestCase):
     def test_the_api_unit_in_the_repository_enables_hosting_execution(self):
         unit = (HERE.parent / "deploy" / "host" / "utf-api.service").read_text(encoding="utf-8")
         self.assertIn("Hosting__ControlPlane__Paused=false", unit)
+
+    def test_the_secret_settings_come_from_pipeline_variables_and_are_validated(self):
+        token = "t" * 64
+        self.assertEqual(ACTIVATE.secrets_text({"HETZNER_TOKEN": token}), f"Hosting__Providers__Hetzner__Token={token}\n")
+        for bad in ({}, {"HETZNER_TOKEN": "short"}, {"HETZNER_TOKEN": token + "\nX=1"}):
+            with self.assertRaises(ValueError) as caught:
+                ACTIVATE.secrets_text(bad)
+            self.assertNotIn(token, str(caught.exception))
+
+    def test_the_api_unit_reads_the_private_secrets_file(self):
+        unit = (HERE.parent / "deploy" / "host" / "utf-api.service").read_text(encoding="utf-8")
+        self.assertIn("--env-file %h/.config/mozaic-deploy/targets/utf/secrets.env", unit)
 
     def test_the_revision_file_is_read_from_a_path_the_public_proxy_forwards(self):
         self.assertTrue(ACTIVATE.REVISION_PATH.startswith("/_content/"))

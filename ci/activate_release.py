@@ -7,7 +7,7 @@ nothing is sent to be executed that the repository does not contain. Steps, in o
 
 1. both pushed images exist in the deploy user's podman;
 2. database backup (`pg_dump`) with the existing backup role, verified non-empty, last ten kept;
-3. the unit files from the repository are installed and reloaded;
+3. the secret settings (pipeline variables) are written to a private env file next to api.env, then the unit files from the repository are installed and reloaded;
    3b. the fixed local tags `localhost/utf/{api,web}:release` move to the new image IDs (old ones become `:previous`);
 4. the retired migration-managed service and its containers are stopped if still active (first release only);
 5. the two static units are enabled and restarted; they run exactly those tags;
@@ -20,6 +20,7 @@ nothing is sent to be executed that the repository does not contain. Steps, in o
 import argparse
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -33,6 +34,9 @@ IMAGE_ID = re.compile(r"[0-9a-f]{64}")
 REVISION = re.compile(r"[0-9a-f]{40}")
 UNITS = "utf-api.service utf-web.service"
 REVISION_PATH = "/_content/revision.json"
+# Pipeline variables the API needs at run time, delivered as environment settings: variable -> setting name.
+SECRET_SETTINGS = {"HETZNER_TOKEN": "Hosting__Providers__Hetzner__Token"}
+SECRET_VALUE = re.compile(r"[A-Za-z0-9_-]{20,200}")
 # The unit files come from the repository (deploy/host) on stdin, so changes to the runtime settings ship with a release.
 UNIT_INSTALL = ('set -eu; d="$HOME/.config/systemd/user"; mkdir -p "$d"; cat > "$d/{name}.service.part"; '
                 'test -s "$d/{name}.service.part"; mv "$d/{name}.service.part" "$d/{name}.service"')
@@ -56,6 +60,9 @@ def commands(api_id, web_id, revision):
             'PGSERVICEFILE="$c/database.service" PGPASSFILE="$c/database.pgpass" '
             'pg_dump "service=utf" -Fc --no-owner -f "$t.part"; test -s "$t.part"; mv "$t.part" "$t"; '
             'ls -1t "$d"/utf-*.dump | tail -n +11 | xargs -r rm -f; ls -l "$t"'),
+        "secrets": (
+            'set -eu; umask 077; c="$HOME/.config/mozaic-deploy/targets/utf"; cat > "$c/secrets.env.part"; '
+            'test -s "$c/secrets.env.part"; mv "$c/secrets.env.part" "$c/secrets.env"'),
         "unit_api": UNIT_INSTALL.format(name="utf-api"),
         "unit_web": UNIT_INSTALL.format(name="utf-web"),
         "reload": "systemctl --user daemon-reload",
@@ -78,6 +85,16 @@ def commands(api_id, web_id, revision):
             f"systemctl --user restart {UNITS}; else systemctl --user disable --now {UNITS}; "
             "systemctl --user start mozaic-utf-ordinary.service; podman start mozaic-app-utf-api mozaic-app-utf-web; fi"),
     }
+
+
+def secrets_text(environ):
+    """The env-file text for the run-pinned secret variables; the values are never printed."""
+    lines = []
+    for variable, setting in SECRET_SETTINGS.items():
+        if not SECRET_VALUE.fullmatch(environ.get(variable, "")):
+            raise ValueError(f"the pipeline variable {variable} is missing or malformed")
+        lines.append(f"{setting}={environ[variable]}")
+    return "\n".join(lines) + "\n"
 
 
 def fetch(url, timeout=20):
@@ -113,7 +130,7 @@ def public_check(site, revision, fetcher=fetch):
 def activate(run, api_id, web_id, revision, site, wait, units, fetcher=fetch, sleep=time.sleep, clock=time.monotonic):
     """Drive the steps with run(command) -> (exit code, stdout). Returns the process exit status."""
     fixed = commands(api_id, web_id, revision)
-    for name in ("images", "backup", "unit_api", "unit_web", "reload", "tag"):
+    for name in ("images", "backup", "secrets", "unit_api", "unit_web", "reload", "tag"):
         code, output = run(fixed[name], units[name]) if name in units else run(fixed[name])
         if output:
             print(output.strip())
@@ -183,8 +200,9 @@ def main():
             print("host said: " + result.stderr.strip()[-400:], file=sys.stderr)
         return result.returncode, result.stdout
 
+    units = {"secrets": secrets_text(os.environ)}
     host_files = HERE.parent / "deploy" / "host"
-    units = {key: (host_files / f"{key.removeprefix('unit_').join(['utf-', '.service'])}").read_text(encoding="utf-8")
+    units |= {key: (host_files / f"{key.removeprefix('unit_').join(['utf-', '.service'])}").read_text(encoding="utf-8")
              for key in ("unit_api", "unit_web")}
     return activate(run, api_id, web_id, revision, args.site.rstrip("/"), args.wait, units)
 
@@ -192,6 +210,7 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (ValueError, TypeError, KeyError, OSError, subprocess.TimeoutExpired):
-        print("UTF activate failed before it could run.", file=sys.stderr)
+    except (ValueError, TypeError, KeyError, OSError, subprocess.TimeoutExpired) as error:
+        print("UTF activate failed before it could run" + (f": {error}" if isinstance(error, ValueError)
+                                                           and "pipeline variable" in str(error) else "."), file=sys.stderr)
         sys.exit(1)

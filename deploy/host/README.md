@@ -17,7 +17,11 @@ pulls from a registry and holds no registry credential.
    else is done by hand: the first pipeline release stops the retired migration-managed service
    (`mozaic-utf-ordinary.service` and the `mozaic-app-utf-*` containers), enables and starts these units and disables the
    retired units; if that release fails the job starts the retired service again.
-3. **Backups** go to `~utf-deploy/backups/utf-<revision>.dump` (last ten kept), taken by the pipeline with the
+3. **Run-time secrets.** `HETZNER_TOKEN` is a run-pinned pipeline variable (trusted branch, `.mozaic/release.yml` only).
+   The release job writes it as `Hosting__Providers__Hetzner__Token` to `~utf-deploy/.config/mozaic-deploy/targets/utf/secrets.env`
+   (mode 600, over the same SSH login, value only on stdin) and the API unit reads that file. The release fails before
+   anything changes when the variable is missing. The other Hetzner settings are the defaults in `appsettings.json`.
+4. **Backups** go to `~utf-deploy/backups/utf-<revision>.dump` (last ten kept), taken by the pipeline with the
    database service file and password file already in `~/.config/mozaic-deploy/targets/utf/`.
 
 ## Rollback
