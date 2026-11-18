@@ -187,7 +187,7 @@ function Get-RemoteCommand([string]$Name, [string]$Operation) {
     $mounts = $script:CaMount
     if ($script:RemoteDir) { $mounts = "$mounts --volume $($script:RemoteDir)/mozaic-admin:$($script:Entrypoint):ro" }
     $network = $script:Network
-    return "podman run --rm -i --network $network --env-file /etc/mozaic/migrator.env --env-file /etc/mozaic/app.env $mounts " +
+    return "podman run --rm -i --user 0:0 --network $network --env-file /etc/mozaic/migrator.env --env-file /etc/mozaic/app.env $mounts " +
         "--read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=67108864 --cap-drop all --security-opt no-new-privileges " +
         "--entrypoint $($script:Entrypoint) $($script:ImageName) $tail"
 }
