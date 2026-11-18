@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
-# Enter all UTF pipeline variables once, on the Mozaic host, as root.
+# Enter all UTF pipeline variables once, from your LOCAL terminal. Nothing is run by hand on the server.
 #
-# Every value is written through `mozaic-admin pipeline-variable-set`, which can only create or override a
-# secret variable and can never read one back. Each variable is a secret, trusted-only and restricted to the
-# trusted branch and the release pipeline, so only that pipeline on that branch receives it.
+# The script prompts here (input hidden), then reaches the Mozaic host over SSH and writes each value through
+# `mozaic-admin pipeline-variable-set`, which can only create or override a secret variable and can never
+# read one back. Every variable is a secret, trusted-only and restricted to the trusted branch and the release
+# pipeline. A value travels only on the standard input of that SSH connection: never in an argument, a file,
+# a process list or the terminal. Press Enter on any prompt to skip it. Running again overrides values.
 #
-# Values are typed (or pasted) without echo, kept in memory until you confirm, and handed to the tool on
-# standard input through a shell builtin: they never appear in a process list, a file or the terminal.
-# Press Enter on any prompt to skip that variable. Running the script again overrides existing values.
+#   UTF_OPERATOR_SSH=root@amsel ./set-pipeline-variables.sh              # prompt, confirm, write
+#   UTF_OPERATOR_SSH=root@amsel ./set-pipeline-variables.sh --only NAME  # one variable
+#   ./set-pipeline-variables.sh --list                                    # names and purposes
 #
-#   sudo ./set-pipeline-variables.sh              # prompt for everything, confirm, write
-#   sudo ./set-pipeline-variables.sh --list       # show the variable names and what each is for
-#   sudo ./set-pipeline-variables.sh --only NAME  # prompt for one variable
-#
-# How the tool is started (first match wins):
-#   MOZAIC_ADMIN_CMD   a command that runs mozaic-admin directly (for tests or a native install)
-#   MOZAIC_ADMIN_BIN   path of a mozaic-admin binary on this host; run inside the installed runtime image
-#   (default)          /opt/mozaic/bin/mozaic-admin inside the installed runtime image MOZAIC_IMAGE
+# Settings (environment):
+#   UTF_OPERATOR_SSH    ssh login that is root on the Mozaic host (or set UTF_REMOTE_SUDO=sudo for a sudoer)
+#   MOZAIC_ADMIN_BIN    local path of a Linux mozaic-admin binary that has pipeline-variable-set. It is
+#                       uploaded to a private temporary directory for this run and removed afterwards.
+#                       Without it the installed runtime image's own /opt/mozaic/bin/mozaic-admin is used.
+#   MOZAIC_IMAGE        installed runtime image; detected from the running containers when unset
+#   UTF_SSH             ssh program (on Git Bash for Windows the Windows OpenSSH is picked automatically,
+#                       because only it can use the Windows ssh-agent)
 set -euo pipefail
 umask 077
 
@@ -26,11 +28,13 @@ REPOSITORY=${UTF_REPOSITORY:-01a166ad-93f3-7fa2-a4f0-e57014752726}
 RUN_AS=${UTF_RUN_AS:-01a1658e-c4ec-74a1-ac91-89bf2f8ce666}
 BRANCH=${UTF_BRANCH:-refs/heads/master}
 PIPELINE=${UTF_PIPELINE:-.mozaic/release.yml}
+TARGET=${UTF_OPERATOR_SSH:-}
+REMOTE_TMP=${UTF_REMOTE_TMP:-/var/tmp}
 MINIMUM_LENGTH=8
 
-# name|kind|description. kind: key = deploy key file or base64, secret = any text.
+# name|kind|description. kind: key = key file or base64, secret = any text.
 VARIABLES=(
-  "UTF_DEPLOY_SSH_KEY|key|SSH key the release pipeline logs in to Amsel with (private key file, or its single-line base64)"
+  "UTF_DEPLOY_SSH_KEY|key|SSH key the release pipeline logs in to Amsel with (path of the private key file, or its single-line base64)"
   "POSTGRES_PASSWORD|secret|PostgreSQL password of the UTF database"
   "STEAM_API_KEY|secret|Steam Web API key"
   "DISCORD_CLIENT_ID|secret|Discord OAuth client id"
@@ -47,56 +51,99 @@ VARIABLES=(
 fail() { printf 'set-pipeline-variables: %s\n' "$1" >&2; exit 1; }
 
 list_variables() {
-  local entry
+  local entry name kind description
   for entry in "${VARIABLES[@]}"; do
     IFS='|' read -r name kind description <<<"$entry"
     printf '%-28s %s\n' "$name" "$description"
   done
 }
 
-new_operation_id() { cat /proc/sys/kernel/random/uuid; }
+pick_ssh() {
+  if [ -n "${UTF_SSH:-}" ]; then SSH=$UTF_SSH; return; fi
+  SSH=ssh
+  # Git Bash's own ssh cannot talk to the Windows ssh-agent; the Windows OpenSSH can.
+  if [ "$(uname -o 2>/dev/null)" = Msys ] && [ -x /c/Windows/System32/OpenSSH/ssh.exe ]; then
+    SSH=/c/Windows/System32/OpenSSH/ssh.exe
+  fi
+}
 
-# Builds the command that runs mozaic-admin; prints one argument per line (arguments hold no values).
-admin_command() {
+# Runs a command on the host (as root, or through sudo). Standard input is passed through unchanged.
+remote() {
+  if [ "${UTF_REMOTE_SUDO:-}" = sudo ]; then
+    "$SSH" -T -o BatchMode=yes "$TARGET" "sudo sh -c $(printf '%q' "$1")"
+  else
+    "$SSH" -T -o BatchMode=yes "$TARGET" "$1"
+  fi
+}
+
+ENTRYPOINT=/opt/mozaic/bin/mozaic-admin
+REMOTE_DIR=""
+CA_MOUNT=""
+IMAGE=""
+
+cleanup_remote() {
+  if [ -n "$REMOTE_DIR" ]; then
+    remote "rm -f $REMOTE_DIR/mozaic-admin; rmdir $REMOTE_DIR" >/dev/null 2>&1 || \
+      printf 'warning: could not remove %s on the host; remove it by hand\n' "$REMOTE_DIR" >&2
+    REMOTE_DIR=""
+  fi
+}
+
+prepare_remote() {
+  [ -n "$TARGET" ] || fail "set UTF_OPERATOR_SSH to the ssh login of the Mozaic host operator, for example root@amsel"
+  [ "$(remote 'id -u')" = 0 ] || fail "that login is not root on the host (use a root login, or UTF_REMOTE_SUDO=sudo)"
+  if [ -n "${MOZAIC_ADMIN_CMD:-}" ]; then return; fi   # tests and native installs: run this command remotely
+
+  IMAGE=${MOZAIC_IMAGE:-}
+  if [ -z "$IMAGE" ]; then
+    local candidates
+    candidates=$(remote "podman ps --format '{{.Image}}'" | grep -i 'mozaic-runtime' | sort -u || true)
+    [ "$(printf '%s\n' "$candidates" | grep -c .)" = 1 ] || \
+      fail "could not detect the installed runtime image; set MOZAIC_IMAGE. Candidates seen: ${candidates:-none}"
+    IMAGE=$candidates
+  fi
+  if remote 'test -r /etc/mozaic/postgres-tls/ca.crt'; then
+    CA_MOUNT="--volume /etc/mozaic/postgres-tls/ca.crt:/run/mozaic-postgres-ca/ca.crt:ro"
+  fi
+  if [ -n "${MOZAIC_ADMIN_BIN:-}" ]; then
+    [ -f "$MOZAIC_ADMIN_BIN" ] || fail "MOZAIC_ADMIN_BIN is not a file: $MOZAIC_ADMIN_BIN"
+    REMOTE_DIR=$(remote "umask 077; mktemp -d $REMOTE_TMP/mozaic-varset.XXXXXX")
+    case "$REMOTE_DIR" in
+      "$REMOTE_TMP"/mozaic-varset.??????) ;;
+      *) REMOTE_DIR=""; fail "unexpected temporary directory from the host" ;;
+    esac
+    trap cleanup_remote EXIT
+    remote "cat > $REMOTE_DIR/mozaic-admin && chmod 700 $REMOTE_DIR/mozaic-admin" < "$MOZAIC_ADMIN_BIN"
+    ENTRYPOINT=/opt/mozaic-varset/mozaic-admin
+  fi
+}
+
+# The remote command line holds only fixed names and identifiers, never a value.
+remote_command() {
+  local name=$1 operation=$2 reason
+  reason=$(printf '%q' "UTF release pipeline variable $name entered by the host operator")
+  local tail="pipeline-variable-set --organization-id $ORG --project-id $PROJECT --repository-id $REPOSITORY \
+--name $name --run-as $RUN_AS --operation-id $operation --reason $reason \
+--branch $BRANCH --pipeline $PIPELINE --value-stdin"
   if [ -n "${MOZAIC_ADMIN_CMD:-}" ]; then
-    # shellcheck disable=SC2086
-    printf '%s\n' $MOZAIC_ADMIN_CMD
+    printf '%s %s' "$MOZAIC_ADMIN_CMD" "$tail"
     return
   fi
-  [ -n "${MOZAIC_IMAGE:-}" ] || fail "set MOZAIC_IMAGE to the installed runtime image (for example localhost/mozaic-runtime@sha256:...)"
-  local entrypoint=/opt/mozaic/bin/mozaic-admin
-  local args=(podman run --rm -i --network "${MOZAIC_NETWORK:-mozaic}"
-    --env-file /etc/mozaic/migrator.env --env-file /etc/mozaic/app.env
-    --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=67108864
-    --cap-drop all --security-opt no-new-privileges)
-  [ -r /etc/mozaic/postgres-tls/ca.crt ] \
-    && args+=(--volume /etc/mozaic/postgres-tls/ca.crt:/run/mozaic-postgres-ca/ca.crt:ro)
-  if [ -n "${MOZAIC_ADMIN_BIN:-}" ]; then
-    [ -x "$MOZAIC_ADMIN_BIN" ] || fail "MOZAIC_ADMIN_BIN is not an executable file"
-    entrypoint=/opt/mozaic-varset/mozaic-admin
-    args+=(--volume "$MOZAIC_ADMIN_BIN:$entrypoint:ro")
-  fi
-  args+=(--entrypoint "$entrypoint" "$MOZAIC_IMAGE")
-  printf '%s\n' "${args[@]}"
+  local mounts=$CA_MOUNT
+  [ -z "$REMOTE_DIR" ] || mounts="$mounts --volume $REMOTE_DIR/mozaic-admin:$ENTRYPOINT:ro"
+  printf 'podman run --rm -i --network %s --env-file /etc/mozaic/migrator.env --env-file /etc/mozaic/app.env %s --read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=67108864 --cap-drop all --security-opt no-new-privileges --entrypoint %s %s %s' \
+    "${MOZAIC_NETWORK:-mozaic}" "$mounts" "$ENTRYPOINT" "$IMAGE" "$tail"
 }
 
-# Writes one variable; the value arrives on standard input of the tool and nowhere else.
 write_variable() {
-  local name=$1 value=$2 operation
-  operation=$(new_operation_id)
-  local command=()
-  mapfile -t command < <(admin_command)
-  printf '%s' "$value" | "${command[@]}" pipeline-variable-set \
-    --organization-id "$ORG" --project-id "$PROJECT" --repository-id "$REPOSITORY" \
-    --name "$name" --run-as "$RUN_AS" --operation-id "$operation" \
-    --reason "UTF release pipeline variable $name entered by the host operator" \
-    --branch "$BRANCH" --pipeline "$PIPELINE" --value-stdin
+  local name=$1 value=$2
+  printf '%s' "$value" | remote "$(remote_command "$name" "$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen)")"
 }
 
-# Reads a key either from a file path or as pasted single-line base64, and normalizes it to base64.
+# Reads a key either from a local file path or as pasted single-line base64, and normalizes it to base64.
 read_key_value() {
   local answer decoded
-  IFS= read -r -p "  Path of the key file, or paste its base64 (Enter to skip): " answer || true
+  IFS= read -r -p "  Path of the key file on this computer, or paste its base64 (Enter to skip): " answer || true
   [ -n "$answer" ] || return 0
   if [ -f "$answer" ]; then
     answer=$(base64 -w0 < "$answer")
@@ -117,12 +164,7 @@ main() {
     "") ;;
     *) fail "unknown argument: $1" ;;
   esac
-  # The tool itself enforces host root; this early check is only for a clear message (tests may skip it).
-  [ "${UTF_VARS_SKIP_ROOT_CHECK:-}" = 1 ] || [ "$(id -u)" = 0 ] || fail "run as root on the Mozaic host"
-  if [ -z "${MOZAIC_ADMIN_CMD:-}" ]; then
-    command -v podman >/dev/null || fail "podman is required"
-    [ -r /etc/mozaic/migrator.env ] && [ -r /etc/mozaic/app.env ] || fail "/etc/mozaic/migrator.env and app.env must be readable"
-  fi
+  pick_ssh
 
   declare -A values=()
   local entry name kind description value found=false
@@ -148,12 +190,14 @@ main() {
   [ -z "$only" ] || [ "$found" = true ] || fail "unknown variable name: $only"
   [ "${#values[@]}" -gt 0 ] || { printf 'Nothing entered; nothing written.\n'; return 0; }
 
-  printf 'About to write these secret variables (names only) for branch %s and pipeline %s:\n' "$BRANCH" "$PIPELINE"
+  printf 'About to write these secret variables (names only) for branch %s and pipeline %s via %s:\n' \
+    "$BRANCH" "$PIPELINE" "${TARGET:-<UTF_OPERATOR_SSH not set>}"
   printf '  %s\n' "${!values[@]}" | sort
   local confirm
   IFS= read -r -p "Write them now? [y/N] " confirm || true
   [ "$confirm" = y ] || [ "$confirm" = Y ] || { printf 'Cancelled; nothing written.\n'; return 0; }
 
+  prepare_remote
   local failed=0
   for name in $(printf '%s\n' "${!values[@]}" | sort); do
     if write_variable "$name" "${values[$name]}"; then
