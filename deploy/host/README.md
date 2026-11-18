@@ -1,45 +1,38 @@
-# Amsel: what the release push needs on the host
+# Amsel: what the release pipeline needs on the host
 
-Nothing is installed and nothing listens. The release job pushes the exact API and web image archives into
-the `utf-deploy` user's rootless Podman with one SSH connection per archive, and the only thing the CI key
-may run on the host is `podman load`. There is no script, daemon, socket or registry credential on Amsel,
-and the host never pulls.
+The release job logs in to Amsel as the unprivileged, rootless `utf-deploy` user with one organization-wide SSH
+key and runs fixed commands from this repository (`ci/stream_release.py`, `ci/activate_release.py`). The host never
+pulls from a registry and holds no registry credential.
 
-## The single host change (owner action)
+## One-time host setup
 
-From your own PowerShell, `deploy\operator\Install-DeployKey.ps1` makes this change for you: it connects to
-the host itself, shows what it will do, asks for confirmation, appends the line below, and then proves from
-your computer that the key can only run `podman load`. `-CheckOnly` shows the podman path, the deploy user's
-home and the existing key fingerprints without changing anything. The line it writes is:
+1. **Key.** The private key is the organization secret variable `AMSEL_DEPLOY_SSH_KEY` (trusted branch only). The
+   public half is `deploy/amsel-ci.pub`; it is authorized with `restrict` (no forwarding, PTY or agent) in the file
+   sshd reads for `utf-deploy`. Ask sshd where that is: `sshd -T -C user=utf-deploy,host=x,addr=127.0.0.1 | grep authorizedkeysfile`
+   (on Amsel a `Match User` block points it to `/etc/ssh/mozaic-authorized-keys/utf-owner-deployment`, not `~/.ssh`).
+   The host key the job pins is `deploy/known_hosts`.
+2. **Units.** Copy `deploy/host/utf-api.service` and `utf-web.service` to `~utf-deploy/.config/systemd/user/` and run
+   `systemctl --user daemon-reload` (done once on 2026-11-18). They run exactly the tags `localhost/utf/api:release` and
+   `localhost/utf/web:release` with the limits, network, ports, volumes and `api.env` the containers had before. Nothing
+   else is done by hand: the first pipeline release stops the retired migration-managed service
+   (`mozaic-utf-ordinary.service` and the `mozaic-app-utf-*` containers), enables and starts these units and disables the
+   retired units; if that release fails the job starts the retired service again.
+3. **Backups** go to `~utf-deploy/backups/utf-<revision>.dump` (last ten kept), taken by the pipeline with the
+   database service file and password file already in `~/.config/mozaic-deploy/targets/utf/`.
 
-One line in the file sshd reads for `utf-deploy` (on Amsel `/etc/ssh/mozaic-authorized-keys/utf-owner-deployment`, set by a `Match User` block; `Install-DeployKey.ps1` asks sshd for it), next to the retired receiver's entry. The public key
-is committed as `deploy/utf-deploy.pub`; the private key exists only as the trusted-branch secret pipeline
-variable `UTF_DEPLOY_SSH_KEY`:
+## Rollback
 
-```text
-restrict,command="/usr/bin/podman load" <contents of deploy/utf-deploy.pub>
-```
-
-- `restrict` disables forwarding, PTY, agent and X11. `command=` makes `podman load` the only possible
-  command, whatever the client asks for. With that key an attacker could import an image archive into this
-  user's local storage; they could not start a container, get a shell or read anything.
-- Use the real path from `command -v podman` as `utf-deploy`.
-- Check the line with `ssh-keygen -lf ~/.ssh/authorized_keys`.
-- The host key the job pins is `deploy/known_hosts`.
-
-## Checks by hand before the first release
-
-As `utf-deploy` on the host:
+The previous images keep the tag `:previous`. The job restores them by itself when a check fails. By hand:
 
 ```sh
-command -v podman && podman --version
-df -h "$(podman info --format '{{.Store.GraphRoot}}')"      # room for the API and web images
-podman load < some-small-oci-or-docker-archive.tar            # prints "Loaded image: ..." and exits 0
+for r in api web; do podman tag localhost/utf/$r:previous localhost/utf/$r:release; done
+systemctl --user restart utf-api.service utf-web.service
 ```
+
+A database restore is `pg_restore` of the matching `~/backups/utf-<revision>.dump`.
 
 ## Image identity
 
-`podman load` verifies layers by digest, and the image ID is the config digest. The pipeline computes that
-ID from the archive before sending and records it in `release.json` (printed in the job log as
-`image id`). Later steps, including the separately approved activation, refer to that ID, so a different
-image under the same name cannot be started by mistake. Loading does not start, stop or replace anything.
+`podman load` verifies layers by digest and the image ID is the config digest. The job computes that ID from the
+archive before sending, records it in `release.json` (also printed as `image id`), and later steps, the running-image
+check included, refer to that ID, so a different image under the same name cannot be started by mistake.

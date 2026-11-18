@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Push the exact checked API and web OCI archives into podman on the target over SSH.
 
-The target runs no custom code: its authorized_keys entry for the CI key forces the single command
-`podman load`, which only imports an image archive. Each archive is streamed as stdin of one SSH
-connection. No registry credential exists on either side and the host never pulls. The only secret is the
-SSH key written by ci/prepare-deploy-key.sh from a trusted-branch pipeline variable.
-
+The pipeline logs in as the unprivileged deploy user with the organization-wide SSH key (pipeline variable
+AMSEL_DEPLOY_SSH_KEY, written by ci/prepare-deploy-key.sh) and runs `podman load`. Each archive is streamed as
+stdin of one SSH connection. No registry credential exists on either side and the host never pulls.
+Activation, backup and verification are ci/activate_release.py, in the same job.
 The image identity is fixed by content: podman stores layers by digest and the image ID is the config
 digest, which this script computes from the archive before sending and records in release.json.
 """
@@ -23,7 +22,7 @@ import tarfile
 
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 HERE = Path(__file__).resolve().parent
-# Safe even if the host entry were not forced: it can only import an image archive.
+# The command this script runs on the host; activate_release.py passes its own fixed commands.
 REMOTE_COMMAND = "podman load"
 
 
@@ -55,7 +54,7 @@ def archive_identity(path):
     return manifest_digest, config_digest
 
 
-def ssh_arguments(manifest, target, timeout):
+def ssh_arguments(manifest, target, timeout, command=REMOTE_COMMAND):
     keys = {"version", "target", "host", "port", "user", "key_file", "known_hosts_file"}
     if set(manifest) != keys or manifest["version"] != 1 or manifest["target"] != target:
         raise ValueError("Invalid target manifest")
@@ -82,7 +81,7 @@ def ssh_arguments(manifest, target, timeout):
             "-oUserKnownHostsFile=" + files[1], "-oClearAllForwardings=yes",
             "-oConnectTimeout=20", "-oConnectionAttempts=1", "-oServerAliveInterval=15",
             "-oServerAliveCountMax=4", "-i", files[0], "-p", str(manifest["port"]),
-            "-oProxyCommand=" + proxy_command, "-l", manifest["user"], host, REMOTE_COMMAND]
+            "-oProxyCommand=" + proxy_command, "-l", manifest["user"], host, command]
 
 
 def push(argv, archive, size_limit, timeout):

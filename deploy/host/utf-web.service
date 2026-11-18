@@ -1,0 +1,16 @@
+[Unit]
+Description=United Tactical Forces web
+After=network-online.target utf-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+ExecStartPre=-/usr/bin/podman rm -f --ignore utf-web
+ExecStart=/usr/bin/podman run --rm --name utf-web --log-driver=none --cap-drop=ALL --security-opt=no-new-privileges --shm-size=16m --pid=private --ipc=private --memory=2048m --memory-swap=2048m --cpus=2 --pids-limit=512 --network mozaic-app-utf --network-alias web --tmpfs /tmp:rw,nosuid,nodev,size=256m --read-only --read-only-tmpfs=false --user 101:101 --userns keep-id:uid=101,gid=101 --publish 127.0.0.1:18081:8080 --volume %h/.config/mozaic-deploy/targets/utf/nginx.conf:/etc/nginx/nginx.conf:ro,Z --volume %h/.config/mozaic-deploy/targets/utf/runtime-config.json:/usr/share/nginx/html/appsettings.json:ro,Z --tmpfs /var/cache/nginx:rw,nosuid,nodev,size=32m --tmpfs /var/run:rw,nosuid,nodev,size=4m localhost/utf/web:release
+ExecStop=/usr/bin/podman stop --time 20 utf-web
+
+[Install]
+WantedBy=default.target

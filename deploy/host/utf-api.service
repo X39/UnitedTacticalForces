@@ -1,0 +1,16 @@
+[Unit]
+Description=United Tactical Forces API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=45
+ExecStartPre=-/usr/bin/podman rm -f --ignore utf-api
+ExecStart=/usr/bin/podman run --rm --name utf-api --log-driver=none --cap-drop=ALL --security-opt=no-new-privileges --shm-size=16m --pid=private --ipc=private --memory=2048m --memory-swap=2048m --cpus=2 --pids-limit=512 --network mozaic-app-utf --network-alias api --tmpfs /tmp:rw,nosuid,nodev,size=256m --read-only --read-only-tmpfs=false --user 1654:1654 --userns keep-id:uid=1654,gid=1654 --publish 127.0.0.1:18091:8080 --volume %h/.config/mozaic-deploy/targets/utf/database-ca.crt:/etc/mozaic/database-ca.crt:ro,Z --env-file %h/.config/mozaic-deploy/targets/utf/api.env --env ASPNETCORE_ENVIRONMENT=Production --env ASPNETCORE_HTTP_PORTS=8080 --env DOTNET_EnableDiagnostics=0 --env General__BasePath=/api --env General__ApiBaseUrl=https://unitedtacticalforces.de/api/ --env General__ClientBaseUrl=https://unitedtacticalforces.de/ --env Hosting__PersistentStorage__BasePath=/var/lib/united-tactical-forces/hosting --env Hosting__Secrets__KeyRingPath=/home/app/.aspnet/DataProtection-Keys --env Testing__AuthorizationBypass__Enabled=false --volume mozaic-app-utf-data:/app/App_Data --volume mozaic-app-utf-hosting:/var/lib/united-tactical-forces/hosting --volume mozaic-app-utf-keyring:/home/app/.aspnet/DataProtection-Keys localhost/utf/api:release
+ExecStop=/usr/bin/podman stop --time 30 utf-api
+
+[Install]
+WantedBy=default.target

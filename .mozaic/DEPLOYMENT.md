@@ -6,10 +6,8 @@ owner. Target mutation, nginx, databases, credentials and shared capacity remain
 that owner's responsibility. The application worker must complete acceptance
 against the actual accepted run; prepared YAML is not deployment evidence.
 
-Activation is not part of the pipeline at present; see `.mozaic/RELEASE.md`. The
-retained `ci/` receive client targets the Amsel endpoint and `utf-deploy` account
-but depends on retired Mozaic credentials. Require runtime adoption, a coherent
-backup and an exact reviewed successor revision before enabling any activation.
+Activation is part of the pipeline: see `.mozaic/RELEASE.md` and `deploy/host/README.md`. The release job backs up
+the database, switches the two UTF units to the pushed image IDs and verifies the live revision.
 
 ## Release inputs
 

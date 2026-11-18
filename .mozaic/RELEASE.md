@@ -64,14 +64,17 @@ The trusted default branch is `master`. The verified canonical destination is
 ancestors of the prepared source. The coordinator reconciled default selection
 and governed push policy through the audited operator path.
 
-`.mozaic/release.yml` currently builds, checks and publishes only. Its former
-`activate-release` job was removed because it declared `secret_files` and a
-deployment OCI reader, both retired by Mozaic (migration 0260 and the removal
-of the deployment OCI authority); the platform compiler rejects such a
-definition without starting a run. The `ci/` receive client is retained but
-is not wired into the pipeline. Re-adding activation needs an ordinary
-pipeline variable for the SSH key and a host that pulls the exact published
-digest with its own registry credential.
+`.mozaic/release.yml` builds, checks and releases in one trusted job on every push or merge to `master`. After the
+checks it loads the exact API and web images on Amsel over ordinary SSH (`ci/stream_release.py`), then
+`ci/activate_release.py` backs up the database (`pg_dump` with the existing backup role), moves the fixed local
+tags `localhost/utf/{api,web}:release` to the pushed image IDs, restarts the two static user units
+(`deploy/host/utf-api.service`, `utf-web.service`), checks that the running containers use those IDs and that the
+public site serves the built revision (`/revision.json`, written into the web image at build time) and that the API
+answers. Any failure after the tags moved restores the previous images and fails the job. Only then are the images
+published to the registry (the compiler allows no executable step after a publication step).
+
+The SSH key is the organization-wide secret pipeline variable `AMSEL_DEPLOY_SSH_KEY` (public half:
+`deploy/amsel-ci.pub`). Nothing on the host pulls from the registry. See `deploy/host/README.md`.
 
 The coordinator must migrate the protected target/input contract described in
 `.mozaic/DEPLOYMENT.md` and verify its readiness before an authorized source update.

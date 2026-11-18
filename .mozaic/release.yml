@@ -33,6 +33,7 @@ jobs:
         - snapshot.ubuntu.com
         - app.mozaic.space
         - steamcdn-a.akamaihd.net
+        - unitedtacticalforces.de
         - cdn.playwright.dev
         - playwright.download.prss.microsoft.com
       allow_connect:
@@ -40,12 +41,14 @@ jobs:
           port: 22
     timeout_minutes: 60
     steps:
-      - name: Verify the deployment key before the long build
+      - name: Verify the organization deployment key before the long build
         run: sh ci/prepare-deploy-key.sh
       - name: Check Release binaries and package the complete component set
         run: sh .mozaic/build.sh release
-      - name: Push the exact checked API and web images to Amsel over SSH
+      - name: Load the exact checked API and web images on Amsel over SSH
         run: python3 ci/stream_release.py --manifest deploy/production.json --target amsel --api images/api.tar --web images/web.tar
+      - name: Back up the database, switch Amsel to the new images and prove the new revision is live
+        run: python3 ci/activate_release.py --manifest deploy/production.json --target amsel --release release.json --revision "$MOZAIC_REVISION" --site https://unitedtacticalforces.de
       - name: Publish the checked API
         publish_in_package_registry:
           registry:
@@ -86,7 +89,3 @@ jobs:
         format: trx
       - path: test-results/worker-test-results/*.trx
         format: trx
-  # Activation is intentionally not part of this definition. The former activate-release
-  # job used secret_files and a deployment OCI reader, both retired by Mozaic (migration
-  # 0260 and the deployment OCI authority removal). Add activation back with an ordinary
-  # pipeline variable for the SSH key and a host that pulls the published digest.

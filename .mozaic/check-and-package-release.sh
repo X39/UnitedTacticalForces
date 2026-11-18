@@ -42,6 +42,11 @@ printf '{"sdk":{"version":"10.0.302","rollForward":"disable"}}\n' \
         --output "$UTF_CHECK_PUBLISH_DIRECTORY/worker"
 )
 
+# The public site serves the built revision so the release job can prove what is running.
+mkdir -p /workspace/.publish/web/wwwroot
+printf '{"revision":"%s"}\n' "${MOZAIC_REVISION:?the pipeline provides MOZAIC_REVISION}" \
+    > /workspace/.publish/web/wwwroot/revision.json
+
 mkdir -p /workspace/images
 for component in api web worker; do
     sh "$helper" assemble "$component" /workspace "/workspace/images/$component.tar"

@@ -163,10 +163,10 @@ class DeployKeyTests(unittest.TestCase):
         return path.read_text(), Path(str(path) + ".pub")
 
     def run_script(self, value):
-        env = {**os.environ, "UTF_PRIVATE_DIR": str(self.root / "private"), "UTF_DEPLOY_PUBLIC_KEY": str(self.public)}
-        env.pop("UTF_DEPLOY_SSH_KEY", None)
+        env = {**os.environ, "UTF_PRIVATE_DIR": str(self.root / "private"), "AMSEL_DEPLOY_PUBLIC_KEY": str(self.public)}
+        env.pop("AMSEL_DEPLOY_SSH_KEY", None)
         if value is not None:
-            env["UTF_DEPLOY_SSH_KEY"] = value
+            env["AMSEL_DEPLOY_SSH_KEY"] = value
         return subprocess.run(["sh", str(HERE / "prepare-deploy-key.sh")], capture_output=True, text=True, env=env)
 
     def test_accepts_pem_flattened_pem_and_base64(self):
@@ -175,7 +175,7 @@ class DeployKeyTests(unittest.TestCase):
             with self.subTest(label):
                 result = self.run_script(value)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn("UTF deploy key: ok SHA256:", result.stdout)
+                self.assertIn("Amsel deploy key: ok SHA256:", result.stdout)
                 self.assertEqual(stat.S_IMODE((self.root / "private" / "deploy_key").stat().st_mode), 0o600)
 
     def test_refuses_missing_wrong_and_garbage_values_without_echoing_them(self):

@@ -1,21 +1,21 @@
 #!/bin/sh
-# Write the deployment SSH key from the trusted-branch pipeline variable UTF_DEPLOY_SSH_KEY and verify it
+# Write the deployment SSH key from the organization-wide trusted-branch pipeline variable AMSEL_DEPLOY_SSH_KEY and verify it
 # before any long build. Accepts the OpenSSH private key either as PEM text (line breaks may have been lost
 # by a paste) or as a single line of base64 of that PEM. Prints only the public fingerprint.
 set -eu
 umask 077
 dir=${UTF_PRIVATE_DIR:-/workspace/.private}
-expected=${UTF_DEPLOY_PUBLIC_KEY:-deploy/utf-deploy.pub}
-fail() { printf 'UTF deploy key: %s\n' "$1" >&2; exit 1; }
+expected=${AMSEL_DEPLOY_PUBLIC_KEY:-deploy/amsel-ci.pub}
+fail() { printf 'Amsel deploy key: %s\n' "$1" >&2; exit 1; }
 
-[ -n "${UTF_DEPLOY_SSH_KEY:-}" ] || fail "the UTF_DEPLOY_SSH_KEY pipeline variable is missing or empty"
+[ -n "${AMSEL_DEPLOY_SSH_KEY:-}" ] || fail "the AMSEL_DEPLOY_SSH_KEY pipeline variable is missing or empty"
 [ -r "$expected" ] || fail "the committed public key is missing"
 mkdir -p "$dir"
 chmod 700 "$dir"
 
-case "$UTF_DEPLOY_SSH_KEY" in
-    *"BEGIN OPENSSH PRIVATE KEY"*) pem=$UTF_DEPLOY_SSH_KEY ;;
-    *) pem=$(printf '%s' "$UTF_DEPLOY_SSH_KEY" | base64 -d 2>/dev/null) || fail "the value is neither PEM nor base64 of PEM" ;;
+case "$AMSEL_DEPLOY_SSH_KEY" in
+    *"BEGIN OPENSSH PRIVATE KEY"*) pem=$AMSEL_DEPLOY_SSH_KEY ;;
+    *) pem=$(printf '%s' "$AMSEL_DEPLOY_SSH_KEY" | base64 -d 2>/dev/null) || fail "the value is neither PEM nor base64 of PEM" ;;
 esac
 case "$pem" in
     *"BEGIN OPENSSH PRIVATE KEY"*) ;;
@@ -39,4 +39,4 @@ ssh-keygen -y -f "$key" > "$dir/deploy_key.pub" 2>/dev/null || fail "the private
 derived=$(cut -d ' ' -f 1,2 "$dir/deploy_key.pub")
 committed=$(cut -d ' ' -f 1,2 "$expected")
 [ "$derived" = "$committed" ] || fail "the variable holds a different key than the committed public key"
-printf 'UTF deploy key: ok %s\n' "$(ssh-keygen -lf "$dir/deploy_key.pub" | cut -d ' ' -f 2)"
+printf 'Amsel deploy key: ok %s\n' "$(ssh-keygen -lf "$dir/deploy_key.pub" | cut -d ' ' -f 2)"
