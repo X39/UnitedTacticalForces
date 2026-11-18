@@ -166,6 +166,12 @@ public sealed class LifecycleJobExecutorCloudTests
             command,
             registrationDeadline: null,
             cancellationToken: cancellation.Token));
+
+        var persisted = await store.DbContext.GameServerDeployments
+            .AsNoTracking()
+            .SingleAsync(q => q.PrimaryKey == deployment.PrimaryKey);
+        Assert.Equal(EDeploymentStatus.Preparing, persisted.Status);
+        Assert.Equal("running", persisted.Stage);
     }
 
     [Fact]
@@ -1128,7 +1134,7 @@ public sealed class LifecycleJobExecutorCloudTests
     }
 
     [Fact]
-    public async Task RuntimeCommand_PersistsStableDeduplicatedContentSnapshot()
+    public async Task RuntimeCommand_PersistsContentSnapshotOfSelectedModPack()
     {
         await using var store = await HostingTestStore.CreateAsync();
         var seed = await HostingTestData.SeedServerAsync(
