@@ -149,8 +149,8 @@ function Initialize-Remote([switch]$ReadOnly) {
     $probe = Invoke-Remote 'wc -c' ([Text.Encoding]::ASCII.GetBytes('abc'))
     if ($probe.Code -ne 0 -or $probe.Output -ne '3') { Stop-Script "the connection does not pass raw bytes unchanged (sent 3, host counted '$($probe.Output)'); nothing was written" }
     if ($ReadOnly -or $AdminCmd) { return }
-    if ((Invoke-Remote 'test -f /etc/mozaic/app.env && test -f /etc/mozaic/migrator.env').Code -ne 0) {
-        Stop-Script 'this host does not look like the Mozaic host: /etc/mozaic/app.env and /etc/mozaic/migrator.env are missing; nothing was written'
+    if ((Invoke-Remote 'test -f /etc/mozaic/app.env && test -f /etc/mozaic/migrator.env && test -f /etc/mozaic/pipeline-secret-protection.env').Code -ne 0) {
+        Stop-Script 'this host does not look like the Mozaic host: /etc/mozaic/app.env, migrator.env or pipeline-secret-protection.env is missing; nothing was written'
     }
     if ((Invoke-Remote "podman network exists $($script:Network)").Code -ne 0) {
         $known = (Invoke-Remote "podman network ls --format '{{.Name}}'").Output -replace '\s+', ', '
@@ -187,7 +187,7 @@ function Get-RemoteCommand([string]$Name, [string]$Operation) {
     $mounts = $script:CaMount
     if ($script:RemoteDir) { $mounts = "$mounts --volume $($script:RemoteDir)/mozaic-admin:$($script:Entrypoint):ro" }
     $network = $script:Network
-    return "podman run --rm -i --user 0:0 --network $network --env-file /etc/mozaic/migrator.env --env-file /etc/mozaic/app.env $mounts " +
+    return "podman run --rm -i --user 0:0 --network $network --env-file /etc/mozaic/migrator.env --env-file /etc/mozaic/app.env --env-file /etc/mozaic/pipeline-secret-protection.env $mounts " +
         "--read-only --tmpfs /tmp:rw,noexec,nosuid,nodev,size=67108864 --cap-drop all --security-opt no-new-privileges " +
         "--entrypoint $($script:Entrypoint) $($script:ImageName) $tail"
 }
