@@ -35,10 +35,17 @@ jobs:
         - steamcdn-a.akamaihd.net
         - cdn.playwright.dev
         - playwright.download.prss.microsoft.com
-    timeout_minutes: 30
+      allow_connect:
+        - host: '2a01:4f8:c0c:e2e::1'
+          port: 22
+    timeout_minutes: 60
     steps:
+      - name: Verify the deployment key before the long build
+        run: sh ci/prepare-deploy-key.sh
       - name: Check Release binaries and package the complete component set
         run: sh .mozaic/build.sh release
+      - name: Push the exact checked API and web images to Amsel over SSH
+        run: python3 ci/stream_release.py --manifest deploy/production.json --target amsel --api images/api.tar --web images/web.tar
       - name: Publish the checked API
         publish_in_package_registry:
           registry:

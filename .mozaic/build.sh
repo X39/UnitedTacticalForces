@@ -52,6 +52,7 @@ case "$mode" in
         sh "$helper" python -B .mozaic/test_stage_node.py
         sh "$helper" python -B .mozaic/test_worker_image.py
         sh "$helper" python -B .mozaic/test_api_image.py
+        sh "$helper" python -B ci/test_push_release.py
         sh .mozaic/check-and-package-release.sh
         ;;
     react-tests)
