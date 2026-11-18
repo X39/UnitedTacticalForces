@@ -23,6 +23,11 @@ Set-Content -Path (Join-Path $env:STUB_DIR ('call-{0:000}.json' -f $count)) -Val
 if ($command -eq 'id -u') { if ($env:STUB_UID) { $env:STUB_UID } else { '0' }; exit 0 }
 if ($command -eq 'wc -c') { $bytes.Length + [int]$env:STUB_EXTRA; exit 0 }
 if ($command -eq 'id -u utf-deploy') { '1001'; exit 0 }
+if ($command -like '*{{.Status}}*') { if ($command -like 'runuser*') { 'utf-api|localhost/utf-api@sha256:1|Up 2 hours' } else { 'mozaic-app|localhost/mozaic-runtime@sha256:9|Up 3 days' }; exit 0 }
+if ($command -like 'getent passwd*') { 'utf-deploy'; exit 0 }
+if ($command -like '*grep -oE*') { 'STEAM_API_KEY='; 'ConnectionStrings__database='; exit 0 }
+if ($command -like 'find /etc /opt /srv /home /root /var/lib*') { '/home/utf-deploy/.config/mozaic-deploy/targets/utf/api.env:Steam__ApiKey'; exit 0 }
+if ($command -like 'systemctl*') { exit 0 }
 if ($command -like '*podman ps -a --format*') {
     if ($command -like 'runuser*') { 'utf-api localhost/utf-api@sha256:1'; 'utf-database docker.io/library/postgres:18'; 'unrelated-app docker.io/library/nginx' }
     else { 'mozaic-db docker.io/library/postgres:18'; 'mozaic-server localhost/mozaic-runtime@sha256:9' }
@@ -38,6 +43,8 @@ if ($command -like 'find /etc*') {
     '/etc/utf/utf.env:GHCR_PULL_TOKEN=oldghcrtoken-not-mapped'
     '/etc/utf/utf.env:Hosting__WorkerProvisioning__RegistryToken=oldghcrtoken2-not-mapped'
     '/etc/utf/utf.env:DISCORD_CLIENT_ID=short'
+    '/home/utf-deploy/.config/mozaic-deploy/targets/utf/api.env:Hosting__WorkerProvisioning__RegistryServer=x39.mozaic.space'
+    '/home/utf-deploy/.config/mozaic-deploy/targets/utf/api.env:Hosting__WorkerProvisioning__RegistryToken=mozaic-reg-token-value-1'
     exit 0
 }
 if ($command -like 'podman network exists*') { exit [int]($env:STUB_NET) }
@@ -140,20 +147,20 @@ try {
         Check ($r.Code -eq 0 -and (Get-Writes).Count -eq 1) '-Only prompts for one variable'
 
         # -FromHost: values the app already has on the host are imported in memory and never printed.
-        $r = Invoke-Script $shell (@($key) + @('') * 6 + 'y') @{} @('-FromHost')
+        $r = Invoke-Script $shell (@($key) + @('') * 5 + 'y') @{} @('-FromHost')
         $writes = Get-Writes
         $byName = @{}; foreach ($w in $writes) { $byName[(Get-Flag $w.command '--name')] = $w }
-        if ($writes.Count -ne 6) { Write-Host "    exit $($r.Code); output: $($r.Output)"; @(Get-Calls) | ForEach-Object { $_ } | ForEach-Object { Write-Host ('    call: ' + $_.command.Substring(0, [Math]::Min(110, $_.command.Length))) } }
-        Check ($r.Code -eq 0 -and $writes.Count -eq 6 -and (($byName.Keys | Sort-Object) -join ',') -ceq 'DISCORD_BOT_TOKEN,HETZNER_TOKEN,POSTGRES_PASSWORD,STEAM_API_KEY,TEAMSPEAK_PASSWORD,UTF_DEPLOY_SSH_KEY') '-FromHost writes the key plus the five values found on the host'
-        $expected = @{ STEAM_API_KEY = 'steamkey-from-container'; HETZNER_TOKEN = 'hetznertoken-from-file'; TEAMSPEAK_PASSWORD = 'ts-pass-from-unit'; POSTGRES_PASSWORD = 'pgpass-conn-12345'; DISCORD_BOT_TOKEN = 'bottoken-from-container-1' }
+        if ($writes.Count -ne 7) { Write-Host "    exit $($r.Code); output: $($r.Output)"; @(Get-Calls) | ForEach-Object { $_ } | ForEach-Object { Write-Host ('    call: ' + $_.command.Substring(0, [Math]::Min(110, $_.command.Length))) } }
+        Check ($r.Code -eq 0 -and $writes.Count -eq 7 -and (($byName.Keys | Sort-Object) -join ',') -ceq 'DISCORD_BOT_TOKEN,HETZNER_TOKEN,POSTGRES_PASSWORD,STEAM_API_KEY,TEAMSPEAK_PASSWORD,UTF_DEPLOY_SSH_KEY,WORKER_REGISTRY_TOKEN') '-FromHost writes the key plus the six values found on the host'
+        $expected = @{ STEAM_API_KEY = 'steamkey-from-container'; HETZNER_TOKEN = 'hetznertoken-from-file'; TEAMSPEAK_PASSWORD = 'ts-pass-from-unit'; POSTGRES_PASSWORD = 'pgpass-conn-12345'; DISCORD_BOT_TOKEN = 'bottoken-from-container-1'; WORKER_REGISTRY_TOKEN = 'mozaic-reg-token-value-1' }
         $exact = @($expected.Keys | Where-Object { $byName[$_] -and $byName[$_].stdin -ceq (([Text.Encoding]::UTF8.GetBytes($expected[$_]) | ForEach-Object { $_.ToString('x2') }) -join '') })
-        Check ($exact.Count -eq 5) 'imported values are exact: containers win over files, quotes are stripped, the password is parsed from the connection string'
+        Check ($exact.Count -eq 6) 'imported values are exact: containers win over files, quotes are stripped, the password is parsed from the connection string'
         $oldHex = ([Text.Encoding]::UTF8.GetBytes('oldghcr') | ForEach-Object { $_.ToString('x2') }) -join ''
-        Check (@($writes | Where-Object { $_.command -like '*WORKER_REGISTRY_TOKEN*' -or $_.stdin -like "*$oldHex*" }).Count -eq 0) 'old GHCR tokens are never imported as the worker registry key'
-        Check (@(@(Get-Calls) | Where-Object { $_.command -like '*podman inspect mozaic*' -or $_.command -like '*unrelated*' }).Count -eq 0) "Mozaic's own and unrelated containers are never read"
+        Check (@($writes | Where-Object { $_.stdin -like "*$oldHex*" }).Count -eq 0) 'old GHCR tokens are never imported; the worker key comes only from a source naming x39.mozaic.space'
+        Check (@(@(Get-Calls) | Where-Object { $_.command -like '*podman inspect mozaic*' }).Count -eq 0) "Mozaic's own containers are never read"
         $inspect = @(@(Get-Calls) | Where-Object { $_.command -like '*podman inspect utf-api*' })
         $search = @(@(Get-Calls) | Where-Object { $_.command -like 'find /etc*' })
-        Check ($inspect.Count -eq 1 -and $inspect[0].command -like "*| grep -E '^(*Steam__ApiKey*)='" -and $search.Count -eq 1 -and $search[0].command -like '*grep -viE ''mozaic*' -and $search[0].command -like '*xargs -r grep -HsE*') 'only lines for the known names are selected on the host, and mozaic paths are excluded'
+        Check ($inspect.Count -eq 1 -and $inspect[0].command -like "*| grep -E '^(*Steam__ApiKey*)='" -and $search.Count -eq 1 -and $search[0].command -like '*-maxdepth 7*' -and $search[0].command -like '*grep -vE ''^/etc/mozaic*' -and $search[0].command -like '*xargs -r grep -HsE*') 'only lines for the known names are selected on the host, and mozaic paths are excluded'
         # Full values as needles: a short fragment can collide with a key name in the search pattern.
         $needles = @($expected.Values) + @('steamkey-from-file', 'pgpass-db-container', 'oldghcrtoken-not-mapped')
         $inOutput = @($needles | Where-Object { $r.Output -clike "*$_*" })
@@ -161,6 +168,12 @@ try {
         Check ($inOutput.Count -eq 0 -and $inCommands.Count -eq 0) 'no imported value appears in the output or in any command line'
         Check ($r.Output -like '*found STEAM_API_KEY*container utf-api (utf-deploy)*' -and $r.Output -like '*note: POSTGRES_PASSWORD has different values*' -and $r.Output -like '*note: STEAM_API_KEY has different values*') 'sources and conflicts are shown by name'
         Check ($r.Output -like '*DISCORD_CLIENT_ID was found but is shorter*') 'a found value that is too short is left for the user instead of being stored'
+
+        $unrelated = @(@(Get-Calls) | Where-Object { $_.command -like '*podman inspect unrelated-app*' })
+        Check ($unrelated.Count -eq 1 -and $unrelated[0].command -like '*Steam__ApiKey*' -and $unrelated[0].command -notlike '*POSTGRES_PASSWORD*' -and $unrelated[0].command -notlike '*ConnectionStrings__database*') 'a container not named for UTF is searched only for the UTF-specific names, never for the database password'
+
+        $r = Invoke-Script $shell @() @{} @('-Discover')
+        Check ($r.Code -eq 0 -and (Get-Writes).Count -eq 0 -and $r.Output -like '*utf-api*known names set: STEAM_API_KEY, ConnectionStrings__database*' -and $r.Output -like "*Mozaic's own: not inspected*" -and $r.Output -like '*targets/utf/api.env:Steam__ApiKey*' -and @(@(Get-Calls) | Where-Object { $_.command -like '*podman inspect mozaic*' }).Count -eq 0) '-Discover reports where the names live, names only, never inspects Mozaic, and changes nothing'
 
         $binary = Join-Path $work 'mozaic-admin'
         [IO.File]::WriteAllBytes($binary, [byte[]](0x7f, 0x45, 0x4c, 0x46, 1, 2, 3))

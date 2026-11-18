@@ -34,6 +34,7 @@ param(
     [switch]$List,
     [string]$KnownHosts = (Join-Path $PSScriptRoot '..\known_hosts'),
     [switch]$FromHost,
+    [switch]$Discover,
     [string]$HostUser = 'utf-deploy'
 )
 $ErrorActionPreference = 'Stop'
@@ -192,8 +193,8 @@ function Get-RemoteCommand([string]$Name, [string]$Operation) {
 }
 
 # Names under which the app already has these values on the host: compose/.env style and .NET style.
-# WORKER_REGISTRY_TOKEN is deliberately absent: the host may still hold an old GHCR token there, and this
-# variable must be a new read-only key of the Mozaic registry.
+# WORKER_REGISTRY_TOKEN is imported only from a source that also names x39.mozaic.space as the worker registry
+# server: an old GHCR token must never become the Mozaic registry key.
 $HostKeyMap = [ordered]@{
     POSTGRES_PASSWORD          = @('POSTGRES_PASSWORD')
     STEAM_API_KEY              = @('STEAM_API_KEY', 'Steam__ApiKey')
@@ -205,6 +206,7 @@ $HostKeyMap = [ordered]@{
     TEAMSPEAK_PASSWORD         = @('TEAMSPEAK_PASSWORD', 'TeamSpeak__Password')
     TEAMSPEAK_CHANNEL_PASSWORD = @('TEAMSPEAK_CHANNEL_PASSWORD', 'TeamSpeak__ChannelPassword')
     HETZNER_TOKEN              = @('HETZNER_TOKEN', 'Hosting__Providers__Hetzner__Token')
+    WORKER_REGISTRY_TOKEN      = @('Hosting__WorkerProvisioning__RegistryToken')
 }
 
 # Reads values the UTF app already has on the host, in memory only. It looks at the environment of the UTF
@@ -216,7 +218,9 @@ function Get-HostValues {
     $reverse = @{}
     foreach ($entry in $HostKeyMap.GetEnumerator()) { foreach ($key in $entry.Value) { $reverse[$key] = $entry.Key } }
     $connection = 'ConnectionStrings__database'
-    $alternation = (@($reverse.Keys) + $connection | Sort-Object -Unique) -join '|'
+    $registryServer = 'Hosting__WorkerProvisioning__RegistryServer'
+    $alternation = (@($reverse.Keys) + $connection + $registryServer | Sort-Object -Unique) -join '|'
+    $specific = (@($reverse.Keys) + $registryServer | Where-Object { $_ -ne 'POSTGRES_PASSWORD' } | Sort-Object -Unique) -join '|'
     $result = @{ Values = @{}; Sources = @{}; Conflicts = New-Object System.Collections.Generic.List[string]; TooShort = New-Object System.Collections.Generic.List[string] }
 
     $accept = {
@@ -234,6 +238,17 @@ function Get-HostValues {
         elseif ($result.Values[$variable] -cne $value -and -not $result.Conflicts.Contains($variable)) { $result.Conflicts.Add($variable) }
     }
 
+    # One source (a container or a file) at a time, so the worker registry token can be accepted only when the
+    # same source names x39.mozaic.space as the registry server.
+    $acceptSource = {
+        param($Pairs, [string]$Source)
+        $mozaicRegistry = @($Pairs | Where-Object { $_.Key -eq $registryServer -and (($_.Value.Trim() -replace '^["'']|["'']$', '') -ceq 'x39.mozaic.space') }).Count -gt 0
+        foreach ($pair in $Pairs) {
+            if ($pair.Key -eq 'Hosting__WorkerProvisioning__RegistryToken' -and -not $mozaicRegistry) { continue }
+            & $accept $pair.Key $pair.Value $Source
+        }
+    }
+
     # Running containers first: they hold what the app actually uses. Owners: root and the deploy user.
     $owners = @(@{ Label = 'root'; Prefix = '' })
     $uid = (Invoke-Remote "id -u $HostUser").Output
@@ -243,23 +258,74 @@ function Get-HostValues {
         foreach ($row in ($listing.Output -split "`n")) {
             $parts = $row.Trim() -split ' ', 2
             if ($parts.Count -lt 2 -or $parts[0] -notmatch '^[A-Za-z0-9_.-]+$') { continue }
-            if ("$($parts[0]) $($parts[1])" -notmatch '(?i)utf|united' -or "$($parts[0]) $($parts[1])" -match '(?i)mozaic') { continue }
-            $environment = Invoke-Remote "$($owner.Prefix)podman inspect $($parts[0]) --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E '^($alternation)='"
-            foreach ($line in ($environment.Output -split "`n")) {
-                if ($line -match '^(?<key>[A-Za-z0-9_]+)=(?<value>.*)$') { & $accept $Matches['key'] $Matches['value'] "container $($parts[0]) ($($owner.Label))" }
-            }
+            $label = "$($parts[0]) $($parts[1])"
+            if ($label -match '(?i)mozaic') { continue }
+            # Any container may hold the UTF-specific names (Steam, Discord, TeamSpeak, Hetzner); the generic
+            # POSTGRES_PASSWORD and the connection string are only trusted from containers named for UTF.
+            $pattern = if ($label -match '(?i)utf|united') { $alternation } else { $specific }
+            $environment = Invoke-Remote "$($owner.Prefix)podman inspect $($parts[0]) --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E '^($pattern)='"
+            $pairs = @(foreach ($line in ($environment.Output -split "`n")) {
+                if ($line -match '^(?<key>[A-Za-z0-9_]+)=(?<value>.*)$') { @{ Key = $Matches['key']; Value = $Matches['value'] } }
+            })
+            & $acceptSource $pairs "container $($parts[0]) ($($owner.Label))"
         }
     }
     # Then env and unit files of the UTF deployment.
-    $files = Invoke-Remote "find /etc /opt /srv /home /root -maxdepth 5 -type f \( -name '*.env' -o -name '.env' -o -name '*.service' -o -name '*.container' \) 2>/dev/null | grep -iE 'utf|united' | grep -viE 'mozaic|node_modules|/[.]cache/' | xargs -r grep -HsE '^[[:space:]]*(Environment=)?($alternation)='"
+    $files = Invoke-Remote "find /etc /opt /srv /home /root -maxdepth 7 -type f \( -name '*.env' -o -name '.env' -o -name '*.service' -o -name '*.container' \) 2>/dev/null | grep -iE 'utf|united' | grep -vE '^/etc/mozaic|^/home/mozaic-deploy-|node_modules|/[.]cache/' | xargs -r grep -HsE '^[[:space:]]*(Environment=)?($alternation)='"
+    $byPath = [ordered]@{}
     foreach ($line in ($files.Output -split "`n")) {
-        if ($line -match '^(?<path>/[^:]+):\s*(?:Environment=)?(?<key>[A-Za-z0-9_]+)=(?<value>.*)$') { & $accept $Matches['key'] $Matches['value'] "file $($Matches['path'])" }
+        if ($line -match '^(?<path>/[^:]+):\s*(?:Environment=)?(?<key>[A-Za-z0-9_]+)=(?<value>.*)$') {
+            if (-not $byPath.Contains($Matches['path'])) { $byPath[$Matches['path']] = New-Object System.Collections.Generic.List[object] }
+            $byPath[$Matches['path']].Add(@{ Key = $Matches['key']; Value = $Matches['value'] })
+        }
     }
+    # List.ToArray(), not @(list): Windows PowerShell 5.1 throws "argument types do not match" on @() of a generic List.
+    foreach ($path in @($byPath.Keys)) { $sourcePairs = $byPath[$path].ToArray(); & $acceptSource $sourcePairs "file $path" }
     return $result
+}
+
+# Read-only report of where the known setting names live on the host. Prints names, paths and container
+# names only, never a value, so the output is safe to share.
+function Show-HostDiscovery {
+    Initialize-Remote -ReadOnly
+    $keys = @($HostKeyMap.Values | ForEach-Object { $_ }) + @('ConnectionStrings__database', 'GHCR_PULL_TOKEN', 'Hosting__WorkerProvisioning__RegistryToken', 'Hosting__WorkerProvisioning__ContainerImage') | Sort-Object -Unique
+    $alt = $keys -join '|'
+    Write-Host "Read-only look at the host. Only names are printed, never values.`n"
+
+    $owners = @(@{ Label = 'root'; Prefix = '' })
+    $accounts = Invoke-Remote 'getent passwd | awk -F: ''$3>=1000 && $3<60000 {print $1}'''
+    foreach ($account in ($accounts.Output -split "`n")) {
+        $account = $account.Trim()
+        if ($account -notmatch '^[a-z_][a-z0-9_-]*$') { continue }
+        $accountUid = (Invoke-Remote "id -u $account").Output
+        if ($accountUid -match '^\d+$') { $owners += @{ Label = $account; Prefix = "runuser -u $account -- env XDG_RUNTIME_DIR=/run/user/$accountUid " } }
+    }
+    foreach ($owner in $owners) {
+        Write-Host "Containers of $($owner.Label):"
+        $listing = Invoke-Remote "$($owner.Prefix)podman ps -a --format '{{.Names}}|{{.Image}}|{{.Status}}' 2>/dev/null"
+        if (-not $listing.Output) { Write-Host '  (none)'; continue }
+        foreach ($row in ($listing.Output -split "`n")) {
+            $fields = $row.Trim() -split '\|'
+            if ($fields.Count -lt 3 -or $fields[0] -notmatch '^[A-Za-z0-9_.-]+$') { continue }
+            if ("$($fields[0]) $($fields[1])" -match '(?i)mozaic') { Write-Host "  $($fields[0])  [$($fields[1])]  (Mozaic's own: not inspected)"; continue }
+            $names = Invoke-Remote "$($owner.Prefix)podman inspect $($fields[0]) --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -oE '^($alt)=' | sort -u"
+            $present = (($names.Output -split "`n") | ForEach-Object { $_.Trim().TrimEnd('=') } | Where-Object { $_ }) -join ', '
+            Write-Host "  $($fields[0])  [$($fields[1])]  $($fields[2].Trim())  known names set: $(if ($present) { $present } else { '(none)' })"
+        }
+    }
+    Write-Host "`nFiles that set a known name (path : name):"
+    $files = Invoke-Remote "find /etc /opt /srv /home /root /var/lib -maxdepth 6 -type f -size -1500k \( -name '*.env' -o -name '.env' -o -name '*.service' -o -name '*.container' -o -name '*.conf' -o -name '*.yml' -o -name '*.yaml' \) 2>/dev/null | grep -viE 'node_modules|/containers/storage|/overlay|/[.]cache/' | xargs -r grep -HoE '^[[:space:]]*(Environment=)?($alt)=' 2>/dev/null | sed 's/=`$//' | sort -u | head -80"
+    if ($files.Output) { $files.Output -split "`n" | ForEach-Object { Write-Host "  $($_.Trim())" } } else { Write-Host '  (none found)' }
+    Write-Host "`nServices that mention utf, united or tactical:"
+    $units = Invoke-Remote "systemctl list-units --all --no-legend 2>/dev/null | grep -iE 'utf|united|tactical' | cut -c1-110"
+    if ($units.Output) { $units.Output -split "`n" | ForEach-Object { Write-Host "  $($_.Trim())" } } else { Write-Host '  (none)' }
+    Write-Host "`nNothing was changed and no value was read."
 }
 
 $script:ImageName = $Image
 $script:Network = if ($env:MOZAIC_NETWORK) { $env:MOZAIC_NETWORK } else { 'mozaic' }
+
+if ($Discover) { Show-HostDiscovery; return }
 
 if ($List) {
     foreach ($variable in $Variables) { '{0,-28} {1}' -f $variable.Name, $variable.Text }
@@ -281,7 +347,7 @@ if ($FromHost) {
     }
     foreach ($name in $hostData.Conflicts) { Write-Host "  note: $name has different values in different places; the first source above is used" -ForegroundColor Yellow }
     foreach ($name in $hostData.TooShort) { Write-Host "  note: $name was found but is shorter than $MinimumLength characters, so it is left for you to enter" -ForegroundColor Yellow }
-    Write-Host "  not imported by design: WORKER_REGISTRY_TOKEN (needs a new read-only Mozaic registry key, not an old GHCR token) and UTF_DEPLOY_SSH_KEY`n"
+    Write-Host "  not imported by design: UTF_DEPLOY_SSH_KEY (you provide the key file); the worker registry key is imported only when the same source names x39.mozaic.space as its registry`n"
 }
 Write-Host "Only UTF_DEPLOY_SSH_KEY is needed by the release pipeline today; the other variables are stored for the later start-up step and can be skipped with Enter.`n"
 Write-Host "Press Enter to skip a variable. Input is not shown.`n"
