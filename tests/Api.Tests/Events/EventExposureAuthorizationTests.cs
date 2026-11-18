@@ -178,6 +178,46 @@ public class EventExposureAuthorizationTests
     }
 
     [Fact]
+    public async Task SelfSlotAssignment_AllowsEventAdministratorOnHiddenNonSelfAssignableSlot()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var dbContext = await CreateDbContextAsync(connection);
+        var seed = await SeedEventsAsync(dbContext);
+        dbContext.EventSlots.Add(
+            new EventSlot
+            {
+                EventFk          = seed.HiddenEventId,
+                SlotNumber       = 1,
+                IsSelfAssignable = false,
+                IsVisible        = false,
+                Group            = "Command",
+                Title            = "Zeus",
+                Side             = EArmaSide.West,
+            }
+        );
+        await dbContext.SaveChangesAsync();
+        var participantController = CreateSlottingController(dbContext, seed.Participant);
+        var adminController = CreateSlottingController(
+            dbContext,
+            seed.Admin,
+            (UtfClaims.Administrative.Event, string.Empty)
+        );
+
+        Assert.IsType<ForbidResult>(
+            await participantController.AssignEventSlotToSelf(seed.HiddenEventId, 1, CancellationToken.None)
+        );
+        Assert.IsType<NoContentResult>(
+            await adminController.AssignEventSlotToSelf(seed.HiddenEventId, 1, CancellationToken.None)
+        );
+
+        Assert.Equal(
+            seed.Admin.PrimaryKey,
+            await dbContext.EventSlots.Select(q => q.AssignedToFk).SingleAsync()
+        );
+    }
+
+    [Fact]
     public async Task AllSlots_RequiresVisibleEventOrEventAuthority()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
