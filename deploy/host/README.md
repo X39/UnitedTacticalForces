@@ -7,6 +7,11 @@ and the host never pulls.
 
 ## The single host change (owner action)
 
+From your own PowerShell, `deploy\operator\Install-DeployKey.ps1` makes this change for you: it connects to
+the host itself, shows what it will do, asks for confirmation, appends the line below, and then proves from
+your computer that the key can only run `podman load`. `-CheckOnly` shows the podman path, the deploy user's
+home and the existing key fingerprints without changing anything. The line it writes is:
+
 One line in `utf-deploy`'s `~/.ssh/authorized_keys`, replacing the retired receiver's entry. The public key
 is committed as `deploy/utf-deploy.pub`; the private key exists only as the trusted-branch secret pipeline
 variable `UTF_DEPLOY_SSH_KEY`:
