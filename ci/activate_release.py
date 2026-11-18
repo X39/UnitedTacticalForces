@@ -7,7 +7,8 @@ nothing is sent to be executed that the repository does not contain. Steps, in o
 
 1. both pushed images exist in the deploy user's podman;
 2. database backup (`pg_dump`) with the existing backup role, verified non-empty, last ten kept;
-3. the fixed local tags `localhost/utf/{api,web}:release` move to the new image IDs (old ones become `:previous`);
+3. the unit files from the repository are installed and reloaded;
+   3b. the fixed local tags `localhost/utf/{api,web}:release` move to the new image IDs (old ones become `:previous`);
 4. the retired migration-managed service and its containers are stopped if still active (first release only);
 5. the two static units are enabled and restarted; they run exactly those tags;
 6. the running containers must use the new image IDs, then the public site must serve this revision;
@@ -32,6 +33,9 @@ IMAGE_ID = re.compile(r"[0-9a-f]{64}")
 REVISION = re.compile(r"[0-9a-f]{40}")
 UNITS = "utf-api.service utf-web.service"
 REVISION_PATH = "/_content/revision.json"
+# The unit files come from the repository (deploy/host) on stdin, so changes to the runtime settings ship with a release.
+UNIT_INSTALL = ('set -eu; d="$HOME/.config/systemd/user"; mkdir -p "$d"; cat > "$d/{name}.service.part"; '
+                'test -s "$d/{name}.service.part"; mv "$d/{name}.service.part" "$d/{name}.service"')
 
 
 def load_client():
@@ -52,6 +56,9 @@ def commands(api_id, web_id, revision):
             'PGSERVICEFILE="$c/database.service" PGPASSFILE="$c/database.pgpass" '
             'pg_dump "service=utf" -Fc --no-owner -f "$t.part"; test -s "$t.part"; mv "$t.part" "$t"; '
             'ls -1t "$d"/utf-*.dump | tail -n +11 | xargs -r rm -f; ls -l "$t"'),
+        "unit_api": UNIT_INSTALL.format(name="utf-api"),
+        "unit_web": UNIT_INSTALL.format(name="utf-web"),
+        "reload": "systemctl --user daemon-reload",
         "tag": (
             "set -eu; for r in api web; do if podman image exists localhost/utf/$r:release; then "
             "podman tag localhost/utf/$r:release localhost/utf/$r:previous; fi; done; "
@@ -103,11 +110,11 @@ def public_check(site, revision, fetcher=fetch):
     return None
 
 
-def activate(run, api_id, web_id, revision, site, wait, fetcher=fetch, sleep=time.sleep, clock=time.monotonic):
+def activate(run, api_id, web_id, revision, site, wait, units, fetcher=fetch, sleep=time.sleep, clock=time.monotonic):
     """Drive the steps with run(command) -> (exit code, stdout). Returns the process exit status."""
     fixed = commands(api_id, web_id, revision)
-    for name in ("images", "backup", "tag"):
-        code, output = run(fixed[name])
+    for name in ("images", "backup", "unit_api", "unit_web", "reload", "tag"):
+        code, output = run(fixed[name], units[name]) if name in units else run(fixed[name])
         if output:
             print(output.strip())
         if code:
@@ -168,14 +175,18 @@ def main():
     client = load_client()
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
 
-    def run(command):
+    def run(command, stdin=None):
         argv = client.ssh_arguments(manifest, args.target, args.timeout, command)
-        result = subprocess.run(argv, capture_output=True, text=True, timeout=args.timeout, check=False)
+        result = subprocess.run(argv, capture_output=True, text=True, timeout=args.timeout, check=False,
+                                input=stdin if stdin is not None else "")
         if result.returncode and result.stderr:
             print("host said: " + result.stderr.strip()[-400:], file=sys.stderr)
         return result.returncode, result.stdout
 
-    return activate(run, api_id, web_id, revision, args.site.rstrip("/"), args.wait)
+    host_files = HERE.parent / "deploy" / "host"
+    units = {key: (host_files / f"{key.removeprefix('unit_').join(['utf-', '.service'])}").read_text(encoding="utf-8")
+             for key in ("unit_api", "unit_web")}
+    return activate(run, api_id, web_id, revision, args.site.rstrip("/"), args.wait, units)
 
 
 if __name__ == "__main__":

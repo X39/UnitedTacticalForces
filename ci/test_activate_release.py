@@ -23,7 +23,7 @@ class FakeHost:
         self.running = running or f"sha256:{API} {WEB}"
         self.rolled_back = False
 
-    def __call__(self, command):
+    def __call__(self, command, stdin=None):
         name = next((key for key, value in ACTIVATE.commands(API, WEB, REVISION).items() if value == command), None)
         self.calls.append(name)
         if name == "rollback":
@@ -52,16 +52,19 @@ class Clock:
         self.now += seconds
 
 
+UNITS = {"unit_api": "[Service]\n", "unit_web": "[Service]\n"}
+
+
 def activate(host, fetcher):
     clock = Clock()
-    return ACTIVATE.activate(host, API, WEB, REVISION, SITE, 60, fetcher=fetcher, sleep=clock.sleep, clock=clock)
+    return ACTIVATE.activate(host, API, WEB, REVISION, SITE, 60, UNITS, fetcher=fetcher, sleep=clock.sleep, clock=clock)
 
 
 class ActivateTests(unittest.TestCase):
     def test_success_runs_every_step_in_order_and_never_rolls_back(self):
         host = FakeHost()
         self.assertEqual(activate(host, site()), 0)
-        self.assertEqual(host.calls, ["images", "backup", "tag", "stop_old", "switch", "probe", "retire_old"])
+        self.assertEqual(host.calls, ["images", "backup", "unit_api", "unit_web", "reload", "tag", "stop_old", "switch", "probe", "retire_old"])
         self.assertFalse(host.rolled_back)
 
     def test_a_failed_backup_stops_before_anything_changes(self):
@@ -82,7 +85,7 @@ class ActivateTests(unittest.TestCase):
     def test_a_failed_stop_of_the_retired_service_rolls_back_before_starting_anything(self):
         host = FakeHost(fail={"stop_old"})
         self.assertEqual(activate(host, site()), 1)
-        self.assertEqual(host.calls, ["images", "backup", "tag", "stop_old", "rollback"])
+        self.assertEqual(host.calls, ["images", "backup", "unit_api", "unit_web", "reload", "tag", "stop_old", "rollback"])
 
     def test_a_failed_retirement_of_old_units_does_not_fail_the_release(self):
         host = FakeHost(fail={"retire_old"})
@@ -115,6 +118,10 @@ class ActivateTests(unittest.TestCase):
         self.assertIn(f"utf-{REVISION}.dump", ACTIVATE.commands(API, WEB, REVISION)["backup"])
         self.assertTrue(ACTIVATE.IMAGE_ID.fullmatch(API) and not ACTIVATE.IMAGE_ID.fullmatch("a;rm -rf /"))
         self.assertTrue(ACTIVATE.REVISION.fullmatch(REVISION) and not ACTIVATE.REVISION.fullmatch("abc; id"))
+
+    def test_the_api_unit_in_the_repository_enables_hosting_execution(self):
+        unit = (HERE.parent / "deploy" / "host" / "utf-api.service").read_text(encoding="utf-8")
+        self.assertIn("Hosting__ControlPlane__Paused=false", unit)
 
     def test_the_revision_file_is_read_from_a_path_the_public_proxy_forwards(self):
         self.assertTrue(ACTIVATE.REVISION_PATH.startswith("/_content/"))
