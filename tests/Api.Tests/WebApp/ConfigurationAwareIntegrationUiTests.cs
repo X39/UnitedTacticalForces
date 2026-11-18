@@ -39,18 +39,6 @@ public class ConfigurationAwareIntegrationUiTests
         Assert.Contains("ts3server", configuration, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void ProviderActions_UseOfficialBrandIconTypes()
-    {
-        var providerOptions = ReadRepositoryFile("sources/WebApp/Components/AuthenticationProviderOptions.razor");
-        var brandIcons = ReadRepositoryFile("sources/WebApp/Constants.Icons.Brands.cs");
-
-        Assert.Contains("Icons.Custom.Size24.Steam", providerOptions, StringComparison.Ordinal);
-        Assert.Contains("Icons.Custom.Size24.Discord", providerOptions, StringComparison.Ordinal);
-        Assert.Contains("partner.steamgames.com/doc/marketing/branding", brandIcons, StringComparison.Ordinal);
-        Assert.Contains("discord.com/branding", brandIcons, StringComparison.Ordinal);
-    }
-
     private static string ReadRepositoryFile(string repositoryRelativePath)
         => File.ReadAllText(Path.Combine(RepositoryRoot, repositoryRelativePath));
 

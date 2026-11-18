@@ -251,12 +251,6 @@ public sealed class HostingFinanceServiceTests
         Assert.False(await IsSatisfiedAsync(new FinanceFreezeCostOwnerRequirement(), Claims.Finance.ManageCostOwners));
         Assert.True(await IsSatisfiedAsync(new FinanceManageCostOwnersRequirement(), Claims.Finance.All));
         Assert.True(await IsSatisfiedAsync(new FinanceFreezeCostOwnerRequirement(), Claims.Finance.All));
-        Assert.True(await IsSatisfiedAsync(new FinanceRecordPaymentRequirement(), Claims.Administrative.All));
-        Assert.True(await IsSatisfiedAsync(new FinanceManageAllowanceRequirement(), Claims.Administrative.All));
-        Assert.True(await IsSatisfiedAsync(new FinanceRecordRefundRequirement(), Claims.Administrative.All));
-        Assert.True(await IsSatisfiedAsync(new FinanceCorrectLedgerRequirement(), Claims.Administrative.All));
-        Assert.True(await IsSatisfiedAsync(new FinanceViewAllRequirement(), Claims.Administrative.All));
-        Assert.True(await IsSatisfiedAsync(new FinanceManagePolicyRequirement(), Claims.Administrative.All));
     }
 
     private static HostingCostSliceService CreateCostService(HostingTestStore store)

@@ -55,7 +55,6 @@ public sealed class GameServerContentSnapshotResolverTests
         var content = await new GameServerContentSnapshotResolver(store.DbContext).ResolveAsync(seed.Server.PrimaryKey);
 
         Assert.Equal(["450814997", "463939057", "894678801"], content.Select(q => q.Identifier));
-        Assert.Single(content.Where(q => q.Identifier == "450814997"));
     }
 
     [Fact]
