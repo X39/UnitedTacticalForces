@@ -1,0 +1,282 @@
+/*
+ * Styles for the job feedback of the server workspace: the progress strip of the newest active job and the failure
+ * panel of a failed job.
+ *
+ * The file consumes --utf-* tokens only, so tests/styles/server-style-guard.test.ts covers it. The only allowed
+ * literals are a 1px border width and the 520px and 800px media breakpoints; the style guard fails on anything else.
+ * Visually hidden state words use the global .sr-only utility.
+ */
+
+/* Progress strip */
+.job-progress {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-sm);
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-state-info-border);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+  box-shadow: var(--utf-elevation-1);
+}
+
+.job-progress p {
+  margin: 0;
+}
+
+.job-progress__kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--utf-space-xs);
+  color: var(--utf-state-info-fg);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+}
+
+.job-progress__kicker-icon,
+.job-progress__marker {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.job-progress__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--utf-space-xs) var(--utf-space-sm);
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.job-progress__action {
+  font-weight: var(--utf-weight-bold);
+}
+
+.job-progress__step-name {
+  font-weight: var(--utf-weight-regular);
+}
+
+.job-progress__step-name::before {
+  margin-right: var(--utf-space-sm);
+  color: var(--utf-text-muted);
+  content: "\00b7";
+}
+
+.job-progress__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-xs) var(--utf-space-md);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.job-progress__step {
+  display: flex;
+  align-items: center;
+  gap: var(--utf-space-xs);
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  line-height: var(--utf-leading-body);
+}
+
+.job-progress__step--done .job-progress__marker {
+  color: var(--utf-state-success-fg);
+}
+
+.job-progress__step--current {
+  color: var(--utf-text);
+  font-weight: var(--utf-weight-bold);
+}
+
+.job-progress__step--current .job-progress__marker {
+  color: var(--utf-state-info-fg);
+}
+
+.job-progress__step--upcoming .job-progress__marker {
+  color: var(--utf-text-subtle);
+}
+
+.job-progress__stage,
+.job-progress__meta,
+.job-progress__lag {
+  min-width: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.job-progress__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-xs) var(--utf-space-sm);
+}
+
+.job-progress__meta > * + *::before {
+  margin-right: var(--utf-space-sm);
+  content: "\00b7";
+}
+
+.job-progress__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+}
+
+/* Motion: the kicker icon rotates only when the user allows motion. */
+@keyframes job-progress-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .job-progress:not(.job-progress--warning) .job-progress__kicker-icon {
+    animation: job-progress-spin 1s linear infinite;
+  }
+}
+
+/* At 800px and below the steps become a vertical list. */
+@media (max-width: 800px) {
+  .job-progress__steps {
+    flex-direction: column;
+  }
+}
+
+/* Failure panel */
+.job-failure {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--utf-space-md);
+  min-width: 0;
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-state-danger-border);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+  box-shadow: var(--utf-elevation-1);
+}
+
+.job-failure__icon {
+  display: inline-flex;
+  color: var(--utf-state-danger-fg);
+}
+
+.job-failure__body {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-md);
+}
+
+.job-failure__title {
+  margin: 0;
+  color: var(--utf-text);
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  overflow-wrap: anywhere;
+}
+
+.job-failure__facts {
+  display: grid;
+  gap: var(--utf-space-sm) var(--utf-space-lg);
+  min-width: 0;
+  margin: 0;
+}
+
+.job-failure__fact {
+  display: grid;
+  grid-template-columns: minmax(var(--utf-workspace-fact-min), 1fr) minmax(0, 3fr);
+  gap: var(--utf-space-sm) var(--utf-space-md);
+  min-width: 0;
+}
+
+.job-failure__facts dt {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.job-failure__facts dd {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  gap: var(--utf-space-xs);
+  justify-items: start;
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.job-failure__facts dd p {
+  margin: 0;
+}
+
+.job-failure__time {
+  color: var(--utf-text-muted);
+}
+
+.job-failure__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--utf-space-sm);
+}
+
+.job-failure__error {
+  margin: 0;
+  color: var(--utf-state-danger-fg);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+/* The slot stays in the render tree so the alert is announced; while empty it cancels its grid gap. */
+.job-failure__error:empty {
+  margin-top: calc(var(--utf-space-md) * -1);
+}
+
+/* At 520px and below the facts stack and the actions run full width in their listed order. */
+@media (max-width: 520px) {
+  .job-failure__fact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .job-failure__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .job-failure__actions .action-with-reason,
+  .job-failure__actions .button {
+    width: 100%;
+  }
+}
+
+/* Retry mode: the strip switches from the info tone to the warning tone and stops rotating its icon. */
+.job-progress--warning {
+  border-color: var(--utf-state-warning-border);
+}
+
+.job-progress--warning .job-progress__kicker {
+  color: var(--utf-state-warning-fg);
+}
+
+.job-progress__queue {
+  min-width: 0;
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}

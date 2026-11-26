@@ -49,17 +49,29 @@ public sealed class AskaConfigurationImplementation : IGameConfigurationImplemen
     private static IReadOnlyList<GameConfigurationDefinition> CreateDefinitions()
         =>
         [
-            Definition("display name", "World", "Display name", "Name shown for a newly created world.", EGameConfigurationValueKind.String, true, 10, Json("United Tactical Forces")),
-            Definition("server name", "General", "Server name", "Host name shown in the public session list.", EGameConfigurationValueKind.String, true, 20, Json("United Tactical Forces ASKA")),
+            Definition("display name", "World", "Display name", "Name shown for a newly created world.", EGameConfigurationValueKind.String, true, 10, Json("United Tactical Forces"), tier: EGameConfigurationTier.Common),
+            Definition("server name", "General", "Server name", "Host name shown in the public session list.", EGameConfigurationValueKind.String, true, 20, Json("United Tactical Forces ASKA"), tier: EGameConfigurationTier.Common),
             Definition("seed", "World", "World seed", "Optional seed used when creating a new world.", EGameConfigurationValueKind.String, false, 30, Json(string.Empty)),
             Definition("region", "Network", "Region", "Backend region used for the hosted session.", EGameConfigurationValueKind.Selection, true, 40, Json("default"),
-                ["default", "asia", "japan", "europe", "south america", "south korea", "usa east", "usa west", "australia", "canada east", "hong kong", "india", "turkey", "united arab emirates", "usa south central", "south africa"]),
+                ["default", "asia", "japan", "europe", "south america", "south korea", "usa east", "usa west", "australia", "canada east", "hong kong", "india", "turkey", "united arab emirates", "usa south central", "south africa"], tier: EGameConfigurationTier.Common),
             Definition("keep server world alive", "World", "Keep world alive", "Continue simulating the world while no players are connected.", EGameConfigurationValueKind.Boolean, true, 50, Json(false)),
             Definition("autosave style", "World", "Autosave style", "Controls the automatic world-save interval.", EGameConfigurationValueKind.Selection, true, 60, Json("every morning"),
                 ["every morning", "disabled", "every 5 minutes", "every 10 minutes", "every 15 minutes", "every 20 minutes"]),
-            Definition("mode", "World", "Game mode", "Uses standard rules or enables custom game settings.", EGameConfigurationValueKind.Selection, true, 70, Json("normal"), ["normal", "custom"]),
+            Definition("mode", "World", "Game mode", "Uses standard rules or enables custom game settings.", EGameConfigurationValueKind.Selection, true, 70, Json("normal"), ["normal", "custom"], tier: EGameConfigurationTier.Common),
         ];
 
+    /// <summary>Creates a definition for a setting that is written to the generated server file.</summary>
+    /// <param name="setting">The setting name written to the target file.</param>
+    /// <param name="group">The UI domain group.</param>
+    /// <param name="displayName">The human-readable label.</param>
+    /// <param name="description">The human-readable explanation.</param>
+    /// <param name="kind">The JSON value kind accepted by the setting.</param>
+    /// <param name="required">Whether the setting must have a value.</param>
+    /// <param name="order">The display and render order.</param>
+    /// <param name="defaultValue">The default value.</param>
+    /// <param name="allowedValues">The compatible list of string values.</param>
+    /// <param name="tier">The presentation tier; <see cref="EGameConfigurationTier.Advanced" /> unless declared.</param>
+    /// <returns>The configuration definition.</returns>
     private static GameConfigurationDefinition Definition(
         string setting,
         string group,
@@ -69,7 +81,8 @@ public sealed class AskaConfigurationImplementation : IGameConfigurationImplemen
         bool required,
         int order,
         JsonElement defaultValue,
-        IReadOnlyList<string>? allowedValues = null)
+        IReadOnlyList<string>? allowedValues = null,
+        EGameConfigurationTier tier = EGameConfigurationTier.Advanced)
         => new(
             $"{Path.GetFileName(ServerTarget).ToLowerInvariant()}@{setting}",
             ServerTarget,
@@ -82,7 +95,10 @@ public sealed class AskaConfigurationImplementation : IGameConfigurationImplemen
             false,
             order,
             defaultValue,
-            AllowedValues: allowedValues);
+            AllowedValues: allowedValues)
+        {
+            Tier = tier,
+        };
 
     private static string Format(JsonElement value)
     {

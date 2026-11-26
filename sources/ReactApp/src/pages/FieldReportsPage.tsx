@@ -7,8 +7,9 @@ import { fieldReportService, queryKeys } from "@/api/services";
 import { formatDate } from "@/app/format";
 import { resolveSiteImage, useSiteImage, useSiteImages } from "@/app/siteImages";
 import { ActionAnchor, ActionLink } from "@/components/ActionControl";
+import { FilterChipGroup } from "@/components/FilterChipGroup";
 import { PublicHero } from "@/components/PublicHero";
-import { StatePanel } from "@/components/primitives";
+import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
 
 export function Component() {
   const { t } = useTranslation();
@@ -64,24 +65,11 @@ export function Component() {
       />
 
       <div className="content-section public-section field-reports-content" id="reports">
-        {query.isLoading && (
-          <StatePanel kind="loading">{t("Pages_Public_Media_LoadingReports")}</StatePanel>
-        )}
+        {query.isLoading && <LoadingState label={t("Pages_Public_Media_LoadingReports")} />}
         {query.isError && (
-          <StatePanel
-            kind="error"
-            action={
-              <button
-                type="button"
-                className="button button--ghost"
-                onClick={() => void query.refetch()}
-              >
-                {t("React_UI_Retry")}
-              </button>
-            }
-          >
+          <ErrorState onRetry={() => void query.refetch()}>
             {t("Pages_Public_Media_Error_LoadFailed")}
-          </StatePanel>
+          </ErrorState>
         )}
         {featured && (
           <section aria-label={t("Pages_Public_Media_FeaturedReport")}>
@@ -112,30 +100,27 @@ export function Component() {
             </Link>
           </section>
         )}
-        <div
-          className="filter-chips field-report-filters"
-          role="group"
-          aria-label={t("Pages_Public_Media_ReportFilters")}
-        >
-          {["", ...categories].map((value) => (
-            <button
-              type="button"
-              className={category === value ? "active" : ""}
-              aria-pressed={category === value}
-              onClick={() => setCategory(value)}
-              key={value || "all"}
-            >
-              {value || allLabel}
-            </button>
+        <FilterChipGroup
+          label={t("Pages_Public_Media_ReportFilters")}
+          items={[
+            { id: "", label: allLabel },
+            ...categories.map((value) => ({ id: value, label: value })),
+          ]}
+          value={category}
+          onChange={setCategory}
+        />
+        {!query.isLoading &&
+          !query.isError &&
+          reports.length === 0 &&
+          (query.data?.length ? (
+            <EmptyState title={t("Pages_Public_Media_NoMatchTitle")}>
+              {t("Pages_Public_Media_NoMatchBody")}
+            </EmptyState>
+          ) : (
+            <EmptyState title={t("Pages_Public_Media_NoReportsTitle")}>
+              {t("Pages_Public_Media_NoReportsBody")}
+            </EmptyState>
           ))}
-        </div>
-        {!query.isLoading && !query.isError && reports.length === 0 && (
-          <StatePanel kind="empty">
-            {query.data?.length
-              ? t("Pages_Public_Media_NoReportsMatchCategory")
-              : t("Pages_Public_Media_NoReportsPublished")}
-          </StatePanel>
-        )}
         <section className="field-report-list" aria-label={t("Pages_Public_Media_ReportList")}>
           {reports.map((report, index) => (
             <Link to={`/field-reports/${report.slug}`} key={report.primaryKey}>

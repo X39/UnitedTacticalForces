@@ -8,6 +8,7 @@ interface ProblemDetails {
   status?: number;
   traceId?: string;
   errors?: Record<string, string[]>;
+  fields?: unknown;
 }
 
 export class ApiError extends Error {
@@ -25,6 +26,8 @@ export class ApiError extends Error {
       | "invalid",
     readonly traceId?: string,
     readonly fieldErrors?: Record<string, string[]>,
+    /** The names of the invalid fields of a hosting 400 answer (`{ error, fields }`), when the API lists them. */
+    readonly fields?: string[],
   ) {
     super(message);
     this.name = "ApiError";
@@ -69,6 +72,9 @@ async function responseError(response: Response, fallback?: string): Promise<Api
     statusCode(response.status),
     problem?.traceId,
     problem?.errors,
+    Array.isArray(problem?.fields)
+      ? problem.fields.filter((field): field is string => typeof field === "string")
+      : undefined,
   );
 }
 

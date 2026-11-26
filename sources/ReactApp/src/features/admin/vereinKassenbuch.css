@@ -1,7 +1,7 @@
 .verein-kassenbuch-page,
 .verein-kassenbuch-editor-page {
   display: grid;
-  gap: 1rem;
+  gap: var(--utf-space-md);
   min-width: 0;
 }
 
@@ -9,29 +9,20 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+/* Filter toolbar: the shared search field and text fields sit in one wrapping row, bottom aligned. */
 .verein-kassenbuch-toolbar {
   align-items: end;
   display: flex;
   flex-wrap: wrap;
 }
 
-.verein-kassenbuch-toolbar .search-field {
+.verein-kassenbuch-toolbar .search-control {
   flex: 1 1 20rem;
 }
 
-.verein-kassenbuch-toolbar label:not(.search-field) {
-  display: grid;
+.verein-kassenbuch-toolbar .form-field {
   flex: 0 1 13rem;
-  gap: 0.35rem;
   min-width: 11rem;
-}
-
-.verein-kassenbuch-toolbar label > span:not(.sr-only) {
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .verein-kassenbuch-list {
@@ -54,7 +45,7 @@
 .verein-kassenbuch-editor-shell {
   align-items: start;
   display: grid;
-  gap: 1rem;
+  gap: var(--utf-space-md);
   grid-template-columns: minmax(0, 0.95fr) minmax(22rem, 0.45fr);
   min-width: 0;
 }
@@ -64,68 +55,39 @@
   overflow: hidden;
 }
 
+/* Editor form: a two column field grid; wide fields and the state panels span both columns. */
 .verein-kassenbuch-editor-form {
   display: grid;
-  gap: 1rem;
+  gap: var(--utf-space-md);
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding: 1rem;
+  padding: var(--utf-space-md);
 }
 
-.verein-kassenbuch-editor-form label {
-  display: grid;
-  gap: 0.4rem;
+.verein-kassenbuch-editor-form .is-wide {
+  grid-column: 1 / -1;
 }
 
-.verein-kassenbuch-editor-form label > span,
 .verein-kassenbuch-facts dt,
 .verein-kassenbuch-summary strong {
-  color: var(--text-muted);
-  font-size: 0.76rem;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.verein-kassenbuch-editor-form input,
-.verein-kassenbuch-editor-form select,
-.verein-kassenbuch-toolbar input {
-  background: var(--surface-raised);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--text);
-  min-height: 2.55rem;
-  padding: 0.58rem 0.7rem;
-}
-
-.verein-kassenbuch-editor-form input:focus-visible,
-.verein-kassenbuch-editor-form select:focus-visible,
-.verein-kassenbuch-toolbar input:focus-visible {
-  border-color: var(--gold);
-  outline: 2px solid color-mix(in srgb, var(--gold) 38%, transparent);
-  outline-offset: 1px;
-}
-
-.verein-kassenbuch-editor-form .is-wide,
-.verein-kassenbuch-editor-form > .state-panel {
-  grid-column: 1 / -1;
-}
-
-.verein-kassenbuch-editor-form small[role="alert"] {
-  color: var(--danger);
-}
-
 .verein-kassenbuch-facts {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--utf-space-sm);
   margin: 0;
-  padding: 1rem;
+  padding: var(--utf-space-md);
 }
 
 .verein-kassenbuch-facts > div {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--utf-border-divider);
   display: grid;
-  gap: 0.25rem;
-  padding-bottom: 0.75rem;
+  gap: var(--utf-space-xs);
+  padding-bottom: var(--utf-space-sm);
 }
 
 .verein-kassenbuch-facts dd {
@@ -134,26 +96,26 @@
 
 .verein-kassenbuch-summary,
 .verein-kassenbuch-delete-panel {
-  border-top: 1px solid var(--line);
-  padding: 1rem;
+  border-top: 1px solid var(--utf-border-divider);
+  padding: var(--utf-space-md);
 }
 
 .verein-kassenbuch-summary p,
 .verein-kassenbuch-delete-panel p {
-  color: var(--text-muted);
+  color: var(--utf-text-muted);
   line-height: 1.5;
-  margin: 0.35rem 0 0;
+  margin: var(--utf-space-xs) 0 0;
 }
 
 .verein-kassenbuch-delete-panel {
-  background: rgb(239 68 68 / 5%);
+  background: var(--utf-state-danger-bg);
   display: grid;
-  gap: 0.85rem;
+  gap: var(--utf-space-md);
   justify-items: start;
 }
 
 .verein-kassenbuch-delete-panel strong {
-  color: var(--danger);
+  color: var(--utf-state-danger-fg);
 }
 
 @media (max-width: 1040px) {
@@ -172,8 +134,7 @@
     grid-template-columns: 1fr;
   }
 
-  .verein-kassenbuch-editor-form .is-wide,
-  .verein-kassenbuch-editor-form > .state-panel {
+  .verein-kassenbuch-editor-form .is-wide {
     grid-column: auto;
   }
 
@@ -182,8 +143,8 @@
     flex-direction: column;
   }
 
-  .verein-kassenbuch-toolbar .search-field,
-  .verein-kassenbuch-toolbar label:not(.search-field),
+  .verein-kassenbuch-toolbar .search-control,
+  .verein-kassenbuch-toolbar .form-field,
   .verein-kassenbuch-toolbar .button {
     flex-basis: auto;
     min-width: 0;
@@ -192,13 +153,5 @@
 
   .verein-kassenbuch-list__header {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .verein-kassenbuch-editor-form input,
-  .verein-kassenbuch-editor-form select,
-  .verein-kassenbuch-toolbar input {
-    scroll-behavior: auto;
   }
 }

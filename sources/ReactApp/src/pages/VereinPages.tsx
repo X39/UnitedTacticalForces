@@ -6,7 +6,7 @@ import {
   PeopleCommunity24Regular,
 } from "@fluentui/react-icons";
 import { useQuery } from "@tanstack/react-query";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router";
 import { queryKeys, vereinService } from "@/api/services";
@@ -14,13 +14,17 @@ import type { VereinDocument } from "@/api/types";
 import { formatCurrency, formatDate } from "@/app/format";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
-import { membershipStatusTranslationKey } from "@/app/membership";
+import { membershipStatusTranslationKey, normalizeMembershipStatus } from "@/app/membership";
 import { useSiteImage } from "@/app/siteImages";
 import { useAuth } from "@/auth/auth";
 import { canAccessVereinLedger, isVereinMember } from "@/auth/claims";
 import { ActionLink } from "@/components/ActionControl";
+import { PageStack } from "@/components/PageStack";
 import { PublicHero } from "@/components/PublicHero";
-import { Markdown, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { Markdown, PageHeader, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
+import { membershipRequestTones, toneOf } from "@/components/statusTones";
+import "./publicEvents.css";
 
 export function VereinPage() {
   const { t, i18n } = useTranslation();
@@ -165,25 +169,19 @@ export function VereinPage() {
               )}
             </>
           ) : request.isLoading ? (
-            <StatePanel kind="loading">{t("Pages_Verein_Index_Loading")}</StatePanel>
+            <LoadingState label={t("Pages_Verein_Index_Loading")} />
           ) : request.isError ? (
-            <StatePanel
-              kind="error"
-              action={
-                <button
-                  className="button button--ghost"
-                  type="button"
-                  onClick={() => void request.refetch()}
-                >
-                  {t("React_UI_Retry")}
-                </button>
-              }
-            >
+            <ErrorState onRetry={() => void request.refetch()}>
               {t("React_Join_LoadError")}
-            </StatePanel>
+            </ErrorState>
           ) : (
             <>
-              <StatusBadge tone="info">
+              <StatusBadge
+                tone={toneOf(
+                  membershipRequestTones,
+                  request.data && normalizeMembershipStatus(request.data.status),
+                )}
+              >
                 {request.data
                   ? t(membershipStatusTranslationKey(request.data.status))
                   : t("Pages_Verein_Index_NoRequest")}
@@ -225,7 +223,9 @@ export function VereinPage() {
       </section>
       {settings.isError && (
         <div className="content-section">
-          <StatePanel kind="warning">{t("React_Verein_LoadError")}</StatePanel>
+          <ErrorState onRetry={() => void settings.refetch()}>
+            {t("React_Verein_LoadError")}
+          </ErrorState>
         </div>
       )}
       <section className="content-section public-section">
@@ -260,7 +260,16 @@ export function VereinPage() {
           </Link>
           <Link to={isVereinMember(auth.user) ? "/settings" : "/join"}>
             <PeopleCommunity24Regular />
-            <StatusBadge tone={isVereinMember(auth.user) ? "success" : "info"}>
+            <StatusBadge
+              tone={
+                isVereinMember(auth.user)
+                  ? "success"
+                  : toneOf(
+                      membershipRequestTones,
+                      request.data && normalizeMembershipStatus(request.data.status),
+                    )
+              }
+            >
               {isVereinMember(auth.user)
                 ? t("Pages_Verein_Index_MemberState")
                 : request.data
@@ -273,6 +282,68 @@ export function VereinPage() {
           </Link>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** Props of {@link DocumentPageFrame}. */
+interface DocumentPageFrameProps {
+  /** Router target of the back action in the hero. */
+  backTo: string;
+  /** Hero background image URL. */
+  heroImage: string;
+  /** The page title, rendered as the page's only h1. */
+  title: string;
+  /** Short label above the title. */
+  kicker: string;
+  /** Optional lede below the title. */
+  description?: ReactNode | undefined;
+  /** The page body below the hero. */
+  children: ReactNode;
+}
+
+/**
+ * The frame of a published Verein document page: one hero with the h1, then the body.
+ *
+ * The loading, error and not-found states render inside the same frame, so every state of the page shows the same
+ * single h1 above its state view.
+ *
+ * @param props.backTo Router target of the back action in the hero.
+ * @param props.heroImage Hero background image URL.
+ * @param props.title The page title, rendered as the h1.
+ * @param props.kicker Short label above the title.
+ * @param props.description Optional lede below the title.
+ * @param props.children The page body below the hero.
+ */
+function DocumentPageFrame({
+  backTo,
+  heroImage,
+  title,
+  kicker,
+  description,
+  children,
+}: DocumentPageFrameProps) {
+  const { t } = useTranslation();
+  return (
+    <div className="verein-document-page public-page">
+      <PublicHero
+        compact
+        singleColumn
+        className="editorial-hero"
+        style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
+        kicker={kicker}
+        title={title}
+        description={description}
+        actions={
+          <ActionLink variant="glass" to={backTo}>
+            <ArrowLeft20Regular />
+            {backTo.endsWith("beschluesse")
+              ? t("Pages_Unit_Beschluesse_DocumentId_BackToArchive")
+              : t("Pages_Unit_Satzung_Index_BackToUnit")}
+          </ActionLink>
+        }
+      />
+      <div className="page-wrap">{children}</div>
     </div>
   );
 }
@@ -290,32 +361,39 @@ function DocumentView({
   const revision = document.revision;
   if (!revision)
     return (
-      <StatePanel kind="empty">{t("Pages_Unit_Satzung_Index_NotFoundDescription")}</StatePanel>
+      <DocumentPageFrame
+        backTo={backTo}
+        heroImage={heroImage}
+        kicker={t("Pages_Verein_Index_Kicker")}
+        title={t("Pages_Verein_Index_SatzungTitle")}
+      >
+        <EmptyState title={t("Pages_Unit_Satzung_Index_EmptyTitle")}>
+          {t("Pages_Unit_Satzung_Index_EmptyBody")}
+        </EmptyState>
+      </DocumentPageFrame>
     );
   return (
-    <article className="governance-document">
-      <Link className="button button--ghost button--small" to={backTo}>
-        <ArrowLeft20Regular />
-        {backTo.endsWith("beschluesse")
-          ? t("Pages_Unit_Beschluesse_DocumentId_BackToArchive")
-          : t("Pages_Unit_Satzung_Index_BackToUnit")}
-      </Link>
-      <header
-        className="governance-document__hero"
-        style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
-      >
-        <span className="kicker">{t("React_Verein_PublishedRecord")}</span>
-        <h1>{revision.title}</h1>
-        <p>{revision.summary}</p>
-        <div>
-          <StatusBadge tone="success">
-            {t("React_Verein_Version")} {revision.version}
-          </StatusBadge>
-          <span>{formatDate(revision.timeStampPublished ?? document.timeStampUpdated)}</span>
-        </div>
-      </header>
-      <Markdown>{revision.markdown}</Markdown>
-    </article>
+    <DocumentPageFrame
+      backTo={backTo}
+      heroImage={heroImage}
+      kicker={t("React_Verein_PublishedRecord")}
+      title={revision.title}
+      description={
+        <>
+          <p>{revision.summary}</p>
+          <span className="verein-document-page__meta">
+            <StatusBadge tone="success">
+              {t("React_Verein_Version")} {revision.version}
+            </StatusBadge>
+            <span>{formatDate(revision.timeStampPublished ?? document.timeStampUpdated)}</span>
+          </span>
+        </>
+      }
+    >
+      <article className="governance-document">
+        <Markdown>{revision.markdown}</Markdown>
+      </article>
+    </DocumentPageFrame>
   );
 }
 
@@ -330,30 +408,28 @@ export function StatutesPage() {
     queryFn: ({ signal }) => vereinService.statutes(signal),
     retry: false,
   });
-  if (query.isLoading)
+  if (query.isLoading || query.isError || !query.data)
     return (
-      <div className="narrow-page">
-        <StatePanel kind="loading">{t("Pages_Unit_Satzung_Index_Loading")}</StatePanel>
-      </div>
+      <DocumentPageFrame
+        backTo="/verein"
+        heroImage={heroImage}
+        kicker={t("Pages_Verein_Index_Kicker")}
+        title={t("Pages_Verein_Index_SatzungTitle")}
+      >
+        {query.isLoading ? (
+          <LoadingState label={t("Pages_Unit_Satzung_Index_Loading")} />
+        ) : query.isError ? (
+          <ErrorState onRetry={() => void query.refetch()}>
+            {t("Pages_Unit_Satzung_Index_Error_LoadFailed")}
+          </ErrorState>
+        ) : (
+          <EmptyState title={t("Pages_Unit_Satzung_Index_EmptyTitle")}>
+            {t("Pages_Unit_Satzung_Index_EmptyBody")}
+          </EmptyState>
+        )}
+      </DocumentPageFrame>
     );
-  if (query.isError || !query.data)
-    return (
-      <div className="narrow-page">
-        <StatePanel
-          kind={query.isError ? "error" : "empty"}
-          title={t("Pages_Unit_Satzung_Index_NotFoundTitle")}
-        >
-          {query.isError
-            ? t("Pages_Unit_Satzung_Index_Error_LoadFailed")
-            : t("Pages_Unit_Satzung_Index_NotFoundDescription")}
-        </StatePanel>
-      </div>
-    );
-  return (
-    <div className="page-wrap">
-      <DocumentView document={query.data} backTo="/verein" heroImage={heroImage} />
-    </div>
-  );
+  return <DocumentView document={query.data} backTo="/verein" heroImage={heroImage} />;
 }
 
 export function MinutesPage() {
@@ -376,43 +452,49 @@ export function MinutesPage() {
         title={t("Pages_Unit_Beschluesse_Index_Title")}
         description={t("Pages_Unit_Beschluesse_Index_Subtitle")}
         actions={
-          <Link className="button button--ghost" to="/verein">
+          <ActionLink variant="ghost" to="/verein">
             {t("Pages_Unit_Beschluesse_Index_BackToUnit")}
-          </Link>
+          </ActionLink>
         }
       />
-      {query.isLoading && (
-        <StatePanel kind="loading">{t("Pages_Unit_Beschluesse_Index_Loading")}</StatePanel>
-      )}
-      {query.isError && (
-        <StatePanel kind="error">{t("Pages_Unit_Beschluesse_Index_Error_LoadFailed")}</StatePanel>
-      )}
-      {!query.isLoading && !query.isError && !query.data?.length && (
-        <StatePanel kind="empty" title={t("Pages_Unit_Beschluesse_Index_NoRecordsTitle")}>
-          {t("Pages_Unit_Beschluesse_Index_NoRecordsDescription")}
-        </StatePanel>
-      )}
-      <div className="document-list">
-        {query.data?.map(
-          (document) =>
-            document.revision && (
-              <Link key={document.primaryKey} to={`/verein/beschluesse/${document.primaryKey}`}>
-                <span>
-                  {formatDate(document.revision.timeStampPublished ?? document.timeStampUpdated)}
-                </span>
-                <h2>{document.revision.title}</h2>
-                <p>{document.revision.summary}</p>
-                <small>
-                  {formatResource(
-                    t("Pages_Unit_Beschluesse_Index_VersionPrefix"),
-                    document.revision.version,
-                  )}
-                </small>
-                <strong>{t("Pages_Unit_Beschluesse_Index_ReadDocument")} →</strong>
-              </Link>
-            ),
+      <PageStack>
+        {query.isLoading && <LoadingState label={t("Pages_Unit_Beschluesse_Index_Loading")} />}
+        {query.isError && (
+          <ErrorState onRetry={() => void query.refetch()}>
+            {t("Pages_Unit_Beschluesse_Index_Error_LoadFailed")}
+          </ErrorState>
         )}
-      </div>
+        {!query.isLoading && !query.isError && !query.data?.length && (
+          <EmptyState title={t("Pages_Unit_Beschluesse_Index_NoRecordsTitle")}>
+            {t("Pages_Unit_Beschluesse_Index_NoRecordsDescription")}
+          </EmptyState>
+        )}
+        {query.data?.length ? (
+          <div className="document-list">
+            {query.data.map(
+              (document) =>
+                document.revision && (
+                  <Link key={document.primaryKey} to={`/verein/beschluesse/${document.primaryKey}`}>
+                    <span>
+                      {formatDate(
+                        document.revision.timeStampPublished ?? document.timeStampUpdated,
+                      )}
+                    </span>
+                    <h2>{document.revision.title}</h2>
+                    <p>{document.revision.summary}</p>
+                    <small>
+                      {formatResource(
+                        t("Pages_Unit_Beschluesse_Index_VersionPrefix"),
+                        document.revision.version,
+                      )}
+                    </small>
+                    <strong>{t("Pages_Unit_Beschluesse_Index_ReadDocument")} →</strong>
+                  </Link>
+                ),
+            )}
+          </div>
+        ) : null}
+      </PageStack>
     </div>
   );
 }
@@ -434,31 +516,26 @@ export function MinuteDetailPage() {
   useDocumentTitle(
     query.data?.revision?.title ?? t("Pages_Unit_Beschluesse_DocumentId_PageTitle_Fallback"),
   );
-  if (query.isLoading)
+  if (query.isLoading || query.isError || !idIsValid || !query.data)
     return (
-      <div className="narrow-page">
-        <StatePanel kind="loading">{t("Pages_Unit_Beschluesse_DocumentId_Loading")}</StatePanel>
-      </div>
+      <DocumentPageFrame
+        backTo="/verein/beschluesse"
+        heroImage={heroImage}
+        kicker={t("Pages_Verein_Index_Kicker")}
+        title={t("Pages_Unit_Beschluesse_DocumentId_PageTitle_Fallback")}
+      >
+        {query.isLoading ? (
+          <LoadingState label={t("Pages_Unit_Beschluesse_DocumentId_Loading")} />
+        ) : query.isError ? (
+          <ErrorState onRetry={() => void query.refetch()}>
+            {t("Pages_Unit_Beschluesse_DocumentId_Error_LoadFailed")}
+          </ErrorState>
+        ) : (
+          <EmptyState title={t("Pages_Unit_Beschluesse_DocumentId_NotFoundTitle")}>
+            {t("Pages_Unit_Beschluesse_DocumentId_NotFoundDescription")}
+          </EmptyState>
+        )}
+      </DocumentPageFrame>
     );
-  if (query.isError)
-    return (
-      <div className="narrow-page">
-        <StatePanel kind="error" title={t("Pages_Unit_Beschluesse_DocumentId_Error_LoadFailed")}>
-          {t("Pages_Unit_Beschluesse_DocumentId_Error_LoadFailed")}
-        </StatePanel>
-      </div>
-    );
-  if (!idIsValid || !query.data)
-    return (
-      <div className="narrow-page">
-        <StatePanel kind="empty" title={t("Pages_Unit_Beschluesse_DocumentId_NotFoundTitle")}>
-          {t("Pages_Unit_Beschluesse_DocumentId_NotFoundDescription")}
-        </StatePanel>
-      </div>
-    );
-  return (
-    <div className="page-wrap">
-      <DocumentView document={query.data} backTo="/verein/beschluesse" heroImage={heroImage} />
-    </div>
-  );
+  return <DocumentView document={query.data} backTo="/verein/beschluesse" heroImage={heroImage} />;
 }

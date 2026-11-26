@@ -1,0 +1,652 @@
+/*
+ * Styles for the file browser card of the Files panel: the toolbar, the folder tree, the list pane with its table and
+ * the footer.
+ *
+ * The card is one raised, bordered surface. Inside it the list pane is a top-aligned flex column, so the folder heading
+ * is followed directly by the table or an empty state; nothing here uses a grid template with fewer rows than children,
+ * an auto top margin or a minimum height on the explorer.
+ *
+ * The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px
+ * media breakpoints; tests/styles/server-style-guard.test.ts fails on anything else. File and folder names come from
+ * the worker: they wrap and are never ellipsized.
+ */
+
+/* The panel: the head stack and the card are separated by one gap. */
+.next-hosting-files-panel {
+  display: grid;
+  gap: var(--utf-space-md);
+}
+
+/* The head: the title block and the context switch on one row, wrapping on narrow screens. */
+.next-hosting-files-panel .workspace-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-sm);
+  margin: 0;
+}
+
+.next-hosting-files-panel .workspace-panel__head h2 {
+  margin: 0;
+}
+
+.next-hosting-files-panel .workspace-panel__head p {
+  margin: var(--utf-space-xs) 0 0;
+  color: var(--utf-text-muted);
+}
+
+/* The title block takes the free width, so the context switch sits at the end of the head. */
+.next-hosting-files-panel .workspace-panel__head > div {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+/* The context switch sits at the end of the head and wraps below the title at 800px and below. */
+.next-hosting-files-panel .workspace-panel__head > fieldset {
+  flex: none;
+  margin: 0;
+}
+
+/* The card: toolbar, explorer and footer on one raised surface. */
+.file-browser {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+}
+
+/* Toolbar: one bar of two rows on the overlay surface with a divider below it. */
+.file-browser__toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  padding: var(--utf-space-md);
+  border-bottom: 1px solid var(--utf-border-divider);
+  background: var(--utf-surface-overlay);
+}
+
+/* Row 1: the path at the start and the actions at the end. Row 2: the search at full width and the refresh icon. */
+.file-browser__toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-sm) var(--utf-space-md);
+  min-width: 0;
+}
+
+.file-browser__toolbar-row--search {
+  flex-wrap: nowrap;
+}
+
+.file-browser__toolbar-row--search .search-control {
+  flex: 1 1 auto;
+}
+
+.file-browser__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+}
+
+/* Breadcrumb: the path of the open folder; long names wrap. */
+.file-browser__toolbar nav {
+  min-width: min(12rem, 100%);
+  flex: 1 1 12rem;
+  overflow-wrap: anywhere;
+}
+
+.file-browser__toolbar nav a,
+.file-browser__toolbar nav [aria-current="location"] {
+  display: inline-block;
+  padding: var(--utf-space-xs);
+  font-weight: var(--utf-weight-bold);
+}
+
+.file-browser__toolbar nav a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.file-browser__toolbar nav a:hover {
+  text-decoration: underline;
+}
+
+/* Explorer: the tree pane and the list pane side by side, no minimum height. */
+.file-browser__explorer {
+  display: grid;
+  grid-template-columns: minmax(13rem, 16rem) minmax(0, 1fr);
+  min-width: 0;
+}
+
+/* Tree pane: folders and preserved-path shortcuts; the selected folder is marked by the overlay fill. */
+.next-hosting-file-tree-pane {
+  min-width: 0;
+  padding: var(--utf-space-md) var(--utf-space-sm);
+  border-inline-end: 1px solid var(--utf-border-divider);
+  background: var(--utf-surface-base);
+}
+
+.file-browser__tree-title,
+.next-hosting-preserved-shortcuts h3 {
+  margin: 0 0 var(--utf-space-sm);
+  padding-inline: var(--utf-space-sm);
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.next-hosting-file-tree,
+.next-hosting-file-tree ul,
+.next-hosting-preserved-shortcuts ul {
+  display: grid;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.next-hosting-tree-item,
+.next-hosting-preserved-shortcuts button {
+  display: grid;
+  grid-template-columns: 1.5rem 1.5rem minmax(0, 1fr);
+  align-items: center;
+  min-height: var(--utf-control-height);
+  border: 1px solid transparent;
+  border-radius: var(--utf-radius);
+  color: var(--utf-text);
+  cursor: pointer;
+}
+
+.next-hosting-tree-item > .button {
+  display: grid;
+  width: 1.5rem;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  min-height: 1.5rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--utf-text-muted);
+  cursor: pointer;
+}
+
+.next-hosting-tree-item > span,
+.next-hosting-preserved-shortcuts button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.next-hosting-tree-item:hover,
+.next-hosting-preserved-shortcuts button:hover {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+}
+
+.next-hosting-tree-item[aria-selected="true"],
+.next-hosting-tree-item[aria-current="location"] {
+  border-color: var(--utf-border-divider);
+  background-color: var(--utf-surface-overlay);
+  font-weight: var(--utf-weight-bold);
+}
+
+.next-hosting-tree-item:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: calc(var(--utf-focus-offset) * -1);
+}
+
+.next-hosting-tree-state {
+  display: block;
+  margin: 0;
+  padding: var(--utf-space-sm);
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+}
+
+.next-hosting-preserved-shortcuts {
+  margin-top: var(--utf-space-md);
+  padding-top: var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+.next-hosting-preserved-shortcuts button {
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  width: 100%;
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  background: transparent;
+  text-align: start;
+}
+
+/* List pane: a top-aligned flex column, heading first, then the table or the state directly below it. */
+.file-browser__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  padding: var(--utf-space-md);
+}
+
+/* While a drag is over the pane: a 1px dashed control border inset from the edge, never gold. */
+.file-browser__list--drag::after {
+  position: absolute;
+  z-index: 6;
+  inset: var(--utf-space-sm);
+  border: 1px dashed var(--utf-border-control);
+  border-radius: var(--utf-radius);
+  content: "";
+  pointer-events: none;
+}
+
+.file-browser__drop-overlay {
+  position: absolute;
+  z-index: 5;
+  inset: var(--utf-space-sm);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--utf-space-xs);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text);
+  pointer-events: none;
+}
+
+.file-browser__drop-overlay svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.file-browser__drop-overlay span {
+  color: var(--utf-text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Folder heading: the folder name or the context label, one Body 700 line that wraps. */
+.file-browser__heading {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.file-browser__heading:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/* Table: header row on the overlay surface, Body rows with 1px dividers, its own scroll region when it is wide. */
+.file-browser .file-browser__table {
+  overflow-x: auto;
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+}
+
+.file-browser .file-browser__table table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+}
+
+.file-browser .file-browser__table th,
+.file-browser .file-browser__table td {
+  height: var(--utf-control-height);
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  border-bottom: 1px solid var(--utf-border-divider);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.file-browser .file-browser__table th {
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+}
+
+.file-browser .file-browser__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.file-browser .file-browser__table tbody tr:hover {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+}
+
+.file-browser .file-browser__table tbody tr[data-selected="true"] {
+  background-color: var(--utf-surface-overlay);
+}
+
+.file-browser .file-browser__table tbody tr:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: calc(var(--utf-focus-offset) * -1);
+}
+
+.file-browser .file-browser__table th button {
+  padding: var(--utf-space-xs);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+}
+
+/* The name cell: the file name and its generated-target note stack, and long names wrap. */
+.file-browser .file-browser__table td:first-child {
+  display: table-cell;
+  min-width: 12rem;
+  white-space: normal;
+}
+
+.file-browser .file-browser__table td:first-child small {
+  display: block;
+  color: var(--utf-text-muted);
+}
+
+.next-hosting-file-name,
+.next-hosting-file-label {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  font-weight: var(--utf-weight-bold);
+}
+
+.next-hosting-file-name span,
+.next-hosting-file-label span {
+  overflow-wrap: anywhere;
+}
+
+a.next-hosting-file-name {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.next-hosting-file-name:hover {
+  text-decoration: underline;
+}
+
+.file-browser .file-browser__table .next-hosting-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--utf-space-xs);
+}
+
+.next-hosting-actions-column {
+  min-width: 11rem;
+}
+
+/* Footer: the item count at the start and the muted note at the end. */
+.file-browser__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--utf-space-xs) var(--utf-space-md);
+  padding: var(--utf-space-sm) var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+}
+
+.file-browser__footer-note {
+  margin-inline-start: auto;
+}
+
+/*
+ * Upload dialog drop zone: a dashed 1px control border, a document icon, a title and a muted line, and the two choose
+ * controls side by side. It carries no gold.
+ */
+.file-dropzone {
+  display: grid;
+  flex: none;
+  align-content: center;
+  justify-items: center;
+  gap: var(--utf-space-sm);
+  min-height: var(--utf-dropzone-min-height);
+  padding: var(--utf-space-md);
+  border: 1px dashed var(--utf-border-control);
+  border-radius: var(--utf-radius);
+  color: var(--utf-text-muted);
+  text-align: center;
+}
+
+.file-dropzone[data-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.file-dropzone svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.file-dropzone__title {
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.file-dropzone__body {
+  font-size: var(--utf-text-body);
+  overflow-wrap: anywhere;
+}
+
+.file-dropzone__choices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--utf-space-sm);
+}
+
+.file-dropzone__limit {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+}
+
+/*
+ * File dialogs: the new folder, leave and delete dialogs keep the shell's width and form layout; the upload dialog uses
+ * the wider review width so its queue rows have room.
+ */
+.dialog.next-hosting-upload-dialog {
+  width: min(var(--utf-review-dialog-width), calc(100vw - var(--utf-dialog-gutter)));
+}
+
+/* Upload summary: the polite progress line above the queue, with the cancel control while a batch runs. */
+.file-upload-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm);
+}
+
+/* The bar is drawn here, because the guard does not allow the browser's accent-color mark. */
+.file-upload-summary progress {
+  flex: 1 1 12rem;
+  min-width: 0;
+  height: var(--utf-space-sm);
+  border: 0;
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-overlay);
+  appearance: none;
+  overflow: hidden;
+}
+
+.file-upload-summary progress::-webkit-progress-bar {
+  background: var(--utf-surface-overlay);
+}
+
+.file-upload-summary progress::-webkit-progress-value {
+  background: var(--utf-state-info-fg);
+}
+
+.file-upload-summary progress::-moz-progress-bar {
+  background: var(--utf-state-info-fg);
+}
+
+/*
+ * Upload queue: compact rows with dividers on one bordered list. The list takes its natural height and the dialog body
+ * scrolls, so the summary, the list and the approvals share one scroll region. Names come from the member's machine:
+ * they wrap and are never ellipsized.
+ */
+.file-upload-queue {
+  display: grid;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  list-style: none;
+}
+
+.file-upload-queue__row {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--utf-space-sm);
+  padding: var(--utf-space-sm);
+  border-bottom: 1px solid var(--utf-border-divider);
+}
+
+.file-upload-queue__row:last-child {
+  border-bottom: 0;
+}
+
+.file-upload-queue__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--utf-space-sm);
+  min-width: 0;
+}
+
+.file-upload-queue__path {
+  flex: 1 1 100%;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.file-upload-queue__size {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+}
+
+.file-upload-queue__error {
+  color: var(--utf-state-danger-fg);
+  font-size: var(--utf-text-body);
+  overflow-wrap: anywhere;
+}
+
+/* The end of a row: the status badge, the replace badge and the icon-only remove control. */
+.file-upload-queue__end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--utf-space-xs);
+}
+
+/* The Show folders toggle exists only where the tree pane is hidden. */
+.next-hosting-tree-toggle {
+  display: none;
+  justify-self: start;
+}
+
+@media (max-width: 800px) {
+  .next-hosting-files-panel .workspace-panel__head > fieldset {
+    flex: 1 1 100%;
+  }
+
+  .next-hosting-tree-toggle {
+    display: inline-flex;
+  }
+
+  .file-browser__explorer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .next-hosting-file-tree-pane {
+    display: none;
+    max-height: 22rem;
+    overflow-y: auto;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--utf-border-divider);
+  }
+
+  .file-browser__explorer--tree-open .next-hosting-file-tree-pane {
+    display: block;
+  }
+
+  .file-browser .file-browser__table th,
+  .file-browser .file-browser__table td {
+    height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .file-browser__list {
+    padding: var(--utf-space-sm);
+  }
+
+  /* The actions go below the path as two equal columns; the refresh icon keeps its place at the end of the search row. */
+  .file-browser__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex: 1 1 100%;
+  }
+
+  .file-browser__actions .button {
+    width: 100%;
+  }
+
+  /*
+   * The shared dialog shell stacks the actions below 520px but its full-width rule loses to the `.button` width, so the
+   * Files dialogs repeat the rule with a doubled selector.
+   */
+  .dialog.next-hosting-file-dialog .dialog__actions > * {
+    width: 100%;
+  }
+
+  /* The two choose controls stack, full width. */
+  .file-dropzone__choices {
+    flex-direction: column;
+    justify-self: stretch;
+  }
+
+  .file-dropzone__choices .button {
+    width: 100%;
+  }
+
+  /* A row keeps its icon and name on the first line; the badges and the remove control wrap to a line below. */
+  .file-upload-queue__row {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+  }
+
+  .file-upload-queue__end {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .file-browser__footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .file-browser__footer-note {
+    margin-inline-start: 0;
+  }
+}

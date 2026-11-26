@@ -1,20 +1,25 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageEvents } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { FieldError, SelectField, TextAreaField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
 import {
+  ConfirmDialog,
   Markdown,
   PageHeader,
   StatePanel,
   StatusBadge,
-  useUnsavedChanges,
 } from "@/components/primitives";
+import { ForbiddenState } from "@/components/StateViews";
+import { useLeaveGuard } from "@/components/useLeaveGuard";
 import { EventEntityPicker } from "@/features/admin/EventEntityPicker";
 import { EventSlotPlanner } from "@/features/admin/EventSlotPlanner";
 import {
@@ -37,6 +42,7 @@ import type { MediaAsset } from "@/features/admin/siteImages";
 import { loadTerrainWindow, type Terrain } from "@/features/admin/terrains";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
 import type { GameContentOption } from "@/features/hosting/types";
+import "@/features/admin/eventAuthoring.css";
 
 const finalStep = 6;
 
@@ -87,7 +93,12 @@ export function Component() {
     queryFn: ({ signal }) => hostingService.capabilities(signal),
   });
   const dirty = form.formState.isDirty || slotsDirty;
-  useUnsavedChanges(dirty && !form.formState.isSubmitSuccessful);
+  const leaveGuard = useLeaveGuard({ dirty: dirty && !form.formState.isSubmitSuccessful });
+  const imageErrorId = useId();
+  const visibilityOptions = [
+    { value: "true", label: t("Public") },
+    { value: "false", label: t("Hidden") },
+  ];
 
   const createMutation = useMutation({
     mutationFn: async (nextValues: EventFormValues) => {
@@ -184,21 +195,27 @@ export function Component() {
 
   if (!canCreate)
     return (
-      <StatePanel kind="forbidden" title={t("Auto_EventAdministratorAccessRequired_d59039c1")}>
-        {t("Auto_EventCreationIsVisibleOnlyToAuthorizedOperationPlanners_36297796")}
-      </StatePanel>
+      <PageStack className="event-create-page">
+        <PageHeader
+          kicker={t("Shared_CommandCenter_Nav_Events")}
+          title={t("Auto_CreateEvent_7a9f7d42")}
+        />
+        <ForbiddenState title={t("Auto_EventAdministratorAccessRequired_d59039c1")}>
+          {t("Auto_EventCreationIsVisibleOnlyToAuthorizedOperationPlanners_36297796")}
+        </ForbiddenState>
+      </PageStack>
     );
 
   return (
-    <section className="event-authoring-page event-create-page">
+    <PageStack className="event-create-page">
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_Events")}
         title={t("Auto_CreateEvent_7a9f7d42")}
         description={t("Auto_DefineAndPublishANewOperationPackageWithSchedule_811a8b30")}
         actions={
-          <Link className="button button--ghost" to="/command/events">
+          <ActionLink variant="ghost" to="/command/events">
             {t("Auto_BackToEvents_6f92c820")}
-          </Link>
+          </ActionLink>
         }
       />
       {notice && <StatePanel kind="error">{notice}</StatePanel>}
@@ -217,15 +234,15 @@ export function Component() {
                 key={label}
                 className={step === number ? "is-active" : isComplete(number) ? "is-complete" : ""}
               >
-                <button
-                  type="button"
+                <ActionButton
+                  fullWidth
                   onClick={() => setStep(number)}
                   aria-current={step === number ? "step" : undefined}
                 >
                   <span>{number}</span>
                   <strong>{t(label)}</strong>
                   <small>{t(stepDescriptions[index]!)}</small>
-                </button>
+                </ActionButton>
               </li>
             );
           })}
@@ -252,22 +269,19 @@ export function Component() {
                 }
               />
               <div className="event-authoring-form-grid">
-                <label className="is-wide">
-                  <span>{t("Title")}</span>
-                  <input
+                <div className="is-wide">
+                  <TextField
                     {...form.register("title")}
+                    label={t("Title")}
                     maxLength={1024}
-                    aria-invalid={Boolean(errors.title)}
+                    error={errors.title?.message}
                   />
-                  {errors.title && <small className="field-error">{errors.title.message}</small>}
-                </label>
-                <label>
-                  <span>{t("Visibility")}</span>
-                  <select {...form.register("isVisible", { setValueAs: normalizeEventVisibility })}>
-                    <option value="true">{t("Public")}</option>
-                    <option value="false">{t("Hidden")}</option>
-                  </select>
-                </label>
+                </div>
+                <SelectField
+                  {...form.register("isVisible", { setValueAs: normalizeEventVisibility })}
+                  label={t("Visibility")}
+                  options={visibilityOptions}
+                />
               </div>
             </section>
           )}
@@ -284,17 +298,12 @@ export function Component() {
                 }
               />
               <div className="event-authoring-form-grid">
-                <label>
-                  <span>{t("Schedule")}</span>
-                  <input
-                    {...form.register("scheduledForLocal")}
-                    type="datetime-local"
-                    aria-invalid={Boolean(errors.scheduledForLocal)}
-                  />
-                  {errors.scheduledForLocal && (
-                    <small className="field-error">{errors.scheduledForLocal.message}</small>
-                  )}
-                </label>
+                <TextField
+                  {...form.register("scheduledForLocal")}
+                  label={t("Schedule")}
+                  type="datetime-local"
+                  error={errors.scheduledForLocal?.message}
+                />
                 <EventEntityPicker<EventPerson>
                   label={t("Host")}
                   placeholder={t("Auto_SearchHost_abe3f02f")}
@@ -366,9 +375,8 @@ export function Component() {
                   }}
                 />
                 {terrain && (
-                  <button
-                    className="button button--ghost"
-                    type="button"
+                  <ActionButton
+                    variant="ghost"
                     disabled={busy}
                     onClick={() => {
                       setTerrain(null);
@@ -383,12 +391,12 @@ export function Component() {
                     }}
                   >
                     {t("Remove")}
-                  </button>
+                  </ActionButton>
                 )}
                 {watched.scenarioRequired && terrain && (
                   <EventEntityPicker<GameContentOption>
-                    label="Scenario"
-                    placeholder="Search scenarios"
+                    label={t("Pages_Events_Create_Step_Scenario_Label")}
+                    placeholder={t("React_EventAuthoring_ScenarioSearchPlaceholder")}
                     selected={scenario}
                     disabled={busy}
                     queryKey={`create-scenario-${terrain.gameIdentifier}`}
@@ -451,9 +459,8 @@ export function Component() {
                   }}
                 />
                 {modPack && (
-                  <button
-                    className="button button--ghost"
-                    type="button"
+                  <ActionButton
+                    variant="ghost"
                     disabled={busy}
                     onClick={() => {
                       setModPack(null);
@@ -464,7 +471,7 @@ export function Component() {
                     }}
                   >
                     {t("Remove")}
-                  </button>
+                  </ActionButton>
                 )}
               </div>
               <div className="event-authoring-image-grid">
@@ -483,17 +490,12 @@ export function Component() {
                   <p>
                     {selectedAsset?.originalFileName || t("Pages_Events_Create_Status_NotAttached")}
                   </p>
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                  >
+                  <ActionButton variant="ghost" onClick={() => setPickerOpen(true)}>
                     {t("React_EventAuthoring_SelectImage")}
-                  </button>
+                  </ActionButton>
                   {imageUrl && (
-                    <button
-                      className="button button--ghost"
-                      type="button"
+                    <ActionButton
+                      variant="ghost"
                       onClick={() => {
                         setSelectedAsset(undefined);
                         form.setValue("imageAssetFk", "", {
@@ -504,10 +506,10 @@ export function Component() {
                       }}
                     >
                       {t("Remove")}
-                    </button>
+                    </ActionButton>
                   )}
                   {errors.imageAssetFk && (
-                    <small className="field-error">{errors.imageAssetFk.message}</small>
+                    <FieldError id={imageErrorId} message={errors.imageAssetFk.message ?? ""} />
                   )}
                 </div>
               </div>
@@ -524,17 +526,12 @@ export function Component() {
                   watched.description?.length ?? 0,
                 )}
               />
-              <label className="event-authoring-briefing-field">
-                <span>{t("Auto_BriefingMarkdown_57d6b69f")}</span>
-                <textarea
-                  {...form.register("description")}
-                  rows={16}
-                  aria-invalid={Boolean(errors.description)}
-                />
-                {errors.description && (
-                  <small className="field-error">{errors.description.message}</small>
-                )}
-              </label>
+              <TextAreaField
+                {...form.register("description")}
+                label={t("Auto_BriefingMarkdown_57d6b69f")}
+                rows={16}
+                error={errors.description?.message}
+              />
               <section className="event-authoring-markdown-preview">
                 <span className="kicker">{t("Auto_RenderedBriefing_9d4f9366")}</span>
                 <Markdown>{watched.description ?? ""}</Markdown>
@@ -545,25 +542,18 @@ export function Component() {
           {step === 5 && (
             <section className="event-authoring-section">
               <div className="event-authoring-form-grid event-authoring-form-grid--compact">
-                <label>
-                  <span>{t("Auto_MinimumAccepted_05ac548c")}</span>
-                  <input
-                    {...form.register("minimumAccepted", { valueAsNumber: true })}
-                    type="number"
-                    min={0}
-                    aria-invalid={Boolean(errors.minimumAccepted)}
-                  />
-                  {errors.minimumAccepted && (
-                    <small className="field-error">{errors.minimumAccepted.message}</small>
-                  )}
-                </label>
-                <label>
-                  <span>{t("Visibility")}</span>
-                  <select {...form.register("isVisible", { setValueAs: normalizeEventVisibility })}>
-                    <option value="true">{t("Public")}</option>
-                    <option value="false">{t("Hidden")}</option>
-                  </select>
-                </label>
+                <TextField
+                  {...form.register("minimumAccepted", { valueAsNumber: true })}
+                  label={t("Auto_MinimumAccepted_05ac548c")}
+                  type="number"
+                  min={0}
+                  error={errors.minimumAccepted?.message}
+                />
+                <SelectField
+                  {...form.register("isVisible", { setValueAs: normalizeEventVisibility })}
+                  label={t("Visibility")}
+                  options={visibilityOptions}
+                />
               </div>
               <EventSlotPlanner
                 slots={slots}
@@ -703,18 +693,16 @@ export function Component() {
             </strong>
           </div>
           <div>
-            <button
-              className="button button--ghost"
-              type="button"
+            <ActionButton
+              variant="ghost"
               disabled={step <= 1 || busy}
               onClick={() => setStep(Math.max(1, step - 1))}
             >
               {t("Previous")}
-            </button>
+            </ActionButton>
             {step < finalStep ? (
-              <button
-                className="button button--primary"
-                type="button"
+              <ActionButton
+                variant="gold"
                 disabled={busy || !isComplete(step)}
                 onClick={(event) => {
                   // The next-step button becomes the submit button at the final step. Prevent the
@@ -724,10 +712,10 @@ export function Component() {
                 }}
               >
                 {t("Next")}
-              </button>
+              </ActionButton>
             ) : (
-              <button
-                className="button button--primary"
+              <ActionButton
+                variant="gold"
                 type="submit"
                 form="event-create-form"
                 disabled={busy || ![1, 2, 3, 4, 5].every(isComplete)}
@@ -735,7 +723,7 @@ export function Component() {
                 {busy
                   ? t("Pages_Events_Create_ActionCreatingEvent")
                   : t("Pages_Events_Create_ActionCreateEvent")}
-              </button>
+              </ActionButton>
             )}
           </div>
         </footer>
@@ -756,7 +744,17 @@ export function Component() {
         }}
         onCancel={() => setPickerOpen(false)}
       />
-    </section>
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        title={t("React_EventAuthoring_Leave_Title")}
+        description={t("React_EventAuthoring_Leave_Body")}
+        cancelLabel={t("React_EventAuthoring_Leave_Stay")}
+        confirmLabel={t("React_EventAuthoring_Leave_Leave")}
+        initialFocus="dismiss"
+        onCancel={leaveGuard.stay}
+        onConfirm={leaveGuard.proceed}
+      />
+    </PageStack>
   );
 }
 
@@ -795,9 +793,9 @@ function ReviewCard({
     <article>
       <header>
         <h3>{title}</h3>
-        <button type="button" onClick={onEdit}>
+        <ActionButton variant="ghost" size="compact" onClick={onEdit}>
           {editLabel}
-        </button>
+        </ActionButton>
       </header>
       <dl>{children}</dl>
     </article>

@@ -1,7 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type FormEvent } from "react";
+import { I18nextProvider } from "react-i18next";
 import { MemoryRouter } from "react-router";
+import i18n, { i18nReady } from "@/app/i18n";
 import { ActionAnchor, ActionButton, ActionLink } from "@/components/ActionControl";
 import { CommandListToolbar } from "@/components/CommandListToolbar";
 import { PublicHero } from "@/components/PublicHero";
@@ -70,6 +72,74 @@ describe("shared action controls", () => {
   });
 });
 
+describe("ActionButton with an unavailable reason", () => {
+  it("stays focusable, exposes aria-disabled and the reason, and ignores clicks", async () => {
+    const click = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ActionButton unavailableReason="Ask an administrator." onClick={click}>
+        Start
+      </ActionButton>,
+    );
+
+    const button = screen.getByRole("button", { name: "Start" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).not.toHaveAttribute("disabled");
+    expect(button).toHaveAccessibleDescription("Ask an administrator.");
+    await user.tab();
+    expect(button).toHaveFocus();
+    await user.click(button);
+    expect(click).not.toHaveBeenCalled();
+  });
+
+  it("does not submit an enclosing form", async () => {
+    const submit = vi.fn((event: FormEvent<HTMLFormElement>) => event.preventDefault());
+    const user = userEvent.setup();
+    render(
+      <form onSubmit={submit}>
+        <ActionButton type="submit" unavailableReason="Not now.">
+          Save
+        </ActionButton>
+      </form>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("renders exactly as before without a reason", async () => {
+    const click = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(<ActionButton onClick={click}>Run</ActionButton>);
+
+    const button = screen.getByRole("button", { name: "Run" });
+    expect(container.firstElementChild).toBe(button);
+    expect(button).not.toHaveAttribute("aria-disabled");
+    expect(button).not.toHaveAttribute("aria-describedby");
+    await user.click(button);
+    expect(click).toHaveBeenCalledOnce();
+  });
+
+  it("appends the reason to a caller description and supports the full-width wrapper", () => {
+    const { container } = render(
+      <>
+        <span id="caller-help">Caller help.</span>
+        <ActionButton fullWidth aria-describedby="caller-help" unavailableReason="Reason text.">
+          Go
+        </ActionButton>
+      </>,
+    );
+
+    const button = screen.getByRole("button", { name: "Go" });
+    expect(button.getAttribute("aria-describedby")?.split(" ")).toHaveLength(2);
+    expect(button.getAttribute("aria-describedby")).toMatch(/^caller-help /);
+    expect(button).toHaveAccessibleDescription("Caller help. Reason text.");
+    expect(container.querySelector(".action-with-reason")).toHaveClass(
+      "action-with-reason--full-width",
+    );
+  });
+});
+
 describe("CommandListToolbar", () => {
   it("updates its controlled search value, submits, and hosts page-specific controls", async () => {
     const submit = vi.fn((event: FormEvent<HTMLFormElement>) => event.preventDefault());
@@ -106,7 +176,7 @@ describe("CommandListToolbar", () => {
 
     const toolbar = screen.getByRole("form", { name: "Member filters" });
     expect(toolbar).toHaveClass("toolbar", "members-admin-toolbar");
-    const search = within(toolbar).getByRole("textbox", { name: "Search members" });
+    const search = within(toolbar).getByRole("searchbox", { name: "Search members" });
     expect(search).toHaveValue("initial");
     expect(search).toHaveAttribute("placeholder", "Nickname or account");
 
@@ -120,6 +190,44 @@ describe("CommandListToolbar", () => {
     expect(submit).not.toHaveBeenCalled();
 
     await user.click(within(toolbar).getByRole("button", { name: "Apply search" }));
+    expect(submit).toHaveBeenCalledOnce();
+  });
+
+  it("renders the shared search field and no raw text control of its own", async () => {
+    await i18nReady;
+    await i18n.changeLanguage("en");
+    const submit = vi.fn((event: FormEvent<HTMLFormElement>) => event.preventDefault());
+    const searchChange = vi.fn();
+    render(
+      <I18nextProvider i18n={i18n}>
+        <CommandListToolbar
+          ariaLabel="Role filters"
+          onSubmit={submit}
+          searchLabel="Search roles"
+          searchValue="ops"
+          onSearchChange={searchChange}
+          submitLabel="Apply search"
+        />
+      </I18nextProvider>,
+    );
+
+    const toolbar = screen.getByRole("form", { name: "Role filters" });
+    // The only text input is the shared SearchField input, which brings its own icon-only clear control.
+    expect(toolbar.querySelectorAll("input")).toHaveLength(1);
+    expect(toolbar.querySelector("input.search-control__input")).toBe(
+      within(toolbar).getByRole("searchbox", { name: "Search roles" }),
+    );
+    expect(within(toolbar).getByRole("searchbox", { name: "Search roles" })).toHaveAttribute(
+      "placeholder",
+      "Search roles",
+    );
+
+    const user = userEvent.setup();
+    await user.click(within(toolbar).getByRole("button", { name: "Clear search" }));
+    expect(searchChange).toHaveBeenLastCalledWith("");
+    expect(submit).not.toHaveBeenCalled();
+
+    await user.type(within(toolbar).getByRole("searchbox"), "{Enter}");
     expect(submit).toHaveBeenCalledOnce();
   });
 });

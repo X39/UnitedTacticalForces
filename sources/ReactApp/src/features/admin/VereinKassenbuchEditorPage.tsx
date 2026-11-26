@@ -1,22 +1,22 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { z } from "zod";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { formatCurrency, formatDate } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinLedger } from "@/auth/claims";
-import {
-  ConfirmDialog,
-  PageHeader,
-  StatePanel,
-  StatusBadge,
-  useUnsavedChanges,
-} from "@/components/primitives";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { SelectField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
+import { ConfirmDialog, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { financeTones, toneOf } from "@/components/statusTones";
+import { useLeaveGuard } from "@/components/useLeaveGuard";
 import {
   createKassenbuchEntry,
   createKassenbuchPayload,
@@ -44,6 +44,25 @@ function defaultValues(): KassenbuchFormValues {
     reference: "",
     documentNumber: "",
   };
+}
+
+/** Renders the page header above a state view, so every state of the editor route keeps one `h1`. */
+function EditorStateFrame({ title, children }: { title: string; children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <PageStack>
+      <PageHeader
+        kicker={t("Shared_CommandCenter_Nav_VereinKassenbuch")}
+        title={title}
+        actions={
+          <ActionLink variant="ghost" to="/command/verein/kassenbuch">
+            {t("Pages_Command_Verein_KassenbuchBackToLedger")}
+          </ActionLink>
+        }
+      />
+      {children}
+    </PageStack>
+  );
 }
 
 export function Component() {
@@ -101,7 +120,7 @@ export function Component() {
     mode: "onSubmit",
   });
   const values = useWatch({ control: form.control });
-  useUnsavedChanges(form.formState.isDirty && !allowNavigation);
+  const leaveGuard = useLeaveGuard({ dirty: form.formState.isDirty && !allowNavigation });
   const entryQuery = useQuery({
     queryKey: kassenbuchQueryKeys.entry(entryId ?? -1),
     queryFn: ({ signal }) => findKassenbuchEntry(entryId!, signal),
@@ -159,16 +178,20 @@ export function Component() {
 
   if (!authorized)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Verein_KassenbuchAccessRequiredTitle")}>
-        {t("Pages_Command_Verein_KassenbuchAccessRequiredDescription")}
-      </StatePanel>
+      <EditorStateFrame title={t(titleKey)}>
+        <ForbiddenState title={t("Pages_Command_Verein_KassenbuchAccessRequiredTitle")}>
+          {t("Pages_Command_Verein_KassenbuchAccessRequiredDescription")}
+        </ForbiddenState>
+      </EditorStateFrame>
     );
 
   if (editing && (!validEntryId || (!entryQuery.isPending && !entryQuery.isError && !entry)))
     return (
-      <StatePanel kind="empty" title={t("Pages_Command_Verein_KassenbuchEntryNotFoundTitle")}>
-        {t("Pages_Command_Verein_KassenbuchEntryNotFoundDescription")}
-      </StatePanel>
+      <EditorStateFrame title={t(titleKey)}>
+        <EmptyState title={t("Pages_Command_Verein_KassenbuchEntryNotFoundTitle")}>
+          {t("Pages_Command_Verein_KassenbuchEntryNotFoundDescription")}
+        </EmptyState>
+      </EditorStateFrame>
     );
 
   const direction = values.direction ?? "Income";
@@ -179,7 +202,7 @@ export function Component() {
   const mutationError = save.error ?? remove.error;
 
   return (
-    <section className="verein-kassenbuch-editor-page">
+    <PageStack>
       <PageHeader
         kicker={t(
           editing
@@ -193,29 +216,18 @@ export function Component() {
             : "Pages_Command_Verein_KassenbuchCreatePageDescription",
         )}
         actions={
-          <Link className="button button--ghost" to="/command/verein/kassenbuch">
+          <ActionLink variant="ghost" to="/command/verein/kassenbuch">
             {t("Pages_Command_Verein_KassenbuchBackToLedger")}
-          </Link>
+          </ActionLink>
         }
       />
 
       {editing && entryQuery.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_Verein_Loading")}</StatePanel>
+        <LoadingState label={t("Pages_Command_Verein_Loading")} />
       ) : editing && entryQuery.isError ? (
-        <StatePanel
-          kind="error"
-          action={
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => entryQuery.refetch()}
-            >
-              {t("React_UI_Retry")}
-            </button>
-          }
-        >
+        <ErrorState onRetry={() => void entryQuery.refetch()}>
           {formatResource(t("Pages_Command_Verein_LoadError"), entryQuery.error.message)}
-        </StatePanel>
+        </ErrorState>
       ) : !editing || entry ? (
         <div className="verein-kassenbuch-editor-shell">
           <form
@@ -246,72 +258,72 @@ export function Component() {
               )}
             </header>
             <div className="verein-kassenbuch-editor-form">
-              <label>
-                <span>{t("Pages_Command_Verein_LedgerFormDate")}</span>
-                <input type="date" {...form.register("bookedOn")} />
-                {form.formState.errors.bookedOn && (
-                  <small role="alert">{form.formState.errors.bookedOn.message}</small>
-                )}
-              </label>
-              <label>
-                <span>{t("Pages_Command_Verein_LedgerFormDirection")}</span>
-                <select {...form.register("direction")}>
-                  <option value="Income">{t("Pages_Command_Verein_LedgerDirectionIncome")}</option>
-                  <option value="Expense">
-                    {t("Pages_Command_Verein_LedgerDirectionExpense")}
-                  </option>
-                </select>
-              </label>
-              <label>
-                <span>{t("Pages_Command_Verein_LedgerFormAmount")}</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputMode="decimal"
-                  {...form.register("amount")}
+              <TextField
+                label={t("Pages_Command_Verein_LedgerFormDate")}
+                type="date"
+                error={form.formState.errors.bookedOn?.message}
+                {...form.register("bookedOn")}
+              />
+              <SelectField
+                label={t("Pages_Command_Verein_LedgerFormDirection")}
+                options={[
+                  { value: "Income", label: t("Pages_Command_Verein_LedgerDirectionIncome") },
+                  { value: "Expense", label: t("Pages_Command_Verein_LedgerDirectionExpense") },
+                ]}
+                {...form.register("direction")}
+              />
+              <TextField
+                label={t("Pages_Command_Verein_LedgerFormAmount")}
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                error={form.formState.errors.amount?.message}
+                {...form.register("amount")}
+              />
+              <TextField
+                label={t("Pages_Command_Verein_LedgerFormCurrency")}
+                maxLength={3}
+                autoCapitalize="characters"
+                error={form.formState.errors.currency?.message}
+                {...form.register("currency")}
+              />
+              <TextField
+                label={t("Pages_Command_Verein_LedgerFormCategory")}
+                maxLength={96}
+                error={form.formState.errors.category?.message}
+                {...form.register("category")}
+              />
+              <TextField
+                label={t("Pages_Command_Verein_LedgerFormDocumentNo")}
+                maxLength={128}
+                {...form.register("documentNumber")}
+              />
+              <div className="is-wide">
+                <TextField
+                  label={t("Pages_Command_Verein_LedgerFormDescription")}
+                  maxLength={512}
+                  error={form.formState.errors.description?.message}
+                  {...form.register("description")}
                 />
-                {form.formState.errors.amount && (
-                  <small role="alert">{form.formState.errors.amount.message}</small>
-                )}
-              </label>
-              <label>
-                <span>{t("Pages_Command_Verein_LedgerFormCurrency")}</span>
-                <input maxLength={3} autoCapitalize="characters" {...form.register("currency")} />
-                {form.formState.errors.currency && (
-                  <small role="alert">{form.formState.errors.currency.message}</small>
-                )}
-              </label>
-              <label>
-                <span>{t("Pages_Command_Verein_LedgerFormCategory")}</span>
-                <input maxLength={96} {...form.register("category")} />
-                {form.formState.errors.category && (
-                  <small role="alert">{form.formState.errors.category.message}</small>
-                )}
-              </label>
-              <label>
-                <span>{t("Pages_Command_Verein_LedgerFormDocumentNo")}</span>
-                <input maxLength={128} {...form.register("documentNumber")} />
-              </label>
-              <label className="is-wide">
-                <span>{t("Pages_Command_Verein_LedgerFormDescription")}</span>
-                <input maxLength={512} {...form.register("description")} />
-                {form.formState.errors.description && (
-                  <small role="alert">{form.formState.errors.description.message}</small>
-                )}
-              </label>
-              <label className="is-wide">
-                <span>{t("Pages_Command_Verein_LedgerFormReference")}</span>
-                <input maxLength={128} {...form.register("reference")} />
-                {form.formState.errors.reference && (
-                  <small role="alert">{form.formState.errors.reference.message}</small>
-                )}
-              </label>
+              </div>
+              <div className="is-wide">
+                <TextField
+                  label={t("Pages_Command_Verein_LedgerFormReference")}
+                  maxLength={128}
+                  error={form.formState.errors.reference?.message}
+                  {...form.register("reference")}
+                />
+              </div>
 
-              {mutationError && <StatePanel kind="error">{mutationError.message}</StatePanel>}
+              {mutationError && (
+                <div className="is-wide">
+                  <StatePanel kind="error">{mutationError.message}</StatePanel>
+                </div>
+              )}
               <footer className="is-wide page-header__actions">
-                <button
-                  className="button button--primary"
+                <ActionButton
+                  variant="gold"
                   type="submit"
                   disabled={save.isPending || remove.isPending}
                 >
@@ -322,10 +334,10 @@ export function Component() {
                           ? "Pages_Command_Verein_LedgerUpdateEntry"
                           : "Pages_Command_Verein_LedgerAddEntry",
                       )}
-                </button>
-                <Link className="button button--ghost" to="/command/verein/kassenbuch">
-                  {t("Common_Cancel")}
-                </Link>
+                </ActionButton>
+                <ActionLink variant="ghost" to="/command/verein/kassenbuch">
+                  {t("Pages_Command_Verein_LedgerEditorLeave_Dismiss")}
+                </ActionLink>
               </footer>
             </div>
           </form>
@@ -336,7 +348,9 @@ export function Component() {
                 <span className="kicker">{t("Pages_Command_Verein_KassenbuchPreviewKicker")}</span>
                 <h2>{t("Pages_Command_Verein_KassenbuchPreviewTitle")}</h2>
               </div>
-              <StatusBadge tone={direction === "Expense" ? "danger" : "success"}>
+              <StatusBadge
+                tone={toneOf(financeTones, direction === "Expense" ? "expense" : "income")}
+              >
                 {formatCurrency(Number.isFinite(signedAmount) ? signedAmount : 0, currency)}
               </StatusBadge>
             </header>
@@ -383,14 +397,13 @@ export function Component() {
                   <strong>{t("Pages_Command_Verein_KassenbuchDeleteTitle")}</strong>
                   <p>{t("Pages_Command_Verein_KassenbuchDeleteDescription")}</p>
                 </div>
-                <button
-                  className="button button--danger"
-                  type="button"
+                <ActionButton
+                  variant="danger"
                   disabled={save.isPending || remove.isPending}
                   onClick={() => setDeleteOpen(true)}
                 >
                   {t("Pages_Command_Verein_KassenbuchActionDelete")}
-                </button>
+                </ActionButton>
               </section>
             )}
           </aside>
@@ -406,12 +419,24 @@ export function Component() {
           values.category?.trim() || t("Pages_Command_Verein_KassenbuchPreviewEmpty"),
         )}`}
         confirmLabel={t("Pages_Command_Verein_KassenbuchDeleteConfirm")}
-        cancelLabel={t("Pages_Command_Verein_KassenbuchDeleteCancel")}
+        cancelLabel={t("Pages_Command_Verein_KassenbuchDelete_Dismiss")}
+        initialFocus="dismiss"
         onConfirm={() => {
           if (!remove.isPending) remove.mutate();
         }}
         onCancel={() => setDeleteOpen(false)}
       />
-    </section>
+
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        title={t("Server_Alerts_Leave_Title")}
+        description={t("React_UnsavedChanges")}
+        cancelLabel={t("Server_Change_KeepEditing")}
+        confirmLabel={t("Pages_Command_Verein_LedgerEditorLeave_Dismiss")}
+        initialFocus="dismiss"
+        onCancel={leaveGuard.stay}
+        onConfirm={leaveGuard.proceed}
+      />
+    </PageStack>
   );
 }

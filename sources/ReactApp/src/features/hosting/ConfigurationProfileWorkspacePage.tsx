@@ -5,7 +5,17 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { useAppRouteToast, useAppToast, useAppToastOnChange } from "@/components/AppToasts";
-import { ConfirmDialog, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
+import { ActionButton } from "@/components/ActionControl";
+import { PageStack } from "@/components/PageStack";
+import {
+  ConfirmDialog,
+  PageHeader,
+  StatePanel,
+  StatusBadge,
+  useUnsavedChanges,
+} from "@/components/primitives";
+import { SectionNavigation } from "@/components/SectionNavigation";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
 import { getHostingPermissions } from "@/features/hosting/authorization";
 import { ConfigurationProfileAccessSection } from "@/features/hosting/ConfigurationProfileAccessSection";
 import {
@@ -27,6 +37,18 @@ import type {
 } from "@/features/hosting/types";
 
 type ProfileTab = "configuration" | "revisions" | "access";
+
+const profileTabLabelKeys = {
+  configuration: "React_ConfigurationProfiles_ConfigurationTab",
+  revisions: "React_ConfigurationProfiles_RevisionsTab",
+  access: "React_ConfigurationProfiles_AccessTab",
+} as const satisfies Record<ProfileTab, string>;
+
+function profileTabs(canManageAccess: boolean): readonly ProfileTab[] {
+  return canManageAccess
+    ? ["configuration", "revisions", "access"]
+    : ["configuration", "revisions"];
+}
 
 function requestedTab(value: string | null): ProfileTab {
   return value === "revisions" || value === "access" ? value : "configuration";
@@ -158,7 +180,6 @@ export function ConfigurationProfileWorkspacePage() {
     },
     onError: (error: Error) => showToast(error.message, "error"),
   });
-  const selectTab = (nextTab: ProfileTab) => setSearchParams({ tab: nextTab });
   const submit = () => {
     const nextIssues = validateConfigurationDraft(definitions, effectiveDraft);
     setIssues(nextIssues);
@@ -184,46 +205,50 @@ export function ConfigurationProfileWorkspacePage() {
     });
   };
 
+  const stateTitle = t("Hosting_ConfigurationProfiles_Title");
   if (!permissions.accessConfigurationProfiles)
     return (
       <div className="next-hosting-page">
-        <StatePanel kind="forbidden" title={t("Hosting_ConfigurationProfiles_ForbiddenTitle")}>
-          {t("Hosting_ConfigurationProfiles_ForbiddenDescription")}
-        </StatePanel>
+        <PageHeader title={stateTitle} />
+        <PageStack>
+          <ForbiddenState title={t("Hosting_ConfigurationProfiles_ForbiddenTitle")}>
+            {t("Hosting_ConfigurationProfiles_ForbiddenDescription")}
+          </ForbiddenState>
+        </PageStack>
       </div>
     );
   if (authLoading || profile.isLoading)
     return (
       <div className="next-hosting-page">
-        <StatePanel kind="loading">{t("Hosting_ConfigurationProfiles_Loading")}</StatePanel>
+        <PageHeader title={stateTitle} />
+        <PageStack>
+          <LoadingState label={t("Hosting_ConfigurationProfiles_Loading")} />
+        </PageStack>
       </div>
     );
   if (profile.error)
     return (
       <div className="next-hosting-page">
-        <StatePanel
-          kind="error"
-          title={t("Hosting_ConfigurationProfiles_ProfileLoadError").replace(": {0}", "")}
-          action={
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => void profile.refetch()}
-            >
-              {t("Hosting_ConfigurationProfiles_Retry")}
-            </button>
-          }
-        >
-          {profile.error.message}
-        </StatePanel>
+        <PageHeader title={stateTitle} />
+        <PageStack>
+          <ErrorState
+            title={t("Hosting_ConfigurationProfiles_ProfileLoadError").replace(": {0}", "")}
+            onRetry={() => void profile.refetch()}
+          >
+            {profile.error.message}
+          </ErrorState>
+        </PageStack>
       </div>
     );
   if (!profile.data)
     return (
       <div className="next-hosting-page">
-        <StatePanel kind="empty" title={t("Hosting_ConfigurationProfiles_NotFoundTitle")}>
-          {t("Hosting_ConfigurationProfiles_NotFoundDescription")}
-        </StatePanel>
+        <PageHeader title={stateTitle} />
+        <PageStack>
+          <EmptyState title={t("Hosting_ConfigurationProfiles_NotFoundTitle")}>
+            {t("Hosting_ConfigurationProfiles_NotFoundDescription")}
+          </EmptyState>
+        </PageStack>
       </div>
     );
 
@@ -233,161 +258,129 @@ export function ConfigurationProfileWorkspacePage() {
       <Link className="next-hosting-back-link" to="/command/configuration-profiles">
         ← {t("React_ConfigurationProfiles_BackToProfiles")}
       </Link>
-      <header className="next-hosting-profile-identity">
-        <div>
-          <span className="kicker">{gameLabel(data.profile.gameIdentifier)}</span>
-          <h1>{data.profile.title}</h1>
-          <p>
-            {t("Hosting_ConfigurationProfiles_Revision")} {data.profile.latestRevisionNumber}
-          </p>
-        </div>
-        <div className="next-hosting-profile-identity-actions">
-          <StatusBadge tone={data.profile.isArchived ? "warning" : "success"}>
+      <PageHeader
+        kicker={gameLabel(data.profile.gameIdentifier)}
+        title={data.profile.title}
+        description={`${t("Hosting_ConfigurationProfiles_Revision")} ${data.profile.latestRevisionNumber}`}
+        meta={
+          <StatusBadge tone={data.profile.isArchived ? "neutral" : "success"}>
             {data.profile.isArchived
               ? t("Hosting_ConfigurationProfiles_Archived")
               : t("Hosting_ConfigurationProfiles_Active")}
           </StatusBadge>
-          {data.canArchive && !data.profile.isArchived && (
-            <button
-              className="button button--danger"
-              type="button"
-              onClick={() => setArchiveOpen(true)}
-            >
+        }
+        actions={
+          data.canArchive && !data.profile.isArchived ? (
+            <ActionButton variant="danger" onClick={() => setArchiveOpen(true)}>
               {t("Hosting_ConfigurationProfiles_Archive")}
-            </button>
-          )}
-        </div>
-      </header>
-      <nav
-        className="next-hosting-profile-tabs"
-        role="tablist"
-        aria-label={t("React_ConfigurationProfiles_ProfileSections")}
-      >
-        {(["configuration", "revisions"] as const).map((item) => (
-          <button
-            key={item}
-            type="button"
-            role="tab"
-            aria-selected={tab === item}
-            onClick={() => selectTab(item)}
-          >
-            {t(
-              item === "configuration"
-                ? "React_ConfigurationProfiles_ConfigurationTab"
-                : "React_ConfigurationProfiles_RevisionsTab",
-            )}
-          </button>
-        ))}
-        {data.canManageAccess && (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "access"}
-            onClick={() => selectTab("access")}
-          >
-            {t("React_ConfigurationProfiles_AccessTab")}
-          </button>
-        )}
-      </nav>
-      {tab === "configuration" && (
-        <section className="next-hosting-panel next-hosting-profile-configuration">
-          {data.profile.isArchived ? (
-            <StatePanel kind="warning" title={t("Hosting_ConfigurationProfiles_ArchivedTitle")}>
-              {t("Hosting_ConfigurationProfiles_ArchiveDescription")}
-            </StatePanel>
-          ) : data.canModify ? (
-            <>
-              <header className="next-hosting-section-heading">
-                <div>
-                  <span className="kicker">{t("Hosting_ConfigurationProfiles_Draft")}</span>
-                  <h2>{t("Hosting_ConfigurationProfiles_PublishTitle")}</h2>
-                  <p>{t("Hosting_ConfigurationProfiles_PublishDescription")}</p>
-                </div>
-              </header>
-              <ConfigurationProfileFields
-                gameIdentifier={data.profile.gameIdentifier}
-                definitions={definitions}
-                values={effectiveDraft}
-                issues={issues}
-                configuredSensitiveKeys={
-                  latest?.sensitiveConfiguredKeys ?? latest?.redactedKeys ?? []
-                }
-                clearedKeys={clearedKeys}
-                onChange={(key, value) => {
-                  setClearedKeys((current) => current.filter((item) => item !== key));
-                  setDraft((current) => ({ ...current, [key]: value }));
-                }}
-                onClear={(key) => {
-                  setDraft((current) => ({ ...current, [key]: "" }));
-                  setClearedKeys((current) => [...new Set([...current, key])]);
-                }}
-              />
-            </>
-          ) : (
-            <StatePanel kind="info" title={t("Hosting_ConfigurationProfiles_ReadOnlyTitle")}>
-              {t("Hosting_ConfigurationProfiles_ReadOnlyDescription")}
-            </StatePanel>
-          )}
-        </section>
-      )}
-      {tab === "revisions" && (
-        <ConfigurationProfileRevisionHistory profile={data} definitions={allDefinitions} />
-      )}
-      {tab === "access" && data.canManageAccess && (
-        <ConfigurationProfileAccessSection
-          profileId={data.profile.primaryKey}
-          access={access.data}
-          loading={access.isLoading}
-          error={access.error}
-          pending={changeAccess.isPending}
-          onRetry={() => void access.refetch()}
-          onSave={(matrix) => {
-            setMessage(undefined);
-            changeAccess.mutate(matrix);
-          }}
+            </ActionButton>
+          ) : undefined
+        }
+      />
+      <PageStack>
+        <SectionNavigation
+          label={t("React_ConfigurationProfiles_ProfileSections")}
+          currentId={tab}
+          items={profileTabs(data.canManageAccess).map((id) => ({
+            id,
+            label: t(profileTabLabelKeys[id]),
+            to: { search: `?tab=${id}` },
+          }))}
         />
-      )}
-      {tab === "configuration" && dirty && data.canModify && !data.profile.isArchived && (
-        <div
-          className="next-hosting-profile-savebar"
-          role="region"
-          aria-label={t("React_ConfigurationProfiles_UnsavedChanges")}
-        >
-          <span>
-            <strong>
-              {formatResource(t("React_ConfigurationProfiles_ChangeCount"), changeCount)}
-            </strong>
-            {formatResource(
-              t("Hosting_ConfigurationProfiles_BasedOnRevision"),
-              data.profile.latestRevisionNumber,
+        {tab === "configuration" && (
+          <section className="next-hosting-panel next-hosting-profile-configuration">
+            {data.profile.isArchived ? (
+              <StatePanel kind="warning" title={t("Hosting_ConfigurationProfiles_ArchivedTitle")}>
+                {t("Hosting_ConfigurationProfiles_ArchiveDescription")}
+              </StatePanel>
+            ) : data.canModify ? (
+              <>
+                <header className="next-hosting-section-heading">
+                  <div>
+                    <span className="kicker">{t("Hosting_ConfigurationProfiles_Draft")}</span>
+                    <h2>{t("Hosting_ConfigurationProfiles_PublishTitle")}</h2>
+                    <p>{t("Hosting_ConfigurationProfiles_PublishDescription")}</p>
+                  </div>
+                </header>
+                <ConfigurationProfileFields
+                  gameIdentifier={data.profile.gameIdentifier}
+                  definitions={definitions}
+                  values={effectiveDraft}
+                  issues={issues}
+                  configuredSensitiveKeys={
+                    latest?.sensitiveConfiguredKeys ?? latest?.redactedKeys ?? []
+                  }
+                  clearedKeys={clearedKeys}
+                  onChange={(key, value) => {
+                    setClearedKeys((current) => current.filter((item) => item !== key));
+                    setDraft((current) => ({ ...current, [key]: value }));
+                  }}
+                  onClear={(key) => {
+                    setDraft((current) => ({ ...current, [key]: "" }));
+                    setClearedKeys((current) => [...new Set([...current, key])]);
+                  }}
+                />
+              </>
+            ) : (
+              <StatePanel kind="info" title={t("Hosting_ConfigurationProfiles_ReadOnlyTitle")}>
+                {t("Hosting_ConfigurationProfiles_ReadOnlyDescription")}
+              </StatePanel>
             )}
-          </span>
-          <div>
-            <button
-              className="button button--ghost"
-              type="button"
-              disabled={publish.isPending}
-              onClick={() => {
-                setDraft({});
-                setClearedKeys([]);
-                setIssues([]);
-              }}
-            >
-              {t("React_ConfigurationProfiles_DiscardChanges")}
-            </button>
-            <button
-              className="button button--primary"
-              type="button"
-              disabled={publish.isPending}
-              onClick={submit}
-            >
-              {publish.isPending
-                ? t("Hosting_ConfigurationProfiles_Publishing")
-                : t("Hosting_ConfigurationProfiles_Publish")}
-            </button>
+          </section>
+        )}
+        {tab === "revisions" && (
+          <ConfigurationProfileRevisionHistory profile={data} definitions={allDefinitions} />
+        )}
+        {tab === "access" && data.canManageAccess && (
+          <ConfigurationProfileAccessSection
+            profileId={data.profile.primaryKey}
+            access={access.data}
+            loading={access.isLoading}
+            error={access.error}
+            pending={changeAccess.isPending}
+            onRetry={() => void access.refetch()}
+            onSave={(matrix) => {
+              setMessage(undefined);
+              changeAccess.mutate(matrix);
+            }}
+          />
+        )}
+        {tab === "configuration" && dirty && data.canModify && !data.profile.isArchived && (
+          <div
+            className="next-hosting-profile-savebar"
+            role="region"
+            aria-label={t("React_ConfigurationProfiles_UnsavedChanges")}
+          >
+            <span>
+              <strong>
+                {formatResource(t("React_ConfigurationProfiles_ChangeCount"), changeCount)}
+              </strong>
+              {formatResource(
+                t("Hosting_ConfigurationProfiles_BasedOnRevision"),
+                data.profile.latestRevisionNumber,
+              )}
+            </span>
+            <div>
+              <ActionButton
+                variant="ghost"
+                disabled={publish.isPending}
+                onClick={() => {
+                  setDraft({});
+                  setClearedKeys([]);
+                  setIssues([]);
+                }}
+              >
+                {t("React_ConfigurationProfiles_DiscardChanges")}
+              </ActionButton>
+              <ActionButton variant="gold" disabled={publish.isPending} onClick={submit}>
+                {publish.isPending
+                  ? t("Hosting_ConfigurationProfiles_Publishing")
+                  : t("Hosting_ConfigurationProfiles_Publish")}
+              </ActionButton>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </PageStack>
       <ConfirmDialog
         open={archiveOpen}
         title={t("Hosting_ConfigurationProfiles_Archive")}
@@ -397,7 +390,7 @@ export function ConfigurationProfileWorkspacePage() {
             ? t("Hosting_ConfigurationProfiles_Archiving")
             : t("Hosting_ConfigurationProfiles_Archive")
         }
-        cancelLabel={t("Hosting_Common_Cancel")}
+        cancelLabel={t("Hosting_ConfigurationProfiles_Archive_Dismiss")}
         challenge={data.profile.title}
         onCancel={() => {
           if (!archive.isPending) setArchiveOpen(false);

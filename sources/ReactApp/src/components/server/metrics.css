@@ -1,0 +1,396 @@
+/*
+ * Server metrics panel (Phase 67): four equal tiles and the paused notice.
+ * Tokens only: no colour, spacing or radius literal. Values wrap and are never cut with an ellipsis.
+ */
+.server-metrics__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--utf-workspace-fact-min)), 1fr));
+  gap: var(--utf-space-md);
+  min-width: 0;
+  margin: var(--utf-space-md) 0 0;
+}
+
+.metric-tile {
+  display: grid;
+  align-content: start;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-base);
+}
+
+.metric-tile__term {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.metric-tile dd {
+  display: grid;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+  margin: 0;
+}
+
+.metric-tile p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.metric-tile__value {
+  color: var(--utf-text);
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The word "Unavailable" is a fact, not an alarm: muted text with a neutral icon, no warning colour. */
+.metric-tile__value--unavailable {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-xs);
+  color: var(--utf-text-muted);
+}
+
+.metric-tile__value--unavailable svg {
+  flex: 0 0 auto;
+  margin-top: var(--utf-space-xs);
+}
+
+.metric-tile__detail,
+.metric-tile__reason {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  line-height: var(--utf-leading-body);
+}
+
+/* Paused live notice: text and icon in the warning foreground, the same look as the accrued stale line. */
+.server-metrics__paused {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-xs);
+  margin: var(--utf-space-sm) 0 0;
+  color: var(--utf-state-warning-fg);
+}
+
+.server-metrics__paused svg {
+  flex: 0 0 auto;
+  margin-top: var(--utf-space-xs);
+}
+
+@media (max-width: 520px) {
+  .server-metrics__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/*
+ * History charts (Phase 67): hand-built SVG in a grid of one to three columns.
+ * Tokens only. Stroke widths and the marker radius are SVG attributes in the component, not CSS values.
+ * Series colour is used on the line, the band and the marker only, never on text.
+ */
+.server-metrics__views {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--utf-metric-chart-min)), 1fr));
+  gap: var(--utf-space-lg);
+  min-width: 0;
+  margin: var(--utf-space-md) 0 0;
+}
+
+.metric-chart {
+  display: grid;
+  align-content: start;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.metric-chart__title {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+}
+
+.metric-chart__summary,
+.metric-chart__note {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.metric-chart__plot {
+  position: relative;
+  min-width: 0;
+  height: var(--utf-metric-chart-height);
+  border-radius: var(--utf-radius-small);
+  touch-action: pan-y;
+}
+
+.metric-chart__plot:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.metric-chart__svg {
+  display: block;
+  overflow: visible;
+}
+
+.metric-chart__gridline {
+  stroke: var(--utf-chart-grid);
+}
+
+.metric-chart__tick {
+  fill: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-chart__band {
+  fill: var(--utf-chart-band);
+  stroke: none;
+}
+
+.metric-chart__line {
+  stroke: var(--utf-chart-line);
+}
+
+.metric-chart__marker {
+  fill: var(--utf-chart-line);
+  stroke: var(--utf-surface-raised);
+}
+
+/*
+ * Chart reading (Phase 67): the crosshair and the tooltip are decoration over values the tables also show. The
+ * tooltip never takes pointer events, so it cannot steal the pointer from the plot below it.
+ */
+.metric-chart__crosshair {
+  stroke: var(--utf-border-control);
+}
+
+.metric-chart__cursor {
+  fill: var(--utf-chart-line);
+  stroke: var(--utf-surface-raised);
+}
+
+.metric-chart__tooltip {
+  position: absolute;
+  top: var(--utf-space-xs);
+  display: grid;
+  gap: var(--utf-space-xs);
+  box-sizing: border-box;
+  max-width: min(var(--utf-metric-tooltip-width), 100%);
+  padding: var(--utf-space-sm);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius-small);
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.metric-chart__tooltip-time,
+.metric-chart__tooltip-range {
+  color: var(--utf-text-muted);
+}
+
+.metric-chart__tooltip-average {
+  display: flex;
+  align-items: center;
+  gap: var(--utf-space-xs);
+  font-weight: var(--utf-weight-bold);
+}
+
+.metric-chart__tooltip-key {
+  stroke: var(--utf-chart-line);
+}
+
+/* The empty plot keeps its full height so the layout does not shift when the first reading arrives. */
+.metric-chart__empty {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--utf-space-xs);
+  height: 100%;
+  padding: var(--utf-space-sm);
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  text-align: center;
+}
+
+.metric-chart__empty p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.metric-chart__empty .metric-chart__empty-hint {
+  color: var(--utf-text-muted);
+}
+
+/*
+ * Toolbar and views (Phase 67): the range chips and the view toggle scope the views below them. While a new range
+ * loads the previous views stay in place at reduced opacity, so nothing jumps.
+ */
+.server-metrics__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-sm);
+  margin: var(--utf-space-md) 0 0;
+}
+
+.server-metrics__views > .state-panel {
+  grid-column: 1 / -1;
+}
+
+.server-metrics__views--tables {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.server-metrics__views--loading {
+  opacity: var(--utf-metric-refetch-opacity);
+}
+
+/* Table view: a labelled scroll region that never widens the page, with a header that stays visible. */
+.metric-table {
+  min-width: 0;
+  max-height: var(--utf-output-max-height);
+  overflow: auto;
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius-small);
+}
+
+.metric-table:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.metric-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+.metric-table__caption {
+  padding: var(--utf-space-sm) var(--utf-space-md);
+  font-weight: var(--utf-weight-bold);
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.metric-table th,
+.metric-table td {
+  padding: var(--utf-space-xs) var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+
+.metric-table th:first-child,
+.metric-table td:first-child {
+  text-align: start;
+}
+
+.metric-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--utf-surface-raised);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+}
+
+.metric-table__value {
+  font-weight: var(--utf-weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A stretch without readings or the empty sentences: one muted cell across all columns. */
+.metric-table td.metric-table__note {
+  color: var(--utf-text-muted);
+  text-align: start;
+}
+
+.metric-table__note p {
+  margin: 0;
+}
+
+/*
+ * Responsive and forced-colour rules (Phase 67). At 800px and below every interactive control of the toolbar is
+ * touch sized; at 520px and below the toolbar stacks with a full-width view toggle. The plot and the table regions
+ * keep the shared focus ring at every width.
+ */
+@media (max-width: 800px) {
+  .server-metrics__toolbar .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .server-metrics__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .server-metrics__toolbar > .button {
+    width: 100%;
+  }
+}
+
+/*
+ * Forced colours: the average line and the markers use CanvasText, the gridlines GrayText and the band is not
+ * drawn. The tooltip and the table view carry the values, so nothing depends on a colour or on the band.
+ */
+@media (forced-colors: active) {
+  .metric-chart__line,
+  .metric-chart__tooltip-key {
+    stroke: CanvasText;
+  }
+
+  .metric-chart__marker,
+  .metric-chart__cursor {
+    fill: CanvasText;
+    stroke: Canvas;
+  }
+
+  .metric-chart__crosshair {
+    stroke: CanvasText;
+  }
+
+  .metric-chart__gridline {
+    stroke: GrayText;
+  }
+
+  .metric-chart__band {
+    display: none;
+  }
+
+  .metric-chart__tooltip {
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .metric-chart__plot:focus-visible,
+  .metric-table:focus-visible {
+    outline-color: Highlight;
+  }
+}

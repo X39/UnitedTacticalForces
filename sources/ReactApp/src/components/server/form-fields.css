@@ -1,0 +1,848 @@
+/*
+ * Styles for the shared form controls (TextField, SelectField, CheckboxField, RadioGroupField) and the Disclosure
+ * in src/components.
+ *
+ * These components import this file from this directory on purpose, so tests/styles/server-style-guard.test.ts
+ * covers their styles too. The file consumes --utf-* tokens only. The only allowed literals are a 1px border width
+ * and the 520px and 800px media breakpoints; the style guard fails on anything else. Class names are the
+ * form-field and disclosure families and never the legacy global .field rule.
+ */
+
+/* Field wrapper, label, hint and error */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+.form-field__label,
+.form-field__legend {
+  padding: 0;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.form-field__hint,
+.form-field__error,
+.form-field__reason {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.form-field__hint,
+.form-field__reason {
+  color: var(--utf-text-muted);
+}
+
+.form-field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-xs);
+  color: var(--utf-state-danger-fg);
+}
+
+.form-field__error-icon {
+  flex: none;
+}
+
+/* Text input and select */
+.form-field__control {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--utf-control-height);
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  border: 1px solid var(--utf-border-control);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+  color: var(--utf-text);
+  font: inherit;
+  font-size: var(--utf-text-body);
+}
+
+/*
+ * Select: the browser arrow is removed and one decorative chevron sits in the end padding, so the text never runs
+ * under it and every page shows the same padded arrow. The wrapper is the positioning context of the chevron.
+ */
+.form-field__select {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.form-field__control--select {
+  appearance: none;
+  min-height: var(--utf-control-height);
+  padding-inline-end: var(--utf-space-xl);
+  border-color: var(--utf-border-control);
+  background-color: var(--utf-surface-raised);
+  text-overflow: ellipsis;
+}
+
+.form-field__control--select:hover:not(:disabled) {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+}
+
+/*
+ * Browsers that support customizable selects get a token-styled popup; every other browser keeps the padded native
+ * select above and its native popup. The built-in picker icon is hidden because the shared chevron is drawn.
+ */
+@supports (appearance: base-select) {
+  .form-field__control--select,
+  .form-field__control--select::picker(select) {
+    appearance: base-select;
+  }
+
+  .form-field__control--select::picker-icon {
+    display: none;
+  }
+
+  .form-field__control--select::picker(select) {
+    box-sizing: border-box;
+    padding: var(--utf-space-xs);
+    border: 1px solid var(--utf-border-control);
+    border-radius: var(--utf-radius);
+    background-color: var(--utf-surface-overlay);
+    color: var(--utf-text);
+    box-shadow: var(--utf-elevation-2);
+  }
+
+  .form-field__control--select option {
+    padding: var(--utf-space-sm) var(--utf-space-md);
+    border-radius: var(--utf-radius-small);
+    background-color: var(--utf-surface-overlay);
+    color: var(--utf-text);
+  }
+
+  .form-field__control--select option:hover,
+  .form-field__control--select option:focus-visible {
+    background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+  }
+
+  .form-field__control--select option::checkmark {
+    color: var(--utf-text);
+  }
+
+  .form-field__control--select option:disabled {
+    color: var(--utf-text-muted);
+  }
+
+  @media (max-width: 800px) {
+    .form-field__control--select option {
+      min-height: var(--utf-control-height-touch);
+    }
+  }
+}
+
+/* Date and time controls draw their picker in the dark scheme; the picker indicator stays visible. */
+.form-field__control[type="date"],
+.form-field__control[type="time"],
+.form-field__control[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* Label row: the label and an optional end node (a change state) share one wrapping row. */
+.form-field__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+}
+
+.form-field__head > .form-field__switch {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.form-field__select-chevron {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--utf-space-sm);
+  margin-block: auto;
+  color: var(--utf-text);
+  pointer-events: none;
+}
+
+.form-field__control--select:disabled + .form-field__select-chevron {
+  color: var(--utf-text-muted);
+}
+
+/* Control with a trailing node: one row, the control takes the free width and the node never shrinks */
+.form-field__row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.form-field__row > .form-field__control {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.form-field__trailing {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+}
+
+/* Multi-line control: at least two rows of a single-line control, resizable vertically only */
+.form-field__control--multiline {
+  min-height: calc(var(--utf-control-height) * 2);
+  line-height: var(--utf-leading-body);
+  resize: vertical;
+}
+
+.form-field__control:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.form-field__control[aria-invalid="true"] {
+  border-color: var(--utf-state-danger-border);
+}
+
+/*
+ * Drawn marks over native inputs. The native input keeps its place in the accessibility tree and the tab order, is
+ * invisible and overlays its whole row (the positioned label), so the row is the click and tap target. The drawn box
+ * is an aria-hidden sibling of the input, never its ancestor. The check-mark wrapper is deliberately not positioned,
+ * so the input resolves against the label.
+ */
+.form-field__check,
+.form-field__radio-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--utf-space-sm);
+  min-height: var(--utf-control-height);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.check-mark__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.check-mark {
+  display: inline-flex;
+  flex: none;
+  width: var(--utf-check-size);
+  height: var(--utf-check-size);
+  border-radius: var(--utf-radius-small);
+}
+
+.check-mark--radio {
+  border-radius: 50%;
+}
+
+.check-mark__box {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--utf-border-control);
+  border-radius: inherit;
+  background-color: var(--utf-surface-base);
+  color: var(--utf-surface-base);
+}
+
+/* The glyph and the radio dot are present in every state; only the checked state shows them. */
+.check-mark__box svg {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.check-mark--radio .check-mark__box::after {
+  content: "";
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
+  background-color: var(--utf-surface-base);
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.check-mark__input:checked + .check-mark__box {
+  border-color: var(--utf-text);
+  background-color: var(--utf-text);
+}
+
+.check-mark__input:checked + .check-mark__box svg,
+.check-mark__input:checked + .check-mark__box::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.check-mark__input[aria-invalid="true"] + .check-mark__box {
+  border-color: var(--utf-state-danger-border);
+}
+
+.form-field__check:hover .check-mark__input:not(:disabled) + .check-mark__box {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+}
+
+/* Disabled marks stay visible; the checked state stays readable through the glyph and the dot. */
+.check-mark__input:disabled + .check-mark__box {
+  border-color: var(--utf-border-divider);
+}
+
+.check-mark__input:disabled:checked + .check-mark__box {
+  background-color: var(--utf-text-muted);
+}
+
+.form-field__check:has(.check-mark__input:disabled) {
+  color: var(--utf-text-muted);
+  cursor: not-allowed;
+}
+
+/* The focus ring is drawn on the mark wrapper, an ancestor of the focused input. */
+.form-field__check .check-mark:has(.check-mark__input:focus-visible) {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.form-field__check-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .check-mark__box svg,
+  .check-mark--radio .check-mark__box::after {
+    transition:
+      opacity var(--utf-motion-fast),
+      transform var(--utf-motion-fast);
+  }
+}
+
+.form-field__radio-row--disabled,
+.form-field__radio-row--disabled .form-field__hint {
+  color: var(--utf-text-muted);
+  cursor: not-allowed;
+}
+
+/*
+ * Choice cards: one card per radio option. Two or three cards lay out in equal columns above 520px (the stack is the
+ * default at 520px and below); the ring wraps the whole card.
+ */
+.form-field__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.form-field__options[data-columns="2"],
+.form-field__options[data-columns="3"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--utf-choice-card-min), 1fr));
+}
+
+.choice-card {
+  box-sizing: border-box;
+  align-items: flex-start;
+  min-width: 0;
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-control);
+  border-radius: var(--utf-radius);
+  background-color: var(--utf-surface-raised);
+  color: var(--utf-text);
+}
+
+/* The circle lines up with the first line of the label. */
+.choice-card .check-mark {
+  margin-block-start: calc(
+    (var(--utf-text-body) * var(--utf-leading-body) - var(--utf-check-size)) / 2
+  );
+}
+
+.choice-card__label {
+  font-weight: var(--utf-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.choice-card:has(.check-mark__input:checked) {
+  border-color: var(--utf-text);
+  background-color: var(--utf-surface-overlay);
+}
+
+.choice-card:hover:not(.form-field__radio-row--disabled) {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+}
+
+.choice-card.form-field__radio-row--disabled {
+  border-color: var(--utf-border-divider);
+}
+
+.choice-card.form-field__radio-row--disabled:has(.check-mark__input:checked) .check-mark__box {
+  background-color: var(--utf-text-muted);
+}
+
+.choice-card:has(.check-mark__input:focus-visible) {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/*
+ * Segmented bar: one bordered bar with one segment per option. A selected segment inverts to the text fill, so the
+ * selection never depends on color alone. The ring wraps the segment.
+ */
+.segmented {
+  display: inline-flex;
+  box-sizing: border-box;
+  max-width: 100%;
+  gap: var(--utf-space-xs);
+  padding: var(--utf-space-xs);
+  border: 1px solid var(--utf-border-control);
+  border-radius: var(--utf-radius);
+  background-color: var(--utf-surface-overlay);
+}
+
+.segmented__option {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: var(--utf-control-height);
+  padding: var(--utf-space-xs) var(--utf-space-md);
+  border-radius: var(--utf-radius-small);
+  color: var(--utf-text);
+  cursor: pointer;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.segmented__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.segmented__option:has(.check-mark__input:checked) {
+  background-color: var(--utf-text);
+  color: var(--utf-surface-base);
+}
+
+.segmented__option:hover:not(.segmented__option--disabled) {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+}
+
+.segmented__option--disabled {
+  color: var(--utf-text-muted);
+  cursor: not-allowed;
+}
+
+.segmented__option--disabled:has(.check-mark__input:checked) {
+  background-color: var(--utf-text-muted);
+  color: var(--utf-surface-base);
+}
+
+.segmented__option:has(.check-mark__input:focus-visible) {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/* Toggle chip: a checkbox drawn as a chip with no visible box; the checked chip inverts its fill. */
+.toggle-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: var(--utf-day-chip-min);
+  min-height: var(--utf-control-height);
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  border: 1px solid var(--utf-border-control);
+  border-radius: var(--utf-radius-small);
+  background-color: var(--utf-surface-overlay);
+  color: var(--utf-text);
+  cursor: pointer;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.toggle-chip__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.toggle-chip:has(.check-mark__input:checked) {
+  border-color: var(--utf-text);
+  background-color: var(--utf-text);
+  color: var(--utf-surface-base);
+}
+
+.toggle-chip:has(.check-mark__input[aria-invalid="true"]) {
+  border-color: var(--utf-state-danger-border);
+}
+
+.toggle-chip:hover:not(:has(.check-mark__input:disabled)) {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+}
+
+.toggle-chip:has(.check-mark__input:disabled) {
+  border-color: var(--utf-border-divider);
+  color: var(--utf-text-muted);
+  cursor: not-allowed;
+}
+
+.toggle-chip:has(.check-mark__input:disabled:checked) {
+  background-color: var(--utf-text-muted);
+  color: var(--utf-surface-base);
+}
+
+.toggle-chip:has(.check-mark__input:focus-visible) {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/*
+ * Switch: the label text grows, then the track, then the state word. Both state words occupy the same grid cell and
+ * the one that does not match the checked state is hidden by visibility, so the row never changes width.
+ */
+.form-field__switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: var(--utf-space-sm);
+  min-height: var(--utf-control-height);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.form-field__switch-text {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.switch-control {
+  display: inline-flex;
+  grid-column: 2;
+  grid-row: 1;
+  border-radius: calc(var(--utf-switch-track-height) / 2);
+}
+
+.switch-track {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: var(--utf-switch-track-width);
+  height: var(--utf-switch-track-height);
+  border: 1px solid var(--utf-border-control);
+  border-radius: inherit;
+  background-color: var(--utf-surface-overlay);
+}
+
+/* The inset is measured from the padding box, so the 1px border is taken off to keep both gaps equal. */
+.switch-thumb {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--utf-space-xs) - 0.0625rem);
+  width: var(--utf-switch-thumb-size);
+  height: var(--utf-switch-thumb-size);
+  margin-block: auto;
+  border-radius: 50%;
+  background-color: var(--utf-text-muted);
+}
+
+.check-mark__input:checked + .switch-track {
+  border-color: var(--utf-text);
+  background-color: var(--utf-text);
+}
+
+.check-mark__input:checked + .switch-track .switch-thumb {
+  background-color: var(--utf-surface-base);
+  transform: translateX(
+    calc(var(--utf-switch-track-width) - var(--utf-switch-thumb-size) - 2 * var(--utf-space-xs))
+  );
+}
+
+.check-mark__input[aria-invalid="true"] + .switch-track {
+  border-color: var(--utf-state-danger-border);
+}
+
+.form-field__switch:hover .check-mark__input:not(:disabled) + .switch-track {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+}
+
+.form-field__switch-state {
+  grid-column: 3;
+  grid-row: 1;
+  color: var(--utf-text-muted);
+  font-weight: var(--utf-weight-regular);
+}
+
+.switch-control:has(.check-mark__input:checked) ~ .form-field__switch-state--off,
+.switch-control:not(:has(.check-mark__input:checked)) ~ .form-field__switch-state--on {
+  visibility: hidden;
+}
+
+.form-field__switch:has(.check-mark__input:disabled) {
+  color: var(--utf-text-muted);
+  cursor: not-allowed;
+}
+
+.check-mark__input:disabled + .switch-track {
+  border-color: var(--utf-border-divider);
+}
+
+.check-mark__input:disabled:checked + .switch-track {
+  background-color: var(--utf-text-muted);
+}
+
+.switch-control:has(.check-mark__input:focus-visible) {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .switch-thumb {
+    transition: transform var(--utf-motion-base) var(--utf-motion-ease);
+  }
+}
+
+/*
+ * Forced colors: every drawn mark keeps a visible border, and the checked mark differs from the unchecked one
+ * through the system Highlight pair, so the state survives a user palette.
+ */
+@media (forced-colors: active) {
+  .check-mark__box,
+  .switch-track,
+  .toggle-chip,
+  .choice-card,
+  .segmented {
+    border-color: CanvasText;
+  }
+
+  .check-mark__input:checked + .check-mark__box,
+  .check-mark__input:checked + .switch-track {
+    border-color: Highlight;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+
+  .check-mark--radio .check-mark__box::after,
+  .check-mark__input:checked + .switch-track .switch-thumb {
+    background-color: HighlightText;
+  }
+
+  .switch-thumb {
+    background-color: CanvasText;
+  }
+
+  .toggle-chip:has(.check-mark__input:checked),
+  .segmented__option:has(.check-mark__input:checked) {
+    border-color: Highlight;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+
+  .choice-card:has(.check-mark__input:checked) {
+    border-color: Highlight;
+  }
+
+  .check-mark__input:disabled + .check-mark__box,
+  .check-mark__input:disabled + .switch-track,
+  .toggle-chip:has(.check-mark__input:disabled),
+  .choice-card.form-field__radio-row--disabled {
+    border-color: GrayText;
+    color: GrayText;
+  }
+
+  .segmented__option--disabled,
+  .form-field__switch:has(.check-mark__input:disabled) {
+    color: GrayText;
+  }
+}
+
+.form-field__radio-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.form-field__legend {
+  margin-bottom: var(--utf-space-xs);
+}
+
+/* Disclosure: single-class selectors keep every two-class page-local override winning. */
+.disclosure {
+  display: block;
+  min-width: 0;
+}
+
+.disclosure__heading {
+  margin: 0;
+  font: inherit;
+}
+
+.disclosure__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: var(--utf-space-sm);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--utf-control-height);
+  margin: 0;
+  padding: var(--utf-space-sm) var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius-small);
+  background-color: var(--utf-surface-overlay);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.disclosure__summary:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.disclosure__title {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.disclosure__badge {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.disclosure__chevron {
+  grid-column: 3;
+  grid-row: 1;
+  flex: none;
+}
+
+.disclosure__summary-line {
+  grid-column: 1 / -1;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.disclosure__content {
+  padding-top: var(--utf-space-md);
+}
+
+/* Panel shape: the header is the top of a raised panel and owns no border of its own. */
+.disclosure--panel {
+  background-color: var(--utf-surface-raised);
+  border-radius: var(--utf-radius-small);
+}
+
+.disclosure--panel > .disclosure__summary,
+.disclosure--panel > .disclosure__heading > .disclosure__summary {
+  min-height: var(--utf-control-height-touch);
+  padding: var(--utf-space-lg);
+  border: 0;
+  background-color: transparent;
+}
+
+/*
+ * The title cell reserves the height of a badge, so a badge appearing in any panel header (a staged change count, a
+ * credential state) never makes the header grow and never moves a field or panel below it (D-11). The header grid
+ * centers the title in the cell.
+ */
+.disclosure--panel > .disclosure__summary .disclosure__title,
+.disclosure--panel > .disclosure__heading > .disclosure__summary .disclosure__title {
+  min-height: var(--utf-control-height-compact);
+  font-size: var(--utf-text-heading);
+  line-height: var(--utf-leading-heading);
+}
+
+.disclosure--panel > .disclosure__content {
+  padding: var(--utf-space-lg);
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+@media (max-width: 520px) {
+  .disclosure--panel > .disclosure__summary,
+  .disclosure--panel > .disclosure__heading > .disclosure__summary {
+    padding: var(--utf-space-md);
+  }
+}
+
+/* The rotation shows the open state, so it applies with reduced motion too; only the transition is motion. */
+.disclosure[data-open] > .disclosure__summary .disclosure__chevron,
+.disclosure[data-open] > .disclosure__heading > .disclosure__summary .disclosure__chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .disclosure__chevron {
+    transition: transform var(--utf-motion-base);
+  }
+}
+
+/* At 520px and below a card group stacks and the segmented bar becomes a full-width row of equal columns. */
+@media (max-width: 520px) {
+  .form-field__options[data-columns="2"],
+  .form-field__options[data-columns="3"] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .segmented {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .form-field__control,
+  .form-field__control--select,
+  .form-field__check,
+  .form-field__radio-row,
+  .form-field__switch,
+  .toggle-chip,
+  .segmented__option,
+  .disclosure__summary {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .form-field__control--multiline {
+    min-height: calc(var(--utf-control-height-touch) * 2);
+  }
+}

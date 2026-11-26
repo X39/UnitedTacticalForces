@@ -31,7 +31,13 @@ output and must follow the rules above.
 - Do not place game-process execution in the API or turn the Aspire development harness into a production local
   runtime provider.
 - Adding or expanding a cross-cutting or server-wide feature requires an explicit user request and an architectural
-  justification for its placement. Do not broaden the API, shared contracts, or core infrastructure for convenience.
+  justification for its placement.
+- API, shared-contract, and database changes that a feature needs (new or changed DTO fields, endpoints, or
+  behavior) are in scope and need no separate approval. The current API is not a frozen contract: change it freely
+  when that gives the better design. Put each change in the layer that owns the data, keep the architecture
+  boundaries above intact, and regenerate the OpenAPI snapshot and generated clients.
+- Do not update the legacy Blazor WebApp for frontend work. Touch it only when an API change would otherwise break
+  its compatibility with the API.
 
 ## Entity Framework migrations
 

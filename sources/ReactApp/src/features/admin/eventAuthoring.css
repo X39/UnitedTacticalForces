@@ -1,0 +1,78 @@
+/*
+ * Event authoring overrides for controls that render through the shared ActionButton.
+ *
+ * The layout rules of these controls still live in src/styles.css. That file keeps its element selectors, which match
+ * the button element the shared component renders, so only the properties the shared .button rule sets and the legacy
+ * rule leaves open are restated here: radius, type scale and display. A property the legacy rule
+ * already sets is never repeated, because the selectors below outrank it. The file uses --utf-* tokens only.
+ */
+
+.event-create-stepper .button,
+.event-editor-tabs .button,
+.event-admin-metrics .button,
+.event-authoring-picker__popover .button {
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  letter-spacing: normal;
+  line-height: var(--utf-leading-body);
+}
+
+.event-create-stepper .button,
+.event-editor-tabs .button {
+  border-radius: 0;
+}
+
+.event-create-stepper .button,
+.event-admin-metrics .button {
+  display: block;
+}
+
+/* Role symbol picker: the shared Disclosure toggle takes over the look of the former native summary. */
+.event-role-symbol-picker .disclosure__summary {
+  min-height: var(--utf-control-height);
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  color: var(--utf-text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--utf-radius-small);
+  cursor: pointer;
+}
+
+.event-role-symbol-picker .disclosure__summary:hover,
+.event-role-symbol-picker .disclosure[data-open] > .disclosure__summary {
+  border-color: color-mix(in srgb, var(--gold) 62%, var(--border));
+}
+
+.event-role-symbol-picker .disclosure__title {
+  display: flex;
+  align-items: center;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  font-weight: var(--utf-weight-regular);
+}
+
+.event-role-symbol-picker .disclosure__title > span {
+  display: grid;
+  min-width: 0;
+  line-height: var(--utf-leading-label);
+}
+
+.event-role-symbol-picker .disclosure__title small {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.event-role-symbol-picker .disclosure__title strong {
+  overflow: hidden;
+  font-size: var(--utf-text-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-role-symbol-picker[data-disabled] .disclosure__summary {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

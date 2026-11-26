@@ -1,0 +1,152 @@
+/*
+ * Styles for the advanced create options (AdvancedOptions, StorageOptions, StorageDemandDetails).
+ *
+ * The file consumes --utf-* tokens only; the style guard allows a 1px border width and the 520px and 800px media
+ * breakpoints and nothing else. The content stack spaces fields with --utf-space-md, the summary line wraps and is
+ * never truncated, the unavailable provider list is a plain wrapping stack, and the 44px touch targets at 800px and
+ * below come from the shared form controls this file does not restyle.
+ */
+
+/* Advanced content */
+.create-advanced__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+}
+
+.create-advanced__summary {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.create-advanced__provider {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.create-advanced__unavailable {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+}
+
+.create-advanced__unavailable h3 {
+  margin: 0;
+  font-size: var(--utf-text-body);
+}
+
+.create-advanced__unavailable ul,
+.create-advanced__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.create-advanced__unavailable li,
+.create-advanced__actions li {
+  overflow-wrap: anywhere;
+}
+
+.create-advanced__about p {
+  margin: 0 0 var(--utf-space-sm);
+  overflow-wrap: anywhere;
+}
+
+/* Storage options and facts */
+.create-storage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+}
+
+.create-storage__note {
+  margin: 0;
+  color: var(--utf-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.create-storage-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-md);
+  margin: 0;
+}
+
+.create-storage-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  flex: 1 1 var(--utf-workspace-fact-min);
+  min-width: 0;
+}
+
+.create-storage-facts dt {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+  overflow-wrap: anywhere;
+}
+
+.create-storage-facts dd {
+  margin: 0;
+  font-weight: var(--utf-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+/* Storage details: the demand breakdown */
+.create-storage-details__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+}
+
+.create-storage-details__body h3 {
+  margin: 0;
+  font-size: var(--utf-text-body);
+}
+
+.create-storage-details__confidence {
+  margin: 0;
+  color: var(--utf-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.create-storage-fit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.create-storage-components {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.create-storage-components li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 800px) {
+  .create-storage-components li {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: var(--utf-space-md);
+  }
+}

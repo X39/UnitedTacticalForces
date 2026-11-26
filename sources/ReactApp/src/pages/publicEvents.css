@@ -1,25 +1,35 @@
+/*
+ * Public hero rhythm (D-AUTO-4). Only the hero lede, the hero actions and the space below the hero use tokens;
+ * the title keeps its marketing scale (E-01) and every other hero literal stays in styles.css on the legacy
+ * ratchet with the reason "Tier C hero (D-AUTO-4)". The selectors are two classes deep so they win over the
+ * single-class hero rules in styles.css without editing that file. Every public hero page imports this sheet.
+ */
+.public-hero .public-hero__description {
+  max-width: var(--utf-measure);
+  margin: var(--utf-space-md) 0 var(--utf-space-lg);
+}
+
+.public-hero .public-hero__actions {
+  gap: var(--utf-space-sm);
+}
+
+/* The first block below a hero starts at the header-to-block rhythm. */
+.public-page > .public-hero + .content-section,
+.public-page > .public-hero + .page-wrap {
+  padding-top: var(--utf-space-lg);
+}
+
+.verein-document-page__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-md);
+  margin-top: var(--utf-space-md);
+}
+
 .operations-hero {
   min-height: min(520px, calc(100vh - var(--header-height)));
   --hero-position: center 42%;
-}
-
-.operations-hero__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-bottom: 2rem;
-  color: #e4e6e9;
-  font:
-    600 0.72rem "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.1em;
-  text-decoration: none;
-  text-transform: uppercase;
-}
-
-.operations-hero__back:hover,
-.operations-hero__back:focus-visible {
-  color: var(--gold-bright);
 }
 
 .operations-workspace {
@@ -39,37 +49,6 @@
   box-shadow: 0 18px 42px rgb(0 0 0 / 18%);
 }
 
-.operations-commandbar .view-toggle {
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.operations-commandbar .view-toggle button {
-  min-height: var(--control-height);
-  padding-inline: 1rem;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font:
-    650 0.76rem "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.operations-commandbar .view-toggle button:hover,
-.operations-commandbar .view-toggle button:focus-visible {
-  color: var(--ink);
-}
-
-.operations-commandbar .view-toggle button.active {
-  border-color: rgb(186 160 90 / 44%);
-  background: rgb(186 160 90 / 12%);
-  color: var(--gold-bright);
-}
-
 .operations-commandbar__meta {
   display: flex;
   align-items: center;
@@ -80,12 +59,6 @@
     sans-serif;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-}
-
-.operations-commandbar__meta .button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
 }
 
 .operations-filters {
@@ -101,8 +74,56 @@
   margin: 0;
 }
 
-.operations-filters .filter-chips {
+.operations-filters .filter-chip-group {
   min-width: 0;
+}
+
+/*
+ * Shared controls inside the calendar. The calendar controls are ActionButtons, which carry the shared `.button`
+ * base (fit-content width, inline-flex layout, control-height floor). The rules below restore the geometry each
+ * calendar control needs; they are two classes deep so they win over the base without touching styles.css.
+ */
+.operations-page .calendar-monthbar .button--icon-only {
+  width: var(--control-height);
+  height: var(--control-height);
+}
+
+.operations-page .calendar-week-strip .button {
+  width: 100%;
+  border-radius: 0;
+}
+
+.operations-page .calendar-day__number.button {
+  width: 1.8rem;
+  min-width: 0;
+  height: 1.8rem;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.operations-page .calendar-day__events .button {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  border-radius: 0;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
+}
+
+.operations-page .calendar-agenda__open.button {
+  width: 100%;
+  min-height: 0;
+  justify-content: start;
+  padding: 0;
+  border-radius: 0;
+  font-weight: inherit;
+  letter-spacing: normal;
+}
+
+.operations-page .calendar-agenda__open.button strong {
+  font-size: 0.84rem;
 }
 
 .operations-page .operation-board {
@@ -403,56 +424,7 @@
   background: var(--canvas);
 }
 
-.operations-skeleton {
-  display: grid;
-  gap: 1px;
-  border: 1px solid var(--stroke);
-  background: var(--stroke);
-}
-
-.operations-skeleton--board {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.operations-skeleton > span {
-  min-height: 350px;
-  background:
-    linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 5%) 50%, transparent 70%) 0 0 / 200%
-      100%,
-    linear-gradient(180deg, #171c23 0 55%, #101419 55%);
-  animation: operations-shimmer 1.8s linear infinite;
-}
-
-.operations-skeleton--board > span:first-of-type {
-  grid-column: span 2;
-}
-
-.operations-skeleton--calendar {
-  grid-template-columns: minmax(0, 1fr) 330px;
-}
-
-.operations-skeleton--calendar > span:first-of-type {
-  grid-row: span 2;
-  min-height: 620px;
-}
-
-.operations-skeleton--calendar > span {
-  min-height: 309px;
-}
-
-@keyframes operations-shimmer {
-  to {
-    background-position:
-      -200% 0,
-      0 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .operations-skeleton > span {
-    animation: none;
-  }
-
   .operations-page .operation-board-card {
     transition: none;
   }
@@ -479,14 +451,6 @@
   .operations-page .calendar-detail {
     position: static;
   }
-
-  .operations-skeleton--calendar {
-    grid-template-columns: 1fr;
-  }
-
-  .operations-skeleton--calendar > span:first-of-type {
-    grid-row: auto;
-  }
 }
 
 @media (max-width: 780px) {
@@ -497,11 +461,6 @@
   .operations-commandbar {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .operations-commandbar .view-toggle,
-  .operations-commandbar .view-toggle button {
-    flex: 1 1 0;
   }
 
   .operations-commandbar__meta {
@@ -515,13 +474,11 @@
     flex-direction: column;
   }
 
-  .operations-page .operation-board,
-  .operations-skeleton--board {
+  .operations-page .operation-board {
     grid-template-columns: 1fr;
   }
 
-  .operations-page .operation-board-card--featured,
-  .operations-skeleton--board > span:first-of-type {
+  .operations-page .operation-board-card--featured {
     grid-column: auto;
   }
 
@@ -561,21 +518,17 @@
 }
 
 @media (max-width: 520px) {
-  .operations-hero__back {
-    margin-bottom: 1.4rem;
-  }
-
   .operations-commandbar__meta > span {
     max-width: 12rem;
   }
 
-  .operations-filters .filter-chips {
+  .operations-filters .filter-chip-group {
     display: grid;
     width: 100%;
     grid-template-columns: 1fr 1fr;
   }
 
-  .operations-filters .filter-chips button {
+  .operations-filters .filter-chip-group .button {
     min-width: 0;
   }
 

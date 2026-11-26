@@ -25,6 +25,7 @@ const baseOperation: HostingOperation = {
   workerId: null,
   traceId: null,
   spanId: null,
+  actorName: null,
   timeStampCreated: "2026-08-13T10:05:00Z",
 };
 
@@ -150,11 +151,17 @@ describe("hosting audit feed", () => {
       ),
     ).not.toBeInTheDocument();
 
-    const evidence = within(failedEntry).getByText("Technical evidence").closest("details");
-    expect(evidence).not.toHaveAttribute("open");
-    expect(within(evidence as HTMLElement).getByText("deployment-1")).not.toBeVisible();
-    await user.click(within(failedEntry).getByText("Technical evidence"));
-    expect(evidence).toHaveAttribute("open");
+    const toggle = within(failedEntry).getByRole("button", { name: /^Technical evidence/ });
+    const evidence = document.getElementById(toggle.getAttribute("aria-controls") ?? "")!;
+    expect(evidence).toHaveAttribute("role", "region");
+    expect(evidence.closest("details")).toBeNull();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(evidence).getByText("deployment-1")).not.toBeVisible();
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
     expect(within(evidence as HTMLElement).getByText("audit-failed")).toBeVisible();
     expect(within(evidence as HTMLElement).getByText("deployment-1")).toBeVisible();
     expect(within(evidence as HTMLElement).getByText("job-1")).toBeVisible();
@@ -200,8 +207,9 @@ describe("hosting audit feed", () => {
   it("uses resource-backed empty and German audit labels", async () => {
     await i18n.changeLanguage("de");
     const { rerender } = renderFeed([]);
+    expect(screen.getByText("Keine Aktivität aufgezeichnet")).toBeVisible();
     expect(
-      screen.getByText("Für diesen Server wurden noch keine Betriebsaktivitäten aufgezeichnet."),
+      screen.getByText("Aktivität erscheint hier nach der ersten Aktion auf diesem Server."),
     ).toBeVisible();
 
     rerender(
@@ -220,8 +228,6 @@ describe("hosting audit feed", () => {
     renderFeed([], false, true);
 
     expect(screen.getByText("Loading operational activity…")).toBeVisible();
-    expect(
-      screen.queryByText("No operational activity has been recorded for this server."),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("No activity recorded")).not.toBeInTheDocument();
   });
 });

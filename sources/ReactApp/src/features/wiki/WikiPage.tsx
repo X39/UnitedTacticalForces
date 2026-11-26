@@ -1,7 +1,7 @@
 import {
   BookOpen24Regular,
   CheckmarkCircle20Regular,
-  Search20Regular,
+  Dismiss20Regular,
   ShieldLock24Regular,
   Warning20Regular,
 } from "@fluentui/react-icons";
@@ -16,13 +16,18 @@ import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import { useSiteImage } from "@/app/siteImages";
 import { useAuth } from "@/auth/auth";
+import { ActionButton } from "@/components/ActionControl";
+import { TextAreaField, TextField } from "@/components/FormFields";
 import {
   ConfirmDialog,
   Markdown,
+  PageHeader,
   StatePanel,
   StatusBadge,
   useUnsavedChanges,
 } from "@/components/primitives";
+import { SearchField } from "@/components/SearchField";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
 import {
   buildWikiTree,
   filterWikiHeaders,
@@ -300,29 +305,24 @@ export function Component() {
       className="wiki-page"
       style={{ "--wiki-hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
     >
-      <header className="wiki-hero">
-        <div className="wiki-hero__title">
-          <span aria-hidden="true">
-            <BookOpen24Regular />
-          </span>
-          <div>
-            <h1>{t("Pages_Wiki_Index_Title")}</h1>
-            <p>{t("Pages_Wiki_Index_Subtitle")}</p>
-          </div>
-        </div>
-        <label className="wiki-search">
-          <span>{t("Pages_Wiki_Index_SearchLabel")}</span>
-          <span>
-            <Search20Regular aria-hidden="true" />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
+      <div className="wiki-hero">
+        <span className="wiki-hero__icon" aria-hidden="true">
+          <BookOpen24Regular />
+        </span>
+        <PageHeader
+          title={t("Pages_Wiki_Index_Title")}
+          description={t("Pages_Wiki_Index_Subtitle")}
+          actions={
+            <SearchField
+              label={t("Pages_Wiki_Index_SearchLabel")}
               placeholder={t("Pages_Wiki_Index_SearchPlaceholder")}
+              clearLabel={t("Common_SearchClear")}
+              value={search}
+              onChange={setSearch}
             />
-          </span>
-        </label>
-      </header>
+          }
+        />
+      </div>
 
       <div
         className="wiki-mobile-tabs"
@@ -366,39 +366,32 @@ export function Component() {
               <h2>{t("Pages_Wiki_Index_Pages")}</h2>
             </div>
             {access.canCreate && (
-              <button
-                className="button button--ghost button--small"
-                type="button"
-                onClick={openCreateEditor}
-              >
+              <ActionButton variant="ghost" size="compact" onClick={openCreateEditor}>
                 {t("Pages_Wiki_Index_NewPage")}
-              </button>
+              </ActionButton>
             )}
           </header>
           <div className="wiki-navigation__body">
             {auth.isLoading || headersQuery.isLoading ? (
-              <StatePanel kind="loading">{t("Pages_Wiki_Index_LoadingIndex")}</StatePanel>
+              <LoadingState label={t("Pages_Wiki_Index_LoadingIndex")} />
             ) : headersQuery.isError ? (
-              <StatePanel
-                kind={errorKind(headersQuery.error) === "forbidden" ? "forbidden" : "error"}
-                action={
-                  <button
-                    className="button button--ghost button--small"
-                    type="button"
-                    onClick={() => void headersQuery.refetch()}
-                  >
-                    {t("React_UI_Retry")}
-                  </button>
-                }
-              >
-                {t("Pages_Wiki_Index_Error_LoadHeadersFailed")}
-              </StatePanel>
+              errorKind(headersQuery.error) === "forbidden" ? (
+                <ForbiddenState>{t("Pages_Wiki_Index_Error_LoadHeadersFailed")}</ForbiddenState>
+              ) : (
+                <ErrorState onRetry={() => void headersQuery.refetch()}>
+                  {t("Pages_Wiki_Index_Error_LoadHeadersFailed")}
+                </ErrorState>
+              )
             ) : visibleHeaders.length === 0 ? (
-              <StatePanel kind="empty">
-                {search
-                  ? t("Pages_Wiki_Index_NoPagesMatchSearch")
-                  : t("Pages_Wiki_Index_NoPagesYet")}
-              </StatePanel>
+              search ? (
+                <EmptyState title={t("Pages_Wiki_Index_NoPagesMatchSearchTitle")}>
+                  {t("Pages_Wiki_Index_NoPagesMatchSearchBody")}
+                </EmptyState>
+              ) : (
+                <EmptyState title={t("Pages_Wiki_Index_NoPagesYet")}>
+                  {t("Pages_Wiki_Index_NoPagesYetBody")}
+                </EmptyState>
+              )
             ) : (
               <WikiTree
                 node={tree}
@@ -420,38 +413,31 @@ export function Component() {
 
         <article id="wiki-article" className="wiki-panel wiki-article" aria-live="polite">
           {pageQuery.isLoading ? (
-            <StatePanel kind="loading">{t("Pages_Wiki_Index_LoadingArticle")}</StatePanel>
+            <LoadingState label={t("Pages_Wiki_Index_LoadingArticle")} />
           ) : pageErrorKind === "not-found" ? (
-            <StatePanel kind="empty" title={t("App_NotFound_Title")}>
-              {t("App_NotFound_Message")}
-            </StatePanel>
+            <EmptyState title={t("App_NotFound_Title")}>{t("App_NotFound_Message")}</EmptyState>
           ) : pageQuery.isError ? (
-            <StatePanel
-              kind={pageErrorKind === "forbidden" ? "forbidden" : "error"}
-              title={t("Pages_Wiki_Index_Error_LoadPageFailed")}
+            pageErrorKind === "forbidden" ? (
+              <ForbiddenState title={t("Pages_Wiki_Index_Error_LoadPageFailed")} />
+            ) : (
+              <ErrorState
+                onRetry={() => void pageQuery.refetch()}
+                title={t("Pages_Wiki_Index_Error_LoadPageFailed")}
+              />
+            )
+          ) : !page ? (
+            <EmptyState
+              title={t("Pages_Wiki_Index_NoPagesYet")}
               action={
-                <button
-                  className="button button--ghost"
-                  type="button"
-                  onClick={() => void pageQuery.refetch()}
-                >
-                  {t("React_UI_Retry")}
-                </button>
+                access.canCreate ? (
+                  <ActionButton variant="gold" onClick={openCreateEditor}>
+                    {t("Pages_Wiki_Index_NewPage")}
+                  </ActionButton>
+                ) : undefined
               }
             >
-              {t("Pages_Wiki_Index_Error_LoadPageFailed")}
-            </StatePanel>
-          ) : !page ? (
-            <div className="wiki-empty-article">
-              <BookOpen24Regular aria-hidden="true" />
-              <h2>{t("Pages_Wiki_Index_NoPagesYet")}</h2>
-              <p>{t("Pages_Wiki_Index_NoPagesDescription")}</p>
-              {access.canCreate && (
-                <button className="button button--gold" type="button" onClick={openCreateEditor}>
-                  {t("Pages_Wiki_Index_NewPage")}
-                </button>
-              )}
-            </div>
+              {t("Pages_Wiki_Index_NoPagesDescription")}
+            </EmptyState>
           ) : (
             <>
               <nav className="wiki-breadcrumb" aria-label={t("Pages_Wiki_Index_NavigationAria")}>
@@ -500,23 +486,19 @@ export function Component() {
               </div>
               <div className="wiki-article__actions">
                 {access.canCreate && (
-                  <button className="button button--gold" type="button" onClick={openCreateEditor}>
+                  <ActionButton variant="gold" onClick={openCreateEditor}>
                     {t("Pages_Wiki_Index_NewPage")}
-                  </button>
+                  </ActionButton>
                 )}
                 {canEditSelected && (
-                  <button className="button button--ghost" type="button" onClick={openEditEditor}>
+                  <ActionButton variant="ghost" onClick={openEditEditor}>
                     {t("Pages_Wiki_Index_Edit")}
-                  </button>
+                  </ActionButton>
                 )}
                 {access.canViewHistory && (
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    onClick={() => showPanel("history")}
-                  >
+                  <ActionButton variant="ghost" onClick={() => showPanel("history")}>
                     {t("Pages_Wiki_Index_Tab_History")}
-                  </button>
+                  </ActionButton>
                 )}
               </div>
               {(archiveMutation.isError || restoreMutation.isError) && (
@@ -532,13 +514,14 @@ export function Component() {
                   {t("Pages_Wiki_Index_ArchivedNotice")}
                 </div>
               )}
-              {revisionQuery.isError && (
-                <StatePanel
-                  kind={errorKind(revisionQuery.error) === "forbidden" ? "forbidden" : "error"}
-                >
-                  {t("Pages_Wiki_Index_Error_LoadPageFailed")}
-                </StatePanel>
-              )}
+              {revisionQuery.isError &&
+                (errorKind(revisionQuery.error) === "forbidden" ? (
+                  <ForbiddenState>{t("Pages_Wiki_Index_Error_LoadPageFailed")}</ForbiddenState>
+                ) : (
+                  <ErrorState onRetry={() => void revisionQuery.refetch()}>
+                    {t("Pages_Wiki_Index_Error_LoadPageFailed")}
+                  </ErrorState>
+                ))}
               <Markdown>{activeMarkdown}</Markdown>
               {!canEditSelected && (
                 <div className="wiki-readonly-note">
@@ -627,7 +610,7 @@ export function Component() {
         title={t("Pages_Wiki_Index_ArchivePage")}
         description={t("Pages_Wiki_Index_DeleteNotice")}
         confirmLabel={t("Pages_Wiki_Index_ConfirmArchive")}
-        cancelLabel={t("Pages_Wiki_Index_Cancel")}
+        cancelLabel={t("Pages_Wiki_Index_ArchivePage_Dismiss")}
         onCancel={() => setArchivePageId(undefined)}
         onConfirm={() => page && archiveMutation.mutate(page.primaryKey)}
       />
@@ -647,16 +630,15 @@ function MobileTab({
   children: ReactNode;
 }) {
   return (
-    <button
+    <ActionButton
       className={active ? "active" : ""}
-      type="button"
       role="tab"
       aria-selected={active}
       aria-controls={controls}
       onClick={onClick}
     >
       {children}
-    </button>
+    </ActionButton>
   );
 }
 
@@ -732,28 +714,26 @@ function WikiHistory({
     <section className="wiki-intel-section">
       <h2>{t("Pages_Wiki_Index_Tab_History")}</h2>
       {!pageSelected ? (
-        <StatePanel kind="empty">{t("Pages_Wiki_Index_SelectPageForRevisions")}</StatePanel>
+        <EmptyState title={t("Pages_Wiki_Index_NoPageSelectedTitle")}>
+          {t("Pages_Wiki_Index_SelectPageForRevisions")}
+        </EmptyState>
       ) : isLoading ? (
-        <StatePanel kind="loading">{t("Pages_Wiki_Index_LoadingArticle")}</StatePanel>
+        <LoadingState label={t("Pages_Wiki_Index_LoadingArticle")} />
       ) : error ? (
-        <StatePanel
-          kind={errorKind(error) === "forbidden" ? "forbidden" : "error"}
-          action={
-            <button className="button button--ghost button--small" type="button" onClick={onRetry}>
-              {t("React_UI_Retry")}
-            </button>
-          }
-        >
-          {t("Pages_Wiki_Index_Error_LoadPageFailed")}
-        </StatePanel>
+        errorKind(error) === "forbidden" ? (
+          <ForbiddenState>{t("Pages_Wiki_Index_Error_LoadPageFailed")}</ForbiddenState>
+        ) : (
+          <ErrorState onRetry={onRetry}>{t("Pages_Wiki_Index_Error_LoadPageFailed")}</ErrorState>
+        )
       ) : revisions.length === 0 ? (
-        <StatePanel kind="empty">{t("Pages_Wiki_Index_NoRevisionsForPage")}</StatePanel>
+        <EmptyState title={t("Pages_Wiki_Index_NoRevisionsTitle")}>
+          {t("Pages_Wiki_Index_NoRevisionsBody")}
+        </EmptyState>
       ) : (
         <div className="wiki-revisions">
           {revisions.map((revision) => (
-            <button
+            <ActionButton
               className={revision.primaryKey === activeRevisionId ? "active" : ""}
-              type="button"
               key={revision.primaryKey}
               aria-pressed={revision.primaryKey === activeRevisionId}
               onClick={() => onSelect(revision.primaryKey)}
@@ -761,7 +741,7 @@ function WikiHistory({
               <strong>{formatWikiDate(revision.timeStampCreated)}</strong>
               <span>{revision.comment || t("Pages_Wiki_Index_RevisionWithoutComment")}</span>
               <small>{revision.authorName || t("Pages_Wiki_Index_UnknownAuthor")}</small>
-            </button>
+            </ActionButton>
           ))}
         </div>
       )}
@@ -795,7 +775,9 @@ function WikiDetails({
     <section className="wiki-intel-section">
       <h2>{t("Pages_Wiki_Index_ArticleDetailsTitle")}</h2>
       {!page ? (
-        <StatePanel kind="empty">{t("Pages_Wiki_Index_SelectPageForDetails")}</StatePanel>
+        <EmptyState title={t("Pages_Wiki_Index_NoPageSelectedTitle")}>
+          {t("Pages_Wiki_Index_SelectPageForDetails")}
+        </EmptyState>
       ) : (
         <>
           <dl className="wiki-details">
@@ -834,24 +816,14 @@ function WikiDetails({
             <section className="wiki-danger-zone">
               <h3>{t("Pages_Wiki_Index_PageState")}</h3>
               {canRestore && (
-                <button
-                  className="button button--ghost"
-                  type="button"
-                  disabled={isSaving}
-                  onClick={onRestore}
-                >
+                <ActionButton variant="ghost" disabled={isSaving} onClick={onRestore}>
                   {t("Pages_Wiki_Index_RestorePage")}
-                </button>
+                </ActionButton>
               )}
               {canDelete && (
-                <button
-                  className="button button--danger"
-                  type="button"
-                  disabled={isSaving}
-                  onClick={onArchive}
-                >
+                <ActionButton variant="danger" disabled={isSaving} onClick={onArchive}>
                   {t("Pages_Wiki_Index_ArchivePage")}
-                </button>
+                </ActionButton>
               )}
             </section>
           )}
@@ -878,7 +850,11 @@ function WikiEditor({
 }) {
   const { t } = useTranslation();
   if (!editor)
-    return <StatePanel kind="empty">{t("Pages_Wiki_Index_Error_EditorNotOpen")}</StatePanel>;
+    return (
+      <EmptyState title={t("Pages_Wiki_Index_EditorClosedTitle")}>
+        {t("Pages_Wiki_Index_EditorClosedBody")}
+      </EmptyState>
+    );
   const update = (change: Partial<WikiEditorState>) => onChange({ ...editor, ...change });
   return (
     <section className="wiki-intel-section wiki-editor">
@@ -895,27 +871,26 @@ function WikiEditor({
               : editor.originalTitle || t("Pages_Wiki_Index_SelectedPageFallback")}
           </p>
         </div>
-        <button
+        <ActionButton
+          iconOnly
           className="wiki-editor__close"
-          type="button"
           aria-label={t("Pages_Wiki_Index_CloseEditor")}
           onClick={onClose}
         >
-          ×
-        </button>
+          <Dismiss20Regular aria-hidden="true" />
+        </ActionButton>
       </header>
-      <label className="field">
-        <span>{t("Pages_Wiki_Index_Editor_TitleLabel")}</span>
-        <input value={editor.title} onChange={(event) => update({ title: event.target.value })} />
-      </label>
-      <label className="field">
-        <span>{t("Pages_Wiki_Index_Editor_CommentLabel")}</span>
-        <textarea
-          rows={3}
-          value={editor.comment}
-          onChange={(event) => update({ comment: event.target.value })}
-        />
-      </label>
+      <TextField
+        label={t("Pages_Wiki_Index_Editor_TitleLabel")}
+        value={editor.title}
+        onChange={(event) => update({ title: event.target.value })}
+      />
+      <TextAreaField
+        label={t("Pages_Wiki_Index_Editor_CommentLabel")}
+        rows={3}
+        value={editor.comment}
+        onChange={(event) => update({ comment: event.target.value })}
+      />
       <div className="wiki-editor__tabs" role="tablist">
         <PanelTab
           active={!editor.preview}
@@ -963,17 +938,12 @@ function WikiEditor({
         {error ?? t("Pages_Wiki_Index_EditorValidationValid")}
       </div>
       <div className="wiki-editor__actions">
-        <button
-          className="button button--ghost"
-          type="button"
-          disabled={isSaving}
-          onClick={onClose}
-        >
-          {t("Pages_Wiki_Index_Cancel")}
-        </button>
-        <button className="button button--gold" type="button" disabled={isSaving} onClick={onSave}>
+        <ActionButton variant="ghost" disabled={isSaving} onClick={onClose}>
+          {t("Pages_Wiki_Index_EditorLeave_Dismiss")}
+        </ActionButton>
+        <ActionButton variant="gold" disabled={isSaving} onClick={onSave}>
           {isSaving ? t("Pages_Wiki_Index_Saving") : t("Pages_Wiki_Index_SaveChanges")}
-        </button>
+        </ActionButton>
       </div>
     </section>
   );

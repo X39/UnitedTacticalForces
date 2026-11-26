@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockQuietCostReads } from "./support/costMocks";
 
 const eventId = "01a0102f-3f75-7c4a-bd99-ed6273e83565";
 const operatorId = "00000000-0000-0000-0000-000000000001";
@@ -24,6 +25,7 @@ test("creates through the certified alias and edits in the command workspace", a
     if (!new URL(route.request().url()).pathname.startsWith("/api/")) return route.continue();
     throw new Error(`Unexpected API request: ${route.request().method()} ${route.request().url()}`);
   });
+  await mockQuietCostReads(page);
   await page.route("**/appsettings.json", (route) =>
     route.fulfill({
       json: {
@@ -192,14 +194,14 @@ test("creates through the certified alias and edits in the command workspace", a
   await page.getByRole("option", { name: "Altis" }).click();
   await page.getByRole("combobox", { name: "Mod pack revision" }).click();
   await page.getByRole("option", { name: "UTF Main" }).click();
-  const galleryDialog = page.locator("dialog.gallery-picker-dialog");
-  const galleryWorkspace = galleryDialog.locator(".gallery-picker-dialog__workspace");
+  const galleryDialog = page.locator("dialog.dialog--gallery-picker");
+  const galleryWorkspace = galleryDialog.locator(".gallery-picker__workspace");
   const galleryResults = galleryWorkspace.locator(":scope > section");
   await page.setViewportSize({ width: 1440, height: 900 });
   const desktopScrollBeforePicker = await page.evaluate(() => window.scrollY);
   await page.getByRole("button", { name: "Select image" }).click();
   await expect(galleryDialog).toBeVisible();
-  await expect(galleryDialog.locator("footer")).toBeVisible();
+  await expect(galleryDialog.locator(".dialog__actions")).toBeVisible();
   const desktopDialogBounds = await galleryDialog.boundingBox();
   expect(desktopDialogBounds).not.toBeNull();
   expect(desktopDialogBounds!.x + desktopDialogBounds!.width).toBeLessThanOrEqual(1440);
@@ -214,13 +216,16 @@ test("creates through the certified alias and edits in the command workspace", a
     await galleryDialog.evaluate((element) => element.scrollHeight <= element.clientHeight),
   ).toBe(true);
   expect(await page.evaluate(() => window.scrollY)).toBe(desktopScrollBeforePicker);
-  await galleryDialog.locator("footer").getByRole("button", { name: "Cancel" }).click();
+  await galleryDialog
+    .locator(".dialog__actions")
+    .getByRole("button", { name: "Don't choose an image" })
+    .click();
 
   await page.setViewportSize({ width: 1024, height: 640 });
   await page.getByRole("button", { name: "Select image" }).click();
   await expect(galleryDialog).toBeVisible();
   const documentScrollBeforePicker = await page.evaluate(() => window.scrollY);
-  await expect(galleryDialog.locator("footer")).toBeVisible();
+  await expect(galleryDialog.locator(".dialog__actions")).toBeVisible();
   const dialogBounds = await galleryDialog.boundingBox();
   expect(dialogBounds).not.toBeNull();
   expect(dialogBounds!.x).toBeGreaterThanOrEqual(0);
@@ -255,8 +260,8 @@ test("creates through the certified alias and edits in the command workspace", a
     .fill("# Situation\n\nSecure the objective.");
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByRole("button", { name: "Add slot" }).click();
-  const roleSymbolPicker = page.locator("details.event-role-symbol-picker");
-  await roleSymbolPicker.locator("summary").click();
+  const roleSymbolPicker = page.locator(".event-role-symbol-picker");
+  await roleSymbolPicker.getByRole("button", { name: /Role symbol/ }).click();
   await roleSymbolPicker.locator('label[data-role-symbol="Medic"]').click();
   await expect(
     page.locator(".event-slot-editor-row__identity > .event-tactical-icon"),

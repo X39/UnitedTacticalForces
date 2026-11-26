@@ -22,6 +22,12 @@ namespace X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 /// Coordinates durable lifecycle intent across the cloud provider and one external deployment-bound worker.
 /// No game process or worker-local side effect executes in the API process.
 /// </summary>
+/// <remarks>
+/// The trailing <c>fleetChangeNotifier</c> constructor parameter is optional: dependency injection supplies the
+/// registered <see cref="IFleetChangeNotifier"/>, while hand-built executors in tests may omit it. It is used only for
+/// the possible-cost bulk update, which bypasses <c>SaveChanges</c> and therefore the
+/// <see cref="FleetChangeInterceptor"/>.
+/// </remarks>
 [Scoped<LifecycleJobExecutor, ILifecycleJobExecutor>]
 internal sealed class LifecycleJobExecutor(
     DatabaseContext dbContext,
@@ -39,7 +45,8 @@ internal sealed class LifecycleJobExecutor(
     IHostingAuditWriter auditWriter,
     IGameServerSecretService secretService,
     IOptions<LifecycleWorkerOptions> options,
-    IOptions<HostingFinanceOptions> financeOptions) : ILifecycleJobExecutor
+    IOptions<HostingFinanceOptions> financeOptions,
+    IFleetChangeNotifier? fleetChangeNotifier = null) : ILifecycleJobExecutor
 {
     private static readonly JsonSerializerOptions CommandJsonOptions = new(JsonSerializerDefaults.Web);
     private readonly LifecycleWorkerOptions _options = options.Value;
@@ -450,6 +457,10 @@ internal sealed class LifecycleJobExecutor(
                     await dbContext.Entry(deployment).ReloadAsync(settlementCancellationToken).ConfigureAwait(false);
                 }
                 await resultTransaction.CommitAsync(settlementCancellationToken).ConfigureAwait(false);
+                // The bulk possible-cost update bypasses the interceptor; signal after the commit so the signal
+                // never precedes the data.
+                if (providerResultRequiresCostAccounting)
+                    fleetChangeNotifier?.Notify(deployment.GameServerFk);
             }
             if (providerResultRequiresCostAccounting)
             {
@@ -1903,6 +1914,9 @@ internal sealed class LifecycleJobExecutor(
             return existing;
         }
 
+        // Work on the committed pending-start flags: configuration and credentials changes may have been saved by
+        // other requests since the executor loaded the server (RESEARCH Pitfall 5).
+        await dbContext.Entry(server).ReloadAsync(cancellationToken).ConfigureAwait(false);
         var sequence = (await dbContext.WorkerCommands
             .Where(q => q.DeploymentFk == job.DeploymentFk)
             .MaxAsync(q => (long?) q.Sequence, cancellationToken)
@@ -2030,6 +2044,10 @@ internal sealed class LifecycleJobExecutor(
             lifecycleJobId: job.PrimaryKey,
             workerId: worker.PrimaryKey,
             workerCommandId: command.PrimaryKey);
+        // Only the primary command of a Start or Restart job consumes the pending configuration and credentials:
+        // auxiliary and readiness commands carry another action identifier (RESEARCH Pitfall 5), and the helper
+        // compares the identifiers. The consumption commits atomically with the command that rendered them.
+        PendingStartChanges.ConsumeAtCommandCreation(server, job.Kind, actionIdentifier, job.ActionIdentifier);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return command;
@@ -2977,6 +2995,31 @@ internal sealed class LifecycleJobExecutor(
                     "The deployment cost owner is no longer valid.",
                     cancellationToken)
                 .ConfigureAwait(false);
+        }
+        // A system-initiated start (a schedule) has no requesting user to re-authorize. The consent the schedule
+        // runner proved at queue time can be gone by now (rule edited or removed, cost owner changed), so it is
+        // re-read here with the same predicate before any provider mutation or cost reservation.
+        if (job.RequestedByFk is null && job.Trigger is not ELifecycleJobTrigger.Manual)
+        {
+            var consent = await dbContext.ServerAutomationSettings
+                .AsNoTracking()
+                .Where(q => q.GameServerFk == server.PrimaryKey)
+                .Select(q => new { q.StartConsentAt, q.StartConsentCostOwnerFk })
+                .SingleOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (consent is not { StartConsentAt: not null }
+                || consent.StartConsentCostOwnerFk != deployment.CostOwnerFk)
+            {
+                await RejectStartAsync(
+                        job,
+                        server,
+                        deployment,
+                        "start-consent-no-longer-valid",
+                        "The scheduled start consent was removed or no longer matches the deployment cost owner.",
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            return;
         }
         var principal = job.RequestedByFk is { } requestedBy
             ? await authorizationService

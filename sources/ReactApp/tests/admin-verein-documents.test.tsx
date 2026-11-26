@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import { createMemoryRouter, RouterProvider } from "react-router";
@@ -19,6 +19,7 @@ import {
   type VereinAdminDocument,
 } from "@/features/admin/vereinDocuments";
 import * as vereinDocuments from "@/features/admin/vereinDocuments";
+import { findToast, toastPoliteness } from "./helpers/toastQueries";
 
 const authState = vi.hoisted(() => ({ user: undefined as FullUser | undefined }));
 
@@ -84,7 +85,7 @@ function renderPage(initialEntry: string) {
     ],
     { initialEntries: [initialEntry] },
   );
-  return render(
+  const { unmount } = render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
         <AppToastProvider>
@@ -93,6 +94,7 @@ function renderPage(initialEntry: string) {
       </QueryClientProvider>
     </I18nextProvider>,
   );
+  return { router, unmount };
 }
 
 describe("Verein document administration", () => {
@@ -192,7 +194,55 @@ describe("Verein document administration", () => {
       screen.getByPlaceholderText("Search documents, summaries, or kinds"),
       "missing",
     );
-    expect(await screen.findByText("No documents match the current filter.")).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "No documents match" })).toBeVisible();
+    expect(screen.getByText("Clear the filter to see all documents.")).toBeVisible();
+  });
+
+  it("renders one h1 above the forbidden state of every document page", async () => {
+    authState.user = undefined;
+    for (const path of [
+      "/command/verein/documents",
+      "/command/verein/documents/7",
+      "/command/verein/documents/create",
+    ]) {
+      const { unmount } = renderPage(path);
+      expect(
+        await screen.findByRole("heading", { name: "Document access required" }),
+      ).toBeVisible();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      unmount();
+    }
+  });
+
+  it("renders one h1 above the not-found state of the detail and editor pages", async () => {
+    for (const path of ["/command/verein/documents/99", "/command/verein/documents/99/edit"]) {
+      const { unmount } = renderPage(path);
+      expect(await screen.findByRole("heading", { name: "Document not found" })).toBeVisible();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      unmount();
+    }
+  });
+
+  it("offers Keep editing and Leave without saving when leaving an edited document", async () => {
+    vi.mocked(vereinDocuments.loadVereinDocuments).mockResolvedValue([]);
+    const user = userEvent.setup();
+    const { router } = renderPage("/command/verein/documents/create");
+
+    await user.type(await screen.findByLabelText("Title"), "Draft title");
+    await user.click(screen.getByRole("link", { name: "Leave without saving" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "Keep editing" })).toBeVisible();
+    expect(router.state.location.pathname).toBe("/command/verein/documents/create");
+
+    await user.click(within(dialog).getByRole("button", { name: "Keep editing" }));
+    expect(router.state.location.pathname).toBe("/command/verein/documents/create");
+    expect(screen.getByLabelText("Title")).toHaveValue("Draft title");
+
+    await user.click(screen.getByRole("link", { name: "Leave without saving" }));
+    const second = await screen.findByRole("dialog");
+    await user.click(within(second).getByRole("button", { name: "Leave without saving" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/command/verein/documents"));
   });
 
   it("creates a validated document and preserves the selected kind", async () => {
@@ -226,8 +276,9 @@ describe("Verein document administration", () => {
     await waitFor(() =>
       expect(vereinDocuments.setVereinRevisionPublished).toHaveBeenCalledWith(71, true),
     );
-    const toast = await screen.findByRole("status");
+    const toast = await findToast("Publication state updated.");
     expect(toast).toHaveClass("app-toast");
+    expect(toastPoliteness(toast)).toBe("polite");
     expect(toast).toHaveTextContent("Publication state updated.");
   });
 });

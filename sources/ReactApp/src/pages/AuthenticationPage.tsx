@@ -2,7 +2,11 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams } from "react-router";
 import { localReactReturnPath, useAuth } from "@/auth/auth";
-import { PageHeader, StatePanel } from "@/components/primitives";
+import { ActionButton } from "@/components/ActionControl";
+import { PageStack } from "@/components/PageStack";
+import { PageHeader } from "@/components/primitives";
+import { LoadingState } from "@/components/StateViews";
+import "@/components/shellLayout.css";
 
 export function Component() {
   const { t } = useTranslation();
@@ -22,9 +26,10 @@ export function Component() {
   if (isLogout)
     return (
       <div className="narrow-page">
-        <StatePanel kind="loading" title={t("Shared_NavMenu_Logout")}>
-          {t("Common_LoadingData")}
-        </StatePanel>
+        <PageStack>
+          <PageHeader title={t("Shared_NavMenu_Logout")} />
+          <LoadingState />
+        </PageStack>
       </div>
     );
 
@@ -36,34 +41,30 @@ export function Component() {
           title={t("Shared_CommunityDialog_SignInTitle")}
           description={t("Shared_CommunityDialog_SignInSubtitle")}
         />
-        <div className="authentication-options">
-          {auth.providersLoading && (
-            <StatePanel kind="loading">{t("Common_LoadingData")}</StatePanel>
-          )}
+        <PageStack className="authentication-options">
+          {auth.providersLoading && <LoadingState />}
           {auth.providers.steam && (
-            <button
+            <ActionButton
               className="identity-button identity-button--steam"
-              type="button"
               onClick={() => auth.login("steam", returnUrl)}
             >
               <span>Steam</span>
               <strong>{t("Shared_CommunityDialog_UseSteamIdentity")}</strong>
-            </button>
+            </ActionButton>
           )}
           {auth.providers.discord && (
-            <button
+            <ActionButton
               className="identity-button identity-button--discord"
-              type="button"
               onClick={() => auth.login("discord", returnUrl)}
             >
               <span>Discord</span>
               <strong>{t("Shared_CommunityDialog_UseDiscordIdentity")}</strong>
-            </button>
+            </ActionButton>
           )}
           {!auth.providersLoading && !auth.providers.steam && !auth.providers.discord && (
             <p role="status">{t("Authentication_NoMethodsAvailable")}</p>
           )}
-        </div>
+        </PageStack>
       </section>
     </div>
   );

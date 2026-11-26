@@ -1,12 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 import { currentLocale, formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinDocuments } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { useAppRouteToast, useAppToastOnChange } from "@/components/AppToasts";
-import { Markdown, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { PageStack } from "@/components/PageStack";
+import { Markdown, PageHeader, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { reportTones, toneOf } from "@/components/statusTones";
 import {
   activeVereinRevision,
   latestPublishedVereinRevision,
@@ -16,6 +21,25 @@ import {
   type VereinAdminDocument,
   type VereinDocumentRevision,
 } from "@/features/admin/vereinDocuments";
+
+/** Renders the page header above a state view, so every state of the detail route keeps one `h1`. */
+function DetailStateFrame({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <PageStack>
+      <PageHeader
+        kicker={t("Shared_CommandCenter_Nav_VereinDocuments")}
+        title={t("Pages_Command_Verein_DocumentsDetailPageTitle")}
+        actions={
+          <ActionLink variant="ghost" to="/command/verein/documents">
+            {t("Pages_Command_Verein_DocumentsBackToList")}
+          </ActionLink>
+        }
+      />
+      {children}
+    </PageStack>
+  );
+}
 
 export function Component() {
   const { t } = useTranslation();
@@ -70,45 +94,52 @@ export function Component() {
 
   if (!authorized)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Verein_DocumentsAccessRequiredTitle")}>
-        {t("Pages_Command_Verein_DocumentsAccessRequiredDescription")}
-      </StatePanel>
+      <DetailStateFrame>
+        <ForbiddenState title={t("Pages_Command_Verein_DocumentsAccessRequiredTitle")}>
+          {t("Pages_Command_Verein_DocumentsAccessRequiredDescription")}
+        </ForbiddenState>
+      </DetailStateFrame>
     );
 
   if (query.isPending)
-    return <StatePanel kind="loading">{t("Pages_Command_Verein_Loading")}</StatePanel>;
+    return (
+      <DetailStateFrame>
+        <LoadingState label={t("Pages_Command_Verein_Loading")} />
+      </DetailStateFrame>
+    );
 
   if (query.isError)
     return (
-      <StatePanel kind="error">
-        {formatResource(t("Pages_Command_Verein_LoadError"), query.error.message)}
-      </StatePanel>
+      <DetailStateFrame>
+        <ErrorState onRetry={() => void query.refetch()}>
+          {formatResource(t("Pages_Command_Verein_LoadError"), query.error.message)}
+        </ErrorState>
+      </DetailStateFrame>
     );
 
   if (!Number.isSafeInteger(documentId) || !document)
     return (
-      <StatePanel kind="empty" title={t("Pages_Command_Verein_DocumentNotFoundTitle")}>
-        {t("Pages_Command_Verein_DocumentNotFoundDescription")}
-      </StatePanel>
+      <DetailStateFrame>
+        <EmptyState title={t("Pages_Command_Verein_DocumentNotFoundTitle")}>
+          {t("Pages_Command_Verein_DocumentNotFoundDescription")}
+        </EmptyState>
+      </DetailStateFrame>
     );
 
   return (
-    <section className="verein-document-detail-page">
+    <PageStack>
       <PageHeader
         kicker={kindLabel}
         title={title}
         description={t("Pages_Command_Verein_DocumentsDetailPageDescription")}
         actions={
           <>
-            <Link className="button button--ghost" to="/command/verein/documents">
+            <ActionLink variant="ghost" to="/command/verein/documents">
               {t("Pages_Command_Verein_DocumentsBackToList")}
-            </Link>
-            <Link
-              className="button button--primary"
-              to={`/command/verein/documents/${document.primaryKey}/edit`}
-            >
+            </ActionLink>
+            <ActionLink variant="gold" to={`/command/verein/documents/${document.primaryKey}/edit`}>
               {t("Pages_Command_Verein_DocumentsOpenEdit")}
-            </Link>
+            </ActionLink>
           </>
         }
       />
@@ -118,7 +149,7 @@ export function Component() {
           <header className="command-panel__header">
             <span className="kicker">{t("Pages_Command_Verein_DocumentPreviewKicker")}</span>
             <h2>{title}</h2>
-            <StatusBadge tone={publishedRevision ? "success" : "warning"}>
+            <StatusBadge tone={toneOf(reportTones, publishedRevision ? "published" : "draft")}>
               {publishedRevision
                 ? formatResource(
                     t("Pages_Command_Verein_DocumentsPublishedVersion"),
@@ -177,12 +208,12 @@ export function Component() {
               <p>{activeRevision.summary}</p>
             </section>
           )}
-          <Link
-            className="button button--ghost"
+          <ActionLink
+            variant="ghost"
             to={document.kind === "Satzung" ? "/verein/satzung" : "/verein/beschluesse"}
           >
             {t("Pages_Command_Verein_DocumentsPublicLink")}
-          </Link>
+          </ActionLink>
         </aside>
 
         <section className="command-panel verein-revision-panel">
@@ -212,26 +243,27 @@ export function Component() {
                     </span>
                     {revision.comment && <small>{revision.comment}</small>}
                   </div>
-                  <StatusBadge tone={revision.isPublished ? "success" : "warning"}>
+                  <StatusBadge
+                    tone={toneOf(reportTones, revision.isPublished ? "published" : "draft")}
+                  >
                     {revision.isPublished
                       ? t("Pages_Command_Verein_DocumentsPublished")
                       : t("Pages_Command_Verein_DocumentsDraftOnly")}
                   </StatusBadge>
-                  <button
-                    className="button button--ghost"
-                    type="button"
+                  <ActionButton
+                    variant="ghost"
                     disabled={publication.isPending}
                     onClick={() => publication.mutate(revision)}
                   >
                     {revision.isPublished
                       ? t("Pages_Command_Verein_DocumentActionUnpublishLatest")
                       : t("Pages_Command_Verein_DocumentActionPublishLatest")}
-                  </button>
+                  </ActionButton>
                 </article>
               ))}
           </div>
         </section>
       </div>
-    </section>
+    </PageStack>
   );
 }

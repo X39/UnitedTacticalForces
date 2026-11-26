@@ -133,6 +133,7 @@ Old change requests and planning files are intentionally ignored as source mater
 - The platform does not maintain a pool of pre-provisioned, idle, shared, or interchangeable workers.
 - Workers are never reassigned between server records or deployments.
 - Worker-side commands are targeted to the deployment's dedicated worker rather than scheduled across a worker fleet.
+- The server fleet reads live changes from a fleet-changed signal. The signal carries only a server id over the existing process-local update stream, which clients request as `game-servers/fleet`, and clients refetch through the authorized endpoint. The signal source lives in the game-server lifecycle service area (a SaveChanges interceptor and a serialized notifier), not in the shared update stream service. A global 25 second WebSocket keep-alive was accepted so idle streams survive the reverse proxy. Delivery is claim-scoped (UAT G-62-2, product owner decision): each socket is registered on a per-user path `game-servers/fleet/{userId}`, the audience of each changed server is resolved at publish time with the same rule as the REST fleet, each recipient gets its own frame, and delivery fails closed when the audience cannot be read. The earlier acceptance of disclosing changed server ids and timing to holders of any server-section claim is withdrawn. Claim or role changes emit no signal; an affected fleet updates at its next refetch. A multi-instance API would need a shared backplane.
 - Each dedicated worker maintains an authenticated outbound command connection to the control plane.
 - Worker commands are persisted before delivery, have stable identities, and target one deployment.
 - Command receipt acknowledgement and command completion are distinct.
@@ -502,6 +503,21 @@ Old change requests and planning files are intentionally ignored as source mater
 - Successful authenticated worker preparation reports bounded runtime and Workshop sizes. Command-attributed,
   idempotently persisted observations improve later estimates without moving process execution into the API.
 - Scenario demand remains an explicit extension point until the active Scenario domain is implemented.
+- Phase 67 worker channel: each worker keeps one outbound WebSocket to the control plane. It is authenticated before
+  the upgrade and again on every frame, and it carries the heartbeat, claims, and reports. Wake messages are pushed on
+  commit, on connect, and after a heartbeat finds deliverable work, so workers never poll. Registration and credential
+  rotation stay plain HTTP. The HTTP heartbeat, claim, and report endpoints are kept for protocol 1 and 2 worker images
+  until a fleet-wide upgrade. A single API instance is assumed because the worker registry is process-local.
+- Phase 67 server metrics: only the primary host reports, every 15 seconds, and only on the worker channel. The control
+  plane keeps 15 second, 60 second, and 300 second rollups with minimum, average, and maximum for 2 hours, 26 hours,
+  and 7 days, and prunes them durably. The control plane alone decides availability: server-not-running,
+  worker-offline, measuring, stale after 45 seconds, or a reason the worker reports. A tile is never zero when a value
+  is unavailable. Running since comes from the observed process start. Players come from the Arma 3 server addon
+  without headless clients, from Counter-Strike 2 RCON `status` with an A2S_INFO fallback, and from ASKA A2S_INFO when
+  it answers. Counter-Strike 2 limitation: the RCON password lives only in worker memory from the latest Start or
+  Restart command and is never persisted, so after a Counter-Strike 2 worker restart the password is gone and
+  Counter-Strike 2 reports players through A2S_INFO until the next Start. This is a deliberate trade-off of the
+  secret-handling rules; the count stays real and only its source changes.
 
 ## Definition Of Done
 

@@ -1,0 +1,147 @@
+/*
+ * Styles for the shared action controls (ActionButton, ActionLink and ActionAnchor in ActionControl.tsx).
+ *
+ * ActionControl.tsx imports this file on purpose, so tests/styles/server-style-guard.test.ts covers the button
+ * styles too. The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px
+ * and 800px media breakpoints; the style guard fails on anything else. Every hover fill goes through the single
+ * --utf-hover layer, painted as a background image so it composes with each variant fill.
+ *
+ * Button text is the Label size at weight 700 (Phase 61, 69 and 70 typography contract), never uppercase.
+ */
+
+/* Base: the neutral overlay button every variant builds on */
+.button {
+  width: fit-content;
+  max-width: 100%;
+  min-height: var(--utf-control-height);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--utf-space-sm);
+  padding: var(--utf-space-sm) var(--utf-space-md);
+  border: 1px solid transparent;
+  border-radius: var(--utf-radius);
+  background-color: var(--utf-surface-overlay);
+  color: var(--utf-text);
+  font-weight: var(--utf-weight-bold);
+  font-size: var(--utf-text-label);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-decoration: none;
+  /* A button label wraps like the text around it; a container that must keep its buttons on one line says so itself. */
+  white-space: inherit;
+  overflow-wrap: break-word;
+  cursor: pointer;
+  transition:
+    background-color var(--utf-motion-base) var(--utf-motion-ease),
+    border-color var(--utf-motion-base) var(--utf-motion-ease),
+    color var(--utf-motion-base) var(--utf-motion-ease);
+}
+
+.button:disabled,
+.button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.button:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/* Hover: one neutral layer over the fill of the default, primary and ghost variants; never gold */
+.button--primary:hover:not([aria-disabled="true"]):not(:disabled),
+.button--ghost:hover:not([aria-disabled="true"]):not(:disabled),
+.button:not(
+    .button--primary,
+    .button--ghost,
+    .button--gold,
+    .button--glass,
+    .button--danger
+  ):hover:not([aria-disabled="true"]):not(:disabled) {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+}
+
+/* Variants */
+.button--primary {
+  border-color: var(--utf-border-control);
+  background-color: var(--utf-surface-overlay);
+  color: var(--utf-text);
+}
+
+.button--ghost {
+  border-color: var(--utf-border-control);
+  background-color: transparent;
+  color: var(--utf-text);
+}
+
+.button--gold {
+  border-color: var(--utf-gold-border);
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  color: var(--utf-surface-base);
+  box-shadow: var(--utf-gold-shadow);
+}
+
+.button--gold:hover:not([aria-disabled="true"]):not(:disabled) {
+  background: var(--gold-bright);
+}
+
+.button--glass {
+  border-color: var(--utf-glass-border);
+  background: var(--utf-glass-fill);
+  backdrop-filter: blur(var(--utf-space-sm));
+  box-shadow: var(--utf-glass-highlight);
+}
+
+.button--glass:hover:not([aria-disabled="true"]):not(:disabled) {
+  border-color: var(--gold);
+}
+
+/* Danger: a tinted outline from the state tokens; the hover changes only the border so the label keeps 4.5:1 */
+.button--danger {
+  border-color: var(--utf-state-danger-border);
+  background-color: var(--utf-state-danger-bg);
+  color: var(--utf-state-danger-fg);
+}
+
+.button--danger:hover:not([aria-disabled="true"]):not(:disabled) {
+  border-color: var(--utf-state-danger-fg);
+}
+
+/* Sizes */
+.button--small {
+  min-height: var(--utf-control-height-compact);
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  font-size: var(--utf-text-label);
+}
+
+.button--full-width {
+  width: 100%;
+}
+
+/* The shared-primitives.css icon-only rule triples the class to outrank .button--small.button--icon-only */
+.button--icon-only {
+  width: var(--utf-control-height);
+  min-width: var(--utf-control-height);
+  padding: 0;
+}
+
+.button--small.button--icon-only {
+  width: var(--utf-control-height-compact);
+  min-width: var(--utf-control-height-compact);
+}
+
+/* Touch height at or below 800px */
+@media (max-width: 800px) {
+  .button,
+  .button--small {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .button--icon-only,
+  .button--small.button--icon-only {
+    width: var(--utf-control-height-touch);
+    min-width: var(--utf-control-height-touch);
+  }
+}

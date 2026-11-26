@@ -1,5 +1,6 @@
 using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Api;
@@ -98,6 +99,99 @@ internal static class HostingTestData
         return new HostingTestSeed(user, owner, server, deployment);
     }
 
+    /// <summary>
+    /// Inserts one charged provider-cost slice into the ledger of a deployment, like the slice charging service does.
+    /// </summary>
+    /// <param name="dbContext">The database context the entry is saved in.</param>
+    /// <param name="deployment">The deployment the slice is charged to.</param>
+    /// <param name="startsAt">The start of the slice.</param>
+    /// <param name="endsAt">The end of the slice.</param>
+    /// <param name="amount">The positive amount charged for the whole slice.</param>
+    /// <param name="providerIdentifier">
+    /// The provider identifier recorded on the ledger entry, or <see langword="null"/> for the test provider.
+    /// </param>
+    /// <returns>A task resolving to the saved ledger entry, whose amount is the negated charge.</returns>
+    public static async Task<HostingCostLedgerEntry> AddCostSliceAsync(
+        DatabaseContext dbContext,
+        GameServerDeployment deployment,
+        Instant startsAt,
+        Instant endsAt,
+        decimal amount,
+        string? providerIdentifier = null)
+    {
+        var hours = (decimal) (endsAt - startsAt).TotalHours;
+        var entry = new HostingCostLedgerEntry
+        {
+            PrimaryKey          = Guid.NewGuid(),
+            CostOwnerFk         = deployment.CostOwnerFk,
+            DeploymentFk        = deployment.PrimaryKey,
+            Kind                = EHostingLedgerEntryKind.ProviderCostSlice,
+            Amount              = -amount,
+            BalanceAfter        = 0m,
+            EstimatedHourlyRate = hours > 0m ? decimal.Round(amount / hours, 6) : null,
+            Currency            = "EUR",
+            ProviderIdentifier  = providerIdentifier ?? TestRuntimeProvider.Identifier,
+            SliceStartsAt       = startsAt,
+            SliceEndsAt         = endsAt,
+            TimeStampCreated    = startsAt,
+            TimeStampEffective  = startsAt,
+        };
+        dbContext.HostingCostLedgerEntries.Add(entry);
+        await dbContext.SaveChangesAsync();
+        return entry;
+    }
+
+    /// <summary>
+    /// Creates or replaces the cost alert setting of a cost owner with the given channel flags and thresholds.
+    /// </summary>
+    /// <param name="dbContext">The database context the setting is saved in.</param>
+    /// <param name="costOwnerId">The cost owner the setting belongs to.</param>
+    /// <param name="discordEnabled">Whether Discord direct messages are enabled.</param>
+    /// <param name="emailEnabled">Whether email is enabled.</param>
+    /// <param name="amounts">The absolute threshold amounts; none stores an empty threshold list.</param>
+    /// <returns>A task resolving to the saved setting with its thresholds.</returns>
+    public static async Task<CostAlertSetting> SetCostAlertThresholdsAsync(
+        DatabaseContext dbContext,
+        Guid costOwnerId,
+        bool discordEnabled,
+        bool emailEnabled,
+        params decimal[] amounts)
+    {
+        var existing = await dbContext.CostAlertSettings
+            .Include(q => q.Thresholds)
+            .SingleOrDefaultAsync(q => q.CostOwnerFk == costOwnerId);
+        if (existing is not null)
+        {
+            dbContext.CostAlertSettings.Remove(existing);
+            await dbContext.SaveChangesAsync();
+        }
+
+        var now = Instant.FromUnixTimeSeconds(1_700_000_000);
+        var setting = new CostAlertSetting
+        {
+            PrimaryKey       = Guid.NewGuid(),
+            CostOwnerFk      = costOwnerId,
+            DiscordEnabled   = discordEnabled,
+            EmailEnabled     = emailEnabled,
+            Revision         = 1,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        foreach (var amount in amounts)
+        {
+            setting.Thresholds.Add(new CostAlertThreshold
+            {
+                PrimaryKey = Guid.NewGuid(),
+                SettingFk  = setting.PrimaryKey,
+                Amount     = amount,
+            });
+        }
+
+        dbContext.CostAlertSettings.Add(setting);
+        await dbContext.SaveChangesAsync();
+        return setting;
+    }
+
     public static ClaimsPrincipal Principal(
         User user,
         params (string type, string value)[] claims)
@@ -122,6 +216,7 @@ internal static class HostingTestData
             new HostingAuditWriter(),
             new TestGameServerSecretService(),
             new GameServerConfigurationService(dbContext),
+            new GameServerContentSnapshotResolver(dbContext),
             Options.Create(new HostingFinanceOptions()));
 
     public static GameServerProjectionService CreateProjectionService(
@@ -137,5 +232,6 @@ internal static class HostingTestData
             Options.Create(new StorageDemandOptions()),
             NullLogger<GameServerProjectionService>.Instance,
             new GameServerConfigurationService(dbContext),
-            Options.Create(new HostingFinanceOptions()));
+            Options.Create(new HostingFinanceOptions()),
+            Api.Tests.ServerAutomation.ServerAutomationTestData.CreateProjector(dbContext));
 }

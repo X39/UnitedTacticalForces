@@ -34,7 +34,7 @@ internal sealed class WorkerProtocolService(
         var identity = request.Identity.Trim();
         if (request.DeploymentId == Guid.Empty || string.IsNullOrWhiteSpace(identity) || identity.Length > 256)
             throw new WorkerProtocolValidationException("A deployment id and bounded worker identity are required.");
-        if (request.ProtocolVersion is < 1 or > 2
+        if (request.ProtocolVersion is < 1 or > 3
             || request.SupportedGameIdentifiers.Count > 32
             || request.SupportedGameIdentifiers.Any(q => string.IsNullOrWhiteSpace(q) || q.Length > 128)
             || request.SupportedContentProviderIdentifiers.Count > 32
@@ -163,6 +163,32 @@ internal sealed class WorkerProtocolService(
             issuedCredential.Credential);
     }
 
+    /// <inheritdoc />
+    public async Task<AuthenticatedWorker> AuthenticateAsync(
+        Guid workerId,
+        Guid deploymentId,
+        string workerCredential,
+        CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var worker = await AuthenticateWorkerAsync(
+                workerId,
+                deploymentId,
+                workerCredential,
+                now,
+                cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return new AuthenticatedWorker(
+            worker.PrimaryKey,
+            worker.DeploymentFk,
+            worker.Deployment!.GameServerFk,
+            worker.ServiceIdentifier,
+            worker.ServiceOrdinal);
+    }
+
     public async Task HeartbeatAsync(
         Guid workerId,
         WorkerHeartbeatRequest request,
@@ -236,23 +262,7 @@ internal sealed class WorkerProtocolService(
                 now,
                 cancellationToken)
             .ConfigureAwait(false);
-        var command = await dbContext.WorkerCommands
-            .Include(q => q.LifecycleJob)
-            .Where(q => q.WorkerFk == worker.PrimaryKey
-                        && q.DeploymentFk == worker.DeploymentFk
-                        && (q.Status == EWorkerCommandStatus.Queued
-                            || q.Status == EWorkerCommandStatus.Received
-                            || q.Status == EWorkerCommandStatus.Running)
-                        && q.LifecycleJob != null
-                        && (q.LifecycleJob.Status == ELifecycleJobStatus.Running
-                            || q.LifecycleJob.Status == ELifecycleJobStatus.WaitingForWorker))
-            .OrderBy(q => q.Status == EWorkerCommandStatus.Received || q.Status == EWorkerCommandStatus.Running
-                ? 0
-                : q.LeaseExpires != null && q.LeaseExpires > now ? 1 : 2)
-            // An already-delivered command is always redelivered first. Once it is terminal, accepted
-            // normal commands execute strictly in request order; priority must not reorder them.
-            .ThenBy(q => q.Sequence)
-            .ThenByDescending(q => q.Priority)
+        var command = await QueryClaimCandidates(worker.PrimaryKey, worker.DeploymentFk, now)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         if (command is null)
@@ -333,6 +343,61 @@ internal sealed class WorkerProtocolService(
             LeaseExpiresAt = command.LeaseExpires.Value.ToDateTimeOffset(),
         };
     }
+
+    /// <inheritdoc />
+    public async Task<bool> HasDeliverableCommandAsync(
+        Guid workerId,
+        Guid deploymentId,
+        CancellationToken cancellationToken = default)
+    {
+        var worker = await dbContext.LifecycleWorkers
+            .AsNoTracking()
+            .Include(q => q.Deployment)
+            .SingleOrDefaultAsync(
+                q => q.PrimaryKey == workerId && q.DeploymentFk == deploymentId,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (worker is null || worker.TimeStampStopped is not null || worker.Deployment?.TimeStampResolved is not null)
+            return false;
+
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var command = await QueryClaimCandidates(worker.PrimaryKey, worker.DeploymentFk, now)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return command is not null && CanExecuteCommand(worker.Deployment!, command, now);
+    }
+
+    /// <summary>
+    /// Builds the ordered query of commands a worker may be handed: its own active commands of a running job,
+    /// already-delivered commands first, then request order.
+    /// </summary>
+    /// <remarks>
+    /// The single source of the claim filter and ordering, shared by the claim and by the read-only deliverability
+    /// check so the two can never disagree about which command is next.
+    /// </remarks>
+    /// <param name="workerId">The worker whose commands are queried.</param>
+    /// <param name="deploymentId">The deployment the worker is bound to.</param>
+    /// <param name="now">The control-plane time used to tell a live lease from an expired one.</param>
+    /// <returns>The candidate commands, with their lifecycle job, best candidate first.</returns>
+    private IOrderedQueryable<WorkerCommand> QueryClaimCandidates(Guid workerId, Guid deploymentId, Instant now)
+        => dbContext.WorkerCommands
+            .Include(q => q.LifecycleJob)
+            .Where(q => q.WorkerFk == workerId
+                        && q.DeploymentFk == deploymentId
+                        && (q.Status == EWorkerCommandStatus.Queued
+                            || q.Status == EWorkerCommandStatus.Received
+                            || q.Status == EWorkerCommandStatus.Running)
+                        && q.LifecycleJob != null
+                        && (q.LifecycleJob.Status == ELifecycleJobStatus.Running
+                            || q.LifecycleJob.Status == ELifecycleJobStatus.WaitingForWorker))
+            .OrderBy(q => q.Status == EWorkerCommandStatus.Received || q.Status == EWorkerCommandStatus.Running
+                ? 0
+                : q.LeaseExpires != null && q.LeaseExpires > now ? 1 : 2)
+            // An already-delivered command is always redelivered first. Once it is terminal, accepted
+            // normal commands execute strictly in request order; priority must not reorder them.
+            .ThenBy(q => q.Sequence)
+            .ThenByDescending(q => q.Priority);
 
     public Task ReportReceivedAsync(
         Guid workerId,

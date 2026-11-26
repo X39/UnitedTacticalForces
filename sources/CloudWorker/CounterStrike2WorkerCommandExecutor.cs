@@ -18,16 +18,39 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
     private readonly ICloudWorkerStorageTransfer _storage;
     private readonly RestrictedGameProcessLauncher _launcher;
     private readonly ICounterStrike2RconClient _rcon;
+    private readonly IA2sInfoClient _a2s;
     private readonly WorkerContentAcquisitionService _contentAcquisition;
 
+    /// <summary>
+    /// The RCON session of the latest successful Start or Restart command. It lives in memory only, is replaced by
+    /// the next start and cleared when a stop succeeds.
+    /// </summary>
+    private volatile HeldRconSession? _heldRconSession;
+
+    /// <summary>The game port used when neither the command nor the persisted identity names one.</summary>
+    private const int DefaultGamePort = 27015;
+
+    /// <summary>The time Counter-Strike 2 gets to answer one player query.</summary>
+    private static readonly TimeSpan PlayerQueryTimeout = TimeSpan.FromSeconds(2);
+
+    /// <summary>Initializes a Counter-Strike 2 executor and its deployment-bound collaborators.</summary>
+    /// <param name="connection">Deployment-scoped worker connection.</param>
+    /// <param name="options">Worker runtime options.</param>
+    /// <param name="runner">Optional command runner for tests.</param>
+    /// <param name="process">Optional process controller for tests.</param>
+    /// <param name="storage">Optional storage transfer for tests.</param>
+    /// <param name="rcon">Optional RCON client for tests; defaults to the loopback client.</param>
+    /// <param name="a2s">Optional A2S_INFO client for tests; defaults to the loopback client.</param>
     public CounterStrike2WorkerCommandExecutor(
         CloudWorkerConnectionConfig connection,
         CloudWorkerOptions options,
         IProcessCommandRunner? runner = null,
         ICounterStrike2ProcessController? process = null,
         ICloudWorkerStorageTransfer? storage = null,
-        ICounterStrike2RconClient? rcon = null)
+        ICounterStrike2RconClient? rcon = null,
+        IA2sInfoClient? a2s = null)
     {
+        _a2s = a2s ?? new A2sInfoClient();
         _connection = connection;
         _options = options;
         _paths = new CounterStrike2RuntimePaths(
@@ -65,7 +88,7 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
                 "restart" => await RestartAsync(command, payload, cancellationToken).ConfigureAwait(false),
                 "stop" => await StopAndPreserveAsync(command, payload, cancellationToken).ConfigureAwait(false),
                 "fault-stop" => await FaultStopAsync(command, payload, cancellationToken).ConfigureAwait(false),
-                "terminate" => await _process.TerminateAsync(cancellationToken).ConfigureAwait(false),
+                "terminate" => await TerminateAndForgetAsync(cancellationToken).ConfigureAwait(false),
                 "collect-logs" => await CollectLogsAsync(command.Secrets.Values, cancellationToken).ConfigureAwait(false),
                 _ => WorkerCommandExecutionResult.Failure("action-unsupported", "unsupported-action", "The CS2 worker action is unsupported."),
             };
@@ -108,9 +131,90 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
     public async Task CompensateSupersededAsync(WorkerCommandClaimResponse command, CancellationToken cancellationToken)
     {
         if (command.ActionIdentifier.Trim().ToLowerInvariant() is "start" or "restart" or "install" or "update")
-            _ = await _process.TerminateAsync(cancellationToken).ConfigureAwait(false);
+            _ = await TerminateAndForgetAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Terminates the game process and forgets the held RCON session when the process is gone.</summary>
+    /// <param name="cancellationToken">Cancels the termination.</param>
+    /// <returns>The outcome of the termination.</returns>
+    private async Task<WorkerCommandExecutionResult> TerminateAndForgetAsync(CancellationToken cancellationToken)
+    {
+        var result = await _process.TerminateAsync(cancellationToken).ConfigureAwait(false);
+        if (result.Succeeded) _heldRconSession = null;
+        return result;
+    }
+
+    /// <summary>Keeps the RCON password of a Start or Restart command in memory for player observation.</summary>
+    /// <param name="command">The claimed command whose secrets carry the RCON password.</param>
+    /// <param name="payload">The parsed payload that names the game port.</param>
+    private void HoldRconSession(WorkerCommandClaimResponse command, CounterStrike2CommandPayload payload)
+    {
+        if (command.Secrets.TryGetValue("rcon-password", out var password) && !string.IsNullOrWhiteSpace(password))
+            _heldRconSession = new HeldRconSession(payload.Command.Port ?? 27015, password);
+    }
+
+    /// <summary>The loopback RCON endpoint and password of the running server, kept in memory only.</summary>
+    /// <param name="port">The game and RCON port the server was started on.</param>
+    /// <param name="password">The RCON password; the type deliberately has no <see cref="object.ToString" /> output of it.</param>
+    private sealed class HeldRconSession(int port, string password)
+    {
+        /// <summary>Gets the game and RCON port.</summary>
+        public int Port { get; } = port;
+
+        /// <summary>Gets the RCON password.</summary>
+        public string Password { get; } = password;
+
+        /// <inheritdoc />
+        public override string ToString() => nameof(HeldRconSession);
+    }
+
+    /// <summary>Reports the human players of the running Counter-Strike 2 server.</summary>
+    /// <param name="cancellationToken">Cancels the observation.</param>
+    /// <returns>
+    /// The human count and capacity, measuring when no process runs, or query-failed when neither the RCON status
+    /// request nor the A2S_INFO fallback can be answered.
+    /// </returns>
+    /// <remarks>
+    /// Per D-06 the existing RCON client is the primary source: the <c>status</c> response is parsed for its human
+    /// players using the RCON password that this executor holds in memory only. Neither the password nor a reply
+    /// body is logged, persisted or put into an exception message. After a worker restart the in-memory password
+    /// is gone, so Counter-Strike 2 reports players through A2S_INFO on the persisted game port
+    /// until the next Start (or Restart) hands the executor a password again; the same fallback covers a status
+    /// reply without a parseable players line. This keeps the secret-handling rules intact. When neither source
+    /// answers the observation is query-failed, never a guessed count.
+    /// </remarks>
+    public async Task<WorkerPlayerObservation> ObservePlayersAsync(CancellationToken cancellationToken)
+    {
+        using var observation = await _process.ObserveAsync(cancellationToken).ConfigureAwait(false);
+        if (!observation.IsRunning)
+            return WorkerPlayerObservation.Unavailable(WorkerMetricUnavailableReasons.Measuring);
+        var session = _heldRconSession;
+        if (session is not null)
+        {
+            string? status;
+            try
+            {
+                status = await _rcon.RequestStatusAsync(session.Port, session.Password, PlayerQueryTimeout, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is SocketException or IOException or InvalidDataException
+                                                  or EndOfStreamException
+                                                  || exception is OperationCanceledException
+                                                  && !cancellationToken.IsCancellationRequested)
+            {
+                status = null;
+            }
+            if (CounterStrike2StatusParser.TryParse(status, out var humans, out var capacity))
+                return WorkerPlayerObservation.Players(humans, capacity);
+        }
+        var info = await _a2s.QueryAsync(observation.Identity?.GamePort ?? DefaultGamePort, PlayerQueryTimeout, cancellationToken)
+            .ConfigureAwait(false);
+        return info is null
+            ? WorkerPlayerObservation.Unavailable(WorkerMetricUnavailableReasons.QueryFailed)
+            : WorkerPlayerObservation.Players(info.Humans, info.MaxPlayers);
+    }
+
+    /// <inheritdoc />
     public async Task<WorkerRuntimeStatus?> ObserveRuntimeAsync(CancellationToken cancellationToken)
     {
         using var observation = await _process.ObserveAsync(cancellationToken).ConfigureAwait(false);
@@ -134,7 +238,10 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
         if (current.Error is not null)
             return WorkerCommandExecutionResult.Failure("start-reconcile-failed", "process-identity-invalid", current.Error);
         if (current.IsRunning && current.Identity is not null)
+        {
+            HoldRconSession(command, payload);
             return WorkerCommandExecutionResult.Success("already-running", processId: current.Identity.ProcessId, processStartedAt: current.Identity.ProcessStartedAt);
+        }
         if (!IsPrepared())
         {
             var installed = await InstallAsync(true, cancellationToken).ConfigureAwait(false);
@@ -148,6 +255,7 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
             .AcquireAndInstallAsync(command, payload.Command.Content, "cs2", _paths.InstallPath, cancellationToken)
             .ConfigureAwait(false);
         var started = await _process.StartAsync(BuildArguments(payload, command.Secrets), cancellationToken).ConfigureAwait(false);
+        if (started.Succeeded) HoldRconSession(command, payload);
         return started with { ObservedContentVersions = observedVersions };
     }
 
@@ -159,6 +267,7 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
         await RequestGracefulQuitAsync(command, payload, cancellationToken).ConfigureAwait(false);
         var stopped = await _process.StopAsync(false, StopTimeout(payload), payload.Command.GracefulStopAttempts, cancellationToken).ConfigureAwait(false);
         if (!stopped.Succeeded) return stopped with { Stage = "restart-stop-failed" };
+        _heldRconSession = null;
         var started = await StartAsync(command, payload, cancellationToken).ConfigureAwait(false);
         return started with { Stage = started.Succeeded ? "restarted" : "restart-start-failed" };
     }
@@ -171,6 +280,7 @@ public sealed partial class CounterStrike2WorkerCommandExecutor : IWorkerCommand
         await RequestGracefulQuitAsync(command, payload, cancellationToken).ConfigureAwait(false);
         var stopped = await _process.StopAsync(false, StopTimeout(payload), payload.Command.GracefulStopAttempts, cancellationToken).ConfigureAwait(false);
         if (!stopped.Succeeded) return stopped;
+        _heldRconSession = null;
         await _storage.PublishPreservationAsync(command, _paths.DeploymentRoot, cancellationToken).ConfigureAwait(false);
         return stopped with { Output = $"ProcessStopOutcome={stopped.Stage}; PreservationConsistency={(stopped.Stage == "force-stopped" ? "Potentially inconsistent" : "Consistent")}" };
     }

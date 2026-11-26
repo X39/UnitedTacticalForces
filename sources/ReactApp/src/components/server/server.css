@@ -1,0 +1,295 @@
+/*
+ * Styles for the shared server components.
+ *
+ * This file is the single owner of server component styles and consumes --utf-* tokens only. The only allowed
+ * literals are a 1px border width and the 520px and 800px media breakpoints; tests/styles/server-style-guard.test.ts
+ * fails on anything else.
+ */
+
+/* State badge: wins over the legacy .status-badge--* rules through the doubled selector. */
+.status-badge.server-state-host {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 0;
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  border-radius: var(--utf-radius-small);
+  white-space: normal;
+}
+
+.status-badge.server-state-host--neutral {
+  border-color: var(--utf-state-neutral-border);
+  background: var(--utf-state-neutral-bg);
+  color: var(--utf-state-neutral-fg);
+}
+
+.status-badge.server-state-host--info {
+  border-color: var(--utf-state-info-border);
+  background: var(--utf-state-info-bg);
+  color: var(--utf-state-info-fg);
+}
+
+.status-badge.server-state-host--success {
+  border-color: var(--utf-state-success-border);
+  background: var(--utf-state-success-bg);
+  color: var(--utf-state-success-fg);
+}
+
+.status-badge.server-state-host--warning {
+  border-color: var(--utf-state-warning-border);
+  background: var(--utf-state-warning-bg);
+  color: var(--utf-state-warning-fg);
+}
+
+.status-badge.server-state-host--danger {
+  border-color: var(--utf-state-danger-border);
+  background: var(--utf-state-danger-bg);
+  color: var(--utf-state-danger-fg);
+}
+
+.server-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--utf-space-xs);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.server-state-badge__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Cost indicator */
+.server-cost-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--utf-space-xs);
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  border: 1px solid transparent;
+  border-radius: var(--utf-radius-small);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  overflow-wrap: anywhere;
+}
+
+.server-cost-indicator__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+}
+
+.server-cost-indicator--live {
+  border-color: var(--utf-cost-live-border);
+  background: var(--utf-cost-live-bg);
+  color: var(--utf-cost-live-fg);
+}
+
+.server-cost-indicator--maybe {
+  border-style: dashed;
+  border-color: var(--utf-cost-unconfirmed-border);
+  background: var(--utf-cost-unconfirmed-bg);
+  color: var(--utf-cost-unconfirmed-fg);
+}
+
+.server-cost-indicator--none {
+  border-color: var(--utf-cost-none-border);
+  background: var(--utf-cost-none-bg);
+  color: var(--utf-cost-none-fg);
+}
+
+/* Badge plus cost chip */
+.server-state-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm);
+  max-width: 100%;
+}
+
+@media (max-width: 520px) {
+  .server-state-summary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Motion: the working icons rotate only when the user allows motion. */
+@keyframes server-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .server-state-badge--starting .server-state-badge__icon,
+  .server-state-badge--stopping .server-state-badge__icon,
+  .server-state-badge--working .server-state-badge__icon {
+    animation: server-state-spin 1s linear infinite;
+  }
+}
+
+/*
+ * Cost confirmation dialog. The bundle loads component CSS before styles.css, so every rule doubles the
+ * selector (.dialog.dialog--cost) to win over the legacy .dialog rules.
+ */
+.dialog.dialog--cost {
+  width: min(var(--utf-dialog-width), calc(100vw - var(--utf-dialog-gutter)));
+  max-height: calc(100dvh - var(--utf-dialog-gutter));
+  overflow-y: auto;
+}
+
+.dialog.dialog--cost[open] {
+  animation: cost-confirm-fade-in var(--utf-motion-slow) var(--utf-motion-ease);
+}
+
+.dialog.dialog--cost form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  padding: var(--utf-space-lg);
+}
+
+.dialog.dialog--cost .kicker {
+  margin-bottom: 0;
+}
+
+.dialog.dialog--cost h2 {
+  font-family: var(--font-body);
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.dialog.dialog--cost p {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.dialog.dialog--cost .dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+}
+
+.dialog.dialog--cost input {
+  min-height: var(--utf-control-height);
+  border: 1px solid var(--utf-border-control);
+}
+
+.dialog.dialog--cost input:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.dialog.dialog--cost .dialog__actions {
+  margin-top: 0;
+}
+
+.dialog.dialog--cost .cost-confirm__facts {
+  display: grid;
+  gap: var(--utf-space-sm);
+  margin: 0;
+}
+
+.dialog.dialog--cost .cost-confirm__fact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--utf-space-sm);
+}
+
+.dialog.dialog--cost .cost-confirm__fact dt {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+}
+
+.dialog.dialog--cost .cost-confirm__fact dd {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.dialog.dialog--cost .cost-confirm__amount {
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+}
+
+.dialog.dialog--cost .cost-confirm__secondary {
+  color: var(--utf-text-muted);
+}
+
+.dialog.dialog--cost .cost-confirm__note .disclosure__summary,
+.dialog.dialog--cost .cost-confirm__note .disclosure__title {
+  font-size: var(--utf-text-label);
+}
+
+.dialog.dialog--cost .cost-confirm__stale {
+  color: var(--utf-state-warning-fg);
+}
+
+@keyframes cost-confirm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  .dialog.dialog--cost form {
+    padding: var(--utf-space-md);
+  }
+
+  .dialog.dialog--cost .cost-confirm__fact {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--utf-space-xs);
+  }
+
+  .dialog.dialog--cost .dialog__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .dialog.dialog--cost .dialog__actions > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .dialog.dialog--cost .dialog__actions > *,
+  .dialog.dialog--cost input {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog.dialog--cost[open] {
+    animation: none;
+  }
+}

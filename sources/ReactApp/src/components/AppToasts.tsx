@@ -16,6 +16,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
+import "@/components/shared-primitives.css";
 
 type AppToastIntent = "success" | "warning" | "error" | "info";
 type AppToastPauseReason = "focus" | "pointer";
@@ -46,6 +47,20 @@ function ToastIcon({ intent }: { intent: AppToastIntent }) {
   return <Info20Regular aria-hidden="true" />;
 }
 
+/**
+ * Provides the toast API and renders the toast viewport.
+ *
+ * The viewport always contains one polite and one assertive live region, also while no toast is shown. A live region
+ * must exist in the accessibility tree before its content changes, because a region that is injected together with
+ * its content is often not announced (WR-04). Success, info and warning toasts are added to the polite region and
+ * error toasts to the assertive one; `aria-atomic="false"` with `aria-relevant="additions text"` announces each new
+ * toast once without reading the earlier ones again.
+ *
+ * The regions carry `aria-live` instead of `role="status"` or `role="alert"`: an always-present status and alert
+ * element would collide with the single status and alert panels of every page. A toast has no role of its own.
+ *
+ * @param props.children The application content that may show toasts through {@link useAppToast}.
+ */
 export function AppToastProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<AppToast[]>([]);
@@ -105,38 +120,54 @@ export function AppToastProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const renderToast = (toast: AppToast) => (
+    <div
+      key={toast.id}
+      className="app-toast"
+      data-intent={toast.intent}
+      onMouseEnter={() => pauseToast(toast.id, "pointer")}
+      onMouseLeave={() => resumeToast(toast.id, "pointer")}
+      onFocus={() => pauseToast(toast.id, "focus")}
+      onBlur={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+        resumeToast(toast.id, "focus");
+      }}
+    >
+      <span className="app-toast__icon">
+        <ToastIcon intent={toast.intent} />
+      </span>
+      <p>{toast.message}</p>
+      <button
+        type="button"
+        className="app-toast__dismiss"
+        aria-label={t("Common_Close")}
+        onClick={() => dismissToast(toast.id)}
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+    </div>
+  );
+
   return (
     <AppToastContext.Provider value={value}>
       {children}
       <div className="app-toast-viewport">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className="app-toast"
-            data-intent={toast.intent}
-            role={toast.intent === "error" ? "alert" : "status"}
-            onMouseEnter={() => pauseToast(toast.id, "pointer")}
-            onMouseLeave={() => resumeToast(toast.id, "pointer")}
-            onFocus={() => pauseToast(toast.id, "focus")}
-            onBlur={(event) => {
-              if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-              resumeToast(toast.id, "focus");
-            }}
-          >
-            <span className="app-toast__icon">
-              <ToastIcon intent={toast.intent} />
-            </span>
-            <p>{toast.message}</p>
-            <button
-              type="button"
-              className="app-toast__dismiss"
-              aria-label={t("Common_Close")}
-              onClick={() => dismissToast(toast.id)}
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-          </div>
-        ))}
+        <div
+          className="app-toast-region"
+          aria-live="polite"
+          aria-atomic="false"
+          aria-relevant="additions text"
+        >
+          {toasts.filter((toast) => toast.intent !== "error").map(renderToast)}
+        </div>
+        <div
+          className="app-toast-region"
+          aria-live="assertive"
+          aria-atomic="false"
+          aria-relevant="additions text"
+        >
+          {toasts.filter((toast) => toast.intent === "error").map(renderToast)}
+        </div>
       </div>
     </AppToastContext.Provider>
   );

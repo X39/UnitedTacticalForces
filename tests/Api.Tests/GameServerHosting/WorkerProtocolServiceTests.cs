@@ -904,6 +904,233 @@ public sealed class WorkerProtocolServiceTests
         Assert.Equal(heartbeatJson, protocol.Worker.WorkloadObservations);
     }
 
+    [Fact]
+    public async Task Authenticate_ReturnsTheWorkerIdentityWithoutRecordingLiveness()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        var heartbeatBefore = protocol.Worker.LastHeartbeatAt;
+
+        var identity = await protocol.Service.AuthenticateAsync(
+            protocol.Worker.PrimaryKey,
+            protocol.Deployment.PrimaryKey,
+            protocol.WorkerCredential);
+
+        Assert.Equal(protocol.Worker.PrimaryKey, identity.WorkerId);
+        Assert.Equal(protocol.Deployment.PrimaryKey, identity.DeploymentId);
+        Assert.Equal(protocol.Deployment.GameServerFk, identity.GameServerId);
+        Assert.Equal("game-server", identity.ServiceIdentifier);
+        Assert.Equal(0, identity.ServiceOrdinal);
+        Assert.Equal(heartbeatBefore, protocol.Worker.LastHeartbeatAt);
+        Assert.NotNull(protocol.Worker.WorkerCredentialHash);
+    }
+
+    [Fact]
+    public async Task Authenticate_RejectsAWrongCredentialAndAnUnknownDeployment()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+
+        await Assert.ThrowsAsync<WorkerProtocolAuthenticationException>(() => protocol.Service.AuthenticateAsync(
+            protocol.Worker.PrimaryKey,
+            protocol.Deployment.PrimaryKey,
+            "not-the-worker-credential"));
+        await Assert.ThrowsAsync<WorkerProtocolAuthenticationException>(() => protocol.Service.AuthenticateAsync(
+            protocol.Worker.PrimaryKey,
+            Guid.NewGuid(),
+            protocol.WorkerCredential));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task Register_AcceptsProtocolVersionsOneToThree(int protocolVersion)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAsync(store, ELifecycleJobKind.Start, EDeploymentStatus.WaitingForWorker);
+
+        var registration = await protocol.Service.RegisterAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerRegistrationRequest
+            {
+                DeploymentId = protocol.Deployment.PrimaryKey,
+                Identity = "versioned-worker",
+                ProtocolVersion = protocolVersion,
+                SupportedGameIdentifiers = [HostingTestData.GameIdentifier],
+            },
+            protocol.Bootstrap.BootstrapCredential);
+
+        Assert.Equal(protocol.Worker.PrimaryKey, registration.Response.WorkerId);
+        Assert.Equal(protocolVersion, protocol.Worker.ProtocolVersion);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4)]
+    public async Task Register_RejectsProtocolVersionsOutsideOneToThree(int protocolVersion)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAsync(store, ELifecycleJobKind.Start, EDeploymentStatus.WaitingForWorker);
+
+        await Assert.ThrowsAsync<WorkerProtocolValidationException>(() => protocol.Service.RegisterAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerRegistrationRequest
+            {
+                DeploymentId = protocol.Deployment.PrimaryKey,
+                Identity = "versioned-worker",
+                ProtocolVersion = protocolVersion,
+                SupportedGameIdentifiers = [HostingTestData.GameIdentifier],
+            },
+            protocol.Bootstrap.BootstrapCredential));
+
+        Assert.Null(protocol.Worker.BootstrapCredentialConsumedAt);
+    }
+
+    /// <summary>
+    /// A Queued command of a running job is deliverable, and the check changes nothing: no attempt, lease or
+    /// liveness is written.
+    /// </summary>
+    /// <returns>A task completing once the check and its absence of side effects were verified.</returns>
+    [Fact]
+    public async Task HasDeliverableCommand_QueuedCommandOfRunningJob_IsTrueAndChangesNothing()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        var heartbeatBefore = protocol.Worker.LastHeartbeatAt;
+
+        var deliverable = await protocol.Service.HasDeliverableCommandAsync(
+            protocol.Worker.PrimaryKey,
+            protocol.Deployment.PrimaryKey);
+
+        Assert.True(deliverable);
+        Assert.Equal(EWorkerCommandStatus.Queued, protocol.Command.Status);
+        Assert.Equal(0, protocol.Command.Attempt);
+        Assert.Null(protocol.Command.LeaseExpires);
+        Assert.Equal(heartbeatBefore, protocol.Worker.LastHeartbeatAt);
+    }
+
+    /// <summary>
+    /// A Received or Running command stays deliverable, because it is redelivered until it is terminal.
+    /// </summary>
+    /// <returns>A task completing once both statuses were verified.</returns>
+    [Theory]
+    [InlineData(EWorkerCommandStatus.Received)]
+    [InlineData(EWorkerCommandStatus.Running)]
+    public async Task HasDeliverableCommand_DeliveredCommand_IsTrueForRedelivery(EWorkerCommandStatus status)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Command.Status = status;
+        await store.DbContext.SaveChangesAsync();
+
+        Assert.True(
+            await protocol.Service.HasDeliverableCommandAsync(
+                protocol.Worker.PrimaryKey,
+                protocol.Deployment.PrimaryKey));
+    }
+
+    /// <summary>
+    /// A command whose job is already finished, or that is itself finished, is not deliverable.
+    /// </summary>
+    /// <returns>A task completing once both cases were verified.</returns>
+    [Fact]
+    public async Task HasDeliverableCommand_FinishedJobOrCommand_IsFalse()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Job.Status = ELifecycleJobStatus.Succeeded;
+        await store.DbContext.SaveChangesAsync();
+
+        Assert.False(
+            await protocol.Service.HasDeliverableCommandAsync(
+                protocol.Worker.PrimaryKey,
+                protocol.Deployment.PrimaryKey));
+
+        protocol.Job.Status = ELifecycleJobStatus.Running;
+        protocol.Command.Status = EWorkerCommandStatus.Succeeded;
+        await store.DbContext.SaveChangesAsync();
+
+        Assert.False(
+            await protocol.Service.HasDeliverableCommandAsync(
+                protocol.Worker.PrimaryKey,
+                protocol.Deployment.PrimaryKey));
+    }
+
+    /// <summary>
+    /// A command the claim would refuse because the deployment is terminating is not deliverable, while a stop
+    /// command of a stopping deployment still is.
+    /// </summary>
+    /// <returns>A task completing once both rules were verified.</returns>
+    [Fact]
+    public async Task HasDeliverableCommand_AppliesTheClaimsCostStopRule()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        protocol.Deployment.IsProvisioningBlocked = true;
+        protocol.Deployment.Status = EDeploymentStatus.Terminating;
+        await store.DbContext.SaveChangesAsync();
+
+        Assert.False(
+            await protocol.Service.HasDeliverableCommandAsync(
+                protocol.Worker.PrimaryKey,
+                protocol.Deployment.PrimaryKey));
+        await Assert.ThrowsAsync<WorkerProtocolConflictException>(() => protocol.Service.ClaimCommandAsync(
+            protocol.Worker.PrimaryKey,
+            new WorkerCommandClaimRequest { DeploymentId = protocol.Deployment.PrimaryKey },
+            protocol.WorkerCredential));
+
+        await using var stopStore = await HostingTestStore.CreateAsync();
+        var stop = await SeedAndRegisterAsync(stopStore, ELifecycleJobKind.Stop, EDeploymentStatus.Running);
+        stop.Deployment.IsProvisioningBlocked = true;
+        stop.Deployment.Status = EDeploymentStatus.Stopping;
+        await stopStore.DbContext.SaveChangesAsync();
+
+        Assert.True(
+            await stop.Service.HasDeliverableCommandAsync(stop.Worker.PrimaryKey, stop.Deployment.PrimaryKey));
+    }
+
+    /// <summary>
+    /// A worker without commands, an unknown worker, a worker bound to another deployment and a stopped worker
+    /// have nothing deliverable, even while another worker of the deployment has a queued command.
+    /// </summary>
+    /// <returns>A task completing once every case was verified.</returns>
+    [Fact]
+    public async Task HasDeliverableCommand_OtherWorkerUnknownWorkerOrStoppedWorker_IsFalse()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var protocol = await SeedAndRegisterAsync(store, ELifecycleJobKind.Start);
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var other = new LifecycleWorker
+        {
+            PrimaryKey = Guid.NewGuid(),
+            Deployment = protocol.Deployment,
+            DeploymentFk = protocol.Deployment.PrimaryKey,
+            Identity = "other-worker",
+            ServiceIdentifier = "other-service",
+            Status = EWorkerStatus.Online,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        store.DbContext.LifecycleWorkers.Add(other);
+        await store.DbContext.SaveChangesAsync();
+
+        Assert.False(
+            await protocol.Service.HasDeliverableCommandAsync(other.PrimaryKey, protocol.Deployment.PrimaryKey));
+        Assert.False(
+            await protocol.Service.HasDeliverableCommandAsync(Guid.NewGuid(), protocol.Deployment.PrimaryKey));
+        Assert.False(
+            await protocol.Service.HasDeliverableCommandAsync(protocol.Worker.PrimaryKey, Guid.NewGuid()));
+
+        protocol.Worker.TimeStampStopped = now;
+        await store.DbContext.SaveChangesAsync();
+
+        Assert.False(
+            await protocol.Service.HasDeliverableCommandAsync(
+                protocol.Worker.PrimaryKey,
+                protocol.Deployment.PrimaryKey));
+    }
+
     private static string FaultPayload(DateTimeOffset deadline)
         => JsonSerializer.Serialize(new WorkerCommandPayload { FaultEvidenceDeadline = deadline });
 

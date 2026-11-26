@@ -110,6 +110,16 @@ public class GameServer : IPrimaryKey<Guid>, ITimeStampCreated
 
     public Guid? PinnedConfigurationProfileRevisionFk { get; set; }
 
+    /// <summary>
+    /// Kinds of applied change that have not yet been consumed by a start. Persisted as an integer bit set.
+    /// </summary>
+    public EGameServerChangeArea PendingStartChangeAreas { get; set; }
+
+    /// <summary>
+    /// When the oldest still-pending change was applied, or <see langword="null"/> when no change is pending.
+    /// </summary>
+    public Instant? PendingStartSince { get; set; }
+
     public bool IsLaunchDisabled { get; set; }
 
     [MaxLength(1024)]

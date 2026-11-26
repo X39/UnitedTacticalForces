@@ -180,6 +180,7 @@ public sealed class WorkloadPlacementEnqueueTests
             new HostingAuditWriter(),
             new TestGameServerSecretService(),
             new GameServerConfigurationService(store.DbContext),
+            new GameServerContentSnapshotResolver(store.DbContext),
             Options.Create(new HostingFinanceOptions
             {
                 EstimatedHourlyCostEur = new Dictionary<string, decimal> { [TestRuntimeProvider.Identifier] = 0.30m },

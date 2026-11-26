@@ -1,4 +1,11 @@
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import "@/components/action-control.css";
+import { Info16Regular } from "@fluentui/react-icons";
+import {
+  useId,
+  type ComponentPropsWithoutRef,
+  type ComponentPropsWithRef,
+  type ReactNode,
+} from "react";
 import { Link, type LinkProps } from "react-router";
 
 export type ActionControlVariant = "default" | "gold" | "primary" | "ghost" | "glass" | "danger";
@@ -25,11 +32,17 @@ type ActionControlContentProps =
     };
 
 export type ActionButtonProps = Omit<
-  ComponentPropsWithoutRef<"button">,
+  ComponentPropsWithRef<"button">,
   "aria-label" | "children" | "className"
 > &
   ActionControlVisualProps &
-  ActionControlContentProps;
+  ActionControlContentProps & {
+    /**
+     * Visible reason the action is unavailable. When set, the button keeps focus, exposes `aria-disabled`
+     * and links this content as its description instead of using the native `disabled` attribute.
+     */
+    unavailableReason?: ReactNode | undefined;
+  };
 
 export type ActionLinkProps = Omit<LinkProps, "aria-label" | "children" | "className"> &
   ActionControlVisualProps &
@@ -78,6 +91,17 @@ function actionControlClassName({
     .join(" ");
 }
 
+function hasReason(reason: ReactNode): boolean {
+  return reason !== null && reason !== undefined && reason !== false && reason !== "";
+}
+
+/**
+ * A button with the shared action styling.
+ *
+ * When `unavailableReason` is set the button stays focusable and uses `aria-disabled` instead of `disabled`,
+ * a visible reason is linked through `aria-describedby`, and activation neither runs `onClick` nor submits an
+ * enclosing form.
+ */
 export function ActionButton({
   variant = "default",
   size = "default",
@@ -85,14 +109,34 @@ export function ActionButton({
   iconOnly = false,
   type = "button",
   className,
+  unavailableReason,
   ...buttonProps
 }: ActionButtonProps) {
+  const reasonId = useId();
+  const classNames = actionControlClassName({ variant, size, fullWidth, iconOnly, className });
+  if (!hasReason(unavailableReason)) {
+    return <button {...buttonProps} type={type} className={classNames} />;
+  }
+  const { "aria-describedby": describedBy, ...rest } = buttonProps;
   return (
-    <button
-      {...buttonProps}
-      type={type}
-      className={actionControlClassName({ variant, size, fullWidth, iconOnly, className })}
-    />
+    <span
+      className={
+        fullWidth ? "action-with-reason action-with-reason--full-width" : "action-with-reason"
+      }
+    >
+      <button
+        {...rest}
+        type={type}
+        className={classNames}
+        aria-disabled="true"
+        aria-describedby={describedBy ? `${describedBy} ${reasonId}` : reasonId}
+        onClick={(event) => event.preventDefault()}
+      />
+      <span id={reasonId} className="action-reason">
+        <Info16Regular aria-hidden="true" />
+        {unavailableReason}
+      </span>
+    </span>
   );
 }
 

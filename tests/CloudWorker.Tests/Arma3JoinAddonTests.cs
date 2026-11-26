@@ -79,6 +79,22 @@ public sealed class Arma3JoinAddonTests
             Assert.Contains("MPEnded", script);
             Assert.Contains("forEach allUsers", script);
             Assert.Contains("uiSleep 2;", script);
+            Assert.Contains($"UTFPL|1|{nonce}|%1|%2", script);
+            Assert.Contains("UTFPL_fnc_samplePlayers = {", script);
+            Assert.Contains("!((_info select 7) isEqualTo true)", script);
+            Assert.Contains("_owner isEqualType 0 && {_owner > 2}", script);
+            Assert.Contains("_humans != _previousHumans", script);
+            Assert.Contains("diag_tickTime - _lastEmission >= 30", script);
+            Assert.Contains("uiNamespace setVariable [\"UTFPL_playerSequence\"", script);
+            var playerAtomicStart = script.IndexOf("isNil {", script.IndexOf("UTFPL_fnc_samplePlayers = {", StringComparison.Ordinal),
+                StringComparison.Ordinal);
+            var playerSequenceRead = script.IndexOf("private _sequence =", playerAtomicStart, StringComparison.Ordinal);
+            var playerWrite = script.IndexOf("UTFPL|1|", StringComparison.Ordinal);
+            Assert.True(playerAtomicStart >= 0 && playerAtomicStart < playerSequenceRead && playerSequenceRead < playerWrite);
+            Assert.Equal(1, CountOccurrences(script, "UTFPL|1|"));
+            Assert.Equal(1, CountOccurrences(script, "UTFHC|1|"));
+            // Three user event handlers plus the periodic reconciliation loop.
+            Assert.Equal(4, CountOccurrences(script, "call UTFPL_fnc_samplePlayers;"));
             Assert.DoesNotContain("remoteExec", script);
             Assert.DoesNotContain("setGroupOwner", script);
             await Arma3JoinAddon.InstallAsync(paths, nonce, CancellationToken.None);
@@ -108,6 +124,19 @@ public sealed class Arma3JoinAddonTests
         var paths = new Arma3RuntimePaths(root, Path.Combine(root, "state"), Guid.NewGuid(), "arma3server_x64");
         await Assert.ThrowsAsync<ArgumentException>(() => Arma3JoinAddon.InstallAsync(paths, nonce!, CancellationToken.None));
         Assert.False(Directory.Exists(root));
+    }
+
+    /// <summary>Counts non-overlapping ordinal occurrences of a marker.</summary>
+    /// <param name="text">The text to search.</param>
+    /// <param name="marker">The non-empty marker to count.</param>
+    /// <returns>The number of occurrences.</returns>
+    private static int CountOccurrences(string text, string marker)
+    {
+        var count = 0;
+        for (var index = text.IndexOf(marker, StringComparison.Ordinal); index >= 0;
+             index = text.IndexOf(marker, index + marker.Length, StringComparison.Ordinal))
+            count++;
+        return count;
     }
 
     /// <summary>Reads a PBO header string without relying on the production archive writer.</summary>

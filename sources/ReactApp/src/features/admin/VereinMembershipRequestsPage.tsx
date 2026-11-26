@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 import { formatDateTime, formatUtcDate } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinMemberships } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { useAppToastOnChange } from "@/components/AppToasts";
-import {
-  Metric,
-  PageHeader,
-  StatePanel,
-  StatusBadge,
-  useUnsavedChanges,
-} from "@/components/primitives";
+import { CommandListToolbar } from "@/components/CommandListToolbar";
+import { FilterChipGroup, type FilterChipItem } from "@/components/FilterChipGroup";
+import { TextAreaField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
+import { Metric, PageHeader, StatusBadge, useUnsavedChanges } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { membershipRequestTones, toneOf } from "@/components/statusTones";
 import {
   createMembershipTransition,
   isOpenMembershipRequest,
@@ -27,6 +27,7 @@ import {
   type MembershipRequestStatus,
   type MembershipRequestView,
 } from "@/features/admin/vereinMembershipRequests";
+import "@/features/admin/members.css";
 
 const statusOrder: MembershipRequestStatus[] = [
   "Submitted",
@@ -50,17 +51,6 @@ const statusLabels: Record<MembershipRequestStatus, TranslationKey> = {
   Approved: "Pages_Public_Join_RequestStatus_Approved",
   Rejected: "Pages_Public_Join_RequestStatus_Rejected",
   Withdrawn: "Pages_Public_Join_RequestStatus_Withdrawn",
-};
-
-const statusTones: Record<
-  MembershipRequestStatus,
-  "neutral" | "success" | "warning" | "danger" | "info"
-> = {
-  Submitted: "warning",
-  AcceptedForContact: "info",
-  Approved: "success",
-  Rejected: "danger",
-  Withdrawn: "neutral",
 };
 
 type TransitionStatus = Extract<
@@ -217,144 +207,108 @@ export function Component() {
 
   if (!authorized)
     return (
-      <StatePanel
-        kind="forbidden"
-        title={t("Pages_Command_Verein_MembershipRequests_AccessRequiredTitle")}
-      >
-        {t("Pages_Command_Verein_MembershipRequests_AccessRequiredDescription")}
-      </StatePanel>
+      <PageStack>
+        <PageHeader
+          kicker={t("Shared_CommandCenter_Nav_VereinMembershipRequests")}
+          title={t("Pages_Command_Verein_MembershipRequests_PageTitle")}
+        />
+        <ForbiddenState title={t("Pages_Command_Verein_MembershipRequests_AccessRequiredTitle")}>
+          {t("Pages_Command_Verein_MembershipRequests_AccessRequiredDescription")}
+        </ForbiddenState>
+      </PageStack>
     );
 
+  const filterItems: FilterChipItem<MembershipRequestView>[] = [
+    {
+      id: "all",
+      label: t("Pages_Command_Verein_MembershipRequests_FilterAll"),
+      count: requests.length,
+    },
+    {
+      id: "open",
+      label: t("Pages_Command_Verein_MembershipRequests_MetricOpenStatus"),
+      count: counts.open,
+    },
+    ...statusOrder.map((status) => ({
+      id: viewForStatus[status],
+      label: t(statusLabels[status]),
+      count: countForView(viewForStatus[status]),
+    })),
+  ];
+
   return (
-    <section className="verein-membership-requests-page">
+    <PageStack>
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_VereinMembershipRequests")}
         title={t("Pages_Command_Verein_MembershipRequests_PageTitle")}
         description={t("Pages_Command_Verein_MembershipRequests_PageDescription")}
         actions={
           <>
-            <button
-              className="button button--ghost"
-              type="button"
+            <ActionButton
+              variant="ghost"
               disabled={query.isFetching}
               onClick={() => void query.refetch()}
             >
               {t("Pages_Command_Verein_ActionRefresh")}
-            </button>
-            <Link className="button button--ghost" to="/verein">
+            </ActionButton>
+            <ActionLink variant="ghost" to="/verein">
               {t("Pages_Command_Verein_MembershipRequests_PublicHub")}
-            </Link>
+            </ActionLink>
           </>
         }
       />
 
       {query.isError && (
-        <StatePanel kind="error">
+        <ErrorState onRetry={() => void query.refetch()}>
           {formatResource(
             t("Pages_Command_Verein_MembershipRequests_LoadError"),
             query.error.message,
           )}
-        </StatePanel>
+        </ErrorState>
       )}
 
       <section
         className="command-metrics verein-membership-requests-metrics"
         aria-label={t("Pages_Command_Verein_MembershipRequests_MetricsAria")}
       >
-        <button
-          type="button"
-          className={view === "all" ? "active" : undefined}
-          aria-pressed={view === "all"}
-          onClick={() => selectView("all")}
-        >
-          <Metric
-            label={t("Pages_Command_Verein_MembershipRequests_MetricLoadedStatus")}
-            value={counts.all}
-            detail={t("Pages_Command_Verein_MembershipRequests_MetricLoadedDescription")}
-          />
-        </button>
-        <button
-          type="button"
-          className={view === "open" ? "active" : undefined}
-          aria-pressed={view === "open"}
-          onClick={() => selectView("open")}
-        >
-          <Metric
-            label={t("Pages_Command_Verein_MembershipRequests_MetricOpenStatus")}
-            value={counts.open}
-            detail={t("Pages_Command_Verein_MembershipRequests_MetricOpenDescription")}
-          />
-        </button>
-        <button
-          type="button"
-          className={view === "approved" ? "active" : undefined}
-          aria-pressed={view === "approved"}
-          onClick={() => selectView("approved")}
-        >
-          <Metric
-            label={t("Pages_Command_Verein_MembershipRequests_MetricApprovedStatus")}
-            value={counts.approved}
-            detail={t("Pages_Command_Verein_MembershipRequests_MetricApprovedDescription")}
-          />
-        </button>
+        <Metric
+          label={t("Pages_Command_Verein_MembershipRequests_MetricLoadedStatus")}
+          value={counts.all}
+          detail={t("Pages_Command_Verein_MembershipRequests_MetricLoadedDescription")}
+        />
+        <Metric
+          label={t("Pages_Command_Verein_MembershipRequests_MetricOpenStatus")}
+          value={counts.open}
+          detail={t("Pages_Command_Verein_MembershipRequests_MetricOpenDescription")}
+        />
+        <Metric
+          label={t("Pages_Command_Verein_MembershipRequests_MetricApprovedStatus")}
+          value={counts.approved}
+          detail={t("Pages_Command_Verein_MembershipRequests_MetricApprovedDescription")}
+        />
       </section>
 
-      <form
-        className="toolbar verein-membership-requests-toolbar"
-        aria-label={t("Pages_Command_Verein_MembershipRequests_ToolbarAria")}
+      <CommandListToolbar
+        className="verein-membership-requests-toolbar"
+        ariaLabel={t("Pages_Command_Verein_MembershipRequests_SearchPlaceholder")}
         onSubmit={applySearch}
+        searchLabel={t("Pages_Command_Verein_MembershipRequests_SearchPlaceholder")}
+        searchValue={searchDraft}
+        onSearchChange={setSearchDraft}
+        submitLabel={t("Pages_Command_Verein_MembershipRequests_ApplySearch")}
+        submitDisabled={query.isFetching}
       >
-        <label className="search-field">
-          <span className="sr-only">
-            {t("Pages_Command_Verein_MembershipRequests_SearchPlaceholder")}
-          </span>
-          <input
-            value={searchDraft}
-            placeholder={t("Pages_Command_Verein_MembershipRequests_SearchPlaceholder")}
-            onChange={(event) => setSearchDraft(event.target.value)}
-          />
-        </label>
-        <button className="button button--ghost" type="submit" disabled={query.isFetching}>
-          {t("Pages_Command_Verein_MembershipRequests_ApplySearch")}
-        </button>
-        <div className="filter-chips">
-          <button
-            type="button"
-            className={view === "all" ? "active" : undefined}
-            aria-pressed={view === "all"}
-            onClick={() => selectView("all")}
-          >
-            {t("Pages_Command_Verein_MembershipRequests_FilterAll")} <span>{requests.length}</span>
-          </button>
-          <button
-            type="button"
-            className={view === "open" ? "active" : undefined}
-            aria-pressed={view === "open"}
-            onClick={() => selectView("open")}
-          >
-            {t("Pages_Command_Verein_MembershipRequests_MetricOpenStatus")}{" "}
-            <span>{counts.open}</span>
-          </button>
-          {statusOrder.map((status) => {
-            const statusView = viewForStatus[status];
-            return (
-              <button
-                key={status}
-                type="button"
-                className={view === statusView ? "active" : undefined}
-                aria-pressed={view === statusView}
-                onClick={() => selectView(statusView)}
-              >
-                {t(statusLabels[status])} <span>{countForView(statusView)}</span>
-              </button>
-            );
-          })}
-        </div>
-      </form>
+        <FilterChipGroup
+          label={t("Pages_Command_Verein_MembershipRequests_ToolbarAria")}
+          items={filterItems}
+          value={view}
+          onChange={selectView}
+        />
+      </CommandListToolbar>
 
       {query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_Verein_Loading")}</StatePanel>
-      ) : (
+        <LoadingState label={t("Pages_Command_Verein_Loading")} />
+      ) : query.isError && !query.data ? null : (
         <section className="verein-membership-request-workspace">
           <section className="command-panel verein-membership-request-list">
             <header className="command-panel__header">
@@ -365,7 +319,9 @@ export function Component() {
               <StatusBadge>{visibleRequests.length}</StatusBadge>
             </header>
             {visibleRequests.length === 0 ? (
-              <StatePanel>{t("Pages_Command_Verein_MembershipRequests_NoRows")}</StatePanel>
+              <EmptyState title={t("Pages_Command_Verein_MembershipRequests_EmptyTitle")}>
+                {t("Pages_Command_Verein_MembershipRequests_EmptyBody")}
+              </EmptyState>
             ) : (
               <div className="command-table-scroll">
                 <table className="command-table verein-membership-request-table">
@@ -389,20 +345,16 @@ export function Component() {
                           <span>{request.userNickname || request.userFk}</span>
                         </th>
                         <td>
-                          <StatusBadge tone={statusTones[request.status]}>
+                          <StatusBadge tone={toneOf(membershipRequestTones, request.status)}>
                             {t(statusLabels[request.status])}
                           </StatusBadge>
                         </td>
                         <td>{formatDateTime(request.timeStampCreated)}</td>
                         <td>{formatDateTime(request.timeStampUpdated)}</td>
                         <td>
-                          <button
-                            className="button button--ghost"
-                            type="button"
-                            onClick={() => select(request)}
-                          >
+                          <ActionButton variant="ghost" onClick={() => select(request)}>
                             {t("Pages_Command_Verein_MembershipRequests_Open")}
-                          </button>
+                          </ActionButton>
                         </td>
                       </tr>
                     ))}
@@ -417,9 +369,9 @@ export function Component() {
             aria-label={t("Pages_Command_Verein_MembershipRequests_DetailAria")}
           >
             {!selected ? (
-              <StatePanel title={t("Pages_Command_Verein_MembershipRequests_NoSelectionTitle")}>
+              <EmptyState title={t("Pages_Command_Verein_MembershipRequests_NoSelectionTitle")}>
                 {t("Pages_Command_Verein_MembershipRequests_NoSelectionDescription")}
-              </StatePanel>
+              </EmptyState>
             ) : (
               <>
                 <header className="command-panel__header verein-membership-request-detail__header">
@@ -428,7 +380,7 @@ export function Component() {
                   </span>
                   <h2>{applicantName(selected)}</h2>
                   <p>{selected.userNickname}</p>
-                  <StatusBadge tone={statusTones[selected.status]}>
+                  <StatusBadge tone={toneOf(membershipRequestTones, selected.status)}>
                     {t(statusLabels[selected.status])}
                   </StatusBadge>
                 </header>
@@ -519,60 +471,51 @@ export function Component() {
                 )}
 
                 {canTransition && (
-                  <section className="verein-membership-request-form">
-                    <label>
-                      <span>{t("Pages_Command_Verein_MembershipRequests_Reason")}</span>
-                      <textarea
-                        rows={4}
-                        maxLength={512}
-                        value={decision.reason}
-                        onChange={(event) => setDraft({ ...decision, reason: event.target.value })}
-                      />
-                    </label>
-                    <label>
-                      <span>{t("Pages_Command_Verein_MembershipRequests_MemberNumber")}</span>
-                      <input
-                        maxLength={64}
-                        value={decision.memberNumber}
-                        onChange={(event) =>
-                          setDraft({ ...decision, memberNumber: event.target.value })
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("Pages_Command_Verein_MembershipRequests_Notes")}</span>
-                      <textarea
-                        rows={3}
-                        maxLength={2000}
-                        value={decision.notes}
-                        onChange={(event) => setDraft({ ...decision, notes: event.target.value })}
-                      />
-                    </label>
-                    <div className="page-header__actions">
-                      <button
-                        className="button button--ghost"
-                        type="button"
+                  <section className="verein-membership-request-fields">
+                    <TextAreaField
+                      rows={4}
+                      maxLength={512}
+                      label={t("Pages_Command_Verein_MembershipRequests_Reason")}
+                      value={decision.reason}
+                      onChange={(event) => setDraft({ ...decision, reason: event.target.value })}
+                    />
+                    <TextField
+                      maxLength={64}
+                      label={t("Pages_Command_Verein_MembershipRequests_MemberNumber")}
+                      value={decision.memberNumber}
+                      onChange={(event) =>
+                        setDraft({ ...decision, memberNumber: event.target.value })
+                      }
+                    />
+                    <TextAreaField
+                      rows={3}
+                      maxLength={2000}
+                      label={t("Pages_Command_Verein_MembershipRequests_Notes")}
+                      value={decision.notes}
+                      onChange={(event) => setDraft({ ...decision, notes: event.target.value })}
+                    />
+                    <div className="verein-membership-request-fields__actions">
+                      <ActionButton
+                        variant="ghost"
                         disabled={!canSubmit("AcceptedForContact")}
                         onClick={() => transition.mutate({ status: "AcceptedForContact" })}
                       >
                         {t("Pages_Command_Verein_MembershipRequests_AcceptForContact")}
-                      </button>
-                      <button
-                        className="button button--primary"
-                        type="button"
+                      </ActionButton>
+                      <ActionButton
+                        variant="gold"
                         disabled={!canSubmit("Approved")}
                         onClick={() => transition.mutate({ status: "Approved" })}
                       >
                         {t("Pages_Command_Verein_MembershipRequests_Approve")}
-                      </button>
-                      <button
-                        className="button button--danger"
-                        type="button"
+                      </ActionButton>
+                      <ActionButton
+                        variant="danger"
                         disabled={!canSubmit("Rejected")}
                         onClick={() => transition.mutate({ status: "Rejected" })}
                       >
                         {t("Pages_Command_Verein_MembershipRequests_Reject")}
-                      </button>
+                      </ActionButton>
                     </div>
                   </section>
                 )}
@@ -581,6 +524,6 @@ export function Component() {
           </aside>
         </section>
       )}
-    </section>
+    </PageStack>
   );
 }

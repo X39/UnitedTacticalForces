@@ -51,13 +51,15 @@ describe("event role symbol picker", () => {
     }
 
     const { container } = render(<Harness />);
-    const details = container.querySelector("details")!;
-    const summary = details.querySelector("summary")!;
+    const summary = screen.getByRole("button", { name: /Role symbol/ });
 
+    expect(container.querySelector("details")).toBeNull();
+    expect(summary).toHaveAttribute("aria-expanded", "false");
     expect(summary).toHaveTextContent("Automatic");
     expect(summary.querySelector('[data-tactical-icon="medical"]')).toBeInTheDocument();
 
     await user.click(summary);
+    expect(summary).toHaveAttribute("aria-expanded", "true");
     const group = screen.getByRole("group", { name: "Role symbol" });
     expect(within(group).getAllByRole("radio")).toHaveLength(14);
     expect(within(group).getByRole("radio", { name: "Automatic" })).toBeChecked();
@@ -67,7 +69,7 @@ describe("event role symbol picker", () => {
     await user.click(within(group).getByText("Pilot"));
 
     expect(changed).toHaveBeenCalledWith("Pilot");
-    expect(details).not.toHaveAttribute("open");
+    expect(summary).toHaveAttribute("aria-expanded", "false");
     expect(summary).toHaveFocus();
     expect(summary).toHaveTextContent("Pilot");
     expect(summary.querySelector('[data-tactical-icon="pilot"]')).toBeInTheDocument();
@@ -76,13 +78,12 @@ describe("event role symbol picker", () => {
   it("closes on Escape and renders German role coverage", async () => {
     await i18n.changeLanguage("de");
     const user = userEvent.setup();
-    const { container } = render(
+    render(
       <I18nextProvider i18n={i18n}>
         <EventRoleSymbolPicker value="Leader" roleTitle="Medic" onChange={vi.fn()} />
       </I18nextProvider>,
     );
-    const details = container.querySelector("details")!;
-    const summary = details.querySelector("summary")!;
+    const summary = screen.getByRole("button", { name: /Rollensymbol|Role symbol/ });
 
     expect(summary).toHaveTextContent("Trupp- / Gruppenführung");
     expect(summary.querySelector('[data-tactical-icon="host"]')).toBeInTheDocument();
@@ -92,7 +93,22 @@ describe("event role symbol picker", () => {
 
     await user.keyboard("{Escape}");
 
-    expect(details).not.toHaveAttribute("open");
+    expect(summary).toHaveAttribute("aria-expanded", "false");
     expect(summary).toHaveFocus();
+  });
+
+  it("keeps the palette closed and ignores the toggle while disabled", async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={i18n}>
+        <EventRoleSymbolPicker value="Medic" roleTitle="Medic" disabled onChange={vi.fn()} />
+      </I18nextProvider>,
+    );
+    const summary = screen.getByRole("button", { name: /Role symbol/ });
+
+    await user.click(summary);
+
+    expect(summary).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("group", { name: "Role symbol", hidden: true })).toBeDisabled();
   });
 });

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.DTO.Payloads;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
+using X39.UnitedTacticalForces.Api.Services.ServerMetrics;
 
 namespace X39.UnitedTacticalForces.Api.Controllers;
 
@@ -69,17 +70,6 @@ public sealed class GameServersController(
         return server is null ? NotFound() : Ok(server);
     }
 
-    [HttpGet("{gameServerId:guid}/actions")]
-    [Authorize(Claims.ResourceBased.Server.View)]
-    [ProducesResponseType<IReadOnlyCollection<GameServerActionDto>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetActionsAsync(
-        [FromRoute] Guid gameServerId,
-        CancellationToken cancellationToken)
-    {
-        var server = await projectionService.GetServerAsync(gameServerId, User, cancellationToken).ConfigureAwait(false);
-        return server is null ? NotFound() : Ok(server.Actions);
-    }
-
     [HttpGet("{gameServerId:guid}/mod-pack-options")]
     [Authorize(Claims.ResourceBased.Server.View)]
     [ProducesResponseType<IReadOnlyCollection<GameServerModPackOptionDto>>(StatusCodes.Status200OK)]
@@ -94,6 +84,142 @@ public sealed class GameServersController(
         return Ok(await projectionService
             .GetModPackOptionsAsync(gameServerId, User, cancellationToken)
             .ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// Gets the flattened contents of one mod pack of the server's game, resolved as the next Start would.
+    /// </summary>
+    /// <param name="gameServerId">The game server the pack is inspected for.</param>
+    /// <param name="modPackDefinitionId">The mod pack definition to inspect.</param>
+    /// <param name="contentService">The contents projection service.</param>
+    /// <param name="cancellationToken">A token that cancels the request.</param>
+    /// <returns>
+    /// 200 with the contents (reporting unavailability with a safe reason when the pack cannot be resolved), or 404
+    /// when the server, the pack or the view permission does not allow the lookup.
+    /// </returns>
+    [HttpGet("{gameServerId:guid}/mod-pack-options/{modPackDefinitionId:long}/contents")]
+    [Authorize(Claims.ResourceBased.Server.View)]
+    [ProducesResponseType<GameServerModPackContentsDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetModPackContentsAsync(
+        [FromRoute] Guid gameServerId,
+        [FromRoute] long modPackDefinitionId,
+        [FromServices] IGameServerModPackContentService contentService,
+        CancellationToken cancellationToken)
+    {
+        var contents = await contentService
+            .GetContentsAsync(gameServerId, modPackDefinitionId, User, cancellationToken)
+            .ConfigureAwait(false);
+        return contents is null ? NotFound() : Ok(contents);
+    }
+
+    /// <summary>
+    /// Gets the provider cost accrued by the current or most recent session of the server, calculated by the control
+    /// plane from charged ledger slices.
+    /// </summary>
+    /// <param name="gameServerId">The game server whose session cost is requested.</param>
+    /// <param name="accrualService">The accrued cost calculation service.</param>
+    /// <param name="cancellationToken">A token that cancels the request.</param>
+    /// <returns>
+    /// 200 with the accrued cost, where a null session means the server never cost and a null amount carries an
+    /// unavailable reason (including <c>hidden</c> for a viewer who may not view the cost owner), or 404 when the
+    /// server is unknown or not viewable.
+    /// </returns>
+    [HttpGet("{gameServerId:guid}/accrued-cost")]
+    [Authorize(Claims.ResourceBased.Server.View)]
+    [ProducesResponseType<GameServerAccruedCostDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAccruedCostAsync(
+        [FromRoute] Guid gameServerId,
+        [FromServices] ICostAccrualService accrualService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var accruedCost = await accrualService
+                .GetForServerAsync(gameServerId, User, NodaSystemClock.Instance.GetCurrentInstant(), cancellationToken)
+                .ConfigureAwait(false);
+            return Ok(accruedCost);
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Gets the current metric readings of the server, decided by the control plane from the latest sample of its
+    /// primary worker.
+    /// </summary>
+    /// <param name="gameServerId">The game server whose readings are requested.</param>
+    /// <param name="metricsService">The service that decides the readings.</param>
+    /// <param name="cancellationToken">A token that cancels the request.</param>
+    /// <returns>
+    /// 200 with the readings, where every reading is a value or one reason code and never both, or 404 when the
+    /// server is unknown or not viewable.
+    /// </returns>
+    [HttpGet("{gameServerId:guid}/metrics")]
+    [Authorize(Claims.ResourceBased.Server.View)]
+    [ProducesResponseType<GameServerMetricsDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMetricsAsync(
+        [FromRoute] Guid gameServerId,
+        [FromServices] IServerMetricsService metricsService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var metrics = await metricsService
+                .GetCurrentAsync(gameServerId, User, NodaSystemClock.Instance.GetCurrentInstant(), cancellationToken)
+                .ConfigureAwait(false);
+            return Ok(metrics);
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Gets the retained metric history of the server for one range from the rollup tier of that range.
+    /// </summary>
+    /// <param name="gameServerId">The game server whose history is requested.</param>
+    /// <param name="range">The range code: <c>1h</c>, <c>24h</c> or <c>7d</c>.</param>
+    /// <param name="metricsService">The service that reads the history.</param>
+    /// <param name="cancellationToken">A token that cancels the request.</param>
+    /// <returns>
+    /// 200 with the series, where a window the worker never reported has no point, 400 when the range is missing or
+    /// not one of the three codes, or 404 when the server is unknown or not viewable.
+    /// </returns>
+    [HttpGet("{gameServerId:guid}/metrics/history")]
+    [Authorize(Claims.ResourceBased.Server.View)]
+    [ProducesResponseType<GameServerMetricsHistoryDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMetricsHistoryAsync(
+        [FromRoute] Guid gameServerId,
+        [FromQuery] string? range,
+        [FromServices] IServerMetricsService metricsService,
+        CancellationToken cancellationToken)
+    {
+        if (!ServerMetricResolutions.TryParse(range, out var parsedRange))
+            return BadRequest(new { error = "Unknown range." });
+        try
+        {
+            var history = await metricsService
+                .GetHistoryAsync(
+                    gameServerId,
+                    User,
+                    parsedRange,
+                    NodaSystemClock.Instance.GetCurrentInstant(),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return Ok(history);
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
     }
 
     [HttpGet("creation/mod-pack-options")]
@@ -181,6 +307,42 @@ public sealed class GameServersController(
         return Ok(await projectionService
             .GetOperationsAsync(gameServerId, User, take, cancellationToken)
             .ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// Lists the cost owners the caller may transfer the server to. Administrators receive every owner, everyone else
+    /// receives their own owner and the owners they hold an exact cost-owner use grant for. The server's current owner
+    /// is never listed and frozen owners are listed with their frozen flag set.
+    /// </summary>
+    /// <param name="gameServerId">The game server identity.</param>
+    /// <param name="search">The optional owner display-name search text; blank text matches every owner.</param>
+    /// <param name="take">The maximum number of owners, from 1 to 50.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>The matching owners, the caller's own owner first, then by display name and identity.</returns>
+    [HttpGet("{gameServerId:guid}/cost-owner/options")]
+    [Authorize(Claims.ResourceBased.Server.Modify)]
+    [ProducesResponseType<IReadOnlyCollection<GameServerCostOwnerOptionDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCostOwnerOptionsAsync(
+        [FromRoute] Guid gameServerId,
+        [FromQuery] string? search,
+        [FromQuery] int take = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (take is < 1 or > HostingSearchLimits.MaximumTake)
+            return BadRequest(CostOwnerLimitProblem());
+        try
+        {
+            return Ok(await projectionService
+                .GetCostOwnerOptionsAsync(gameServerId, search, take, User, cancellationToken)
+                .ConfigureAwait(false));
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
     }
 
     [HttpPut("{gameServerId:guid}/cost-owner")]
@@ -331,6 +493,76 @@ public sealed class GameServersController(
         }
     }
 
+    /// <summary>
+    /// Searches the members that can still be given direct access to the server: verified members who are neither
+    /// deleted nor banned and hold no direct grant on the server.
+    /// </summary>
+    /// <param name="gameServerId">The game server identity.</param>
+    /// <param name="search">The optional nickname search text; blank text matches every member.</param>
+    /// <param name="take">The maximum number of candidates, from 1 to 50.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>The matching candidates ordered by nickname and then identity.</returns>
+    [HttpGet("{gameServerId:guid}/access/users/options")]
+    [Authorize(Claims.ResourceBased.Server.ManageAccess)]
+    [ProducesResponseType<GameServerUserAccessCandidateDto[]>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetUserAccessOptionsAsync(
+        [FromRoute] Guid gameServerId,
+        [FromQuery] string? search,
+        [FromQuery] int take = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (take is < 1 or > HostingSearchLimits.MaximumTake)
+            return BadRequest(CandidateLimitProblem());
+        try
+        {
+            return Ok(await accessService
+                .SearchUserCandidatesAsync(gameServerId, search, take, User, cancellationToken)
+                .ConfigureAwait(false));
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Searches the roles that can still be given direct access to the server: roles that hold no direct grant on
+    /// the server. Each candidate reports its active member count.
+    /// </summary>
+    /// <param name="gameServerId">The game server identity.</param>
+    /// <param name="search">The optional role title search text; blank text matches every role.</param>
+    /// <param name="take">The maximum number of candidates, from 1 to 50.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>The matching candidates ordered by title and then identity.</returns>
+    [HttpGet("{gameServerId:guid}/access/roles/options")]
+    [Authorize(Claims.ResourceBased.Server.ManageAccess)]
+    [ProducesResponseType<GameServerRoleAccessCandidateDto[]>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetRoleAccessOptionsAsync(
+        [FromRoute] Guid gameServerId,
+        [FromQuery] string? search,
+        [FromQuery] int take = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (take is < 1 or > HostingSearchLimits.MaximumTake)
+            return BadRequest(CandidateLimitProblem());
+        try
+        {
+            return Ok(await accessService
+                .SearchRoleCandidatesAsync(gameServerId, search, take, User, cancellationToken)
+                .ConfigureAwait(false));
+        }
+        catch (Exception ex) when (TryMapException(ex, out var result))
+        {
+            return result;
+        }
+    }
+
     [HttpPost("{gameServerId:guid}/access/users/grant")]
     [Authorize(Claims.ResourceBased.Server.ManageAccess)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -422,6 +654,22 @@ public sealed class GameServersController(
             return result;
         }
     }
+
+    private static ProblemDetails CandidateLimitProblem()
+        => new()
+        {
+            Title = "The candidate limit is invalid.",
+            Detail = $"Take must be between 1 and {HostingSearchLimits.MaximumTake}.",
+            Status = StatusCodes.Status400BadRequest,
+        };
+
+    private static ProblemDetails CostOwnerLimitProblem()
+        => new()
+        {
+            Title = "The cost owner limit is invalid.",
+            Detail = $"Take must be between 1 and {HostingSearchLimits.MaximumTake}.",
+            Status = StatusCodes.Status400BadRequest,
+        };
 
     private static bool TryMapException(Exception exception, out IActionResult result)
     {

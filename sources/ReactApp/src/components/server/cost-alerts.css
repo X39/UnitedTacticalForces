@@ -1,0 +1,217 @@
+/*
+ * Styles for the cost alert banner of the server workspace and for the cost alert rows of the profile menu.
+ *
+ * The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px
+ * media breakpoints; tests/styles/server-style-guard.test.ts fails on anything else. Text wraps with
+ * overflow-wrap: anywhere and is never ellipsized, because German is longer and server names reach 256 characters.
+ * The rules double the selector with .state-panel or the menu row class to win over the shared panel rules, since
+ * the bundle loads component CSS before styles.css.
+ */
+
+.cost-alert-banner {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-sm);
+}
+
+.cost-alert-banner__list {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * One row is the threshold text and the Dismiss alert button at the row end. Rows after the first carry the divided modifier and are
+ * separated by a divider, so the list reads as one quiet panel instead of a stack of cards.
+ */
+.cost-alert-banner__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--utf-space-xs) var(--utf-space-md);
+  min-width: 0;
+  padding-block: var(--utf-space-sm);
+}
+
+.cost-alert-banner__row:first-child {
+  padding-top: 0;
+}
+
+.cost-alert-banner__row:last-child {
+  padding-bottom: 0;
+}
+
+.cost-alert-banner__row--divided {
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+.cost-alert-banner__text {
+  min-width: 0;
+}
+
+.state-panel .cost-alert-banner p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.state-panel .cost-alert-banner .cost-alert-banner__reached {
+  color: var(--utf-text);
+  font-weight: var(--utf-weight-bold);
+}
+
+.state-panel .cost-alert-banner .cost-alert-banner__amount,
+.state-panel .cost-alert-banner .cost-alert-banner__older {
+  color: var(--utf-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.state-panel .cost-alert-banner .cost-alert-banner__ended {
+  color: var(--utf-text);
+}
+
+.state-panel .cost-alert-banner .cost-alert-banner__error {
+  color: var(--utf-state-danger-fg);
+}
+
+/* The one footer: the cost-stop button first, then Dismiss all. */
+.cost-alert-banner__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  margin-top: var(--utf-space-sm);
+}
+
+.cost-alert-banner__footer .action-with-reason {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* The workspace heading takes focus after a dismissal removed the last control; it shows the shared focus ring. */
+.workspace-header__title:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+@media (max-width: 800px) {
+  .cost-alert-banner .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+/*
+ * Compact layout: the row text keeps the full width and the row's Dismiss button wraps below it, then the footer
+ * buttons stack at full width so a German banner fits the first screen of a 320 pixel phone.
+ */
+@media (max-width: 520px) {
+  .cost-alert-banner__row {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+
+  .cost-alert-banner__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cost-alert-banner__footer .action-with-reason,
+  .cost-alert-banner__footer .button {
+    width: 100%;
+  }
+}
+
+/*
+ * Cost alert rows of the profile menu. The row keeps the shared notification card and uses two columns like the
+ * server rows next to it: the alert icon, then the text column that stacks the server name, the reached line, the
+ * amount line and the actions. The server name wraps instead of being clipped.
+ */
+.account-profile__notification.account-profile__notification--alert {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  border-left-color: var(--utf-state-warning-border);
+  gap: var(--utf-space-sm);
+}
+
+.account-profile__notification--alert .cost-alert-item__icon {
+  display: block;
+  margin-top: var(--utf-space-xs);
+  color: var(--utf-state-warning-fg);
+}
+
+.cost-alert-item__content {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-xs);
+}
+
+.account-profile__notification--alert .account-profile__notification-body strong {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.account-profile__notification--alert p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-profile__notification--alert .cost-alert-item__reached {
+  color: var(--utf-text);
+  font-weight: var(--utf-weight-regular);
+}
+
+.account-profile__notification--alert .cost-alert-item__amount {
+  color: var(--utf-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.account-profile__notification--alert .cost-alert-item__error {
+  color: var(--utf-state-danger-fg);
+}
+
+.cost-alert-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--utf-space-xs) var(--utf-space-sm);
+  min-width: 0;
+}
+
+.account-profile__notification--alert .cost-alert-item__actions > .button,
+.account-profile__notification--alert .cost-alert-item__actions > .action-with-reason {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+@media (max-width: 800px) {
+  .cost-alert-item__actions .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+/*
+ * The automatic shutdown notice of the server workspace. The text wraps and is never ellipsized; the relative line
+ * is the only text that changes on a clock, so it uses tabular figures.
+ */
+.auto-stop-notice {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-xs);
+}
+
+.state-panel .auto-stop-notice p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.state-panel .auto-stop-notice .auto-stop-notice__relative {
+  color: var(--utf-text-muted);
+  font-variant-numeric: tabular-nums;
+}

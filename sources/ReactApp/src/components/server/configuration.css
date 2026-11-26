@@ -1,0 +1,197 @@
+/*
+ * Styles for the Configuration panel of the Settings section: the profile choice, the Common and Advanced parts,
+ * the setting groups and the single configuration entry field.
+ *
+ * The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px
+ * media breakpoints; tests/styles/server-style-guard.test.ts fails on anything else. API text wraps and is never
+ * ellipsized, so every text rule below allows an anywhere break.
+ */
+
+/* Panel body: the profile choice, the warnings, the estimate and the settings, one stack. */
+.configuration-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+}
+
+.configuration-panel__description,
+.configuration-panel__estimate-note {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/* Filter toolbar: the search grows, the chips sit beside it and the visible count takes its own row. */
+.configuration-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm) var(--utf-space-md);
+  min-width: 0;
+}
+
+.configuration-filter .filter-chip-group {
+  flex: 0 1 auto;
+}
+
+.configuration-filter__count {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .configuration-filter .search-control,
+  .configuration-filter .filter-chip-group {
+    flex: 1 1 100%;
+  }
+}
+
+/* Common settings heading, a level below the panel title. */
+.configuration-panel__part-title {
+  margin: 0;
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  overflow-wrap: anywhere;
+}
+
+/* One part (Common, Advanced or the flat list): the target blocks of its entries stacked. */
+.configuration-part {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+}
+
+.configuration-target {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+}
+
+/* A setting group is a plain fieldset; a very long list stays a stack and never turns into a grid or a table. */
+.configuration-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.configuration-group__legend {
+  padding: 0;
+  margin-bottom: var(--utf-space-sm);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.configuration-group__caption {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/* Entry field: the shared control with its label row (and state slot) and the warning below. */
+.configuration-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+}
+
+.configuration-field__source {
+  color: var(--utf-text-muted);
+}
+
+.configuration-field__warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  color: var(--utf-state-warning-fg);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.configuration-field__warning-icon {
+  flex: none;
+}
+
+/*
+ * State slot in the label row: the Changed badge, the reset-staged text, Undo and Reset. An entry the member may modify
+ * reserves the slot's height from the first render, so staging only fills the slot and never moves another element
+ * (D-11). The reservation depends on capability, never on staging state.
+ */
+.configuration-field .form-field__head {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.configuration-field .form-field__head > .form-field__label {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.configuration-field__state {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--utf-space-xs);
+  max-width: 100%;
+}
+
+.configuration-field__state:not(.configuration-field__state--actionable):empty {
+  display: none;
+}
+
+.configuration-field__state--actionable {
+  min-height: var(--utf-control-height-compact);
+}
+
+@media (max-width: 800px) {
+  .configuration-field__state--actionable {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+/* On a phone the label sits above the slot, so an actionable entry is two lines tall from the start. */
+@media (max-width: 520px) {
+  .configuration-field .form-field__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .configuration-field .form-field__head > .form-field__label,
+  .configuration-field .form-field__head > .form-field__switch {
+    flex: none;
+  }
+
+  .configuration-field__state {
+    justify-content: flex-start;
+  }
+}
+
+.configuration-field__staged {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}

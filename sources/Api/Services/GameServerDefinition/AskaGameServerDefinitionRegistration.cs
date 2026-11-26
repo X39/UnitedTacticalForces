@@ -38,6 +38,7 @@ public sealed class AskaGameServerDefinitionRegistration : IGameServerDefinition
             new(ERuntimeNetworkProtocol.Udp, 27015, 27015, "ASKA gameplay traffic"),
             new(ERuntimeNetworkProtocol.Udp, 27016, 27016, "ASKA server-browser query traffic"),
         ],
+        ReportsPlayerCount = true,
         PrimaryConnection = new(ERuntimeNetworkProtocol.Udp, 27015, "ASKA server"),
         RuntimeInstallation = new("3246670", 8L * 1024 * 1024 * 1024, "ASKA dedicated server runtime", "1898300"),
         Secrets =

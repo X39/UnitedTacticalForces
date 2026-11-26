@@ -1,11 +1,7 @@
-import {
-  ArrowSync20Regular,
-  CloudArrowUp24Regular,
-  ShieldTask24Regular,
-} from "@fluentui/react-icons";
+import { ArrowSync20Regular, ShieldTask24Regular } from "@fluentui/react-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -15,14 +11,13 @@ import type { ProfileSettings } from "@/api/types";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import { localReturnUrl, useAuth } from "@/auth/auth";
+import { ActionButton } from "@/components/ActionControl";
 import { useAppToastOnChange } from "@/components/AppToasts";
-import {
-  ConfirmDialog,
-  PageHeader,
-  StatePanel,
-  StatusBadge,
-  useUnsavedChanges,
-} from "@/components/primitives";
+import { FileChooserButton } from "@/components/FileChooserButton";
+import { FieldError, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
+import { ConfirmDialog, PageHeader, StatusBadge, useUnsavedChanges } from "@/components/primitives";
+import { ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
 import { eventsMemberQueryKeys, eventsMemberService, submitAccountDeletion } from "./services";
 import type { ProfileSettingsFormValues, ProfileSettingsUpdate } from "./types";
 
@@ -175,8 +170,8 @@ export function AccountSettingsPage() {
     () => (settings ? avatarSource(settings, avatar) : undefined),
     [avatar, settings],
   );
-  const handleAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleAvatar = async (files: File[]) => {
+    const file = files[0];
     if (!file) return;
     const payload = await avatarFileToPayload(file);
     setAvatarError(!payload);
@@ -184,64 +179,66 @@ export function AccountSettingsPage() {
     setSaveSucceeded(false);
   };
 
-  if (auth.isLoading) {
+  // Every state below the header keeps the one page h1; only the refresh action waits for loaded settings.
+  const header = (
+    <PageHeader
+      kicker={t("Pages_Settings_AccountSettings")}
+      title={t("Shared_NavMenu_UserSettings")}
+      description={t("Pages_Settings_HeaderDescription")}
+      actions={
+        settings ? (
+          <ActionButton variant="ghost" onClick={() => void query.refetch()}>
+            <ArrowSync20Regular aria-hidden="true" /> {t("Common_Refresh")}
+          </ActionButton>
+        ) : undefined
+      }
+    />
+  );
+
+  if (auth.isLoading || (auth.isAuthenticated && query.isLoading)) {
     return (
-      <div className="narrow-page">
-        <StatePanel kind="loading">{t("Common_LoadingData")}</StatePanel>
+      <div className="page-wrap em-settings-page">
+        {header}
+        <PageStack>
+          <LoadingState />
+        </PageStack>
       </div>
     );
   }
   if (!auth.isAuthenticated) {
     const provider = auth.providers.steam ? "steam" : auth.providers.discord ? "discord" : null;
     return (
-      <div className="narrow-page">
-        <StatePanel
-          kind="forbidden"
-          title={t("Pages_Public_Join_LoginRequiredTitle")}
-          action={
-            provider ? (
-              <button
-                className="button button--gold"
-                type="button"
-                onClick={() => auth.login(provider)}
-              >
-                {t("Pages_Unit_Kassenbuch_Index_SignIn")}
-              </button>
-            ) : undefined
-          }
-        >
-          {t("Pages_Public_Join_LoginHint")}
-        </StatePanel>
-      </div>
-    );
-  }
-  if (query.isLoading) {
-    return (
-      <div className="narrow-page">
-        <StatePanel kind="loading">{t("Common_LoadingData")}</StatePanel>
+      <div className="page-wrap em-settings-page">
+        {header}
+        <PageStack>
+          <ForbiddenState
+            title={t("React_AccountSettings_SignInTitle")}
+            action={
+              provider && (
+                <ActionButton variant="gold" onClick={() => auth.login(provider)}>
+                  {t("Pages_Unit_Kassenbuch_Index_SignIn")}
+                </ActionButton>
+              )
+            }
+          >
+            <p>{t("Pages_Public_Join_LoginHint")}</p>
+          </ForbiddenState>
+        </PageStack>
       </div>
     );
   }
   if (query.isError || !settings) {
     return (
-      <div className="narrow-page">
-        <StatePanel
-          kind="error"
-          action={
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => void query.refetch()}
-            >
-              <ArrowSync20Regular /> {t("React_UI_Retry")}
-            </button>
-          }
-        >
-          {formatResource(
-            t("Pages_Public_Join_ProfileLoadError"),
-            query.error?.message ?? t("React_Join_ProfileError"),
-          )}
-        </StatePanel>
+      <div className="page-wrap em-settings-page">
+        {header}
+        <PageStack>
+          <ErrorState onRetry={() => void query.refetch()}>
+            {formatResource(
+              t("Pages_Public_Join_ProfileLoadError"),
+              query.error?.message ?? t("React_Join_ProfileError"),
+            )}
+          </ErrorState>
+        </PageStack>
       </div>
     );
   }
@@ -254,237 +251,255 @@ export function AccountSettingsPage() {
 
   return (
     <div className="page-wrap em-settings-page">
-      <PageHeader
-        kicker={t("Pages_Settings_AccountSettings")}
-        title={t("Shared_NavMenu_UserSettings")}
-        description={t("Pages_Settings_HeaderDescription")}
-        actions={
-          <button
-            className="button button--ghost"
-            type="button"
-            onClick={() => void query.refetch()}
-          >
-            <ArrowSync20Regular /> {t("Common_Refresh")}
-          </button>
-        }
-      />
+      {header}
 
-      <form
-        className="em-settings-workspace"
-        onSubmit={form.handleSubmit((values) => {
-          setSaveSucceeded(false);
-          save.mutate(profileFormToPayload(values, avatar));
-        })}
-      >
-        <main>
-          <section className="content-section em-panel">
-            <PageHeader
-              kicker={t("Pages_Settings_AccountSettings")}
-              title={t("Pages_Settings_PublicProfile")}
-              description={t("Pages_Settings_PublicProfileDescription")}
-              actions={
-                <StatusBadge tone={settings.isVerified ? "success" : "warning"}>
-                  {settings.isVerified
-                    ? t("Pages_Settings_Verified")
-                    : t("Pages_Settings_Unverified")}
-                </StatusBadge>
-              }
-            />
-            <div className="em-profile-row">
-              <span
-                className="em-avatar"
-                style={preview ? { backgroundImage: `url("${preview}")` } : undefined}
-                aria-hidden="true"
-              >
-                {!preview && (nickname.trim()[0] ?? "U").toLocaleUpperCase()}
-              </span>
-              <label className="button button--ghost em-avatar-upload">
-                <CloudArrowUp24Regular />
-                {t("Pages_Settings_AccountSettings_SetAvatar")}
-                <input type="file" accept="image/*" onChange={handleAvatar} />
-              </label>
-              <small>{t("Pages_Settings_AvatarRequirements")}</small>
-            </div>
-            {avatarError && (
-              <StatePanel kind="error">{t("Pages_Settings_AvatarRequirements")}</StatePanel>
-            )}
-            <div className="em-form-grid">
-              <SettingsField
-                label={t("Pages_Settings_AccountSettings_Nickname")}
-                {...(form.formState.errors.nickname
-                  ? { error: t("Pages_Settings_NicknameRequired") }
-                  : {})}
-              >
-                <input maxLength={1024} autoComplete="nickname" {...form.register("nickname")} />
-              </SettingsField>
-              <SettingsField
-                label={t("Pages_Settings_AccountSettings_EMail")}
-                {...(form.formState.errors.eMail
-                  ? { error: t("React_Settings_EMailInvalid") }
-                  : {})}
-              >
-                <input
+      <PageStack>
+        <form
+          className="em-settings-workspace"
+          onSubmit={form.handleSubmit((values) => {
+            setSaveSucceeded(false);
+            save.mutate(profileFormToPayload(values, avatar));
+          })}
+        >
+          <main>
+            <section className="content-section em-panel">
+              <PageHeader
+                headingLevel={2}
+                kicker={t("Pages_Settings_AccountSettings")}
+                title={t("Pages_Settings_PublicProfile")}
+                description={t("Pages_Settings_PublicProfileDescription")}
+                actions={
+                  <StatusBadge tone={settings.isVerified ? "success" : "warning"}>
+                    {settings.isVerified
+                      ? t("Pages_Settings_Verified")
+                      : t("Pages_Settings_Unverified")}
+                  </StatusBadge>
+                }
+              />
+              <div className="em-profile-row">
+                <span
+                  className="em-avatar"
+                  style={preview ? { backgroundImage: `url("${preview}")` } : undefined}
+                  aria-hidden="true"
+                >
+                  {!preview && (nickname.trim()[0] ?? "U").toLocaleUpperCase()}
+                </span>
+                <FileChooserButton
+                  accept="image/*"
+                  inputLabel={t("Pages_Settings_AccountSettings_SetAvatar")}
+                  onFiles={(files) => void handleAvatar(files)}
+                >
+                  {t("Pages_Settings_AccountSettings_SetAvatar")}
+                </FileChooserButton>
+                <small>{t("Pages_Settings_AvatarRequirements")}</small>
+              </div>
+              {avatarError && (
+                <FieldError
+                  id="settings-avatar-error"
+                  message={t("Pages_Settings_AvatarRequirements")}
+                />
+              )}
+              <div className="em-form-grid">
+                <TextField
+                  label={t("Pages_Settings_AccountSettings_Nickname")}
+                  error={
+                    form.formState.errors.nickname
+                      ? t("Pages_Settings_NicknameRequired")
+                      : undefined
+                  }
+                  maxLength={1024}
+                  autoComplete="nickname"
+                  {...form.register("nickname")}
+                />
+                <TextField
+                  label={t("Pages_Settings_AccountSettings_EMail")}
+                  error={form.formState.errors.eMail ? t("React_Settings_EMailInvalid") : undefined}
                   type="email"
                   maxLength={1024}
                   autoComplete="email"
                   {...form.register("eMail")}
                 />
-              </SettingsField>
-            </div>
-          </section>
+              </div>
+            </section>
 
-          <section className="content-section em-panel">
-            <PageHeader
-              kicker={t("Pages_Settings_Verein")}
-              title={t("Pages_Settings_FormalMemberDetails")}
-              description={t("Pages_Settings_FormalMemberDescription")}
-              actions={
-                <StatusBadge tone={settings.isVereinMember ? "success" : "neutral"}>
-                  {memberStatus}
-                </StatusBadge>
-              }
-            />
-            <div className="em-form-grid em-form-grid--member">
-              <SettingsField label={t("Pages_Settings_FirstName")}>
-                <input maxLength={256} autoComplete="given-name" {...form.register("firstName")} />
-              </SettingsField>
-              <SettingsField label={t("Pages_Settings_LastName")}>
-                <input maxLength={256} autoComplete="family-name" {...form.register("lastName")} />
-              </SettingsField>
-              <SettingsField
-                label={t("Pages_Settings_DateOfBirth")}
-                {...(form.formState.errors.dateOfBirth
-                  ? { error: t("Pages_Public_Join_ValidationDateOfBirth") }
-                  : {})}
+            <section className="content-section em-panel">
+              <PageHeader
+                headingLevel={2}
+                kicker={t("Pages_Settings_Verein")}
+                title={t("Pages_Settings_FormalMemberDetails")}
+                description={t("Pages_Settings_FormalMemberDescription")}
+                actions={
+                  <StatusBadge tone={settings.isVereinMember ? "success" : "neutral"}>
+                    {memberStatus}
+                  </StatusBadge>
+                }
+              />
+              <div className="em-form-grid em-form-grid--member">
+                <TextField
+                  label={t("Pages_Settings_FirstName")}
+                  maxLength={256}
+                  autoComplete="given-name"
+                  {...form.register("firstName")}
+                />
+                <TextField
+                  label={t("Pages_Settings_LastName")}
+                  maxLength={256}
+                  autoComplete="family-name"
+                  {...form.register("lastName")}
+                />
+                <TextField
+                  label={t("Pages_Settings_DateOfBirth")}
+                  error={
+                    form.formState.errors.dateOfBirth
+                      ? t("Pages_Public_Join_ValidationDateOfBirth")
+                      : undefined
+                  }
+                  type="date"
+                  {...form.register("dateOfBirth")}
+                />
+                <TextField
+                  label={t("Pages_Settings_Phone")}
+                  maxLength={64}
+                  autoComplete="tel"
+                  {...form.register("phoneNumber")}
+                />
+                <div className="em-field--wide">
+                  <TextField
+                    label={t("Pages_Settings_AddressLine1")}
+                    maxLength={512}
+                    autoComplete="address-line1"
+                    {...form.register("addressLine1")}
+                  />
+                </div>
+                <div className="em-field--wide">
+                  <TextField
+                    label={t("Pages_Settings_AddressLine2")}
+                    maxLength={512}
+                    autoComplete="address-line2"
+                    {...form.register("addressLine2")}
+                  />
+                </div>
+                <TextField
+                  label={t("Pages_Settings_PostalCode")}
+                  maxLength={32}
+                  autoComplete="postal-code"
+                  {...form.register("postalCode")}
+                />
+                <TextField
+                  label={t("Pages_Settings_City")}
+                  maxLength={256}
+                  autoComplete="address-level2"
+                  {...form.register("city")}
+                />
+                <TextField
+                  label={t("Pages_Settings_Country")}
+                  maxLength={128}
+                  autoComplete="country-name"
+                  {...form.register("country")}
+                />
+              </div>
+              <p>
+                {settings.isVereinMember
+                  ? t("Pages_Settings_VereinVerificationNote")
+                  : t("Pages_Settings_VereinApplicantNote")}
+              </p>
+            </section>
+          </main>
+
+          <aside>
+            <section className="content-section em-panel">
+              <PageHeader
+                headingLevel={2}
+                kicker={t("Pages_Settings_LinkedAccounts")}
+                title={t("Pages_Settings_LinkedIdentities")}
+                description={t("Pages_Settings_LinkedIdentitiesDescription")}
+              />
+              <dl className="em-identities">
+                <div>
+                  <dt>{t("Pages_Settings_AccountSettings_SteamId64")}</dt>
+                  <dd>{settings.steamId64 || t("Pages_Settings_NotLinked")}</dd>
+                  {auth.providers.steam && (
+                    <ActionButton
+                      variant="ghost"
+                      size="compact"
+                      onClick={() => auth.login("steam")}
+                    >
+                      {t("Steam")}
+                    </ActionButton>
+                  )}
+                </div>
+                <div>
+                  <dt>{t("Pages_Settings_AccountSettings_Discord")}</dt>
+                  <dd>
+                    {settings.discordUsername ||
+                      settings.discordId ||
+                      t("Pages_Settings_NotLinked")}
+                  </dd>
+                  {auth.providers.discord && (
+                    <ActionButton
+                      variant="ghost"
+                      size="compact"
+                      onClick={() => auth.login("discord")}
+                    >
+                      {t("Discord")}
+                    </ActionButton>
+                  )}
+                </div>
+              </dl>
+            </section>
+
+            <section className="content-section em-panel em-danger-panel">
+              <ShieldTask24Regular aria-hidden="true" />
+              <PageHeader
+                headingLevel={2}
+                kicker={t("Pages_Settings_DangerZone")}
+                title={t("Pages_Settings_AccountSettings_DeleteAccount")}
+                description={t("Pages_Settings_DangerZoneDescription")}
+              />
+              <p>
+                {settings.canDeleteAccount
+                  ? t("Pages_Settings_DeleteAccountAvailableDescription")
+                  : t("Pages_Settings_DeleteAccountBlockedFormalMember")}
+              </p>
+              <ActionButton
+                variant="danger"
+                disabled={!settings.canDeleteAccount}
+                onClick={() => setDeleteConfirmation(true)}
               >
-                <input type="date" {...form.register("dateOfBirth")} />
-              </SettingsField>
-              <SettingsField label={t("Pages_Settings_Phone")}>
-                <input maxLength={64} autoComplete="tel" {...form.register("phoneNumber")} />
-              </SettingsField>
-              <SettingsField label={t("Pages_Settings_AddressLine1")} wide>
-                <input
-                  maxLength={512}
-                  autoComplete="address-line1"
-                  {...form.register("addressLine1")}
-                />
-              </SettingsField>
-              <SettingsField label={t("Pages_Settings_AddressLine2")} wide>
-                <input
-                  maxLength={512}
-                  autoComplete="address-line2"
-                  {...form.register("addressLine2")}
-                />
-              </SettingsField>
-              <SettingsField label={t("Pages_Settings_PostalCode")}>
-                <input maxLength={32} autoComplete="postal-code" {...form.register("postalCode")} />
-              </SettingsField>
-              <SettingsField label={t("Pages_Settings_City")}>
-                <input maxLength={256} autoComplete="address-level2" {...form.register("city")} />
-              </SettingsField>
-              <SettingsField label={t("Pages_Settings_Country")}>
-                <input maxLength={128} autoComplete="country-name" {...form.register("country")} />
-              </SettingsField>
+                {t("Pages_Settings_AccountSettings_DeleteAccount")}
+              </ActionButton>
+            </section>
+          </aside>
+
+          <footer className="em-settings-actions">
+            <div>
+              <strong>
+                {form.formState.isDirty || avatar
+                  ? t("Pages_Settings_UnsavedChanges")
+                  : t("Pages_Settings_NoUnsavedChanges")}
+              </strong>
+              <p>
+                {form.formState.isDirty || avatar
+                  ? t("Pages_Settings_UnsavedChangesDescription")
+                  : t("Pages_Settings_NoUnsavedChangesDescription")}
+              </p>
             </div>
-            <p>
-              {settings.isVereinMember
-                ? t("Pages_Settings_VereinVerificationNote")
-                : t("Pages_Settings_VereinApplicantNote")}
-            </p>
-          </section>
-        </main>
-
-        <aside>
-          <section className="content-section em-panel">
-            <PageHeader
-              kicker={t("Pages_Settings_LinkedAccounts")}
-              title={t("Pages_Settings_LinkedIdentities")}
-              description={t("Pages_Settings_LinkedIdentitiesDescription")}
-            />
-            <dl className="em-identities">
-              <div>
-                <dt>{t("Pages_Settings_AccountSettings_SteamId64")}</dt>
-                <dd>{settings.steamId64 || t("Pages_Settings_NotLinked")}</dd>
-                {auth.providers.steam && (
-                  <button
-                    className="button button--ghost button--small"
-                    type="button"
-                    onClick={() => auth.login("steam")}
-                  >
-                    {t("Steam")}
-                  </button>
-                )}
-              </div>
-              <div>
-                <dt>{t("Pages_Settings_AccountSettings_Discord")}</dt>
-                <dd>
-                  {settings.discordUsername || settings.discordId || t("Pages_Settings_NotLinked")}
-                </dd>
-                {auth.providers.discord && (
-                  <button
-                    className="button button--ghost button--small"
-                    type="button"
-                    onClick={() => auth.login("discord")}
-                  >
-                    {t("Discord")}
-                  </button>
-                )}
-              </div>
-            </dl>
-          </section>
-
-          <section className="content-section em-panel em-danger-panel">
-            <ShieldTask24Regular />
-            <PageHeader
-              kicker={t("Pages_Settings_DangerZone")}
-              title={t("Pages_Settings_AccountSettings_DeleteAccount")}
-              description={t("Pages_Settings_DangerZoneDescription")}
-            />
-            <p>
-              {settings.canDeleteAccount
-                ? t("Pages_Settings_DeleteAccountAvailableDescription")
-                : t("Pages_Settings_DeleteAccountBlockedFormalMember")}
-            </p>
-            <button
-              className="button button--danger"
-              type="button"
-              disabled={!settings.canDeleteAccount}
-              onClick={() => setDeleteConfirmation(true)}
+            <ActionButton
+              variant="ghost"
+              onClick={() => {
+                form.reset(profileSettingsToForm(settings));
+                setAvatar(undefined);
+                setAvatarError(false);
+              }}
             >
-              {t("Pages_Settings_AccountSettings_DeleteAccount")}
-            </button>
-          </section>
-        </aside>
-
-        <footer className="em-settings-actions">
-          <div>
-            <strong>
-              {form.formState.isDirty || avatar
-                ? t("Pages_Settings_UnsavedChanges")
-                : t("Pages_Settings_NoUnsavedChanges")}
-            </strong>
-            <p>
-              {form.formState.isDirty || avatar
-                ? t("Pages_Settings_UnsavedChangesDescription")
-                : t("Pages_Settings_NoUnsavedChangesDescription")}
-            </p>
-          </div>
-          <button
-            className="button button--ghost"
-            type="button"
-            onClick={() => {
-              form.reset(profileSettingsToForm(settings));
-              setAvatar(undefined);
-              setAvatarError(false);
-            }}
-          >
-            {t("Common_Reset")}
-          </button>
-          <button className="button button--gold" type="submit" disabled={save.isPending}>
-            {save.isPending ? t("Common_Saving") : t("Pages_Settings_SaveSettings")}
-          </button>
-        </footer>
-      </form>
+              {t("Common_Reset")}
+            </ActionButton>
+            <ActionButton variant="gold" type="submit" disabled={save.isPending}>
+              {save.isPending ? t("Common_Saving") : t("Pages_Settings_SaveSettings")}
+            </ActionButton>
+          </footer>
+        </form>
+      </PageStack>
 
       <ConfirmDialog
         open={deleteConfirmation}
@@ -493,7 +508,8 @@ export function AccountSettingsPage() {
         confirmLabel={t(
           "Pages_Settings_AccountSettings_DeleteAccount_Confirm_YesIamSureIWantToDeleteMyAccount",
         )}
-        cancelLabel={t("Common_Cancel")}
+        cancelLabel={t("Pages_Settings_AccountSettings_DeleteAccount_Confirm_Dismiss")}
+        initialFocus="dismiss"
         onCancel={() => setDeleteConfirmation(false)}
         onConfirm={() => {
           const apiTarget = getApiClient().url("users/me/delete");
@@ -501,25 +517,5 @@ export function AccountSettingsPage() {
         }}
       />
     </div>
-  );
-}
-
-function SettingsField({
-  label,
-  error,
-  wide = false,
-  children,
-}: {
-  label: string;
-  error?: string;
-  wide?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <label className={`field${wide ? " em-field--wide" : ""}`}>
-      <span>{label}</span>
-      {children}
-      {error && <small role="alert">{error}</small>}
-    </label>
   );
 }

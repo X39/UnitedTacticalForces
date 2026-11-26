@@ -17,6 +17,7 @@ import {
   type MembershipRequest,
 } from "@/features/admin/vereinMembershipRequests";
 import * as membershipRequests from "@/features/admin/vereinMembershipRequests";
+import { findToast, toastPoliteness } from "./helpers/toastQueries";
 
 const authState = vi.hoisted(() => ({ user: undefined as FullUser | undefined }));
 
@@ -160,6 +161,104 @@ describe("Verein membership request administration", () => {
     expect(membershipRequests.loadMembershipRequests).not.toHaveBeenCalled();
   });
 
+  it("renders one h1 that equals the navigation label above every state", async () => {
+    renderPage();
+
+    expect(await screen.findAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Membership requests" })).toBeVisible();
+  });
+
+  it("renders one h1 above the forbidden state", () => {
+    authState.user = undefined;
+    renderPage();
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Membership access required",
+    );
+  });
+
+  it("renders one h1 above the loading state", () => {
+    vi.spyOn(membershipRequests, "loadMembershipRequests").mockReturnValue(
+      new Promise(() => undefined),
+    );
+    renderPage();
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("status")).toHaveTextContent("Loading Verein workspace");
+  });
+
+  it("shows the error state with a retry that refetches and no misleading empty queue", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(membershipRequests, "loadMembershipRequests").mockRejectedValue(new Error("down"));
+    renderPage();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Membership requests could not be loaded: down");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.queryByText("No membership requests match")).not.toBeInTheDocument();
+
+    await user.click(within(alert).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(membershipRequests.loadMembershipRequests).toHaveBeenCalledTimes(2));
+  });
+
+  it("names how to clear the filter when no request matches", async () => {
+    vi.spyOn(membershipRequests, "loadMembershipRequests").mockResolvedValue([]);
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "No membership requests match" }),
+    ).toBeVisible();
+    expect(screen.getByText("Clear the search or filters to see all requests.")).toBeVisible();
+  });
+
+  it("takes every request status tone from the membership request map", async () => {
+    const user = userEvent.setup();
+    const statuses = [
+      "Submitted",
+      "AcceptedForContact",
+      "Approved",
+      "Rejected",
+      "Withdrawn",
+    ] as const;
+    vi.spyOn(membershipRequests, "loadMembershipRequests").mockResolvedValue(
+      statuses.map((status, index) => ({
+        ...submittedRequest,
+        primaryKey: 50 + index,
+        firstName: `Applicant${index}`,
+        status,
+      })),
+    );
+    renderPage();
+
+    await screen.findByLabelText("Selected membership request");
+    await user.click(screen.getByRole("button", { name: /^All statuses/ }));
+    const tones = ["warning", "info", "success", "danger", "neutral"];
+    const labels = ["Submitted", "Accepted for contact", "Approved", "Rejected", "Withdrawn"];
+    labels.forEach((label, index) => {
+      const row = screen.getByRole("row", { name: new RegExp(`Applicant${index}`) });
+      expect(within(row).getByText(label)).toHaveClass(`status-badge--${tones[index]}`);
+    });
+  });
+
+  it("filters through counted chips of one pressed group", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByLabelText("Selected membership request");
+    const group = screen.getByRole("group", { name: "Membership request filters" });
+    expect(within(group).getByRole("button", { name: /^Open/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(within(group).getByRole("button", { name: /^Approved/ }));
+    expect(within(group).getByRole("button", { name: /^Approved/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(await screen.findByText("No request selected")).toBeVisible();
+  });
+
   it("loads applicant evidence and records an approval", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -182,10 +281,9 @@ describe("Verein membership request administration", () => {
         notes: "Welcome pack pending",
       }),
     );
-    const toast = (await screen.findByText("Membership request updated.")).closest(
-      '[role="status"]',
-    );
+    const toast = await findToast("Membership request updated.");
     expect(toast).toHaveClass("app-toast");
+    expect(toastPoliteness(toast)).toBe("polite");
     expect(within(detail).getByText("Approved")).toBeVisible();
   });
 });

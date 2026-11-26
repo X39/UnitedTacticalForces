@@ -66,6 +66,102 @@ public sealed class LifecycleJobExecutorCloudTests
         Assert.NotNull(deployment.TimeStampResolved);
     }
 
+    /// <summary>
+    /// Lets a start queued by a schedule, which has no requesting user, pass the actor preflight and reach the
+    /// provider while the start consent still names the deployment cost owner.
+    /// </summary>
+    /// <returns>A task that completes after checking that the provider was asked to provision.</returns>
+    [Fact]
+    public async Task Start_ByScheduleWithoutRequester_PassesActorPreflightAndProvisions()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedScheduledStartAsync(store, consentCostOwnerFk: null, hasConsent: true);
+        var provider = new ExecutorTestProvider();
+        var costs = new RecordingCostSliceService();
+
+        await CaptureExceptionAsync(() => CreateExecutor(store, provider, costs).ExecuteAsync(job));
+
+        Assert.Equal(1, provider.ProvisionCalls);
+        Assert.NotEqual("actor-no-longer-authorized", seed.Deployment!.FaultCode);
+        Assert.NotEqual("start-consent-no-longer-valid", seed.Deployment.FaultCode);
+    }
+
+    /// <summary>
+    /// Rejects a queued scheduled start whose stored consent was cleared after the job was queued, before any
+    /// provider mutation or cost reservation.
+    /// </summary>
+    /// <returns>A task that completes after checking the rejection and the absence of side effects.</returns>
+    [Fact]
+    public async Task Start_ByScheduleWithClearedConsent_IsRejectedBeforeMutation()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedScheduledStartAsync(store, consentCostOwnerFk: null, hasConsent: false);
+        var provider = new ExecutorTestProvider();
+        var costs = new RecordingCostSliceService();
+
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(
+            () => CreateExecutor(store, provider, costs).ExecuteAsync(job));
+
+        Assert.Equal(0, provider.ProvisionCalls);
+        Assert.Equal(0, costs.ReserveCalls);
+        Assert.Equal("start-consent-no-longer-valid", seed.Deployment!.FaultCode);
+        Assert.NotNull(seed.Deployment.TimeStampResolved);
+    }
+
+    /// <summary>
+    /// Rejects a queued scheduled start whose stored consent is bound to a cost owner other than the one of the
+    /// deployment, before any provider mutation or cost reservation.
+    /// </summary>
+    /// <returns>A task that completes after checking the rejection and the absence of side effects.</returns>
+    [Fact]
+    public async Task Start_ByScheduleWithConsentOfOtherCostOwner_IsRejectedBeforeMutation()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var otherOwner = new CostOwner
+        {
+            PrimaryKey = Guid.NewGuid(),
+            Kind = ECostOwnerKind.ExternalOrganization,
+            DisplayName = "Other cost owner",
+            Currency = "EUR",
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        store.DbContext.CostOwners.Add(otherOwner);
+        await store.DbContext.SaveChangesAsync();
+        var (seed, job) = await SeedScheduledStartAsync(store, otherOwner.PrimaryKey, hasConsent: true);
+        var provider = new ExecutorTestProvider();
+        var costs = new RecordingCostSliceService();
+
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(
+            () => CreateExecutor(store, provider, costs).ExecuteAsync(job));
+
+        Assert.Equal(0, provider.ProvisionCalls);
+        Assert.Equal(0, costs.ReserveCalls);
+        Assert.Equal("start-consent-no-longer-valid", seed.Deployment!.FaultCode);
+        Assert.NotNull(seed.Deployment.TimeStampResolved);
+    }
+
+    /// <summary>Still rejects a user-initiated start whose requesting user is gone before the provider is called.</summary>
+    /// <returns>A task that completes after checking the rejection before any provider mutation.</returns>
+    [Fact]
+    public async Task Start_ByManualRequestWithoutRequester_IsRejectedBeforeMutation()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        job.RequestedByFk = null;
+        await store.DbContext.SaveChangesAsync();
+        var provider = new ExecutorTestProvider();
+        var costs = new RecordingCostSliceService();
+
+        await Assert.ThrowsAnyAsync<LifecycleExecutionException>(
+            () => CreateExecutor(store, provider, costs).ExecuteAsync(job));
+
+        Assert.Equal(0, provider.ProvisionCalls);
+        Assert.Equal(0, costs.ReserveCalls);
+        Assert.NotNull(seed.Deployment!.TimeStampResolved);
+    }
+
     /// <summary>Preserves the persisted capacity evidence and quote when a fresh executor resumes a Start.</summary>
     /// <returns>A task that completes after inspecting the provider request and unchanged snapshot.</returns>
     [Fact]
@@ -560,6 +656,37 @@ public sealed class LifecycleJobExecutorCloudTests
         Assert.True(concreteServer.PossibleCost);
         Assert.True(deployment.PossibleCost);
         Assert.Equal(1, cost.CommitCalls);
+    }
+
+    /// <summary>
+    /// When the provider returns a partial server on an unknown outcome, the possible-cost bulk update signals the
+    /// fleet exactly once for the server, after its transaction committed, and the possible-cost flag is persisted.
+    /// </summary>
+    /// <returns>A task completing after the signal and the persisted state were verified.</returns>
+    [Fact]
+    public async Task Start_WhenCostBearingResultIsAccounted_SignalsFleetOnceAfterCommit()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider
+        {
+            ReturnPartialServerOnUnknown = true,
+        };
+        var cost = new RecordingCostSliceService
+        {
+            CommitFailure = new InvalidOperationException("simulated crash before reservation commit"),
+        };
+        var notifier = new RecordingFleetChangeNotifier(() => store.DbContext.Database.CurrentTransaction is not null);
+        var executor = CreateExecutor(store, provider, cost, fleetChangeNotifier: notifier);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(job));
+
+        var call = Assert.Single(notifier.Calls);
+        Assert.Equal(seed.Server.PrimaryKey, call.ServerId);
+        Assert.False(call.HadOpenTransaction, "The fleet signal must be emitted after the result transaction closed.");
+        var deployment = seed.Deployment!;
+        await store.DbContext.Entry(deployment).ReloadAsync();
+        Assert.True(deployment.PossibleCost);
     }
 
     [Fact]
@@ -1113,6 +1240,29 @@ public sealed class LifecycleJobExecutorCloudTests
         Assert.Contains(EHostingAuditEventKind.DeploymentResourceProvisioningFailed, operationKinds);
     }
 
+    /// <summary>
+    /// When the provider rejects without allocating anything, no possible-cost bulk update runs, so the executor
+    /// never makes its explicit fleet signal call.
+    /// </summary>
+    /// <returns>A task completing after the absence of the call was verified.</returns>
+    [Fact]
+    public async Task Start_WhenProviderRejectsWithoutAllocating_DoesNotSignalFleetExplicitly()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (_, job) = await SeedRunningStartAsync(store);
+        var provider = new ExecutorTestProvider
+        {
+            ProvisionOutcome = ERuntimeProviderOutcome.PermanentFailure,
+        };
+        var notifier = new RecordingFleetChangeNotifier(() => store.DbContext.Database.CurrentTransaction is not null);
+        var executor = CreateExecutor(store, provider, new RecordingCostSliceService(), fleetChangeNotifier: notifier);
+
+        await Assert.ThrowsAsync<PermanentLifecycleExecutionException>(() => executor.ExecuteAsync(job));
+
+        Assert.Equal(1, provider.ProvisionCalls);
+        Assert.Empty(notifier.Calls);
+    }
+
     [Fact]
     public async Task Start_WhenPermanentPartialGraphIsNonBillable_ReleasesReservationBeforeCleanup()
     {
@@ -1231,6 +1381,136 @@ public sealed class LifecycleJobExecutorCloudTests
         Assert.Equal("steam-workshop", content.Source);
         Assert.Equal("450814997", content.Identifier);
         Assert.Equal("CBA", content.DisplayName);
+    }
+
+    /// <summary>
+    /// Verifies that the primary command of a restart consumes pending configuration and credentials while the pending
+    /// mod pack change keeps waiting and the since-timestamp is preserved.
+    /// </summary>
+    /// <returns>A task that completes after the assertions.</returns>
+    [Fact]
+    public async Task RestartCommand_ConsumesConfigurationAndCredentialsButKeepsModPack()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job, since) = await SeedPendingRuntimeJobAsync(store, ELifecycleJobKind.Restart, GameServerActions.Restart);
+        var executor = CreateExecutor(store, new ExecutorTestProvider(), new RecordingCostSliceService());
+
+        await RunUntilCancelledAsync(executor, job);
+
+        Assert.Single(await store.DbContext.WorkerCommands.ToArrayAsync());
+        var server = await store.DbContext.GameServers.AsNoTracking().SingleAsync(q => q.PrimaryKey == seed.Server.PrimaryKey);
+        Assert.Equal(EGameServerChangeArea.ModPack, server.PendingStartChangeAreas);
+        Assert.Equal(since, server.PendingStartSince);
+    }
+
+    /// <summary>
+    /// Verifies that a non-lifecycle command such as collect-logs leaves every pending area untouched.
+    /// </summary>
+    /// <returns>A task that completes after the assertions.</returns>
+    [Fact]
+    public async Task CollectLogsCommand_LeavesPendingAreasUntouched()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job, since) = await SeedPendingRuntimeJobAsync(store, ELifecycleJobKind.CollectLogs, GameServerActions.CollectLogs);
+        var executor = CreateExecutor(store, new ExecutorTestProvider(), new RecordingCostSliceService());
+
+        await RunUntilCancelledAsync(executor, job);
+
+        Assert.Single(await store.DbContext.WorkerCommands.ToArrayAsync());
+        var server = await store.DbContext.GameServers.AsNoTracking().SingleAsync(q => q.PrimaryKey == seed.Server.PrimaryKey);
+        Assert.Equal(AllPendingAreas, server.PendingStartChangeAreas);
+        Assert.Equal(since, server.PendingStartSince);
+    }
+
+    /// <summary>
+    /// Verifies that re-entering command creation for a job whose command already exists changes no pending area.
+    /// </summary>
+    /// <returns>A task that completes after the assertions.</returns>
+    [Fact]
+    public async Task ReusedRestartCommand_DoesNotConsumeAgain()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var (seed, job, _) = await SeedPendingRuntimeJobAsync(store, ELifecycleJobKind.Restart, GameServerActions.Restart);
+        var executor = CreateExecutor(store, new ExecutorTestProvider(), new RecordingCostSliceService());
+        await RunUntilCancelledAsync(executor, job);
+        var tracked = await store.DbContext.GameServers.SingleAsync(q => q.PrimaryKey == seed.Server.PrimaryKey);
+        tracked.PendingStartChangeAreas = AllPendingAreas;
+        await store.DbContext.SaveChangesAsync();
+
+        await RunUntilCancelledAsync(CreateExecutor(store, new ExecutorTestProvider(), new RecordingCostSliceService()), job);
+
+        Assert.Single(await store.DbContext.WorkerCommands.ToArrayAsync());
+        var server = await store.DbContext.GameServers.AsNoTracking().SingleAsync(q => q.PrimaryKey == seed.Server.PrimaryKey);
+        Assert.Equal(AllPendingAreas, server.PendingStartChangeAreas);
+    }
+
+    private const EGameServerChangeArea AllPendingAreas
+        = EGameServerChangeArea.ModPack | EGameServerChangeArea.Configuration | EGameServerChangeArea.Credentials;
+
+    /// <summary>
+    /// Seeds a running deployment with an online worker, all pending-start areas and a running runtime-action job.
+    /// </summary>
+    /// <param name="store">The test store.</param>
+    /// <param name="kind">The lifecycle job kind.</param>
+    /// <param name="actionIdentifier">The action identifier of the job.</param>
+    /// <returns>The seed, the running job and the pending-start timestamp that was seeded.</returns>
+    private static async Task<(HostingTestSeed Seed, LifecycleJob Job, Instant Since)> SeedPendingRuntimeJobAsync(
+        HostingTestStore store,
+        ELifecycleJobKind kind,
+        string actionIdentifier)
+    {
+        var seed = await HostingTestData.SeedServerAsync(
+            store.DbContext,
+            withActiveDeployment: true,
+            deploymentStatus: EDeploymentStatus.Running);
+        seed.Server.GameIdentifier = Arma3GameServerDefinitionRegistration.GameIdentifier;
+        seed.Server.RuntimeProviderIdentifier = ExecutorTestProvider.Identifier;
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var since = Instant.FromUnixTimeSeconds(1_650_000_000);
+        seed.Server.PendingStartChangeAreas = AllPendingAreas;
+        seed.Server.PendingStartSince = since;
+        var worker = new LifecycleWorker
+        {
+            PrimaryKey = Guid.NewGuid(),
+            DeploymentFk = seed.Deployment!.PrimaryKey,
+            Identity = "pending-start-worker",
+            Status = EWorkerStatus.Online,
+            LastHeartbeatAt = now,
+            TimeStampRegistered = now,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        var job = new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            DeploymentFk = seed.Deployment.PrimaryKey,
+            RequestedByFk = seed.User.PrimaryKey,
+            Kind = kind,
+            ActionIdentifier = actionIdentifier,
+            Sequence = 1,
+            Status = ELifecycleJobStatus.Running,
+            Stage = "claimed",
+            Attempt = 1,
+            MaxAttempts = 3,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        store.DbContext.AddRange(worker, job);
+        await store.DbContext.SaveChangesAsync();
+        return (seed, job, since);
+    }
+
+    /// <summary>
+    /// Runs the executor until the one second cancellation interrupts the wait for the worker command.
+    /// </summary>
+    /// <param name="executor">The executor under test.</param>
+    /// <param name="job">The running lifecycle job.</param>
+    /// <returns>A task that completes after the cancellation was observed.</returns>
+    private static async Task RunUntilCancelledAsync(LifecycleJobExecutor executor, LifecycleJob job)
+    {
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => executor.ExecuteAsync(job, cancellation.Token));
     }
 
     /// <summary>Verifies that user termination does not depend on a readable placement snapshot.</summary>
@@ -1604,14 +1884,16 @@ public sealed class LifecycleJobExecutorCloudTests
         IHostingCostSliceService costSliceService,
         IGameServerDefinitionCatalog? gameServerDefinitions = null,
         LifecycleWorkerOptions? workerOptions = null,
-        IWorkerBootstrapPayloadRenderer? bootstrapRenderer = null)
+        IWorkerBootstrapPayloadRenderer? bootstrapRenderer = null,
+        IFleetChangeNotifier? fleetChangeNotifier = null)
         => CreateExecutor(
             store.DbContext,
             provider,
             costSliceService,
             gameServerDefinitions,
             workerOptions,
-            bootstrapRenderer);
+            bootstrapRenderer,
+            fleetChangeNotifier);
 
     private static LifecycleJobExecutor CreateExecutor(
         DatabaseContext dbContext,
@@ -1619,7 +1901,8 @@ public sealed class LifecycleJobExecutorCloudTests
         IHostingCostSliceService costSliceService,
         IGameServerDefinitionCatalog? gameServerDefinitions = null,
         LifecycleWorkerOptions? workerOptions = null,
-        IWorkerBootstrapPayloadRenderer? bootstrapRenderer = null)
+        IWorkerBootstrapPayloadRenderer? bootstrapRenderer = null,
+        IFleetChangeNotifier? fleetChangeNotifier = null)
         => new(
             dbContext,
             gameServerDefinitions ?? new TestGameServerDefinitionCatalog(),
@@ -1641,7 +1924,58 @@ public sealed class LifecycleJobExecutorCloudTests
                 BootstrapCredentialLifetime = TimeSpan.FromMinutes(45),
                 IdlePollInterval = TimeSpan.FromMilliseconds(5),
              }),
-            Options.Create(new HostingFinanceOptions()));
+            Options.Create(new HostingFinanceOptions()),
+            fleetChangeNotifier);
+
+    /// <summary>
+    /// One explicit fleet signal recorded by <see cref="RecordingFleetChangeNotifier"/>.
+    /// </summary>
+    /// <param name="ServerId">The notified game server identifier.</param>
+    /// <param name="HadOpenTransaction">Whether the observed context had an open transaction at call time.</param>
+    private sealed record RecordedFleetSignal(Guid ServerId, bool HadOpenTransaction);
+
+    /// <summary>
+    /// A thread-safe fleet notifier double that records each notified server together with whether the observed
+    /// context had an open transaction at the moment of the call.
+    /// </summary>
+    /// <param name="hasOpenTransaction">Reports whether the observed context currently has an open transaction.</param>
+    private sealed class RecordingFleetChangeNotifier(Func<bool> hasOpenTransaction) : IFleetChangeNotifier
+    {
+        /// <summary>
+        /// Guards <see cref="_calls"/>.
+        /// </summary>
+        private readonly Lock _lock = new();
+
+        /// <summary>
+        /// The recorded signals in call order.
+        /// </summary>
+        private readonly List<RecordedFleetSignal> _calls = [];
+
+        /// <summary>
+        /// Gets a snapshot of the recorded signals in call order.
+        /// </summary>
+        /// <value>A copy of every signal recorded so far.</value>
+        public IReadOnlyList<RecordedFleetSignal> Calls
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _calls.ToArray();
+                }
+            }
+        }
+
+        /// <inheritdoc />
+        public void Notify(Guid gameServerId)
+        {
+            var hadOpenTransaction = hasOpenTransaction();
+            lock (_lock)
+            {
+                _calls.Add(new RecordedFleetSignal(gameServerId, hadOpenTransaction));
+            }
+        }
+    }
 
     private sealed class EmptyServerFileStorage : IServerFileStorage
     {
@@ -1678,6 +2012,40 @@ public sealed class LifecycleJobExecutorCloudTests
         {
             return ex;
         }
+    }
+
+    /// <summary>
+    /// Seeds a running start job queued by a schedule (no requesting user) together with the server automation
+    /// settings that carry, or lack, the scheduled start consent.
+    /// </summary>
+    /// <param name="store">The test store to seed.</param>
+    /// <param name="consentCostOwnerFk">
+    /// The cost owner the consent is bound to, or <see langword="null" /> to bind it to the server's current cost
+    /// owner.
+    /// </param>
+    /// <param name="hasConsent">Whether a consent is stored at all.</param>
+    /// <returns>The seed and the scheduled start job.</returns>
+    private static async Task<(HostingTestSeed Seed, LifecycleJob Job)> SeedScheduledStartAsync(
+        HostingTestStore store,
+        Guid? consentCostOwnerFk,
+        bool hasConsent)
+    {
+        var (seed, job) = await SeedRunningStartAsync(store);
+        job.RequestedByFk = null;
+        job.Trigger = ELifecycleJobTrigger.Schedule;
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        store.DbContext.ServerAutomationSettings.Add(new ServerAutomationSettings
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            StartConsentCostOwnerFk = hasConsent ? consentCostOwnerFk ?? seed.Server.CurrentCostOwnerFk : null,
+            StartConsentByFk = hasConsent ? seed.User.PrimaryKey : null,
+            StartConsentAt = hasConsent ? now : null,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        });
+        await store.DbContext.SaveChangesAsync();
+        return (seed, job);
     }
 
     private static async Task<(HostingTestSeed Seed, LifecycleJob Job)> SeedRunningStartAsync(HostingTestStore store)
@@ -1834,6 +2202,14 @@ public sealed class LifecycleJobExecutorCloudTests
             ReserveCalls++;
             return Failure is null ? Task.CompletedTask : Task.FromException(Failure);
         }
+
+        public Task<bool> CanReserveInitialSliceAsync(
+            Guid costOwnerId,
+            decimal? estimatedHourlyCostEur,
+            string providerIdentifier,
+            Instant now,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(Failure is null);
 
         public Task CommitInitialReservationAsync(
             Guid deploymentId,

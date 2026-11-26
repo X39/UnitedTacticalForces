@@ -1,0 +1,307 @@
+/*
+ * Styles for the always-visible parts of the server workspace: the sticky header, the cost strip, the endpoint,
+ * the reserved slot placeholder and the shared copy button.
+ *
+ * This file also styles the generic CopyButton component (src/components). It imports this file from this directory on
+ * purpose, so tests/styles/server-style-guard.test.ts covers its styles too. The file consumes --utf-* tokens only;
+ * the only other variable is --command-header-height, which positions the sticky header below the command topbar.
+ * The only allowed literals are a 1px border width and the 520px and 800px media breakpoints; the style guard fails on
+ * anything else. The header is the one sticky element of the workspace shell.
+ */
+
+/* Workspace header: sticky below the command topbar (z-index 15), opaque so content never shows through. */
+.workspace-header {
+  position: sticky;
+  top: var(--command-header-height);
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--utf-space-sm) var(--utf-space-md);
+  min-width: 0;
+  margin-bottom: var(--utf-space-md);
+  padding: var(--utf-space-sm) var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+  box-shadow: var(--utf-elevation-1);
+}
+
+/*
+ * Focus scrolling keeps its target clear of the sticky topbar and header (WCAG 2.4.11 Focus Not Obscured). Without a
+ * scroll padding the browser leaves a focused element where it is while it is inside the viewport, even when it sits
+ * under the sticky header, and the header covers the focus ring. The reserve is the topbar plus the tallest header,
+ * the 190px budget of the phone layout, so it holds with a two-line German title and a wrapped primary action.
+ */
+html:has(.workspace-header) {
+  scroll-padding-block-start: calc(var(--command-header-height) + 12rem);
+}
+
+.workspace-header__identity {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-xs);
+}
+
+/* The title is clamped because the bar is sticky; the full text stays in the DOM and in the breadcrumb. */
+.workspace-header__title {
+  display: -webkit-box;
+  margin: 0;
+  color: var(--utf-text);
+  font-size: var(--utf-text-display);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.workspace-header__action {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.workspace-header__action .action-with-reason {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 800px) {
+  .workspace-header__title {
+    font-size: var(--utf-text-heading);
+  }
+
+  .workspace-header__action .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .workspace-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-header__title {
+    -webkit-line-clamp: 1;
+  }
+
+  .workspace-header__action {
+    justify-content: stretch;
+  }
+
+  .workspace-header__action .action-with-reason,
+  .workspace-header__action .button {
+    width: 100%;
+  }
+}
+
+/* Cost strip: label above value in an auto-fit grid; a two-column dt/dd list at 520px and below. */
+.cost-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--utf-workspace-fact-min)), 1fr));
+  gap: var(--utf-space-md) var(--utf-space-lg);
+  min-width: 0;
+  margin: 0;
+}
+
+.cost-strip__row {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-xs);
+  align-content: start;
+}
+
+.cost-strip dt {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cost-strip dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.cost-strip__amount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cost alerts value: the summary line, then the manage link on its own line. */
+.cost-strip__alerts {
+  margin: 0 0 var(--utf-space-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Accrued cost: stacked lines inside the strip's value cell. */
+.accrued-cost {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-xs);
+}
+
+.accrued-cost p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.accrued-cost__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--utf-weight-bold);
+}
+
+.accrued-cost__sentence {
+  color: var(--utf-text);
+}
+
+.accrued-cost__line {
+  color: var(--utf-text-muted);
+}
+
+.accrued-cost p.accrued-cost__warning {
+  color: var(--utf-state-warning-fg);
+}
+
+.accrued-cost__stale {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-xs);
+  color: var(--utf-state-warning-fg);
+}
+
+.accrued-cost__stale svg {
+  flex: 0 0 auto;
+  margin-top: var(--utf-space-xs);
+}
+
+/* Server endpoint */
+.server-endpoint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-xs) var(--utf-space-md);
+  min-width: 0;
+}
+
+.server-endpoint__label {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.server-endpoint__value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.server-endpoint__address {
+  min-width: 0;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.server-endpoint__unavailable {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+/* Copy button: the status text sits below the control and wraps; it is empty until a copy was attempted. */
+.copy-button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.copy-button .button {
+  min-height: var(--utf-control-height);
+}
+
+.copy-button__status {
+  min-width: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .copy-button .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .cost-strip {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--utf-space-sm);
+  }
+
+  .cost-strip__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--utf-space-sm);
+    align-items: start;
+  }
+}
+
+/* Workspace shell: one column with the agreed rhythm between breadcrumbs, header, details and the rest. */
+.workspace-shell {
+  display: grid;
+  gap: var(--utf-space-md);
+  min-width: 0;
+}
+
+.workspace-shell > .workspace-header {
+  margin-bottom: 0;
+}
+
+.workspace-shell > .breadcrumbs {
+  margin-bottom: calc(var(--utf-space-sm) - var(--utf-space-md));
+}
+
+/* Details block: flat, divided from what follows by one border, scrolls away with the page. */
+.workspace-details {
+  display: grid;
+  gap: var(--utf-space-md);
+  min-width: 0;
+  padding-block: var(--utf-space-md);
+  border-bottom: 1px solid var(--utf-border-divider);
+}
+
+.workspace-details__refresh {
+  display: grid;
+  justify-items: end;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.workspace-details__refresh p {
+  margin: 0;
+  color: var(--utf-state-danger-fg);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}

@@ -617,6 +617,10 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<string>("Locale")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<string>("Nickname")
                         .IsRequired()
                         .HasMaxLength(1024)
@@ -1430,6 +1434,68 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.ToTable("EventSlots");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.AutomationPendingStop", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("DeploymentFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LifecycleJobFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Limit")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ScheduleFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("ScheduleOccurrenceAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("StopsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("WarnedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("DeploymentFk")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AutomationPendingStops_DeploymentFk_Pending")
+                        .HasFilter("\"Status\" = 0");
+
+                    b.HasIndex("GameServerFk");
+
+                    b.HasIndex("LifecycleJobFk");
+
+                    b.HasIndex("ScheduleFk");
+
+                    b.ToTable("AutomationPendingStops");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfile", b =>
                 {
                     b.Property<Guid>("PrimaryKey")
@@ -1611,6 +1677,196 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         {
                             t.HasCheckConstraint("CK_ContentStorageObservations_Bytes", "(\"ReportedBytes\" IS NULL OR \"ReportedBytes\" >= 0) AND (\"MeasuredBytes\" IS NULL OR \"MeasuredBytes\" >= 0)");
                         });
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlert", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AccruedAmount")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("CostOwnerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<Guid>("DeploymentFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("PendingStopFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ThresholdAmount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("GameServerFk");
+
+                    b.HasIndex("PendingStopFk")
+                        .IsUnique();
+
+                    b.HasIndex("CostOwnerFk", "TimeStampCreated");
+
+                    b.HasIndex("DeploymentFk", "ThresholdAmount")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CostAlerts_DeploymentFk_ThresholdAmount")
+                        .HasFilter("\"Kind\" = 0");
+
+                    b.ToTable("CostAlerts");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlertDelivery", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Channel")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CostAlertFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("LeaseExpires")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid?>("RecipientUserFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("TimeStampNextAttempt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("TimeStampSent")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("TimeStampUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("RecipientUserFk");
+
+                    b.HasIndex("Status", "TimeStampNextAttempt");
+
+                    b.HasIndex("CostAlertFk", "Channel", "RecipientUserFk")
+                        .IsUnique();
+
+                    b.ToTable("CostAlertDeliveries");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlertDismissal", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CostAlertFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserFk")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("UserFk");
+
+                    b.HasIndex("CostAlertFk", "UserFk")
+                        .IsUnique();
+
+                    b.ToTable("CostAlertDismissals");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlertSetting", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CostOwnerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("DiscordEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("EmailEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("TimeStampUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedByFk")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("CostOwnerFk")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByFk");
+
+                    b.ToTable("CostAlertSettings");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlertThreshold", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("SettingFk")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("SettingFk", "Amount")
+                        .IsUnique();
+
+                    b.ToTable("CostAlertThresholds");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostOwner", b =>
@@ -1863,6 +2119,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<string>("LaunchDisabledReason")
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
+
+                    b.Property<int>("PendingStartChangeAreas")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant?>("PendingStartSince")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("PinnedConfigurationProfileRevisionFk")
                         .HasColumnType("uuid");
@@ -2610,6 +2872,12 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Property<Instant>("TimeStampUpdated")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Trigger")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TriggerLimit")
+                        .HasColumnType("integer");
+
                     b.HasKey("PrimaryKey");
 
                     b.HasIndex("DeploymentFk")
@@ -2866,6 +3134,309 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("PreservationSelections");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerAutomationSettings", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IdleShutdownEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("IdleShutdownMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("MaxRuntimeEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxRuntimeHours")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant?>("StartConsentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("StartConsentByFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StartConsentCostOwnerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("StartConsentHourlyEstimateEur")
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("TimeStampUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TimeZone")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("UpdatedByFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("GameServerFk")
+                        .IsUnique();
+
+                    b.HasIndex("StartConsentByFk");
+
+                    b.HasIndex("StartConsentCostOwnerFk");
+
+                    b.HasIndex("UpdatedByFk");
+
+                    b.ToTable("ServerAutomationSettings");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerAutomationState", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("IdleDeploymentFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("IdleHeldSince")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("IdleSince")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("SchedulesEvaluatedThrough")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("TimeStampUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("GameServerFk")
+                        .IsUnique();
+
+                    b.HasIndex("IdleDeploymentFk");
+
+                    b.ToTable("ServerAutomationStates");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerMetricBucket", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("BucketStart")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CpuCount")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("CpuMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("CpuMin")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("CpuSum")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("MemoryCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("MemoryTotalBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("MemoryUsedMax")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("MemoryUsedMin")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("MemoryUsedSum")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("PlayerCapacity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PlayersCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PlayersMax")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PlayersMin")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("PlayersSum")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ResolutionSeconds")
+                        .HasColumnType("integer");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("ResolutionSeconds", "BucketStart");
+
+                    b.HasIndex("GameServerFk", "ResolutionSeconds", "BucketStart")
+                        .IsUnique();
+
+                    b.ToTable("ServerMetricBuckets");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerMetricSnapshot", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("CpuPercent")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("CpuUnavailableReason")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("DeploymentFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<long?>("MemoryTotalBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MemoryUnavailableReason")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long?>("MemoryUsedBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("PlayerCapacity")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PlayerCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PlayersUnavailableReason")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("WorkerSampledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("DeploymentFk");
+
+                    b.HasIndex("GameServerFk")
+                        .IsUnique();
+
+                    b.HasIndex("WorkerFk");
+
+                    b.ToTable("ServerMetricSnapshots");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerSchedule", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DaysMask")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("EffectiveFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("MinuteOfDay")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SettingsFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("TimeStampCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("GameServerFk");
+
+                    b.HasIndex("SettingsFk", "Position");
+
+                    b.ToTable("ServerSchedules");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerScheduleRun", b =>
+                {
+                    b.Property<Guid>("PrimaryKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("GameServerFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LifecycleJobFk")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("OccurrenceAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ScheduleFk")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrimaryKey");
+
+                    b.HasIndex("LifecycleJobFk");
+
+                    b.HasIndex("GameServerFk", "OccurrenceAt");
+
+                    b.HasIndex("ScheduleFk", "OccurrenceAt")
+                        .IsUnique();
+
+                    b.ToTable("ServerScheduleRuns");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.WorkerCommand", b =>
@@ -4336,6 +4907,39 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("Event");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.AutomationPendingStop", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServerDeployment", "Deployment")
+                        .WithMany()
+                        .HasForeignKey("DeploymentFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany()
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.LifecycleJob", "LifecycleJob")
+                        .WithMany()
+                        .HasForeignKey("LifecycleJobFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.ServerSchedule", "Schedule")
+                        .WithMany()
+                        .HasForeignKey("ScheduleFk")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Deployment");
+
+                    b.Navigation("GameServer");
+
+                    b.Navigation("LifecycleJob");
+
+                    b.Navigation("Schedule");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ConfigurationProfile", b =>
                 {
                     b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "CreatedBy")
@@ -4385,6 +4989,106 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("LastMeasuredWorkerCommand");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlert", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.CostOwner", "CostOwner")
+                        .WithMany()
+                        .HasForeignKey("CostOwnerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServerDeployment", "Deployment")
+                        .WithMany()
+                        .HasForeignKey("DeploymentFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany()
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.AutomationPendingStop", "PendingStop")
+                        .WithMany()
+                        .HasForeignKey("PendingStopFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CostOwner");
+
+                    b.Navigation("Deployment");
+
+                    b.Navigation("GameServer");
+
+                    b.Navigation("PendingStop");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlertDelivery", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.CostAlert", "CostAlert")
+                        .WithMany("Deliveries")
+                        .HasForeignKey("CostAlertFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "RecipientUser")
+                        .WithMany()
+                        .HasForeignKey("RecipientUserFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CostAlert");
+
+                    b.Navigation("RecipientUser");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlertDismissal", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.CostAlert", "CostAlert")
+                        .WithMany("Dismissals")
+                        .HasForeignKey("CostAlertFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CostAlert");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlertSetting", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.CostOwner", "CostOwner")
+                        .WithOne("CostAlertSetting")
+                        .HasForeignKey("X39.UnitedTacticalForces.Database.Hosting.CostAlertSetting", "CostOwnerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "UpdatedBy")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CostOwner");
+
+                    b.Navigation("UpdatedBy");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlertThreshold", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.CostAlertSetting", "Setting")
+                        .WithMany("Thresholds")
+                        .HasForeignKey("SettingFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Setting");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostOwner", b =>
@@ -4819,6 +5523,139 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("GameServer");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerAutomationSettings", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany()
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "StartConsentBy")
+                        .WithMany()
+                        .HasForeignKey("StartConsentByFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.CostOwner", "StartConsentCostOwner")
+                        .WithMany()
+                        .HasForeignKey("StartConsentCostOwnerFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Authority.User", "UpdatedBy")
+                        .WithMany()
+                        .HasForeignKey("UpdatedByFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("GameServer");
+
+                    b.Navigation("StartConsentBy");
+
+                    b.Navigation("StartConsentCostOwner");
+
+                    b.Navigation("UpdatedBy");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerAutomationState", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany()
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServerDeployment", "IdleDeployment")
+                        .WithMany()
+                        .HasForeignKey("IdleDeploymentFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("GameServer");
+
+                    b.Navigation("IdleDeployment");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerMetricBucket", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany()
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GameServer");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerMetricSnapshot", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServerDeployment", "Deployment")
+                        .WithMany()
+                        .HasForeignKey("DeploymentFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany()
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.LifecycleWorker", "Worker")
+                        .WithMany()
+                        .HasForeignKey("WorkerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Deployment");
+
+                    b.Navigation("GameServer");
+
+                    b.Navigation("Worker");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerSchedule", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany()
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.ServerAutomationSettings", "Settings")
+                        .WithMany("Schedules")
+                        .HasForeignKey("SettingsFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GameServer");
+
+                    b.Navigation("Settings");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerScheduleRun", b =>
+                {
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServer", "GameServer")
+                        .WithMany()
+                        .HasForeignKey("GameServerFk")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.LifecycleJob", "LifecycleJob")
+                        .WithMany()
+                        .HasForeignKey("LifecycleJobFk")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("X39.UnitedTacticalForces.Database.Hosting.ServerSchedule", "Schedule")
+                        .WithMany("Runs")
+                        .HasForeignKey("ScheduleFk")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GameServer");
+
+                    b.Navigation("LifecycleJob");
+
+                    b.Navigation("Schedule");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.WorkerCommand", b =>
                 {
                     b.HasOne("X39.UnitedTacticalForces.Database.Hosting.GameServerDeployment", "Deployment")
@@ -5246,9 +6083,23 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("Values");
                 });
 
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlert", b =>
+                {
+                    b.Navigation("Deliveries");
+
+                    b.Navigation("Dismissals");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostAlertSetting", b =>
+                {
+                    b.Navigation("Thresholds");
+                });
+
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.CostOwner", b =>
                 {
                     b.Navigation("AuditRecords");
+
+                    b.Navigation("CostAlertSetting");
 
                     b.Navigation("CurrentServers");
 
@@ -5325,6 +6176,16 @@ namespace X39.UnitedTacticalForces.Database.Migrations
                     b.Navigation("JobAttempts");
 
                     b.Navigation("Resources");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerAutomationSettings", b =>
+                {
+                    b.Navigation("Schedules");
+                });
+
+            modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.ServerSchedule", b =>
+                {
+                    b.Navigation("Runs");
                 });
 
             modelBuilder.Entity("X39.UnitedTacticalForces.Database.Hosting.WorkerCommand", b =>

@@ -1,0 +1,34 @@
+/*
+ * The invisible reserve of an action's unavailable reason (ReasonReserve). Every possible reason is stacked in one grid
+ * cell, so the tallest text at the width of the cell sets the height and no reason can shift the content below it. The
+ * copy is painted from a data attribute, so the document holds no second copy of the text.
+ *
+ * The file consumes --utf-* tokens only; tests/styles/server-style-guard.test.ts fails on anything else.
+ */
+.reason-reserve {
+  display: grid;
+  min-width: 0;
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.reason-reserve__reason {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/* The same box as the 16px information icon of the real reason, so the text wraps at the same width. */
+.reason-reserve__icon {
+  flex: none;
+  width: 1rem;
+}
+
+.reason-reserve__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.reason-reserve__text::after {
+  content: attr(data-text);
+}

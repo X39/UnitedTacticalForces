@@ -1,7 +1,9 @@
 ﻿using System.Globalization;
 using Discord;
+using Discord.Net;
 using Discord.WebSocket;
 using X39.UnitedTacticalForces.Api.Properties;
+using X39.UnitedTacticalForces.Api.Services.Notifications;
 using X39.UnitedTacticalForces.Common;
 using X39.Util;
 
@@ -223,6 +225,68 @@ public class DiscordBot : BackgroundService, IAsyncDisposable
         {
             await action(_discordSocketClient)
                 .ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    ///    Attempts to send a direct message to a Discord user and reports a truthful outcome.
+    /// </summary>
+    /// <remarks>
+    ///    <see cref="WithDiscordAsync"/> is intentionally not used: it silently does nothing while the client is not
+    ///    connected, which would let a delivery be recorded as sent although no message left the process.
+    /// </remarks>
+    /// <param name="discordUserId">The Discord snowflake of the recipient.</param>
+    /// <param name="text">The message text. Mentions in it never notify anyone.</param>
+    /// <param name="cancellationToken">Cancels the attempt.</param>
+    /// <returns>
+    ///    <see cref="EDeliveryAttemptOutcome.NotConfigured"/> while the bot is disabled,
+    ///    <see cref="EDeliveryAttemptOutcome.Transient"/> while the client is not connected or on an unexpected
+    ///    error, <see cref="EDeliveryAttemptOutcome.Permanent"/> when the user cannot receive direct messages,
+    ///    and <see cref="EDeliveryAttemptOutcome.Sent"/> only after Discord accepted the message.
+    /// </returns>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
+    internal async Task<DeliveryAttemptResult> TrySendDirectMessageAsync(
+        ulong discordUserId,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        if (!(_configuration[Constants.Configuration.Discord.Enabled]?.ToBoolean() ?? true))
+            return DeliveryAttemptResult.NotConfigured("discord-disabled");
+        if (_discordSocketClient.ConnectionState is not ConnectionState.Connected)
+            return DeliveryAttemptResult.Transient("discord-not-connected");
+
+        try
+        {
+            var requestOptions = new RequestOptions {CancelToken = cancellationToken};
+            var user = await _discordSocketClient.GetUserAsync(discordUserId, requestOptions)
+                .ConfigureAwait(false);
+            if (user is null)
+                return DeliveryAttemptResult.Permanent("discord-user-not-found");
+            await user.SendMessageAsync(text, allowedMentions: AllowedMentions.None, options: requestOptions)
+                .ConfigureAwait(false);
+            return DeliveryAttemptResult.Sent();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (HttpException ex) when (ex.DiscordCode
+                                           is DiscordErrorCode.CannotSendMessageToUser
+                                           or DiscordErrorCode.CannotSendMessagesToThisUserDueToHavingNoMutualGuilds)
+        {
+            _logger.LogWarning(
+                "Discord refused a direct message ({DiscordCode})",
+                ex.DiscordCode);
+            return DeliveryAttemptResult.Permanent("discord-dm-blocked");
+        }
+        catch (Exception ex)
+        {
+            // Neither the message text nor the bot token may reach the log.
+            _logger.LogWarning(
+                "Sending a Discord direct message failed ({ExceptionType}, {DiscordCode})",
+                ex.GetType().Name,
+                (ex as HttpException)?.DiscordCode);
+            return DeliveryAttemptResult.Transient("discord-error");
         }
     }
 

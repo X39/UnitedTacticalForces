@@ -70,11 +70,13 @@ describe("event slot planner", () => {
     expect(east!.querySelector('[data-tactical-icon="medical"]')).toBeInTheDocument();
     expect(container.querySelector("select")).not.toBeInTheDocument();
 
-    const westSymbolPicker = west!.querySelector<HTMLDetailsElement>(
-      "details.event-role-symbol-picker",
-    );
+    const westSymbolPicker = west!.querySelector<HTMLElement>(".event-role-symbol-picker");
     expect(westSymbolPicker).not.toBeNull();
-    await userEvent.click(westSymbolPicker!.querySelector("summary")!);
+    expect(container.querySelector("details")).not.toBeInTheDocument();
+    const westToggle = within(westSymbolPicker!).getByRole("button", { name: /Role symbol/ });
+    expect(westToggle).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(westToggle);
+    expect(westToggle).toHaveAttribute("aria-expanded", "true");
     await userEvent.click(within(westSymbolPicker!).getByRole("radio", { name: "Medic" }));
     expect(onChange).toHaveBeenLastCalledWith([
       expect.objectContaining({ draftKey: "west", roleSymbol: "Medic" }),
@@ -100,5 +102,53 @@ describe("event slot planner", () => {
       expect.objectContaining({ draftKey: "east", side: "East" }),
     ]);
     expect(screen.getAllByRole("button", { name: "West" })).toHaveLength(2);
+  });
+
+  it("takes slot status badge tones from the lexicon and offers shared buttons", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const slots: EventSlotDraft[] = [
+      { ...slot("west", "West", "Rifleman"), draftKey: "hidden", isVisible: false },
+      {
+        ...slot("west", "West", "Rifleman"),
+        draftKey: "assigned",
+        assignedToFk: "user-1",
+        assignedUser: { primaryKey: "user-1", nickname: "Raven", avatar: "", avatarMimeType: "" },
+      },
+      { ...slot("west", "West", "Rifleman"), draftKey: "self", isSelfAssignable: true },
+      { ...slot("west", "West", "Rifleman"), draftKey: "locked", isSelfAssignable: false },
+    ];
+    const { container } = render(
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={queryClient}>
+          <EventSlotPlanner
+            slots={slots}
+            disabled={false}
+            saving={false}
+            onChange={vi.fn()}
+            onSave={vi.fn()}
+            onAssign={vi.fn()}
+            onUnassign={vi.fn()}
+          />
+        </QueryClientProvider>
+      </I18nextProvider>,
+    );
+
+    const tones = [
+      ...container.querySelectorAll(".event-slot-editor-row__status .status-badge"),
+    ].map((badge) => [badge.textContent, badge.className]);
+    expect(tones).toEqual([
+      ["Hidden", expect.stringContaining("status-badge--neutral")],
+      ["Assigned", expect.stringContaining("status-badge--success")],
+      ["Available", expect.stringContaining("status-badge--info")],
+      ["Locked", expect.stringContaining("status-badge--warning")],
+    ]);
+
+    expect(screen.getByRole("button", { name: "Add slot" })).toHaveClass("button--ghost");
+    const removeButtons = screen.getAllByRole("button", { name: "Remove slot" });
+    expect(removeButtons[0]).toHaveClass("button--small");
+
+    await userEvent.click(removeButtons[0]!);
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "Keep slot" })).toBeVisible();
   });
 });

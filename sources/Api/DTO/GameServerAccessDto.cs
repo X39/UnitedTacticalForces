@@ -11,6 +11,13 @@ public sealed record GameServerAccessDto
     public string[] AllowedPermissions { get; init; } = [];
 
     /// <summary>
+    /// The subset of <see cref="AllowedPermissions" /> the calling member may grant or revoke on this server, in
+    /// the order of <see cref="AllowedPermissions" />. Administrators and holders of full control may assign every
+    /// permission; every other member may assign only the permissions they hold themselves.
+    /// </summary>
+    public string[] AssignablePermissions { get; init; } = [];
+
+    /// <summary>
     /// Users holding direct grants for this server.
     /// </summary>
     public GameServerUserAccessGrantDto[] Users { get; init; } = [];

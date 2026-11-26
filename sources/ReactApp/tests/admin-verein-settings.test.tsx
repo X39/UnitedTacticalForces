@@ -13,6 +13,7 @@ import {
   parseContributionAmount,
 } from "@/features/admin/vereinSettingsAdmin";
 import * as vereinSettingsAdmin from "@/features/admin/vereinSettingsAdmin";
+import { findToast, toastPoliteness } from "./helpers/toastQueries";
 
 const authState = vi.hoisted(() => ({ user: undefined as FullUser | undefined }));
 
@@ -108,7 +109,17 @@ describe("Verein contribution settings", () => {
     expect(
       await screen.findByRole("heading", { name: "Verein permission required" }),
     ).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(vereinSettingsAdmin.loadVereinAdminSettings).not.toHaveBeenCalled();
+  });
+
+  it("keeps the long h1 while the navigation label and kicker read the short form", async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Verein contribution settings" }),
+    ).toBeVisible();
+    expect(screen.getByText("Contribution settings")).toHaveClass("kicker");
   });
 
   it("loads, validates, previews, and saves the shared Join configuration", async () => {
@@ -135,8 +146,9 @@ describe("Verein contribution settings", () => {
         membershipContributionPublicTextEn: "English notice",
       }),
     );
-    const toast = (await screen.findByText("Verein settings saved.")).closest('[role="status"]');
+    const toast = await findToast("Verein settings saved.");
     expect(toast).toHaveClass("app-toast");
+    expect(toastPoliteness(toast)).toBe("polite");
   });
 
   it("localizes paired-amount validation", async () => {

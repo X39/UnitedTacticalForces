@@ -1,0 +1,92 @@
+{
+  "elements": ["button", "input", "select", "textarea", "details", "dialog"],
+  "lookalikePattern": "^button(\\s|$)",
+  "primitiveFiles": [
+    "src/components/ActionControl.tsx",
+    "src/components/FormFields.tsx",
+    "src/components/Disclosure.tsx",
+    "src/components/SearchField.tsx",
+    "src/components/primitives.tsx",
+    "src/components/AppToasts.tsx"
+  ],
+  "literalProps": [
+    "aria-label",
+    "aria-description",
+    "title",
+    "placeholder",
+    "alt",
+    "label",
+    "hint",
+    "description",
+    "summary",
+    "heading",
+    "legend"
+  ],
+  "literalCalls": ["showToast", "announce"],
+  "neutralTokens": [
+    "vCPU",
+    "GiB",
+    "MiB",
+    "KiB",
+    "TiB",
+    "GB",
+    "MB",
+    "kB",
+    "ms",
+    "EN",
+    "DE",
+    "UTF",
+    "UTC",
+    "Steam",
+    "SteamCMD",
+    "Arma",
+    "Discord",
+    "TeamSpeak",
+    "Hetzner"
+  ],
+  "tierAPaths": [
+    "src/features/hosting",
+    "src/components/server",
+    "src/components/CommandCenterLayout.tsx",
+    "src/components/CommunityLayout.tsx",
+    "src/components/ProfileMenu.tsx",
+    "src/components/ActionControl.tsx",
+    "src/components/FormFields.tsx",
+    "src/components/Disclosure.tsx",
+    "src/components/SearchPicker.tsx"
+  ],
+  "allowedRemainders": [
+    {
+      "file": "src/features/admin/EventObjectiveIconPicker.tsx",
+      "reason": "editor internal with grid or roving behavior (UI-SPEC allowance)"
+    },
+    {
+      "file": "src/features/admin/EventSlotPlanner.tsx",
+      "reason": "editor internal with grid or roving behavior (UI-SPEC allowance)"
+    },
+    {
+      "file": "src/features/events/EventRoleSymbolPicker.tsx",
+      "reason": "editor internal with grid or roving behavior (UI-SPEC allowance)"
+    },
+    {
+      "file": "src/features/events/EventSidePicker.tsx",
+      "reason": "editor internal with grid or roving behavior (UI-SPEC allowance)"
+    },
+    {
+      "file": "src/components/FileChooserButton.tsx",
+      "reason": "browser file chooser wrapper (UI-SPEC allowance)"
+    },
+    {
+      "file": "src/features/wiki/WikiPage.tsx",
+      "reason": "wiki editor (UI-SPEC allowance)"
+    },
+    {
+      "file": "src/components/CommunityLayout.tsx",
+      "reason": "layout sign-in dialog (UI-SPEC Control convergence allowance)"
+    },
+    {
+      "file": "src/main.tsx",
+      "reason": "pre-i18n bootstrap error text that is shown before the locale files load"
+    }
+  ]
+}

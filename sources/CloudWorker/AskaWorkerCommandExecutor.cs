@@ -16,6 +16,10 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
     private readonly ICloudWorkerStorageTransfer _storage;
     private readonly RestrictedGameProcessLauncher _launcher;
     private readonly AskaConfigurationRenderer _configurationRenderer;
+    private readonly IA2sInfoClient _a2s;
+
+    /// <summary>The loopback steam query port that <see cref="AskaConfigurationRenderer" /> writes into the config.</summary>
+    private const int QueryPort = 27016;
 
     /// <summary>Initializes an ASKA executor and its deployment-bound collaborators.</summary>
     /// <param name="connection">Deployment-scoped worker connection.</param>
@@ -24,14 +28,17 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
     /// <param name="process">Optional process controller for tests.</param>
     /// <param name="storage">Optional storage transfer for tests.</param>
     /// <param name="configurationRenderer">Optional properties renderer for tests.</param>
+    /// <param name="a2s">Optional A2S_INFO client for tests; defaults to the loopback client.</param>
     public AskaWorkerCommandExecutor(
         CloudWorkerConnectionConfig connection,
         CloudWorkerOptions options,
         IProcessCommandRunner? runner = null,
         IAskaProcessController? process = null,
         ICloudWorkerStorageTransfer? storage = null,
-        AskaConfigurationRenderer? configurationRenderer = null)
+        AskaConfigurationRenderer? configurationRenderer = null,
+        IA2sInfoClient? a2s = null)
     {
+        _a2s = a2s ?? new A2sInfoClient();
         _connection = connection;
         _options = options;
         _paths = new AskaRuntimePaths(
@@ -135,6 +142,31 @@ public sealed partial class AskaWorkerCommandExecutor : IWorkerCommandExecutor
     {
         if (command.ActionIdentifier.Trim().ToLowerInvariant() is "start" or "restart" or "install" or "update")
             _ = await _process.TerminateAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Observes the human player count through an A2S_INFO query on the fixed loopback steam query port.
+    /// </summary>
+    /// <remarks>
+    /// ASKA has no documented player API. The query port is fixed by <see cref="AskaConfigurationRenderer" />, and
+    /// whether ASKA answers A2S_INFO is confirmed by the end-of-phase UAT. A silent server reports query-failed,
+    /// never zero.
+    /// </remarks>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// The human count and capacity when the server answers, query-failed when it does not, and measuring when the
+    /// process is not running.
+    /// </returns>
+    public async Task<WorkerPlayerObservation> ObservePlayersAsync(CancellationToken cancellationToken)
+    {
+        using var observation = await _process.ObserveAsync(cancellationToken).ConfigureAwait(false);
+        if (!observation.IsRunning)
+            return WorkerPlayerObservation.Unavailable(WorkerMetricUnavailableReasons.Measuring);
+        var info = await _a2s.QueryAsync(QueryPort, TimeSpan.FromSeconds(2), cancellationToken)
+            .ConfigureAwait(false);
+        return info is null
+            ? WorkerPlayerObservation.Unavailable(WorkerMetricUnavailableReasons.QueryFailed)
+            : WorkerPlayerObservation.Players(info.Humans, info.MaxPlayers);
     }
 
     /// <inheritdoc />

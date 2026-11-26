@@ -1,7 +1,6 @@
 import {
   ArrowDownload20Regular,
   ArrowLeft20Regular,
-  ArrowSync20Regular,
   Box20Regular,
   CalendarLtr20Regular,
   Checkmark20Regular,
@@ -15,10 +14,10 @@ import {
   Settings20Regular,
 } from "@fluentui/react-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
-import { resolveImageUrl } from "@/api/client";
+import { useParams } from "react-router";
+import { ApiError, resolveImageUrl } from "@/api/client";
 import { eventService, queryKeys } from "@/api/services";
 import type { EventAcceptance, FullEvent, FullUser } from "@/api/types";
 import { currentLocale, formatDate, formatDateTime } from "@/app/format";
@@ -27,8 +26,10 @@ import { formatResource } from "@/app/i18n";
 import { useSiteImage } from "@/app/siteImages";
 import { useAuth } from "@/auth/auth";
 import { canEditEvent } from "@/auth/claims";
-import { NotFoundPage } from "@/components/NotFoundPage";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { PublicHero } from "@/components/PublicHero";
 import { ConfirmDialog, Markdown, StatePanel, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
 import {
   EventTacticalIcon,
   eventMissionIconName,
@@ -149,53 +150,49 @@ export function EventDetailPage() {
   );
   useDocumentTitle(event?.title ?? t("Pages_Events_Detail_PageTitleFallback"));
 
-  if (!validEventId) return <NotFoundPage />;
-
-  if (!eventQuery.isLoading && !eventQuery.isError && !event) {
+  if (!validEventId || (!eventQuery.isLoading && !eventQuery.isError && !event)) {
     return (
-      <div className="narrow-page">
-        <StatePanel
-          kind="empty"
+      <EventStatePage>
+        <EmptyState
           title={t("Auto_OperationUnavailable_9b70eeab")}
           action={
-            <Link className="button button--ghost" to="/events/upcoming">
+            <ActionLink variant="ghost" to="/events/upcoming">
               {t("Auto_BackToOperations_3057840c")}
-            </Link>
+            </ActionLink>
           }
         >
           {t("Pages_Events_Detail_Error_NotFound")}
-        </StatePanel>
-      </div>
+        </EmptyState>
+      </EventStatePage>
     );
   }
 
   if (eventQuery.isLoading || slotsQuery.isLoading) {
     return (
-      <div className="narrow-page">
-        <StatePanel kind="loading">{t("Auto_OperationIsLoading_e4663d01")}</StatePanel>
-      </div>
+      <EventStatePage>
+        <LoadingState label={t("Auto_OperationIsLoading_e4663d01")} />
+      </EventStatePage>
+    );
+  }
+
+  if (isForbiddenError(eventQuery.error) || isForbiddenError(slotsQuery.error)) {
+    return (
+      <EventStatePage>
+        <ForbiddenState />
+      </EventStatePage>
     );
   }
 
   if (eventQuery.isError || slotsQuery.isError || !event) {
     return (
-      <div className="narrow-page">
-        <StatePanel
-          kind="error"
+      <EventStatePage>
+        <ErrorState
           title={t("Auto_OperationUnavailable_9b70eeab")}
-          action={
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => void Promise.all([eventQuery.refetch(), slotsQuery.refetch()])}
-            >
-              <ArrowSync20Regular /> {t("React_UI_Retry")}
-            </button>
-          }
+          onRetry={() => void Promise.all([eventQuery.refetch(), slotsQuery.refetch()])}
         >
           {t(eventFailureResourceKey(eventQuery.error ?? slotsQuery.error, "load"))}
-        </StatePanel>
-      </div>
+        </ErrorState>
+      </EventStatePage>
     );
   }
 
@@ -221,16 +218,22 @@ export function EventDetailPage() {
 
   return (
     <div className="em-event-page public-page">
-      <section
+      <PublicHero
         className="em-event-hero"
+        innerClassName="em-event-hero__inner"
+        copyClassName="em-event-hero__copy"
+        descriptionClassName="em-event-hero__meta"
+        actionsClassName="em-event-hero__actions"
+        singleColumn
         style={{ "--hero-image": `url("${image.replaceAll('"', "%22")}")` } as CSSProperties}
-      >
-        <div className="em-event-hero__inner">
-          <Link className="em-event-hero__back" to="/events/upcoming">
-            <ArrowLeft20Regular /> {t("Auto_BackToEvents_6f92c820")}
-          </Link>
-          <span className="em-operation-tag">{t("Operation")}</span>
-          <h1>{event.title || t("Pages_Events_Detail_UntitledOperation")}</h1>
+        kicker={t("Operation")}
+        title={event.title || t("Pages_Events_Detail_UntitledOperation")}
+        actions={
+          <ActionLink variant="glass" to="/events/upcoming">
+            <ArrowLeft20Regular aria-hidden="true" /> {t("Auto_BackToEvents_6f92c820")}
+          </ActionLink>
+        }
+        description={
           <dl className="em-event-meta" aria-label={t("Auto_MissionMetadata_384bdc08")}>
             <div>
               <CalendarLtr20Regular aria-hidden="true" />
@@ -305,8 +308,8 @@ export function EventDetailPage() {
               </div>
             </div>
           </dl>
-        </div>
-      </section>
+        }
+      />
 
       <div className="em-event-workspace">
         <div className="em-event-main">
@@ -342,9 +345,9 @@ export function EventDetailPage() {
                 </div>
               </>
             ) : (
-              <StatePanel kind="empty">
-                {t("Auto_NoFullBriefingHasBeenPostedForThisOperation_574adb11")}
-              </StatePanel>
+              <EmptyState title={t("Pages_Events_Detail_NoBriefingTitle")}>
+                {t("Pages_Events_Detail_NoBriefingBody")}
+              </EmptyState>
             )}
           </section>
 
@@ -361,7 +364,9 @@ export function EventDetailPage() {
               </p>
             </header>
             {sideGroups.length === 0 ? (
-              <StatePanel kind="empty">{t("Auto_NoSlotsConfigured_d0093e9c")}</StatePanel>
+              <EmptyState title={t("Pages_Events_Detail_NoSlotsTitle")}>
+                {t("Pages_Events_Detail_NoSlotsBody")}
+              </EmptyState>
             ) : (
               <div className="em-slot-register">
                 <div className="em-slot-register__head" aria-hidden="true">
@@ -445,9 +450,9 @@ export function EventDetailPage() {
                 <h2>{t("Auto_EventControls_ad2e84e1")}</h2>
               </header>
               <p>{t("Auto_OpenThisOperationInCommandManagement_604a555e")}</p>
-              <Link className="button button--ghost" to={`/command/events/${eventId}`}>
+              <ActionLink variant="ghost" to={`/command/events/${eventId}`}>
                 {t("Auto_ManageEvent_0a863949")}
-              </Link>
+              </ActionLink>
             </section>
           )}
 
@@ -482,9 +487,9 @@ export function EventDetailPage() {
                 onClick={() => setAttendance("reject")}
               />
             </div>
-            <button
-              className="em-primary-slot-action"
-              type="button"
+            <ActionButton
+              variant="gold"
+              fullWidth
               disabled={!firstOpenSlot || slotMutation.isPending}
               aria-busy={slotMutation.isPending}
               onClick={() => {
@@ -500,18 +505,18 @@ export function EventDetailPage() {
                     : firstOpenSlot
                       ? t("Pages_Events_Detail_ActionAssignSlot")
                       : t("Pages_Events_Detail_Status_NoOpenSlots")}
-            </button>
+            </ActionButton>
             {!auth.isAuthenticated && (
               <p>{t("Auto_SignInToManageAttendanceAndClaimOpenSlots_9bd2cdf2")}</p>
             )}
             {started && <p>{t("Auto_ThisOperationHasAlreadyStarted_d6da2397")}</p>}
             {attendanceMutation.isError && (
-              <StatePanel kind="error">
+              <StatePanel kind="error" title={t("Pages_Events_Detail_Error_AttendanceTitle")}>
                 {t(eventFailureResourceKey(attendanceMutation.error, "attendance"))}
               </StatePanel>
             )}
             {slotMutation.isError && (
-              <StatePanel kind="error">
+              <StatePanel kind="error" title={t("Pages_Events_Detail_Error_SlotTitle")}>
                 {t(eventFailureResourceKey(slotMutation.error, "slot"))}
               </StatePanel>
             )}
@@ -598,19 +603,19 @@ export function EventDetailPage() {
               </div>
             </dl>
             {(modPackFormatsQuery.data ?? []).map((format) => (
-              <button
-                className="em-primary-slot-action"
-                type="button"
+              <ActionButton
+                variant="gold"
+                fullWidth
                 key={format.identifier}
                 disabled={downloadMutation.isPending}
                 aria-busy={downloadMutation.isPending}
                 onClick={() => downloadMutation.mutate(format)}
               >
                 <ArrowDownload20Regular aria-hidden="true" /> {format.displayName}
-              </button>
+              </ActionButton>
             ))}
             {downloadMutation.isError && (
-              <StatePanel kind="error">
+              <StatePanel kind="error" title={t("Pages_Events_Detail_Error_DownloadTitle")}>
                 {t(eventFailureResourceKey(downloadMutation.error, "download"))}
               </StatePanel>
             )}
@@ -623,13 +628,49 @@ export function EventDetailPage() {
         title={t("Dialogs_ConfirmSlotLoss_ConfirmSlotLossOnAcceptanceChange")}
         description={t("Dialogs_ConfirmSlotLoss_SelectingSlotWillRemoveSlotSelection")}
         confirmLabel={t("Dialogs_ConfirmSlotSelection_ConfirmAcceptanceStatusChange")}
-        cancelLabel={t("Common_Cancel")}
+        cancelLabel={t("Dialogs_ConfirmSlotLoss_Dismiss")}
+        initialFocus="dismiss"
         onCancel={() => setAttendanceConfirmation(null)}
         onConfirm={() => {
           if (attendanceConfirmation) attendanceMutation.mutate(attendanceConfirmation);
           setAttendanceConfirmation(null);
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * Tells whether a request failed because the viewer may not see the operation.
+ *
+ * @param error The error a query reported, if any.
+ * @returns True for an API error with the forbidden code.
+ */
+function isForbiddenError(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "forbidden";
+}
+
+/**
+ * Frames the loading, not-found, forbidden and error states of the event page.
+ *
+ * The page always has exactly one h1; while the operation is unknown it names the page itself, and the shared state
+ * view below it explains what happened.
+ *
+ * @param props.children The shared state view to show below the heading.
+ */
+function EventStatePage({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <div className="em-event-page public-page">
+      <PublicHero
+        compact
+        singleColumn
+        className="em-event-hero em-event-hero--state"
+        innerClassName="em-event-hero__inner"
+        copyClassName="em-event-hero__copy"
+        title={t("Operation")}
+      />
+      <div className="content-section public-section em-event-state">{children}</div>
     </div>
   );
 }
@@ -650,9 +691,9 @@ function AttendanceButton({
   onClick(): void;
 }) {
   return (
-    <button
+    <ActionButton
+      variant="ghost"
       className={`em-attendance-choice em-attendance-choice--${tone}`}
-      type="button"
       disabled={disabled}
       aria-busy={pending}
       onClick={onClick}
@@ -662,7 +703,7 @@ function AttendanceButton({
       </span>
       <strong>{pending ? "…" : label}</strong>
       <span>{count}</span>
-    </button>
+    </ActionButton>
   );
 }
 
@@ -836,9 +877,10 @@ function SlotRow({
         <StatusBadge tone={rowStatus.tone}>{rowStatus.label}</StatusBadge>
         <small>{actionLabel}</small>
       </div>
-      <button
+      <ActionButton
+        variant="ghost"
+        size="compact"
         className={`em-slot-assign-button${mine ? " em-slot-assign-button--mine" : ""}`}
-        type="button"
         disabled={mutationPending || (action.kind !== "assign" && action.kind !== "claim-role")}
         aria-busy={action.kind === "assigning"}
         onClick={() => {
@@ -847,7 +889,7 @@ function SlotRow({
         }}
       >
         {actionLabel}
-      </button>
+      </ActionButton>
     </article>
   );
 }

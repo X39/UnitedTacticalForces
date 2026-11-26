@@ -1,0 +1,205 @@
+/*
+ * Styles for the fleet controls: the toolbar, its result summary and the live updates notice.
+ *
+ * This file also styles the generic SearchField and FilterChipGroup components (src/components). They import it from
+ * this directory on purpose, so tests/styles/server-style-guard.test.ts covers their styles too. The file consumes
+ * --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px media breakpoints;
+ * the style guard fails on anything else. Class names avoid the legacy .search-field and .filter-chips rules.
+ */
+
+/* Search field */
+.search-control {
+  display: flex;
+  flex: 1 1 var(--utf-fleet-card-min);
+  align-items: center;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--utf-control-height);
+  padding: 0 var(--utf-space-xs) 0 var(--utf-space-sm);
+  border: 1px solid var(--utf-border-control);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+  color: var(--utf-text);
+}
+
+.search-control__icon {
+  flex: none;
+  color: var(--utf-text-muted);
+}
+
+.search-control__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: var(--utf-radius-small);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--utf-text-body);
+  appearance: none;
+}
+
+.search-control__input::placeholder {
+  color: var(--utf-text-muted);
+  opacity: 1;
+}
+
+/* The field owns its clear control, so the native search clear glyph is removed. */
+.search-control__input::-webkit-search-cancel-button,
+.search-control__input::-webkit-search-decoration {
+  appearance: none;
+}
+
+.search-control__input:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.button.search-control__clear {
+  flex: none;
+  border-color: transparent;
+}
+
+.button.search-control__clear:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/* Filter chips: the doubled selector wins over the shared button width and ghost hover rules. */
+.filter-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.button.filter-chip {
+  min-height: var(--utf-control-height);
+  border: 1px solid var(--utf-border-control);
+  color: var(--utf-text);
+  overflow-wrap: anywhere;
+  transition: background-color var(--utf-motion-fast) var(--utf-motion-ease);
+}
+
+.button.filter-chip:hover:not([aria-disabled="true"]) {
+  border-color: var(--utf-border-control);
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text);
+}
+
+.button.filter-chip[aria-pressed="true"],
+.button.filter-chip[aria-pressed="true"]:hover:not([aria-disabled="true"]) {
+  border-color: var(--utf-text);
+  background: var(--utf-surface-overlay);
+}
+
+.button.filter-chip:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.filter-chip__check {
+  flex: none;
+}
+
+.filter-chip__count {
+  color: var(--utf-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fleet toolbar: the search grows and the chips sit to its right; the summary always takes its own row. */
+.fleet-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm) var(--utf-space-md);
+  min-width: 0;
+}
+
+.fleet-toolbar .filter-chip-group {
+  flex: 0 1 auto;
+}
+
+/* The summary is a live region, so it is never hidden with display: none; it is empty while no summary applies. */
+.fleet-toolbar__summary {
+  flex: 1 1 100%;
+  min-width: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/* Live updates notice: always the info tone, never warning or danger (the cost line owns warning). */
+.fleet-live-notice {
+  width: 100%;
+  min-width: 0;
+}
+
+.fleet-live-notice .state-panel {
+  border-color: var(--utf-state-info-border);
+  background: var(--utf-state-info-bg);
+  color: var(--utf-text);
+  overflow-wrap: anywhere;
+}
+
+.fleet-live-notice .state-panel.state-panel--info {
+  border-left-color: var(--utf-state-info-fg);
+}
+
+.fleet-live-notice .state-panel__icon {
+  color: var(--utf-state-info-fg);
+}
+
+.fleet-live-notice .state-panel p {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+@media (max-width: 800px) {
+  .fleet-live-notice .state-panel {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .fleet-live-notice .state-panel__action {
+    grid-column: 1 / -1;
+  }
+
+  .fleet-live-notice .state-panel__action .button {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .search-control {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .fleet-toolbar .search-control,
+  .fleet-toolbar .filter-chip-group {
+    flex: 1 1 100%;
+  }
+
+  .button.search-control__clear,
+  .button.filter-chip {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .button.search-control__clear {
+    width: var(--utf-control-height-touch);
+    min-width: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .filter-chip-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .button.filter-chip {
+    width: 100%;
+  }
+}

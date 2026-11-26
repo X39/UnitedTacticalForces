@@ -1,0 +1,612 @@
+/*
+ * Layout of the media and field report administration: the gallery, the public image slots, the gallery asset picker
+ * dialog, the field report list and the field report editor.
+ *
+ * The pages render only shared controls. Those carry the global .button and .form-field rules, so the rules below
+ * restate the layout the old page-local classes provided, with selectors specific enough to win without touching
+ * styles.css. The sheet consumes --utf-* tokens and rem values only.
+ */
+
+/* Toolbars: a search field with its submit action, then optional chip groups. */
+.media-admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm);
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-base);
+}
+
+.media-admin-toolbar > .search-control {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.media-admin-toolbar > .filter-chip-group {
+  flex: 1 1 100%;
+}
+
+/* A panel that holds form fields in a row: the tag filters and the upload tags. */
+.media-admin-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: var(--utf-space-md);
+  padding: var(--utf-space-md);
+}
+
+.media-admin-upload {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--utf-space-lg);
+  padding: var(--utf-space-md);
+}
+
+.media-admin-upload__intro,
+.media-admin-upload__controls {
+  display: grid;
+  align-content: start;
+  gap: var(--utf-space-sm);
+}
+
+.media-admin-upload h2,
+.media-admin-upload p {
+  margin: 0;
+}
+
+.media-admin-upload p,
+.media-admin-hint {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+/* Gallery workspace: the asset list beside the detail panel. */
+.media-admin-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--utf-space-lg);
+  align-items: start;
+}
+
+.media-admin-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-md);
+}
+
+.media-admin-panel-header > div {
+  min-width: 0;
+}
+
+.media-admin-assets,
+.media-admin-detail {
+  display: grid;
+  align-content: start;
+  gap: var(--utf-space-md);
+  padding-bottom: var(--utf-space-md);
+}
+
+.media-admin-assets > :not(.command-panel__header),
+.media-admin-detail > :not(.command-panel__header) {
+  margin-inline: var(--utf-space-md);
+}
+
+.media-admin-detail {
+  position: sticky;
+  top: var(--utf-space-lg);
+  max-height: calc(100dvh - var(--utf-space-3xl));
+  overflow: auto;
+}
+
+.media-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--utf-space-sm);
+}
+
+/* An image tile is an action button; it stacks the preview above the file name. */
+.button.media-admin-tile {
+  display: grid;
+  align-content: start;
+  justify-items: stretch;
+  gap: var(--utf-space-xs);
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--utf-border-control);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-base);
+  color: var(--utf-text);
+  text-align: start;
+}
+
+.button.media-admin-tile:hover:not([aria-disabled="true"]),
+.button.media-admin-tile[aria-selected="true"],
+.button.media-admin-tile[aria-pressed="true"] {
+  border-color: var(--utf-text);
+  background: var(--utf-surface-overlay);
+}
+
+.button.media-admin-tile:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.media-admin-tile img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.media-admin-tile__text {
+  display: grid;
+  gap: var(--utf-space-xs);
+  padding: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.media-admin-tile__text strong,
+.media-admin-tile__text small {
+  overflow-wrap: anywhere;
+}
+
+.media-admin-tile__text small {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+}
+
+.media-admin-detail__image {
+  display: block;
+  width: calc(100% - 2 * var(--utf-space-md));
+  max-height: 20rem;
+  object-fit: contain;
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius-small);
+  background: var(--utf-surface-base);
+}
+
+.media-admin-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--utf-space-xs) var(--utf-space-md);
+  margin: 0;
+}
+
+.media-admin-facts dt {
+  color: var(--utf-text-muted);
+}
+
+.media-admin-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.media-admin-section {
+  display: grid;
+  gap: var(--utf-space-sm);
+}
+
+.media-admin-section h3,
+.media-admin-section p {
+  margin: 0;
+}
+
+.media-admin-tags,
+.media-admin-usages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.media-admin-usages {
+  display: grid;
+  gap: var(--utf-space-sm);
+}
+
+.media-admin-usages li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--utf-space-sm);
+}
+
+.media-admin-usages li span {
+  color: var(--utf-text-muted);
+}
+
+/* Public image slots. */
+.site-images-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-xs);
+  padding: var(--utf-space-sm);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-base);
+}
+
+.button.site-images-group {
+  min-height: var(--utf-control-height);
+}
+
+.button.site-images-group[aria-current="page"] {
+  border-color: var(--utf-text);
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text);
+}
+
+.site-images-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+  padding: var(--utf-space-md);
+}
+
+.site-images-card {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.7fr) minmax(0, 1.3fr);
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+}
+
+.site-images-card__preview {
+  min-height: 15rem;
+  background-color: var(--utf-surface-base);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.site-images-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+  padding: var(--utf-space-md);
+}
+
+.site-images-card__body h3,
+.site-images-card__body p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.site-images-card__body p {
+  color: var(--utf-text-muted);
+}
+
+.site-images-selection {
+  display: grid;
+  justify-items: start;
+  gap: var(--utf-space-xs);
+  padding: var(--utf-space-sm);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius-small);
+}
+
+.site-images-selection span {
+  color: var(--utf-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.site-images-actions,
+.site-images-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm);
+}
+
+.site-images-actions {
+  margin-top: auto;
+}
+
+.site-images-footer {
+  justify-content: space-between;
+  padding: var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+  color: var(--utf-state-warning-fg);
+}
+
+/* The gallery asset picker: the shared dialog shell, widened, with an internally scrolling workspace. */
+.dialog.dialog--gallery-picker {
+  width: min(60rem, 100vw - var(--utf-dialog-gutter));
+  height: min(82dvh, 44rem);
+}
+
+.dialog.dialog--gallery-picker .dialog__body {
+  overflow: hidden;
+}
+
+.gallery-picker__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm);
+}
+
+.gallery-picker__tools > .search-control {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.gallery-picker__workspace {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.35fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--utf-space-md);
+  min-height: 0;
+}
+
+.gallery-picker__results,
+.gallery-picker__selection {
+  display: grid;
+  align-content: start;
+  gap: var(--utf-space-sm);
+  min-height: 0;
+  padding: var(--utf-space-md);
+  overflow: auto;
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius-small);
+  background: var(--utf-surface-base);
+}
+
+.gallery-picker__results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-md);
+}
+
+.gallery-picker__results h3,
+.gallery-picker__selection h3 {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.gallery-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--utf-space-sm);
+}
+
+.gallery-picker__selection img {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--utf-border-divider);
+}
+
+/* Field report list. */
+.report-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+}
+
+.button.report-metric {
+  display: grid;
+  justify-items: start;
+  gap: var(--utf-space-xs);
+  height: auto;
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-base);
+  color: var(--utf-text);
+  text-align: start;
+}
+
+.button.report-metric:hover:not([aria-disabled="true"]),
+.button.report-metric[aria-pressed="true"] {
+  border-color: var(--utf-text);
+  background: var(--utf-surface-overlay);
+}
+
+.button.report-metric:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.report-metric span,
+.report-metric small {
+  color: var(--utf-text-muted);
+}
+
+.report-metric strong {
+  font-size: var(--utf-text-heading);
+}
+
+.report-ledger__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-sm);
+}
+
+.report-table td > span,
+.report-table th > span {
+  display: block;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+  overflow-wrap: anywhere;
+}
+
+/* Field report editor. */
+.report-editor-shell {
+  display: grid;
+  gap: var(--utf-space-lg);
+  padding: var(--utf-space-md);
+}
+
+.report-editor-shell__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-md);
+}
+
+.report-editor-shell__header h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.report-editor-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+}
+
+.report-editor-form__wide {
+  grid-column: 1 / -1;
+}
+
+.report-editor-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+}
+
+.report-editor-form__checks {
+  display: grid;
+  align-content: end;
+  gap: var(--utf-space-sm);
+}
+
+.report-image-panel {
+  display: grid;
+  gap: var(--utf-space-md);
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+}
+
+.report-image-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-md);
+}
+
+.report-image-panel h3,
+.report-image-panel h4,
+.report-image-panel p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.report-image-panel__workspace {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+}
+
+.report-image-panel__controls,
+.report-image-panel__preview {
+  display: grid;
+  align-content: start;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.report-image-panel__buttons,
+.report-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+}
+
+.report-image-panel__preview img {
+  display: block;
+  width: 100%;
+  max-height: 16rem;
+  object-fit: contain;
+  border: 1px solid var(--utf-border-divider);
+  background: var(--utf-surface-base);
+}
+
+.report-editor-preview {
+  display: grid;
+  gap: var(--utf-space-md);
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+}
+
+.report-editor-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-md);
+}
+
+.report-editor-preview h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1180px) {
+  .media-admin-workspace,
+  .media-admin-upload {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .media-admin-detail {
+    position: static;
+    max-height: none;
+  }
+
+  .report-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .site-images-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .gallery-picker__workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(10rem, 0.55fr);
+  }
+
+  .site-images-card,
+  .report-editor-form,
+  .report-editor-form__grid,
+  .report-image-panel__workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .site-images-card__preview {
+    min-height: 12rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .media-admin-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .media-admin-grid {
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  }
+}

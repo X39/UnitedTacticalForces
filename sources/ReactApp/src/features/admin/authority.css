@@ -1,0 +1,100 @@
+/*
+ * Styles for the authority admin pages: claims, roles and role detail.
+ *
+ * Only the rules that the shared controls and states do not already provide live here. Everything else on these
+ * pages still comes from the legacy sheet, which may not be edited. The file consumes --utf-* tokens only.
+ */
+
+/* Metric cards that act as view toggles. They are action buttons, so these rules win over the legacy .button rules. */
+.authority-metrics > .authority-metric {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-base);
+  color: var(--utf-text);
+  text-align: left;
+}
+
+.authority-metrics > .authority-metric:hover:not([aria-disabled="true"]),
+.authority-metrics > .authority-metric[aria-pressed="true"] {
+  border-color: var(--utf-text);
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text);
+}
+
+.authority-metrics > .authority-metric:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/* The toolbar chips sit at the end of the row beside the search. */
+.authority-toolbar > .filter-chip-group {
+  margin-left: auto;
+}
+
+/* Inline create form and role operations form. */
+.authority-form-panel {
+  display: grid;
+  gap: var(--utf-space-md);
+  padding-bottom: var(--utf-space-lg);
+}
+
+.authority-form-fields {
+  display: grid;
+  gap: var(--utf-space-md);
+  margin-inline: var(--utf-space-lg);
+}
+
+.authority-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+  margin-inline: var(--utf-space-lg);
+}
+
+.authority-operations {
+  position: sticky;
+  top: 96px;
+  display: grid;
+  gap: var(--utf-space-md);
+  padding-bottom: var(--utf-space-lg);
+}
+
+.authority-operations > .authority-form-fields {
+  margin-top: 0;
+}
+
+/* Toolbar inside a panel of the role detail page. */
+.toolbar.authority-panel-toolbar {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin: var(--utf-space-md) var(--utf-space-lg);
+}
+
+.authority-panel-toolbar > .form-field {
+  min-width: 13rem;
+}
+
+.authority-panel-toolbar > .filter-chip-group {
+  margin-left: auto;
+}
+
+@media (max-width: 1180px) {
+  .authority-operations {
+    position: static;
+  }
+}
+
+@media (max-width: 520px) {
+  .authority-toolbar > .filter-chip-group,
+  .authority-panel-toolbar > .filter-chip-group {
+    margin-left: 0;
+  }
+
+  .authority-panel-toolbar > .form-field {
+    min-width: 100%;
+  }
+}

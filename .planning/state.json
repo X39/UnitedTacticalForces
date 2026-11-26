@@ -1,0 +1,68 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v2.1 — Server Experience Reimagined",
+  "phases": [
+    {
+      "number": "61",
+      "name": "Foundations, Localization & Member Access",
+      "status": "complete"
+    },
+    {
+      "number": "62",
+      "name": "Fleet & Quick Actions",
+      "status": "complete"
+    },
+    {
+      "number": "63",
+      "name": "Workspace Shell & Activity",
+      "status": "complete"
+    },
+    {
+      "number": "64",
+      "name": "Guided Server Creation",
+      "status": "complete"
+    },
+    {
+      "number": "65",
+      "name": "Change a Server",
+      "status": "complete"
+    },
+    {
+      "number": "66",
+      "name": "Accrued Cost & Cost Alerts",
+      "status": "complete"
+    },
+    {
+      "number": "67",
+      "name": "Server Metrics",
+      "status": "complete"
+    },
+    {
+      "number": "68",
+      "name": "Auto-Stop & Schedules",
+      "status": "complete"
+    },
+    {
+      "number": "69",
+      "name": "Consistency, Accessibility & Verification",
+      "status": "complete"
+    },
+    {
+      "number": "70",
+      "name": "UI Polishing",
+      "status": "complete"
+    },
+    {
+      "number": "71",
+      "name": "Server Access & Cost Owner UI",
+      "status": "complete"
+    }
+  ],
+  "next": {
+    "command": "/gsd-progress",
+    "label": "Show progress",
+    "reason": "Unsure of state — showing progress"
+  },
+  "updated_at": "2026-11-26T20:52:37.047Z"
+}

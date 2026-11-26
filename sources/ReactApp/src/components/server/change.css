@@ -1,0 +1,305 @@
+/*
+ * Styles for the staged-change flow of the Settings section: the section heading and reserve, the sticky
+ * pending-changes bar, the review dialog and its before and after rows.
+ *
+ * The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px
+ * media breakpoints; tests/styles/server-style-guard.test.ts fails on anything else. The bundle loads component
+ * CSS before styles.css, so the dialog rules double the selector (.dialog.dialog--review) to win over the
+ * legacy .dialog rules.
+ */
+
+/* Section heading: the visible name of the section and the focus target after a successful apply. */
+.workspace-section__heading {
+  margin: 0;
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+}
+
+.workspace-section__heading:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/* Reserve: while the bar renders, fields stay clear of it. The class exists only while changes are staged. */
+.workspace-section--staged {
+  padding-block-end: var(--utf-change-bar-reserve);
+}
+
+html:has(.workspace-section--staged) {
+  scroll-padding-block-end: var(--utf-change-bar-reserve);
+}
+
+/* Pending changes bar: the only raised surface of the section, sticky at the bottom of the viewport. */
+.pending-changes-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-sm);
+  padding: var(--utf-space-sm) var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+  background: var(--utf-surface-raised);
+  box-shadow: var(--utf-elevation-2);
+}
+
+.pending-changes-bar__status {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.pending-changes-bar__alert {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--utf-state-danger-fg);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+  order: 3;
+}
+
+.pending-changes-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+}
+
+@media (max-width: 800px) {
+  .pending-changes-bar__actions .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  /* A column that wraps would start a second column for the alert (its 100% basis), outside a 320px viewport. */
+  .pending-changes-bar {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .pending-changes-bar__status,
+  .pending-changes-bar__alert {
+    flex-basis: auto;
+  }
+
+  .pending-changes-bar__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pending-changes-bar__actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Review dialog: the shared dialog shell does the rest; only the width differs. */
+.dialog.dialog--review {
+  width: min(var(--utf-review-dialog-width), calc(100vw - var(--utf-dialog-gutter)));
+}
+
+/* The take-effect note: an icon and one muted line, no panel chrome. The shared dialog paragraph rule mutes it. */
+.review-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-sm);
+}
+
+.review-note svg {
+  flex: none;
+  margin-block-start: var(--utf-space-xs);
+}
+
+/*
+ * Leave dialog (D-13): one row above 520px with the destructive Discard and leave at the start edge, then Stay here and
+ * the gold Review changes at the end edge. At or below 520px the actions stack full width in document order, so
+ * Discard and leave, Stay here and Review changes stay reachable inside the dialog.
+ */
+.dialog.dialog--leave .dialog__actions {
+  flex-wrap: nowrap;
+  gap: var(--utf-space-sm);
+}
+
+.dialog.dialog--leave .dialog__actions > :first-child {
+  margin-inline-end: auto;
+}
+
+@media (max-width: 520px) {
+  .dialog.dialog--leave .dialog__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dialog.dialog--leave .dialog__actions > :first-child {
+    margin-inline-end: 0;
+  }
+
+  .dialog.dialog--leave .dialog__actions > * {
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .dialog.dialog--leave .dialog__actions .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+/* Review groups and rows: flat rows with a divider, no nested cards. */
+.review-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+}
+
+/* Caption row: a Label 12/700 heading with its count and a divider; not sticky. */
+.review-group .review-group__heading {
+  margin: 0;
+  padding-block-end: var(--utf-space-xs);
+  border-bottom: 1px solid var(--utf-border-divider);
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  overflow-wrap: anywhere;
+}
+
+.review-group__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * One compact row (D-12): the name, the values on one line while they fit and the icon-only remove control. The values
+ * column also holds the outcome line of an apply run and the mod contents diff, so they sit under the values.
+ */
+.change-item {
+  /* The visually hidden Before and After terms are absolutely positioned; the row keeps them inside the scrolling body. */
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(var(--utf-review-name-min), 1fr) minmax(0, 2fr) auto;
+  align-items: start;
+  column-gap: var(--utf-space-sm);
+  min-width: 0;
+  padding-block: var(--utf-space-sm);
+  border-bottom: 1px solid var(--utf-border-divider);
+}
+
+.change-item__name {
+  min-width: 0;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.change-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+}
+
+.change-item__values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--utf-space-xs) var(--utf-space-sm);
+  min-width: 0;
+  margin: 0;
+}
+
+.change-item__pair {
+  min-width: 0;
+  margin: 0;
+}
+
+.change-item__pair dd {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.change-item__pair--before dd {
+  color: var(--utf-text-muted);
+  text-decoration: line-through;
+}
+
+.change-item__pair--after dd {
+  font-weight: var(--utf-weight-bold);
+}
+
+.change-item__arrow {
+  flex: none;
+  align-self: center;
+  color: var(--utf-text-muted);
+}
+
+/* The doubled class outranks the shared dialog paragraph rule, so the state colors apply. */
+.change-item .change-item__state {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  color: var(--utf-state-neutral-fg);
+  overflow-wrap: anywhere;
+}
+
+.change-item .change-item__state--applied {
+  color: var(--utf-state-success-fg);
+}
+
+.change-item .change-item__state--failed {
+  color: var(--utf-state-danger-fg);
+}
+
+.change-item__state svg {
+  flex: none;
+}
+
+/* The icon-only control keeps its full target; the negative margin keeps a single-line row compact. */
+.change-item__remove {
+  align-self: start;
+  margin-block: calc(-1 * var(--utf-space-xs));
+}
+
+@media (max-width: 520px) {
+  .change-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .change-item__name {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .change-item__remove {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .change-item__body {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* Pending-start banner: the muted line that names the waiting areas. */
+.pending-start-notice__areas {
+  color: var(--utf-text-muted);
+}

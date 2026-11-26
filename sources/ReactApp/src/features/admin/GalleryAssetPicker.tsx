@@ -1,15 +1,20 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
-import { StatePanel } from "@/components/primitives";
+import { ActionButton } from "@/components/ActionControl";
+import { FileChooserButton } from "@/components/FileChooserButton";
+import { ConfirmDialog } from "@/components/primitives";
+import { SearchField } from "@/components/SearchField";
+import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
 import {
   loadMediaAsset,
   loadMediaAssets,
   uploadMediaAsset,
   type MediaAsset,
 } from "@/features/admin/siteImages";
+import "@/features/admin/mediaAdmin.css";
 
 const maximumImageBytes = 10 * 1024 * 1024;
 const acceptedTypes = new Set([
@@ -27,6 +32,19 @@ function formatBytes(value: number): string {
   return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 
+/**
+ * A modal picker that lets an editor choose, search for or upload a gallery image.
+ *
+ * The picker is a {@link ConfirmDialog} shell variant: the dismiss action names its effect, Escape and the dismiss
+ * button call `onCancel`, and the apply action stays unavailable until an image is selected. Pressing Enter in the
+ * search field runs the search instead of confirming the dialog.
+ *
+ * @param props.open Whether the dialog is shown.
+ * @param props.selectedAssetId The id of the image that is currently assigned, preselected when it can be found.
+ * @param props.uploadTags The tags attached to an image uploaded from inside the picker.
+ * @param props.onSelect Called with the chosen image when the editor applies the selection.
+ * @param props.onCancel Called when the editor dismisses the dialog.
+ */
 export function GalleryAssetPicker({
   open,
   selectedAssetId,
@@ -42,7 +60,6 @@ export function GalleryAssetPicker({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
   const [draftAsset, setDraftAsset] = useState<MediaAsset>();
@@ -70,21 +87,25 @@ export function GalleryAssetPicker({
     enabled: open && Boolean(selectedAssetId) && !loadedSelection && !draftAsset,
   });
   const selected = draftAsset ?? loadedSelection ?? selectedQuery.data;
-
-  useEffect(() => {
-    if (open && !dialogRef.current?.open) dialogRef.current?.showModal();
-    if (!open && dialogRef.current?.open) dialogRef.current.close();
-  }, [open]);
+  const dialogError = validationError ?? (upload.isError ? upload.error.message : undefined);
 
   const closePicker = () => {
     setDraftAsset(undefined);
     setValidationError(undefined);
     onCancel();
   };
-
-  const applySearch = (event: FormEvent) => {
+  const applySelection = () => {
+    if (!selected) return;
+    onSelect(selected);
+    setDraftAsset(undefined);
+    setValidationError(undefined);
+  };
+  const applySearch = () => setSearch(searchDraft.trim());
+  const searchOnEnter = (event: KeyboardEvent<HTMLElement>) => {
+    // The dialog body lives inside the confirm form, so Enter would confirm the selection without this.
+    if (event.key !== "Enter" || !(event.target instanceof HTMLInputElement)) return;
     event.preventDefault();
-    setSearch(searchDraft.trim());
+    applySearch();
   };
   const chooseFile = (file: File | undefined) => {
     if (!file) return;
@@ -101,157 +122,127 @@ export function GalleryAssetPicker({
   };
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="gallery-picker-dialog"
-      onCancel={(event) => {
-        event.preventDefault();
-        closePicker();
-      }}
+    <ConfirmDialog
+      open={open}
+      className="dialog--gallery-picker"
+      kicker={t("Components_GalleryImagePicker_ResultsKicker")}
+      title={t("Components_GalleryImagePicker_DialogTitle")}
+      description={t("Components_GalleryImagePicker_NoSelectionMeta")}
+      confirmLabel={t("Components_GalleryImagePicker_DialogApply")}
+      confirmVariant="primary"
+      cancelLabel={t("Components_GalleryImagePicker_Dismiss")}
+      confirmDisabled={!selected}
+      error={dialogError}
+      onConfirm={applySelection}
+      onCancel={closePicker}
     >
-      <section className="gallery-picker-dialog__shell">
-        <header>
-          <span className="kicker">{t("Components_GalleryImagePicker_ResultsKicker")}</span>
-          <h2>{t("Components_GalleryImagePicker_DialogTitle")}</h2>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label={t("Components_GalleryImagePicker_DialogCancel")}
-            onClick={closePicker}
-          >
-            ×
-          </button>
-        </header>
-        <form className="gallery-picker-dialog__tools" onSubmit={applySearch}>
-          <label className="search-field">
-            <span className="sr-only">{t("Components_GalleryImagePicker_SearchLabel")}</span>
-            <input
-              value={searchDraft}
-              placeholder={t("Components_GalleryImagePicker_SearchPlaceholder")}
-              onChange={(event) => setSearchDraft(event.target.value)}
-            />
-          </label>
-          <button className="button button--ghost" type="submit">
-            {t("Components_GalleryImagePicker_SearchAction")}
-          </button>
-          <label className="button button--ghost gallery-picker-dialog__upload">
-            {upload.isPending
-              ? t("Components_GalleryImagePicker_LoadingMore")
-              : t("Components_GalleryImagePicker_UploadText")}
-            <input
-              type="file"
-              accept={[...acceptedTypes].join(",")}
-              disabled={upload.isPending}
-              onChange={(event) => chooseFile(event.target.files?.[0])}
-            />
-          </label>
-        </form>
+      <div className="gallery-picker__tools" onKeyDown={searchOnEnter}>
+        <SearchField
+          label={t("Components_GalleryImagePicker_SearchLabel")}
+          placeholder={t("Components_GalleryImagePicker_SearchPlaceholder")}
+          clearLabel={t("Components_GalleryImagePicker_Clear")}
+          value={searchDraft}
+          onChange={setSearchDraft}
+        />
+        <ActionButton variant="ghost" onClick={applySearch}>
+          {t("Components_GalleryImagePicker_SearchAction")}
+        </ActionButton>
+        <FileChooserButton
+          inputLabel={t("Components_GalleryImagePicker_UploadText")}
+          disabled={upload.isPending}
+          onFiles={(files) => chooseFile(files[0])}
+        >
+          {upload.isPending
+            ? t("Components_GalleryImagePicker_LoadingMore")
+            : t("Components_GalleryImagePicker_UploadText")}
+        </FileChooserButton>
+      </div>
 
-        <div className="gallery-picker-dialog__status" aria-live="polite">
-          {(validationError || upload.isError) && (
-            <StatePanel kind="error">{validationError || upload.error?.message}</StatePanel>
-          )}
-          {query.isError && <StatePanel kind="error">{query.error.message}</StatePanel>}
-        </div>
-
-        <div className="gallery-picker-dialog__workspace">
-          <section>
-            <div className="gallery-picker-dialog__results-header">
-              <h3>{t("Components_GalleryImagePicker_ResultsTitle")}</h3>
-              <span>
-                {formatResource(t("Components_GalleryImagePicker_VisibleCount"), assets.length)}
-              </span>
-            </div>
-            {query.isPending ? (
-              <StatePanel kind="loading">{t("Components_GalleryImagePicker_Loading")}</StatePanel>
-            ) : assets.length === 0 ? (
-              <StatePanel>{t("Components_GalleryImagePicker_NoResults")}</StatePanel>
-            ) : (
-              <div className="gallery-picker-dialog__grid">
-                {assets.map((asset) => (
-                  <button
-                    key={asset.primaryKey}
-                    className={
-                      selected?.primaryKey === asset.primaryKey ? "is-selected" : undefined
-                    }
-                    type="button"
-                    aria-pressed={selected?.primaryKey === asset.primaryKey}
-                    onClick={() => setDraftAsset(asset)}
-                  >
-                    <img
-                      src={resolveImageUrl(asset.imagePath)}
-                      alt={formatResource(
-                        t("Components_GalleryImagePicker_AssetAlt"),
-                        asset.originalFileName,
-                      )}
-                      loading="lazy"
-                    />
+      <div className="gallery-picker__workspace">
+        <section className="gallery-picker__results">
+          <div className="gallery-picker__results-header">
+            <h3>{t("Components_GalleryImagePicker_ResultsTitle")}</h3>
+            <span>
+              {formatResource(t("Components_GalleryImagePicker_VisibleCount"), assets.length)}
+            </span>
+          </div>
+          {query.isError && <ErrorState onRetry={() => void query.refetch()} />}
+          {query.isPending ? (
+            <LoadingState label={t("Components_GalleryImagePicker_Loading")} />
+          ) : assets.length === 0 ? (
+            !query.isError && (
+              <EmptyState title={t("Components_GalleryImagePicker_EmptyTitle")}>
+                {t("Components_GalleryImagePicker_EmptyBody")}
+              </EmptyState>
+            )
+          ) : (
+            <div className="gallery-picker__grid">
+              {assets.map((asset) => (
+                <ActionButton
+                  key={asset.primaryKey}
+                  variant="ghost"
+                  className="media-admin-tile"
+                  aria-pressed={selected?.primaryKey === asset.primaryKey}
+                  onClick={() => setDraftAsset(asset)}
+                >
+                  <img
+                    src={resolveImageUrl(asset.imagePath)}
+                    alt={formatResource(
+                      t("Components_GalleryImagePicker_AssetAlt"),
+                      asset.originalFileName,
+                    )}
+                    loading="lazy"
+                  />
+                  <span className="media-admin-tile__text">
                     <strong>{asset.originalFileName}</strong>
-                    <span>
+                    <small>
                       {asset.contentType} · {formatBytes(asset.size)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {query.hasNextPage && (
-              <button
-                className="button button--ghost gallery-picker-dialog__load-more"
-                type="button"
-                disabled={query.isFetchingNextPage}
-                onClick={() => void query.fetchNextPage()}
-              >
-                {query.isFetchingNextPage
-                  ? t("Components_GalleryImagePicker_LoadingMore")
-                  : t("Components_GalleryImagePicker_LoadMore")}
-              </button>
-            )}
-          </section>
-          <aside>
-            <span className="kicker">{t("Components_GalleryImagePicker_SelectionKicker")}</span>
-            <h3>
-              {selected?.originalFileName || t("Components_GalleryImagePicker_NoSelectionTitle")}
-            </h3>
-            {selected ? (
-              <>
-                <img
-                  src={resolveImageUrl(selected.imagePath)}
-                  alt={formatResource(
-                    t("Components_GalleryImagePicker_SelectedImageAltFormat"),
-                    selected.originalFileName,
-                  )}
-                />
-                <dl>
-                  <dt>{t("Components_GalleryImagePicker_TypeLabel")}</dt>
-                  <dd>{selected.contentType}</dd>
-                  <dt>{t("Components_GalleryImagePicker_SizeLabel")}</dt>
-                  <dd>{formatBytes(selected.size)}</dd>
-                </dl>
-              </>
-            ) : (
-              <p>{t("Components_GalleryImagePicker_NoSelectionDescription")}</p>
-            )}
-          </aside>
-        </div>
-        <footer>
-          <button className="button button--ghost" type="button" onClick={closePicker}>
-            {t("Components_GalleryImagePicker_DialogCancel")}
-          </button>
-          <button
-            className="button button--primary"
-            type="button"
-            disabled={!selected}
-            onClick={() => {
-              if (!selected) return;
-              onSelect(selected);
-              setDraftAsset(undefined);
-              setValidationError(undefined);
-            }}
-          >
-            {t("Components_GalleryImagePicker_DialogApply")}
-          </button>
-        </footer>
-      </section>
-    </dialog>
+                    </small>
+                  </span>
+                </ActionButton>
+              ))}
+            </div>
+          )}
+          {query.hasNextPage && (
+            <ActionButton
+              variant="ghost"
+              disabled={query.isFetchingNextPage}
+              onClick={() => void query.fetchNextPage()}
+            >
+              {query.isFetchingNextPage
+                ? t("Components_GalleryImagePicker_LoadingMore")
+                : t("Components_GalleryImagePicker_LoadMore")}
+            </ActionButton>
+          )}
+        </section>
+        <aside className="gallery-picker__selection">
+          <span className="kicker">{t("Components_GalleryImagePicker_SelectionKicker")}</span>
+          <h3>
+            {selected?.originalFileName || t("Components_GalleryImagePicker_NoSelectionTitle")}
+          </h3>
+          {selected ? (
+            <>
+              <img
+                src={resolveImageUrl(selected.imagePath)}
+                alt={formatResource(
+                  t("Components_GalleryImagePicker_SelectedImageAltFormat"),
+                  selected.originalFileName,
+                )}
+              />
+              <dl className="media-admin-facts">
+                <dt>{t("Components_GalleryImagePicker_TypeLabel")}</dt>
+                <dd>{selected.contentType}</dd>
+                <dt>{t("Components_GalleryImagePicker_SizeLabel")}</dt>
+                <dd>{formatBytes(selected.size)}</dd>
+              </dl>
+            </>
+          ) : (
+            <p className="media-admin-hint">
+              {t("Components_GalleryImagePicker_NoSelectionDescription")}
+            </p>
+          )}
+        </aside>
+      </div>
+    </ConfirmDialog>
   );
 }

@@ -1,4 +1,5 @@
 using X39.UnitedTacticalForces.CloudWorker;
+using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 using Xunit;
 
 namespace CloudWorker.Tests;
@@ -160,6 +161,86 @@ public sealed class Arma3JoinMonitorTests
         Assert.False(await monitor.HasExpiredAsync(identity, grace, CancellationToken.None));
     }
 
+    /// <summary>Before any record of the current launch exists the player count is still being measured.</summary>
+    /// <returns>A task completing after the unmeasured reads.</returns>
+    [Fact]
+    public async Task ReadLatestPlayers_WithoutRecordReportsMeasuring()
+    {
+        using var directory = new TemporaryDirectory();
+        var paths = CreatePaths(directory.Path);
+        var monitor = new Arma3JoinMonitor(paths, new ManualClock());
+        Assert.Equal(WorkerMetricUnavailableReasons.Measuring,
+            (await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None)).UnavailableReason);
+        // Readiness records and records of other launches never become a player count.
+        await File.WriteAllTextAsync(paths.RuntimeLogPath, Record(9, 3, 1) + "\n"
+            + PlayerRecord(4, 2).Replace(Nonce, new string('f', 32)) + "\n");
+        Assert.Equal(WorkerMetricUnavailableReasons.Measuring,
+            (await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None)).UnavailableReason);
+    }
+
+    /// <summary>The highest sequence of the current launch wins and carries no capacity.</summary>
+    /// <returns>A task completing after the record selection checks.</returns>
+    [Fact]
+    public async Task ReadLatestPlayers_ReportsHighestSequenceOfCurrentLaunchWithoutCapacity()
+    {
+        using var directory = new TemporaryDirectory();
+        var paths = CreatePaths(directory.Path);
+        var monitor = new Arma3JoinMonitor(paths, new ManualClock());
+        await File.WriteAllTextAsync(paths.RuntimeLogPath,
+            PlayerRecord(3, 5) + "\n" + Record(50, 3, 1) + "\n" + PlayerRecord(8, 2) + "\n"
+            + PlayerRecord(100, 9).Replace(Nonce, new string('f', 32)) + "\n" + PlayerRecord(5, 7) + "\n"
+            + PlayerRecord(9, 4));
+        // The unterminated final line is still being written by the engine and is ignored.
+        var reading = await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None);
+        Assert.Equal(2, reading.Count);
+        Assert.Null(reading.Capacity);
+        Assert.Null(reading.UnavailableReason);
+        await File.AppendAllTextAsync(paths.RuntimeLogPath, "\n");
+        Assert.Equal(4, (await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None)).Count);
+    }
+
+    /// <summary>A count stays fresh for 90 seconds after the last advancing sequence and then reports query-failed.</summary>
+    /// <returns>A task completing after the freshness boundary checks.</returns>
+    [Fact]
+    public async Task ReadLatestPlayers_StaleAfterNinetySecondsWithoutAdvancingSequence()
+    {
+        using var directory = new TemporaryDirectory();
+        var paths = CreatePaths(directory.Path);
+        var clock = new ManualClock();
+        var monitor = new Arma3JoinMonitor(paths, clock);
+        await File.WriteAllTextAsync(paths.RuntimeLogPath, PlayerRecord(1, 6) + "\n");
+        Assert.Equal(6, (await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None)).Count);
+        clock.Advance(TimeSpan.FromSeconds(90));
+        Assert.Equal(6, (await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None)).Count);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        var stale = await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None);
+        Assert.Null(stale.Count);
+        Assert.Equal(WorkerMetricUnavailableReasons.QueryFailed, stale.UnavailableReason);
+        // Repeating the old line cannot renew freshness; only a higher sequence does.
+        await File.AppendAllTextAsync(paths.RuntimeLogPath, PlayerRecord(1, 6) + "\n");
+        Assert.Equal(WorkerMetricUnavailableReasons.QueryFailed,
+            (await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None)).UnavailableReason);
+        await File.AppendAllTextAsync(paths.RuntimeLogPath, PlayerRecord(2, 0) + "\n");
+        Assert.Equal(0, (await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None)).Count);
+    }
+
+    /// <summary>A new launch marker discards the previous launch's count and sequence.</summary>
+    /// <returns>A task completing after the relaunch check.</returns>
+    [Fact]
+    public async Task ReadLatestPlayers_NewLaunchDiscardsPreviousLaunchState()
+    {
+        using var directory = new TemporaryDirectory();
+        var paths = CreatePaths(directory.Path);
+        var monitor = new Arma3JoinMonitor(paths, new ManualClock());
+        const string next = "fedcba9876543210fedcba9876543210";
+        await File.WriteAllTextAsync(paths.RuntimeLogPath, PlayerRecord(40, 6) + "\n");
+        Assert.Equal(6, (await monitor.ReadLatestPlayersAsync(Nonce, CancellationToken.None)).Count);
+        Assert.Equal(WorkerMetricUnavailableReasons.Measuring,
+            (await monitor.ReadLatestPlayersAsync(next, CancellationToken.None)).UnavailableReason);
+        await File.AppendAllTextAsync(paths.RuntimeLogPath, PlayerRecord(1, 2).Replace(Nonce, next) + "\n");
+        Assert.Equal(2, (await monitor.ReadLatestPlayersAsync(next, CancellationToken.None)).Count);
+    }
+
     /// <summary>Creates isolated workload directories without starting an executable.</summary>
     /// <param name="root">The fixture's temporary directory.</param>
     /// <returns>Created primary runtime paths.</returns>
@@ -183,6 +264,13 @@ public sealed class Arma3JoinMonitorTests
     /// <returns>A raw addon record for the current fixture launch.</returns>
     private static string Record(long sequence, int owner, int state)
         => $"UTFHC|1|{Nonce}|{sequence}|{owner}|{state}";
+
+    /// <summary>Formats a trusted player record without adding a terminating newline.</summary>
+    /// <param name="sequence">The increasing engine sequence.</param>
+    /// <param name="humans">The human player count.</param>
+    /// <returns>A raw addon player record for the current fixture launch.</returns>
+    private static string PlayerRecord(long sequence, int humans)
+        => $"UTFPL|1|{Nonce}|{sequence}|{humans}";
 
     /// <summary>Advances monotonic time explicitly so expiry tests need no sleeping or wall-clock assumptions.</summary>
     private sealed class ManualClock : TimeProvider

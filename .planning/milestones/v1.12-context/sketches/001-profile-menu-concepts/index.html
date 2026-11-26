@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>UTF Profile Menu Concepts</title>
+    <link rel="stylesheet" href="../themes/default.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 20% 0%, rgba(186, 160, 90, 0.08), transparent 32rem),
+                linear-gradient(180deg, #070b0f 0%, #0a1016 48%, #070b0f 100%);
+            color: var(--color-text);
+            font-family: var(--font-sans);
+            margin: 0;
+            min-height: 100vh;
+            padding-top: 54px;
+        }
+
+        button,
+        a {
+            font: inherit;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .variant-nav {
+            align-items: center;
+            background: rgba(7, 11, 15, 0.98);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            gap: 8px;
+            inset: 0 0 auto;
+            min-height: 54px;
+            padding: 8px 16px;
+            position: fixed;
+            z-index: 9998;
+        }
+
+        .variant-tab,
+        .tool-button {
+            background: transparent;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            color: var(--color-text-muted);
+            cursor: pointer;
+            font-size: var(--text-sm);
+            font-weight: 750;
+            min-height: 34px;
+            padding: 0 12px;
+            transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+        }
+
+        .variant-tab:hover,
+        .variant-tab.active,
+        .tool-button:hover {
+            background: var(--color-primary-muted);
+            border-color: var(--color-primary);
+            color: var(--color-primary-strong);
+        }
+
+        .viewport {
+            margin: 0 auto;
+            min-height: calc(100vh - 54px);
+            transition: max-width 180ms ease;
+        }
+
+        .variant {
+            display: none;
+            min-height: calc(100vh - 54px);
+        }
+
+        .variant.active {
+            display: block;
+        }
+
+        .shell-preview {
+            min-height: calc(100vh - 54px);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .shell-preview::before {
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+            background-size: 48px 48px;
+            content: "";
+            inset: 0;
+            opacity: 0.34;
+            pointer-events: none;
+            position: absolute;
+        }
+
+        .community-topbar,
+        .command-topbar {
+            align-items: center;
+            background: rgba(7, 11, 15, 0.92);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            gap: 18px;
+            min-height: 72px;
+            padding: 0 28px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .command-topbar {
+            background: rgba(13, 19, 26, 0.96);
+            min-height: 64px;
+        }
+
+        .brand {
+            align-items: center;
+            display: flex;
+            font-weight: 900;
+            gap: 10px;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .brand-mark {
+            align-items: center;
+            background: linear-gradient(180deg, #1d2833, #0a0f15);
+            border: 1px solid var(--color-border-strong);
+            border-radius: var(--radius-sm);
+            color: var(--color-primary-strong);
+            display: inline-flex;
+            height: 40px;
+            justify-content: center;
+            width: 40px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .nav-link {
+            color: var(--color-text-muted);
+            font-size: var(--text-sm);
+            font-weight: 750;
+            padding: 10px 8px;
+        }
+
+        .nav-link.active {
+            color: var(--color-primary-strong);
+            box-shadow: inset 0 -2px 0 var(--color-primary);
+        }
+
+        .topbar-actions {
+            align-items: center;
+            display: flex;
+            gap: 12px;
+            margin-left: auto;
+        }
+
+        .ghost-button,
+        .gold-button,
+        .danger-button,
+        .icon-button {
+            align-items: center;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: inline-flex;
+            font-weight: 850;
+            gap: 8px;
+            justify-content: center;
+            min-height: 38px;
+            padding: 0 13px;
+            transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+        }
+
+        .ghost-button {
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+        }
+
+        .ghost-button:hover,
+        .icon-button:hover {
+            background: var(--color-primary-muted);
+            border-color: var(--color-primary);
+            color: var(--color-primary-strong);
+        }
+
+        .gold-button {
+            background: linear-gradient(180deg, var(--color-primary-strong), var(--color-primary));
+            border: 1px solid var(--color-primary-strong);
+            color: #101014;
+        }
+
+        .gold-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .danger-button {
+            background: transparent;
+            border: 1px solid rgba(239, 68, 68, 0.42);
+            color: #fca5a5;
+        }
+
+        .danger-button:hover {
+            background: var(--color-danger-bg);
+        }
+
+        .icon-button {
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+            height: 42px;
+            padding: 0;
+            width: 42px;
+        }
+
+        .profile-trigger {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            display: inline-flex;
+            gap: 8px;
+            min-height: 44px;
+            padding: 3px 12px 3px 3px;
+            transition: border-color 150ms ease, background-color 150ms ease;
+        }
+
+        .profile-trigger:hover {
+            background: var(--color-primary-muted);
+            border-color: var(--color-primary);
+        }
+
+        .avatar,
+        .avatar-lg {
+            background:
+                linear-gradient(180deg, rgba(7, 11, 15, 0), rgba(7, 11, 15, 0.42)),
+                url("avatar-x39.png");
+            background-position: center;
+            background-size: cover;
+            border: 1px solid rgba(212, 173, 84, 0.36);
+            border-radius: 50%;
+            flex: 0 0 auto;
+        }
+
+        .avatar {
+            height: 38px;
+            width: 38px;
+        }
+
+        .avatar-lg {
+            box-shadow: 0 0 0 5px rgba(186, 160, 90, 0.12);
+            height: 78px;
+            width: 78px;
+        }
+
+        .trigger-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            text-align: left;
+        }
+
+        .trigger-copy strong {
+            color: var(--color-text);
+            font-size: var(--text-sm);
+            line-height: 1;
+        }
+
+        .trigger-copy span {
+            color: var(--color-text-subtle);
+            font-size: var(--text-xs);
+            line-height: 1;
+        }
+
+        .page-ghost {
+            display: grid;
+            gap: 18px;
+            grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+            padding: 64px 28px 28px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .placeholder-panel {
+            background: rgba(17, 24, 32, 0.52);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            min-height: 260px;
+            padding: 22px;
+        }
+
+        .placeholder-panel h1,
+        .placeholder-panel h2 {
+            margin: 0;
+        }
+
+        .placeholder-panel p {
+            color: var(--color-text-muted);
+            line-height: 1.55;
+            max-width: 54ch;
+        }
+
+        .profile-popover {
+            background:
+                linear-gradient(180deg, rgba(17, 24, 32, 0.98), rgba(8, 13, 19, 0.98)),
+                var(--color-surface);
+            border: 1px solid var(--color-border-strong);
+            border-radius: var(--radius-md);
+            box-shadow: 0 24px 90px rgba(0, 0, 0, 0.54);
+            color: var(--color-text);
+            overflow: hidden;
+            position: absolute;
+            right: 28px;
+            top: 86px;
+            width: min(430px, calc(100vw - 32px));
+            z-index: 4;
+        }
+
+        .command-preview .profile-popover {
+            top: 78px;
+        }
+
+        .popover-hero {
+            background:
+                linear-gradient(90deg, rgba(186, 160, 90, 0.2), transparent 54%),
+                linear-gradient(180deg, rgba(26, 36, 47, 0.95), rgba(10, 15, 21, 0.95));
+            border-bottom: 1px solid var(--color-border);
+            display: grid;
+            gap: 14px;
+            grid-template-columns: auto minmax(0, 1fr);
+            padding: 18px;
+            position: relative;
+        }
+
+        .popover-hero::after {
+            background:
+                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 24px 24px;
+            content: "";
+            inset: 0;
+            opacity: 0.28;
+            pointer-events: none;
+            position: absolute;
+        }
+
+        .identity-copy {
+            min-width: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .eyebrow {
+            color: var(--color-primary-strong);
+            display: block;
+            font-size: var(--text-xs);
+            font-weight: 900;
+            letter-spacing: 0;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .identity-copy h2 {
+            font-size: var(--text-2xl);
+            line-height: 1.05;
+            margin: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .identity-copy p {
+            color: var(--color-text-muted);
+            font-size: var(--text-sm);
+            line-height: 1.45;
+            margin: 8px 0 0;
+        }
+
+        .badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 12px;
+        }
+
+        .badge {
+            align-items: center;
+            border-radius: var(--radius-full);
+            display: inline-flex;
+            font-size: var(--text-xs);
+            font-weight: 850;
+            gap: 6px;
+            min-height: 27px;
+            padding: 0 9px;
+            text-transform: uppercase;
+        }
+
+        .badge::before {
+            border-radius: 50%;
+            content: "";
+            height: 7px;
+            width: 7px;
+        }
+
+        .badge.success {
+            background: var(--color-success-bg);
+            color: var(--color-success);
+        }
+
+        .badge.success::before {
+            background: var(--color-success);
+        }
+
+        .badge.gold {
+            background: var(--color-primary-muted);
+            color: var(--color-primary-strong);
+        }
+
+        .badge.gold::before {
+            background: var(--color-primary-strong);
+        }
+
+        .badge.warning {
+            background: var(--color-warning-bg);
+            color: var(--color-warning);
+        }
+
+        .badge.warning::before {
+            background: var(--color-warning);
+        }
+
+        .popover-section {
+            border-bottom: 1px solid var(--color-border);
+            padding: 14px 18px;
+        }
+
+        .popover-section:last-child {
+            border-bottom: 0;
+        }
+
+        .section-title {
+            align-items: center;
+            color: var(--color-text-subtle);
+            display: flex;
+            font-size: var(--text-xs);
+            font-weight: 900;
+            justify-content: space-between;
+            letter-spacing: 0;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .fact-grid {
+            display: grid;
+            gap: 10px 14px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .fact {
+            min-width: 0;
+        }
+
+        .fact span {
+            color: var(--color-text-subtle);
+            display: block;
+            font-size: var(--text-xs);
+            font-weight: 850;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .fact strong,
+        .fact code {
+            color: var(--color-text);
+            display: block;
+            font-family: inherit;
+            font-size: var(--text-sm);
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .fact code {
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+        }
+
+        .activity-row,
+        .authority-row,
+        .action-row {
+            align-items: center;
+            display: grid;
+            gap: 12px;
+            grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .activity-row + .activity-row,
+        .authority-row + .authority-row {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+
+        .activity-row strong,
+        .authority-row strong {
+            display: block;
+            font-size: var(--text-sm);
+            margin-bottom: 3px;
+        }
+
+        .activity-row span,
+        .authority-row span {
+            color: var(--color-text-muted);
+            display: block;
+            font-size: var(--text-xs);
+            line-height: 1.35;
+        }
+
+        .mini-metrics {
+            display: grid;
+            gap: 1px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .mini-metric {
+            background: rgba(255, 255, 255, 0.035);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 12px;
+        }
+
+        .mini-metric:last-child {
+            border-right: 0;
+        }
+
+        .mini-metric strong {
+            color: var(--color-text);
+            display: block;
+            font-size: var(--text-xl);
+            line-height: 1;
+        }
+
+        .mini-metric span {
+            color: var(--color-text-subtle);
+            display: block;
+            font-size: var(--text-xs);
+            font-weight: 850;
+            margin-top: 6px;
+            text-transform: uppercase;
+        }
+
+        .popover-actions {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            padding: 14px 18px 18px;
+        }
+
+        .popover-actions .danger-button {
+            grid-column: 1 / -1;
+        }
+
+        .command-layout {
+            display: grid;
+            grid-template-columns: 280px minmax(0, 1fr);
+            min-height: calc(100vh - 54px);
+        }
+
+        .command-rail {
+            background: linear-gradient(180deg, #070b0f, #0c1218);
+            border-right: 1px solid var(--color-border);
+            padding: 18px;
+        }
+
+        .rail-label {
+            color: var(--color-text-subtle);
+            font-size: var(--text-xs);
+            font-weight: 900;
+            margin: 28px 0 9px;
+            text-transform: uppercase;
+        }
+
+        .rail-link {
+            align-items: center;
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            color: var(--color-text-muted);
+            display: flex;
+            font-size: var(--text-sm);
+            font-weight: 750;
+            gap: 10px;
+            min-height: 40px;
+            padding: 0 10px;
+        }
+
+        .rail-link.active {
+            background: var(--color-primary-muted);
+            border-color: rgba(186, 160, 90, 0.34);
+            box-shadow: inset 3px 0 0 var(--color-primary);
+            color: var(--color-text);
+        }
+
+        .command-content {
+            position: relative;
+        }
+
+        .command-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .command-title span {
+            color: var(--color-text-subtle);
+            font-size: var(--text-xs);
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .command-title strong {
+            font-size: var(--text-base);
+        }
+
+        .operator-card .popover-hero {
+            grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .operator-card .avatar-lg {
+            height: 58px;
+            width: 58px;
+        }
+
+        .operator-card .identity-copy h2 {
+            font-size: var(--text-xl);
+        }
+
+        .attention-list {
+            display: grid;
+            gap: 9px;
+        }
+
+        .attention-item {
+            align-items: center;
+            border-left: 3px solid var(--color-warning);
+            display: grid;
+            gap: 3px;
+            grid-template-columns: minmax(0, 1fr) auto;
+            padding-left: 10px;
+        }
+
+        .attention-item strong {
+            font-size: var(--text-sm);
+        }
+
+        .attention-item span {
+            color: var(--color-text-muted);
+            font-size: var(--text-xs);
+        }
+
+        .phone-stage {
+            align-items: center;
+            display: flex;
+            justify-content: center;
+            min-height: calc(100vh - 54px);
+            padding: 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .phone {
+            background: #06090d;
+            border: 1px solid var(--color-border-strong);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-panel);
+            height: min(780px, calc(100vh - 102px));
+            max-width: 390px;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+        }
+
+        .phone-topbar {
+            align-items: center;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            min-height: 64px;
+            padding: 0 16px;
+        }
+
+        .sheet {
+            background:
+                linear-gradient(180deg, rgba(17, 24, 32, 0.98), rgba(8, 13, 19, 0.99)),
+                var(--color-surface);
+            border-top: 1px solid var(--color-border-strong);
+            bottom: 0;
+            left: 0;
+            max-height: calc(100% - 28px);
+            overflow-y: auto;
+            padding-bottom: 18px;
+            position: absolute;
+            right: 0;
+        }
+
+        .sheet-grip {
+            background: rgba(255, 255, 255, 0.22);
+            border-radius: var(--radius-full);
+            height: 4px;
+            margin: 10px auto 0;
+            width: 46px;
+        }
+
+        .sheet .popover-hero {
+            background: transparent;
+            border-bottom: 1px solid var(--color-border);
+            grid-template-columns: auto minmax(0, 1fr);
+            padding-top: 16px;
+        }
+
+        .sheet .popover-actions {
+            grid-template-columns: 1fr;
+        }
+
+        .identity-list {
+            display: grid;
+            gap: 0;
+        }
+
+        .identity-item {
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: grid;
+            gap: 8px;
+            grid-template-columns: 34px minmax(0, 1fr) auto;
+            min-height: 58px;
+        }
+
+        .identity-item:first-child {
+            border-top: 0;
+        }
+
+        .identity-icon {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            color: var(--color-primary-strong);
+            display: inline-flex;
+            font-size: var(--text-xs);
+            font-weight: 900;
+            height: 34px;
+            justify-content: center;
+            width: 34px;
+        }
+
+        .identity-item strong {
+            display: block;
+            font-size: var(--text-sm);
+        }
+
+        .identity-item span {
+            color: var(--color-text-muted);
+            display: block;
+            font-size: var(--text-xs);
+            margin-top: 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .toast {
+            background: rgba(7, 11, 15, 0.94);
+            border: 1px solid var(--color-primary);
+            border-radius: var(--radius-sm);
+            bottom: 18px;
+            box-shadow: var(--shadow-panel);
+            color: var(--color-text);
+            font-size: var(--text-sm);
+            font-weight: 750;
+            left: 50%;
+            min-width: 220px;
+            opacity: 0;
+            padding: 12px 14px;
+            pointer-events: none;
+            position: fixed;
+            text-align: center;
+            transform: translate(-50%, 14px);
+            transition: opacity 160ms ease, transform 160ms ease;
+            z-index: 10000;
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .sketch-tools {
+            background: rgba(0, 0, 0, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: var(--radius-md);
+            bottom: 12px;
+            color: white;
+            display: flex;
+            font-family: system-ui, sans-serif;
+            font-size: 12px;
+            gap: 6px;
+            opacity: 0.45;
+            padding: 8px;
+            position: fixed;
+            right: 12px;
+            transition: opacity 150ms ease, transform 150ms ease;
+            z-index: 9999;
+        }
+
+        .sketch-tools:hover {
+            opacity: 1;
+        }
+
+        .sketch-tools select {
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: white;
+            min-height: 28px;
+        }
+
+        @media (max-width: 860px) {
+            .variant-nav {
+                align-items: stretch;
+                flex-wrap: wrap;
+                position: static;
+            }
+
+            body {
+                padding-top: 0;
+            }
+
+            .viewport,
+            .variant,
+            .shell-preview,
+            .command-layout,
+            .phone-stage {
+                min-height: calc(100vh - 104px);
+            }
+
+            .nav-links,
+            .trigger-copy,
+            .command-rail {
+                display: none;
+            }
+
+            .community-topbar,
+            .command-topbar {
+                padding-inline: 14px;
+            }
+
+            .profile-popover {
+                left: 12px;
+                right: 12px;
+                top: 82px;
+                width: auto;
+            }
+
+            .command-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .page-ghost {
+                grid-template-columns: 1fr;
+                padding-inline: 14px;
+            }
+
+            .fact-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .sketch-tools {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="variant-nav" aria-label="Profile menu concept variants">
+        <button class="variant-tab active" type="button" data-variant="a">A: Community Dossier</button>
+        <button class="variant-tab" type="button" data-variant="b">B: Command Operator - Selected</button>
+        <button class="variant-tab" type="button" data-variant="c">C: Mobile Sheet</button>
+    </div>
+
+    <main class="viewport" id="viewport">
+        <section class="variant active" id="variant-a">
+            <div class="shell-preview">
+                <header class="community-topbar">
+                    <a class="brand" href="#">
+                        <span class="brand-mark">UTF</span>
+                        <span>United Tactical Forces</span>
+                    </a>
+                    <nav class="nav-links" aria-label="Community navigation">
+                        <a class="nav-link active" href="#">Home</a>
+                        <a class="nav-link" href="#">Operations</a>
+                        <a class="nav-link" href="#">Unit</a>
+                        <a class="nav-link" href="#">Members</a>
+                        <a class="nav-link" href="#">Field Reports</a>
+                    </nav>
+                    <div class="topbar-actions">
+                        <a class="ghost-button" href="#">Command Center</a>
+                        <button class="profile-trigger" type="button" onclick="showToast('Profile menu opened')">
+                            <span class="avatar"></span>
+                            <span class="trigger-copy">
+                                <strong>X39</strong>
+                                <span>Verified member</span>
+                            </span>
+                        </button>
+                    </div>
+                </header>
+
+                <div class="page-ghost" aria-hidden="true">
+                    <section class="placeholder-panel">
+                        <span class="eyebrow">Next Operation</span>
+                        <h1>Operation Silent Watch</h1>
+                        <p>Briefing, attendance, and slot assignment content remains on the page. The account popup adds identity context without competing with primary page tasks.</p>
+                    </section>
+                    <section class="placeholder-panel">
+                        <h2>Community Shell</h2>
+                        <p>Public navigation stays simple. The profile menu carries the bridge into management for authorized users.</p>
+                    </section>
+                </div>
+
+                <article class="profile-popover">
+                    <header class="popover-hero">
+                        <span class="avatar-lg"></span>
+                        <div class="identity-copy">
+                            <span class="eyebrow">Community profile</span>
+                            <h2>X39</h2>
+                            <p>x39@unitedtacticalforces.net</p>
+                            <div class="badge-row">
+                                <span class="badge success">Verified</span>
+                                <span class="badge gold">Event host</span>
+                                <span class="badge gold">Command access</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <section class="popover-section">
+                        <div class="section-title">
+                            <span>Identity</span>
+                            <button class="tool-button" type="button" onclick="showToast('Steam ID copied')">Copy Steam ID</button>
+                        </div>
+                        <div class="fact-grid">
+                            <div class="fact">
+                                <span>Steam ID64</span>
+                                <code>76561198000000000</code>
+                            </div>
+                            <div class="fact">
+                                <span>Discord</span>
+                                <strong>X39#1944</strong>
+                            </div>
+                            <div class="fact">
+                                <span>Roles</span>
+                                <strong>Server Admin, Event Host</strong>
+                            </div>
+                            <div class="fact">
+                                <span>Claims</span>
+                                <strong>12 active permissions</strong>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="popover-section">
+                        <div class="section-title">Current context</div>
+                        <div class="activity-row">
+                            <div>
+                                <strong>Accepted for Operation Silent Watch</strong>
+                                <span>Rifleman slot selected, briefing opens 20:00 CET</span>
+                            </div>
+                            <span class="badge success">Ready</span>
+                        </div>
+                        <div class="activity-row">
+                            <div>
+                                <strong>1 policy approval pending</strong>
+                                <span>Requires Command Center review before provisioning</span>
+                            </div>
+                            <span class="badge warning">Attention</span>
+                        </div>
+                    </section>
+
+                    <footer class="popover-actions">
+                        <a class="gold-button" href="#">Command Center</a>
+                        <a class="ghost-button" href="#">Account settings</a>
+                        <button class="danger-button" type="button" onclick="showToast('Sign out action selected')">Sign out</button>
+                    </footer>
+                </article>
+            </div>
+        </section>
+
+        <section class="variant" id="variant-b">
+            <div class="shell-preview command-preview">
+                <div class="command-layout">
+                    <aside class="command-rail">
+                        <a class="brand" href="#">
+                            <span class="brand-mark">UTF</span>
+                            <span>Command Center</span>
+                        </a>
+                        <div class="rail-label">Operations</div>
+                        <a class="rail-link active" href="#">Server Fleet</a>
+                        <a class="rail-link" href="#">Workers & Jobs</a>
+                        <a class="rail-link" href="#">Cloud Operations</a>
+                        <div class="rail-label">Governance</div>
+                        <a class="rail-link" href="#">Billing Owners</a>
+                        <a class="rail-link" href="#">Audit Log</a>
+                    </aside>
+                    <div class="command-content">
+                        <header class="command-topbar">
+                            <div class="command-title">
+                                <span>Command Center</span>
+                                <strong>Server Fleet</strong>
+                            </div>
+                            <div class="topbar-actions">
+                                <button class="icon-button" type="button" onclick="showToast('Search focused')">S</button>
+                                <button class="icon-button" type="button" onclick="showToast('Alerts opened')">A</button>
+                                <a class="ghost-button" href="#">Back to site</a>
+                                <button class="profile-trigger" type="button" onclick="showToast('Operator menu opened')">
+                                    <span class="avatar"></span>
+                                </button>
+                            </div>
+                        </header>
+
+                        <div class="page-ghost" aria-hidden="true">
+                            <section class="placeholder-panel">
+                                <span class="eyebrow">Attention bar</span>
+                                <h1>3 Active Jobs</h1>
+                                <p>Operational pages keep alerts and selected resources visible. The account popup should be compact and decision-oriented in this shell.</p>
+                            </section>
+                            <section class="placeholder-panel">
+                                <h2>Selected server</h2>
+                                <p>Ownership, runtime, jobs, audit, and danger actions stay in the workspace rather than the account menu.</p>
+                            </section>
+                        </div>
+
+                        <article class="profile-popover operator-card">
+                            <header class="popover-hero">
+                                <div class="identity-copy">
+                                    <span class="eyebrow">Signed in as operator</span>
+                                    <h2>X39</h2>
+                                    <p>Server Admin / Event Host</p>
+                                    <div class="badge-row">
+                                        <span class="badge success">Verified</span>
+                                        <span class="badge gold">Command Center</span>
+                                    </div>
+                                </div>
+                                <span class="avatar-lg"></span>
+                            </header>
+
+                            <div class="mini-metrics">
+                                <div class="mini-metric">
+                                    <strong>4</strong>
+                                    <span>Roles</span>
+                                </div>
+                                <div class="mini-metric">
+                                    <strong>12</strong>
+                                    <span>Claims</span>
+                                </div>
+                                <div class="mini-metric">
+                                    <strong>2</strong>
+                                    <span>Linked</span>
+                                </div>
+                            </div>
+
+                            <section class="popover-section">
+                                <div class="section-title">Needs attention</div>
+                                <div class="attention-list">
+                                    <div class="attention-item">
+                                        <div>
+                                            <strong>Policy approval waiting</strong>
+                                            <span>Cloud plan blocked until review</span>
+                                        </div>
+                                        <span class="badge warning">1</span>
+                                    </div>
+                                    <div class="attention-item">
+                                        <div>
+                                            <strong>Worker stale</strong>
+                                            <span>arma-local-01 missed heartbeat</span>
+                                        </div>
+                                        <span class="badge warning">1</span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="popover-section">
+                                <div class="section-title">Authority</div>
+                                <div class="authority-row">
+                                    <div>
+                                        <strong>Servers and lifecycle jobs</strong>
+                                        <span>Create, start, stop, logs, configuration</span>
+                                    </div>
+                                    <span class="badge gold">Admin</span>
+                                </div>
+                                <div class="authority-row">
+                                    <div>
+                                        <strong>Events and assets</strong>
+                                        <span>Event operations, mod packs, terrains</span>
+                                    </div>
+                                    <span class="badge gold">Editor</span>
+                                </div>
+                            </section>
+
+                            <footer class="popover-actions">
+                                <a class="gold-button" href="#">Open approvals</a>
+                                <a class="ghost-button" href="#">Account settings</a>
+                                <button class="danger-button" type="button" onclick="showToast('Sign out action selected')">Sign out</button>
+                            </footer>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="variant" id="variant-c">
+            <div class="shell-preview">
+                <div class="phone-stage">
+                    <div class="phone">
+                        <header class="phone-topbar">
+                            <a class="brand" href="#">
+                                <span class="brand-mark">UTF</span>
+                                <span>Operations</span>
+                            </a>
+                            <button class="profile-trigger" type="button" onclick="showToast('Mobile profile sheet opened')">
+                                <span class="avatar"></span>
+                            </button>
+                        </header>
+                        <div class="placeholder-panel" style="border:0;border-radius:0;background:transparent;min-height:340px;">
+                            <span class="eyebrow">Upcoming</span>
+                            <h1>Silent Watch</h1>
+                            <p>Mobile account access uses a sheet instead of a squeezed desktop popover.</p>
+                        </div>
+
+                        <article class="sheet">
+                            <div class="sheet-grip"></div>
+                            <header class="popover-hero">
+                                <span class="avatar-lg"></span>
+                                <div class="identity-copy">
+                                    <span class="eyebrow">X39</span>
+                                    <h2>Verified member</h2>
+                                    <p>Command access enabled</p>
+                                    <div class="badge-row">
+                                        <span class="badge success">Ready</span>
+                                        <span class="badge gold">Operator</span>
+                                    </div>
+                                </div>
+                            </header>
+
+                            <section class="popover-section">
+                                <div class="section-title">Personal information</div>
+                                <div class="identity-list">
+                                    <div class="identity-item">
+                                        <span class="identity-icon">M</span>
+                                        <div>
+                                            <strong>Email</strong>
+                                            <span>x39@unitedtacticalforces.net</span>
+                                        </div>
+                                        <button class="tool-button" type="button" onclick="showToast('Email copied')">Copy</button>
+                                    </div>
+                                    <div class="identity-item">
+                                        <span class="identity-icon">S</span>
+                                        <div>
+                                            <strong>Steam</strong>
+                                            <span>76561198000000000</span>
+                                        </div>
+                                        <span class="badge success">Linked</span>
+                                    </div>
+                                    <div class="identity-item">
+                                        <span class="identity-icon">D</span>
+                                        <div>
+                                            <strong>Discord</strong>
+                                            <span>X39#1944</span>
+                                        </div>
+                                        <span class="badge success">Linked</span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section class="popover-section">
+                                <div class="section-title">Access summary</div>
+                                <div class="identity-list">
+                                    <div class="identity-item">
+                                        <span class="identity-icon">R</span>
+                                        <div>
+                                            <strong>Roles</strong>
+                                            <span>Server Admin, Event Host, Quartermaster</span>
+                                        </div>
+                                        <span>4</span>
+                                    </div>
+                                    <div class="identity-item">
+                                        <span class="identity-icon">C</span>
+                                        <div>
+                                            <strong>Claims</strong>
+                                            <span>Server, event, terrain, mod pack authority</span>
+                                        </div>
+                                        <span>12</span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <footer class="popover-actions">
+                                <a class="gold-button" href="#">Command Center</a>
+                                <a class="ghost-button" href="#">Account settings</a>
+                                <a class="ghost-button" href="#">Back to site</a>
+                                <button class="danger-button" type="button" onclick="showToast('Sign out action selected')">Sign out</button>
+                            </footer>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="sketch-tools" id="sketch-tools">
+        <select aria-label="Theme" onchange="document.querySelector('link[href*=themes]').href='../themes/' + this.value + '.css'">
+            <option value="default">Default</option>
+        </select>
+        <button class="tool-button" type="button" onclick="setViewport('390px')">Phone</button>
+        <button class="tool-button" type="button" onclick="setViewport('768px')">Tablet</button>
+        <button class="tool-button" type="button" onclick="setViewport('1280px')">Desktop</button>
+        <button class="tool-button" type="button" onclick="setViewport('none')">Full</button>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+        const tabs = document.querySelectorAll(".variant-tab");
+        const variants = document.querySelectorAll(".variant");
+        const toast = document.getElementById("toast");
+        let toastTimer = 0;
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", () => {
+                const id = tab.dataset.variant;
+                tabs.forEach((item) => item.classList.remove("active"));
+                variants.forEach((item) => item.classList.remove("active"));
+                tab.classList.add("active");
+                document.getElementById("variant-" + id).classList.add("active");
+                showToast("Variant " + id.toUpperCase() + " selected");
+            });
+        });
+
+        function setViewport(width) {
+            document.getElementById("viewport").style.maxWidth = width;
+            showToast(width === "none" ? "Full viewport" : "Viewport set to " + width);
+        }
+
+        function showToast(message) {
+            clearTimeout(toastTimer);
+            toast.textContent = message;
+            toast.classList.add("visible");
+            toastTimer = setTimeout(() => toast.classList.remove("visible"), 1400);
+        }
+    </script>
+</body>
+</html>

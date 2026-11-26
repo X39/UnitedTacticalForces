@@ -9,7 +9,11 @@ public sealed partial class Arma3WorkerCommandExecutor
     /// <summary>Reads launch-bound engine evidence and tracks freshness independently of process liveness.</summary>
     private readonly Arma3JoinMonitor _joinMonitor;
 
-    /// <summary>Identifies a primary launch requiring the automatically installed HC instrumentation.</summary>
+    /// <summary>
+    /// Identifies a primary launch whose Headless Client admission must be verified. The addon itself is installed
+    /// for every primary launch because it also reports the human player count; only readiness evidence and its
+    /// verification are limited to headless-client topologies.
+    /// </summary>
     /// <param name="payload">The frozen workload assignment and topology.</param>
     /// <returns>Whether this primary is responsible for observing the configured HC.</returns>
     private static bool RequiresJoinEvidence(Arma3CommandPayload payload)

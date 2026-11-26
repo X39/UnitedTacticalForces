@@ -1,6 +1,8 @@
 import { forwardRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { formatResource } from "@/app/i18n";
+import { ActionButton } from "@/components/ActionControl";
+import { TextAreaField, TextField } from "@/components/FormFields";
 import { StatusBadge } from "@/components/primitives";
 import { StructuredContent, type GdprContent } from "@/pages/GdprPage";
 
@@ -20,24 +22,25 @@ function TemplateField({
   multiline?: boolean;
   onChange(value: string): void;
 }) {
-  return (
-    <label className={`gdpr-editor-field${multiline ? " gdpr-editor-field--wide" : ""}`}>
-      <span>{label}</span>
-      {multiline ? (
-        <textarea
-          rows={4}
-          value={value}
-          aria-label={`${context}: ${label}`}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      ) : (
-        <input
-          value={value}
-          aria-label={`${context}: ${label}`}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      )}
-    </label>
+  // The visible label repeats across cards, so the accessible name carries the card context in front of it.
+  const accessibleName = `${context}: ${label}`;
+  return multiline ? (
+    <div className="gdpr-editor-field--wide">
+      <TextAreaField
+        label={label}
+        rows={4}
+        value={value}
+        aria-label={accessibleName}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  ) : (
+    <TextField
+      label={label}
+      value={value}
+      aria-label={accessibleName}
+      onChange={(event) => onChange(event.target.value)}
+    />
   );
 }
 
@@ -261,9 +264,8 @@ export const GdprContentEditor = forwardRef<
           </div>
           <div>
             <StatusBadge>{revisionLabel}</StatusBadge>
-            <button
-              className="button button--ghost"
-              type="button"
+            <ActionButton
+              variant="ghost"
               aria-expanded={showPreview}
               onClick={() => setShowPreview((current) => !current)}
             >
@@ -272,7 +274,7 @@ export const GdprContentEditor = forwardRef<
                   ? "Pages_Command_Content_Gdpr_TemplatePreviewHide"
                   : "Pages_Command_Content_Gdpr_TemplatePreviewShow",
               )}
-            </button>
+            </ActionButton>
           </div>
         </header>
         {showPreview && (

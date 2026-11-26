@@ -7,7 +7,7 @@ import {
 } from "@fluentui/react-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { useEffect, type CSSProperties, type ReactNode } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { z } from "zod";
@@ -19,9 +19,11 @@ import { isOpenMembershipStatus, membershipStatusTranslationKey } from "@/app/me
 import { useSiteImage } from "@/app/siteImages";
 import { useAuth } from "@/auth/auth";
 import { isVereinMember } from "@/auth/claims";
-import { ActionLink } from "@/components/ActionControl";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { CheckboxField, TextAreaField, TextField } from "@/components/FormFields";
 import { PublicHero } from "@/components/PublicHero";
 import { PageHeader, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
+import { ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
 
 export const membershipApplicationSchema = z.object({
   firstName: z.string().trim().min(1).max(256),
@@ -117,6 +119,9 @@ export function Component() {
   const onSubmit = form.handleSubmit((values) =>
     create.mutate({ ...values, addressLine2: values.addressLine2 || null }),
   );
+  /** The shared invalid message of a field, or undefined while the field is valid. */
+  const fieldError = (name: keyof MembershipForm): string | undefined =>
+    form.formState.errors[name] ? t("React_Join_InvalidField") : undefined;
   return (
     <div className="join-page public-page">
       <PublicHero
@@ -247,27 +252,25 @@ export function Component() {
         )}
         {!auth.isAuthenticated && (
           <div className="join-sign-in-panel">
-            <StatePanel kind="forbidden" title={t("Pages_Public_Join_LoginRequiredTitle")}>
+            <ForbiddenState title={t("Pages_Public_Join_LoginRequiredTitle")}>
               {t("Pages_Public_Join_LoginHint")}
-            </StatePanel>
+            </ForbiddenState>
             <div className="login-options" aria-label={t("Pages_Public_Join_AccountAccessTitle")}>
               {auth.providers.steam && (
-                <button
-                  type="button"
+                <ActionButton
                   className="identity-button identity-button--steam"
                   onClick={() => auth.login("steam")}
                 >
                   {t("Pages_Public_Join_UseSteamIdentity")}
-                </button>
+                </ActionButton>
               )}
               {auth.providers.discord && (
-                <button
-                  type="button"
+                <ActionButton
                   className="identity-button identity-button--discord"
                   onClick={() => auth.login("discord")}
                 >
                   {t("Pages_Public_Join_UseDiscordIdentity")}
-                </button>
+                </ActionButton>
               )}
             </div>
           </div>
@@ -286,23 +289,12 @@ export function Component() {
           </StatePanel>
         )}
         {request.isLoading && auth.isAuthenticated && (
-          <StatePanel kind="loading">{t("Pages_Verein_Index_Loading")}</StatePanel>
+          <LoadingState label={t("Pages_Verein_Index_Loading")} />
         )}
         {request.isError && auth.isAuthenticated && (
-          <StatePanel
-            kind="error"
-            action={
-              <button
-                className="button button--ghost"
-                type="button"
-                onClick={() => void request.refetch()}
-              >
-                {t("React_UI_Retry")}
-              </button>
-            }
-          >
+          <ErrorState onRetry={() => void request.refetch()}>
             {t("React_Join_LoadError")}
-          </StatePanel>
+          </ErrorState>
         )}
         {profile.isError && auth.isAuthenticated && !isVereinMember(auth.user) && (
           <StatePanel kind="warning">{t("React_Join_ProfileError")}</StatePanel>
@@ -312,14 +304,13 @@ export function Component() {
             kind="info"
             title={t("Pages_Verein_Index_RequestStateOpen")}
             action={
-              <button
-                className="button button--danger"
-                type="button"
+              <ActionButton
+                variant="danger"
                 disabled={withdraw.isPending}
                 onClick={() => withdraw.mutate(request.data!.primaryKey)}
               >
                 {t("React_Join_Withdraw")}
-              </button>
+              </ActionButton>
             }
           >
             <MembershipRequestMeta request={request.data} />
@@ -344,104 +335,122 @@ export function Component() {
               <fieldset>
                 <legend>{t("React_Join_Identity_Legend")}</legend>
                 <div className="form-grid">
-                  <FormField
+                  <TextField
                     label={t("React_Join_FirstName")}
-                    error={Boolean(form.formState.errors.firstName)}
-                  >
-                    <input {...form.register("firstName")} autoComplete="given-name" />
-                  </FormField>
-                  <FormField
+                    required
+                    error={fieldError("firstName")}
+                    {...form.register("firstName")}
+                    autoComplete="given-name"
+                  />
+                  <TextField
                     label={t("React_Join_LastName")}
-                    error={Boolean(form.formState.errors.lastName)}
-                  >
-                    <input {...form.register("lastName")} autoComplete="family-name" />
-                  </FormField>
-                  <FormField
+                    required
+                    error={fieldError("lastName")}
+                    {...form.register("lastName")}
+                    autoComplete="family-name"
+                  />
+                  <TextField
                     label={t("React_Join_DateOfBirth")}
-                    error={Boolean(form.formState.errors.dateOfBirth)}
-                  >
-                    <input {...form.register("dateOfBirth")} type="date" />
-                  </FormField>
-                  <FormField
+                    required
+                    error={fieldError("dateOfBirth")}
+                    {...form.register("dateOfBirth")}
+                    type="date"
+                  />
+                  <TextField
                     label={t("React_Join_Email")}
-                    error={Boolean(form.formState.errors.email)}
-                  >
-                    <input {...form.register("email")} type="email" autoComplete="email" />
-                  </FormField>
-                  <FormField
+                    required
+                    error={fieldError("email")}
+                    {...form.register("email")}
+                    type="email"
+                    autoComplete="email"
+                  />
+                  <TextField
                     label={t("React_Join_Phone")}
-                    error={Boolean(form.formState.errors.phoneNumber)}
-                  >
-                    <input {...form.register("phoneNumber")} type="tel" autoComplete="tel" />
-                  </FormField>
+                    required
+                    error={fieldError("phoneNumber")}
+                    {...form.register("phoneNumber")}
+                    type="tel"
+                    autoComplete="tel"
+                  />
                 </div>
               </fieldset>
               <fieldset>
                 <legend>{t("React_Join_Address_Legend")}</legend>
                 <div className="form-grid">
-                  <FormField
+                  <TextField
                     label={t("React_Join_Address1")}
-                    error={Boolean(form.formState.errors.addressLine1)}
-                  >
-                    <input {...form.register("addressLine1")} autoComplete="address-line1" />
-                  </FormField>
-                  <FormField
+                    required
+                    error={fieldError("addressLine1")}
+                    {...form.register("addressLine1")}
+                    autoComplete="address-line1"
+                  />
+                  <TextField
                     label={t("React_Join_Address2")}
-                    error={Boolean(form.formState.errors.addressLine2)}
-                  >
-                    <input {...form.register("addressLine2")} autoComplete="address-line2" />
-                  </FormField>
-                  <FormField
+                    error={fieldError("addressLine2")}
+                    {...form.register("addressLine2")}
+                    autoComplete="address-line2"
+                  />
+                  <TextField
                     label={t("React_Join_PostalCode")}
-                    error={Boolean(form.formState.errors.postalCode)}
-                  >
-                    <input {...form.register("postalCode")} autoComplete="postal-code" />
-                  </FormField>
-                  <FormField
+                    required
+                    error={fieldError("postalCode")}
+                    {...form.register("postalCode")}
+                    autoComplete="postal-code"
+                  />
+                  <TextField
                     label={t("React_Join_City")}
-                    error={Boolean(form.formState.errors.city)}
-                  >
-                    <input {...form.register("city")} autoComplete="address-level2" />
-                  </FormField>
-                  <FormField
+                    required
+                    error={fieldError("city")}
+                    {...form.register("city")}
+                    autoComplete="address-level2"
+                  />
+                  <TextField
                     label={t("React_Join_Country")}
-                    error={Boolean(form.formState.errors.country)}
-                  >
-                    <input {...form.register("country")} autoComplete="country-name" />
-                  </FormField>
+                    required
+                    error={fieldError("country")}
+                    {...form.register("country")}
+                    autoComplete="country-name"
+                  />
                 </div>
               </fieldset>
               <fieldset>
                 <legend>{t("React_Join_Motivation_Legend")}</legend>
-                <FormField
+                <TextAreaField
                   label={t("React_Join_Motivation")}
-                  error={Boolean(form.formState.errors.motivation)}
-                >
-                  <textarea {...form.register("motivation")} rows={6} />
-                </FormField>
+                  required
+                  error={fieldError("motivation")}
+                  {...form.register("motivation")}
+                  rows={6}
+                />
               </fieldset>
               <fieldset className="acknowledgements">
                 <legend>{t("React_Join_Acknowledgements_Legend")}</legend>
-                <label>
-                  <input type="checkbox" {...form.register("acknowledgesMembershipSeparation")} />
-                  {t("React_Join_AcknowledgeSeparation")}
-                </label>
-                <label>
-                  <input type="checkbox" {...form.register("acknowledgesDataProcessing")} />
-                  {t("React_Join_AcknowledgeData")}
-                </label>
-                <label>
-                  <input type="checkbox" {...form.register("acknowledgesSatzung")} />
-                  {t("React_Join_AcknowledgeStatutes")}
-                </label>
+                <CheckboxField
+                  label={t("React_Join_AcknowledgeSeparation")}
+                  aria-required="true"
+                  error={fieldError("acknowledgesMembershipSeparation")}
+                  {...form.register("acknowledgesMembershipSeparation")}
+                />
+                <CheckboxField
+                  label={t("React_Join_AcknowledgeData")}
+                  aria-required="true"
+                  error={fieldError("acknowledgesDataProcessing")}
+                  {...form.register("acknowledgesDataProcessing")}
+                />
+                <CheckboxField
+                  label={t("React_Join_AcknowledgeStatutes")}
+                  aria-required="true"
+                  error={fieldError("acknowledgesSatzung")}
+                  {...form.register("acknowledgesSatzung")}
+                />
                 <Link to="/verein/satzung">{t("Pages_Verein_Index_ReadSatzung")}</Link>
               </fieldset>
               {create.isError && (
                 <StatePanel kind="error">{t("React_Join_SubmitError")}</StatePanel>
               )}
-              <button className="button button--gold" type="submit" disabled={create.isPending}>
+              <ActionButton variant="gold" type="submit" disabled={create.isPending}>
                 {create.isPending ? t("React_Join_Submitting") : t("React_Join_Submit")}
-              </button>
+              </ActionButton>
             </form>
           )}
       </section>
@@ -475,24 +484,5 @@ function MembershipRequestMeta({ request }: { request: VereinMembershipRequest }
         </dd>
       </div>
     </dl>
-  );
-}
-
-function FormField({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: boolean | undefined;
-  children: ReactNode;
-}) {
-  const { t } = useTranslation();
-  return (
-    <label className="field">
-      <span>{label}</span>
-      {children}
-      {error && <small role="alert">{t("React_Join_InvalidField")}</small>}
-    </label>
   );
 }

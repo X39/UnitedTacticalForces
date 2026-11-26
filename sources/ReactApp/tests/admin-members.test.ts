@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FullUser } from "@/api/types";
+import { accountTones, toneOf } from "@/components/statusTones";
 import { isValidMemberId } from "@/features/admin/MemberDetailPage";
 import {
   memberAvatarSource,
@@ -85,6 +86,23 @@ describe("member administration projection", () => {
     expect(memberMatchesView(authority, "roles")).toBe(true);
     expect(memberMatchesView(verein, "verein")).toBe(true);
     expect(memberMatchesView(verified, "all")).toBe(true);
+  });
+
+  it("resolves a lexicon tone for every account status the projection can return", () => {
+    const statuses = [
+      memberStatus({ isDeleted: true }),
+      memberStatus({ isBanned: true }),
+      memberStatus({ isVerified: true }),
+      memberStatus({ isVerified: false }),
+    ];
+
+    expect(statuses.map((status) => toneOf(accountTones, status))).toEqual([
+      "danger",
+      "danger",
+      "success",
+      "neutral",
+    ]);
+    expect(toneOf(accountTones, "a-status-the-api-adds-later")).toBe("neutral");
   });
 
   it("sorts attention first and builds safe avatar fallbacks", () => {

@@ -43,6 +43,18 @@ public class LifecycleJob : IPrimaryKey<Guid>, ITimeStampCreated
 
     public ELifecycleJobKind Kind { get; set; }
 
+    /// <summary>
+    /// Gets or sets what caused the job to be queued. Jobs that existed before automation was added read as
+    /// <see cref="ELifecycleJobTrigger.Manual" />.
+    /// </summary>
+    public ELifecycleJobTrigger Trigger { get; set; } = ELifecycleJobTrigger.Manual;
+
+    /// <summary>
+    /// Gets or sets the automatic limit that applied: minutes for an idle trigger, hours for a maximum runtime
+    /// trigger and <see langword="null" /> otherwise.
+    /// </summary>
+    public int? TriggerLimit { get; set; }
+
     [MaxLength(128)]
     public string ActionIdentifier { get; set; } = string.Empty;
 

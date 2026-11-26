@@ -45,10 +45,14 @@ public sealed class HostingControlPlaneStateTests
         Assert.Equal(
             new[]
             {
+                "CostAlertDispatcher",
+                "CostAlertWorker",
                 "DeploymentHealthReconciliationWorker",
                 "GameServerControlPlaneWorker",
                 "HostingCostReconciliationWorker",
                 "ProviderResourceReconciliationWorker",
+                "ServerAutomationWorker",
+                "ServerMetricsPruneWorker",
             },
             hostedServices.Select(q => q.ImplementationType!.Name).OrderBy(q => q).ToArray());
     }

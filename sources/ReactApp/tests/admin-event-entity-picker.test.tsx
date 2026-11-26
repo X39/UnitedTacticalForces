@@ -99,6 +99,49 @@ describe("event entity picker", () => {
     expect(input).not.toHaveAttribute("aria-activedescendant");
   });
 
+  it("labels the search through the shared field and exposes options as shared buttons", async () => {
+    const user = userEvent.setup();
+    renderPicker();
+
+    const input = screen.getByLabelText("Member");
+    expect(input).toHaveAttribute("role", "combobox");
+    expect(input).toHaveClass("form-field__control");
+
+    await user.click(input);
+    const [first] = await screen.findAllByRole("option");
+    expect(first).toHaveClass("button");
+    expect(first).toHaveAttribute("type", "button");
+  });
+
+  it("offers a named clear control beside the field once something is selected", async () => {
+    const user = userEvent.setup();
+    const onClear = vi.fn();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EventEntityPicker
+          label="Member"
+          placeholder="Search members"
+          selected={options[0]!}
+          queryKey="members"
+          load={vi.fn().mockResolvedValue(options)}
+          getKey={(item: PickerOption) => item.id}
+          getLabel={(item: PickerOption) => item.label}
+          emptyLabel="No members"
+          loadingLabel="Loading members"
+          errorLabel="Members failed"
+          clearLabel="Remove member"
+          onSelect={vi.fn()}
+          onClear={onClear}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Remove member" }));
+
+    expect(onClear).toHaveBeenCalledTimes(1);
+  });
+
   it("honors navigation begun while asynchronous options are still loading and escapes cleanly", async () => {
     const user = userEvent.setup();
     let resolveOptions: ((value: PickerOption[]) => void) | undefined;

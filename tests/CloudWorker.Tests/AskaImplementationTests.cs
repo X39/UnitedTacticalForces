@@ -537,6 +537,90 @@ public sealed class AskaImplementationTests
             q => q.DefaultValue!.Value,
             StringComparer.Ordinal);
 
+    /// <summary>Verifies that a running ASKA server reports the human count from its loopback query port.</summary>
+    /// <returns>A task that completes after the observation.</returns>
+    [Fact]
+    public async Task ObservePlayers_RunningAndQueryAnswers_ReportsHumanCountAndCapacity()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        var a2s = new FakeA2sInfoClient(new A2sInfo(6, 10, 2));
+        IWorkerCommandExecutor executor = new AskaWorkerCommandExecutor(
+            connection,
+            Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh")),
+            process: new RunningProcessController(connection),
+            a2s: a2s);
+
+        var observation = await executor.ObservePlayersAsync(CancellationToken.None);
+
+        Assert.Equal(WorkerPlayerObservation.Players(4, 10), observation);
+        Assert.Equal(27016, a2s.LastPort);
+        Assert.Equal(TimeSpan.FromSeconds(2), a2s.LastTimeout);
+    }
+
+    /// <summary>Verifies that a silent ASKA query port is reported as a failed query, never zero players.</summary>
+    /// <returns>A task that completes after the observation.</returns>
+    [Fact]
+    public async Task ObservePlayers_RunningAndQueryFails_ReportsQueryFailed()
+    {
+        using var directory = new TemporaryDirectory();
+        var connection = Connection();
+        IWorkerCommandExecutor executor = new AskaWorkerCommandExecutor(
+            connection,
+            Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh")),
+            process: new RunningProcessController(connection),
+            a2s: new FakeA2sInfoClient(null));
+
+        var observation = await executor.ObservePlayersAsync(CancellationToken.None);
+
+        Assert.Null(observation.Count);
+        Assert.Equal(WorkerMetricUnavailableReasons.QueryFailed, observation.UnavailableReason);
+    }
+
+    /// <summary>Verifies that a stopped ASKA process is never queried.</summary>
+    /// <returns>A task that completes after the observation.</returns>
+    [Fact]
+    public async Task ObservePlayers_NotRunning_ReportsMeasuringWithoutQuerying()
+    {
+        using var directory = new TemporaryDirectory();
+        var a2s = new FakeA2sInfoClient(new A2sInfo(1, 2, 0));
+        IWorkerCommandExecutor executor = new AskaWorkerCommandExecutor(
+            Connection(),
+            Options(directory.Path, Path.Combine(directory.Path, "steamcmd.sh")),
+            process: new StoppedProcessController(),
+            a2s: a2s);
+
+        var observation = await executor.ObservePlayersAsync(CancellationToken.None);
+
+        Assert.Equal(WorkerMetricUnavailableReasons.Measuring, observation.UnavailableReason);
+        Assert.Equal(0, a2s.QueryCount);
+    }
+
+    /// <summary>Verifies that an executor without its own player source reports game-does-not-report.</summary>
+    /// <returns>A task that completes after the observation.</returns>
+    [Fact]
+    public async Task ObservePlayers_ExecutorWithoutPlayerSource_ReportsGameDoesNotReport()
+    {
+        IWorkerCommandExecutor executor = new SilentExecutor();
+
+        var observation = await executor.ObservePlayersAsync(CancellationToken.None);
+
+        Assert.Null(observation.Count);
+        Assert.Null(observation.Capacity);
+        Assert.Equal(WorkerMetricUnavailableReasons.GameDoesNotReport, observation.UnavailableReason);
+    }
+
+    /// <summary>Verifies that observation factories only accept real counts and player reasons.</summary>
+    [Fact]
+    public void WorkerPlayerObservation_InvalidInputs_AreRejected()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => WorkerPlayerObservation.Players(-1, 10));
+        Assert.Throws<ArgumentOutOfRangeException>(() => WorkerPlayerObservation.Players(1025, null));
+        Assert.Throws<ArgumentOutOfRangeException>(() => WorkerPlayerObservation.Unavailable("stale"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => WorkerPlayerObservation.Unavailable("unsupported-platform"));
+        Assert.Equal(0, WorkerPlayerObservation.Players(0, null).Count);
+    }
+
     private static CloudWorkerConnectionConfig Connection()
         => new()
         {
@@ -546,6 +630,59 @@ public sealed class AskaImplementationTests
             ServerId = Guid.NewGuid(),
             GameIdentifier = "aska",
         };
+
+    private sealed class FakeA2sInfoClient(A2sInfo? reply) : IA2sInfoClient
+    {
+        public int QueryCount { get; private set; }
+        public int LastPort { get; private set; }
+        public TimeSpan LastTimeout { get; private set; }
+
+        public Task<A2sInfo?> QueryAsync(int port, TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            QueryCount++;
+            LastPort = port;
+            LastTimeout = timeout;
+            return Task.FromResult(reply);
+        }
+    }
+
+    private sealed class RunningProcessController(CloudWorkerConnectionConfig connection) : IAskaProcessController
+    {
+        public Task<AskaProcessObservation> ObserveAsync(CancellationToken cancellationToken)
+            => Task.FromResult(new AskaProcessObservation(
+                true,
+                new AskaProcessIdentity(
+                    connection.ServerId, connection.DeploymentId, 4242, DateTimeOffset.UtcNow, "AskaServer.exe", true),
+                null,
+                null));
+        public Task<WorkerCommandExecutionResult> StartAsync(
+            IEnumerable<string> secrets,
+            CancellationToken cancellationToken)
+            => Task.FromResult(WorkerCommandExecutionResult.Success("not-used"));
+        public Task<WorkerCommandExecutionResult> StopAsync(
+            bool force,
+            TimeSpan timeout,
+            int attempts,
+            CancellationToken cancellationToken)
+            => Task.FromResult(WorkerCommandExecutionResult.Success("not-used"));
+        public Task<WorkerCommandExecutionResult> TerminateAsync(CancellationToken cancellationToken)
+            => Task.FromResult(WorkerCommandExecutionResult.Success("not-used"));
+    }
+
+    private sealed class SilentExecutor : IWorkerCommandExecutor
+    {
+        public Task<WorkerCommandExecutionResult> ExecuteAsync(
+            WorkerCommandClaimResponse command,
+            CancellationToken cancellationToken)
+            => Task.FromResult(WorkerCommandExecutionResult.Success("not-used"));
+        public Task<WorkerCommandExecutionResult?> ReconcileRedeliveryAsync(
+            WorkerCommandClaimResponse command,
+            WorkerCommandJournalEntry journalEntry,
+            CancellationToken cancellationToken)
+            => Task.FromResult<WorkerCommandExecutionResult?>(null);
+        public Task<WorkerRuntimeStatus?> ObserveRuntimeAsync(CancellationToken cancellationToken)
+            => Task.FromResult<WorkerRuntimeStatus?>(null);
+    }
 
     private static WorkerCommandClaimResponse Command(
         CloudWorkerConnectionConfig connection,

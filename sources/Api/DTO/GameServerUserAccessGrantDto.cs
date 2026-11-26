@@ -16,6 +16,12 @@ public sealed record GameServerUserAccessGrantDto
     public string Nickname { get; init; } = string.Empty;
 
     /// <summary>
+    /// Short fingerprint of the user identity, the character # followed by the last six characters of the user id,
+    /// that tells members with equal nicknames apart.
+    /// </summary>
+    public string Detail { get; init; } = string.Empty;
+
+    /// <summary>
     /// Exact direct permissions assigned for the server.
     /// </summary>
     public string[] Permissions { get; init; } = [];

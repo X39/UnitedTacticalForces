@@ -1,0 +1,71 @@
+/*
+ * Layout of the member administration pages: the members list, the member detail and the membership requests.
+ *
+ * The rules consume --utf-* tokens only. They replace the page-local control styling that used to live in
+ * styles.css (`.members-admin-metrics > button`, `.member-detail-form`, `.verein-membership-request-form`), which
+ * styled raw buttons, inputs and labels that the shared controls now render.
+ */
+
+/* Summary tiles of the members list: read-only counts; the filter chips below own the filtering. */
+.members-admin-metrics > .metric,
+.verein-membership-requests-metrics > .metric {
+  min-width: 0;
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-base);
+}
+
+/* Member detail: profile and membership forms. */
+.member-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+  padding: var(--utf-space-lg);
+}
+
+.member-detail-fields__wide,
+.member-detail-fields__actions,
+.member-detail-fields__toggles,
+.member-detail-fields__timeline {
+  grid-column: 1 / -1;
+}
+
+.member-detail-fields__toggles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-sm);
+}
+
+.member-detail-fields__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+}
+
+.member-detail-fields__timeline {
+  margin: 0;
+  color: var(--utf-text-subtle);
+  font-size: var(--utf-text-body);
+}
+
+/* Membership request decision form. */
+.verein-membership-request-fields {
+  display: grid;
+  gap: var(--utf-space-md);
+  padding-top: var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+.verein-membership-request-fields__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+}
+
+@media (max-width: 800px) {
+  .member-detail-fields,
+  .member-detail-fields__toggles {
+    grid-template-columns: 1fr;
+  }
+}

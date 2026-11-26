@@ -1,0 +1,211 @@
+/*
+ * Layout of the cost alert settings page and panel.
+ *
+ * The page is a capped column; the two form sections are raised cards that share the workspace-panel surface of the
+ * workspace sections (D-16). The file consumes --utf-* tokens only. The only allowed literals are a 1px border width
+ * and the 520px and 800px media breakpoints, the same rule tests/styles/server-style-guard.test.ts enforces for
+ * src/components/server. Text wraps with overflow-wrap: anywhere and is never ellipsized, because German is longer
+ * than English.
+ */
+
+/* The page column is capped and stays left aligned; the finance host does not use this class and is not capped. */
+.cost-alerts-page {
+  display: grid;
+  width: 100%;
+  max-width: var(--utf-alerts-page-max-width);
+  min-width: 0;
+  gap: var(--utf-space-lg);
+}
+
+.cost-alert-settings {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-lg);
+}
+
+/* The card: the workspace-panel class supplies surface, border, radius and padding. */
+.cost-alert-settings__panel {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-md);
+}
+
+.cost-alert-settings__panel.workspace-panel h2,
+.cost-alert-settings__panel.workspace-panel h3,
+.cost-alert-settings__panel p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The h3 of the finance host looks like the h2 of the page. */
+.cost-alert-settings__panel.workspace-panel h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* The save row is the footer of the form: a divider above it and the card gap around it. */
+.cost-alert-settings__save {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-sm);
+  padding-top: var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+.cost-alert-settings__save p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.cost-alert-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+/* The status line reserves two body lines, so no message moves the buttons above it. */
+.cost-alert-settings__status {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  min-width: 0;
+  min-height: var(--utf-alerts-status-min-height);
+  gap: var(--utf-space-xs);
+}
+
+.cost-alert-settings__status [role="alert"] {
+  color: var(--utf-state-danger-fg);
+}
+
+.cost-alert-settings__row {
+  min-width: 0;
+}
+
+/* The amount field is capped; the Remove button sits right next to it, aligned with the control and not the error. */
+.cost-alert-settings__row .form-field__row > .form-field__control {
+  flex: 0 1 var(--utf-alert-amount-width);
+}
+
+/* The add row: the Add button on the left and the counter on the right, wrapping on narrow screens. */
+.cost-alert-settings__add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: var(--utf-space-xs) var(--utf-space-md);
+  padding-top: var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+.cost-alert-settings__panel .cost-alert-settings__counter {
+  color: var(--utf-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The channel list: one row per channel, separated by 1px dividers. */
+.cost-alert-settings__channels {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cost-alert-settings__channels > li {
+  min-width: 0;
+  padding-block: var(--utf-space-md);
+}
+
+.cost-alert-settings__channels > li:first-child {
+  padding-top: 0;
+}
+
+.cost-alert-settings__channels > li + li {
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+/* The hint is a two column grid, so a wrapped sentence hangs beside the badge instead of flowing under it. */
+.cost-alert-settings__channels .form-field__hint {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+}
+
+.cost-alert-settings__channels .cost-alert-settings__hint-link {
+  grid-column: 2;
+}
+
+/* The status badge opens the hint; its tone follows the shared state tokens, not the legacy badge colors. */
+.status-badge.cost-alert-settings__badge {
+  min-height: 0;
+  margin-inline-end: var(--utf-space-sm);
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  border-radius: var(--utf-radius-small);
+  white-space: normal;
+}
+
+.status-badge--success.cost-alert-settings__badge {
+  border-color: var(--utf-state-success-border);
+  background: var(--utf-state-success-bg);
+  color: var(--utf-state-success-fg);
+}
+
+.status-badge--warning.cost-alert-settings__badge {
+  border-color: var(--utf-state-warning-border);
+  background: var(--utf-state-warning-bg);
+  color: var(--utf-state-warning-fg);
+}
+
+.status-badge--neutral.cost-alert-settings__badge {
+  border-color: var(--utf-state-neutral-border);
+  background: var(--utf-state-neutral-bg);
+  color: var(--utf-state-neutral-fg);
+}
+
+/* The always-on in-app row is not interactive, so it does not look clickable. */
+.cost-alert-settings__panel .form-field__check:has(input:disabled) {
+  cursor: default;
+}
+
+/* The account settings link sits on its own line below the Discord hint. */
+.cost-alert-settings__hint-link {
+  display: block;
+}
+
+/* The language line closes the channels card after a divider, muted, with a leading info icon. */
+.cost-alert-settings__panel .cost-alert-settings__language {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-sm);
+  padding-top: var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+  color: var(--utf-text-muted);
+}
+
+.cost-alert-settings__language svg {
+  flex: none;
+  margin-top: var(--utf-space-xs);
+}
+
+@media (max-width: 800px) {
+  .cost-alert-settings__hint-link .button {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .cost-alert-settings .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .cost-alert-settings__actions {
+    flex-direction: column;
+  }
+
+  .cost-alert-settings__actions .button {
+    width: 100%;
+    min-height: var(--utf-control-height-touch);
+  }
+}

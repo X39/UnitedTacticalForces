@@ -1,0 +1,145 @@
+/*
+ * Styles for the fleet cards, their grid and the fleet sections.
+ *
+ * One card layout serves every width: a grid of cards that collapses to one column when narrow. The file consumes
+ * --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px media breakpoints;
+ * tests/styles/server-style-guard.test.ts fails on anything else. Long titles and values wrap; nothing is clipped.
+ */
+
+/* Grid: the fill keyword (not the fit keyword) keeps a lone card at card width instead of stretching it. */
+.fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--utf-fleet-card-min)), 1fr));
+  gap: var(--utf-space-md);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fleet-grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+/* Card: a flex column whose action block sits at the bottom, so actions align along a grid row. */
+.fleet-card {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+  box-shadow: var(--utf-elevation-1);
+  color: var(--utf-text);
+}
+
+.fleet-card__kicker {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.fleet-card__title {
+  margin: 0;
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  overflow-wrap: anywhere;
+}
+
+.fleet-card__stage {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.fleet-card__facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  margin: 0;
+}
+
+.fleet-card__facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+}
+
+.fleet-card__facts dt {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+}
+
+.fleet-card__facts dd {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.fleet-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  margin-top: auto;
+  min-width: 0;
+}
+
+/* Every control fills the card, and a long label may break anywhere so a narrow card never overflows. */
+.fleet-card .button {
+  width: 100%;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
+/* Section */
+.fleet-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+}
+
+.fleet-section__title {
+  margin: 0;
+  padding-bottom: var(--utf-space-sm);
+  border-bottom: 1px solid var(--utf-border-divider);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.fleet-section__empty {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+@media (max-width: 800px) {
+  .fleet-card .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}

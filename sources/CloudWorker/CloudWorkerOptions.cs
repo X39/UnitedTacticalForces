@@ -15,6 +15,13 @@ public sealed record CloudWorkerOptions(
     bool AllowInsecureHttp,
     Arma3WorkerOptions Arma3)
 {
+    /// <summary>
+    /// Gets how often the primary host worker sends one metrics sample. Set with <c>--metrics-seconds</c> or
+    /// <c>UTF_WORKER_METRICS_SECONDS</c>.
+    /// </summary>
+    /// <value>The sample interval; 15 seconds by default.</value>
+    public TimeSpan MetricsInterval { get; init; } = TimeSpan.FromSeconds(15);
+
     /// <summary>Gets constrained public Git acquisition options.</summary>
     public GitContentOptions Git { get; init; } = new(
         "git",
@@ -89,6 +96,12 @@ public sealed record CloudWorkerOptions(
             CounterStrike2 = CounterStrike2WorkerOptions.Create(values, getEnvironmentVariable),
             Aska = AskaWorkerOptions.Create(values, getEnvironmentVariable),
             Git = GitContentOptions.Create(values, getEnvironmentVariable),
+            MetricsInterval = GetDuration(
+                values,
+                "metrics-seconds",
+                "UTF_WORKER_METRICS_SECONDS",
+                TimeSpan.FromSeconds(15),
+                getEnvironmentVariable),
         };
     }
 

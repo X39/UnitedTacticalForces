@@ -4,7 +4,8 @@
   align-items: center;
 }
 
-.account-profile__trigger {
+/* The trigger is a shared ActionButton; the .account-profile prefix lets these rules win over the global .button. */
+.account-profile .account-profile__trigger {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
@@ -15,15 +16,22 @@
   background: rgb(255 255 255 / 3.5%);
   color: var(--ink);
   cursor: pointer;
+  font-size: inherit;
+  letter-spacing: normal;
   transition: 160ms ease;
 }
 
-.account-profile__trigger:hover,
-.account-profile__trigger:focus-visible,
-.account-profile__trigger[aria-expanded="true"] {
+.account-profile .account-profile__trigger:hover,
+.account-profile .account-profile__trigger:focus-visible,
+.account-profile .account-profile__trigger[aria-expanded="true"] {
   border-color: var(--gold);
   background: rgb(186 160 90 / 14%);
   color: var(--gold-bright);
+}
+
+.account-profile .account-profile__trigger:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
 }
 
 .account-profile__trigger-copy {
@@ -97,11 +105,16 @@
   font-weight: 900;
 }
 
-.account-profile__scrim {
+.account-profile .account-profile__scrim {
   position: fixed;
   z-index: 79;
   inset: 0;
+  width: auto;
+  max-width: none;
+  min-height: 0;
+  padding: 0;
   border: 0;
+  border-radius: 0;
   background: rgb(0 0 0 / 22%);
   cursor: default;
 }
@@ -187,13 +200,15 @@
   font-size: 1.2rem;
 }
 
-.account-profile__close {
+.account-profile .account-profile__close {
   position: absolute;
   top: 0.65rem;
   right: 0.65rem;
   display: grid;
   width: 2rem;
+  min-width: 0;
   height: 2rem;
+  min-height: 0;
   place-items: center;
   padding: 0;
   border: 1px solid transparent;
@@ -201,11 +216,9 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 1.4rem;
-  line-height: 1;
 }
 
-.account-profile__close:hover {
+.account-profile .account-profile__close:hover {
   border-color: var(--stroke);
   background: rgb(255 255 255 / 5%);
   color: var(--ink);
@@ -373,33 +386,20 @@
   white-space: nowrap;
 }
 
-.account-profile__notification-body span {
-  color: var(--muted);
-  font-size: 0.73rem;
+.account-profile__notification > .server-state-summary {
+  grid-column: 1;
+  grid-row: 2;
 }
 
-.account-profile__notification-body small {
-  color: var(--warning);
-  font-size: 0.67rem;
-  font-weight: 800;
-  text-transform: uppercase;
+.account-profile__notification > .button,
+.account-profile__notification > .action-with-reason {
+  grid-column: 2;
+  grid-row: 1 / span 2;
 }
 
-.account-profile__notification > button {
-  min-height: 2rem;
-  padding-inline: 0.62rem;
-  border: 1px solid rgb(186 160 90 / 48%);
-  border-radius: 3px;
-  background: rgb(186 160 90 / 14%);
-  color: var(--gold-bright);
-  cursor: pointer;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.account-profile__notification > button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.account-profile__notification > .action-with-reason {
+  grid-column: 1 / -1;
+  grid-row: 3;
 }
 
 .account-profile__notification-link {
@@ -461,46 +461,9 @@
   border-top: 1px solid var(--stroke);
 }
 
-.account-profile__button {
-  display: inline-flex;
-  min-height: 38px;
-  align-items: center;
-  justify-content: center;
-  padding-inline: 0.8rem;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.86rem;
-  font-weight: 800;
-  text-align: center;
-}
-
-.account-profile__button--primary {
-  border: 1px solid var(--gold-bright);
-  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #101014;
-}
-
-.account-profile__button--ghost {
-  border: 1px solid var(--stroke-strong);
-  background: rgb(255 255 255 / 3.5%);
-  color: var(--ink);
-}
-
-.account-profile__button--danger {
+/* Sign out spans the whole footer row; the two navigation links share the row above it. */
+.account-profile__actions .account-profile__sign-out {
   grid-column: 1 / -1;
-  border: 1px solid rgb(228 119 119 / 48%);
-  background: transparent;
-  color: #f0a0a0;
-}
-
-.account-profile__button--ghost:hover {
-  border-color: var(--gold);
-  background: rgb(186 160 90 / 14%);
-  color: var(--gold-bright);
-}
-
-.account-profile__button--danger:hover {
-  background: rgb(228 119 119 / 12%);
 }
 
 @media (max-width: 1180px) {
@@ -535,7 +498,7 @@
     white-space: nowrap;
   }
 
-  .account-profile__trigger {
+  .account-profile .account-profile__trigger {
     width: 44px;
     height: 44px;
     justify-content: center;
@@ -573,13 +536,13 @@
     grid-template-columns: 1fr;
   }
 
-  .account-profile__button--danger {
+  .account-profile__actions .account-profile__sign-out {
     grid-column: auto;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .account-profile__trigger {
+  .account-profile .account-profile__trigger {
     transition: none;
   }
 }

@@ -10,26 +10,37 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.modpacks-metrics > button {
+.modpacks-metrics > .modpacks-metric {
+  display: block;
+  width: 100%;
   min-width: 0;
-  padding: 1rem;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface);
-  color: var(--text);
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-base);
+  color: var(--utf-text);
   text-align: left;
-  cursor: pointer;
 }
 
-.modpacks-metrics > button:hover,
-.modpacks-metrics > button:focus-visible,
-.modpacks-metrics > button.active {
-  border-color: var(--gold);
-  background: linear-gradient(135deg, rgb(186 160 90 / 10%), transparent 60%), var(--surface);
+.modpacks-metrics > .modpacks-metric:hover:not([aria-disabled="true"]),
+.modpacks-metrics > .modpacks-metric[aria-pressed="true"] {
+  border-color: var(--utf-text);
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text);
+}
+
+.modpacks-metrics > .modpacks-metric:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
 }
 
 .modpacks-toolbar {
   justify-content: flex-start;
+}
+
+/* The filter chip groups wrap under the search field on narrow screens. */
+.modpacks-toolbar > .filter-chip-group {
+  flex: 0 1 auto;
 }
 
 .modpacks-ledger__header,
@@ -261,31 +272,22 @@
   gap: 0.15rem;
 }
 
-.file-drop {
-  position: relative;
+.modpack-format-import {
   display: grid;
-  min-height: 150px;
-  place-content: center;
-  gap: 0.35rem;
-  padding: 1.5rem;
-  border: 1px dashed var(--line);
-  border-radius: 5px;
-  background: rgb(186 160 90 / 4%);
-  text-align: center;
-  cursor: pointer;
+  gap: var(--utf-space-sm);
 }
 
-.file-drop:hover,
-.file-drop:focus-within {
-  border-color: var(--gold);
+.modpack-format-import__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm);
 }
 
-.file-drop input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
+.modpack-definition-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--utf-space-md);
 }
 
 .modpack-selector,
@@ -328,21 +330,21 @@
   overflow: auto;
 }
 
-.modpack-catalog__item {
+.modpack-catalog > [role="listitem"] {
   display: grid;
-  gap: 0.25rem;
-  text-align: start;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color, rgb(255 255 255 / 12%));
-  border-radius: 0.55rem;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
+  min-width: 0;
 }
 
-.modpack-catalog__item:disabled {
+.modpack-catalog > [role="listitem"] > .modpack-catalog__item {
+  display: grid;
+  gap: var(--utf-space-xs);
+  width: 100%;
+  justify-content: stretch;
+  text-align: start;
+}
+
+.modpack-catalog > [role="listitem"] > .modpack-catalog__item:disabled {
   cursor: default;
-  opacity: 0.55;
 }
 
 .modpack-selected-content {
@@ -377,12 +379,8 @@
   align-items: end;
 }
 
-.modpack-source-entry .field:first-child {
+.modpack-source-entry > .form-field:first-child {
   grid-row: span 2;
-}
-
-.modpack-source-entry textarea {
-  resize: vertical;
 }
 
 .modpack-dependency-list {
@@ -406,12 +404,8 @@
 }
 
 .modpack-selector__option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.8rem;
+  padding: var(--utf-space-sm) var(--utf-space-md);
   border-bottom: 1px solid var(--line);
-  cursor: pointer;
 }
 
 .modpack-selector__option:last-child {
@@ -423,13 +417,13 @@
   background: rgb(186 160 90 / 8%);
 }
 
-.modpack-selector__option > span {
+.modpack-selector__label {
   display: grid;
-  gap: 0.2rem;
+  gap: var(--utf-space-xs);
 }
 
 .modpack-selector__option small {
-  color: var(--muted);
+  color: var(--utf-text-muted);
 }
 
 .modpack-workspace {

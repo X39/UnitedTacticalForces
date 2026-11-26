@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { ApiError, resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
@@ -13,16 +13,21 @@ import {
   canModifyFieldReports,
   canReadFieldReports,
 } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { NotFoundPage } from "@/components/NotFoundPage";
 import { useAppRouteToast, useAppToastOnChange } from "@/components/AppToasts";
+import { CheckboxField, TextAreaField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
 import {
   ConfirmDialog,
   Markdown,
   PageHeader,
   StatePanel,
   StatusBadge,
-  useUnsavedChanges,
 } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { reportTones, toneOf } from "@/components/statusTones";
+import { useLeaveGuard } from "@/components/useLeaveGuard";
 import {
   createFieldReportFormSchema,
   createFieldReportSlug,
@@ -38,6 +43,7 @@ import {
 } from "@/features/admin/fieldReports";
 import { GalleryAssetPicker } from "@/features/admin/GalleryAssetPicker";
 import type { MediaAsset } from "@/features/admin/siteImages";
+import "@/features/admin/mediaAdmin.css";
 
 interface ToastFeedback {
   kind: "success" | "error" | "warning";
@@ -54,12 +60,24 @@ function mutationMessage(error: Error, fallback: string, conflict: string): stri
     : formatResource(fallback, error.message);
 }
 
+/** Renders the page header above a state view so every state of the editor route keeps exactly one `h1`. */
+function EditorStateFrame({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <PageStack>
+      <PageHeader title={t("Shared_CommandCenter_Nav_FieldReports")} />
+      {children}
+    </PageStack>
+  );
+}
+
 function Editor({ reportId }: { reportId?: string }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const previewId = useId();
   const isCreate = !reportId;
   const canRead = canReadFieldReports(user);
   const canCreate = canCreateFieldReports(user);
@@ -93,7 +111,9 @@ function Editor({ reportId }: { reportId?: string }) {
   );
   const query = useQuery({
     queryKey: ["command-field-report", reportId],
-    queryFn: ({ signal }) => loadCommandFieldReport(reportId!, signal),
+    // A missing report resolves `undefined`, which a query cannot hold, so it maps to `null` and reaches the
+    // not-found state instead of surfacing as a query error.
+    queryFn: async ({ signal }) => (await loadCommandFieldReport(reportId!, signal)) ?? null,
     enabled: Boolean(reportId && canRead),
   });
   const formValues = useMemo(
@@ -161,7 +181,7 @@ function Editor({ reportId }: { reportId?: string }) {
         ),
       }),
   });
-  useUnsavedChanges(isDirty && !(isCreate && save.isSuccess));
+  const leaveGuard = useLeaveGuard({ dirty: isDirty && !(isCreate && save.isSuccess) });
   useEffect(() => {
     if (!isCreate || !save.isSuccess || !save.data) return;
     navigate(`/command/field-reports/${save.data.primaryKey}`, {
@@ -240,30 +260,36 @@ function Editor({ reportId }: { reportId?: string }) {
       ? formatResource(t("Pages_Command_FieldReports_Edit_PageTitleEditReport"), query.data.title)
       : t("Pages_Command_FieldReports_Edit_PageTitleEdit");
   const imageUrl = resolveImageUrl(values.heroImagePath);
-  const fieldError = (message: string | undefined) =>
-    message ? <span className="field-error">{message}</span> : null;
+  const reportState = query.data?.isDeleted
+    ? "deleted"
+    : values.isPublished
+      ? "published"
+      : "draft";
+  const showForm = isCreate || (query.isSuccess && Boolean(query.data));
 
   if (!canOpen)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_FieldReports_Edit_NoAccessTitle")}>
-        {t("Pages_Command_FieldReports_Edit_NoAccessMessage")}
-      </StatePanel>
+      <EditorStateFrame>
+        <ForbiddenState title={t("Pages_Command_FieldReports_Edit_NoAccessTitle")}>
+          {t("Pages_Command_FieldReports_Edit_NoAccessMessage")}
+        </ForbiddenState>
+      </EditorStateFrame>
     );
 
   return (
-    <section className="field-report-editor-page">
+    <PageStack>
       <PageHeader
         kicker={t("Pages_Command_FieldReports_Edit_EditorKicker")}
         title={title}
         description={t("Pages_Command_FieldReports_Edit_HeaderDescription")}
         actions={
           <>
-            <Link className="button button--ghost" to="/command/field-reports">
+            <ActionLink variant="ghost" to="/command/field-reports">
               {t("Pages_Command_FieldReports_Edit_BackToLedger")}
-            </Link>
-            {canEdit && (
-              <button
-                className="button button--primary"
+            </ActionLink>
+            {canEdit && showForm && (
+              <ActionButton
+                variant="gold"
                 type="submit"
                 form="field-report-editor-form"
                 disabled={busy}
@@ -271,7 +297,7 @@ function Editor({ reportId }: { reportId?: string }) {
                 {busy
                   ? t("Pages_Command_FieldReports_Edit_Saving")
                   : t("Pages_Command_FieldReports_Edit_Save")}
-              </button>
+              </ActionButton>
             )}
           </>
         }
@@ -279,24 +305,17 @@ function Editor({ reportId }: { reportId?: string }) {
 
       {validationNotice && <StatePanel kind="warning">{validationNotice}</StatePanel>}
       {!isCreate && query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_FieldReports_Edit_Loading")}</StatePanel>
+        <LoadingState label={t("Pages_Command_FieldReports_Edit_Loading")} />
       ) : !isCreate && query.isError ? (
-        <StatePanel
-          kind="error"
-          action={
-            <button className="button button--ghost" type="button" onClick={() => query.refetch()}>
-              {t("Pages_Command_FieldReports_Refresh")}
-            </button>
-          }
-        >
+        <ErrorState onRetry={() => void query.refetch()}>
           {formatResource(t("Pages_Command_FieldReports_Edit_ErrorLoad"), query.error.message)}
-        </StatePanel>
+        </ErrorState>
       ) : !isCreate && query.isSuccess && !query.data ? (
-        <StatePanel kind="empty" title={t("Pages_Command_FieldReports_Edit_ErrorNotFound")}>
-          <Link className="button button--ghost" to="/command/field-reports">
+        <EmptyState title={t("Pages_Command_FieldReports_Edit_ErrorNotFound")}>
+          <ActionLink variant="ghost" to="/command/field-reports">
             {t("Pages_Command_FieldReports_Edit_BackToLedger")}
-          </Link>
-        </StatePanel>
+          </ActionLink>
+        </EmptyState>
       ) : (
         <>
           {!canEdit && (
@@ -304,20 +323,18 @@ function Editor({ reportId }: { reportId?: string }) {
               {t("Pages_Command_FieldReports_Edit_ReadOnlyMessage")}
             </StatePanel>
           )}
-          <section className="command-panel field-report-editor-shell">
-            <header className="field-report-editor-shell__header">
+          <section className="command-panel report-editor-shell">
+            <header className="report-editor-shell__header">
               <div>
                 <span className="kicker">{t("Pages_Command_FieldReports_Edit_EditorKicker")}</span>
                 <h2>
                   {values.title.trim() || t("Pages_Command_FieldReports_Edit_FallbackUntitled")}
                 </h2>
               </div>
-              <StatusBadge
-                tone={query.data?.isDeleted ? "danger" : values.isPublished ? "success" : "warning"}
-              >
-                {query.data?.isDeleted
+              <StatusBadge tone={toneOf(reportTones, reportState)}>
+                {reportState === "deleted"
                   ? t("Pages_Command_FieldReports_Edit_StatusDeleted")
-                  : values.isPublished
+                  : reportState === "published"
                     ? t("Pages_Command_FieldReports_Edit_StatusPublished")
                     : t("Pages_Command_FieldReports_Edit_StatusDraft")}
               </StatusBadge>
@@ -325,7 +342,7 @@ function Editor({ reportId }: { reportId?: string }) {
 
             <form
               id="field-report-editor-form"
-              className="field-report-editor-form"
+              className="report-editor-form"
               aria-label={t("Pages_Command_FieldReports_Edit_FormAria")}
               noValidate
               onSubmit={form.handleSubmit((nextValues) => {
@@ -334,80 +351,66 @@ function Editor({ reportId }: { reportId?: string }) {
                 save.mutate(nextValues);
               })}
             >
-              <label>
-                <span>{t("Pages_Command_FieldReports_Edit_LabelTitle")}</span>
-                <input
-                  {...form.register("title")}
-                  maxLength={150}
-                  disabled={!canEdit || busy}
-                  aria-invalid={Boolean(errors.title)}
-                />
-                {fieldError(errors.title?.message)}
-              </label>
-              <label>
-                <span>{t("Pages_Command_FieldReports_Edit_LabelSlug")}</span>
-                <input
-                  {...form.register("slug")}
-                  maxLength={120}
-                  disabled={!canEdit || busy}
-                  aria-invalid={Boolean(errors.slug)}
-                  placeholder={
-                    values.title.trim()
-                      ? createFieldReportSlug(values.title)
-                      : t("Pages_Command_FieldReports_Edit_PlaceholderSlug")
-                  }
-                />
-                {fieldError(errors.slug?.message)}
-              </label>
-              <label className="field-report-editor-form__wide">
-                <span>{t("Pages_Command_FieldReports_Edit_LabelExcerpt")}</span>
-                <textarea
+              <TextField
+                {...form.register("title")}
+                label={t("Pages_Command_FieldReports_Edit_LabelTitle")}
+                maxLength={150}
+                disabled={!canEdit || busy}
+                error={errors.title?.message}
+              />
+              <TextField
+                {...form.register("slug")}
+                label={t("Pages_Command_FieldReports_Edit_LabelSlug")}
+                maxLength={120}
+                disabled={!canEdit || busy}
+                error={errors.slug?.message}
+                placeholder={
+                  values.title.trim()
+                    ? createFieldReportSlug(values.title)
+                    : t("Pages_Command_FieldReports_Edit_PlaceholderSlug")
+                }
+              />
+              <div className="report-editor-form__wide">
+                <TextAreaField
                   {...form.register("excerpt")}
+                  label={t("Pages_Command_FieldReports_Edit_LabelExcerpt")}
                   rows={3}
                   maxLength={320}
                   disabled={!canEdit || busy}
-                  aria-invalid={Boolean(errors.excerpt)}
+                  error={errors.excerpt?.message}
                 />
-                {fieldError(errors.excerpt?.message)}
-              </label>
-              <div className="field-report-editor-form__grid field-report-editor-form__wide">
-                <label>
-                  <span>{t("Pages_Command_FieldReports_Edit_LabelCategory")}</span>
-                  <input
-                    {...form.register("category")}
-                    maxLength={64}
-                    disabled={!canEdit || busy}
-                    aria-invalid={Boolean(errors.category)}
-                  />
-                  {fieldError(errors.category?.message)}
-                </label>
-                <label>
-                  <span>{t("Pages_Command_FieldReports_Edit_LabelSortOrder")}</span>
-                  <input
-                    {...form.register("sortOrder", { valueAsNumber: true })}
-                    type="number"
-                    disabled={!canEdit || busy}
-                    aria-invalid={Boolean(errors.sortOrder)}
-                  />
-                  {fieldError(errors.sortOrder?.message)}
-                </label>
               </div>
-              <label className="field-report-editor-form__wide">
-                <span>{t("Pages_Command_FieldReports_Edit_LabelHeroImageAlt")}</span>
-                <input
+              <div className="report-editor-form__grid report-editor-form__wide">
+                <TextField
+                  {...form.register("category")}
+                  label={t("Pages_Command_FieldReports_Edit_LabelCategory")}
+                  maxLength={64}
+                  disabled={!canEdit || busy}
+                  error={errors.category?.message}
+                />
+                <TextField
+                  {...form.register("sortOrder", { valueAsNumber: true })}
+                  label={t("Pages_Command_FieldReports_Edit_LabelSortOrder")}
+                  type="number"
+                  disabled={!canEdit || busy}
+                  error={errors.sortOrder?.message}
+                />
+              </div>
+              <div className="report-editor-form__wide">
+                <TextField
                   {...form.register("heroImageAlt")}
+                  label={t("Pages_Command_FieldReports_Edit_LabelHeroImageAlt")}
                   maxLength={200}
                   disabled={!canEdit || busy}
-                  aria-invalid={Boolean(errors.heroImageAlt)}
+                  error={errors.heroImageAlt?.message}
                 />
-                {fieldError(errors.heroImageAlt?.message)}
-              </label>
+              </div>
 
               <section
-                className="field-report-image-panel field-report-editor-form__wide"
+                className="report-image-panel report-editor-form__wide"
                 aria-label={t("Pages_Command_FieldReports_Edit_ImageUploadAria")}
               >
-                <header>
+                <header className="report-image-panel__header">
                   <div>
                     <span className="kicker">
                       {t("Pages_Command_FieldReports_Edit_ImageKicker")}
@@ -420,8 +423,8 @@ function Editor({ reportId }: { reportId?: string }) {
                       : t("Pages_Command_FieldReports_Edit_ImageStatusEmpty")}
                   </StatusBadge>
                 </header>
-                <div className="field-report-image-panel__workspace">
-                  <div className="field-report-image-panel__controls">
+                <div className="report-image-panel__workspace">
+                  <div className="report-image-panel__controls">
                     <span className="kicker">
                       {t("Pages_Command_FieldReports_Edit_GalleryKicker")}
                     </span>
@@ -431,33 +434,27 @@ function Editor({ reportId }: { reportId?: string }) {
                         ? selectedAsset?.originalFileName || fileNameFromPath(values.heroImagePath)
                         : t("Pages_Command_FieldReports_Edit_ImageNoFile")}
                     </p>
-                    <div>
+                    <div className="report-image-panel__buttons">
                       {canEdit && (
-                        <button
-                          className="button button--ghost"
-                          type="button"
+                        <ActionButton
+                          variant="ghost"
                           disabled={busy}
                           onClick={() => setPickerOpen(true)}
                         >
                           {t("Pages_Command_FieldReports_Edit_GallerySelectLabel")}
-                        </button>
+                        </ActionButton>
                       )}
                       {canEdit && imageUrl && (
-                        <button
-                          className="button button--ghost"
-                          type="button"
-                          disabled={busy}
-                          onClick={clearAsset}
-                        >
+                        <ActionButton variant="ghost" disabled={busy} onClick={clearAsset}>
                           {t("Pages_Command_FieldReports_Edit_ImageRemove")}
-                        </button>
+                        </ActionButton>
                       )}
-                      <Link className="button button--ghost" to="/command/content/gallery">
+                      <ActionLink variant="ghost" to="/command/content/gallery">
                         {t("Pages_Command_FieldReports_Edit_GalleryOpen")}
-                      </Link>
+                      </ActionLink>
                     </div>
                   </div>
-                  <div className="field-report-image-panel__preview">
+                  <div className="report-image-panel__preview">
                     {imageUrl ? (
                       <img
                         src={imageUrl}
@@ -469,7 +466,7 @@ function Editor({ reportId }: { reportId?: string }) {
                     ) : (
                       <span>{t("Pages_Command_FieldReports_Edit_ImagePreviewEmpty")}</span>
                     )}
-                    <dl>
+                    <dl className="media-admin-facts">
                       <dt>{t("Pages_Command_FieldReports_Edit_ImageFile")}</dt>
                       <dd>
                         {imageUrl
@@ -487,52 +484,42 @@ function Editor({ reportId }: { reportId?: string }) {
                 </div>
               </section>
 
-              <label>
-                <span>{t("Pages_Command_FieldReports_Edit_LabelPublicationDate")}</span>
-                <input
-                  {...form.register("publicationInput")}
-                  type="datetime-local"
+              <TextField
+                {...form.register("publicationInput")}
+                label={t("Pages_Command_FieldReports_Edit_LabelPublicationDate")}
+                type="datetime-local"
+                disabled={!canEdit || busy}
+                error={errors.publicationInput?.message}
+              />
+              <div className="report-editor-form__checks">
+                <CheckboxField
+                  {...form.register("isFeatured")}
+                  label={t("Pages_Command_FieldReports_Edit_LabelFeatured")}
                   disabled={!canEdit || busy}
-                  aria-invalid={Boolean(errors.publicationInput)}
                 />
-                {fieldError(errors.publicationInput?.message)}
-              </label>
-              <div className="field-report-editor-form__checks">
-                <label>
-                  <input
-                    {...form.register("isFeatured")}
-                    type="checkbox"
-                    disabled={!canEdit || busy}
-                  />
-                  <span>{t("Pages_Command_FieldReports_Edit_LabelFeatured")}</span>
-                </label>
-                <label>
-                  <input
-                    {...form.register("isPublished")}
-                    type="checkbox"
-                    disabled={!canEdit || busy}
-                  />
-                  <span>{t("Pages_Command_FieldReports_Edit_LabelPublished")}</span>
-                </label>
+                <CheckboxField
+                  {...form.register("isPublished")}
+                  label={t("Pages_Command_FieldReports_Edit_LabelPublished")}
+                  disabled={!canEdit || busy}
+                />
               </div>
-              <label className="field-report-editor-form__wide">
-                <span>{t("Pages_Command_FieldReports_Edit_LabelMarkdown")}</span>
-                <textarea
+              <div className="report-editor-form__wide">
+                <TextAreaField
                   {...form.register("markdown")}
+                  label={t("Pages_Command_FieldReports_Edit_LabelMarkdown")}
                   rows={20}
                   maxLength={20_000}
                   disabled={!canEdit || busy}
-                  aria-invalid={Boolean(errors.markdown)}
+                  error={errors.markdown?.message}
                 />
-                {fieldError(errors.markdown?.message)}
-              </label>
+              </div>
             </form>
 
             <section
-              className="field-report-editor-preview"
+              className="report-editor-preview"
               aria-label={t("Pages_Command_FieldReports_Edit_PreviewAria")}
             >
-              <header>
+              <header className="report-editor-preview__header">
                 <div>
                   <span className="kicker">
                     {t("Pages_Command_FieldReports_Edit_PreviewKicker")}
@@ -543,19 +530,19 @@ function Editor({ reportId }: { reportId?: string }) {
                       : t("Pages_Command_FieldReports_Edit_PreviewHidden")}
                   </h3>
                 </div>
-                <button
-                  className="button button--ghost"
-                  type="button"
+                <ActionButton
+                  variant="ghost"
                   aria-expanded={previewVisible}
+                  aria-controls={previewId}
                   onClick={() => setPreviewVisible((current) => !current)}
                 >
                   {previewVisible
                     ? t("Pages_Command_FieldReports_Edit_HidePreview")
                     : t("Pages_Command_FieldReports_Edit_ShowPreview")}
-                </button>
+                </ActionButton>
               </header>
               {previewVisible && (
-                <article>
+                <article id={previewId}>
                   <span className="kicker">
                     {t("Pages_Command_FieldReports_Edit_RenderedBodyKicker")}
                   </span>
@@ -571,10 +558,10 @@ function Editor({ reportId }: { reportId?: string }) {
               )}
             </section>
 
-            <footer className="field-report-editor-actions">
+            <footer className="report-editor-actions">
               {canEdit && (
-                <button
-                  className="button button--primary"
+                <ActionButton
+                  variant="primary"
                   type="submit"
                   form="field-report-editor-form"
                   disabled={busy}
@@ -582,47 +569,43 @@ function Editor({ reportId }: { reportId?: string }) {
                   {busy
                     ? t("Pages_Command_FieldReports_Edit_ButtonSaving")
                     : t("Pages_Command_FieldReports_Edit_ButtonSave")}
-                </button>
+                </ActionButton>
               )}
               {!isCreate && canModify && !query.data?.isPublished && !query.data?.isDeleted && (
-                <button
-                  className="button button--ghost"
-                  type="button"
+                <ActionButton
+                  variant="ghost"
                   disabled={busy}
                   onClick={() => requestAction("publish")}
                 >
                   {t("Pages_Command_FieldReports_Edit_ButtonPublish")}
-                </button>
+                </ActionButton>
               )}
               {!isCreate && canModify && query.data?.isPublished && !query.data.isDeleted && (
-                <button
-                  className="button button--ghost"
-                  type="button"
+                <ActionButton
+                  variant="ghost"
                   disabled={busy}
                   onClick={() => requestAction("unpublish")}
                 >
                   {t("Pages_Command_FieldReports_Edit_ButtonUnpublish")}
-                </button>
+                </ActionButton>
               )}
               {!isCreate && canDelete && !query.data?.isDeleted && (
-                <button
-                  className="button button--danger"
-                  type="button"
+                <ActionButton
+                  variant="danger"
                   disabled={busy}
                   onClick={() => requestAction("delete")}
                 >
                   {t("Pages_Command_FieldReports_Edit_ButtonDelete")}
-                </button>
+                </ActionButton>
               )}
               {!isCreate && canDelete && query.data?.isDeleted && (
-                <button
-                  className="button button--ghost"
-                  type="button"
+                <ActionButton
+                  variant="ghost"
                   disabled={busy}
                   onClick={() => requestAction("restore")}
                 >
                   {t("Pages_Command_FieldReports_Edit_ButtonRestore")}
-                </button>
+                </ActionButton>
               )}
             </footer>
           </section>
@@ -641,11 +624,23 @@ function Editor({ reportId }: { reportId?: string }) {
         title={t("Pages_Command_FieldReports_Edit_DeleteTitle")}
         description={t("Pages_Command_FieldReports_Edit_DeleteConfirm")}
         confirmLabel={t("Pages_Command_FieldReports_Edit_ButtonDelete")}
-        cancelLabel={t("Pages_Command_FieldReports_Edit_ButtonCancel")}
+        cancelLabel={t("Pages_Command_FieldReports_Edit_DeleteReport_Dismiss")}
+        initialFocus="dismiss"
+        busy={action.isPending}
         onConfirm={() => action.mutate("delete")}
         onCancel={() => setDeleteOpen(false)}
       />
-    </section>
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        title={t("Server_Alerts_Leave_Title")}
+        description={t("React_UnsavedChanges")}
+        cancelLabel={t("Server_Change_KeepEditing")}
+        confirmLabel={t("Pages_Command_Content_PageEditorLeave_Dismiss")}
+        initialFocus="dismiss"
+        onCancel={leaveGuard.stay}
+        onConfirm={leaveGuard.proceed}
+      />
+    </PageStack>
   );
 }
 

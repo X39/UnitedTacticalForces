@@ -26,6 +26,9 @@ public sealed record GameConfigurationEntryDto
     /// <summary>Gets whether the setting controls orchestration instead of a generated game file.</summary>
     /// <value>True when file-conflict checks and file-target presentation do not apply.</value>
     public bool IsControlPlaneOnly { get; init; }
+    /// <summary>Gets whether the game definition declares the setting as Common or Advanced.</summary>
+    /// <value>The tier declared by the game definition; Advanced when the definition declares nothing.</value>
+    public EGameConfigurationTier Tier { get; init; }
     public int Order { get; init; }
     public decimal? Minimum { get; init; }
     public decimal? Maximum { get; init; }
@@ -45,7 +48,11 @@ public sealed record ConfigurationProfileSummaryDto
     public string Title { get; init; } = string.Empty;
     public string GameIdentifier { get; init; } = string.Empty;
     public bool IsArchived { get; init; }
+    /// <summary>Gets the number of the newest revision, or zero when the profile has no revision.</summary>
     public int LatestRevisionNumber { get; init; }
+    /// <summary>Gets the identifier of the newest revision so a selection can pin the current revision.</summary>
+    /// <value>The primary key of the revision with the highest number, or null without revisions.</value>
+    public Guid? LatestRevisionId { get; init; }
     public Instant TimeStampUpdated { get; init; }
 }
 

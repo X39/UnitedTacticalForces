@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
+import { ActionButton } from "@/components/ActionControl";
 import { GalleryAssetPicker } from "@/features/admin/GalleryAssetPicker";
 import type { MediaAsset } from "@/features/admin/siteImages";
 
@@ -64,25 +65,25 @@ export function TerrainImageField({
         </span>
       </div>
       <div className="terrain-image-field__actions">
-        <button
-          className="button button--ghost button--small"
-          type="button"
+        <ActionButton
+          variant="ghost"
+          size="compact"
           disabled={disabled}
           onClick={() => setPickerOpen(true)}
         >
           {hasImage
             ? t("Components_GalleryImagePicker_Change")
             : t("Components_GalleryImagePicker_Select")}
-        </button>
+        </ActionButton>
         {selected && (
-          <button
-            className="button button--ghost button--small"
-            type="button"
+          <ActionButton
+            variant="ghost"
+            size="compact"
             disabled={disabled}
             onClick={() => onChange(undefined)}
           >
             {t("Components_GalleryImagePicker_Clear")}
-          </button>
+          </ActionButton>
         )}
       </div>
       <GalleryAssetPicker

@@ -15,12 +15,6 @@
     var(--em-event-image) center / cover;
 }
 
-.em-ledger-hero h1 {
-  max-width: 20ch;
-  margin-block: 0.75rem 1.5rem;
-  font-size: clamp(2rem, 3.5vw, 3.4rem);
-}
-
 /* Keep the canary event detail visually aligned with the established public event page. */
 .em-event-page {
   --em-event-shell-max: 1570px;
@@ -59,47 +53,34 @@
   opacity: 0.45;
 }
 
-.em-event-hero__inner {
+/* The hero is the shared PublicHero; these rules fit it to the event page's own gutter and meta strip. */
+.em-event-page .em-event-hero__inner {
   display: grid;
-  gap: 0.86rem;
+  grid-template-columns: minmax(0, 1fr);
   width: min(1120px, 100%);
+  margin-inline: 0;
 }
 
-.em-event-hero__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  width: fit-content;
-  margin-bottom: 0.6rem;
-  color: var(--em-event-muted);
-  font:
-    600 0.72rem "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.1em;
-  text-decoration: none;
-  text-transform: uppercase;
+.em-event-page .em-event-hero__copy {
+  display: grid;
+  gap: var(--utf-space-md);
+  max-width: none;
 }
 
-.em-event-hero__back:hover,
-.em-event-hero__back:focus-visible {
-  color: var(--gold-bright);
+.em-event-page .em-event-hero__meta {
+  max-width: none;
+  margin: 0;
 }
 
-.em-operation-tag {
-  display: inline-grid;
-  width: fit-content;
-  min-height: 24px;
-  place-items: center;
-  padding: 0.18rem 0.55rem;
-  border: 1px solid rgb(255 230 150 / 45%);
-  border-radius: 3px;
-  background: var(--em-event-gold);
-  color: #0b0f13;
-  font:
-    800 0.68rem "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.em-event-page .em-event-hero--state {
+  min-height: 0;
+  padding-block: var(--utf-space-xl) var(--utf-space-lg);
+}
+
+.em-event-page .em-event-state {
+  width: min(calc(100% - 4rem), var(--em-event-shell-max));
+  margin: 0 auto;
+  padding-block: var(--utf-space-lg) var(--utf-space-3xl);
 }
 
 .em-event-page .em-event-hero h1 {
@@ -601,59 +582,24 @@ img.em-slot-avatar {
   gap: 0.35rem;
 }
 
-.em-slot-assign-button {
+/* The slot action is a shared ActionButton; the page prefix lets these rules win over the global .button rules. */
+.em-event-page .em-slot-assign-button {
   min-width: 7rem;
-  min-height: 36px;
-  padding: 0 0.8rem;
-  border: 1px solid rgb(214 174 84 / 48%);
-  border-radius: 3px;
-  background: transparent;
+  min-height: var(--utf-control-height);
+  border-color: rgb(214 174 84 / 48%);
   color: var(--em-event-gold);
-  font:
-    800 0.72rem "Barlow Condensed",
-    sans-serif;
-  text-transform: uppercase;
 }
 
-.em-slot-assign-button:not(:disabled) {
-  cursor: pointer;
-}
-.em-slot-assign-button:not(:disabled):hover {
+.em-event-page .em-slot-assign-button:not(:disabled):hover {
   background: var(--em-event-gold-dim);
 }
-.em-slot-assign-button:disabled {
+.em-event-page .em-slot-assign-button:disabled {
   border-color: var(--em-event-line);
   color: var(--em-event-subtle);
 }
-.em-slot-assign-button--mine {
+.em-event-page .em-slot-assign-button--mine {
   border-color: rgb(39 198 90 / 42%);
   color: var(--em-event-green);
-}
-
-.em-primary-slot-action {
-  display: inline-flex;
-  width: 100%;
-  min-height: 42px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.48rem;
-  padding: 0 1rem;
-  border: 1px solid rgb(255 230 150 / 50%);
-  border-radius: 3px;
-  background: var(--em-event-gold);
-  color: #0b0f13;
-  font:
-    850 0.78rem "Barlow Condensed",
-    sans-serif;
-  text-transform: uppercase;
-}
-
-.em-primary-slot-action:not(:disabled) {
-  cursor: pointer;
-}
-.em-primary-slot-action:disabled {
-  background: rgb(214 174 84 / 22%);
-  color: rgb(243 244 246 / 58%);
 }
 
 .em-side-card__header {
@@ -675,6 +621,7 @@ img.em-slot-avatar {
 .em-event-page .em-attendance-choice {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
+  width: 100%;
   gap: 0.45rem;
   align-items: center;
   justify-items: start;
@@ -696,20 +643,24 @@ img.em-slot-avatar {
   height: 1.1rem;
   place-items: center;
   border-radius: 50%;
-  background: currentColor;
+  /* A currentColor background would resolve against this element's own dark glyph color, so the tone is explicit. */
+  background: var(--em-choice-tone, var(--em-event-subtle));
   color: #071009;
   font-size: 0.7rem;
   font-weight: 900;
 }
 
 .em-event-page .em-attendance-choice--success {
-  color: var(--em-event-green);
+  --em-choice-tone: var(--em-event-green);
+  color: var(--em-choice-tone);
 }
 .em-event-page .em-attendance-choice--warning {
-  color: var(--em-event-amber);
+  --em-choice-tone: var(--em-event-amber);
+  color: var(--em-choice-tone);
 }
 .em-event-page .em-attendance-choice--danger {
-  color: var(--em-event-subtle);
+  --em-choice-tone: var(--em-event-subtle);
+  color: var(--em-choice-tone);
 }
 .em-event-page .em-attendance-choice:disabled {
   cursor: not-allowed;
@@ -795,10 +746,6 @@ img.em-slot-avatar {
 }
 
 @media (max-width: 520px) {
-  .em-event-hero__back {
-    margin-bottom: 1.4rem;
-  }
-
   .em-event-page .em-slot-row {
     grid-template-columns: 1fr;
   }
@@ -845,7 +792,7 @@ img.em-slot-avatar {
     display: none !important;
   }
 
-  .em-slot-assign-button,
+  .em-event-page .em-slot-assign-button,
   .em-event-page .em-slot-assignees,
   .em-event-page .em-slot-status {
     width: 100%;
@@ -897,7 +844,6 @@ img.em-slot-avatar {
   grid-template-columns: minmax(0, 1fr) minmax(17rem, 23rem);
   gap: 1.25rem;
   align-items: start;
-  margin-top: 1.25rem;
 }
 
 .em-event-main,
@@ -1078,18 +1024,6 @@ img.em-slot-avatar {
   color: #deb14a;
   font-size: 1.5rem;
   font-weight: 800;
-}
-
-.em-avatar-upload {
-  position: relative;
-  overflow: hidden;
-}
-
-.em-avatar-upload input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  clip-path: inset(50%);
 }
 
 .em-form-grid {

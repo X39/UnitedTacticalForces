@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockQuietCostReads } from "./support/costMocks";
 
 const eventId = "83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f";
 const userId = "34b29531-739a-41eb-983c-49c105f3475e";
@@ -92,6 +93,7 @@ test("renders the event workflow and confirms attendance changes that release a 
   await page.route("**/api/**", (route) => {
     throw new Error(`Unexpected API request: ${route.request().method()} ${route.request().url()}`);
   });
+  await mockQuietCostReads(page);
   await page.route("**/appsettings.json", (route) => route.fulfill({ json: configuration }));
   await page.route("**/api/users/me", (route) => route.fulfill({ json: user }));
   await page.route("**/api/users/authentication-providers", (route) =>

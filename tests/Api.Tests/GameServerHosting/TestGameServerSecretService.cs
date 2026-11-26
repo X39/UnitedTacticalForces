@@ -24,8 +24,9 @@ internal sealed class TestGameServerSecretService : IGameServerSecretService
         CancellationToken cancellationToken = default)
         => Task.FromResult(new GameServerSecretValueDto(key, string.Empty, 1));
 
-    public Task RotateAsync(Guid serverId, string key, Guid actorId,
-        CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task<GameServerSecretValueDto> RotateAsync(Guid serverId, string key, Guid actorId,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(new GameServerSecretValueDto(key, string.Empty, 1));
 
     public Task<IReadOnlyDictionary<string, string>> ResolveRequiredAsync(
         Guid serverId,

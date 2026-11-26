@@ -118,6 +118,7 @@ public sealed class Arma3GameServerDefinitionRegistration : IGameServerDefinitio
                 2306,
                 "Arma 3 game traffic"),
         ],
+        ReportsPlayerCount = true,
         PrimaryConnection = new(
             ERuntimeNetworkProtocol.Udp,
             2302,
@@ -151,9 +152,10 @@ public sealed class Arma3GameServerDefinitionRegistration : IGameServerDefinitio
         },
         Secrets =
         [
-            new("admin-password", "Administrator password", false, true, true),
-            new("server-command-password", "Server command password", false, true, true),
-            new("battleye-rcon-password", "BattlEye RCON password", false, true, true),
+            new("admin-password", "Administrator password", false, true, true, AcceptsChosenValue: true),
+            new("server-command-password", "Server command password", false, true, true, AcceptsChosenValue: true),
+            new("battleye-rcon-password", "BattlEye RCON password", false, true, true,
+                AcceptsChosenValue: true, ValueFormat: EGameSecretValueFormat.Token),
             new("join-password", "Join password", false, false, true),
         ],
         Nodes =

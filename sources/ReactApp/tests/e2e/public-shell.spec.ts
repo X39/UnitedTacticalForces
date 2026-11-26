@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { mockQuietCostReads } from "./support/costMocks";
+import { fulfillMetricsRoute } from "./support/metricsMocks";
 import { Buffer } from "node:buffer";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -99,6 +101,7 @@ test.beforeEach(async ({ page }) => {
     throw new Error(`Unexpected API request: ${route.request().method()} ${route.request().url()}`);
   });
   await page.route("**/appsettings.json", (route) => route.fulfill({ json: config }));
+  await mockQuietCostReads(page);
   await page.route("**/Insignia-48px.png", (route) =>
     route.fulfill({
       status: 200,
@@ -139,7 +142,7 @@ test("loads the beta shell at a deep link", async ({ page }) => {
   await expect(page.getByRole("banner")).toBeVisible();
   await expect(page.getByRole("main")).toBeVisible();
   await expect(page.getByText("Beta", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Field reports" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Field Reports", level: 1 })).toBeVisible();
 });
 
 test("renders home operation summaries as Markdown excerpts", async ({ page }) => {
@@ -185,6 +188,33 @@ test("keeps the public shell usable on a narrow keyboard viewport", async ({ pag
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
     .toBeLessThanOrEqual(0);
+});
+
+test("contains keyboard focus in the open community menu on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("field-reports");
+
+  const navigation = page.getByRole("navigation", { name: "Community navigation" });
+  const toggle = page.getByRole("button", { name: "Toggle navigation" });
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+  // Opening moves focus to the first link and makes the page behind the menu inert.
+  await expect(navigation.getByRole("link").first()).toBeFocused();
+  await expect(page.locator("main#main-content")).toHaveAttribute("inert", "");
+
+  // Tab from the last link reaches the toggle, not the covered page content.
+  await navigation.getByRole("link").last().focus();
+  await page.keyboard.press("Tab");
+  await expect(toggle).toBeFocused();
+
+  // Escape closes the menu, returns focus to the toggle and lifts the inert state.
+  await page.keyboard.press("Escape");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(toggle).toBeFocused();
+  await expect(page.locator("main#main-content")).not.toHaveAttribute("inert", /.*/);
 });
 
 test("keeps the German Join journey inside a narrow viewport", async ({ page }) => {
@@ -264,7 +294,7 @@ test("keeps identity and operational attention in the signed-in shell", async ({
         {
           serverId: fleetServer.primaryKey,
           title: "Profile Server",
-          statusLabel: "Running",
+          statusLabel: "Raw API stage text",
           possibleCost: true,
           canOperate: true,
           costStopAction: null,
@@ -272,6 +302,8 @@ test("keeps identity and operational attention in the signed-in shell", async ({
       ],
     }),
   );
+
+  await page.route("**/api/game-servers", (route) => route.fulfill({ json: [fleetServer] }));
 
   await page.goto("field-reports");
   const trigger = page.locator(".account-profile__trigger");
@@ -282,6 +314,9 @@ test("keeps identity and operational attention in the signed-in shell", async ({
   await expect(profile).toBeVisible();
   await expect(profile).toContainText("Operations Lead");
   await expect(profile).toContainText("Profile Server");
+  await expect(profile).toContainText("Running");
+  await expect(profile).toContainText("Costing now");
+  await expect(profile).not.toContainText("Raw API stage text");
   await expect(profile).toContainText("7656...5678");
   await expect(trigger.locator(".account-profile__attention-badge")).toHaveText("1");
 });
@@ -361,7 +396,7 @@ test("renders the permission-filtered command shell for an administrator", async
   );
   await page.goto("command");
   await expect(page.getByRole("heading", { name: "Command Center" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Game servers" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Servers", exact: true }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Events" }).first()).toBeVisible();
 });
 
@@ -390,9 +425,222 @@ test("opens and closes the command drawer with the keyboard on mobile", async ({
   await open.focus();
   await page.keyboard.press("Enter");
   await expect(navigation).toBeVisible();
-  await drawer.getByRole("button", { name: "Close Command Center navigation" }).focus();
+
+  // Opening moves focus into the drawer and makes the covered column inert.
+  const close = drawer.getByRole("button", { name: "Close Command Center navigation" });
+  await expect(close).toBeFocused();
+  await expect(page.locator(".command-main")).toHaveAttribute("inert", "");
+
+  // Tab never leaves the drawer, even one press past its last control.
+  const focusableCount = await drawer.locator("a[href], button:not([disabled])").count();
+  for (let press = 0; press <= focusableCount; press += 1) {
+    await page.keyboard.press("Tab");
+    expect(
+      await page.evaluate(() =>
+        document.querySelector("#command-navigation")?.contains(document.activeElement),
+      ),
+    ).toBe(true);
+  }
+
+  // Back on the close button, Shift+Tab wraps to the last drawer link.
+  await close.focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(drawer.getByRole("link").last()).toBeFocused();
+
+  // Escape closes the drawer, gives focus back to the toggle and lifts the inert state.
+  await page.keyboard.press("Escape");
+  await expect(navigation).not.toBeVisible();
+  await expect(open).toBeFocused();
+  await expect(page.locator(".command-main")).not.toHaveAttribute("inert", /.*/);
+
+  await open.focus();
+  await page.keyboard.press("Enter");
+  await expect(navigation).toBeVisible();
+  await close.focus();
   await page.keyboard.press("Enter");
   await expect(navigation).not.toBeVisible();
+});
+
+test("keeps keyboard focus in the open command drawer after a pointer click on its surface", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.unroute("**/api/users/me");
+  await page.route("**/api/users/me", (route) =>
+    route.fulfill({
+      json: {
+        primaryKey: "00000000-0000-0000-0000-000000000001",
+        nickname: "Operator",
+        isBanned: false,
+        isVerified: true,
+        isDeleted: false,
+        isVereinMember: false,
+        claims: [{ identifier: "adm", value: null }],
+        roles: [],
+      },
+    }),
+  );
+  await page.goto("command");
+
+  const drawer = page.locator("#command-navigation");
+  const open = page.getByRole("button", { name: "Open Command Center navigation" });
+  const skipLink = page.locator("a.skip-link");
+  const scrim = page.locator(".command-scrim");
+  await open.click();
+  await expect(
+    drawer.getByRole("button", { name: "Close Command Center navigation" }),
+  ).toBeFocused();
+
+  // While the drawer is open the skip link and the scrim are not tab stops.
+  await expect(skipLink).toHaveAttribute("inert", "");
+  await expect(scrim).toHaveAttribute("tabindex", "-1");
+
+  /** Whether focus is inside the drawer and on neither the skip link nor the scrim. */
+  const focusStaysInDrawer = () =>
+    page.evaluate(() => {
+      const active = document.activeElement;
+      return (
+        document.querySelector("#command-navigation")?.contains(active) === true &&
+        !active?.matches("a.skip-link, .command-scrim")
+      );
+    });
+
+  // A click on the brand text leaves focus on the body; Shift+Tab and Tab must still stay in the drawer.
+  const brand = page.locator(".command-nav__brand strong");
+  await brand.click();
+  await page.keyboard.press("Shift+Tab");
+  expect(await focusStaysInDrawer()).toBe(true);
+  await expect(drawer.getByRole("link").last()).toBeFocused();
+  await brand.click();
+  await page.keyboard.press("Tab");
+  expect(await focusStaysInDrawer()).toBe(true);
+
+  // A click on the blank drawer surface below the last link is the path that reached the scrim.
+  await drawer.getByRole("link").last().scrollIntoViewIfNeeded();
+  const blank = await page.evaluate(() => {
+    const aside = document.querySelector("#command-navigation")!;
+    const links = aside.querySelectorAll("a");
+    const lastLink = links[links.length - 1]!.getBoundingClientRect();
+    const area = aside.getBoundingClientRect();
+    const bottom = Math.min(area.bottom, window.innerHeight);
+    const x = area.left + area.width / 2;
+    const y = (lastLink.bottom + bottom) / 2;
+    const hit = document.elementFromPoint(x, y);
+    return {
+      x,
+      y,
+      gap: bottom - lastLink.bottom,
+      inside: aside.contains(hit),
+      interactive: hit?.closest("a, button") != null,
+    };
+  });
+  expect(blank.gap).toBeGreaterThan(8);
+  expect(blank.inside).toBe(true);
+  expect(blank.interactive).toBe(false);
+  await page.mouse.click(blank.x, blank.y);
+  await page.keyboard.press("Tab");
+  expect(await focusStaysInDrawer()).toBe(true);
+
+  // Escape closes the drawer, returns focus to the toggle and lifts the skip link's inert state.
+  await page.keyboard.press("Escape");
+  await expect(open).toBeFocused();
+  await expect(skipLink).not.toHaveAttribute("inert", /.*/);
+});
+
+test("keeps the profile popover's Tab order and closes one layer per Escape over the open community menu", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.unroute("**/api/users/me");
+  await page.route("**/api/users/me", (route) =>
+    route.fulfill({
+      json: {
+        primaryKey: "00000000-0000-4000-8000-000000000001",
+        nickname: "Falcon One",
+        eMail: "falcon@example.test",
+        avatar: "AQIDBA==",
+        avatarMimeType: "image/jpeg",
+        isBanned: false,
+        isVerified: true,
+        isDeleted: false,
+        isVereinMember: false,
+        steamId64: null,
+        discordId: null,
+        discordUsername: null,
+        claims: [],
+        roles: [],
+      },
+    }),
+  );
+  await page.goto("field-reports");
+
+  const toggle = page.getByRole("button", { name: "Toggle navigation" });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+  // The popover opens by pointer over the open menu; no force option, so a covered trigger would fail here.
+  await page.locator(".account-profile__trigger").click();
+  const popover = page.getByRole("dialog", { name: "Profile menu" });
+  await expect(popover).toBeVisible();
+  await expect(popover.getByRole("button", { name: "Close profile menu" })).toBeFocused();
+
+  // Tab moves to the next popover control and never to the navigation toggle.
+  for (let press = 0; press < 2; press += 1) {
+    await page.keyboard.press("Tab");
+    expect(
+      await page.evaluate(
+        () =>
+          document.querySelector("#account-profile-panel")?.contains(document.activeElement) ===
+          true,
+      ),
+    ).toBe(true);
+    await expect(toggle).not.toBeFocused();
+  }
+
+  // The first Escape closes only the popover; the menu stays open and the page stays inert.
+  await page.keyboard.press("Escape");
+  await expect(popover).toBeHidden();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("main#main-content")).toHaveAttribute("inert", "");
+
+  // The second Escape closes the menu.
+  await page.keyboard.press("Escape");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("main#main-content")).not.toHaveAttribute("inert", /.*/);
+});
+
+test("keeps Tab inside the sign-in dialog opened over the open community menu", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("field-reports");
+
+  const toggle = page.getByRole("button", { name: "Toggle navigation" });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+  // The sign-in dialog opens by pointer over the open menu; no force option, so a covered trigger would fail here.
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  const dialog = page.locator("dialog[open]");
+  await expect(dialog).toBeVisible();
+
+  // Chromium focuses the dialog element itself on a blank click. Blurring afterwards puts focus on the body, which is
+  // the state where the drawer cycle used to take Tab over and push focus into the menu behind the dialog.
+  const box = (await dialog.boundingBox())!;
+  await page.mouse.click(box.x + 4, box.y + 4);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  await page.keyboard.press("Tab");
+
+  expect(
+    await page.evaluate(
+      () => document.querySelector("dialog[open]")?.contains(document.activeElement) === true,
+    ),
+  ).toBe(true);
+  await expect(toggle).not.toBeFocused();
 });
 
 test("filters the event administration ledger on canonical and legacy routes", async ({ page }) => {
@@ -468,13 +716,13 @@ test("filters the event administration ledger on canonical and legacy routes", a
   });
 
   await page.goto("command/events");
-  await expect(page.getByRole("heading", { name: "Event Administration" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Events", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Hidden 1", exact: true }).click();
   await expect(page.getByRole("link", { name: "Hidden rehearsal" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Operation Daybreak" })).toHaveCount(0);
 
   await page.goto("events/all");
-  await expect(page.getByRole("heading", { name: "Event Administration" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Events", exact: true })).toBeVisible();
   await expect(page.getByText("Command Center").first()).toBeVisible();
 });
 
@@ -722,7 +970,7 @@ test("filters the member roster and saves protected member changes", async ({ pa
   await page.getByRole("checkbox", { name: "Banned" }).check();
   await page.getByRole("button", { name: "Save profile" }).click();
   await page.getByLabel(/Type/).fill("Raven Actual");
-  await page.getByRole("button", { name: "Ban member" }).click();
+  await page.getByRole("button", { name: "Ban member", exact: true }).click();
   await expect(page.getByText("Profile saved.")).toBeVisible();
 });
 
@@ -843,7 +1091,7 @@ test("manages reusable gallery assets and their tracked usage", async ({ page })
   });
 
   await page.goto("command/content/gallery");
-  await expect(page.getByRole("heading", { name: "Image gallery" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Gallery", exact: true })).toBeVisible();
   await expect(page.getByRole("option", { name: /operation-briefing\.webp/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open usage" })).toHaveAttribute(
     "href",
@@ -1167,16 +1415,23 @@ test("loads the localized, resource-filtered server fleet at a deep link", async
   });
 
   await page.goto("command/servers");
-  await expect(page.getByRole("heading", { name: "Spielserver" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Server", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: fleetServer.title })).toBeVisible();
-  await expect(page.getByText("Läuft")).toBeVisible();
+  await expect(page.getByText("Läuft", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      "1 Server verursacht Kosten oder könnte noch Kosten verursachen. Fahre Server herunter, die du nicht nutzt.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Server öffnen" })).toHaveAttribute(
+    "href",
+    `/next/command/servers/${fleetServer.primaryKey}`,
+  );
+  await expect(page.getByRole("link", { name: "Ohne Speichern herunterfahren" })).toHaveCount(0);
   await expect(
     page.getByText("Diese Bereitstellung kann weiterhin Kosten verursachen."),
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Jetzt deprovisionieren" })).toHaveAttribute(
-    "href",
-    `/next/command/servers/${fleetServer.primaryKey}?action=terminate`,
-  );
+  ).toHaveCount(0);
 
   await page.reload();
   await expect(page.getByRole("heading", { name: fleetServer.title })).toBeVisible();
@@ -1200,6 +1455,10 @@ test("opens the certified server workspace and submits its projected challenge",
       },
     }),
   );
+  await page.route(`**/api/game-servers/${fleetServer.primaryKey}/metrics**`, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    await fulfillMetricsRoute(route, route.request().method(), path, fleetServer.primaryKey);
+  });
   await page.route(`**/api/game-servers/${fleetServer.primaryKey}/jobs`, (route) =>
     route.fulfill({ json: [] }),
   );
@@ -1238,10 +1497,10 @@ test("opens the certified server workspace and submits its projected challenge",
 
   await page.goto(`command/servers/${fleetServer.primaryKey}?action=terminate`);
   await expect(page.getByRole("heading", { name: fleetServer.title }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Configuration" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Settings", exact: true })).toBeVisible();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("textbox").fill(fleetServer.title);
-  await dialog.getByRole("button", { name: "Terminate" }).click();
+  await dialog.getByRole("button", { name: "Shut down without saving" }).click();
   await expect(dialog).not.toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/next/command/servers/${fleetServer.primaryKey}$`));
 
@@ -1322,13 +1581,13 @@ test("operates the terrain catalog and resource workspace on canonical and legac
   await page.route("**/api/terrains/41", (route) => route.fulfill({ json: terrains()[0] }));
 
   await page.goto("command/terrains");
-  await expect(page.getByRole("heading", { name: "All Terrains", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Terrains", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Missing image", exact: true }).last().click();
   await expect(page.getByRole("row", { name: /Stratis/ })).toBeVisible();
   await expect(page.getByRole("row", { name: /Altis/ })).toHaveCount(0);
 
   await page.goto("data/terrains/all");
-  await expect(page.getByRole("heading", { name: "All Terrains", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Terrains", exact: true })).toBeVisible();
   await page.goto("data/terrains/41");
   await expect(page.getByRole("heading", { name: "Altis", exact: true }).first()).toBeVisible();
   const titleInput = page.getByRole("textbox", { name: "Title" });
@@ -1420,7 +1679,7 @@ test("creates a terrain with a registered game and gallery image", async ({ page
   );
 
   await page.goto("data/terrains/create");
-  await expect(page.getByRole("heading", { name: "Create Terrain", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create terrain", exact: true })).toBeVisible();
   await page.getByRole("textbox", { name: "Title" }).fill("Tanoa");
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByRole("button", { name: "Select image" }).click();

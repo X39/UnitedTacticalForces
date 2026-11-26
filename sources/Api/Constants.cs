@@ -35,6 +35,7 @@ internal static class Constants
         public const string Verein                  = "verein";
         public const string GameServers           = "game-servers";
         public const string CostOwners            = "cost-owners";
+        public const string CostAlerts            = "cost-alerts";
     }
 
     public static class Headers

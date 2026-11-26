@@ -1,0 +1,28 @@
+/*
+ * Layout of the Verein contribution settings form.
+ *
+ * The rules consume --utf-* tokens only. They replace the page-local label, input and message styling that lived
+ * in styles.css (`.verein-settings-admin-form__fields label|input|textarea|small`), which styled the raw controls
+ * that TextField and TextAreaField now render.
+ */
+.verein-settings-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+  padding: var(--utf-space-lg);
+}
+
+.verein-settings-fields__wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 620px) {
+  .verein-settings-fields {
+    grid-template-columns: 1fr;
+    padding: var(--utf-space-md);
+  }
+
+  .verein-settings-fields__wide {
+    grid-column: auto;
+  }
+}

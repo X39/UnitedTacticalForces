@@ -1,0 +1,12 @@
+{
+  "family": "hosting-files",
+  "owner": "69-10",
+  "files": {
+    "src/components/FileChooserButton.tsx": {
+      "controls": 1,
+      "lookalikes": 0,
+      "literals": 0,
+      "reason": "browser file chooser wrapper (UI-SPEC allowance)"
+    }
+  }
+}

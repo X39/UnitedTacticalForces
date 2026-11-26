@@ -66,6 +66,27 @@ describe("server workspace API adapter", () => {
     );
   });
 
+  it("loads one pack's contents through the generated path and defaults null items to an empty list", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ modPackDefinitionId: 42, isAvailable: false, total: 0, items: null }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    initializeApiClient(configuration);
+
+    const contents = await hostingService.modPackContents("server-1", 42);
+
+    expect(contents.items).toEqual([]);
+    expect(contents.modPackDefinitionId).toBe(42);
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.pathname).toBe("/api/game-servers/server-1/mod-pack-options/42/contents");
+    expect(init.method ?? "GET").toBe("GET");
+  });
+
   it("supports browsing, binary upload, generated override confirmation, folders, delete and downloads", async () => {
     const fetchMock = vi.fn().mockImplementation((request: URL, init: RequestInit) =>
       Promise.resolve(

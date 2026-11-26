@@ -8,6 +8,7 @@ using X39.UnitedTacticalForces.Database.Media;
 using X39.UnitedTacticalForces.Database.Verein;
 using X39.UnitedTacticalForces.Api.DTO;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
+using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.Services.Media;
 using X39.UnitedTacticalForces.Common.Event;
 using X39.UnitedTacticalForces.Common.Verein;
@@ -417,7 +418,7 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
     {
         if (string.IsNullOrWhiteSpace(search))
             return query;
-        var searchPattern = $"%{EscapeLikePattern(search)}%";
+        var searchPattern = LikePattern.Contains(search);
         return query.Where(q => EF.Functions.ILike(q.Title, searchPattern, "\\"));
     }
 
@@ -425,7 +426,7 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
     {
         if (string.IsNullOrWhiteSpace(search))
             return query;
-        var searchPattern = $"%{EscapeLikePattern(search)}%";
+        var searchPattern = LikePattern.Contains(search);
         return query.Where(q => EF.Functions.ILike(q.Title, searchPattern, "\\"));
     }
 
@@ -433,7 +434,7 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
     {
         if (string.IsNullOrWhiteSpace(search))
             return query;
-        var searchPattern = $"%{EscapeLikePattern(search)}%";
+        var searchPattern = LikePattern.Contains(search);
         return query.Where(q =>
             EF.Functions.ILike(q.Title, searchPattern, "\\")
             || EF.Functions.ILike(q.Owner!.Nickname, searchPattern, "\\")
@@ -447,7 +448,7 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
     {
         if (string.IsNullOrWhiteSpace(search))
             return query;
-        var searchPattern = $"%{EscapeLikePattern(search)}%";
+        var searchPattern = LikePattern.Contains(search);
         return query.Where(q => EF.Functions.ILike(q.Nickname, searchPattern, "\\"));
     }
 
@@ -455,7 +456,7 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
     {
         if (string.IsNullOrWhiteSpace(search))
             return query;
-        var searchPattern = $"%{EscapeLikePattern(search)}%";
+        var searchPattern = LikePattern.Contains(search);
         return query.Where(q =>
             EF.Functions.ILike(q.Title, searchPattern, "\\")
             || EF.Functions.ILike(q.Description, searchPattern, "\\")
@@ -466,7 +467,7 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
     {
         if (string.IsNullOrWhiteSpace(search))
             return query;
-        var searchPattern = $"%{EscapeLikePattern(search)}%";
+        var searchPattern = LikePattern.Contains(search);
         return query.Where(q =>
             EF.Functions.ILike(q.Category, searchPattern, "\\")
             || EF.Functions.ILike(q.Title, searchPattern, "\\")
@@ -480,7 +481,7 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
     {
         if (string.IsNullOrWhiteSpace(search))
             return query;
-        var searchPattern = $"%{EscapeLikePattern(search)}%";
+        var searchPattern = LikePattern.Contains(search);
         return query.Where(q => EF.Functions.ILike(q.Title, searchPattern, "\\"));
     }
 
@@ -488,7 +489,7 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
     {
         if (string.IsNullOrWhiteSpace(search))
             return query;
-        var searchPattern = $"%{EscapeLikePattern(search)}%";
+        var searchPattern = LikePattern.Contains(search);
         return query.Where(q =>
             EF.Functions.ILike(q.Title, searchPattern, "\\")
             || EF.Functions.ILike(q.Slug, searchPattern, "\\")
@@ -496,15 +497,6 @@ public class CommandCenterController(DatabaseContext apiDbContext, IConfiguratio
             || EF.Functions.ILike(q.Category, searchPattern, "\\")
         );
     }
-
-    private static string EscapeLikePattern(string value)
-        => value.Trim()
-            .Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("%", "\\%", StringComparison.Ordinal)
-            .Replace("_", "\\_", StringComparison.Ordinal)
-            .Replace("[", "\\[", StringComparison.Ordinal)
-            .Replace("]", "\\]", StringComparison.Ordinal)
-            .Replace("^", "\\^", StringComparison.Ordinal);
 
     private static CommandCenterCommunityMemberDto CreateCommunityMemberDto(
         AuthorityUser user,

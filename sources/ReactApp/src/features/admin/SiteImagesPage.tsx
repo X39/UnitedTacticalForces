@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 import { resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageSiteImages } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { useAppToastOnChange } from "@/components/AppToasts";
-import { PageHeader, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
+import { PageStack } from "@/components/PageStack";
+import { ConfirmDialog, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { useLeaveGuard } from "@/components/useLeaveGuard";
 import { GalleryAssetPicker } from "@/features/admin/GalleryAssetPicker";
 import {
   loadSiteImageSettings,
@@ -17,6 +21,23 @@ import {
   type MediaAsset,
   type SiteImageSetting,
 } from "@/features/admin/siteImages";
+import "@/features/admin/mediaAdmin.css";
+
+/**
+ * Renders the page header above a state view so every state of the page keeps exactly one `h1`.
+ *
+ * The title is the group independent navigation label; the dynamic title with the group name belongs to the
+ * loaded page, which is the recorded exception to "the heading equals the navigation label".
+ */
+function SiteImagesStateFrame({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <PageStack>
+      <PageHeader title={t("Shared_CommandCenter_Nav_PublicImages")} />
+      {children}
+    </PageStack>
+  );
+}
 
 export function Component() {
   const { t } = useTranslation();
@@ -51,7 +72,7 @@ export function Component() {
     },
   });
   const dirty = Object.keys(selectedAssets).length > 0;
-  useUnsavedChanges(dirty && !save.isPending);
+  const leaveGuard = useLeaveGuard({ dirty: dirty && !save.isPending });
   useAppToastOnChange(success ? t("Pages_Command_SiteImages_SavedToast") : undefined);
   const groupLabel = t(siteImageGroups.find(([key]) => key === group)![1]);
   const resetPending = () => {
@@ -61,78 +82,69 @@ export function Component() {
 
   if (!canManage)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_SiteImages_AccessRequiredTitle")}>
-        {t("Pages_Command_SiteImages_AccessRequiredDescription")}
-      </StatePanel>
+      <SiteImagesStateFrame>
+        <ForbiddenState title={t("Pages_Command_SiteImages_AccessRequiredTitle")}>
+          {t("Pages_Command_SiteImages_AccessRequiredDescription")}
+        </ForbiddenState>
+      </SiteImagesStateFrame>
     );
 
   return (
-    <section className="site-image-editor-page">
+    <PageStack>
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_PublicImages")}
         title={formatResource(t("Pages_Command_SiteImages_TitleFormat"), groupLabel)}
         description={t("Pages_Command_SiteImages_Description")}
         actions={
           <>
-            <Link className="button button--ghost" to="/command/content/gallery">
+            <ActionLink variant="ghost" to="/command/content/gallery">
               {t("Pages_Command_SiteImages_OpenGallery")}
-            </Link>
-            <button
-              className="button button--ghost"
-              type="button"
+            </ActionLink>
+            <ActionButton
+              variant="ghost"
               disabled={query.isFetching}
               onClick={() => void query.refetch()}
             >
               {t("Common_Refresh")}
-            </button>
+            </ActionButton>
           </>
         }
       />
 
       <nav
-        className="toolbar site-image-group-toolbar"
+        className="site-images-groups"
         aria-label={t("Pages_Command_SiteImages_GroupNavigationAria")}
       >
-        <div className="filter-chips">
-          {siteImageGroups.map(([key, labelKey]) => (
-            <Link
-              key={key}
-              className={key === group ? "active" : undefined}
-              aria-current={key === group ? "page" : undefined}
-              to={`/command/content/images/${key}`}
-            >
-              {t(labelKey)}
-            </Link>
-          ))}
-        </div>
+        {siteImageGroups.map(([key, labelKey]) => (
+          <ActionLink
+            key={key}
+            variant="ghost"
+            className="site-images-group"
+            aria-current={key === group ? "page" : undefined}
+            to={`/command/content/images/${key}`}
+          >
+            {t(labelKey)}
+          </ActionLink>
+        ))}
       </nav>
 
-      {query.isPending && (
-        <StatePanel kind="loading">{t("Pages_Command_SiteImages_Loading")}</StatePanel>
-      )}
+      {query.isPending && <LoadingState label={t("Pages_Command_SiteImages_Loading")} />}
       {query.isError && (
-        <StatePanel
-          kind="error"
-          action={
-            <button className="button button--ghost" onClick={() => void query.refetch()}>
-              {t("Common_Refresh")}
-            </button>
-          }
-        >
-          {query.error.message}
-        </StatePanel>
+        <ErrorState onRetry={() => void query.refetch()}>{query.error.message}</ErrorState>
       )}
       {save.isError && <StatePanel kind="error">{save.error.message}</StatePanel>}
       {query.data && query.data.length === 0 && (
-        <StatePanel kind="empty" title={t("Pages_Command_SiteImages_EmptyTitle")}>
+        <EmptyState title={t("Pages_Command_SiteImages_EmptyTitle")}>
           {t("Pages_Command_SiteImages_EmptyDescription")}
-        </StatePanel>
+        </EmptyState>
       )}
       {query.data && query.data.length > 0 && (
-        <section className="command-panel site-image-settings-list">
-          <header className="command-panel__header site-image-settings-list__header">
-            <span className="kicker">{t("Pages_Command_SiteImages_ListKicker")}</span>
-            <h2>{groupLabel}</h2>
+        <section className="command-panel">
+          <header className="command-panel__header media-admin-panel-header">
+            <div>
+              <span className="kicker">{t("Pages_Command_SiteImages_ListKicker")}</span>
+              <h2>{groupLabel}</h2>
+            </div>
             <StatusBadge>
               {formatResource(
                 t(
@@ -144,15 +156,15 @@ export function Component() {
               )}
             </StatusBadge>
           </header>
-          <div className="site-image-settings-grid">
+          <div className="site-images-grid">
             {query.data.map((setting) => {
               const selected = selectedAssets[setting.key];
               const imagePath = selected?.imagePath || setting.imagePath;
               const isSaving = save.isPending && save.variables?.setting.key === setting.key;
               return (
-                <article key={setting.key} className="site-image-setting-card">
+                <article key={setting.key} className="site-images-card">
                   <div
-                    className="site-image-setting-card__preview"
+                    className="site-images-card__preview"
                     role="img"
                     aria-label={setting.title}
                     style={
@@ -163,14 +175,14 @@ export function Component() {
                         : undefined
                     }
                   />
-                  <div className="site-image-setting-card__body">
+                  <div className="site-images-card__body">
                     <div>
                       <span className="kicker">{setting.key}</span>
                       <h3>{setting.title}</h3>
                       {setting.description && <p>{setting.description}</p>}
                     </div>
                     <section
-                      className="site-image-selection"
+                      className="site-images-selection"
                       aria-label={t("Components_GalleryImagePicker_Aria")}
                     >
                       <strong>{selected?.originalFileName || setting.title}</strong>
@@ -179,35 +191,31 @@ export function Component() {
                           ? t("Pages_Command_SiteImages_PendingSelection")
                           : t("Components_GalleryImagePicker_SelectedMeta")}
                       </span>
-                      <button
-                        className="button button--ghost button--small"
-                        type="button"
+                      <ActionButton
+                        variant="ghost"
+                        size="compact"
                         disabled={isSaving}
                         onClick={() => setPickerSetting(setting)}
                       >
                         {t(
-                          selected
+                          selected || setting.imageAssetFk
                             ? "Components_GalleryImagePicker_Change"
-                            : setting.imageAssetFk
-                              ? "Components_GalleryImagePicker_Change"
-                              : "Components_GalleryImagePicker_Select",
+                            : "Components_GalleryImagePicker_Select",
                         )}
-                      </button>
+                      </ActionButton>
                     </section>
-                    <div className="site-image-setting-card__actions">
-                      <button
-                        className="button button--primary"
-                        type="button"
+                    <div className="site-images-actions">
+                      <ActionButton
+                        variant="primary"
                         disabled={!selected || isSaving}
                         onClick={() => selected && save.mutate({ setting, asset: selected })}
                       >
                         {isSaving
                           ? t("Pages_Command_SiteImages_Saving")
                           : t("Pages_Command_SiteImages_Save")}
-                      </button>
-                      <button
-                        className="button button--ghost"
-                        type="button"
+                      </ActionButton>
+                      <ActionButton
+                        variant="ghost"
                         disabled={!selected || isSaving}
                         onClick={() =>
                           setSelectedAssets((current) => {
@@ -218,7 +226,7 @@ export function Component() {
                         }
                       >
                         {t("Pages_Command_SiteImages_Reset")}
-                      </button>
+                      </ActionButton>
                     </div>
                   </div>
                 </article>
@@ -226,11 +234,11 @@ export function Component() {
             })}
           </div>
           {dirty && (
-            <footer className="site-image-settings-list__footer">
+            <footer className="site-images-footer">
               <span>{t("Pages_Command_SiteImages_Unsaved")}</span>
-              <button className="button button--ghost" type="button" onClick={resetPending}>
+              <ActionButton variant="ghost" onClick={resetPending}>
                 {t("Pages_Command_SiteImages_ResetAll")}
-              </button>
+              </ActionButton>
             </footer>
           )}
         </section>
@@ -251,6 +259,16 @@ export function Component() {
           setSuccess(undefined);
         }}
       />
-    </section>
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        title={t("Server_Alerts_Leave_Title")}
+        description={t("React_UnsavedChanges")}
+        cancelLabel={t("Server_Change_KeepEditing")}
+        confirmLabel={t("Pages_Command_Content_PageEditorLeave_Dismiss")}
+        initialFocus="dismiss"
+        onCancel={leaveGuard.stay}
+        onConfirm={leaveGuard.proceed}
+      />
+    </PageStack>
   );
 }

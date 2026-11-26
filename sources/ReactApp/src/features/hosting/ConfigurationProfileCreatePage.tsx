@@ -4,7 +4,11 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
-import { PageHeader, StatePanel, useUnsavedChanges } from "@/components/primitives";
+import { ActionButton } from "@/components/ActionControl";
+import { SelectField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
+import { PageHeader, useUnsavedChanges } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
 import { getHostingPermissions } from "@/features/hosting/authorization";
 import {
   ConfigurationProfileFields,
@@ -113,210 +117,187 @@ export function ConfigurationProfileCreatePage() {
         title={t("Hosting_ConfigurationProfiles_CreateTitle")}
         description={t("Hosting_ConfigurationProfiles_CreateDescription")}
       />
-      {!permissions.accessConfigurationProfiles || !permissions.createConfigurationProfiles ? (
-        <StatePanel kind="forbidden" title={t("Hosting_ConfigurationProfiles_ViewOnlyTitle")}>
-          {t("Hosting_ConfigurationProfiles_ViewOnlyDescription")}
-        </StatePanel>
-      ) : authLoading || catalog.isLoading ? (
-        <StatePanel kind="loading">{t("Hosting_ConfigurationProfiles_Loading")}</StatePanel>
-      ) : catalog.error ? (
-        <StatePanel
-          kind="error"
-          title={t("Hosting_ConfigurationProfiles_LoadError").replace(": {0}", "")}
-          action={
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => void catalog.refetch()}
-            >
-              {t("Hosting_ConfigurationProfiles_Retry")}
-            </button>
-          }
-        >
-          {catalog.error.message}
-        </StatePanel>
-      ) : !catalog.data?.canCreate ? (
-        <StatePanel kind="forbidden" title={t("Hosting_ConfigurationProfiles_ViewOnlyTitle")}>
-          {t("Hosting_ConfigurationProfiles_ViewOnlyDescription")}
-        </StatePanel>
-      ) : games.length === 0 ? (
-        <StatePanel kind="empty" title={t("Hosting_ConfigurationProfiles_NoGamesTitle")}>
-          {t("Hosting_ConfigurationProfiles_NoGamesDescription")}
-        </StatePanel>
-      ) : (
-        <>
-          <nav
-            className="next-hosting-profile-stepper"
-            aria-label={t("React_ConfigurationProfiles_WizardProgress")}
+      <PageStack>
+        {!permissions.accessConfigurationProfiles || !permissions.createConfigurationProfiles ? (
+          <ForbiddenState title={t("Hosting_ConfigurationProfiles_ViewOnlyTitle")}>
+            {t("Hosting_ConfigurationProfiles_ViewOnlyDescription")}
+          </ForbiddenState>
+        ) : authLoading || catalog.isLoading ? (
+          <LoadingState label={t("Hosting_ConfigurationProfiles_Loading")} />
+        ) : catalog.error ? (
+          <ErrorState
+            title={t("Hosting_ConfigurationProfiles_LoadError").replace(": {0}", "")}
+            onRetry={() => void catalog.refetch()}
           >
-            {steps.map((key, index) => (
-              <button
-                key={key}
-                type="button"
-                aria-current={step === index ? "step" : undefined}
-                disabled={index > step}
-                onClick={() => setStep(index)}
-              >
-                <span>{index + 1}</span>
-                {t(key)}
-              </button>
-            ))}
-          </nav>
-          {create.error && (
-            <StatePanel
-              kind="error"
-              title={t("Hosting_ConfigurationProfiles_OperationFailed").replace(": {0}", "")}
+            {catalog.error.message}
+          </ErrorState>
+        ) : !catalog.data?.canCreate ? (
+          <ForbiddenState title={t("Hosting_ConfigurationProfiles_ViewOnlyTitle")}>
+            {t("Hosting_ConfigurationProfiles_ViewOnlyDescription")}
+          </ForbiddenState>
+        ) : games.length === 0 ? (
+          <EmptyState title={t("Hosting_ConfigurationProfiles_NoGamesTitle")}>
+            {t("Hosting_ConfigurationProfiles_NoGamesDescription")}
+          </EmptyState>
+        ) : (
+          <>
+            <nav
+              className="next-hosting-profile-stepper"
+              aria-label={t("React_ConfigurationProfiles_WizardProgress")}
             >
-              {create.error.message}
-            </StatePanel>
-          )}
-          <section className="next-hosting-panel next-hosting-profile-wizard">
-            {step === 0 && (
-              <div className="next-hosting-profile-wizard-step">
-                <div>
-                  <span className="kicker">{t("React_ConfigurationProfiles_StepOne")}</span>
-                  <h2>{t("React_ConfigurationProfiles_WizardBasics")}</h2>
-                  <p>{t("React_ConfigurationProfiles_BasicsDescription")}</p>
-                </div>
-                <div className="next-hosting-profile-meta">
-                  <label className="field" htmlFor="configuration-profile-title">
-                    <span>{t("Hosting_ConfigurationProfiles_ProfileTitle")}</span>
-                    <input
-                      id="configuration-profile-title"
-                      aria-label={t("Hosting_ConfigurationProfiles_ProfileTitle")}
+              {steps.map((key, index) => (
+                <ActionButton
+                  key={key}
+                  variant="ghost"
+                  aria-current={step === index ? "step" : undefined}
+                  disabled={index > step}
+                  onClick={() => setStep(index)}
+                >
+                  <span>{index + 1}</span>
+                  {t(key)}
+                </ActionButton>
+              ))}
+            </nav>
+            {create.error && (
+              <ErrorState
+                title={t("Hosting_ConfigurationProfiles_OperationFailed").replace(": {0}", "")}
+                onRetry={() => create.mutate()}
+              >
+                {create.error.message}
+              </ErrorState>
+            )}
+            <section className="next-hosting-panel next-hosting-profile-wizard">
+              {step === 0 && (
+                <div className="next-hosting-profile-wizard-step">
+                  <div>
+                    <span className="kicker">{t("React_ConfigurationProfiles_StepOne")}</span>
+                    <h2>{t("React_ConfigurationProfiles_WizardBasics")}</h2>
+                    <p>{t("React_ConfigurationProfiles_BasicsDescription")}</p>
+                  </div>
+                  <div className="next-hosting-profile-meta">
+                    <TextField
+                      label={t("Hosting_ConfigurationProfiles_ProfileTitle")}
+                      hint={t("Hosting_ConfigurationProfiles_ProfileTitleHint")}
                       value={title}
                       maxLength={256}
                       required
                       placeholder={t("Hosting_ConfigurationProfiles_ProfileTitlePlaceholder")}
                       onChange={(event) => setTitle(event.target.value)}
                     />
-                    <small>{t("Hosting_ConfigurationProfiles_ProfileTitleHint")}</small>
-                  </label>
-                  <label className="field" htmlFor="configuration-profile-game">
-                    <span>{t("Hosting_ConfigurationProfiles_Game")}</span>
-                    <select
-                      id="configuration-profile-game"
-                      aria-label={t("Hosting_ConfigurationProfiles_Game")}
+                    <SelectField
+                      label={t("Hosting_ConfigurationProfiles_Game")}
+                      hint={t("Hosting_ConfigurationProfiles_GameHint")}
                       value={activeGame}
                       onChange={(event) => changeGame(event.target.value)}
+                      options={games.map((item) => ({
+                        value: item.gameIdentifier,
+                        label: gameLabel(item.gameIdentifier),
+                      }))}
+                    />
+                  </div>
+                </div>
+              )}
+              {step === 1 && (
+                <div className="next-hosting-profile-wizard-step">
+                  <div>
+                    <span className="kicker">{t("React_ConfigurationProfiles_StepTwo")}</span>
+                    <h2>{t("React_ConfigurationProfiles_WizardConfiguration")}</h2>
+                    <p>
+                      {formatResource(
+                        t("Hosting_ConfigurationProfiles_SettingCount"),
+                        definitions.length,
+                      )}
+                    </p>
+                  </div>
+                  <ConfigurationProfileFields
+                    gameIdentifier={activeGame}
+                    definitions={definitions}
+                    values={effectiveDraft}
+                    issues={issues}
+                    onChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}
+                  />
+                </div>
+              )}
+              {step === 2 && (
+                <div className="next-hosting-profile-wizard-step">
+                  <div>
+                    <span className="kicker">{t("React_ConfigurationProfiles_StepThree")}</span>
+                    <h2>{t("React_ConfigurationProfiles_WizardReview")}</h2>
+                    <p>{t("React_ConfigurationProfiles_ReviewDescription")}</p>
+                  </div>
+                  <dl className="next-hosting-profile-review-meta">
+                    <div>
+                      <dt>{t("Hosting_ConfigurationProfiles_ProfileTitle")}</dt>
+                      <dd>{title.trim()}</dd>
+                    </div>
+                    <div>
+                      <dt>{t("Hosting_ConfigurationProfiles_Game")}</dt>
+                      <dd>{gameLabel(activeGame)}</dd>
+                    </div>
+                  </dl>
+                  <div className="next-hosting-profile-review-values">
+                    {definitions.map((definition) => {
+                      const value = effectiveDraft[definition.key] ?? "";
+                      return (
+                        <div key={definition.key}>
+                          <span>
+                            <strong>{definition.displayName}</strong>
+                            <small>{definition.targetPath}</small>
+                          </span>
+                          <span>
+                            {definition.sensitive && value
+                              ? t("React_ConfigurationProfiles_Configured")
+                              : value || t("Hosting_ConfigurationProfiles_NotSet")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <footer className="next-hosting-profile-wizard-actions">
+                <span>
+                  {formatResource(
+                    t("React_ConfigurationProfiles_StepCount"),
+                    step + 1,
+                    steps.length,
+                  )}
+                </span>
+                <div>
+                  {step > 0 && (
+                    <ActionButton variant="ghost" onClick={() => setStep(step - 1)}>
+                      {t("React_ConfigurationProfiles_Previous")}
+                    </ActionButton>
+                  )}
+                  {step === 0 ? (
+                    <ActionButton
+                      variant="gold"
+                      disabled={!title.trim() || !activeGame}
+                      onClick={() => setStep(1)}
                     >
-                      {games.map((item) => (
-                        <option key={item.gameIdentifier} value={item.gameIdentifier}>
-                          {gameLabel(item.gameIdentifier)}
-                        </option>
-                      ))}
-                    </select>
-                    <small>{t("Hosting_ConfigurationProfiles_GameHint")}</small>
-                  </label>
+                      {t("React_ConfigurationProfiles_Next")}
+                    </ActionButton>
+                  ) : step === 1 ? (
+                    <ActionButton variant="gold" onClick={validateSettings}>
+                      {t("React_ConfigurationProfiles_ReviewProfile")}
+                    </ActionButton>
+                  ) : (
+                    <ActionButton
+                      variant="gold"
+                      disabled={create.isPending}
+                      onClick={() => create.mutate()}
+                    >
+                      {create.isPending
+                        ? t("Hosting_ConfigurationProfiles_Creating")
+                        : t("Hosting_ConfigurationProfiles_Create")}
+                    </ActionButton>
+                  )}
                 </div>
-              </div>
-            )}
-            {step === 1 && (
-              <div className="next-hosting-profile-wizard-step">
-                <div>
-                  <span className="kicker">{t("React_ConfigurationProfiles_StepTwo")}</span>
-                  <h2>{t("React_ConfigurationProfiles_WizardConfiguration")}</h2>
-                  <p>
-                    {formatResource(
-                      t("Hosting_ConfigurationProfiles_SettingCount"),
-                      definitions.length,
-                    )}
-                  </p>
-                </div>
-                <ConfigurationProfileFields
-                  gameIdentifier={activeGame}
-                  definitions={definitions}
-                  values={effectiveDraft}
-                  issues={issues}
-                  onChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}
-                />
-              </div>
-            )}
-            {step === 2 && (
-              <div className="next-hosting-profile-wizard-step">
-                <div>
-                  <span className="kicker">{t("React_ConfigurationProfiles_StepThree")}</span>
-                  <h2>{t("React_ConfigurationProfiles_WizardReview")}</h2>
-                  <p>{t("React_ConfigurationProfiles_ReviewDescription")}</p>
-                </div>
-                <dl className="next-hosting-profile-review-meta">
-                  <div>
-                    <dt>{t("Hosting_ConfigurationProfiles_ProfileTitle")}</dt>
-                    <dd>{title.trim()}</dd>
-                  </div>
-                  <div>
-                    <dt>{t("Hosting_ConfigurationProfiles_Game")}</dt>
-                    <dd>{gameLabel(activeGame)}</dd>
-                  </div>
-                </dl>
-                <div className="next-hosting-profile-review-values">
-                  {definitions.map((definition) => {
-                    const value = effectiveDraft[definition.key] ?? "";
-                    return (
-                      <div key={definition.key}>
-                        <span>
-                          <strong>{definition.displayName}</strong>
-                          <small>{definition.targetPath}</small>
-                        </span>
-                        <span>
-                          {definition.sensitive && value
-                            ? t("React_ConfigurationProfiles_Configured")
-                            : value || t("Hosting_ConfigurationProfiles_NotSet")}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            <footer className="next-hosting-profile-wizard-actions">
-              <span>
-                {formatResource(t("React_ConfigurationProfiles_StepCount"), step + 1, steps.length)}
-              </span>
-              <div>
-                {step > 0 && (
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    onClick={() => setStep(step - 1)}
-                  >
-                    {t("React_ConfigurationProfiles_Previous")}
-                  </button>
-                )}
-                {step === 0 ? (
-                  <button
-                    className="button button--primary"
-                    type="button"
-                    disabled={!title.trim() || !activeGame}
-                    onClick={() => setStep(1)}
-                  >
-                    {t("React_ConfigurationProfiles_Next")}
-                  </button>
-                ) : step === 1 ? (
-                  <button
-                    className="button button--primary"
-                    type="button"
-                    onClick={validateSettings}
-                  >
-                    {t("React_ConfigurationProfiles_ReviewProfile")}
-                  </button>
-                ) : (
-                  <button
-                    className="button button--primary"
-                    type="button"
-                    disabled={create.isPending}
-                    onClick={() => create.mutate()}
-                  >
-                    {create.isPending
-                      ? t("Hosting_ConfigurationProfiles_Creating")
-                      : t("Hosting_ConfigurationProfiles_Create")}
-                  </button>
-                )}
-              </div>
-            </footer>
-          </section>
-        </>
-      )}
+              </footer>
+            </section>
+          </>
+        )}
+      </PageStack>
     </div>
   );
 }

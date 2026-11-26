@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using X39.UnitedTacticalForces.Api.Authentication;
@@ -23,6 +24,8 @@ using X39.UnitedTacticalForces.Api.OpenApi;
 using X39.UnitedTacticalForces.Api.Services;
 using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.Media;
+using X39.UnitedTacticalForces.Api.Services.Notifications;
+using X39.UnitedTacticalForces.Api.Services.ServerMetrics;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.Util;
@@ -97,7 +100,9 @@ internal class Program
 
         app.UseHttpsRedirection();
 
-        app.UseWebSockets();
+        // Ping idle sockets every 25 seconds so an idle fleet stream survives a reverse proxy that closes quiet
+        // connections (nginx defaults to 60 seconds). The interval also applies to the event update streams.
+        app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(25) });
         app.UseRouting();
         app.UseRateLimiter();
         app.UseAuthentication();
@@ -164,6 +169,15 @@ internal class Program
             .ConfigureAwait(false);
         if (app.Environment.IsDevelopment())
             await DebugDemoDataSeeder.SeedAsync(dbContext, mediaAssetService).ConfigureAwait(false);
+        if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>(UatFleetScenarioSeeder.ConfigurationKey))
+        {
+            await UatFleetScenarioSeeder.SeedAsync(
+                    dbContext,
+                    GetAuthorizationBypassUserId(app.Configuration),
+                    scope.ServiceProvider.GetRequiredService<Services.GameServerDefinition.IGameServerDefinitionCatalog>(),
+                    scope.ServiceProvider.GetRequiredService<Services.GameServerSecrets.IGameServerSecretService>())
+                .ConfigureAwait(false);
+        }
         await HostingFinanceClaimSeeder.SeedAsync(dbContext).ConfigureAwait(false);
         await Services.GameServerDefinition.GameContentSeeder.SeedAsync(dbContext).ConfigureAwait(false);
         await scope.ServiceProvider.GetRequiredService<Services.GameServerSecrets.IGameServerSecretService>()
@@ -200,6 +214,17 @@ internal class Program
             }
         );
         builder.Services.AddAttributedServicesFromAssemblyOf<Program>(builder.Configuration);
+        if (builder.Environment.IsDevelopment()
+            && builder.Configuration.GetValue<bool>(EmulatedHetznerRuntimeProvider.ConfigurationKey))
+        {
+            // Manual UAT only: swap the real Hetzner provider for the in-memory emulation.
+            builder.Services.RemoveAll<IRuntimeProvider>();
+            builder.Services.AddSingleton<IRuntimeProvider, EmulatedHetznerRuntimeProvider>();
+            builder.Services.RemoveAll<IDeploymentHealthReconciler>();
+            builder.Services.AddScoped<IDeploymentHealthReconciler, EmulatedDeploymentHealthReconciler>();
+        }
+        // Manual UAT only: an emulated worker feeds the seeded metrics server through the real worker channel.
+        UatWorkerChannelEmulator.AddTo(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.Configure<LifecycleWorkerOptions>(
             builder.Configuration.GetSection(LifecycleWorkerOptions.SectionName));
         builder.Services.Configure<WorkerProvisioningOptions>(
@@ -210,14 +235,37 @@ internal class Program
             builder.Configuration.GetSection(ProviderReconciliationOptions.SectionName));
         builder.Services.Configure<HostingFinanceOptions>(
             builder.Configuration.GetSection(HostingFinanceOptions.SectionName));
+        builder.Services.Configure<CostAlertOptions>(
+            builder.Configuration.GetSection(CostAlertOptions.SectionName));
+        builder.Services.Configure<ServerMetricsOptions>(
+            builder.Configuration.GetSection(ServerMetricsOptions.SectionName));
+        builder.Services.Configure<Services.ServerAutomation.ServerAutomationOptions>(
+            builder.Configuration.GetSection(Services.ServerAutomation.ServerAutomationOptions.SectionName));
+        builder.Services.Configure<EmailOptions>(
+            builder.Configuration.GetSection(EmailOptions.SectionName));
         builder.Services.Configure<Services.StorageDemand.StorageDemandOptions>(
             builder.Configuration.GetSection(Services.StorageDemand.StorageDemandOptions.SectionName));
+        builder.Services.AddSingleton<FleetChangeNotifier>();
+        builder.Services.AddSingleton<IFleetChangeNotifier>(
+            serviceProvider => serviceProvider.GetRequiredService<FleetChangeNotifier>());
+        builder.Services.AddHostedService<FleetChangeNotifier>(
+            serviceProvider => serviceProvider.GetRequiredService<FleetChangeNotifier>());
+        builder.Services.AddSingleton<FleetChangeInterceptor>();
+        builder.Services.AddSingleton<WorkerChannelSignal>();
+        builder.Services.AddSingleton<IWorkerChannelSignal>(
+            serviceProvider => serviceProvider.GetRequiredService<WorkerChannelSignal>());
+        builder.Services.AddHostedService<WorkerChannelSignal>(
+            serviceProvider => serviceProvider.GetRequiredService<WorkerChannelSignal>());
+        builder.Services.AddSingleton<WorkerChannelSignalInterceptor>();
         builder.Services.AddDbContextFactory<DatabaseContext>(
-            options =>
+            (serviceProvider, options) =>
             {
                 options.UseNpgsql(
                     builder.Configuration.GetConnectionString("database"),
                     npgsqlOptions => npgsqlOptions.UseNodaTime());
+                options.AddInterceptors(
+                    serviceProvider.GetRequiredService<FleetChangeInterceptor>(),
+                    serviceProvider.GetRequiredService<WorkerChannelSignalInterceptor>());
                 if (builder.Environment.IsDevelopment())
                 {
                     options.EnableDetailedErrors();

@@ -9,6 +9,7 @@
         <AssemblyName>X39.UnitedTacticalForces.Api</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="MailKit" Version="5.0.0" />
         <PackageReference Include="NodaTime" Version="3.3.2" />
         <PackageReference Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.2" />

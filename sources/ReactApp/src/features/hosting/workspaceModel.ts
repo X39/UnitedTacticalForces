@@ -1,3 +1,4 @@
+import { actionCostCategory } from "@/features/hosting/actionVocabulary";
 import type {
   GameConfigurationEntry,
   HostingFile,
@@ -217,6 +218,38 @@ export function validateConfigurationEntry(
   return undefined;
 }
 
+/**
+ * Chooses the one cost-stop action the workspace offers wherever it needs to stop provider cost.
+ *
+ * The workspace header, the failure panel, the progress strip retry mode and the Machine section all pick their
+ * cost-stop through this function so they can never disagree. Collect-logs and every action whose cost category
+ * is not "stops" are ignored. Among the remaining actions the order of preference is: a usable (enabled or
+ * pending) graceful stop, a usable destructive stop, a disabled graceful stop, a disabled destructive stop.
+ * The disabled fallbacks let a caller render a disabled button with its reason instead of no button at all.
+ *
+ * @param actions The actions the API projected for the server.
+ * @returns The preferred cost-stop action, or undefined when no action stops cost.
+ */
+export function costStopAction(actions: readonly ServerAction[]): ServerAction | undefined {
+  const stoppers = actions.filter(
+    (action) => action.id !== "collect-logs" && actionCostCategory(action) === "stops",
+  );
+  const usable = stoppers.filter((action) => action.enabled || action.pending);
+  return (
+    usable.find((action) => !action.dangerous) ??
+    usable.find((action) => action.dangerous) ??
+    stoppers.find((action) => !action.dangerous) ??
+    stoppers.find((action) => action.dangerous)
+  );
+}
+
+/**
+ * Chooses the action the workspace offers as the next step.
+ *
+ * While provider cost may remain, an enabled graceful cost-stop (a non-dangerous action that stops cost) wins
+ * over the destructive one, so the primary button is never a destructive action when a graceful stop exists.
+ * Otherwise start, stop and the lowest-order action are preferred; collect-logs is never primary.
+ */
 export function primaryServerAction(
   actions: ServerAction[],
   possibleCost: boolean,
@@ -225,9 +258,7 @@ export function primaryServerAction(
     (action) => action.id !== "collect-logs" && (action.enabled || action.pending),
   );
   if (possibleCost) {
-    const costStop = candidates.find(
-      (action) => action.dangerous && action.costImpact.toLowerCase().includes("stopscost"),
-    );
+    const costStop = costStopAction(candidates);
     if (costStop) return costStop;
   }
   return (

@@ -1,0 +1,132 @@
+/*
+ * Styles for the shared Breadcrumbs and SectionNavigation components (src/components).
+ *
+ * Both components import this file from this directory on purpose, so tests/styles/server-style-guard.test.ts covers
+ * their styles too. The file consumes --utf-* tokens only; the only exception is --gold for the current section
+ * indicator. The only allowed literals are a 1px border width and the 520px and 800px media breakpoints; the style
+ * guard fails on anything else. Section links wrap onto further rows and the list has no horizontal overflow rule.
+ */
+
+/* Breadcrumbs */
+.breadcrumbs {
+  min-width: 0;
+  margin-bottom: var(--utf-space-sm);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  line-height: var(--utf-leading-body);
+}
+
+.breadcrumbs__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breadcrumbs__item {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: var(--utf-space-xs);
+  overflow-wrap: anywhere;
+}
+
+.breadcrumbs__link {
+  color: var(--utf-text-muted);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.breadcrumbs__link:hover,
+.breadcrumbs__link:focus-visible {
+  text-decoration: underline;
+}
+
+.breadcrumbs__link:focus-visible {
+  border-radius: var(--utf-radius-small);
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.breadcrumbs__current {
+  color: var(--utf-text);
+  overflow-wrap: anywhere;
+}
+
+.breadcrumbs__separator {
+  flex: none;
+  color: var(--utf-text-muted);
+}
+
+/* Section navigation */
+.section-navigation {
+  margin-bottom: var(--utf-space-lg);
+  border-bottom: 1px solid var(--utf-border-divider);
+}
+
+.section-navigation__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.section-navigation__link {
+  display: inline-flex;
+  min-height: var(--utf-control-height);
+  box-sizing: border-box;
+  align-items: center;
+  padding-inline: var(--utf-space-md);
+  border-bottom: var(--utf-indicator-width) solid transparent;
+  background: transparent;
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    color var(--utf-motion-fast),
+    background-color var(--utf-motion-fast);
+}
+
+.section-navigation__link:hover {
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text);
+}
+
+.section-navigation__link[aria-current="page"] {
+  border-bottom-color: var(--gold);
+  color: var(--utf-text);
+}
+
+.section-navigation__link:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+@media (max-width: 800px) {
+  .section-navigation__link {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .section-navigation__item {
+    flex: 1 1 auto;
+  }
+
+  .section-navigation__link {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}

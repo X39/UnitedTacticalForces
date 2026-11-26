@@ -2,10 +2,12 @@ import {
   configurationContribution,
   configurationContributionField,
 } from "./implementations/registry";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
+import { ActionButton } from "@/components/ActionControl";
+import { CheckboxField, SelectField, TextAreaField, TextField } from "@/components/FormFields";
 import type { ConfigurationValidationIssue } from "@/features/hosting/model";
 import type { ConfigurationDefinition } from "@/features/hosting/types";
 
@@ -20,7 +22,7 @@ const validationKeys: Record<ConfigurationValidationIssue["code"], TranslationKe
   selection: "Hosting_ConfigurationProfiles_ValidationSelection",
 };
 
-export function configurationValidationMessage(
+function configurationValidationMessage(
   issue: ConfigurationValidationIssue,
   translate: Translate,
 ): string {
@@ -47,18 +49,18 @@ export function gameLabel(identifier: string): string {
 function ConfigurationBooleanField({
   id,
   label,
+  description,
   value,
   required,
-  invalid,
-  describedBy,
+  error,
   onChange,
 }: {
   id: string;
   label: string;
+  description: ReactNode;
   value: string;
   required: boolean;
-  invalid: boolean;
-  describedBy: string;
+  error: string | undefined;
   onChange(value: string): void;
 }) {
   const { t } = useTranslation();
@@ -70,27 +72,24 @@ function ConfigurationBooleanField({
   }, [isUnset]);
 
   return (
-    <label className="next-hosting-configuration-toggle" htmlFor={id}>
-      <input
-        ref={input}
-        id={id}
-        type="checkbox"
-        required={required}
-        checked={value === "true"}
-        aria-label={label}
-        aria-checked={isUnset ? "mixed" : value === "true"}
-        aria-invalid={invalid}
-        aria-describedby={describedBy}
-        onChange={(event) => onChange(isUnset ? "false" : event.target.checked ? "true" : "false")}
-      />
-      <span>
-        {isUnset
+    <CheckboxField
+      ref={input}
+      id={id}
+      label={
+        isUnset
           ? t("Hosting_ConfigurationProfiles_NotSet")
           : value === "true"
             ? t("Hosting_ConfigurationProfiles_Enabled")
-            : t("Hosting_ConfigurationProfiles_Disabled")}
-      </span>
-    </label>
+            : t("Hosting_ConfigurationProfiles_Disabled")
+      }
+      hint={description}
+      error={error}
+      required={required}
+      checked={value === "true"}
+      aria-label={label}
+      aria-checked={isUnset ? "mixed" : value === "true"}
+      onChange={(event) => onChange(isUnset ? "false" : event.target.checked ? "true" : "false")}
+    />
   );
 }
 
@@ -172,27 +171,48 @@ export function ConfigurationProfileFields({
                     configuredSensitiveKeys.includes(definition.key) &&
                     !clearedKeys.includes(definition.key);
                   const describedBy = issue ? `${descriptionId} ${errorId}` : descriptionId;
-                  const common = {
-                    id,
-                    required: definition.required,
-                    "aria-invalid": Boolean(issue),
-                    "aria-describedby": describedBy,
-                  } as const;
-
-                  return (
-                    <div className="field next-hosting-configuration-field" key={definition.key}>
-                      <div className="next-hosting-configuration-field-heading">
-                        <label htmlFor={id}>{definition.displayName}</label>
-                        <span>
-                          {definition.required && (
-                            <strong>{t("Hosting_ConfigurationProfiles_Required")}</strong>
-                          )}
-                          {definition.sensitive && (
-                            <strong>{t("Hosting_ConfigurationProfiles_Sensitive")}</strong>
-                          )}
-                        </span>
+                  const errorMessage = issue ? configurationValidationMessage(issue, t) : undefined;
+                  const description = (
+                    <>
+                      {definition.description}
+                      {definition.sensitive && (
+                        <>
+                          {" "}
+                          <strong>{t("Hosting_ConfigurationProfiles_Sensitive")}</strong>
+                        </>
+                      )}
+                      {sensitiveConfigured && ` ${t("React_ConfigurationProfiles_Configured")}.`}
+                    </>
+                  );
+                  const clearControl = !definition.required &&
+                    (value !== "" || sensitiveConfigured) && (
+                      <div className="next-hosting-configuration-field-meta">
+                        <ActionButton
+                          variant="ghost"
+                          size="compact"
+                          onClick={() =>
+                            onClear ? onClear(definition.key) : onChange(definition.key, "")
+                          }
+                        >
+                          {t("Hosting_ConfigurationProfiles_ClearValue")}
+                        </ActionButton>
                       </div>
-                      {ContributionField ? (
+                    );
+
+                  if (ContributionField)
+                    return (
+                      <div className="field next-hosting-configuration-field" key={definition.key}>
+                        <div className="next-hosting-configuration-field-heading">
+                          <label htmlFor={id}>{definition.displayName}</label>
+                          <span>
+                            {definition.required && (
+                              <strong>{t("Hosting_ConfigurationProfiles_Required")}</strong>
+                            )}
+                            {definition.sensitive && (
+                              <strong>{t("Hosting_ConfigurationProfiles_Sensitive")}</strong>
+                            )}
+                          </span>
+                        </div>
                         <ContributionField
                           allowUnset
                           id={id}
@@ -202,58 +222,80 @@ export function ConfigurationProfileFields({
                           describedBy={describedBy}
                           onChange={(next) => onChange(definition.key, next)}
                         />
-                      ) : kind === "boolean" ? (
+                        <div className="next-hosting-configuration-field-meta">
+                          <small id={descriptionId}>
+                            {definition.description}
+                            {sensitiveConfigured &&
+                              ` ${t("React_ConfigurationProfiles_Configured")}.`}
+                          </small>
+                        </div>
+                        {clearControl}
+                        {errorMessage && (
+                          <small className="next-hosting-field-error" id={errorId} role="alert">
+                            {errorMessage}
+                          </small>
+                        )}
+                      </div>
+                    );
+
+                  return (
+                    <div className="next-hosting-configuration-field" key={definition.key}>
+                      {kind === "boolean" ? (
                         <ConfigurationBooleanField
                           id={id}
                           label={definition.displayName}
+                          description={description}
                           value={value}
                           required={definition.required}
-                          invalid={Boolean(issue)}
-                          describedBy={describedBy}
+                          error={errorMessage}
                           onChange={(nextValue) => onChange(definition.key, nextValue)}
                         />
                       ) : choices.length > 0 || (definition.allowedValues?.length ?? 0) > 0 ? (
-                        <select
-                          {...common}
+                        <SelectField
+                          id={id}
+                          label={definition.displayName}
+                          hint={description}
+                          error={errorMessage}
+                          required={definition.required}
                           value={value}
                           onChange={(event) => onChange(definition.key, event.target.value)}
-                        >
-                          {!definition.required && (
-                            <option value="">{t("Hosting_ConfigurationProfiles_NotSet")}</option>
-                          )}
-                          {choices.map((option) => {
-                            const optionValue =
-                              typeof option.value === "string"
-                                ? option.value
-                                : JSON.stringify(option.value);
-                            return (
-                              <option
-                                key={optionValue}
-                                value={optionValue}
-                                title={option.description ?? undefined}
-                              >
-                                {option.label}
-                              </option>
-                            );
-                          })}
-                          {choices.length === 0 &&
-                            (definition.allowedValues ?? []).map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                        </select>
+                          options={[
+                            ...(definition.required
+                              ? []
+                              : [{ value: "", label: t("Hosting_ConfigurationProfiles_NotSet") }]),
+                            ...(choices.length > 0
+                              ? choices.map((option) => {
+                                  const optionValue =
+                                    typeof option.value === "string"
+                                      ? option.value
+                                      : JSON.stringify(option.value);
+                                  return { value: optionValue, label: option.label };
+                                })
+                              : (definition.allowedValues ?? []).map((option) => ({
+                                  value: option,
+                                  label: option,
+                                }))),
+                          ]}
+                        />
                       ) : kind === "stringarray" ? (
-                        <textarea
-                          {...common}
+                        <TextAreaField
+                          id={id}
+                          label={definition.displayName}
+                          hint={description}
+                          error={errorMessage}
+                          required={definition.required}
                           rows={3}
                           value={value}
                           placeholder={t("Hosting_ConfigurationProfiles_EnterOnePerLine")}
                           onChange={(event) => onChange(definition.key, event.target.value)}
                         />
                       ) : (
-                        <input
-                          {...common}
+                        <TextField
+                          id={id}
+                          label={definition.displayName}
+                          hint={description}
+                          error={errorMessage}
+                          required={definition.required}
                           type={
                             definition.sensitive
                               ? "password"
@@ -275,29 +317,7 @@ export function ConfigurationProfileFields({
                           onChange={(event) => onChange(definition.key, event.target.value)}
                         />
                       )}
-                      <div className="next-hosting-configuration-field-meta">
-                        <small id={descriptionId}>
-                          {definition.description}
-                          {sensitiveConfigured &&
-                            ` ${t("React_ConfigurationProfiles_Configured")}.`}
-                        </small>
-                        {!definition.required && (value !== "" || sensitiveConfigured) && (
-                          <button
-                            className="button button--ghost button--small"
-                            type="button"
-                            onClick={() =>
-                              onClear ? onClear(definition.key) : onChange(definition.key, "")
-                            }
-                          >
-                            {t("Hosting_ConfigurationProfiles_ClearValue")}
-                          </button>
-                        )}
-                      </div>
-                      {issue && (
-                        <small className="next-hosting-field-error" id={errorId} role="alert">
-                          {configurationValidationMessage(issue, t)}
-                        </small>
-                      )}
+                      {clearControl}
                     </div>
                   );
                 })}

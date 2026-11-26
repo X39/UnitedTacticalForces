@@ -1,0 +1,18 @@
+{
+  "family": "shell",
+  "owner": "69-08",
+  "files": {
+    "src/components/CommunityLayout.tsx": {
+      "controls": 1,
+      "lookalikes": 0,
+      "literals": 0,
+      "reason": "layout sign-in dialog (UI-SPEC Control convergence allowance)"
+    },
+    "src/main.tsx": {
+      "controls": 0,
+      "lookalikes": 0,
+      "literals": 1,
+      "reason": "pre-i18n bootstrap error text that is shown before the locale files load"
+    }
+  }
+}

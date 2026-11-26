@@ -86,7 +86,8 @@ public sealed class CounterStrike2ProcessController(
                 deploymentId,
                 process.Id,
                 new DateTimeOffset(process.StartTime.ToUniversalTime(), TimeSpan.Zero),
-                paths.ExecutablePath);
+                paths.ExecutablePath,
+                ReadGamePort(arguments));
             await SaveIdentityAsync(identity, cancellationToken).ConfigureAwait(false);
             if (process.HasExited)
             {
@@ -149,6 +150,22 @@ public sealed class CounterStrike2ProcessController(
 
     public async Task<WorkerCommandExecutionResult> TerminateAsync(CancellationToken cancellationToken)
         => await StopAsync(true, TimeSpan.FromSeconds(30), 1, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Reads the game port that follows the <c>-port</c> start argument.</summary>
+    /// <param name="arguments">The start arguments of the game process.</param>
+    /// <returns>The port from 1 to 65535, or null when the arguments do not carry a valid one.</returns>
+    internal static int? ReadGamePort(IReadOnlyList<string> arguments)
+    {
+        for (var index = 0; index < arguments.Count - 1; index++)
+        {
+            if (arguments[index] == "-port"
+                && int.TryParse(arguments[index + 1], System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out var port)
+                && port is >= 1 and <= 65535)
+                return port;
+        }
+        return null;
+    }
 
     private async Task SaveIdentityAsync(CounterStrike2ProcessIdentity identity, CancellationToken cancellationToken)
     {

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockQuietCostReads } from "./support/costMocks";
 
 const configuration = {
   Api: { BaseUrl: "/api/" },
@@ -22,6 +23,7 @@ test.beforeEach(async ({ page }) => {
     throw new Error(`Unexpected API request: ${route.request().method()} ${route.request().url()}`);
   });
   await page.route("**/appsettings.json", (route) => route.fulfill({ json: configuration }));
+  await mockQuietCostReads(page);
   await page.route("**/Insignia-48px.png", (route) =>
     route.fulfill({ status: 200, contentType: "image/png", body: "" }),
   );
@@ -105,7 +107,7 @@ test("filters, updates, and safely deletes a Kassenbuch entry", async ({ page })
   await dialog.getByRole("button", { name: "Delete entry" }).click();
   await expect(page).toHaveURL(/\/next\/command\/verein\/kassenbuch$/);
   await expect(page.getByText("Kassenbuch entry deleted.")).toBeVisible();
-  await expect(page.getByText("No ledger entries match the current filters.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No ledger entries match" })).toBeVisible();
 });
 
 test("creates a Kassenbuch entry and preserves normalized money fields", async ({ page }) => {

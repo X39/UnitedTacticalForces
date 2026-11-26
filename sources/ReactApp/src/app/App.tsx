@@ -12,6 +12,7 @@ import { NotFoundPage } from "@/components/NotFoundPage";
 import { CommandCenterLayout } from "@/components/CommandCenterLayout";
 import { CommunityLayout } from "@/components/CommunityLayout";
 import { RouteErrorPage } from "@/components/RouteErrorPage";
+import { hostingRouteDefinitions } from "@/features/hosting/routes";
 
 const tacticalTheme: Theme = {
   ...webDarkTheme,
@@ -445,69 +446,13 @@ const commandRouteDefinitions: { manifestPattern: string; route: RouteObject }[]
       lazy: lazyComponent(() => import("@/features/admin/VereinSettingsPage")),
     },
   },
-  {
-    manifestPattern: "/command/servers",
+  ...hostingRouteDefinitions.map(({ manifestPattern, path, exportName }) => ({
+    manifestPattern,
     route: {
-      path: "servers",
-      lazy: lazyComponent(() => import("@/features/hosting"), "ServerFleetPage"),
+      path,
+      lazy: lazyComponent(() => import("@/features/hosting"), exportName),
     },
-  },
-  {
-    manifestPattern: "/command/servers/create",
-    route: {
-      path: "servers/create",
-      lazy: lazyComponent(() => import("@/features/hosting"), "CreateServerPage"),
-    },
-  },
-  {
-    manifestPattern: "/command/servers/{ServerId:guid}",
-    route: {
-      path: "servers/:serverId",
-      lazy: lazyComponent(() => import("@/features/hosting"), "ServerWorkspacePage"),
-    },
-  },
-  {
-    manifestPattern: "/command/configuration-profiles",
-    route: {
-      path: "configuration-profiles",
-      lazy: lazyComponent(() => import("@/features/hosting"), "ConfigurationProfilesPage"),
-    },
-  },
-  {
-    manifestPattern: "/command/configuration-profiles/create",
-    route: {
-      path: "configuration-profiles/create",
-      lazy: lazyComponent(() => import("@/features/hosting"), "ConfigurationProfileCreatePage"),
-    },
-  },
-  {
-    manifestPattern: "/command/configuration-profiles/{ProfileId:guid}",
-    route: {
-      path: "configuration-profiles/:profileId",
-      lazy: lazyComponent(() => import("@/features/hosting"), "ConfigurationProfileWorkspacePage"),
-    },
-  },
-  {
-    manifestPattern: "/command/hosting-finance",
-    route: {
-      path: "hosting-finance",
-      lazy: lazyComponent(() => import("@/features/hosting"), "HostingFinancePage"),
-    },
-  },
-  {
-    manifestPattern: "/command/hosting-finance/accounts/{CostOwnerId:guid}",
-    route: {
-      path: "hosting-finance/accounts/:costOwnerId",
-      lazy: lazyComponent(() => import("@/features/hosting"), "HostingFinanceAccountPage"),
-    },
-  },
-  {
-    manifestPattern: "/command/hosting-finance/settings",
-    route: {
-      path: "hosting-finance/settings",
-      lazy: lazyComponent(() => import("@/features/hosting"), "HostingFinanceSettingsPage"),
-    },
-  },
+  })),
 ];
 
 const commandAliasRouteDefinitions: {

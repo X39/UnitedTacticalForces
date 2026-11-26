@@ -2,11 +2,15 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using X39.UnitedTacticalForces.Database;
+using X39.UnitedTacticalForces.Database.Authority;
 using X39.UnitedTacticalForces.Database.Hosting;
+using X39.UnitedTacticalForces.Api.Authorization.Requirements;
 using X39.UnitedTacticalForces.Api.DTO;
+using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.Services.GameServerDefinition;
 using X39.UnitedTacticalForces.Api.Services.GameServerConfiguration;
 using X39.UnitedTacticalForces.Api.Services.HostingRuntime;
+using X39.UnitedTacticalForces.Api.Services.ServerAutomation;
 using X39.UnitedTacticalForces.Api.Services.StorageDemand;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using Microsoft.Extensions.Options;
@@ -28,8 +32,15 @@ internal sealed class GameServerProjectionService(
     ILogger<GameServerProjectionService> logger,
     IGameServerConfigurationService configurationService,
     IOptions<HostingFinanceOptions> financeOptions,
+    IServerAutomationProjector automationProjector,
     HostingControlPlaneState? controlPlane = null) : IGameServerProjectionService
 {
+    /// <summary>
+    /// Placeholder shown instead of an actor whose user is deleted or was not loaded. The React app mirrors this
+    /// literal as <c>hiddenActorName</c>.
+    /// </summary>
+    private const string HiddenActorName = "Hidden member";
+
     private readonly StorageDemandOptions _storageDemandOptions = storageDemandOptions.Value;
     public async Task<IReadOnlyCollection<GameServerCapabilityDto>> GetCapabilitiesAsync(
         ClaimsPrincipal principal,
@@ -184,7 +195,7 @@ internal sealed class GameServerProjectionService(
                     server.PrimaryKey,
                     Claims.ResourceBased.Server.View))
                 continue;
-            result.Add(await ProjectServerAsync(server, principal, cancellationToken).ConfigureAwait(false));
+            result.Add(await ProjectServerAsync(server, principal, false, cancellationToken).ConfigureAwait(false));
         }
         return result;
     }
@@ -204,7 +215,7 @@ internal sealed class GameServerProjectionService(
             .ConfigureAwait(false);
         return server is null
             ? null
-            : await ProjectServerAsync(server, principal, cancellationToken).ConfigureAwait(false);
+            : await ProjectServerAsync(server, principal, true, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyCollection<GameServerModPackOptionDto>> GetModPackOptionsAsync(
@@ -218,24 +229,33 @@ internal sealed class GameServerProjectionService(
                 Claims.ResourceBased.Server.View))
             return [];
 
-        var gameIdentifier = await dbContext.GameServers
+        var server = await dbContext.GameServers
             .AsNoTracking()
             .Where(q => q.PrimaryKey == gameServerId && !q.IsArchived)
-            .Select(q => q.GameIdentifier)
+            .Select(q => new { q.GameIdentifier, q.SelectedModPackDefinitionFk })
             .SingleOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (gameIdentifier is null)
+        if (server is null)
             return [];
 
+        var gameIdentifier = server.GameIdentifier;
+        var selectedId = server.SelectedModPackDefinitionFk;
         return await dbContext.ModPackDefinitions
             .AsNoTracking()
-            .Where(q => q.IsActive && q.GameIdentifier == gameIdentifier)
+            .Where(q => q.GameIdentifier == gameIdentifier && (q.IsActive || q.PrimaryKey == selectedId))
             .OrderBy(q => q.Title)
             .ThenBy(q => q.PrimaryKey)
             .Select(q => new GameServerModPackOptionDto
             {
                 PrimaryKey = q.PrimaryKey,
                 Title = q.Title,
+                IsAvailable = q.IsActive
+                              && dbContext.ModPackRevisions.Any(r => r.DefinitionFk == q.PrimaryKey && r.IsActive),
+                UnavailableReason = !q.IsActive
+                    ? ModPackAvailabilityReasons.Inactive
+                    : !dbContext.ModPackRevisions.Any(r => r.DefinitionFk == q.PrimaryKey && r.IsActive)
+                        ? ModPackAvailabilityReasons.NoActiveRevision
+                        : null,
             })
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -253,6 +273,10 @@ internal sealed class GameServerProjectionService(
             {
                 PrimaryKey = q.PrimaryKey,
                 Title = q.Title,
+                IsAvailable = dbContext.ModPackRevisions.Any(r => r.DefinitionFk == q.PrimaryKey && r.IsActive),
+                UnavailableReason = dbContext.ModPackRevisions.Any(r => r.DefinitionFk == q.PrimaryKey && r.IsActive)
+                    ? null
+                    : ModPackAvailabilityReasons.NoActiveRevision,
             })
             .ToArrayAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -264,6 +288,74 @@ internal sealed class GameServerProjectionService(
         if (!principal.TryGetUserId(out var userId))
             return [];
 
+        return await ProjectCostOwnerOptions(UsableCostOwners(principal, userId), userId)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyCollection<GameServerCostOwnerOptionDto>> GetCostOwnerOptionsAsync(
+        Guid gameServerId,
+        string? search,
+        int take,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        if (!authorizationService.HasServerPermission(
+                principal,
+                gameServerId,
+                Claims.ResourceBased.Server.Modify))
+            throw new HostingForbiddenException("Server Modify permission is required.");
+        if (take is < 1 or > HostingSearchLimits.MaximumTake)
+        {
+            throw new HostingValidationException(
+                $"The cost owner limit must be between 1 and {HostingSearchLimits.MaximumTake}.");
+        }
+
+        var currentOwnerId = await dbContext.GameServers
+            .AsNoTracking()
+            .Where(q => q.PrimaryKey == gameServerId && !q.IsArchived)
+            .Select(q => (Guid?) q.CurrentCostOwnerFk)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new HostingNotFoundException($"Game server {gameServerId} does not exist.");
+        if (!principal.TryGetUserId(out var userId))
+            return [];
+
+        var query = ApplyDisplayNameSearch(
+            UsableCostOwners(principal, userId).Where(q => q.PrimaryKey != currentOwnerId),
+            search);
+        return await ProjectCostOwnerOptions(query, userId)
+            .Take(take)
+            .ToArrayAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Narrows a cost owner query to the owners whose display name contains the search text, ignoring letter case and
+    /// treating every wildcard character of the search text literally.
+    /// </summary>
+    /// <param name="query">The cost owner query to narrow.</param>
+    /// <param name="search">The search text; a null or blank text leaves the query unchanged.</param>
+    /// <returns>The narrowed cost owner query.</returns>
+    internal static IQueryable<CostOwner> ApplyDisplayNameSearch(IQueryable<CostOwner> query, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return query;
+        var pattern = LikePattern.Contains(search);
+        return query.Where(q => EF.Functions.ILike(q.DisplayName, pattern, "\\"));
+    }
+
+    /// <summary>
+    /// Builds the query of the cost owners the caller may assign to a server: every owner for a hosting administrator,
+    /// otherwise the caller's own owner and the owners granted through an exact cost-owner use claim. This is the one
+    /// rule shared by the creation options and the transfer options.
+    /// </summary>
+    /// <param name="principal">The authenticated caller.</param>
+    /// <param name="userId">The identity of the caller.</param>
+    /// <returns>The query of usable cost owners without tracking or ordering.</returns>
+    private IQueryable<CostOwner> UsableCostOwners(ClaimsPrincipal principal, Guid userId)
+    {
         var canUseEveryOwner = principal.HasAnyEmptyClaim(
             Claims.Administrative.All,
             Claims.Administrative.Server,
@@ -278,9 +370,22 @@ internal sealed class GameServerProjectionService(
             .Distinct()
             .ToArray();
 
-        return await dbContext.CostOwners
+        return dbContext.CostOwners
             .AsNoTracking()
-            .Where(q => canUseEveryOwner || q.UserFk == userId || grantedOwnerIds.Contains(q.PrimaryKey))
+            .Where(q => canUseEveryOwner || q.UserFk == userId || grantedOwnerIds.Contains(q.PrimaryKey));
+    }
+
+    /// <summary>
+    /// Orders usable cost owners with the caller's own owner first, then by display name and identity, and projects
+    /// them to options.
+    /// </summary>
+    /// <param name="query">The cost owner query to order and project.</param>
+    /// <param name="userId">The identity of the caller.</param>
+    /// <returns>The ordered option query.</returns>
+    private static IQueryable<GameServerCostOwnerOptionDto> ProjectCostOwnerOptions(
+        IQueryable<CostOwner> query,
+        Guid userId)
+        => query
             .OrderByDescending(q => q.UserFk == userId)
             .ThenBy(q => q.DisplayName)
             .ThenBy(q => q.PrimaryKey)
@@ -290,10 +395,8 @@ internal sealed class GameServerProjectionService(
                 DisplayName = q.DisplayName,
                 IsFrozen = q.IsFrozen,
                 IsCurrentUser = q.UserFk == userId,
-            })
-            .ToArrayAsync(cancellationToken)
-            .ConfigureAwait(false);
-    }
+                Kind = q.Kind,
+            });
 
     public async Task<StorageDemandDto?> GetStorageDemandAsync(
         Guid gameServerId,
@@ -527,7 +630,7 @@ internal sealed class GameServerProjectionService(
                     server.PrimaryKey,
                     Claims.ResourceBased.Server.View))
                 continue;
-            var dto = await ProjectServerAsync(server, principal, cancellationToken).ConfigureAwait(false);
+            var dto = await ProjectServerAsync(server, principal, false, cancellationToken).ConfigureAwait(false);
             var deployment = ActiveDeployment(server);
             notifications.Add(new GameServerNotificationDto
             {
@@ -559,6 +662,7 @@ internal sealed class GameServerProjectionService(
         var jobs = await dbContext.LifecycleJobs
             .AsNoTracking()
             .Include(q => q.WorkerCommands)
+            .Include(q => q.RequestedBy)
             .Where(q => q.GameServerFk == gameServerId)
             .OrderByDescending(q => q.Sequence)
             .Take(100)
@@ -618,9 +722,17 @@ internal sealed class GameServerProjectionService(
             EHostingAuditEventKind.WorkerCommandSucceeded,
             EHostingAuditEventKind.ProviderReconciliationDegraded,
             EHostingAuditEventKind.Recovery,
+            EHostingAuditEventKind.AutomaticStopWarned,
+            EHostingAuditEventKind.AutomaticStopRequested,
+            EHostingAuditEventKind.AutomaticStopCancelled,
+            EHostingAuditEventKind.ScheduledStartRequested,
+            EHostingAuditEventKind.ScheduledRunSkipped,
+            EHostingAuditEventKind.AutomationSettingsChanged,
+            EHostingAuditEventKind.ScheduledStartsConfirmed,
         };
         var records = await dbContext.HostingAuditRecords
             .AsNoTracking()
+            .Include(q => q.Actor)
             .Where(q => q.GameServerFk == gameServerId && operationalKinds.Contains(q.Kind))
             .OrderByDescending(q => q.TimeStampCreated)
             .ThenByDescending(q => q.PrimaryKey)
@@ -644,6 +756,9 @@ internal sealed class GameServerProjectionService(
             AttemptCount = lifecycleJob.Attempt,
             FailureCode = lifecycleJob.FailureCode,
             FailureReason = lifecycleJob.FailureMessage,
+            RequestedByName = ProjectActorName(lifecycleJob.RequestedBy, lifecycleJob.RequestedByFk),
+            Trigger = lifecycleJob.Trigger,
+            TriggerLimit = lifecycleJob.TriggerLimit,
             CanRetry = controlPlane?.IsPaused is not true
                        && lifecycleJob.Status is ELifecycleJobStatus.Failed
                        && !(lifecycleJob.FailureCode?.StartsWith(
@@ -685,11 +800,29 @@ internal sealed class GameServerProjectionService(
                 .ToArray(),
         };
 
+    // Privacy rule: only the nickname is projected, never an id, e-mail or claim. The audience equals the server view
+    // permission the job and operation endpoints already enforce, and a deleted user's nickname is withheld.
+    /// <summary>Projects the display name of the user behind a job or audit record.</summary>
+    /// <param name="user">The loaded user navigation, or <see langword="null"/> when absent or not loaded.</param>
+    /// <param name="userFk">The user reference stored on the record, or <see langword="null"/> for a platform action.</param>
+    /// <returns>
+    /// The nickname of a living user, the hidden-member placeholder when a user reference exists but the user is
+    /// deleted or not loaded, or <see langword="null"/> when the record has no user reference.
+    /// </returns>
+    private static string? ProjectActorName(User? user, Guid? userFk)
+        => user is { IsDeleted: false }
+            ? user.Nickname
+            : userFk.HasValue
+                ? HiddenActorName
+                : null;
+
     private IQueryable<GameServer> ServerQuery()
         => dbContext.GameServers
             .AsNoTracking()
             .AsSplitQuery()
             .Include(q => q.CurrentCostOwner)
+            .ThenInclude(q => q!.CostAlertSetting)
+            .ThenInclude(q => q!.Thresholds)
             .Include(q => q.SelectedModPackDefinition)
             .Include(q => q.SelectedTerrain)
             .Include(q => q.SelectedScenario)
@@ -723,6 +856,7 @@ internal sealed class GameServerProjectionService(
             WorkerId = record.WorkerFk,
             TraceId = record.TraceId,
             SpanId = record.SpanId,
+            ActorName = ProjectActorName(record.Actor, record.ActorFk),
             TimeStampCreated = record.TimeStampCreated,
         };
     }
@@ -736,7 +870,10 @@ internal sealed class GameServerProjectionService(
                 or EHostingAuditEventKind.LifecycleJobQueued
                 or EHostingAuditEventKind.LifecycleJobClaimed
                 or EHostingAuditEventKind.WorkerProvisioned
-                or EHostingAuditEventKind.WorkerCommandQueued => "pending",
+                or EHostingAuditEventKind.WorkerCommandQueued
+                or EHostingAuditEventKind.AutomaticStopWarned
+                or EHostingAuditEventKind.AutomaticStopRequested
+                or EHostingAuditEventKind.ScheduledStartRequested => "pending",
             EHostingAuditEventKind.DeploymentResourceProvisioningFailed
                 or EHostingAuditEventKind.DeploymentResourceReleaseFailed
                 or EHostingAuditEventKind.LifecycleJobFailed
@@ -745,7 +882,8 @@ internal sealed class GameServerProjectionService(
             EHostingAuditEventKind.ProviderReconciliationDegraded
                 or EHostingAuditEventKind.WorkerDegraded
                 or EHostingAuditEventKind.LifecycleJobRetryPending
-                or EHostingAuditEventKind.Recovery => "warning",
+                or EHostingAuditEventKind.Recovery
+                or EHostingAuditEventKind.ScheduledRunSkipped => "warning",
             _ => "succeeded",
         };
 
@@ -780,6 +918,7 @@ internal sealed class GameServerProjectionService(
     private async Task<GameServerDto> ProjectServerAsync(
         GameServer server,
         ClaimsPrincipal principal,
+        bool includeAutomation,
         CancellationToken cancellationToken)
     {
         var deployment = ActiveDeployment(server);
@@ -794,6 +933,39 @@ internal sealed class GameServerProjectionService(
         var canSeeOwner = await authorizationService
             .CanViewCostOwnerAsync(principal, server.CurrentCostOwnerFk, cancellationToken)
             .ConfigureAwait(false);
+        // Privacy rule: alert amounts and the manage flag are disclosed only to viewers who may see the owner.
+        var canManageCostAlerts = canSeeOwner
+            ? await authorizationService
+                .CanUseCostOwnerAsync(principal, server.CurrentCostOwnerFk, cancellationToken)
+                .ConfigureAwait(false)
+            : (bool?) null;
+        // The automation block and its manage flag are computed for the server detail only, so the fleet list and the
+        // notifications stay cheap (one clock read per request).
+        ServerAutomationDto? automation = null;
+        bool? canManageAutomation = null;
+        if (includeAutomation)
+        {
+            var now = NodaSystemClock.Instance.GetCurrentInstant();
+            automation = await automationProjector.ProjectAsync(server, now, cancellationToken).ConfigureAwait(false);
+            canManageAutomation = await automationProjector
+                .CanManageAsync(principal, server, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        // Privacy rule: the assignment time follows the owner visibility and is read for the server detail only, so the
+        // fleet list keeps its query count.
+        Instant? costOwnerAssignedAt = null;
+        if (includeAutomation && canSeeOwner)
+        {
+            costOwnerAssignedAt = await dbContext.GameServerCostOwnerAssignments
+                .AsNoTracking()
+                .Where(q => q.GameServerFk == server.PrimaryKey && q.TimeStampUnassigned == null)
+                .OrderByDescending(q => q.TimeStampAssigned)
+                .Select(q => (Instant?) q.TimeStampAssigned)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         var gameDefinition = gameDefinitions.GetDefinitions()
             .SingleOrDefault(q => string.Equals(
                 q.GameIdentifier,
@@ -856,7 +1028,19 @@ internal sealed class GameServerProjectionService(
             CostOwnerName = canSeeOwner
                 ? server.CurrentCostOwner?.DisplayName ?? "Unknown owner"
                 : "Assigned owner",
+            // Privacy rule: a viewer who cannot see the cost owner learns no user id through this field.
+            CostOwnerUserId = canSeeOwner && server.CurrentCostOwner is { Kind: ECostOwnerKind.User } costOwner
+                ? costOwner.UserFk
+                : null,
             IsLaunchDisabled = server.IsLaunchDisabled,
+            CostAlertThresholds = canSeeOwner
+                ? (server.CurrentCostOwner?.CostAlertSetting?.Thresholds.Select(q => q.Amount) ?? [])
+                .Order()
+                .ToArray()
+                : null,
+            CanManageCostAlerts = canManageCostAlerts,
+            ChangesPendingStartAreas = PendingStartChanges.Areas(server.PendingStartChangeAreas),
+            HasChangesPendingStart = server.PendingStartChangeAreas != EGameServerChangeArea.None,
             IsArchived = server.IsArchived,
             CanModify = authorizationService.HasServerPermission(
                 principal,
@@ -870,6 +1054,11 @@ internal sealed class GameServerProjectionService(
                 principal,
                 server.PrimaryKey,
                 Claims.ResourceBased.Server.RevealSecrets),
+            CanManageAccess = ServerManageAccessRequirement.HasExactPermission(
+                principal,
+                server.PrimaryKey.ToString("D")),
+            CostOwnerIsFrozen = canSeeOwner ? server.CurrentCostOwner?.IsFrozen : null,
+            CostOwnerAssignedAt = costOwnerAssignedAt,
             TimeStampCreated = server.TimeStampCreated,
             TimeStampUpdated = server.TimeStampUpdated,
             PendingJobCount = pending,
@@ -938,6 +1127,8 @@ internal sealed class GameServerProjectionService(
                     FaultSummary = deployment.FaultMessage,
                 },
             Actions = ProjectActions(server, deployment, pending > 0, principal, gameDefinition),
+            Automation = automation,
+            CanManageAutomation = canManageAutomation,
         };
     }
 

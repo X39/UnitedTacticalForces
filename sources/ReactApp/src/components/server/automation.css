@@ -1,0 +1,278 @@
+/*
+ * Layout of the Automation panel of the Settings section (Phase 68).
+ *
+ * The panel body sits inside the content of a collapsible settings panel (the shared workspace-panel surface and its
+ * disclosure header). Inside it the blocks are separated by the panel gap, and the sub-sections by a 1px divider. The file consumes --utf-* tokens only. The only allowed literals are a
+ * 1px border width and the 520px and 800px media breakpoints, the same rule tests/styles/server-style-guard.test.ts
+ * enforces for src/components/server. Text wraps with overflow-wrap: anywhere and is never ellipsized, because German
+ * is longer than English.
+ */
+
+.automation-panel {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: var(--utf-space-md);
+}
+
+.automation-panel h3,
+.automation-panel p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.automation-panel h3 {
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+}
+
+/* The lead line and the alerts link belong together: no extra gap between them. */
+.automation-panel__lead {
+  display: grid;
+  justify-items: start;
+  min-width: 0;
+  gap: var(--utf-space-xs);
+}
+
+/* The notice wrapper only carries the id the disabled controls are described by. */
+.automation-panel__notice {
+  min-width: 0;
+}
+
+/* The status list: the same auto-fit grid as the cost strip, dt above dd. */
+.automation-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--utf-workspace-fact-min)), 1fr));
+  gap: var(--utf-space-md) var(--utf-space-lg);
+  min-width: 0;
+  margin: 0;
+}
+
+.automation-status__row {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-xs);
+  align-content: start;
+}
+
+.automation-status dt {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.automation-status dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A sub-section: a divider above, the heading block and the controls with the panel gap between them. */
+.automation-panel__subsection {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: var(--utf-space-md);
+  padding-top: var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+.automation-panel__description {
+  color: var(--utf-text-muted);
+}
+
+/* The number field is capped; it keeps its place whether the checkbox is on or off. */
+.automation-panel__field {
+  width: min(100%, var(--utf-automation-field-width));
+  min-width: 0;
+}
+
+/* The save row is the footer of the panel: a divider above it and the panel gap around it. */
+.automation-panel__save {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-sm);
+  padding-top: var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+.automation-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+/* The status line reserves two body lines, so no message moves the buttons above it. */
+.automation-panel__status {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  min-width: 0;
+  min-height: var(--utf-automation-status-min-height);
+  gap: var(--utf-space-xs);
+}
+
+.automation-panel__status [role="alert"] {
+  color: var(--utf-state-danger-fg);
+}
+
+/* The rule list: one block per weekly rule, stacked with the panel gap. */
+.automation-panel__rules {
+  display: grid;
+  gap: var(--utf-space-md);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.automation-panel__rules > li {
+  min-width: 0;
+}
+
+/* The Add row: a divider above, the button at the start and the counter at the end; both wrap on narrow screens. */
+.automation-panel__add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: var(--utf-space-sm) var(--utf-space-md);
+  padding-top: var(--utf-space-md);
+  border-top: 1px solid var(--utf-border-divider);
+}
+
+.automation-panel__counter {
+  color: var(--utf-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* One weekly rule: a quiet overlay surface with a divider border; the blocks inside use the panel gap. */
+.schedule-rule {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: var(--utf-space-md);
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius-small);
+  background: var(--utf-surface-overlay);
+}
+
+.schedule-rule p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The heading row: the rule name and the Remove button, which wraps below the name on narrow screens. */
+.schedule-rule__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: var(--utf-space-sm);
+}
+
+.schedule-rule__title {
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+}
+
+/* The action group and the time field sit side by side; they stack at 800px and below. */
+.schedule-rule__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--utf-automation-field-width));
+  align-items: start;
+  min-width: 0;
+  gap: var(--utf-space-md);
+}
+
+.schedule-rule__time {
+  min-width: 0;
+}
+
+/* The weekday group is a plain fieldset of toggle chips: seven in one row, four plus three at 520px and below. */
+.schedule-rule__days {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.schedule-rule__day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+/* The grid column sets the chip width; the chip's own minimum would overflow a four-column row at 320px. */
+.schedule-rule__day-grid .toggle-chip {
+  min-width: 0;
+}
+
+.schedule-rule__runs {
+  display: grid;
+  min-width: 0;
+  gap: var(--utf-space-xs);
+  color: var(--utf-text-muted);
+}
+
+.schedule-rule__last {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  gap: var(--utf-space-xs) var(--utf-space-sm);
+}
+
+@media (max-width: 800px) {
+  .automation-panel .button {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .schedule-rule__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .schedule-rule__day-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .automation-status {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--utf-space-sm);
+  }
+
+  .automation-status__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--utf-space-sm);
+    align-items: start;
+  }
+
+  .automation-panel__actions {
+    flex-direction: column;
+  }
+
+  .automation-panel__actions .button {
+    width: 100%;
+    min-height: var(--utf-control-height-touch);
+  }
+}

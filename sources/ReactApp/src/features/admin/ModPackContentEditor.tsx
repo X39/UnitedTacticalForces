@@ -1,7 +1,14 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionButton } from "@/components/ActionControl";
+import { FileChooserButton } from "@/components/FileChooserButton";
+import { CheckboxField, SelectField, TextAreaField, TextField } from "@/components/FormFields";
 import { StatePanel, StatusBadge } from "@/components/primitives";
+import { SearchField } from "@/components/SearchField";
+import { ErrorState } from "@/components/StateViews";
+import { toneOf } from "@/components/statusTones";
+import { assetReadinessTones, modOriginTones } from "@/features/admin/assetTones";
 import {
   latestActiveRevision,
   modPackQueryKeys,
@@ -37,6 +44,13 @@ export interface ModPackEditorValue {
   mods: SelectedModContent[];
   dependencies: SelectedNestedPack[];
 }
+
+/**
+ * Example source address shown inside the source text area.
+ *
+ * It is a locale independent URL shape rather than translated copy, so it stays a constant instead of a locale key.
+ */
+const sourcePlaceholder = "https://steamcommunity.com/sharedfiles/filedetails/?id=…";
 
 const uploadedArtifactCache = new WeakMap<File, { primaryKey: string; versionId: string }>();
 
@@ -88,8 +102,7 @@ export function ModPackContentEditor({
   onChange(value: ModPackEditorValue): void;
   excludeDefinitionId?: number;
 }) {
-  const { t: translate } = useTranslation();
-  const t = (key: string) => translate(key as never, { defaultValue: key });
+  const { t } = useTranslation();
   const [catalogSearch, setCatalogSearch] = useState("");
   const [packSearch, setPackSearch] = useState("");
   const [sourceText, setSourceText] = useState("");
@@ -192,112 +205,115 @@ export function ModPackContentEditor({
       <section className="modpack-editor-section">
         <header className="command-panel__header">
           <div>
-            <span className="kicker">{t("Mods")}</span>
-            <h3>{t("Catalog and source providers")}</h3>
+            <span className="kicker">{t("React_ModPackEditor_Mods")}</span>
+            <h3>{t("React_ModPackEditor_CatalogAndSources")}</h3>
           </div>
-          <StatusBadge tone={value.mods.length ? "success" : "neutral"}>
+          <StatusBadge tone={toneOf(assetReadinessTones, value.mods.length ? "ready" : "optional")}>
             {value.mods.length}
           </StatusBadge>
         </header>
-        <label className="field">
-          <span>{t("Search mod catalog")}</span>
-          <input value={catalogSearch} onChange={(event) => setCatalogSearch(event.target.value)} />
-        </label>
+        <SearchField
+          label={t("React_ModPackEditor_SearchCatalog")}
+          placeholder={t("React_ModPackEditor_SearchCatalog")}
+          clearLabel={t("Common_SearchClear")}
+          value={catalogSearch}
+          onChange={setCatalogSearch}
+        />
         {catalog.isError ? (
-          <StatePanel kind="error">{t("The mod catalog could not be loaded.")}</StatePanel>
+          <ErrorState onRetry={() => void catalog.refetch()}>
+            {t("React_ModPackEditor_CatalogLoadError")}
+          </ErrorState>
         ) : (
-          <div className="modpack-catalog" role="list" aria-label={t("Available mods")}>
+          <div
+            className="modpack-catalog"
+            role="list"
+            aria-label={t("React_ModPackEditor_AvailableMods")}
+          >
             {(catalog.data ?? []).map((mod) => (
-              <button
-                className="modpack-catalog__item"
-                type="button"
-                role="listitem"
-                key={mod.primaryKey}
-                disabled={selectedIds.has(mod.primaryKey)}
-                onClick={() => onChange({ ...value, mods: [...value.mods, fromCatalog(mod)] })}
-              >
-                <strong>{mod.title}</strong>
-                <small>
-                  {mod.providerIdentifier} · {mod.canonicalSourceIdentifier}
-                </small>
-                <span>{selectedIds.has(mod.primaryKey) ? t("Selected") : t("Add")}</span>
-              </button>
+              <div role="listitem" key={mod.primaryKey}>
+                <ActionButton
+                  variant="ghost"
+                  className="modpack-catalog__item"
+                  disabled={selectedIds.has(mod.primaryKey)}
+                  onClick={() => onChange({ ...value, mods: [...value.mods, fromCatalog(mod)] })}
+                >
+                  <strong>{mod.title}</strong>
+                  <small>
+                    {mod.providerIdentifier} · {mod.canonicalSourceIdentifier}
+                  </small>
+                  <span>{selectedIds.has(mod.primaryKey) ? t("Selected") : t("Add")}</span>
+                </ActionButton>
+              </div>
             ))}
           </div>
         )}
         <div className="modpack-source-entry">
-          <label className="field">
-            <span>{t("Paste one source per line")}</span>
-            <textarea
-              rows={4}
-              value={sourceText}
-              placeholder="https://steamcommunity.com/sharedfiles/filedetails/?id=…"
-              onChange={(event) => setSourceText(event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>{t("Provider")}</span>
-            <select
-              value={providerIdentifier}
-              onChange={(event) => setProviderIdentifier(event.target.value)}
-            >
-              <option value="">{t("Detect automatically")}</option>
-              {bindings.map((binding) => (
-                <option key={binding.providerIdentifier} value={binding.providerIdentifier}>
-                  {binding.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>{t("Version, branch, tag, or commit")}</span>
-            <input
-              value={versionSelector}
-              onChange={(event) => setVersionSelector(event.target.value)}
-            />
-          </label>
-          <button
-            className="button button--secondary"
-            type="button"
+          <TextAreaField
+            label={t("React_ModPackEditor_PasteSources")}
+            rows={4}
+            value={sourceText}
+            placeholder={sourcePlaceholder}
+            onChange={(event) => setSourceText(event.target.value)}
+          />
+          <SelectField
+            label={t("Provider")}
+            value={providerIdentifier}
+            options={[
+              { value: "", label: t("React_ModPackEditor_DetectAutomatically") },
+              ...bindings.map((binding) => ({
+                value: binding.providerIdentifier,
+                label: binding.displayName,
+              })),
+            ]}
+            onChange={(event) => setProviderIdentifier(event.target.value)}
+          />
+          <TextField
+            label={t("React_ModPackEditor_VersionSelectorHint")}
+            value={versionSelector}
+            onChange={(event) => setVersionSelector(event.target.value)}
+          />
+          <ActionButton
+            variant="ghost"
             disabled={!sourceText.trim() || preview.isPending}
             onClick={() => preview.mutate()}
           >
-            {preview.isPending ? t("Resolving…") : t("Review sources")}
-          </button>
+            {preview.isPending
+              ? t("React_ModPackEditor_Resolving")
+              : t("React_ModPackEditor_ReviewSources")}
+          </ActionButton>
         </div>
         {preview.isError && (
           <StatePanel kind="error">
             {preview.error instanceof Error
               ? preview.error.message
-              : t("Source resolution failed.")}
+              : t("React_ModPackEditor_SourceResolutionFailed")}
           </StatePanel>
         )}
         {(capability.modPackFormats?.length ?? 0) > 0 && (
           <div className="modpack-format-import">
-            <strong>{t("Import a game mod-pack format")}</strong>
+            <strong>{t("React_ModPackEditor_ImportFormat")}</strong>
             {capability.modPackFormats?.map((format) => (
-              <label className="file-drop" key={format.identifier}>
-                <span>{format.displayName}</span>
+              <div className="modpack-format-import__item" key={format.identifier}>
+                <FileChooserButton
+                  inputLabel={format.displayName}
+                  disabled={formatPreview.isPending}
+                  onFiles={(files) => {
+                    const file = files[0];
+                    if (file) formatPreview.mutate({ formatIdentifier: format.identifier, file });
+                  }}
+                >
+                  {format.displayName}
+                </FileChooserButton>
                 <small>
                   .{format.fileExtension} · {Math.floor(format.maximumSizeBytes / 1024)} KiB
                 </small>
-                <input
-                  type="file"
-                  accept={`.${format.fileExtension},${format.mediaType}`}
-                  disabled={formatPreview.isPending}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) formatPreview.mutate({ formatIdentifier: format.identifier, file });
-                    event.target.value = "";
-                  }}
-                />
-              </label>
+              </div>
             ))}
             {formatPreview.isError && (
               <StatePanel kind="error">
                 {formatPreview.error instanceof Error
                   ? formatPreview.error.message
-                  : t("Format import failed.")}
+                  : t("React_ModPackEditor_FormatImportFailed")}
               </StatePanel>
             )}
             {importWarnings.map((warning) => (
@@ -322,117 +338,102 @@ export function ModPackContentEditor({
                     </small>
                     {mod.modId && (
                       <small>
-                        {mod.pinnedVersionId ? t("Pinned") : t("Latest")} · {mod.versionLabel} ·{" "}
-                        {mod.installerIdentifier || t("Installer unavailable")}
+                        {mod.pinnedVersionId ? t("React_ModPackEditor_Pinned") : t("Latest")} ·{" "}
+                        {mod.versionLabel} ·{" "}
+                        {mod.installerIdentifier || t("React_ModPackEditor_InstallerUnavailable")}
                       </small>
                     )}
                   </div>
-                  <StatusBadge tone={mod.modId ? "info" : "warning"}>
-                    {mod.modId ? t("Catalog") : t("New catalog entry")}
+                  <StatusBadge tone={toneOf(modOriginTones, mod.modId ? "catalog" : "new-entry")}>
+                    {mod.modId
+                      ? t("React_ModPackEditor_Catalog")
+                      : t("React_ModPackEditor_NewCatalogEntry")}
                   </StatusBadge>
                 </div>
                 {!mod.modId && (
                   <div className="modpack-version-grid">
-                    <label className="field">
-                      <span>{t("Title")}</span>
-                      <input
-                        value={mod.title}
-                        onChange={(event) => update(index, { title: event.target.value })}
-                      />
-                    </label>
-                    <label className="field">
-                      <span>{t("Usage")}</span>
-                      <select
-                        value={mod.usageRole}
-                        onChange={(event) =>
-                          update(index, {
-                            usageRole: event.target.value as SelectedModContent["usageRole"],
-                          })
-                        }
-                      >
-                        <option value="Shared">{t("Shared")}</option>
-                        <option value="ClientOnly">{t("Client only")}</option>
-                        <option value="ServerOnly">{t("Server only")}</option>
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>{t("Version label")}</span>
-                      <input
-                        value={mod.versionLabel}
-                        onChange={(event) => update(index, { versionLabel: event.target.value })}
-                      />
-                    </label>
+                    <TextField
+                      label={t("Title")}
+                      value={mod.title}
+                      onChange={(event) => update(index, { title: event.target.value })}
+                    />
+                    <SelectField
+                      label={t("React_ModPackEditor_Usage")}
+                      value={mod.usageRole}
+                      options={[
+                        { value: "Shared", label: t("React_ModPackEditor_Shared") },
+                        { value: "ClientOnly", label: t("React_ModPackEditor_ClientOnly") },
+                        { value: "ServerOnly", label: t("React_ModPackEditor_ServerOnly") },
+                      ]}
+                      onChange={(event) =>
+                        update(index, {
+                          usageRole: event.target.value as SelectedModContent["usageRole"],
+                        })
+                      }
+                    />
+                    <TextField
+                      label={t("React_ModPackEditor_VersionLabel")}
+                      value={mod.versionLabel}
+                      onChange={(event) => update(index, { versionLabel: event.target.value })}
+                    />
                     {binding?.supportsVersionSelector && (
-                      <label className="field">
-                        <span>{t("Version selector")}</span>
-                        <input
-                          value={mod.versionSelector}
-                          onChange={(event) =>
-                            update(index, { versionSelector: event.target.value })
-                          }
-                        />
-                      </label>
+                      <TextField
+                        label={t("React_ModPackEditor_VersionSelector")}
+                        value={mod.versionSelector}
+                        onChange={(event) => update(index, { versionSelector: event.target.value })}
+                      />
                     )}
-                    <label className="field">
-                      <span>{t("Installer")}</span>
-                      <select
-                        value={mod.installerIdentifier}
+                    <SelectField
+                      label={t("React_ModPackEditor_Installer")}
+                      value={mod.installerIdentifier}
+                      options={(binding?.installerIdentifiers ?? []).map((installer) => ({
+                        value: installer,
+                        label: installer,
+                      }))}
+                      onChange={(event) =>
+                        update(index, { installerIdentifier: event.target.value })
+                      }
+                    />
+                    <TextField
+                      label={t("React_ModPackEditor_InstallerConfiguration")}
+                      value={mod.installerConfiguration}
+                      onChange={(event) =>
+                        update(index, { installerConfiguration: event.target.value })
+                      }
+                    />
+                    {mod.providerIdentifier === "uploaded-artifact" && (
+                      <TextField
+                        type="file"
+                        label={t("React_ModPackEditor_ZipArtifact")}
+                        accept=".zip,application/zip"
                         onChange={(event) =>
-                          update(index, { installerIdentifier: event.target.value })
-                        }
-                      >
-                        {(binding?.installerIdentifiers ?? []).map((installer) => (
-                          <option key={installer}>{installer}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>{t("Installer configuration (JSON)")}</span>
-                      <input
-                        value={mod.installerConfiguration}
-                        onChange={(event) =>
-                          update(index, { installerConfiguration: event.target.value })
+                          update(index, { uploadFile: event.target.files?.[0] ?? null })
                         }
                       />
-                    </label>
-                    {mod.providerIdentifier === "uploaded-artifact" && (
-                      <>
-                        <label className="field">
-                          <span>{t("ZIP artifact")}</span>
-                          <input
-                            type="file"
-                            accept=".zip,application/zip"
-                            onChange={(event) =>
-                              update(index, { uploadFile: event.target.files?.[0] ?? null })
-                            }
-                          />
-                        </label>
-                      </>
                     )}
                   </div>
                 )}
                 <div className="modpack-order-actions">
-                  <button
-                    type="button"
-                    className="button button--ghost"
+                  <ActionButton
+                    variant="ghost"
+                    iconOnly
                     disabled={index === 0}
                     onClick={() => move(index, -1)}
-                    aria-label={t("Move mod up")}
+                    aria-label={t("React_ModPackEditor_MoveModUp")}
                   >
                     ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost"
+                  </ActionButton>
+                  <ActionButton
+                    variant="ghost"
+                    iconOnly
                     disabled={index === value.mods.length - 1}
                     onClick={() => move(index, 1)}
-                    aria-label={t("Move mod down")}
+                    aria-label={t("React_ModPackEditor_MoveModDown")}
                   >
                     ↓
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost"
+                  </ActionButton>
+                  <ActionButton
+                    variant="ghost"
                     onClick={() =>
                       onChange({
                         ...value,
@@ -441,7 +442,7 @@ export function ModPackContentEditor({
                     }
                   >
                     {t("Remove")}
-                  </button>
+                  </ActionButton>
                 </div>
               </li>
             );
@@ -452,16 +453,23 @@ export function ModPackContentEditor({
       <section className="modpack-editor-section">
         <header className="command-panel__header">
           <div>
-            <span className="kicker">{t("Nested mod packs")}</span>
-            <h3>{t("Reusable dependencies")}</h3>
+            <span className="kicker">{t("React_ModPackEditor_NestedModPacks")}</span>
+            <h3>{t("React_ModPackEditor_ReusableDependencies")}</h3>
           </div>
           <StatusBadge>{value.dependencies.length}</StatusBadge>
         </header>
-        <label className="field">
-          <span>{t("Search mod packs")}</span>
-          <input value={packSearch} onChange={(event) => setPackSearch(event.target.value)} />
-        </label>
-        <div className="modpack-selector__options" role="group" aria-label={t("Nested mod packs")}>
+        <SearchField
+          label={t("Search mod packs")}
+          placeholder={t("Search mod packs")}
+          clearLabel={t("Common_SearchClear")}
+          value={packSearch}
+          onChange={setPackSearch}
+        />
+        <div
+          className="modpack-selector__options"
+          role="group"
+          aria-label={t("React_ModPackEditor_NestedModPacks")}
+        >
           {(packs.data ?? [])
             .filter(
               (pack) =>
@@ -474,10 +482,17 @@ export function ModPackContentEditor({
               const checked = selectedPackIds.has(id);
               const latest = latestActiveRevision(pack);
               return (
-                <label key={id} className="modpack-selector__option">
-                  <input
-                    type="checkbox"
+                <div key={id} className="modpack-selector__option">
+                  <CheckboxField
                     checked={checked}
+                    label={
+                      <span className="modpack-selector__label">
+                        <strong>{pack.title}</strong>
+                        <small>
+                          {t("Latest revision")} #{latest?.primaryKey}
+                        </small>
+                      </span>
+                    }
                     onChange={(event) =>
                       onChange({
                         ...value,
@@ -494,39 +509,30 @@ export function ModPackContentEditor({
                       })
                     }
                   />
-                  <span>
-                    <strong>{pack.title}</strong>
-                    <small>
-                      {t("Latest revision")} #{latest?.primaryKey}
-                    </small>
-                  </span>
-                </label>
+                </div>
               );
             })}
         </div>
         {value.dependencies.map((dependency) => (
-          <label className="field" key={dependency.definitionId}>
-            <span>
-              {dependency.title} · {t("Optional pinned revision")}
-            </span>
-            <input
-              inputMode="numeric"
-              value={dependency.pinnedRevisionId ?? ""}
-              onChange={(event) =>
-                onChange({
-                  ...value,
-                  dependencies: value.dependencies.map((item) =>
-                    item.definitionId === dependency.definitionId
-                      ? {
-                          ...item,
-                          pinnedRevisionId: event.target.value ? Number(event.target.value) : null,
-                        }
-                      : item,
-                  ),
-                })
-              }
-            />
-          </label>
+          <TextField
+            key={dependency.definitionId}
+            label={`${dependency.title} · ${t("React_ModPackEditor_OptionalPinnedRevision")}`}
+            inputMode="numeric"
+            value={dependency.pinnedRevisionId ?? ""}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                dependencies: value.dependencies.map((item) =>
+                  item.definitionId === dependency.definitionId
+                    ? {
+                        ...item,
+                        pinnedRevisionId: event.target.value ? Number(event.target.value) : null,
+                      }
+                    : item,
+                ),
+              })
+            }
+          />
         ))}
       </section>
     </div>

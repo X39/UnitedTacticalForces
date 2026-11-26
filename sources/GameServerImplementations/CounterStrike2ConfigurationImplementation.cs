@@ -45,20 +45,34 @@ public sealed partial class CounterStrike2ConfigurationImplementation : IGameCon
     private static IReadOnlyList<GameConfigurationDefinition> CreateDefinitions()
         =>
         [
-            Definition("hostname", "General", "Hostname", "Name shown in the server browser.", EGameConfigurationValueKind.String, true, 10, Json("United Tactical Forces")),
-            Definition("maxplayers", "General", "Maximum players", "Maximum concurrent player count.", EGameConfigurationValueKind.Integer, true, 20, Json(12), 1, 64),
+            Definition("hostname", "General", "Hostname", "Name shown in the server browser.", EGameConfigurationValueKind.String, true, 10, Json("United Tactical Forces"), tier: EGameConfigurationTier.Common),
+            Definition("maxplayers", "General", "Maximum players", "Maximum concurrent player count.", EGameConfigurationValueKind.Integer, true, 20, Json(12), 1, 64, tier: EGameConfigurationTier.Common),
             Definition("sv_lan", "Network", "LAN only", "Restrict the server to the local network.", EGameConfigurationValueKind.Boolean, true, 30, Json(false)),
             Definition("sv_cheats", "Security", "Enable cheats", "Allow cheat-protected console commands.", EGameConfigurationValueKind.Boolean, true, 40, Json(false)),
             Definition("sv_pure", "Security", "Pure server policy", "Controls client content verification.", EGameConfigurationValueKind.Selection, true, 50, Json("1"), AllowedValues: ["0", "1", "2"]),
             Definition("mp_autoteambalance", "Teams", "Automatic team balance", "Balance teams automatically.", EGameConfigurationValueKind.Boolean, false, 60, Json(true)),
             Definition("mp_limitteams", "Teams", "Team imbalance limit", "Maximum permitted team-size difference.", EGameConfigurationValueKind.Integer, false, 70, Json(1), 0, 32),
             Definition("mp_friendlyfire", "Rules", "Friendly fire", "Allow damage to team members.", EGameConfigurationValueKind.Boolean, false, 80, Json(true)),
-            Definition("mp_maxrounds", "Rules", "Maximum rounds", "Maximum rounds before the map ends.", EGameConfigurationValueKind.Integer, false, 90, Json(24), 1, 100),
+            Definition("mp_maxrounds", "Rules", "Maximum rounds", "Maximum rounds before the map ends.", EGameConfigurationValueKind.Integer, false, 90, Json(24), 1, 100, tier: EGameConfigurationTier.Common),
             Definition("mp_roundtime", "Rules", "Round duration", "Round duration in minutes.", EGameConfigurationValueKind.Number, false, 100, Json(1.92m), 0.5m, 60m),
-            Definition("bot_quota", "Bots", "Bot quota", "Number of managed bots.", EGameConfigurationValueKind.Integer, false, 110, Json(0), 0, 64),
+            Definition("bot_quota", "Bots", "Bot quota", "Number of managed bots.", EGameConfigurationValueKind.Integer, false, 110, Json(0), 0, 64, tier: EGameConfigurationTier.Common),
             Definition("bot_quota_mode", "Bots", "Bot quota mode", "How the bot quota is maintained.", EGameConfigurationValueKind.Selection, false, 120, Json("fill"), AllowedValues: ["normal", "fill", "match"]),
         ];
 
+    /// <summary>Creates a definition for a setting that is written to the generated server file.</summary>
+    /// <param name="setting">The setting name written to the target file.</param>
+    /// <param name="group">The UI domain group.</param>
+    /// <param name="displayName">The human-readable label.</param>
+    /// <param name="description">The human-readable explanation.</param>
+    /// <param name="kind">The JSON value kind accepted by the setting.</param>
+    /// <param name="required">Whether the setting must have a value.</param>
+    /// <param name="order">The display and render order.</param>
+    /// <param name="defaultValue">The optional default value.</param>
+    /// <param name="minimum">The optional numeric minimum.</param>
+    /// <param name="maximum">The optional numeric maximum.</param>
+    /// <param name="AllowedValues">The compatible list of string values.</param>
+    /// <param name="tier">The presentation tier; <see cref="EGameConfigurationTier.Advanced" /> unless declared.</param>
+    /// <returns>The configuration definition.</returns>
     private static GameConfigurationDefinition Definition(
         string setting,
         string group,
@@ -70,7 +84,8 @@ public sealed partial class CounterStrike2ConfigurationImplementation : IGameCon
         JsonElement? defaultValue = null,
         decimal? minimum = null,
         decimal? maximum = null,
-        IReadOnlyList<string>? AllowedValues = null)
+        IReadOnlyList<string>? AllowedValues = null,
+        EGameConfigurationTier tier = EGameConfigurationTier.Advanced)
         => new(
             $"{Path.GetFileName(ServerTarget).ToLowerInvariant()}@{setting}",
             ServerTarget,
@@ -85,7 +100,10 @@ public sealed partial class CounterStrike2ConfigurationImplementation : IGameCon
             defaultValue,
             minimum,
             maximum,
-            AllowedValues);
+            AllowedValues)
+        {
+            Tier = tier,
+        };
 
     private static string Format(JsonElement value)
         => value.ValueKind switch

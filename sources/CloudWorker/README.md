@@ -20,8 +20,11 @@ rewritten beneath a running process and presented as if the engine had reloaded 
 
 ## Engine-confirmed Headless Client readiness
 
-When a primary has an HC in its frozen workload plan, preparation automatically packages the embedded
-`Arma3JoinAddonAssets` into `server-instance/@utf_hc_join/addons/utf_hc_join.pbo` and supplies it through `-serverMod`.
+Every primary launch automatically packages the embedded `Arma3JoinAddonAssets` into
+`server-instance/@utf_hc_join/addons/utf_hc_join.pbo` and supplies it through `-serverMod`. The addon also writes a
+nonce-bound `UTFPL` record with the human player count (headless clients and the server excluded) on change and at
+least every 30 seconds; the worker treats it as fresh for 90 seconds and reports it as the Arma 3 player observation.
+Readiness evidence below applies only when a primary has an HC in its frozen workload plan.
 This server-only addon requires Arma 3 2.06 or later. It does not change the user's modpack, disable signature checks,
 require a client addon, or transfer AI. The selected mission must still support a playable HC slot and AI delegation.
 

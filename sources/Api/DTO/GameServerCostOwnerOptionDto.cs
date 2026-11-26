@@ -1,7 +1,9 @@
+using X39.UnitedTacticalForces.Hosting.Contracts;
+
 namespace X39.UnitedTacticalForces.Api.DTO;
 
 /// <summary>
-/// A billing owner the current caller may assign while creating a game server.
+/// A billing owner the current caller may assign while creating a game server or transfer an existing server to.
 /// </summary>
 public sealed record GameServerCostOwnerOptionDto
 {
@@ -24,4 +26,9 @@ public sealed record GameServerCostOwnerOptionDto
     /// Whether this is the authenticated caller's personal cost owner.
     /// </summary>
     public bool IsCurrentUser { get; init; }
+
+    /// <summary>
+    /// The kind of account behind the owner: a member, the association or an external organization.
+    /// </summary>
+    public ECostOwnerKind Kind { get; init; }
 }

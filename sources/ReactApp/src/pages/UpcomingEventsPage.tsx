@@ -3,7 +3,6 @@ import {
   CalendarMonth24Regular,
   ChevronLeft20Regular,
   ChevronRight20Regular,
-  Grid24Regular,
 } from "@fluentui/react-icons";
 import { useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
@@ -25,7 +24,12 @@ import {
   utcDateKey,
   type UpcomingEventFilter,
 } from "@/app/upcomingEvents";
-import { MarkdownExcerpt, StatePanel, StatusBadge } from "@/components/primitives";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { FilterChipGroup, type FilterChipItem } from "@/components/FilterChipGroup";
+import { MarkdownExcerpt, StatusBadge } from "@/components/primitives";
+import { PublicHero } from "@/components/PublicHero";
+import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
+import { attendanceTones, operationTones, toneOf } from "@/components/statusTones";
 import "./publicEvents.css";
 
 type ViewMode = "board" | "calendar";
@@ -157,23 +161,10 @@ function attendanceLabel(event: UpcomingEvent, t: TFunction): string {
   }
 }
 
-function attendanceTone(event: UpcomingEvent): "success" | "danger" | "warning" | "neutral" {
-  switch (eventAttendance(event)) {
-    case "Accepted":
-      return "success";
-    case "Rejected":
-      return "danger";
-    case "Maybe":
-      return "warning";
-    default:
-      return "neutral";
-  }
-}
-
 function ReadinessBadge({ event }: { event: UpcomingEvent }) {
   const { t } = useTranslation();
   return (
-    <StatusBadge tone={eventReadiness(event) === "needs-signups" ? "warning" : "success"}>
+    <StatusBadge tone={toneOf(operationTones, eventReadiness(event))}>
       {readinessLabel(event, t)}
     </StatusBadge>
   );
@@ -181,7 +172,11 @@ function ReadinessBadge({ event }: { event: UpcomingEvent }) {
 
 function AttendanceBadge({ event }: { event: UpcomingEvent }) {
   const { t } = useTranslation();
-  return <StatusBadge tone={attendanceTone(event)}>{attendanceLabel(event, t)}</StatusBadge>;
+  return (
+    <StatusBadge tone={toneOf(attendanceTones, eventAttendance(event))}>
+      {attendanceLabel(event, t)}
+    </StatusBadge>
+  );
 }
 
 export function Component() {
@@ -263,104 +258,71 @@ export function Component() {
     setSelectedDate(utcDateKey(event.scheduledFor));
     setSelectedEventId(event.primaryKey);
   };
+  const viewItems: readonly FilterChipItem<ViewMode>[] = [
+    { id: "calendar", label: t("Calendar") },
+    { id: "board", label: t("Board") },
+  ];
+  const filterItems: readonly FilterChipItem<UpcomingEventFilter>[] = [
+    { id: "all", label: t("Pages_Events_Upcoming_FilterAll") },
+    { id: "confirmed", label: t("Pages_Events_Upcoming_FilterConfirmed") },
+    { id: "needs-signups", label: t("Pages_Events_Upcoming_FilterNeedsSignups") },
+    { id: "open", label: t("Pages_Events_Upcoming_FilterOpen") },
+  ];
 
   return (
     <div
       className="operations-page public-page"
       style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
     >
-      <section className="public-hero public-hero--compact editorial-hero operations-hero">
-        <div className="public-hero__inner public-hero__inner--single">
-          <div className="public-hero__copy">
-            <Link className="operations-hero__back" to="/">
-              <ChevronLeft20Regular /> {t("Auto_BackToHome_76c5505f")}
-            </Link>
-            <span className="kicker">{t("Shared_CommunityNav_Operations")}</span>
-            <h1>{t("Auto_UpcomingOperations_f2355c40")}</h1>
-            <p>{t("Auto_FindPlannedMissionsTrainingWindowsTerrainRequirementsModSets_8b14be0c")}</p>
-          </div>
-        </div>
-      </section>
+      <PublicHero
+        compact
+        singleColumn
+        className="editorial-hero operations-hero"
+        kicker={t("Shared_CommunityNav_Operations")}
+        title={t("Auto_UpcomingOperations_f2355c40")}
+        description={t(
+          "Auto_FindPlannedMissionsTrainingWindowsTerrainRequirementsModSets_8b14be0c",
+        )}
+        actions={
+          <ActionLink variant="glass" to="/">
+            <ChevronLeft20Regular /> {t("Auto_BackToHome_76c5505f")}
+          </ActionLink>
+        }
+      />
 
       <section className="content-section public-section operations-workspace">
         <div className="operations-commandbar">
-          <div
-            className="view-toggle"
-            role="tablist"
-            aria-label={t("Auto_OperationsViewMode_c333479b")}
-          >
-            <button
-              className={view === "calendar" ? "active" : ""}
-              type="button"
-              role="tab"
-              aria-selected={view === "calendar"}
-              onClick={() => setViewMode("calendar")}
-            >
-              <CalendarMonth24Regular /> {t("Calendar")}
-            </button>
-            <button
-              className={view === "board" ? "active" : ""}
-              type="button"
-              role="tab"
-              aria-selected={view === "board"}
-              onClick={() => setViewMode("board")}
-            >
-              <Grid24Regular /> {t("Board")}
-            </button>
-          </div>
+          <FilterChipGroup
+            label={t("Auto_OperationsViewMode_c333479b")}
+            items={viewItems}
+            value={view}
+            onChange={setViewMode}
+          />
           <div className="operations-commandbar__meta">
             <span>{t("Auto_AllTimesInUTC_3b1ff9db")}</span>
-            <button
-              className="button button--ghost button--small"
-              type="button"
-              onClick={() => void query.refetch()}
-            >
+            <ActionButton variant="ghost" size="compact" onClick={() => void query.refetch()}>
               <ArrowSync20Regular /> {t("Common_Refresh")}
-            </button>
+            </ActionButton>
           </div>
         </div>
 
         {view === "board" && (
           <div className="operations-filters">
             <span className="kicker">{t("React_UI_StatusFilter")}</span>
-            <div className="filter-chips" role="group" aria-label={t("React_UI_StatusFilter")}>
-              {(["all", "confirmed", "needs-signups", "open"] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={filter === value ? "active" : ""}
-                  aria-pressed={filter === value}
-                  onClick={() => setFilter(value)}
-                >
-                  {value === "all"
-                    ? t("Pages_Events_Upcoming_FilterAll")
-                    : value === "confirmed"
-                      ? t("Pages_Events_Upcoming_FilterConfirmed")
-                      : value === "needs-signups"
-                        ? t("Pages_Events_Upcoming_FilterNeedsSignups")
-                        : t("Pages_Events_Upcoming_FilterOpen")}
-                </button>
-              ))}
-            </div>
+            <FilterChipGroup<UpcomingEventFilter>
+              label={t("React_UI_StatusFilter")}
+              items={filterItems}
+              value={filter}
+              onChange={(id) => setFilter(id)}
+            />
           </div>
         )}
 
-        {query.isLoading && <OperationsSkeleton view={view} />}
+        {query.isLoading && <LoadingState label={t("Pages_Public_Home_OperationsLoading")} />}
         {query.isError && (
-          <StatePanel
-            kind="error"
-            action={
-              <button
-                className="button button--ghost"
-                type="button"
-                onClick={() => void query.refetch()}
-              >
-                {t("React_UI_Retry")}
-              </button>
-            }
-          >
+          <ErrorState onRetry={() => void query.refetch()}>
             {t("Pages_Events_Upcoming_ErrorLoadFailed")}
-          </StatePanel>
+          </ErrorState>
         )}
         {!query.isLoading &&
           !query.isError &&
@@ -377,9 +339,9 @@ export function Component() {
               ))}
             </div>
           ) : (
-            <StatePanel kind="empty" title={t("Pages_Events_Upcoming_CountNoScheduled")}>
+            <EmptyState title={t("Pages_Events_Upcoming_CountNoScheduled")}>
               {t("Auto_NoOperationsMatchTheSelectedFilter_eaf9aeab")}
-            </StatePanel>
+            </EmptyState>
           ))}
         {!query.isLoading && !query.isError && view === "calendar" && (
           <CalendarWorkspace
@@ -397,18 +359,6 @@ export function Component() {
           />
         )}
       </section>
-    </div>
-  );
-}
-
-function OperationsSkeleton({ view }: { view: ViewMode }) {
-  const { t } = useTranslation();
-  return (
-    <div className={`operations-skeleton operations-skeleton--${view}`} role="status">
-      <span className="sr-only">{t("Pages_Public_Home_OperationsLoading")}</span>
-      {Array.from({ length: view === "board" ? 4 : 3 }, (_, index) => (
-        <span aria-hidden="true" key={index} />
-      ))}
     </div>
   );
 }
@@ -446,23 +396,32 @@ function CalendarWorkspace({
     <section className="calendar-workspace" aria-label={t("Auto_OperationsCalendar_aaaf0488")}>
       <div className="calendar-main">
         <div className="calendar-monthbar">
-          <button type="button" aria-label={t("Auto_PreviousMonth_6a276950")} onClick={onPrevious}>
+          <ActionButton
+            iconOnly
+            variant="ghost"
+            aria-label={t("Auto_PreviousMonth_6a276950")}
+            onClick={onPrevious}
+          >
             <ChevronLeft20Regular />
-          </button>
+          </ActionButton>
           <div>
             <strong>{label}</strong>
             <span>{summary}</span>
           </div>
-          <button type="button" aria-label={t("Auto_NextMonth_74e53211")} onClick={onNext}>
+          <ActionButton
+            iconOnly
+            variant="ghost"
+            aria-label={t("Auto_NextMonth_74e53211")}
+            onClick={onNext}
+          >
             <ChevronRight20Regular />
-          </button>
+          </ActionButton>
         </div>
 
         <div className="calendar-week-strip" aria-label={dateLabel(selectedDate)}>
           {weekDays.map((day) => (
-            <button
+            <ActionButton
               className={`${day.key === selectedDate ? "selected" : ""}${day.isToday ? " today" : ""}`}
-              type="button"
               aria-pressed={day.key === selectedDate}
               onClick={() => onSelectDate(day.key)}
               key={day.key}
@@ -470,7 +429,7 @@ function CalendarWorkspace({
               <span>{formatUtc(day.date, { weekday: "short" })}</span>
               <strong>{day.date.getUTCDate()}</strong>
               <i className={day.events.length ? "has-events" : ""} aria-hidden="true" />
-            </button>
+            </ActionButton>
           ))}
         </div>
 
@@ -493,18 +452,16 @@ function CalendarWorkspace({
               aria-selected={day.key === selectedDate}
               key={day.key}
             >
-              <button
+              <ActionButton
                 className="calendar-day__number"
-                type="button"
                 aria-label={dateLabel(day.date)}
                 onClick={() => onSelectDate(day.key)}
               >
                 {day.date.getUTCDate()}
-              </button>
+              </ActionButton>
               <div className="calendar-day__events">
                 {day.events.slice(0, 3).map((event) => (
-                  <button
-                    type="button"
+                  <ActionButton
                     className={`${event.primaryKey === selectedEvent?.primaryKey ? "active" : ""} ${eventReadiness(event) === "needs-signups" ? "needs-signups" : "ready"}`}
                     aria-pressed={event.primaryKey === selectedEvent?.primaryKey}
                     onClick={() => onSelectEvent(event)}
@@ -512,7 +469,7 @@ function CalendarWorkspace({
                   >
                     <span>{eventTime(event.scheduledFor)}</span>
                     <strong>{event.title}</strong>
-                  </button>
+                  </ActionButton>
                 ))}
                 {day.events.length > 3 && (
                   <small>
@@ -526,9 +483,9 @@ function CalendarWorkspace({
 
         <div className="calendar-agenda" aria-label={t("Auto_CalendarAgenda_62c712a6")}>
           {agendaGroups.length === 0 && (
-            <StatePanel kind="empty">
-              {formatResource(t("Pages_Events_Upcoming_NoScheduledInMonth"), label)}
-            </StatePanel>
+            <EmptyState title={formatResource(t("Pages_Events_Upcoming_NoScheduledTitle"), label)}>
+              {t("Pages_Events_Upcoming_NoScheduledBody")}
+            </EmptyState>
           )}
           {agendaGroups.map(([date, groupEvents]) => (
             <section key={date} aria-label={dateLabel(`${date}T00:00:00Z`)}>
@@ -538,10 +495,13 @@ function CalendarWorkspace({
                   className={event.primaryKey === selectedEvent?.primaryKey ? "active" : ""}
                   key={event.primaryKey}
                 >
-                  <button type="button" onClick={() => onSelectEvent(event)}>
+                  <ActionButton
+                    className="calendar-agenda__open"
+                    onClick={() => onSelectEvent(event)}
+                  >
                     <span>{eventTime(event.scheduledFor)}</span>
                     <strong>{event.title}</strong>
-                  </button>
+                  </ActionButton>
                   <div className="calendar-agenda__status">
                     <ReadinessBadge event={event} />
                     <AttendanceBadge event={event} />
@@ -554,12 +514,9 @@ function CalendarWorkspace({
                       <span style={{ width: `${eventSlotProgress(event)}%` }} />
                     </div>
                   </div>
-                  <Link
-                    className="button button--ghost button--small"
-                    to={`/events/${event.primaryKey}`}
-                  >
+                  <ActionLink variant="ghost" size="compact" to={`/events/${event.primaryKey}`}>
                     {t("Auto_ViewSlots_ddcd3598")}
-                  </Link>
+                  </ActionLink>
                 </article>
               ))}
             </section>
@@ -620,14 +577,14 @@ function CalendarWorkspace({
             >
               {selectedEvent.description}
             </MarkdownExcerpt>
-            <Link className="button button--gold" to={`/events/${selectedEvent.primaryKey}`}>
+            <ActionLink variant="gold" to={`/events/${selectedEvent.primaryKey}`}>
               {t("Auto_ViewSlots_ddcd3598")} <ChevronRight20Regular />
-            </Link>
+            </ActionLink>
           </>
         ) : (
-          <StatePanel kind="empty" title={t("Auto_NoOperationSelected_98bff4dc")}>
+          <EmptyState title={t("Auto_NoOperationSelected_98bff4dc")}>
             {formatResource(t("Auto_NoScheduledOperationIsPublishedInUseTheMonth_f3ebefc3"), label)}
-          </StatePanel>
+          </EmptyState>
         )}
       </aside>
     </section>
@@ -700,9 +657,9 @@ function OperationCard({
         </div>
         <div className="card-footer">
           <span>{eventTime(event.scheduledFor)}</span>
-          <Link className="button button--ghost button--small" to={`/events/${event.primaryKey}`}>
+          <ActionLink variant="ghost" size="compact" to={`/events/${event.primaryKey}`}>
             {t("Pages_Events_Upcoming_ActionViewSlots")}
-          </Link>
+          </ActionLink>
         </div>
       </div>
     </article>

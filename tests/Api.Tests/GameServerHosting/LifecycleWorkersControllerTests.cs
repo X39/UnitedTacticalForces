@@ -1,6 +1,10 @@
+using System.Net.WebSockets;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using X39.UnitedTacticalForces.Api.Controllers;
+using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 using Xunit;
@@ -130,11 +134,176 @@ public sealed class LifecycleWorkersControllerTests
         Assert.True(attribute.IgnoreApi);
     }
 
+    [Fact]
+    public async Task Channel_RejectsMissingBearerWithoutCallingProtocol()
+    {
+        var protocol = new RegistrationProtocolStub(null);
+        var feature = new RecordingWebSocketFeature(isWebSocketRequest: true);
+        var controller = CreateChannelController(protocol, feature, out var httpContext);
+
+        await controller.ChannelAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new RecordingChannelHandler(),
+            Options.Create(new LifecycleWorkerOptions()),
+            CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status401Unauthorized, httpContext.Response.StatusCode);
+        Assert.False(protocol.WasCalled);
+        Assert.False(feature.AcceptCalled);
+    }
+
+    [Fact]
+    public async Task Channel_RejectsANonWebSocketRequestWithBadRequest()
+    {
+        var protocol = new RegistrationProtocolStub(null);
+        var feature = new RecordingWebSocketFeature(isWebSocketRequest: false);
+        var controller = CreateChannelController(protocol, feature, out var httpContext);
+        httpContext.Request.Headers.Authorization = "Bearer worker-secret";
+
+        await controller.ChannelAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new RecordingChannelHandler(),
+            Options.Create(new LifecycleWorkerOptions()),
+            CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status400BadRequest, httpContext.Response.StatusCode);
+        Assert.False(protocol.WasCalled);
+        Assert.False(feature.AcceptCalled);
+    }
+
+    [Fact]
+    public async Task Channel_RefusesARejectedCredentialBeforeAcceptingTheUpgrade()
+    {
+        var protocol = new RegistrationProtocolStub(null);
+        var feature = new RecordingWebSocketFeature(isWebSocketRequest: true);
+        var handler = new RecordingChannelHandler();
+        var controller = CreateChannelController(protocol, feature, out var httpContext);
+        httpContext.Request.Headers.Authorization = "Bearer rejected-secret";
+
+        await controller.ChannelAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            handler,
+            Options.Create(new LifecycleWorkerOptions()),
+            CancellationToken.None);
+
+        Assert.True(protocol.WasCalled);
+        Assert.Equal(StatusCodes.Status401Unauthorized, httpContext.Response.StatusCode);
+        Assert.False(feature.AcceptCalled);
+        Assert.False(handler.WasRun);
+    }
+
+    [Fact]
+    public async Task Channel_AcceptsWithTheConfiguredKeepAliveAndRunsTheHandlerWithTheBearerCredential()
+    {
+        var workerId = Guid.NewGuid();
+        var deploymentId = Guid.NewGuid();
+        var identity = new AuthenticatedWorker(workerId, deploymentId, Guid.NewGuid(), "game-server", 0);
+        var protocol = new RegistrationProtocolStub(null) { Authenticated = identity };
+        await using var pair = await LoopbackWebSocketPair.CreateAsync();
+        var feature = new RecordingWebSocketFeature(isWebSocketRequest: true) { SocketToAccept = pair.Server };
+        var handler = new RecordingChannelHandler();
+        var controller = CreateChannelController(protocol, feature, out var httpContext);
+        httpContext.Request.Headers.Authorization = "Bearer worker-secret";
+        var options = new LifecycleWorkerOptions
+        {
+            ChannelKeepAliveInterval = TimeSpan.FromSeconds(7),
+            ChannelKeepAliveTimeout = TimeSpan.FromSeconds(21),
+        };
+
+        await controller.ChannelAsync(workerId, deploymentId, handler, Options.Create(options), CancellationToken.None);
+
+        Assert.True(feature.AcceptCalled);
+        Assert.Equal(TimeSpan.FromSeconds(7), feature.AcceptContext!.KeepAliveInterval);
+        Assert.Equal(TimeSpan.FromSeconds(21), feature.AcceptContext.KeepAliveTimeout);
+        Assert.True(handler.WasRun);
+        Assert.Equal(identity, handler.Worker);
+        Assert.Equal("worker-secret", handler.Credential);
+        Assert.Equal((workerId, deploymentId), protocol.LastAuthentication);
+    }
+
+    private static LifecycleWorkersController CreateChannelController(
+        RegistrationProtocolStub protocol,
+        RecordingWebSocketFeature feature,
+        out DefaultHttpContext httpContext)
+    {
+        httpContext = new DefaultHttpContext();
+        httpContext.Features.Set<IHttpWebSocketFeature>(feature);
+        return new LifecycleWorkersController(protocol)
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext },
+        };
+    }
+
+    private sealed class RecordingWebSocketFeature(bool isWebSocketRequest) : IHttpWebSocketFeature
+    {
+        public bool IsWebSocketRequest { get; } = isWebSocketRequest;
+
+        public bool AcceptCalled { get; private set; }
+
+        public WebSocketAcceptContext? AcceptContext { get; private set; }
+
+        public WebSocket? SocketToAccept { get; init; }
+
+        public Task<WebSocket> AcceptAsync(WebSocketAcceptContext context)
+        {
+            AcceptCalled = true;
+            AcceptContext = context;
+            return Task.FromResult(SocketToAccept ?? throw new InvalidOperationException("Unexpected accept."));
+        }
+    }
+
+    private sealed class RecordingChannelHandler : IWorkerChannelHandler
+    {
+        public bool WasRun { get; private set; }
+
+        public AuthenticatedWorker? Worker { get; private set; }
+
+        public string? Credential { get; private set; }
+
+        public Task RunAsync(
+            AuthenticatedWorker worker,
+            string credential,
+            WebSocket socket,
+            CancellationToken cancellationToken)
+        {
+            WasRun = true;
+            Worker = worker;
+            Credential = credential;
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class RegistrationProtocolStub(
         WorkerRegistrationResult? result,
         WorkerCredentialRotationResult? rotationResult = null) : IWorkerProtocolService
     {
         public bool WasCalled { get; private set; }
+
+        public AuthenticatedWorker? Authenticated { get; init; }
+
+        public (Guid WorkerId, Guid DeploymentId)? LastAuthentication { get; private set; }
+
+        public Task<AuthenticatedWorker> AuthenticateAsync(
+            Guid workerId,
+            Guid deploymentId,
+            string workerCredential,
+            CancellationToken cancellationToken = default)
+        {
+            WasCalled = true;
+            LastAuthentication = (workerId, deploymentId);
+            return Authenticated is null
+                ? throw new WorkerProtocolAuthenticationException()
+                : Task.FromResult(Authenticated);
+        }
+
+        public Task<bool> HasDeliverableCommandAsync(
+            Guid workerId,
+            Guid deploymentId,
+            CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
 
         public Task<WorkerRegistrationResult> RegisterAsync(
             Guid workerId,

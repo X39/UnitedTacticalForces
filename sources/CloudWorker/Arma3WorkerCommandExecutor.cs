@@ -856,8 +856,8 @@ public sealed partial class Arma3WorkerCommandExecutor : IWorkerCommandExecutor
             $"-bepath={_paths.BattlEyePath}",
             "-autoInit",
         };
-        if (RequiresJoinEvidence(payload))
-            arguments.Add($"-serverMod={Arma3JoinAddon.GetModPath(_paths)}");
+        // The addon serves the human player count of every primary and the readiness of headless-client topologies.
+        arguments.Add($"-serverMod={Arma3JoinAddon.GetModPath(_paths)}");
         if (payload.Command.Port is { } port)
         {
             if (port is < 1024 or > 65535)

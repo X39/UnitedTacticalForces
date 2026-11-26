@@ -20,7 +20,7 @@ public class ApiSecurityConfigurationTests
     public void ApiPipeline_EnablesWebSocketsBeforeAuthenticationAndControllers()
     {
         var source = ReadRepositoryFile("sources/Api/Program.cs");
-        var webSocketsIndex = source.IndexOf("app.UseWebSockets();", StringComparison.Ordinal);
+        var webSocketsIndex = source.IndexOf("app.UseWebSockets(", StringComparison.Ordinal);
         var authenticationIndex = source.IndexOf("app.UseAuthentication();", StringComparison.Ordinal);
         var controllersIndex = source.IndexOf("app.MapControllers();", StringComparison.Ordinal);
 

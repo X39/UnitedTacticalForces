@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { settingTones, toneOf } from "@/components/statusTones";
 import {
   normalizeSettingsSnapshot,
   settingsFeatureDetailKey,
-  settingsFeatureTone,
+  settingsFeatureState,
+  settingsFeatureStatusKey,
 } from "@/features/admin/SettingsPage";
 
 describe("command settings projection", () => {
@@ -21,10 +23,30 @@ describe("command settings projection", () => {
     });
   });
 
-  it("maps disabled, ready, and incomplete features to stable status tones", () => {
-    expect(settingsFeatureTone({ isEnabled: false, isConfigured: false })).toBe("neutral");
-    expect(settingsFeatureTone({ isEnabled: true, isConfigured: true })).toBe("success");
-    expect(settingsFeatureTone({ isEnabled: true, isConfigured: false })).toBe("warning");
+  it("maps disabled, ready, and incomplete features to stable states", () => {
+    expect(settingsFeatureState({ isEnabled: false, isConfigured: false })).toBe("off");
+    expect(settingsFeatureState({ isEnabled: false, isConfigured: true })).toBe("off");
+    expect(settingsFeatureState({ isEnabled: true, isConfigured: true })).toBe("configured");
+    expect(settingsFeatureState({ isEnabled: true, isConfigured: false })).toBe(
+      "missing-configuration",
+    );
+  });
+
+  it("takes the badge tone of each feature state from the settings lexicon", () => {
+    const tone = (isEnabled: boolean, isConfigured: boolean) =>
+      toneOf(settingTones, settingsFeatureState({ isEnabled, isConfigured }));
+
+    expect(tone(false, false)).toBe("neutral");
+    expect(tone(true, true)).toBe("success");
+    expect(tone(true, false)).toBe("warning");
+  });
+
+  it("names a distinct status label for each feature state", () => {
+    expect(settingsFeatureStatusKey("off")).toBe("Pages_Command_Settings_StatusDisabled");
+    expect(settingsFeatureStatusKey("configured")).toBe("Pages_Command_Settings_StatusReady");
+    expect(settingsFeatureStatusKey("missing-configuration")).toBe(
+      "Pages_Command_Settings_StatusNeedsConfig",
+    );
   });
 
   it("maps known server feature names to shared localization resources", () => {

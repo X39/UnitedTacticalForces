@@ -1,10 +1,12 @@
-import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { FullUser } from "@/api/types";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
 import { canManagePublicPages, canManageVereinDocuments } from "@/auth/claims";
-import { PageHeader, StatePanel } from "@/components/primitives";
+import { ActionLink } from "@/components/ActionControl";
+import { PageStack } from "@/components/PageStack";
+import { PageHeader } from "@/components/primitives";
+import { ForbiddenState } from "@/components/StateViews";
 
 interface ContentArea {
   id: "website" | "verein";
@@ -49,16 +51,15 @@ export function Component() {
   const { user } = useAuth();
   const areas = contentHubAreas(user);
   return (
-    <section className="command-content-hub">
+    <PageStack>
       <PageHeader
-        kicker={t("Shared_CommandCenter_Nav_ContentAndDocuments")}
         title={t("Pages_Command_Content_HubTitle")}
         description={t("Pages_Command_Content_HubDescription")}
       />
       {areas.length === 0 ? (
-        <StatePanel kind="forbidden" title={t("Pages_Command_Content_HubNoAccessTitle")}>
+        <ForbiddenState title={t("Pages_Command_Content_HubNoAccessTitle")}>
           {t("Pages_Command_Content_HubNoAccessDescription")}
-        </StatePanel>
+        </ForbiddenState>
       ) : (
         <div className="command-content-hub__grid" aria-label={t("Pages_Command_Content_HubAria")}>
           {areas.map((area) => (
@@ -70,13 +71,13 @@ export function Component() {
                 <li>{t(area.scopeKey)}</li>
                 <li>{t(area.routeKey)}</li>
               </ul>
-              <Link className="button button--gold" to={area.to}>
+              <ActionLink variant="primary" to={area.to}>
                 {t(area.actionKey)}
-              </Link>
+              </ActionLink>
             </article>
           ))}
         </div>
       )}
-    </section>
+    </PageStack>
   );
 }

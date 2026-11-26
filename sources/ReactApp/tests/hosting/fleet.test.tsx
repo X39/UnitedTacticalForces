@@ -2,12 +2,17 @@ import { act, render, screen } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { MemoryRouter } from "react-router";
 import i18n, { i18nReady } from "@/app/i18n";
-import { ServerFleetView, orderFleetServers } from "@/features/hosting/FleetPages";
-import type { GameServer, ServerAction } from "@/features/hosting/types";
+import { HostingOverviewView } from "@/features/hosting/FleetPages";
+import { orderFleetServers } from "@/features/hosting/fleetModel";
+import type { GameServer, ServerNotification } from "@/features/hosting/types";
 
 function server(
   title: string,
-  options: { possibleCost?: boolean; pendingJobs?: number; action?: ServerAction } = {},
+  options: {
+    possibleCost?: boolean;
+    pendingJobs?: number;
+    status?: string;
+  } = {},
 ): GameServer {
   return {
     primaryKey: `${title.toLowerCase().replaceAll(" ", "-")}-id`,
@@ -17,9 +22,9 @@ function server(
     costOwnerName: "Assigned owner",
     pendingJobCount: options.pendingJobs ?? 0,
     timeStampUpdated: "2026-08-13T12:30:00Z",
-    actions: options.action ? [options.action] : [],
+    actions: [],
     deployment: {
-      status: "Running",
+      status: options.status ?? "Running",
       stage: "worker-online",
       possibleCost: options.possibleCost ?? false,
       resources: [],
@@ -27,16 +32,8 @@ function server(
   } as unknown as GameServer;
 }
 
-function renderFleet(servers: GameServer[], canCreate = false) {
-  return render(
-    <I18nextProvider i18n={i18n}>
-      <MemoryRouter>
-        <ServerFleetView servers={servers} canCreate={canCreate} />
-      </MemoryRouter>
-    </I18nextProvider>,
-  );
-}
-
+// Card, badge, cost, empty-state and terminate assertions of the removed fleet view now live in
+// tests/hosting/fleet-card.test.tsx, tests/hosting/fleet-page.test.tsx and tests/hosting/member-access.test.tsx.
 describe("certified hosting fleet", () => {
   beforeAll(async () => i18nReady);
 
@@ -56,68 +53,30 @@ describe("certified hosting fleet", () => {
     expect(ordered.map((item) => item.title)).toEqual(["Bravo", "Alpha", "Charlie"]);
   });
 
-  it("renders the permission-sensitive empty state", () => {
-    const { rerender } = renderFleet([], false);
+  it("renders derived state in the overview attention list instead of the raw status label", () => {
+    const stopped = server("UTF Neun", { status: "Stopped", possibleCost: true });
+    const notification = {
+      serverId: stopped.primaryKey,
+      title: "UTF Neun",
+      statusLabel: "RAW-STATUS-LABEL",
+      possibleCost: true,
+    } as unknown as ServerNotification;
 
-    expect(screen.getByRole("heading", { name: "No game servers yet" })).toBeInTheDocument();
-    expect(
-      screen.getByText("You have not been granted access to a game server yet."),
-    ).toBeVisible();
-    expect(screen.queryByRole("link", { name: "Create server" })).not.toBeInTheDocument();
-
-    rerender(
+    render(
       <I18nextProvider i18n={i18n}>
         <MemoryRouter>
-          <ServerFleetView servers={[]} canCreate />
+          <HostingOverviewView
+            servers={[stopped]}
+            notifications={[notification]}
+            canViewFinance={false}
+            canCreate={false}
+          />
         </MemoryRouter>
       </I18nextProvider>,
     );
-    expect(screen.getByRole("link", { name: "Create server" })).toHaveAttribute(
-      "href",
-      "/command/servers/create",
-    );
-  });
 
-  it("localizes status and preserves the classic deprovision challenge deep link", async () => {
-    await act(async () => {
-      await i18n.changeLanguage("de");
-    });
-    const terminate = {
-      id: "terminate",
-      enabled: true,
-      pending: false,
-    } as ServerAction;
-
-    renderFleet([server("UTF Eins", { possibleCost: true, pendingJobs: 2, action: terminate })]);
-
-    expect(screen.getByText("Läuft")).toBeVisible();
-    expect(screen.getByText("2 ausstehend")).toBeVisible();
-    expect(
-      screen.getByText("Diese Bereitstellung kann weiterhin Kosten verursachen."),
-    ).toBeVisible();
-    expect(screen.getByRole("link", { name: "Jetzt deprovisionieren" })).toHaveAttribute(
-      "href",
-      "/command/servers/utf-eins-id?action=terminate",
-    );
-  });
-
-  it("keeps a server-authoritative unavailable action disabled and localizes its reason", async () => {
-    await act(async () => {
-      await i18n.changeLanguage("de");
-    });
-    const terminate = {
-      id: "terminate",
-      enabled: false,
-      pending: false,
-      unavailableReason: "Server Operate permission is required.",
-    } as ServerAction;
-
-    renderFleet([server("UTF Zwei", { action: terminate })]);
-
-    expect(screen.getByRole("button", { name: "Jetzt deprovisionieren" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Jetzt deprovisionieren" })).toHaveAttribute(
-      "title",
-      "Die Berechtigung „Server bedienen“ ist erforderlich.",
-    );
+    expect(screen.getByText("Stop not confirmed")).toBeVisible();
+    expect(screen.getByText("May still cost")).toBeVisible();
+    expect(screen.queryByText("RAW-STATUS-LABEL")).not.toBeInTheDocument();
   });
 });

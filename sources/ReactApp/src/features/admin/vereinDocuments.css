@@ -1,0 +1,34 @@
+/*
+ * Layout of the Verein document editor form.
+ *
+ * The rules consume --utf-* tokens only. They replace the page-local control styling that lived in styles.css
+ * (`.verein-document-editor-form label|input|select|textarea|small`), which styled the raw controls that the shared
+ * fields now render.
+ */
+.verein-document-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+  padding: var(--utf-space-lg);
+}
+
+.verein-document-fields__wide {
+  grid-column: 1 / -1;
+}
+
+.verein-document-fields__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+}
+
+@media (max-width: 680px) {
+  .verein-document-fields {
+    grid-template-columns: 1fr;
+    padding: var(--utf-space-md);
+  }
+
+  .verein-document-fields__wide {
+    grid-column: auto;
+  }
+}

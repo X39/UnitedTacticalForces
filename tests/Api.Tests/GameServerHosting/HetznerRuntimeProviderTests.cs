@@ -1329,6 +1329,46 @@ public sealed class HetznerRuntimeProviderTests
         Assert.Contains("EstimatedHourlyCostEur", provider.Capabilities.ReadinessFailure, StringComparison.Ordinal);
     }
 
+    /// <summary>Hetzner Cloud bills every started hour, whether or not the provider is ready.</summary>
+    /// <param name="estimatedHourlyCostEur">The configured hourly cost; zero makes the provider not ready.</param>
+    [Theory]
+    [InlineData(0.10)]
+    [InlineData(0.0)]
+    public void Capabilities_DeclareTheStartedHourBillingUnit(double estimatedHourlyCostEur)
+    {
+        var provider = CreateProvider(new SequencedHttpMessageHandler(), (decimal) estimatedHourlyCostEur);
+
+        Assert.Equal(RuntimeBillingUnit.StartedHour, provider.Capabilities.BillingUnit);
+        Assert.Equal(HetznerRuntimeProvider.ProviderBillingUnit, provider.Capabilities.BillingUnit);
+    }
+
+    /// <summary>The emulated provider bills like production Hetzner so UAT shows the same amounts.</summary>
+    [Fact]
+    public void EmulatedProvider_DeclaresTheHetznerBillingUnit()
+    {
+        var provider = new EmulatedHetznerRuntimeProvider();
+
+        Assert.Equal(HetznerRuntimeProvider.ProviderBillingUnit, provider.Capabilities.BillingUnit);
+    }
+
+    /// <summary>
+    /// A successful emulated provision must not claim a definitively closed attempt: the lifecycle executor treats
+    /// that flag as a closed partial resource graph and tears the deployment down as a fault, even on success.
+    /// </summary>
+    /// <returns>A task completing after the provision result was asserted.</returns>
+    [Fact]
+    public async Task EmulatedProvider_Provision_SucceedsWithoutClosingTheProvisioningAttempt()
+    {
+        var provider = new EmulatedHetznerRuntimeProvider();
+
+        var result = await provider.ProvisionAsync(CreateProvisionRequest());
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.False(result.IsProvisioningAttemptDefinitivelyClosed);
+        Assert.NotNull(result.Resource);
+        Assert.Equal(3, result.ProvisionedResources.Count);
+    }
+
     /// <summary>Rejects a missing ingress plan rather than guessing whether the host should accept traffic.</summary>
     [Fact]
     public async Task Provision_RejectsMissingInboundNetworkPlanBeforeAnyProviderRequest()

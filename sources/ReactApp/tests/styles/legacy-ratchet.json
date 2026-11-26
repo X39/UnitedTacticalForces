@@ -1,0 +1,122 @@
+{
+  "components/ProfileMenu.css": {
+    "hex": 7,
+    "offGridPx": 32,
+    "outlineRemoval": 0,
+    "reason": "Shared layout or component stylesheet outside the guarded sheets; may only shrink."
+  },
+  "components/commandCenter.css": {
+    "hex": 7,
+    "offGridPx": 6,
+    "outlineRemoval": 0,
+    "reason": "Shared layout or component stylesheet outside the guarded sheets; may only shrink."
+  },
+  "components/shellLayout.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Shared layout or component stylesheet outside the guarded sheets; may only shrink."
+  },
+  "features/admin/authority.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Feature page stylesheet; converges with its page family in Phase 69 and may only shrink."
+  },
+  "features/admin/eventAuthoring.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Event authoring overrides for shared controls; token-only, may only shrink."
+  },
+  "features/admin/mediaAdmin.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Feature page stylesheet; converges with its page family in Phase 69 and may only shrink."
+  },
+  "features/admin/members.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Feature page stylesheet; converges with its page family in Phase 69 and may only shrink."
+  },
+  "features/admin/modPacks.css": {
+    "hex": 2,
+    "offGridPx": 4,
+    "outlineRemoval": 0,
+    "reason": "Feature page stylesheet; converges with its page family in Phase 69 and may only shrink."
+  },
+  "features/admin/terrains.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Feature page stylesheet; converges with its page family in Phase 69 and may only shrink."
+  },
+  "features/admin/vereinDocuments.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Verein document editor form layout; token-only, may only shrink."
+  },
+  "features/admin/vereinKassenbuch.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Feature page stylesheet; converges with its page family in Phase 69 and may only shrink."
+  },
+  "features/admin/vereinSettings.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Verein settings form layout; token-only, may only shrink."
+  },
+  "features/events-member/eventsMember.css": {
+    "hex": 24,
+    "offGridPx": 20,
+    "outlineRemoval": 0,
+    "reason": "Feature page stylesheet; converges with its page family in Phase 69 and may only shrink."
+  },
+  "features/events/EventTacticalIcon.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Feature page stylesheet; converges with its page family in Phase 69 and may only shrink."
+  },
+  "features/hosting/cost-alert-settings.css": {
+    "hex": 0,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Hosting page stylesheet; converges with the server-area plans and may only shrink."
+  },
+  "features/hosting/finance.css": {
+    "hex": 9,
+    "offGridPx": 0,
+    "outlineRemoval": 0,
+    "reason": "Hosting page stylesheet; converges with the server-area plans and may only shrink."
+  },
+  "features/hosting/hosting.css": {
+    "hex": 52,
+    "offGridPx": 11,
+    "outlineRemoval": 0,
+    "reason": "Hosting page stylesheet; converges with the server-area plans and may only shrink."
+  },
+  "features/wiki/wiki.css": {
+    "hex": 0,
+    "offGridPx": 17,
+    "outlineRemoval": 0,
+    "reason": "Feature page stylesheet; converges with its page family in Phase 69 and may only shrink."
+  },
+  "pages/publicEvents.css": {
+    "hex": 5,
+    "offGridPx": 15,
+    "outlineRemoval": 0,
+    "reason": "Tier C hero (D-AUTO-4)"
+  },
+  "styles.css": {
+    "hex": 50,
+    "offGridPx": 126,
+    "outlineRemoval": 0,
+    "reason": "Tier C hero (D-AUTO-4): hero rules stay raw; the rest of the global stylesheet shrinks as page families move onto shared primitives and tokens."
+  }
+}

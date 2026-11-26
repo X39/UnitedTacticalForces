@@ -7,8 +7,13 @@ import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
 import { canEditEvent, canManageEvents } from "@/auth/claims";
-import { ActionLink } from "@/components/ActionControl";
-import { Metric, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { FilterChipGroup } from "@/components/FilterChipGroup";
+import { PageStack } from "@/components/PageStack";
+import { Metric, PageHeader, StatusBadge } from "@/components/primitives";
+import { SearchField } from "@/components/SearchField";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { eventTones, toneOf } from "@/components/statusTones";
 import {
   eventAdminState,
   eventMatchesFilter,
@@ -21,6 +26,7 @@ import {
   type EventAdminState,
   type PlainEvent,
 } from "@/features/admin/eventAdmin";
+import "@/features/admin/eventAuthoring.css";
 
 const pageSize = 80;
 const missing = "—";
@@ -38,14 +44,11 @@ const titleKeys: Record<EventAdminFilter, TranslationKey> = {
   hidden: "Pages_Events_All_TitleHidden",
   archived: "Pages_Events_All_TitleArchived",
 };
-const stateCopy: Record<
-  EventAdminState,
-  { key: TranslationKey; tone: "neutral" | "success" | "warning" | "info" }
-> = {
-  hidden: { key: "Pages_Events_All_StatusHidden", tone: "info" },
-  archived: { key: "Pages_Events_All_StatusArchived", tone: "neutral" },
-  "low-slots": { key: "Pages_Events_All_StatusLowSlots", tone: "warning" },
-  ready: { key: "Pages_Events_All_StatusReady", tone: "success" },
+const stateKeys: Record<EventAdminState, TranslationKey> = {
+  hidden: "Pages_Events_All_StatusHidden",
+  archived: "Pages_Events_All_StatusArchived",
+  "low-slots": "Pages_Events_All_StatusLowSlots",
+  ready: "Pages_Events_All_StatusReady",
 };
 
 function relativeSchedule(
@@ -86,7 +89,7 @@ export function Component() {
     placeholderData: keepPreviousData,
   });
   const snapshot = query.data;
-  const stateLabel = (event: PlainEvent) => t(stateCopy[eventAdminState(event, now)].key);
+  const stateLabel = (event: PlainEvent) => t(stateKeys[eventAdminState(event, now)]);
   const counts = useMemo(() => {
     const events = snapshot?.events ?? [];
     return {
@@ -123,156 +126,124 @@ export function Component() {
 
   if (!authorized)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Events_All_AccessDeniedTitle")}>
-        {t("Pages_Events_All_AccessDeniedBody")}
-      </StatePanel>
+      <PageStack className="event-admin-page">
+        <PageHeader title={t("Shared_CommandCenter_Nav_Events")} />
+        <ForbiddenState title={t("Pages_Events_All_AccessDeniedTitle")}>
+          {t("Pages_Events_All_AccessDeniedBody")}
+        </ForbiddenState>
+      </PageStack>
     );
 
+  const metricFilters: readonly {
+    filter: EventAdminFilter;
+    label: string;
+    value: string;
+    detail: string;
+  }[] = [
+    {
+      filter: "all",
+      label: t("Pages_Events_All_MetricStatusArchive"),
+      value: formatResource(t("Pages_Events_All_EventCountLoaded"), snapshot?.eventCount ?? 0),
+      detail: formatResource(t("Pages_Events_All_MetricDescriptionReturned"), counts.all),
+    },
+    {
+      filter: "upcoming",
+      label: t("Pages_Events_All_MetricStatusUpcoming"),
+      value: formatResource(t("Pages_Events_All_MetricValueUpcoming"), counts.upcoming),
+      detail: nextEvent
+        ? `${nextEvent.title || t("Pages_Events_All_UntitledEvent")} / ${formatDateTime(nextEvent.scheduledFor)}`
+        : t("Pages_Events_All_NoUpcomingReturned"),
+    },
+    {
+      filter: "needs-slots",
+      label: t("Pages_Events_All_MetricStatusSlots"),
+      value: formatResource(t("Pages_Events_All_MetricValueBelowMinimum"), counts["needs-slots"]),
+      detail: t("Pages_Events_All_MetricDescriptionNeedsSlots"),
+    },
+    {
+      filter: "hidden",
+      label: t("Pages_Events_All_MetricStatusVisibility"),
+      value: formatResource(t("Pages_Events_All_MetricValueHiddenEvents"), counts.hidden),
+      detail: t("Pages_Events_All_MetricDescriptionHidden"),
+    },
+  ];
+
   return (
-    <section className="event-admin-page">
+    <PageStack className="event-admin-page">
       <PageHeader
-        kicker={t("Shared_CommandCenter_Nav_Events")}
-        title={t("Pages_Events_All_PageTitle")}
+        title={t("Shared_CommandCenter_Nav_Events")}
         description={t("Pages_Events_All_PageDescription")}
         actions={
           <>
-            <button
-              className="button button--ghost"
-              type="button"
+            <ActionButton
+              variant="ghost"
               disabled={query.isFetching}
               onClick={() => void query.refetch()}
             >
               {t("Pages_Events_All_ActionRefresh")}
-            </button>
-            <Link className="button button--primary" to="/command/events/create">
+            </ActionButton>
+            <ActionLink variant="gold" to="/command/events/create">
               {t("Pages_Events_All_ActionCreate")}
-            </Link>
+            </ActionLink>
           </>
         }
       />
 
       {query.isError && (
-        <StatePanel
-          kind="error"
-          action={
-            <button className="button button--ghost" onClick={() => void query.refetch()}>
-              {t("Pages_Events_All_ActionRefresh")}
-            </button>
-          }
-        >
+        <ErrorState onRetry={() => void query.refetch()}>
           {t("Pages_Events_All_LoadError")}
-        </StatePanel>
+        </ErrorState>
       )}
 
       <section
         className="command-metrics event-admin-metrics"
         aria-label={t("Pages_Events_All_MetricsAria")}
       >
-        <button
-          type="button"
-          className={filter === "all" ? "active" : undefined}
-          aria-pressed={filter === "all"}
-          onClick={() => setFilter("all")}
-        >
-          <Metric
-            label={t("Pages_Events_All_MetricStatusArchive")}
-            value={formatResource(
-              t("Pages_Events_All_EventCountLoaded"),
-              snapshot?.eventCount ?? 0,
-            )}
-            detail={formatResource(t("Pages_Events_All_MetricDescriptionReturned"), counts.all)}
-          />
-        </button>
-        <button
-          type="button"
-          className={filter === "upcoming" ? "active" : undefined}
-          aria-pressed={filter === "upcoming"}
-          onClick={() => setFilter("upcoming")}
-        >
-          <Metric
-            label={t("Pages_Events_All_MetricStatusUpcoming")}
-            value={formatResource(t("Pages_Events_All_MetricValueUpcoming"), counts.upcoming)}
-            detail={
-              nextEvent
-                ? `${nextEvent.title || t("Pages_Events_All_UntitledEvent")} / ${formatDateTime(nextEvent.scheduledFor)}`
-                : t("Pages_Events_All_NoUpcomingReturned")
-            }
-          />
-        </button>
-        <button
-          type="button"
-          className={filter === "needs-slots" ? "active" : undefined}
-          aria-pressed={filter === "needs-slots"}
-          onClick={() => setFilter("needs-slots")}
-        >
-          <Metric
-            label={t("Pages_Events_All_MetricStatusSlots")}
-            value={formatResource(
-              t("Pages_Events_All_MetricValueBelowMinimum"),
-              counts["needs-slots"],
-            )}
-            detail={t("Pages_Events_All_MetricDescriptionNeedsSlots")}
-          />
-        </button>
-        <button
-          type="button"
-          className={filter === "hidden" ? "active" : undefined}
-          aria-pressed={filter === "hidden"}
-          onClick={() => setFilter("hidden")}
-        >
-          <Metric
-            label={t("Pages_Events_All_MetricStatusVisibility")}
-            value={formatResource(t("Pages_Events_All_MetricValueHiddenEvents"), counts.hidden)}
-            detail={t("Pages_Events_All_MetricDescriptionHidden")}
-          />
-        </button>
+        {metricFilters.map((metric) => (
+          <ActionButton
+            key={metric.filter}
+            variant="ghost"
+            fullWidth
+            {...(filter === metric.filter ? { className: "active" } : {})}
+            aria-pressed={filter === metric.filter}
+            onClick={() => setFilter(metric.filter)}
+          >
+            <Metric label={metric.label} value={metric.value} detail={metric.detail} />
+          </ActionButton>
+        ))}
       </section>
 
-      <section
-        className="toolbar event-admin-toolbar"
-        aria-label={t("Pages_Events_All_FilterToolbarAria")}
-      >
-        <label className="search-field">
-          <span className="sr-only">{t("Pages_Events_All_FilterPlaceholder")}</span>
-          <input
-            value={search}
-            placeholder={t("Pages_Events_All_FilterPlaceholder")}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        <div className="filter-chips">
-          {(Object.keys(filterKeys) as EventAdminFilter[]).map((candidate) => (
-            <button
-              key={candidate}
-              type="button"
-              className={filter === candidate ? "active" : undefined}
-              aria-pressed={filter === candidate}
-              onClick={() => setFilter(candidate)}
-            >
-              {t(filterKeys[candidate])} <span>{counts[candidate]}</span>
-            </button>
-          ))}
-          <button
-            type="button"
-            className={!hostedByMeOnly ? "active" : undefined}
-            aria-pressed={!hostedByMeOnly}
-            onClick={() => setHostFilter(false)}
-          >
-            {t("Pages_Events_All_FilterAllHosts")}
-          </button>
-          <button
-            type="button"
-            className={hostedByMeOnly ? "active" : undefined}
-            aria-pressed={hostedByMeOnly}
-            onClick={() => setHostFilter(true)}
-          >
-            {t("Pages_Events_All_FilterHostedByMe")}
-          </button>
-        </div>
-      </section>
+      <div className="toolbar event-admin-toolbar">
+        <SearchField
+          label={t("Pages_Events_All_FilterPlaceholder")}
+          placeholder={t("Pages_Events_All_FilterPlaceholder")}
+          clearLabel={t("Common_SearchClear")}
+          value={search}
+          onChange={setSearch}
+        />
+        <FilterChipGroup<EventAdminFilter>
+          label={t("Pages_Events_All_FilterToolbarAria")}
+          items={(Object.keys(filterKeys) as EventAdminFilter[]).map((candidate) => ({
+            id: candidate,
+            label: t(filterKeys[candidate]),
+            count: counts[candidate],
+          }))}
+          value={filter}
+          onChange={(id) => setFilter(id)}
+        />
+        <FilterChipGroup
+          label={t("Host")}
+          items={[
+            { id: "all-hosts", label: t("Pages_Events_All_FilterAllHosts") },
+            { id: "hosted-by-me", label: t("Pages_Events_All_FilterHostedByMe") },
+          ]}
+          value={hostedByMeOnly ? "hosted-by-me" : "all-hosts"}
+          onChange={(id) => setHostFilter(id === "hosted-by-me")}
+        />
+      </div>
 
       {query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Events_All_LoadingState")}</StatePanel>
+        <LoadingState label={t("Pages_Events_All_LoadingState")} />
       ) : (
         <section className="command-panel event-admin-ledger">
           <header className="command-panel__header event-admin-ledger__header">
@@ -283,7 +254,9 @@ export function Component() {
             </StatusBadge>
           </header>
           {visibleRows.length === 0 ? (
-            <StatePanel>{t("Pages_Events_All_NoEventsMatch")}</StatePanel>
+            <EmptyState title={t("Pages_Events_All_EmptyTitle")}>
+              {t("Pages_Events_All_EmptyBody")}
+            </EmptyState>
           ) : (
             <div className="command-table-scroll">
               <table className="command-table event-admin-table">
@@ -301,7 +274,7 @@ export function Component() {
                 <tbody>
                   {visibleRows.map((row) => {
                     const event = row.plainEvent;
-                    const state = stateCopy[eventAdminState(event, now)];
+                    const state = eventAdminState(event, now);
                     const title = event.title || t("Pages_Events_All_UntitledEvent");
                     const canOpenEditor = Boolean(
                       event.primaryKey && canEditEvent(user, row.hostedBy?.primaryKey),
@@ -344,7 +317,9 @@ export function Component() {
                           <span>{event.primaryKey || missing}</span>
                         </th>
                         <td>
-                          <StatusBadge tone={state.tone}>{t(state.key)}</StatusBadge>
+                          <StatusBadge tone={toneOf(eventTones, state)}>
+                            {t(stateKeys[state])}
+                          </StatusBadge>
                         </td>
                         <td>
                           <strong>{row.hostedBy?.nickname || missing}</strong>
@@ -418,19 +393,18 @@ export function Component() {
                   )
                 : formatResource(t("Pages_Events_All_EventsLoaded"), snapshot?.events.length ?? 0)}
             </span>
-            <button
-              className="button button--ghost"
-              type="button"
+            <ActionButton
+              variant="ghost"
               disabled={!canLoadMore || query.isFetching}
               onClick={() => setTake((current) => current + pageSize)}
             >
               {query.isFetching && canLoadMore
                 ? t("Pages_Events_All_LoadingMore")
                 : t("Pages_Events_All_LoadMore")}
-            </button>
+            </ActionButton>
           </footer>
         </section>
       )}
-    </section>
+    </PageStack>
   );
 }

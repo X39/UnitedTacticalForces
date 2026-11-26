@@ -56,4 +56,10 @@ public class CostOwner : IPrimaryKey<Guid>, ITimeStampCreated
     public ICollection<HostingAuditRecord> AuditRecords { get; set; } = [];
 
     public ICollection<HostingCostLedgerEntry> HostingCostLedgerEntries { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets the cost alert configuration of this owner, or <see langword="null"/> when none was saved and no
+    /// alert is ever raised.
+    /// </summary>
+    public CostAlertSetting? CostAlertSetting { get; set; }
 }

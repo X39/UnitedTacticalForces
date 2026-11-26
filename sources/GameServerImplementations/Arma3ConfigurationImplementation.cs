@@ -183,12 +183,13 @@ public sealed partial class Arma3ConfigurationImplementation : IGameConfiguratio
                 ])
             {
                 IsControlPlaneOnly = true,
+                Tier = EGameConfigurationTier.Common,
             },
-            Definition(ServerTarget, "hostname", "General", "Hostname", "Name shown in the server browser.", EGameConfigurationValueKind.String, true, false, 10, Json("United Tactical Forces")),
+            Definition(ServerTarget, "hostname", "General", "Hostname", "Name shown in the server browser.", EGameConfigurationValueKind.String, true, false, 10, Json("United Tactical Forces"), tier: EGameConfigurationTier.Common),
             Definition(ServerTarget, "password", "General", "Join password", "Password required to join the server.", EGameConfigurationValueKind.String, false, true, 20),
             Definition(ServerTarget, "passwordAdmin", "General", "Administrator password", "Password used for in-game administration.", EGameConfigurationValueKind.String, false, true, 30),
             Definition(ServerTarget, "serverCommandPassword", "General", "Server command password", "Password used by server-command integrations.", EGameConfigurationValueKind.String, false, true, 40),
-            Definition(ServerTarget, "maxPlayers", "General", "Maximum players", "Maximum concurrent player count.", EGameConfigurationValueKind.Integer, true, false, 50, Json(64), 1, 256),
+            Definition(ServerTarget, "maxPlayers", "General", "Maximum players", "Maximum concurrent player count.", EGameConfigurationValueKind.Integer, true, false, 50, Json(64), 1, 256, tier: EGameConfigurationTier.Common),
             Definition(ServerTarget, "admins[]", "Administration", "Passwordless administrators", "Steam IDs allowed to log in as administrator without the administrator password.", EGameConfigurationValueKind.StringArray, false, false, 60),
             Definition(ServerTarget, "motd[]", "Message of the day", "Message lines", "Messages displayed to connecting players.", EGameConfigurationValueKind.StringArray, false, false, 70, JsonSerializer.SerializeToElement(Array.Empty<string>())),
             Definition(ServerTarget, "motdInterval", "Message of the day", "Message interval", "Seconds between message-of-the-day lines.", EGameConfigurationValueKind.Number, false, false, 80, Json(5), 0, 3600),
@@ -203,7 +204,7 @@ public sealed partial class Arma3ConfigurationImplementation : IGameConfiguratio
             Definition(ServerTarget, "allowedHTMLLoadExtensions[]", "Security", "Allowed HTML extensions", "Extensions available to htmlLoad.", EGameConfigurationValueKind.StringArray, false, false, 160),
             Definition(ServerTarget, "allowedHTMLLoadURIs[]", "Security", "Allowed HTML origins", "URI prefixes available to htmlLoad.", EGameConfigurationValueKind.StringArray, false, false, 170),
             Definition(ServerTarget, "requiredBuild", "Security", "Minimum client build", "Reject clients older than this Arma build number.", EGameConfigurationValueKind.Integer, false, false, 180, minimum: 0),
-            Definition(ServerTarget, "BattlEye", "Security", "Enable BattlEye", "Enable BattlEye anti-cheat.", EGameConfigurationValueKind.Boolean, false, false, 190, Json(true)),
+            Definition(ServerTarget, "BattlEye", "Security", "Enable BattlEye", "Enable BattlEye anti-cheat.", EGameConfigurationValueKind.Boolean, false, false, 190, Json(true), tier: EGameConfigurationTier.Common),
             Definition(ServerTarget, "disableVoN", "Voice", "Disable voice", "Disable built-in voice communication.", EGameConfigurationValueKind.Boolean, false, false, 200, Json(false)),
             Definition(ServerTarget, "vonCodec", "Voice", "Voice codec", "Codec used for voice communication.", EGameConfigurationValueKind.Integer, false, false, 210, Json(1), 0, 1, Choices: [Choice(0, "SPEEX"), Choice(1, "OPUS")]),
             Definition(ServerTarget, "vonCodecQuality", "Voice", "Voice quality", "Voice codec quality from 1 to 30.", EGameConfigurationValueKind.Integer, false, false, 220, Json(10), 1, 30),
@@ -217,8 +218,8 @@ public sealed partial class Arma3ConfigurationImplementation : IGameConfiguratio
             Definition(ServerTarget, "MaxDesync", "Client quality", "Maximum desynchronization", "Maximum client desynchronization before policy enforcement.", EGameConfigurationValueKind.Integer, false, false, 300, minimum: 0),
             Definition(ServerTarget, "DisconnectTimeout", "Client quality", "Disconnect timeout", "Seconds to wait after active client traffic is lost.", EGameConfigurationValueKind.Integer, false, false, 310, Json(15), 1, 90),
             Definition(ServerTarget, "steamProtocolMaxDataSize", "Networking", "Steam query packet limit", "Maximum Steam query response size; values above the MTU may fragment.", EGameConfigurationValueKind.Integer, false, false, 320, Json(1024), 1),
-            Definition(ServerTarget, "persistent", "Lifecycle", "Persistent battlefield", "Retain mission state while the server is empty.", EGameConfigurationValueKind.Boolean, false, false, 330, Json(true)),
-            Definition(ServerTarget, "forcedDifficulty", "Lifecycle", "Forced difficulty", "Difficulty preset enforced unless a mission overrides it.", EGameConfigurationValueKind.Selection, false, false, 340, Json("Custom"), AllowedValues: ["Recruit", "Regular", "Veteran", "Custom"]),
+            Definition(ServerTarget, "persistent", "Lifecycle", "Persistent battlefield", "Retain mission state while the server is empty.", EGameConfigurationValueKind.Boolean, false, false, 330, Json(true), tier: EGameConfigurationTier.Common),
+            Definition(ServerTarget, "forcedDifficulty", "Lifecycle", "Forced difficulty", "Difficulty preset enforced unless a mission overrides it.", EGameConfigurationValueKind.Selection, false, false, 340, Json("Custom"), AllowedValues: ["Recruit", "Regular", "Veteran", "Custom"], tier: EGameConfigurationTier.Common),
             Definition(ServerTarget, "autoSelectMission", "Lifecycle", "Automatically select missions", "Automatically select the next mission in the rotation.", EGameConfigurationValueKind.Boolean, false, false, 350, Json(false)),
             Definition(ServerTarget, "randomMissionOrder", "Lifecycle", "Random mission order", "Choose the next mission randomly from the rotation.", EGameConfigurationValueKind.Boolean, false, false, 360, Json(false)),
             Definition(ServerTarget, "missionsToServerRestart", "Lifecycle", "Missions before restart", "Restart the server process after this many completed missions; zero disables it.", EGameConfigurationValueKind.Integer, false, false, 370, Json(0), 0),
@@ -267,6 +268,23 @@ public sealed partial class Arma3ConfigurationImplementation : IGameConfiguratio
             Definition(BattlEyeTarget, "MaxPing", "RCon", "Maximum BattlEye ping", "Kick players whose ping exceeds this value; omit to disable.", EGameConfigurationValueKind.Integer, false, false, 50, minimum: 0),
         ];
 
+    /// <summary>Creates a definition for a setting that is written to a generated game file.</summary>
+    /// <param name="target">The generated target file.</param>
+    /// <param name="setting">The setting name written to the target file.</param>
+    /// <param name="group">The UI domain group.</param>
+    /// <param name="displayName">The human-readable label.</param>
+    /// <param name="description">The human-readable explanation.</param>
+    /// <param name="kind">The JSON value kind accepted by the setting.</param>
+    /// <param name="required">Whether the setting must have a value.</param>
+    /// <param name="sensitive">Whether the value must be redacted.</param>
+    /// <param name="order">The display and render order.</param>
+    /// <param name="defaultValue">The optional default value.</param>
+    /// <param name="minimum">The optional numeric minimum.</param>
+    /// <param name="maximum">The optional numeric maximum.</param>
+    /// <param name="AllowedValues">The compatible list of string values.</param>
+    /// <param name="Choices">The optional typed choices and their labels.</param>
+    /// <param name="tier">The presentation tier; <see cref="EGameConfigurationTier.Advanced" /> unless declared.</param>
+    /// <returns>The configuration definition.</returns>
     private static GameConfigurationDefinition Definition(
         string target,
         string setting,
@@ -281,7 +299,8 @@ public sealed partial class Arma3ConfigurationImplementation : IGameConfiguratio
         decimal? minimum = null,
         decimal? maximum = null,
         IReadOnlyList<string>? AllowedValues = null,
-        IReadOnlyList<GameConfigurationChoice>? Choices = null)
+        IReadOnlyList<GameConfigurationChoice>? Choices = null,
+        EGameConfigurationTier tier = EGameConfigurationTier.Advanced)
         => new(
             $"{Path.GetFileName(target).ToLowerInvariant()}@{setting}",
             target,
@@ -297,7 +316,10 @@ public sealed partial class Arma3ConfigurationImplementation : IGameConfiguratio
             minimum,
             maximum,
             AllowedValues,
-            Choices);
+            Choices)
+        {
+            Tier = tier,
+        };
 
     private static GameConfigurationChoice Choice(int value, string label, string? description = null)
         => new(Json(value), label, description);

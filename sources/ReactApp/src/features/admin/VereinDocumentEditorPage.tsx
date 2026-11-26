@@ -1,20 +1,25 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { z } from "zod";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinDocuments } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { CheckboxField, SelectField, TextAreaField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
 import {
+  ConfirmDialog,
   Markdown,
   PageHeader,
   StatePanel,
   StatusBadge,
-  useUnsavedChanges,
 } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { useLeaveGuard } from "@/components/useLeaveGuard";
 import {
   activeVereinRevision,
   createVereinDocument,
@@ -27,6 +32,7 @@ import {
   type VereinDocumentKind,
   type VereinDocumentValidationError,
 } from "@/features/admin/vereinDocuments";
+import "@/features/admin/vereinDocuments.css";
 
 interface DocumentForm {
   kind: VereinDocumentKind;
@@ -56,6 +62,25 @@ function valuesForDocument(document: VereinAdminDocument): DocumentForm {
     comment: "",
     isPublished: false,
   };
+}
+
+/** Renders the page header above a state view, so every state of the editor route keeps one `h1`. */
+function EditorStateFrame({ title, children }: { title: string; children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <PageStack>
+      <PageHeader
+        kicker={t("Shared_CommandCenter_Nav_VereinDocuments")}
+        title={title}
+        actions={
+          <ActionLink variant="ghost" to="/command/verein/documents">
+            {t("Pages_Command_Verein_DocumentsBackToList")}
+          </ActionLink>
+        }
+      />
+      {children}
+    </PageStack>
+  );
 }
 
 export function Component() {
@@ -114,7 +139,13 @@ export function Component() {
     );
     initialized.current = key;
   }, [document, documentId, editing, existingSatzung, form, query.data]);
-  useUnsavedChanges(form.formState.isDirty);
+  // A saved document leaves the editor through navigate(); the ref lets that one navigation pass the guard
+  // before the form reset has re-rendered the dirty flag.
+  const saved = useRef(false);
+  const leaveGuard = useLeaveGuard({
+    dirty: form.formState.isDirty,
+    shouldBlock: () => !saved.current,
+  });
   const values = useWatch({ control: form.control });
   const previewMarkdown = values.markdown?.trim() || t("Pages_Command_Verein_DocumentPreviewEmpty");
   const mutation = useMutation({
@@ -124,15 +155,16 @@ export function Component() {
         ? createVereinDocumentRevision(documentId, payload)
         : createVereinDocument(formValues.kind, payload);
     },
-    onSuccess: (saved) => {
+    onSuccess: (savedDocument) => {
       queryClient.setQueryData<VereinAdminDocument[]>(vereinDocumentQueryKeys.all, (current) => {
         const remaining = (current ?? []).filter(
-          (candidate) => candidate.primaryKey !== saved.primaryKey,
+          (candidate) => candidate.primaryKey !== savedDocument.primaryKey,
         );
-        return [...remaining, saved];
+        return [...remaining, savedDocument];
       });
-      form.reset(valuesForDocument(saved));
-      navigate(`/command/verein/documents/${saved.primaryKey}`, {
+      form.reset(valuesForDocument(savedDocument));
+      saved.current = true;
+      navigate(`/command/verein/documents/${savedDocument.primaryKey}`, {
         replace: true,
         state: { documentSaved: true },
       });
@@ -170,34 +202,48 @@ export function Component() {
 
   if (!authorized)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Verein_DocumentsAccessRequiredTitle")}>
-        {t("Pages_Command_Verein_DocumentsAccessRequiredDescription")}
-      </StatePanel>
+      <EditorStateFrame title={title}>
+        <ForbiddenState title={t("Pages_Command_Verein_DocumentsAccessRequiredTitle")}>
+          {t("Pages_Command_Verein_DocumentsAccessRequiredDescription")}
+        </ForbiddenState>
+      </EditorStateFrame>
     );
 
   if (query.isPending)
-    return <StatePanel kind="loading">{t("Pages_Command_Verein_Loading")}</StatePanel>;
+    return (
+      <EditorStateFrame title={title}>
+        <LoadingState label={t("Pages_Command_Verein_Loading")} />
+      </EditorStateFrame>
+    );
 
   if (query.isError)
     return (
-      <StatePanel kind="error">
-        {formatResource(t("Pages_Command_Verein_LoadError"), query.error.message)}
-      </StatePanel>
+      <EditorStateFrame title={title}>
+        <ErrorState onRetry={() => void query.refetch()}>
+          {formatResource(t("Pages_Command_Verein_LoadError"), query.error.message)}
+        </ErrorState>
+      </EditorStateFrame>
     );
 
   if (editing && (!Number.isSafeInteger(documentId) || !document))
     return (
-      <StatePanel kind="empty" title={t("Pages_Command_Verein_DocumentNotFoundTitle")}>
-        {t("Pages_Command_Verein_DocumentNotFoundDescription")}
-      </StatePanel>
+      <EditorStateFrame title={title}>
+        <EmptyState title={t("Pages_Command_Verein_DocumentNotFoundTitle")}>
+          {t("Pages_Command_Verein_DocumentNotFoundDescription")}
+        </EmptyState>
+      </EditorStateFrame>
     );
 
   const nextVersion = document
     ? Math.max(0, ...document.revisions.map((revision) => revision.version)) + 1
     : null;
+  const leaveTarget =
+    editing && document
+      ? `/command/verein/documents/${document.primaryKey}`
+      : "/command/verein/documents";
 
   return (
-    <section className="verein-document-editor-page">
+    <PageStack>
       <PageHeader
         kicker={
           editing
@@ -211,9 +257,9 @@ export function Component() {
             : "Pages_Command_Verein_DocumentsCreatePageDescription",
         )}
         actions={
-          <Link className="button button--ghost" to="/command/verein/documents">
+          <ActionLink variant="ghost" to="/command/verein/documents">
             {t("Pages_Command_Verein_DocumentsBackToList")}
-          </Link>
+          </ActionLink>
         }
       />
 
@@ -222,12 +268,12 @@ export function Component() {
           kind="info"
           title={t("Pages_Command_Verein_DocumentSatzungExistsTitle")}
           action={
-            <Link
-              className="button button--ghost"
+            <ActionLink
+              variant="ghost"
               to={`/command/verein/documents/${existingSatzung.primaryKey}/edit`}
             >
               {t("Pages_Command_Verein_DocumentsOpenEdit")}
-            </Link>
+            </ActionLink>
           }
         >
           {t("Pages_Command_Verein_DocumentSatzungExistsDescription")}
@@ -254,58 +300,69 @@ export function Component() {
                 : t("Pages_Command_Verein_DocumentsEditorTitleNew")}
             </h2>
           </header>
-          <div className="verein-document-editor-form">
-            <label>
-              <span>{t("Pages_Command_Verein_DocumentFormKind")}</span>
-              <select disabled={editing} {...form.register("kind")}>
-                <option value="Satzung" disabled={!editing && Boolean(existingSatzung)}>
-                  {t("Satzung")}
-                </option>
-                <option value="Minutes">{t("Auto_BeschlussMinutes_6fa4d247")}</option>
-              </select>
-            </label>
-            <label>
-              <span>{t("Pages_Command_Verein_DocumentFormTitle")}</span>
-              <input maxLength={180} {...form.register("title")} />
-              {form.formState.errors.title && (
-                <small role="alert">{form.formState.errors.title.message}</small>
-              )}
-            </label>
-            <label className="is-wide">
-              <span>{t("Pages_Command_Verein_DocumentFormSummary")}</span>
-              <input maxLength={512} {...form.register("summary")} />
-              {form.formState.errors.summary && (
-                <small role="alert">{form.formState.errors.summary.message}</small>
-              )}
-            </label>
-            <label className="is-wide">
-              <span>{t("Pages_Command_Verein_DocumentFormMarkdown")}</span>
-              <textarea rows={18} maxLength={60_000} {...form.register("markdown")} />
-              {form.formState.errors.markdown && (
-                <small role="alert">{form.formState.errors.markdown.message}</small>
-              )}
-            </label>
-            <label className="is-wide">
-              <span>{t("Pages_Command_Verein_DocumentFormRevisionComment")}</span>
-              <input maxLength={512} {...form.register("comment")} />
-              {form.formState.errors.comment && (
-                <small role="alert">{form.formState.errors.comment.message}</small>
-              )}
-            </label>
-            <label className="check-field is-wide">
-              <input type="checkbox" {...form.register("isPublished")} />
-              <span>{t("Pages_Command_Verein_DocumentFormPublish")}</span>
-            </label>
+          <div className="verein-document-fields">
+            <SelectField
+              label={t("Pages_Command_Verein_DocumentFormKind")}
+              disabled={editing}
+              options={[
+                {
+                  value: "Satzung",
+                  label: t("Satzung"),
+                  disabled: !editing && Boolean(existingSatzung),
+                },
+                { value: "Minutes", label: t("Auto_BeschlussMinutes_6fa4d247") },
+              ]}
+              {...form.register("kind")}
+            />
+            <TextField
+              label={t("Pages_Command_Verein_DocumentFormTitle")}
+              maxLength={180}
+              error={form.formState.errors.title?.message}
+              {...form.register("title")}
+            />
+            <div className="verein-document-fields__wide">
+              <TextField
+                label={t("Pages_Command_Verein_DocumentFormSummary")}
+                maxLength={512}
+                error={form.formState.errors.summary?.message}
+                {...form.register("summary")}
+              />
+            </div>
+            <div className="verein-document-fields__wide">
+              <TextAreaField
+                label={t("Pages_Command_Verein_DocumentFormMarkdown")}
+                rows={18}
+                maxLength={60_000}
+                error={form.formState.errors.markdown?.message}
+                {...form.register("markdown")}
+              />
+            </div>
+            <div className="verein-document-fields__wide">
+              <TextField
+                label={t("Pages_Command_Verein_DocumentFormRevisionComment")}
+                maxLength={512}
+                error={form.formState.errors.comment?.message}
+                {...form.register("comment")}
+              />
+            </div>
+            <div className="verein-document-fields__wide">
+              <CheckboxField
+                label={t("Pages_Command_Verein_DocumentFormPublish")}
+                {...form.register("isPublished")}
+              />
+            </div>
             {form.formState.errors.root && (
-              <StatePanel kind="error">{form.formState.errors.root.message}</StatePanel>
+              <div className="verein-document-fields__wide">
+                <StatePanel kind="error">{form.formState.errors.root.message}</StatePanel>
+              </div>
             )}
-            {mutation.isError && <StatePanel kind="error">{mutation.error.message}</StatePanel>}
-            <footer className="is-wide page-header__actions">
-              <button
-                className="button button--primary"
-                type="submit"
-                disabled={mutation.isPending}
-              >
+            {mutation.isError && (
+              <div className="verein-document-fields__wide">
+                <StatePanel kind="error">{mutation.error.message}</StatePanel>
+              </div>
+            )}
+            <footer className="verein-document-fields__wide verein-document-fields__actions">
+              <ActionButton variant="gold" type="submit" disabled={mutation.isPending}>
                 {mutation.isPending
                   ? t("Pages_Command_Verein_DocumentFormSaving")
                   : t(
@@ -313,17 +370,10 @@ export function Component() {
                         ? "Pages_Command_Verein_DocumentsRevisionButton"
                         : "Pages_Command_Verein_DocumentsCreateButton",
                     )}
-              </button>
-              <Link
-                className="button button--ghost"
-                to={
-                  editing && document
-                    ? `/command/verein/documents/${document.primaryKey}`
-                    : "/command/verein/documents"
-                }
-              >
-                {t("Common_Cancel")}
-              </Link>
+              </ActionButton>
+              <ActionLink variant="ghost" to={leaveTarget}>
+                {t("Pages_Command_Verein_DocumentEditorLeave_Dismiss")}
+              </ActionLink>
             </footer>
           </div>
         </form>
@@ -343,6 +393,17 @@ export function Component() {
           </div>
         </aside>
       </div>
-    </section>
+
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        title={t("Server_Alerts_Leave_Title")}
+        description={t("React_UnsavedChanges")}
+        cancelLabel={t("Server_Change_KeepEditing")}
+        confirmLabel={t("Pages_Command_Verein_DocumentEditorLeave_Dismiss")}
+        initialFocus="dismiss"
+        onCancel={leaveGuard.stay}
+        onConfirm={leaveGuard.proceed}
+      />
+    </PageStack>
   );
 }

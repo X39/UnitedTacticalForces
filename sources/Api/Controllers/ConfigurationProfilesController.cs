@@ -57,6 +57,7 @@ public sealed class ConfigurationProfilesController(
                 Title = q.Title,
                 GameIdentifier = q.GameIdentifier,
                 LatestRevisionNumber = q.Revisions.Max(r => r.RevisionNumber),
+                LatestRevisionId = q.Revisions.OrderByDescending(r => r.RevisionNumber).Select(r => (Guid?) r.PrimaryKey).FirstOrDefault(),
                 TimeStampUpdated = q.TimeStampUpdated,
             })
             .ToArrayAsync(cancellationToken)
@@ -85,6 +86,7 @@ public sealed class ConfigurationProfilesController(
                 GameIdentifier = q.GameIdentifier,
                 IsArchived = q.IsArchived,
                 LatestRevisionNumber = q.Revisions.Max(r => (int?) r.RevisionNumber) ?? 0,
+                LatestRevisionId = q.Revisions.OrderByDescending(r => r.RevisionNumber).Select(r => (Guid?) r.PrimaryKey).FirstOrDefault(),
                 TimeStampUpdated = q.TimeStampUpdated,
             })
             .ToArrayAsync(cancellationToken)
@@ -130,6 +132,9 @@ public sealed class ConfigurationProfilesController(
                 GameIdentifier = profile.GameIdentifier,
                 IsArchived = profile.IsArchived,
                 LatestRevisionNumber = profile.Revisions.Max(q => (int?) q.RevisionNumber) ?? 0,
+                LatestRevisionId = profile.Revisions.OrderByDescending(q => q.RevisionNumber)
+                    .Select(q => (Guid?) q.PrimaryKey)
+                    .FirstOrDefault(),
                 TimeStampUpdated = profile.TimeStampUpdated,
             },
             CanModify = HasPermission(User, profileId, Claims.ResourceBased.ConfigurationProfile.Modify),
@@ -202,6 +207,7 @@ public sealed class ConfigurationProfilesController(
             Title = profile.Title,
             GameIdentifier = profile.GameIdentifier,
             LatestRevisionNumber = 1,
+            LatestRevisionId = revision.PrimaryKey,
             TimeStampUpdated = now,
         });
     }

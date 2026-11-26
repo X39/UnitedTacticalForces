@@ -42,6 +42,13 @@ public class User : IPrimaryKey<Guid>
     public string? EMail { get; set; }
 
     /// <summary>
+    /// The normalized language code (<c>en</c> or <c>de</c>) used to render Discord and email messages for this
+    /// user. <see langword="null"/> means English.
+    /// </summary>
+    [MaxLength(16)]
+    public string? Locale { get; set; }
+
+    /// <summary>
     /// The user's legal first name for formal Verein membership records.
     /// </summary>
     [MaxLength(256)]

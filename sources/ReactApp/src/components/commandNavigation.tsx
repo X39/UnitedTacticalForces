@@ -126,8 +126,13 @@ export const commandNavigationItems: readonly CommandNavigationItem[] = [
         priority: 120,
       },
       {
+        matches: exact("/command/servers/cost-alerts"),
+        titleKey: "Shared_CommandCenter_CurrentArea_CostAlerts",
+        priority: 115,
+      },
+      {
         matches: exact("/command/servers"),
-        titleKey: "Shared_CommandCenter_CurrentArea_ServerFleet",
+        titleKey: "Hosting_Nav_Servers",
         priority: 110,
       },
       {

@@ -886,6 +886,463 @@
         }
       }
     },
+    "/cost-alerts": {
+      "get": {
+        "tags": [
+          "CostAlerts"
+        ],
+        "summary": "Lists the caller's undismissed cost alerts, newest first, at most 50.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CostAlertDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CostAlertDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CostAlertDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-alerts/{costAlertId}/dismissal": {
+      "post": {
+        "tags": [
+          "CostAlerts"
+        ],
+        "summary": "Dismisses one cost alert for the caller only.",
+        "parameters": [
+          {
+            "name": "costAlertId",
+            "in": "path",
+            "description": "The identifier of the alert.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-alerts/dismissals": {
+      "post": {
+        "tags": [
+          "CostAlerts"
+        ],
+        "summary": "Dismisses, for the caller only, the listed visible undismissed cost alerts of one server.",
+        "requestBody": {
+          "description": "A token that cancels the request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostAlertDismissAllPayload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostAlertDismissAllPayload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostAlertDismissAllPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-owners/{costOwnerId}/alert-settings": {
+      "get": {
+        "tags": [
+          "CostAlertSettings"
+        ],
+        "summary": "Reads the alert settings of one cost owner.",
+        "operationId": "GetAlertSettingsAsync",
+        "parameters": [
+          {
+            "name": "costOwnerId",
+            "in": "path",
+            "description": "The cost owner whose settings are read.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAlertSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAlertSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAlertSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CostAlertSettings"
+        ],
+        "summary": "Replaces the alert settings of one cost owner.",
+        "operationId": "UpdateAlertSettingsAsync",
+        "parameters": [
+          {
+            "name": "costOwnerId",
+            "in": "path",
+            "description": "The cost owner whose settings are saved.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "A token that cancels the request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostAlertSettingsUpdate"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostAlertSettingsUpdate"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CostAlertSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAlertSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAlertSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAlertSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cost-owners/mine/alert-settings": {
+      "get": {
+        "tags": [
+          "CostAlertSettings"
+        ],
+        "summary": "Reads the alert settings of the caller's personal cost owner.",
+        "operationId": "GetMyAlertSettingsAsync",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAlertSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAlertSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostAlertSettingsDto"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/cost-owners": {
       "get": {
         "tags": [
@@ -4756,15 +5213,164 @@
         }
       }
     },
+    "/game-servers/{gameServerId}/automation": {
+      "put": {
+        "tags": [
+          "GameServerAutomation"
+        ],
+        "summary": "Replaces the automation settings and weekly schedule rules of one game server.",
+        "operationId": "UpdateAutomationAsync",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "description": "The server whose automation is saved.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "A token that cancels the request.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerAutomationUpdate"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerAutomationUpdate"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerAutomationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerAutomationDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerAutomationDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerAutomationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/game-servers/{gameServerId}/configuration": {
       "get": {
         "tags": [
           "GameServerConfiguration"
         ],
+        "summary": "Resolves the effective configuration of a server, including the tier each option belongs to.",
         "parameters": [
           {
             "name": "gameServerId",
             "in": "path",
+            "description": "The identifier of the game server.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4774,7 +5380,44 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameConfigurationDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameConfigurationDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameConfigurationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       },
@@ -4782,10 +5425,12 @@
         "tags": [
           "GameServerConfiguration"
         ],
+        "summary": "Applies configuration value updates and resets to a server and records that the change waits for the next start.",
         "parameters": [
           {
             "name": "gameServerId",
             "in": "path",
+            "description": "The identifier of the game server.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4794,6 +5439,7 @@
           }
         ],
         "requestBody": {
+          "description": "Cancels the request.",
           "content": {
             "application/json": {
               "schema": {
@@ -4815,7 +5461,64 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameConfigurationDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameConfigurationDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameConfigurationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -4825,10 +5528,12 @@
         "tags": [
           "GameServerConfiguration"
         ],
+        "summary": "Selects the configuration profile and revision mode of a server. A selection that equals the stored one is a\nno-op and neither audits nor marks a pending change.",
         "parameters": [
           {
             "name": "gameServerId",
             "in": "path",
+            "description": "The identifier of the game server.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4837,6 +5542,7 @@
           }
         ],
         "requestBody": {
+          "description": "Cancels the request.",
           "content": {
             "application/json": {
               "schema": {
@@ -4857,8 +5563,48 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -4868,10 +5614,12 @@
         "tags": [
           "GameServerConfiguration"
         ],
+        "summary": "Lists the non-archived configuration profiles that match the game of the server, each with the identifier of its\nlatest revision.",
         "parameters": [
           {
             "name": "gameServerId",
             "in": "path",
+            "description": "The identifier of the game server.",
             "required": true,
             "schema": {
               "type": "string",
@@ -4881,7 +5629,53 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigurationProfileSummaryDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigurationProfileSummaryDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigurationProfileSummaryDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -5440,55 +6234,6 @@
         }
       }
     },
-    "/game-servers/{gameServerId}/actions": {
-      "get": {
-        "tags": [
-          "GameServers"
-        ],
-        "parameters": [
-          {
-            "name": "gameServerId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GameServerActionDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GameServerActionDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GameServerActionDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/game-servers/{gameServerId}/mod-pack-options": {
       "get": {
         "tags": [
@@ -5531,6 +6276,293 @@
                   "items": {
                     "$ref": "#/components/schemas/GameServerModPackOptionDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/mod-pack-options/{modPackDefinitionId}/contents": {
+      "get": {
+        "tags": [
+          "GameServers"
+        ],
+        "summary": "Gets the flattened contents of one mod pack of the server's game, resolved as the next Start would.",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "description": "The game server the pack is inspected for.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "modPackDefinitionId",
+            "in": "path",
+            "description": "The mod pack definition to inspect.",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerModPackContentsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerModPackContentsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerModPackContentsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/accrued-cost": {
+      "get": {
+        "tags": [
+          "GameServers"
+        ],
+        "summary": "Gets the provider cost accrued by the current or most recent session of the server, calculated by the control\nplane from charged ledger slices.",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "description": "The game server whose session cost is requested.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerAccruedCostDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerAccruedCostDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerAccruedCostDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/metrics": {
+      "get": {
+        "tags": [
+          "GameServers"
+        ],
+        "summary": "Gets the current metric readings of the server, decided by the control plane from the latest sample of its\nprimary worker.",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "description": "The game server whose readings are requested.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerMetricsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerMetricsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerMetricsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/metrics/history": {
+      "get": {
+        "tags": [
+          "GameServers"
+        ],
+        "summary": "Gets the retained metric history of the server for one range from the rollup tier of that range.",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "description": "The game server whose history is requested.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "description": "The range code: `1h`, `24h` or `7d`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerMetricsHistoryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerMetricsHistoryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerMetricsHistoryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -5908,6 +6940,136 @@
         }
       }
     },
+    "/game-servers/{gameServerId}/cost-owner/options": {
+      "get": {
+        "tags": [
+          "GameServers"
+        ],
+        "summary": "Lists the cost owners the caller may transfer the server to. Administrators receive every owner, everyone else\nreceives their own owner and the owners they hold an exact cost-owner use grant for. The server's current owner\nis never listed and frozen owners are listed with their frozen flag set.",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "description": "The game server identity.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "The optional owner display-name search text; blank text matches every owner.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "description": "The maximum number of owners, from 1 to 50.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerCostOwnerOptionDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerCostOwnerOptionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerCostOwnerOptionDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/game-servers/{gameServerId}/cost-owner": {
       "put": {
         "tags": [
@@ -6183,6 +7345,266 @@
         }
       }
     },
+    "/game-servers/{gameServerId}/access/users/options": {
+      "get": {
+        "tags": [
+          "GameServers"
+        ],
+        "summary": "Searches the members that can still be given direct access to the server: verified members who are neither\ndeleted nor banned and hold no direct grant on the server.",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "description": "The game server identity.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "The optional nickname search text; blank text matches every member.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "description": "The maximum number of candidates, from 1 to 50.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerUserAccessCandidateDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerUserAccessCandidateDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerUserAccessCandidateDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/access/roles/options": {
+      "get": {
+        "tags": [
+          "GameServers"
+        ],
+        "summary": "Searches the roles that can still be given direct access to the server: roles that hold no direct grant on\nthe server. Each candidate reports its active member count.",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "description": "The game server identity.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "The optional role title search text; blank text matches every role.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "description": "The maximum number of candidates, from 1 to 50.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerRoleAccessCandidateDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerRoleAccessCandidateDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GameServerRoleAccessCandidateDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/game-servers/{gameServerId}/access/users/grant": {
       "post": {
         "tags": [
@@ -6360,10 +7782,12 @@
         "tags": [
           "GameServerSecrets"
         ],
+        "summary": "Lists the secret slots of a game and whether each has a current value.",
         "parameters": [
           {
             "name": "gameServerId",
             "in": "path",
+            "description": "The identifier of the game server.",
             "required": true,
             "schema": {
               "type": "string",
@@ -6400,6 +7824,46 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       },
@@ -6407,10 +7871,12 @@
         "tags": [
           "GameServerSecrets"
         ],
+        "summary": "Supplies a new value for a user-provided or externally issued secret.",
         "parameters": [
           {
             "name": "gameServerId",
             "in": "path",
+            "description": "The identifier of the game server.",
             "required": true,
             "schema": {
               "type": "string",
@@ -6419,6 +7885,7 @@
           }
         ],
         "requestBody": {
+          "description": "A token that cancels the request.",
           "content": {
             "application/json": {
               "schema": {
@@ -6439,8 +7906,88 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -6450,10 +7997,12 @@
         "tags": [
           "GameServerSecrets"
         ],
+        "summary": "Replaces a platform-generated secret with a freshly generated value and returns that value once to the\nacting member. The reveal permission is not required because only the value this call generated is returned.",
         "parameters": [
           {
             "name": "gameServerId",
             "in": "path",
+            "description": "The identifier of the game server.",
             "required": true,
             "schema": {
               "type": "string",
@@ -6463,37 +8012,7 @@
           {
             "name": "key",
             "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/game-servers/{gameServerId}/secrets/{key}/reveal": {
-      "post": {
-        "tags": [
-          "GameServerSecrets"
-        ],
-        "parameters": [
-          {
-            "name": "gameServerId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "key",
-            "in": "path",
+            "description": "The key of the generated secret.",
             "required": true,
             "schema": {
               "type": "string"
@@ -6503,6 +8022,137 @@
         "responses": {
           "200": {
             "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerSecretValueDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerSecretValueDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerSecretValueDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/secrets/{key}/reveal": {
+      "post": {
+        "tags": [
+          "GameServerSecrets"
+        ],
+        "summary": "Reveals the current value of a revealable secret and records an audit entry. Reveal stays available on\narchived servers because it is read-only.",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "description": "The identifier of the game server.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "description": "The key of the secret to reveal.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The secret value with `Cache-Control: no-store`, `403` without the reveal permission or for a\nnon-revealable secret, or `404`.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -9722,6 +11372,81 @@
         }
       }
     },
+    "/users/me/locale": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Records the language the currently logged-in user reads messages in, such as cost alerts.",
+        "operationId": "UpdateMeLocaleAsync",
+        "requestBody": {
+          "description": "A CancellationToken to cancel the operation.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLocaleUpdate"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLocaleUpdate"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLocaleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users/me/settings": {
       "get": {
         "tags": [
@@ -12647,6 +14372,83 @@
   },
   "components": {
     "schemas": {
+      "AccruedCostDto": {
+        "required": [
+          "deploymentId",
+          "amount",
+          "asOf",
+          "isFinal"
+        ],
+        "type": "object",
+        "properties": {
+          "deploymentId": {
+            "type": "string",
+            "description": "Gets the deployment that forms the session.\nThe primary key of the deployment the amount belongs to.",
+            "format": "uuid"
+          },
+          "amount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                "type": "number",
+                "description": "Gets the accrued amount.\nThe amount in string AccruedCostDto.Currency, or `null` when it is unavailable; unavailable is never\nzero, and string? AccruedCostDto.UnavailableReason explains why.",
+                "format": "double"
+              }
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "description": "Gets the currency of decimal? AccruedCostDto.Amount.\nThe ISO currency code; currently always `EUR`."
+          },
+          "asOf": {
+            "description": "Gets the instant the amount is valid for.\nThe request instant while cost may still accrue, or the resolution instant once it has stopped.",
+            "$ref": "#/components/schemas/Instant"
+          },
+          "isFinal": {
+            "type": "boolean",
+            "description": "Gets whether the amount is final.\n`true` when cost has stopped and the amount can no longer advance."
+          },
+          "unavailableReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the reason the amount is unavailable.\n`rate`, `not-yet-charged` or `hidden` when decimal? AccruedCostDto.Amount is `null`;\notherwise `null`."
+              }
+            ]
+          },
+          "billingUnitSeconds": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the length of the provider's billing unit.\nThe number of whole seconds the provider bills in full for every started unit, for example `3600` for a\nprovider that bills every started hour; `null` when decimal? AccruedCostDto.Amount is\n`null`.",
+                "format": "int32"
+              }
+            ]
+          },
+          "billedThrough": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the instant the last started billing unit ends at.\nThe end of the last started billing unit at Instant AccruedCostDto.AsOf, which decimal? AccruedCostDto.Amount covers, so the\nnext unit starts then; `null` when decimal? AccruedCostDto.Amount is `null`.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          }
+        },
+        "description": "The accrued provider cost of one hosting session, calculated by the control plane."
+      },
       "AuthenticationProvidersDto": {
         "type": "object",
         "properties": {
@@ -13447,6 +15249,45 @@
         },
         "description": "Describes the desired direct profile permissions for one role."
       },
+      "ConfigurationProfileSummaryDto": {
+        "type": "object",
+        "properties": {
+          "primaryKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "gameIdentifier": {
+            "type": "string"
+          },
+          "isArchived": {
+            "type": "boolean"
+          },
+          "latestRevisionNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the number of the newest revision, or zero when the profile has no revision.",
+            "format": "int32"
+          },
+          "latestRevisionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the identifier of the newest revision so a selection can pin the current revision.\nThe primary key of the revision with the highest number, or null without revisions.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "timeStampUpdated": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        }
+      },
       "ConfigurationProfileUserAccessRowPayload": {
         "type": "object",
         "properties": {
@@ -13565,6 +15406,264 @@
             ]
           }
         }
+      },
+      "CostAlertDismissAllPayload": {
+        "required": [
+          "costAlertIds"
+        ],
+        "type": "object",
+        "properties": {
+          "gameServerId": {
+            "type": "string",
+            "description": "Gets the game server whose alerts are dismissed.\nThe primary key of the game server.",
+            "format": "uuid"
+          },
+          "costAlertIds": {
+            "maxItems": 50,
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Gets the alerts the client shows; alerts raised later are never dismissed by this request.\nOne to fifty alert ids; ids of other servers or unviewable cost owners are ignored."
+          }
+        },
+        "description": "Dismisses, for the calling viewer, the listed cost alerts of one game server."
+      },
+      "CostAlertDto": {
+        "required": [
+          "id",
+          "serverId",
+          "serverName",
+          "costOwnerId",
+          "thresholdAmount",
+          "accruedAmount",
+          "currency",
+          "createdAt",
+          "kind",
+          "stopsAt",
+          "stopReason",
+          "stopLimit"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Gets the identifier of the alert, used to dismiss it.\nThe primary key of the persisted alert.",
+            "format": "uuid"
+          },
+          "serverId": {
+            "type": "string",
+            "description": "Gets the server whose session reached the threshold.\nThe primary key of the game server.",
+            "format": "uuid"
+          },
+          "serverName": {
+            "type": "string",
+            "description": "Gets the title of the server whose session reached the threshold.\nThe current title of the game server."
+          },
+          "costOwnerId": {
+            "type": "string",
+            "description": "Gets the cost owner the session was billed to when the threshold was reached.\nThe primary key of the cost owner.",
+            "format": "uuid"
+          },
+          "thresholdAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": "number",
+            "description": "Gets the threshold that was reached.\nThe threshold amount in string CostAlertDto.Currency.",
+            "format": "double"
+          },
+          "accruedAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": "number",
+            "description": "Gets the accrued cost at the instant the crossing was recorded.\nThe accrued amount in string CostAlertDto.Currency; it is never updated after the crossing.",
+            "format": "double"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Gets the currency of both amounts.\nThe ISO currency code."
+          },
+          "createdAt": {
+            "description": "Gets the instant the crossing was recorded.\nThe creation time of the alert.",
+            "$ref": "#/components/schemas/Instant"
+          },
+          "kind": {
+            "description": "Gets what the alert announces.\nECostAlertKind.CostThreshold for a threshold crossing and ECostAlertKind.AutoStop\nfor an automatic stop warning.",
+            "$ref": "#/components/schemas/ECostAlertKind"
+          },
+          "stopsAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the instant the announced automatic stop follows unless it is cancelled first.\nThe stop time, or `null` for threshold alerts.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "stopReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets why the automatic stop was announced.\nThe stop reason, or `null` for threshold alerts.",
+                "$ref": "#/components/schemas/EAutoStopReason"
+              }
+            ]
+          },
+          "stopLimit": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the limit that applied to the announced automatic stop.\nMinutes for an idle stop and hours for a maximum runtime stop, or `null` for threshold alerts\nand schedule stops.",
+                "format": "int32"
+              }
+            ]
+          }
+        },
+        "description": "One in-app cost alert: the record that the accrued cost of a session reached one threshold of its cost owner, or\nthat an automatic stop is pending for it."
+      },
+      "CostAlertSettingsDto": {
+        "required": [
+          "costOwnerId",
+          "costOwnerName",
+          "revision",
+          "thresholds",
+          "discordEnabled",
+          "emailEnabled",
+          "currency",
+          "maxThresholds",
+          "maxThresholdAmount",
+          "canManage",
+          "audience",
+          "discord",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "costOwnerId": {
+            "type": "string",
+            "description": "Gets the cost owner the settings belong to.\nThe primary key of the cost owner.",
+            "format": "uuid"
+          },
+          "costOwnerName": {
+            "type": "string",
+            "description": "Gets the display name of the cost owner.\nThe name shown in the editor heading."
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the revision of the stored setting.\n`0` while nothing was saved; otherwise the counter that is incremented on every save and must be sent\nback unchanged to save again.",
+            "format": "int32"
+          },
+          "thresholds": {
+            "type": "array",
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "number",
+              "format": "double"
+            },
+            "description": "Gets the alert amounts.\nThe absolute accrued amounts, in ascending order, at which an alert is raised; empty means none."
+          },
+          "discordEnabled": {
+            "type": "boolean",
+            "description": "Gets whether alerts are delivered as Discord direct messages.\n`true` when the Discord channel is enabled for this owner."
+          },
+          "emailEnabled": {
+            "type": "boolean",
+            "description": "Gets whether alerts are delivered by email.\n`true` when the email channel is enabled for this owner."
+          },
+          "currency": {
+            "type": "string",
+            "description": "Gets the currency of the thresholds.\nThe ISO currency code of the cost owner."
+          },
+          "maxThresholds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the largest number of thresholds a save may carry.\nThe configured limit on the number of alert amounts.",
+            "format": "int32"
+          },
+          "maxThresholdAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": "number",
+            "description": "Gets the largest alert amount a save may carry.\nThe configured upper bound of one alert amount, in string CostAlertSettingsDto.Currency.",
+            "format": "double"
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "Gets whether the viewer may save changes.\n`true` when the viewer may use the cost owner."
+          },
+          "audience": {
+            "description": "Gets who the alerts of this owner are addressed to.\nECostAlertAudience.Self for a personal owner, otherwise ECostAlertAudience.Group.",
+            "$ref": "#/components/schemas/ECostAlertAudience"
+          },
+          "discord": {
+            "description": "Gets whether the Discord channel can reach the recipients.\nThe availability of Discord direct messages for the current recipients.",
+            "$ref": "#/components/schemas/ECostAlertChannelAvailability"
+          },
+          "email": {
+            "description": "Gets whether the email channel can reach the recipients.\nThe availability of email for the current recipients.",
+            "$ref": "#/components/schemas/ECostAlertChannelAvailability"
+          },
+          "messageLanguage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the language alert messages are written in.\n`en` or `de` for a personal owner, from the language recorded on the user; `null`\nfor a group owner, whose recipients each read their own language."
+              }
+            ]
+          }
+        },
+        "description": "The cost alert configuration of one cost owner together with what the viewer may do with it and which channels\ncan currently deliver."
+      },
+      "CostAlertSettingsUpdate": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the revision the editor loaded.\nThe revision of the read this save is based on; a save with a different revision is rejected as a conflict.",
+            "format": "int32"
+          },
+          "thresholds": {
+            "type": "array",
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "type": "number",
+              "format": "double"
+            },
+            "description": "Gets the complete list of alert amounts.\nThe absolute amounts to alert at. Each must be above zero, at most the configured maximum, carry at most two\ndecimals and be unique; an empty list switches alerts off."
+          },
+          "discordEnabled": {
+            "type": "boolean",
+            "description": "Gets whether alerts are delivered as Discord direct messages.\n`true` to enable the Discord channel."
+          },
+          "emailEnabled": {
+            "type": "boolean",
+            "description": "Gets whether alerts are delivered by email.\n`true` to enable the email channel."
+          },
+          "language": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the interface language of the saving user.\nA locale such as `de-DE` that is recorded on the saving user so messages are written in it, or\n`null` to leave the recorded language unchanged."
+              }
+            ]
+          }
+        },
+        "description": "A full replacement of the cost alert configuration of one cost owner."
       },
       "CostOwnerAllowancePayload": {
         "required": [
@@ -13845,6 +15944,72 @@
           ]
         }
       },
+      "EAutomationIdleState": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "NotRunning",
+          "PlayersOnline",
+          "Idle",
+          "Unknown"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EAutomationIdleState",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "NotRunning",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "PlayersOnline",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "Idle",
+              "value": 2,
+              "description": ""
+            },
+            {
+              "name": "Unknown",
+              "value": 3,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "EAutoStopReason": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Idle",
+          "MaxRuntime",
+          "Schedule"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EAutoStopReason",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Idle",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "MaxRuntime",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "Schedule",
+              "value": 2,
+              "description": ""
+            }
+          ]
+        }
+      },
       "EConfigurationContentStatus": {
         "$comment": "Applied FixEnumsSchemaTransformer",
         "enum": [
@@ -13906,6 +16071,92 @@
             {
               "name": "UploadedArtifact",
               "value": 2,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "ECostAlertAudience": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Self",
+          "Group"
+        ],
+        "type": "integer",
+        "description": "Tells who the alerts of a cost owner are addressed to.",
+        "x-ms-enum": {
+          "name": "ECostAlertAudience",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Self",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "Group",
+              "value": 1,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "ECostAlertChannelAvailability": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Deliverable",
+          "NotLinked",
+          "NoAddress",
+          "ChannelUnavailable"
+        ],
+        "type": "integer",
+        "description": "Tells whether a cost alert channel can reach the people a cost owner's alerts are addressed to.",
+        "x-ms-enum": {
+          "name": "ECostAlertChannelAvailability",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Deliverable",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "NotLinked",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "NoAddress",
+              "value": 2,
+              "description": ""
+            },
+            {
+              "name": "ChannelUnavailable",
+              "value": 3,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "ECostAlertKind": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "CostThreshold",
+          "AutoStop"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "ECostAlertKind",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "CostThreshold",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "AutoStop",
+              "value": 1,
               "description": ""
             }
           ]
@@ -14343,6 +16594,139 @@
           ]
         }
       },
+      "EGameConfigurationTier": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Advanced",
+          "Common"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EGameConfigurationTier",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Advanced",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "Common",
+              "value": 1,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "EGameConfigurationValueKind": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "String",
+          "Integer",
+          "Number",
+          "Boolean",
+          "StringArray",
+          "Selection"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EGameConfigurationValueKind",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "String",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "Integer",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "Number",
+              "value": 2,
+              "description": ""
+            },
+            {
+              "name": "Boolean",
+              "value": 3,
+              "description": ""
+            },
+            {
+              "name": "StringArray",
+              "value": 4,
+              "description": ""
+            },
+            {
+              "name": "Selection",
+              "value": 5,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "EGameSecretValueFormat": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "SingleLine",
+          "Token"
+        ],
+        "type": "integer",
+        "description": "Describes which characters a game can use in the value of a credential. The API rejects values that violate the\ndeclared format.",
+        "x-ms-enum": {
+          "name": "EGameSecretValueFormat",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "SingleLine",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "Token",
+              "value": 1,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "EGameServerChangeArea": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "None",
+          "ModPack",
+          "Configuration",
+          "Credentials"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EGameServerChangeArea",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "None",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "ModPack",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "Configuration",
+              "value": 2,
+              "description": ""
+            },
+            {
+              "name": "Credentials",
+              "value": 4,
+              "description": ""
+            }
+          ]
+        }
+      },
       "EGameServerSecretOrigin": {
         "$comment": "Applied FixEnumsSchemaTransformer",
         "enum": [
@@ -14458,7 +16842,14 @@
           "CostOwnerCreated",
           "CostOwnerRenamed",
           "CostOwnerFrozen",
-          "CostOwnerUnfrozen"
+          "CostOwnerUnfrozen",
+          "AutomaticStopWarned",
+          "AutomaticStopRequested",
+          "AutomaticStopCancelled",
+          "ScheduledStartRequested",
+          "ScheduledRunSkipped",
+          "AutomationSettingsChanged",
+          "ScheduledStartsConfirmed"
         ],
         "type": "integer",
         "x-ms-enum": {
@@ -14879,6 +17270,41 @@
               "name": "CostOwnerUnfrozen",
               "value": 82,
               "description": ""
+            },
+            {
+              "name": "AutomaticStopWarned",
+              "value": 83,
+              "description": ""
+            },
+            {
+              "name": "AutomaticStopRequested",
+              "value": 84,
+              "description": ""
+            },
+            {
+              "name": "AutomaticStopCancelled",
+              "value": 85,
+              "description": ""
+            },
+            {
+              "name": "ScheduledStartRequested",
+              "value": 86,
+              "description": ""
+            },
+            {
+              "name": "ScheduledRunSkipped",
+              "value": 87,
+              "description": ""
+            },
+            {
+              "name": "AutomationSettingsChanged",
+              "value": 88,
+              "description": ""
+            },
+            {
+              "name": "ScheduledStartsConfirmed",
+              "value": 89,
+              "description": ""
             }
           ]
         }
@@ -15171,6 +17597,42 @@
           ]
         }
       },
+      "ELifecycleJobTrigger": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Manual",
+          "Idle",
+          "MaxRuntime",
+          "Schedule"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "ELifecycleJobTrigger",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Manual",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "Idle",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "MaxRuntime",
+              "value": 2,
+              "description": ""
+            },
+            {
+              "name": "Schedule",
+              "value": 3,
+              "description": ""
+            }
+          ]
+        }
+      },
       "EModUsageRole": {
         "$comment": "Applied FixEnumsSchemaTransformer",
         "enum": [
@@ -15279,6 +17741,139 @@
             },
             {
               "name": "FixedExternal",
+              "value": 2,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "EServerScheduleAction": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Start",
+          "Stop"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EServerScheduleAction",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Start",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "Stop",
+              "value": 1,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "EServerScheduleRunOutcome": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "Started",
+          "Stopped",
+          "SkippedRunning",
+          "SkippedOff",
+          "SkippedCost",
+          "SkippedConsent",
+          "SkippedMissed",
+          "SkippedBusy",
+          "Failed",
+          "WaitingForStop",
+          "SkippedStopUnfinished"
+        ],
+        "type": "integer",
+        "x-ms-enum": {
+          "name": "EServerScheduleRunOutcome",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "Started",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "Stopped",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "SkippedRunning",
+              "value": 2,
+              "description": ""
+            },
+            {
+              "name": "SkippedOff",
+              "value": 3,
+              "description": ""
+            },
+            {
+              "name": "SkippedCost",
+              "value": 4,
+              "description": ""
+            },
+            {
+              "name": "SkippedConsent",
+              "value": 5,
+              "description": ""
+            },
+            {
+              "name": "SkippedMissed",
+              "value": 6,
+              "description": ""
+            },
+            {
+              "name": "SkippedBusy",
+              "value": 7,
+              "description": ""
+            },
+            {
+              "name": "Failed",
+              "value": 8,
+              "description": ""
+            },
+            {
+              "name": "WaitingForStop",
+              "value": 9,
+              "description": ""
+            },
+            {
+              "name": "SkippedStopUnfinished",
+              "value": 10,
+              "description": ""
+            }
+          ]
+        }
+      },
+      "EStartConsentState": {
+        "$comment": "Applied FixEnumsSchemaTransformer",
+        "enum": [
+          "NotRequired",
+          "Given",
+          "Needed"
+        ],
+        "type": "integer",
+        "description": "Describes whether scheduled starts of a server may currently run, because a scheduled start costs money and needs\nthe consent of the cost owner that pays for it.",
+        "x-ms-enum": {
+          "name": "EStartConsentState",
+          "modelAsString": false,
+          "values": [
+            {
+              "name": "NotRequired",
+              "value": 0,
+              "description": ""
+            },
+            {
+              "name": "Given",
+              "value": 1,
+              "description": ""
+            },
+            {
+              "name": "Needed",
               "value": 2,
               "description": ""
             }
@@ -16613,6 +19208,191 @@
         },
         "description": "Represents a Data Transfer Object (DTO) for a user in the system."
       },
+      "GameConfigurationChoice": {
+        "required": [
+          "value",
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/JsonElement"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "GameConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "serverId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "profileRevisionId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "profileRevisionNumber": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int32"
+              }
+            ]
+          },
+          "isComplete": {
+            "type": "boolean"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameConfigurationEntryDto"
+            }
+          }
+        }
+      },
+      "GameConfigurationEntryDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "targetPath": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EGameConfigurationValueKind"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sensitive": {
+            "type": "boolean"
+          },
+          "isControlPlaneOnly": {
+            "type": "boolean",
+            "description": "Gets whether the setting controls orchestration instead of a generated game file.\nTrue when file-conflict checks and file-target presentation do not apply."
+          },
+          "tier": {
+            "description": "Gets whether the game definition declares the setting as Common or Advanced.\nThe tier declared by the game definition; Advanced when the definition declares nothing.",
+            "$ref": "#/components/schemas/EGameConfigurationTier"
+          },
+          "order": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "format": "int32"
+          },
+          "minimum": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                "type": "number",
+                "format": "double"
+              }
+            ]
+          },
+          "maximum": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                "type": "number",
+                "format": "double"
+              }
+            ]
+          },
+          "allowedValues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameConfigurationChoice"
+            },
+            "description": "Gets the typed choices supported by the setting."
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "isCompatible": {
+            "type": "boolean"
+          },
+          "isRedacted": {
+            "type": "boolean"
+          },
+          "warning": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
       "GameServerAccessDto": {
         "type": "object",
         "properties": {
@@ -16622,6 +19402,13 @@
               "type": "string"
             },
             "description": "Exact server-scoped permissions which may be delegated through this surface."
+          },
+          "assignablePermissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The subset of string[] GameServerAccessDto.AllowedPermissions the calling member may grant or revoke on this server, in\nthe order of string[] GameServerAccessDto.AllowedPermissions. Administrators and holders of full control may assign every\npermission; every other member may assign only the permissions they hold themselves."
           },
           "users": {
             "type": "array",
@@ -16654,6 +19441,31 @@
           }
         },
         "description": "Grants or revokes one allowlisted server-scoped permission for a user."
+      },
+      "GameServerAccruedCostDto": {
+        "required": [
+          "gameServerId"
+        ],
+        "type": "object",
+        "properties": {
+          "gameServerId": {
+            "type": "string",
+            "description": "Gets the game server the accrued cost belongs to.\nThe primary key of the game server.",
+            "format": "uuid"
+          },
+          "session": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the accrued cost of the session.\nThe accrued cost of the active session, or of the most recent session that cost once it ended, until a new\nsession starts costing. `null` means the server never had a session that cost; an unavailable\namount inside the session is decimal? AccruedCostDto.Amount null, never zero.",
+                "$ref": "#/components/schemas/AccruedCostDto"
+              }
+            ]
+          }
+        },
+        "description": "The accrued cost of the current or most recent session of one game server."
       },
       "GameServerActionDto": {
         "type": "object",
@@ -16960,9 +19772,13 @@
           "isCurrentUser": {
             "type": "boolean",
             "description": "Whether this is the authenticated caller's personal cost owner."
+          },
+          "kind": {
+            "description": "The kind of account behind the owner: a member, the association or an external organization.",
+            "$ref": "#/components/schemas/ECostOwnerKind"
           }
         },
-        "description": "A billing owner the current caller may assign while creating a game server."
+        "description": "A billing owner the current caller may assign while creating a game server or transfer an existing server to."
       },
       "GameServerCostOwnerUpdatePayload": {
         "required": [
@@ -17703,8 +20519,58 @@
           "costOwnerName": {
             "type": "string"
           },
+          "costOwnerUserId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Identifier of the user behind the cost owner when the owner is a user and the viewer may see the cost owner; otherwise null.\nThe paying user's identifier, or `null` for non-user owners and owners hidden from the viewer.",
+                "format": "uuid"
+              }
+            ]
+          },
           "isLaunchDisabled": {
             "type": "boolean"
+          },
+          "costAlertThresholds": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                  "type": "number",
+                  "format": "double"
+                },
+                "description": "Ascending cost alert amounts of the server's current cost owner when the viewer may see that owner; otherwise null.\nThe alert amounts, an empty list when the owner has none, or `null` when the owner is hidden from the viewer."
+              }
+            ]
+          },
+          "canManageCostAlerts": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "boolean",
+                "description": "Whether the viewer may change the current cost owner's cost alert settings; null when the viewer may not see that owner.\n`true` or `false` for viewers who may see the owner, otherwise `null`."
+              }
+            ]
+          },
+          "changesPendingStartAreas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EGameServerChangeArea"
+            },
+            "description": "Kinds of applied change that still wait for the next start, in the order mod pack, configuration, credentials.\nThe pending areas, or an empty list when nothing waits for a start."
+          },
+          "hasChangesPendingStart": {
+            "type": "boolean",
+            "description": "Whether at least one applied change still waits for the next start.\n`true` when IReadOnlyList&lt;EGameServerChangeArea&gt; GameServerDto.ChangesPendingStartAreas is not empty."
           },
           "isArchived": {
             "type": "boolean"
@@ -17714,6 +20580,32 @@
           },
           "canManageSecrets": {
             "type": "boolean"
+          },
+          "canManageAccess": {
+            "type": "boolean",
+            "description": "Whether the viewer may list, grant and revoke access to this server; the exact rule of the manage-access requirement.\n`true` for a global or hosting administrator, a server-wide holder and a holder of the manage-access permission for this server."
+          },
+          "costOwnerIsFrozen": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "boolean",
+                "description": "Whether the current cost owner rejects new cost-generating assignments, when the viewer may see the cost owner; otherwise null.\nThe frozen flag of the current owner, or `null` when the owner is hidden from the viewer."
+              }
+            ]
+          },
+          "costOwnerAssignedAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "When the current cost owner was assigned to the server; filled for the server detail only and only when the viewer may see the cost owner.\nThe assignment time of the open cost owner assignment, or `null` in the list, when the owner is hidden from the viewer or when no open assignment exists.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
           },
           "canRevealSecrets": {
             "type": "boolean"
@@ -17744,9 +20636,307 @@
             "items": {
               "$ref": "#/components/schemas/GameServerActionDto"
             }
+          },
+          "automation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "The automation settings, limits, live status and start consent of the server; part of the server detail only.\nThe automation block, or `null` in the fleet list and notifications, and when the game definition is unknown.",
+                "$ref": "#/components/schemas/ServerAutomationDto"
+              }
+            ]
+          },
+          "canManageAutomation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "boolean",
+                "description": "Whether the viewer may change the automation settings: server modify permission plus the right to use the current cost owner.\n`true` or `false` in the server detail, `null` where the flag is not computed (fleet list and notifications)."
+              }
+            ]
           }
         },
         "description": "Durable server record plus its current externally useful lifecycle projection."
+      },
+      "GameServerMetricsDto": {
+        "required": [
+          "gameServerId",
+          "staleAfterSeconds"
+        ],
+        "type": "object",
+        "properties": {
+          "gameServerId": {
+            "type": "string",
+            "description": "Gets the game server the readings belong to.\nThe primary key of the game server.",
+            "format": "uuid"
+          },
+          "asOf": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets when the readings were received by the control plane.\nThe receipt time of the latest sample of the active session, or `null` when no sample of the\nactive session exists.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "staleAfterSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets how many seconds after Instant? GameServerMetricsDto.AsOf the readings count as stale.\nThe whole seconds of the configured stale limit; 45 with the default settings.",
+            "format": "int32"
+          },
+          "runningSince": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets when the game process of the primary worker started.\nThe process start observed by the primary worker. Exactly one of this value and\nstring? GameServerMetricsDto.RunningSinceUnavailableReason is set.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "runningSinceUnavailableReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets why Instant? GameServerMetricsDto.RunningSince is unavailable.\nA reason code, or `null` when Instant? GameServerMetricsDto.RunningSince is set."
+              }
+            ]
+          },
+          "cpuPercent": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+                "type": "number",
+                "description": "Gets the CPU load of the primary host.\nThe CPU percentage. Exactly one of this value and string? GameServerMetricsDto.CpuUnavailableReason is set.",
+                "format": "double"
+              }
+            ]
+          },
+          "cpuUnavailableReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets why double? GameServerMetricsDto.CpuPercent is unavailable.\nA reason code, or `null` when double? GameServerMetricsDto.CpuPercent is set."
+              }
+            ]
+          },
+          "memoryUsedBytes": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the used memory of the primary host.\nThe used memory in bytes. Set together with long? GameServerMetricsDto.MemoryTotalBytes; exactly one of the pair and\nstring? GameServerMetricsDto.MemoryUnavailableReason is set.",
+                "format": "int64"
+              }
+            ]
+          },
+          "memoryTotalBytes": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the total memory of the primary host.\nThe total memory in bytes, set whenever long? GameServerMetricsDto.MemoryUsedBytes is set.",
+                "format": "int64"
+              }
+            ]
+          },
+          "memoryUnavailableReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets why the memory reading is unavailable.\nA reason code, or `null` when the memory reading is set."
+              }
+            ]
+          },
+          "playerCount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the number of connected players.\nThe player count as reported by the worker; a measured zero is returned as zero. Exactly one of this value\nand string? GameServerMetricsDto.PlayersUnavailableReason is set.",
+                "format": "int32"
+              }
+            ]
+          },
+          "playerCapacity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the player capacity of the game server.\nThe capacity reported next to int? GameServerMetricsDto.PlayerCount, or `null` when it is not known.",
+                "format": "int32"
+              }
+            ]
+          },
+          "playersUnavailableReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets why int? GameServerMetricsDto.PlayerCount is unavailable.\nA reason code, or `null` when int? GameServerMetricsDto.PlayerCount is set."
+              }
+            ]
+          }
+        },
+        "description": "The current metric readings of one game server, decided by the control plane."
+      },
+      "GameServerMetricsHistoryDto": {
+        "required": [
+          "gameServerId",
+          "range",
+          "from",
+          "to",
+          "bucketSeconds",
+          "points"
+        ],
+        "type": "object",
+        "properties": {
+          "gameServerId": {
+            "type": "string",
+            "description": "Gets the game server the history belongs to.\nThe primary key of the game server.",
+            "format": "uuid"
+          },
+          "range": {
+            "type": "string",
+            "description": "Gets the range code that was served.\nOne of `1h`, `24h` or `7d`."
+          },
+          "from": {
+            "description": "Gets the inclusive start of the covered window.\nThe read time minus the range span.",
+            "$ref": "#/components/schemas/Instant"
+          },
+          "to": {
+            "description": "Gets the end of the covered window.\nThe read time.",
+            "$ref": "#/components/schemas/Instant"
+          },
+          "bucketSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the bucket length of the served tier in seconds.\n15, 60 or 300.",
+            "format": "int32"
+          },
+          "memoryTotalBytes": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the total memory of the primary host, used to scale the memory series.\nThe newest non-null total memory in bytes of the range, or `null` when none exists.",
+                "format": "int64"
+              }
+            ]
+          },
+          "playerCapacity": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the player capacity of the game server.\nThe newest non-null player capacity of the range, or `null` when none exists.",
+                "format": "int32"
+              }
+            ]
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerMetricPointDto"
+            },
+            "description": "Gets the reported buckets in ascending time order.\nOne point per bucket that received at least one sample; empty windows have no point."
+          }
+        },
+        "description": "The retained metric history of one game server for one range, read from the durable rollup tier."
+      },
+      "GameServerModPackContentItemDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Gets the comparison key in the form `{source}:{identifier}`, unique within one contents response."
+          },
+          "title": {
+            "type": "string",
+            "description": "Gets the display title of the content item."
+          }
+        },
+        "description": "One content item of a flattened mod pack, keyed so that two packs can be compared item by item."
+      },
+      "GameServerModPackContentsDto": {
+        "type": "object",
+        "properties": {
+          "modPackDefinitionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the primary key of the mod pack definition the contents belong to.",
+            "format": "int64"
+          },
+          "isAvailable": {
+            "type": "boolean",
+            "description": "Gets a value indicating whether the pack can be resolved. When `false`,\nIReadOnlyList&lt;GameServerModPackContentItemDto&gt; GameServerModPackContentsDto.Items is empty and string? GameServerModPackContentsDto.UnavailableReason explains why."
+          },
+          "unavailableReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets a safe English reason why the pack cannot be resolved, or `null` when it is available."
+              }
+            ]
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the number of items in IReadOnlyList&lt;GameServerModPackContentItemDto&gt; GameServerModPackContentsDto.Items.",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameServerModPackContentItemDto"
+            },
+            "description": "Gets the content items in resolution order, unique by string GameServerModPackContentItemDto.Key."
+          }
+        },
+        "description": "The flattened contents of one mod pack as the next Start would resolve them for a game server."
       },
       "GameServerModPackOptionDto": {
         "type": "object",
@@ -17754,13 +20944,30 @@
           "primaryKey": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
+            "description": "Gets the primary key of the mod pack definition.",
             "format": "int64"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Gets the display title of the mod pack."
+          },
+          "isAvailable": {
+            "type": "boolean",
+            "description": "Gets a value indicating whether the pack can be selected. A server's saved pack stays listed after it became\nunavailable so that the chooser can show and explain it."
+          },
+          "unavailableReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets a safe English reason why the pack is unavailable, or `null` when it is available."
+              }
+            ]
           }
         },
-        "description": "Active provider-neutral game-content definition available to a durable server."
+        "description": "Provider-neutral game-content definition offered to a durable server, with its availability for selection."
       },
       "GameServerModPackSelectionPayload": {
         "type": "object",
@@ -17812,6 +21019,32 @@
         },
         "description": "Compact authorized server item for the profile Notification Center."
       },
+      "GameServerRoleAccessCandidateDto": {
+        "type": "object",
+        "properties": {
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Role identity.",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string",
+            "description": "Current role title."
+          },
+          "description": {
+            "type": "string",
+            "description": "Current role description."
+          },
+          "memberCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Number of active members of the role, counting only members that are verified and neither deleted nor\nbanned, which is the number of people a grant to the role reaches.",
+            "format": "int32"
+          }
+        },
+        "description": "One role that can be given direct access to a game server."
+      },
       "GameServerRoleAccessGrantDto": {
         "type": "object",
         "properties": {
@@ -17828,6 +21061,12 @@
           "description": {
             "type": "string",
             "description": "Current role description."
+          },
+          "memberCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Number of active members of the role, counting only members that are verified and neither deleted nor\nbanned, which is the number of people the grants of the role reach.",
+            "format": "int32"
           },
           "permissions": {
             "type": "array",
@@ -17929,30 +21168,39 @@
           "isConfigured",
           "version",
           "origin",
-          "timeStampCreated"
+          "timeStampCreated",
+          "acceptsChosenValue",
+          "valueFormat"
         ],
         "type": "object",
         "properties": {
           "key": {
-            "type": "string"
+            "type": "string",
+            "description": "The stable key of the secret within the game."
           },
           "displayName": {
-            "type": "string"
+            "type": "string",
+            "description": "The human-readable name of the secret."
           },
           "requiredForStart": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the server cannot start while the secret has no current value."
           },
           "generated": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the platform generates the value."
           },
           "revealable": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether an authorized member may reveal the current value."
           },
           "externalProvider": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether an external provider issues the value."
           },
           "isConfigured": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the secret has a current value."
           },
           "version": {
             "oneOf": [
@@ -17962,6 +21210,7 @@
               {
                 "pattern": "^-?(?:0|[1-9]\\d*)$",
                 "type": "integer",
+                "description": "The version number of the current value, if configured.",
                 "format": "int32"
               }
             ]
@@ -17972,6 +21221,7 @@
                 "type": "null"
               },
               {
+                "description": "The origin of the current value, if configured.",
                 "$ref": "#/components/schemas/EGameServerSecretOrigin"
               }
             ]
@@ -17982,11 +21232,21 @@
                 "type": "null"
               },
               {
+                "description": "The instant the current value was created, if configured.",
                 "$ref": "#/components/schemas/Instant"
               }
             ]
+          },
+          "acceptsChosenValue": {
+            "type": "boolean",
+            "description": "Whether a member may supply a deliberate value for this credential."
+          },
+          "valueFormat": {
+            "description": "The characters the game can use in a supplied value.",
+            "$ref": "#/components/schemas/EGameSecretValueFormat"
           }
-        }
+        },
+        "description": "The configuration state of one credential slot of a game server. It never contains the value."
       },
       "GameServerSecretValueDto": {
         "required": [
@@ -17997,17 +21257,21 @@
         "type": "object",
         "properties": {
           "key": {
-            "type": "string"
+            "type": "string",
+            "description": "The secret key as declared by the game definition."
           },
           "value": {
-            "type": "string"
+            "type": "string",
+            "description": "The plaintext secret value. It is never logged or audited."
           },
           "version": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": "integer",
+            "description": "The version number of the returned value.",
             "format": "int32"
           }
-        }
+        },
+        "description": "A plaintext game server secret value returned to an authorized caller, either by an explicit reveal or once after a\nrotation generated it."
       },
       "GameServerSecretValuePayload": {
         "required": [
@@ -18029,6 +21293,25 @@
           }
         }
       },
+      "GameServerUserAccessCandidateDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User identity.",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string",
+            "description": "Current display name."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Short fingerprint of the user identity, the character # followed by the last six characters of the user id,\nthat tells members with equal nicknames apart."
+          }
+        },
+        "description": "One member that can be given direct access to a game server."
+      },
       "GameServerUserAccessGrantDto": {
         "type": "object",
         "properties": {
@@ -18040,6 +21323,10 @@
           "nickname": {
             "type": "string",
             "description": "Current display name."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Short fingerprint of the user identity, the character # followed by the last six characters of the user id,\nthat tells members with equal nicknames apart."
           },
           "permissions": {
             "type": "array",
@@ -19081,6 +22368,17 @@
               }
             ]
           },
+          "actorName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Nickname of the user behind the event, the hidden-member placeholder for a deleted user, or null for a platform event.\nThe actor's display name, the placeholder `Hidden member`, or `null` for a platform event."
+              }
+            ]
+          },
           "timeStampCreated": {
             "$ref": "#/components/schemas/Instant"
           }
@@ -19353,6 +22651,34 @@
               },
               {
                 "type": "string"
+              }
+            ]
+          },
+          "requestedByName": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Nickname of the user who requested the job, the hidden-member placeholder for a deleted user, or null when the platform requested it.\nThe requester's display name, the placeholder `Hidden member`, or `null` for a platform action."
+              }
+            ]
+          },
+          "trigger": {
+            "description": "What caused the job. The UI shows a trigger line instead of the actor line for automatic jobs.\nELifecycleJobTrigger.Manual for a user request, otherwise the automatic cause.",
+            "$ref": "#/components/schemas/ELifecycleJobTrigger"
+          },
+          "triggerLimit": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "The automation limit that applied when the job was queued automatically.\nMinutes for ELifecycleJobTrigger.Idle, hours for ELifecycleJobTrigger.MaxRuntime, otherwise `null`.",
+                "format": "int32"
               }
             ]
           },
@@ -21454,6 +24780,248 @@
           }
         }
       },
+      "ServerAutomationDto": {
+        "required": [
+          "settings",
+          "limits",
+          "idleShutdown",
+          "status",
+          "startConsent"
+        ],
+        "type": "object",
+        "properties": {
+          "settings": {
+            "description": "Gets the saved automation settings, or the defaults when nothing was saved yet.\nThe editable settings including the schedule rules and the revision to send back on save.",
+            "$ref": "#/components/schemas/ServerAutomationSettingsDto"
+          },
+          "limits": {
+            "description": "Gets the limits the control plane enforces on the settings.\nThe allowed ranges and counts, so clients never hard-code them.",
+            "$ref": "#/components/schemas/ServerAutomationLimitsDto"
+          },
+          "idleShutdown": {
+            "description": "Gets whether the game of the server supports idle shutdown.\nThe idle shutdown capability of the game.",
+            "$ref": "#/components/schemas/ServerIdleShutdownCapabilityDto"
+          },
+          "status": {
+            "description": "Gets the live automation status of the server.\nThe idle clock, the maximum runtime stop, the next scheduled action and a pending stop.",
+            "$ref": "#/components/schemas/ServerAutomationStatusDto"
+          },
+          "startConsent": {
+            "description": "Gets whether scheduled starts of the server may run.\nThe start consent state for the cost owner that currently pays for the server.",
+            "$ref": "#/components/schemas/ServerStartConsentDto"
+          }
+        },
+        "description": "The automation of one game server: the saved settings, the limits the control plane enforces, what the game\nsupports, the live status and the start consent."
+      },
+      "ServerAutomationLimitsDto": {
+        "required": [
+          "idleMinutesMin",
+          "idleMinutesMax",
+          "maxRuntimeHoursMin",
+          "maxRuntimeHoursMax",
+          "maxSchedules",
+          "warningLeadMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "idleMinutesMin": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the smallest idle limit.\nThe minimum number of idle minutes.",
+            "format": "int32"
+          },
+          "idleMinutesMax": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the largest idle limit.\nThe maximum number of idle minutes.",
+            "format": "int32"
+          },
+          "maxRuntimeHoursMin": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the smallest maximum runtime.\nThe minimum number of hours.",
+            "format": "int32"
+          },
+          "maxRuntimeHoursMax": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the largest maximum runtime.\nThe maximum number of hours.",
+            "format": "int32"
+          },
+          "maxSchedules": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the largest number of schedule rules one server may hold.\nThe rule limit.",
+            "format": "int32"
+          },
+          "warningLeadMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the warning lead: an automatic stop is warned this long before it happens.\nThe lead in whole minutes, rounded up.",
+            "format": "int32"
+          }
+        },
+        "description": "The limits the control plane enforces on server automation settings."
+      },
+      "ServerAutomationSettingsDto": {
+        "required": [
+          "idleShutdownEnabled",
+          "idleShutdownMinutes",
+          "maxRuntimeEnabled",
+          "maxRuntimeHours",
+          "schedules",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "idleShutdownEnabled": {
+            "type": "boolean",
+            "description": "Gets whether a running server is stopped after it stayed without players.\n`true` when idle shutdown is switched on."
+          },
+          "idleShutdownMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the minutes without connected players after which idle shutdown applies.\nThe idle limit in minutes; the proposed default while nothing was saved.",
+            "format": "int32"
+          },
+          "maxRuntimeEnabled": {
+            "type": "boolean",
+            "description": "Gets whether a session is stopped after it ran for a maximum duration.\n`true` when the maximum runtime limit is switched on."
+          },
+          "maxRuntimeHours": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the hours after which the maximum runtime limit applies.\nThe runtime limit in hours; the proposed default while nothing was saved.",
+            "format": "int32"
+          },
+          "timeZone": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the IANA time zone in which the schedule rules are interpreted.\nThe zone identifier such as `Europe/Berlin`, or `null` when none was chosen."
+              }
+            ]
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerScheduleDto"
+            },
+            "description": "Gets the weekly schedule rules in display order.\nThe rules, or an empty list when the server has none."
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the revision of the saved settings.\n`0` while nothing was saved, otherwise the counter to send back unchanged on the next save.",
+            "format": "int32"
+          }
+        },
+        "description": "The saved automation settings of one game server."
+      },
+      "ServerAutomationStatusDto": {
+        "required": [
+          "idle"
+        ],
+        "type": "object",
+        "properties": {
+          "idle": {
+            "description": "Gets the state of the idle shutdown clock.\nThe idle state with its start and stop instants.",
+            "$ref": "#/components/schemas/ServerIdleStatusDto"
+          },
+          "maxRuntimeStopsAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the instant the maximum runtime stop happens.\nOne warning lead after the runtime limit, or `null` when the limit is off or the server is\nnot running.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "nextScheduled": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the next scheduled action of the server.\nThe earliest upcoming rule occurrence, or `null` when none will run.",
+                "$ref": "#/components/schemas/ServerNextScheduledDto"
+              }
+            ]
+          },
+          "pendingStop": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the automatic stop that is announced and has not happened yet.\nThe pending stop, or `null` when no stop is announced.",
+                "$ref": "#/components/schemas/ServerPendingStopDto"
+              }
+            ]
+          }
+        },
+        "description": "The live automation status of a game server, calculated by the control plane."
+      },
+      "ServerAutomationUpdate": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the version the editor loaded.\nThe version of the read this save is based on, zero for a server that never saved automation settings. A save\nwith a different version is rejected as a conflict.",
+            "format": "int32"
+          },
+          "idleShutdownEnabled": {
+            "type": "boolean",
+            "description": "Gets whether a running server is stopped after it stayed without connected players.\n`true` to enable idle shutdown; only games that report players support it."
+          },
+          "idleShutdownMinutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the number of minutes without connected players after which the idle shutdown applies.\nA value within the configured idle limits when idle shutdown is enabled. While it is disabled, an out-of-range\nvalue is ignored and the stored value is kept.",
+            "format": "int32"
+          },
+          "maxRuntimeEnabled": {
+            "type": "boolean",
+            "description": "Gets whether a session is stopped after it ran for the maximum runtime.\n`true` to enable the maximum runtime limit."
+          },
+          "maxRuntimeHours": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": "integer",
+            "description": "Gets the number of hours after which the maximum runtime limit applies.\nA value within the configured runtime limits when the limit is enabled. While it is disabled, an out-of-range\nvalue is ignored and the stored value is kept.",
+            "format": "int32"
+          },
+          "timeZone": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "maxLength": 64,
+                "type": "string",
+                "description": "Gets the IANA time zone in which the weekly rules are interpreted.\nAn IANA zone identifier such as `Europe/Berlin`; required when any rule exists."
+              }
+            ]
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerScheduleRuleUpdate"
+            },
+            "description": "Gets the complete list of weekly schedule rules.\nThe rules in display order; at most the configured number of rules."
+          },
+          "startConsent": {
+            "type": "boolean",
+            "description": "Gets whether the saving user confirms that scheduled starts may incur cost for the current cost owner.\n`true` to record the consent; `false` records nothing and never revokes an\nexisting consent."
+          }
+        },
+        "description": "A full replacement of the automation settings and weekly schedule rules of one game server."
+      },
       "ServerConfigurationUpdatePayload": {
         "type": "object",
         "properties": {
@@ -21470,6 +25038,301 @@
             }
           }
         }
+      },
+      "ServerIdleShutdownCapabilityDto": {
+        "required": [
+          "available"
+        ],
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "Gets whether idle shutdown can be used.\n`true` when the game reports its player count; `false` when idle shutdown\ncannot work because the game cannot tell whether players are connected."
+          }
+        },
+        "description": "Describes whether idle shutdown is available for the game of a server."
+      },
+      "ServerIdleStatusDto": {
+        "required": [
+          "state"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "description": "Gets the idle state.\nNot running, players online, idle, or unknown while the player count is unavailable.",
+            "$ref": "#/components/schemas/EAutomationIdleState"
+          },
+          "since": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the instant the server was first known to be empty.\nThe idle start, or `null` while players are online or the clock is not running.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "stopsAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the instant the idle stop happens.\nOne warning lead after the idle limit, or `null` unless the server is idle.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          }
+        },
+        "description": "The state of the idle shutdown clock of a game server."
+      },
+      "ServerMetricAggregateDto": {
+        "required": [
+          "average",
+          "minimum",
+          "maximum"
+        ],
+        "type": "object",
+        "properties": {
+          "average": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": "number",
+            "description": "Gets the average of the samples in the bucket.\nThe sum divided by the sample count, rounded to two decimals.",
+            "format": "double"
+          },
+          "minimum": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": "number",
+            "description": "Gets the lowest sample in the bucket.\nThe minimum, so the trough of a dip survives downsampling.",
+            "format": "double"
+          },
+          "maximum": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": "number",
+            "description": "Gets the highest sample in the bucket.\nThe maximum, so the peak of a spike survives downsampling.",
+            "format": "double"
+          }
+        },
+        "description": "The average, minimum and maximum of one metric inside one history bucket, computed by the API."
+      },
+      "ServerMetricPointDto": {
+        "required": [
+          "bucketStart"
+        ],
+        "type": "object",
+        "properties": {
+          "bucketStart": {
+            "description": "Gets the inclusive start of the bucket.\nThe API receipt time floored to the bucket resolution.",
+            "$ref": "#/components/schemas/Instant"
+          },
+          "cpu": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the CPU percentage aggregate.\nThe aggregate, or `null` when no sample of the bucket carried a CPU value.",
+                "$ref": "#/components/schemas/ServerMetricAggregateDto"
+              }
+            ]
+          },
+          "memoryUsed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the used memory aggregate in bytes.\nThe aggregate, or `null` when no sample of the bucket carried a memory value.",
+                "$ref": "#/components/schemas/ServerMetricAggregateDto"
+              }
+            ]
+          },
+          "players": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the connected player count aggregate.\nThe aggregate, or `null` when no sample of the bucket carried a player count.",
+                "$ref": "#/components/schemas/ServerMetricAggregateDto"
+              }
+            ]
+          }
+        },
+        "description": "One bucket of the metric history of a server."
+      },
+      "ServerNextScheduledDto": {
+        "required": [
+          "action",
+          "at"
+        ],
+        "type": "object",
+        "properties": {
+          "action": {
+            "description": "Gets the action that runs next.\nStart or stop.",
+            "$ref": "#/components/schemas/EServerScheduleAction"
+          },
+          "at": {
+            "description": "Gets the instant the action runs.\nThe occurrence instant calculated in the schedule time zone.",
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "description": "The next scheduled action of a game server."
+      },
+      "ServerPendingStopDto": {
+        "required": [
+          "reason",
+          "stopsAt"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "description": "Gets why the stop was announced.\nIdle, maximum runtime or schedule.",
+            "$ref": "#/components/schemas/EAutoStopReason"
+          },
+          "stopsAt": {
+            "description": "Gets the instant the stop happens unless it is cancelled first.\nThe stop instant recorded when the warning opened.",
+            "$ref": "#/components/schemas/Instant"
+          },
+          "limit": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "description": "Gets the limit that applied when the warning opened.\nMinutes for an idle stop, hours for a maximum runtime stop, or `null` for a schedule.",
+                "format": "int32"
+              }
+            ]
+          }
+        },
+        "description": "An automatic stop that was announced to the owner and has not happened yet."
+      },
+      "ServerScheduleDto": {
+        "required": [
+          "id",
+          "action",
+          "days",
+          "time"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Gets the identifier of the rule.\nThe primary key of the rule.",
+            "format": "uuid"
+          },
+          "action": {
+            "description": "Gets the action the rule performs.\nStart or stop.",
+            "$ref": "#/components/schemas/EServerScheduleAction"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Gets the weekdays the rule applies to.\nISO weekdays in ascending order, Monday is 1 and Sunday is 7."
+          },
+          "time": {
+            "type": "string",
+            "description": "Gets the local time of day in the schedule time zone.\nThe time formatted as `HH:mm`."
+          },
+          "nextRunAt": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the instant the rule runs next, calculated by the control plane.\nThe next occurrence, or `null` when the schedule has no time zone or the rule cannot run, for\nexample a start rule without start consent.",
+                "$ref": "#/components/schemas/Instant"
+              }
+            ]
+          },
+          "lastRun": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Gets the latest recorded occurrence of the rule.\nThe last run, or `null` when the rule never ran.",
+                "$ref": "#/components/schemas/ServerScheduleLastRunDto"
+              }
+            ]
+          }
+        },
+        "description": "One weekly schedule rule of a game server."
+      },
+      "ServerScheduleLastRunDto": {
+        "required": [
+          "at",
+          "outcome"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "description": "Gets the instant the occurrence was scheduled for.\nThe occurrence instant.",
+            "$ref": "#/components/schemas/Instant"
+          },
+          "outcome": {
+            "description": "Gets what the control plane decided or what happened to the job it queued.\nThe recorded outcome, or Failed when the job of the occurrence ended failed.",
+            "$ref": "#/components/schemas/EServerScheduleRunOutcome"
+          }
+        },
+        "description": "The latest recorded occurrence of a schedule rule."
+      },
+      "ServerScheduleRuleUpdate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "description": "Gets the identifier of an existing rule.\nThe identifier the API assigned to the rule, or `null` for a new rule. An identifier that does\nnot belong to the server is rejected.",
+                "format": "uuid"
+              }
+            ]
+          },
+          "action": {
+            "description": "Gets the action the rule performs.\nStart or stop.",
+            "$ref": "#/components/schemas/EServerScheduleAction"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Gets the weekdays the rule applies to.\nA non-empty set of distinct ISO weekdays, Monday is 1 and Sunday is 7. The API returns them in ascending order."
+          },
+          "time": {
+            "maxLength": 5,
+            "type": "string",
+            "description": "Gets the local time of day in the schedule time zone.\nThe time formatted as `HH:mm`, from `00:00` to `23:59`."
+          }
+        },
+        "description": "One weekly schedule rule inside a ServerAutomationUpdate."
+      },
+      "ServerStartConsentDto": {
+        "required": [
+          "state"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "description": "Gets whether scheduled starts may run.\nNot required without a start rule, given for the current cost owner, otherwise needed.",
+            "$ref": "#/components/schemas/EStartConsentState"
+          }
+        },
+        "description": "The start consent of a game server. It carries the state only, never the identity of the cost owner."
       },
       "SiteImageSettingDto": {
         "type": "object",
@@ -21976,6 +25839,16 @@
         },
         "description": "Represents a Data Transfer Object (DTO) for a user in the system."
       },
+      "UserLocaleUpdate": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "description": "Gets the locale to record.\nA locale such as `de` or `en-GB`; only English and German are accepted."
+          }
+        },
+        "description": "The language a signed-in user reads messages in."
+      },
       "UserUpdate": {
         "type": "object",
         "properties": {
@@ -22039,6 +25912,72 @@
                 "type": "boolean"
               }
             ]
+          }
+        }
+      },
+      "ValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": "integer",
+                "format": "int32"
+              }
+            ]
+          },
+          "detail": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "instance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         }
       },
@@ -22973,6 +26912,12 @@
       "name": "ConfigurationProfiles"
     },
     {
+      "name": "CostAlerts"
+    },
+    {
+      "name": "CostAlertSettings"
+    },
+    {
       "name": "CostOwners"
     },
     {
@@ -22986,6 +26931,9 @@
     },
     {
       "name": "GameContent"
+    },
+    {
+      "name": "GameServerAutomation"
     },
     {
       "name": "GameServerConfiguration"

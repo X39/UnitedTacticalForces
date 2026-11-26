@@ -1,0 +1,161 @@
+/*
+ * Styles for the Cost owner panel of the Settings section: the intro note, the facts list with the owner and the
+ * date since, the frozen warning and the transfer block.
+ *
+ * The facts are a two-column grid (term, value) from 521px and stack at 520px and below. Names and dates wrap instead
+ * of being cut off.
+ *
+ * The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px
+ * media breakpoints; tests/styles/server-style-guard.test.ts fails on anything else.
+ */
+
+/* The panel body: intro, facts, warning and transfer block in one column with an even rhythm. */
+.cost-owner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+}
+
+/* Muted note at the top of the panel. */
+.cost-owner__intro {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/* The facts: one row per fact, the term left and the value right. */
+.cost-owner-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  margin: 0;
+}
+
+.cost-owner-facts__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  gap: var(--utf-space-sm);
+  align-items: baseline;
+  min-width: 0;
+}
+
+.cost-owner-facts dt {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cost-owner-facts dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/* The member-only note replaces the transfer block. */
+.cost-owner__readonly {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The transfer block: the picker and the Transfer cost owner button in one row from 521px, the picker growing and the
+ * button at the end, aligned to the input rather than to the label above it; at 520px and below everything stacks and
+ * the button is full width.
+ */
+.cost-owner-transfer {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(min-content, 1fr);
+  gap: var(--utf-space-sm);
+  align-items: start;
+  min-width: 0;
+}
+
+.cost-owner-transfer__picker {
+  min-width: 0;
+}
+
+/*
+ * The button and its unavailable reason are laid out by the transfer grid itself: the picker and the button share the
+ * first row and the reason takes a second row across the full width, so a long reason (a cloud machine exists, jobs are
+ * pending, no owner chosen) wraps at the width of the whole block instead of the narrow button column. The action cell
+ * and the wrapper of the button with a reason generate no box, which makes the button and the reason direct grid
+ * items. The invisible ReasonReserve occupies the same second row with every possible reason, so the row is as tall as
+ * the tallest reason and the reason appearing, changing or going when an owner is chosen or a blocker clears never
+ * moves the panels below. The button offset is the height of the picker label and the gap under it, so the button
+ * lines up with the input.
+ */
+.cost-owner-transfer__action,
+.cost-owner-transfer__action .action-with-reason {
+  display: contents;
+}
+
+.cost-owner-transfer__picker {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.cost-owner-transfer__action .button {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: start;
+  max-width: 100%;
+  margin-block-start: calc(var(--utf-text-body) * var(--utf-leading-body) + var(--utf-space-xs));
+}
+
+.cost-owner-transfer__action .action-reason,
+.cost-owner-transfer > .reason-reserve {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+/* The two consequences listed in the confirmation, as a plain list with a little breathing room. */
+.cost-owner-dialog__list {
+  margin: 0;
+  padding-inline-start: var(--utf-space-lg);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .cost-owner-transfer__action .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .cost-owner-facts__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--utf-space-xs);
+  }
+
+  .cost-owner-transfer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Stacked: picker, then the full-width button, then the reason. */
+  .cost-owner-transfer__action .button {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: stretch;
+    margin-block-start: 0;
+  }
+
+  .cost-owner-transfer__action .action-reason,
+  .cost-owner-transfer > .reason-reserve {
+    grid-row: 3;
+  }
+}

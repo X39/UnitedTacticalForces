@@ -11,6 +11,7 @@ using X39.UnitedTacticalForces.Api.DTO.Updates;
 using X39.UnitedTacticalForces.Api.ExtensionMethods;
 using X39.UnitedTacticalForces.Api.Helpers;
 using X39.UnitedTacticalForces.Api.Services;
+using X39.UnitedTacticalForces.Api.Services.Notifications;
 using X39.UnitedTacticalForces.Common.Verein;
 using X39.Util;
 
@@ -265,6 +266,40 @@ public class UsersController : ControllerBase
         if (!User.TryGetUserId(out var currentUserId))
             return Unauthorized();
         await DoUpdateUserAsync(currentUserId, updatedUser, cancellationToken, currentUserId);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Records the language the currently logged-in user reads messages in, such as cost alerts.
+    /// </summary>
+    /// <param name="payload">The locale to record; only English and German are accepted.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns>
+    /// 204 once the normalized language is stored on the caller; 400 for an empty or unsupported locale; 401 when the
+    /// caller has no user id.
+    /// </returns>
+    [Authorize]
+    [HttpPost("me/locale", Name = nameof(UpdateMeLocaleAsync))]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateMeLocaleAsync(
+        [FromBody] UserLocaleUpdate payload,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!User.TryGetUserId(out var currentUserId))
+            return Unauthorized();
+        var locale = MessageLocales.Normalize(payload?.Locale);
+        if (locale is null)
+            return BadRequest();
+        var user = await _apiDbContext.Users
+            .SingleOrDefaultAsync(q => q.PrimaryKey == currentUserId, cancellationToken);
+        if (user is null)
+            return Unauthorized();
+        user.Locale = locale;
+        await _apiDbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("User {UserId} reads messages in language {Locale}.", currentUserId, locale);
         return NoContent();
     }
 

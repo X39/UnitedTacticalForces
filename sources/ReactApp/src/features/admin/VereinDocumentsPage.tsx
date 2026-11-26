@@ -7,7 +7,13 @@ import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinDocuments } from "@/auth/claims";
-import { Metric, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { FilterChipGroup } from "@/components/FilterChipGroup";
+import { PageStack } from "@/components/PageStack";
+import { Metric, PageHeader, StatusBadge } from "@/components/primitives";
+import { SearchField } from "@/components/SearchField";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { reportTones, toneOf } from "@/components/statusTones";
 import {
   activeVereinRevision,
   latestPublishedVereinRevision,
@@ -30,6 +36,8 @@ const listTitles: Record<VereinDocumentFilter, TranslationKey> = {
   Satzung: "Pages_Command_Verein_DocumentsListTitleSatzung",
   Minutes: "Pages_Command_Verein_DocumentsListTitleMinutes",
 };
+
+const filterOrder = ["all", "Satzung", "Minutes"] as const;
 
 function documentTitle(document: VereinAdminDocument, fallback: string): string {
   return activeVereinRevision(document)?.title || fallback;
@@ -76,58 +84,64 @@ export function Component() {
 
   if (!authorized)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Verein_DocumentsAccessRequiredTitle")}>
-        {t("Pages_Command_Verein_DocumentsAccessRequiredDescription")}
-      </StatePanel>
+      <PageStack>
+        <PageHeader
+          kicker={t("Shared_CommandCenter_Nav_VereinDocuments")}
+          title={t("Pages_Command_Verein_DocumentsPageTitle")}
+        />
+        <ForbiddenState title={t("Pages_Command_Verein_DocumentsAccessRequiredTitle")}>
+          {t("Pages_Command_Verein_DocumentsAccessRequiredDescription")}
+        </ForbiddenState>
+      </PageStack>
     );
 
   return (
-    <section className="verein-documents-page">
+    <PageStack>
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_VereinDocuments")}
         title={t("Pages_Command_Verein_DocumentsPageTitle")}
         description={t("Pages_Command_Verein_DocumentsPageDescription")}
         actions={
           <>
-            <Link className="button button--ghost" to="/command/content">
+            <ActionLink variant="ghost" to="/command/content">
               {t("Pages_Command_Content_BackToHub")}
-            </Link>
-            <button
-              className="button button--ghost"
-              type="button"
+            </ActionLink>
+            <ActionButton
+              variant="ghost"
               disabled={query.isFetching}
               onClick={() => void query.refetch()}
             >
               {t("Pages_Command_Verein_ActionRefresh")}
-            </button>
-            <Link className="button button--ghost" to="/verein/satzung">
+            </ActionButton>
+            <ActionLink variant="ghost" to="/verein/satzung">
               {t("Pages_Command_Verein_DocumentsPublicSatzungLink")}
-            </Link>
-            <Link className="button button--ghost" to="/verein/beschluesse">
+            </ActionLink>
+            <ActionLink variant="ghost" to="/verein/beschluesse">
               {t("Pages_Command_Verein_DocumentsPublicArchiveLink")}
-            </Link>
-            <Link className="button button--primary" to="/command/verein/documents/create">
+            </ActionLink>
+            <ActionLink variant="gold" to="/command/verein/documents/create">
               {t("Pages_Command_Verein_DocumentFormCreateNew")}
-            </Link>
+            </ActionLink>
           </>
         }
       />
 
       {query.isError && (
-        <StatePanel kind="error">
+        <ErrorState onRetry={() => void query.refetch()}>
           {formatResource(t("Pages_Command_Verein_LoadError"), query.error.message)}
-        </StatePanel>
+        </ErrorState>
       )}
 
       <section
         className="command-metrics verein-documents-metrics"
         aria-label={t("Pages_Command_Verein_DocumentsMetricsAria")}
       >
-        {(["all", "Satzung", "Minutes"] as const).map((candidate) => (
-          <button
+        {filterOrder.map((candidate) => (
+          <ActionButton
             key={candidate}
-            type="button"
-            className={filter === candidate ? "active" : undefined}
+            variant="ghost"
+            fullWidth
+            {...(filter === candidate ? { className: "active" } : {})}
             aria-pressed={filter === candidate}
             onClick={() => setFilter(candidate)}
           >
@@ -148,39 +162,32 @@ export function Component() {
                     : t("Pages_Command_Verein_DocumentsMetricMinutesDescription")
               }
             />
-          </button>
+          </ActionButton>
         ))}
       </section>
 
-      <section
-        className="toolbar verein-documents-toolbar"
-        aria-label={t("Pages_Command_Verein_DocumentsToolbarAria")}
-      >
-        <label className="search-field">
-          <span className="sr-only">{t("Pages_Command_Verein_DocumentsSearchPlaceholder")}</span>
-          <input
-            value={search}
-            placeholder={t("Pages_Command_Verein_DocumentsSearchPlaceholder")}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        <div className="filter-chips">
-          {(["all", "Satzung", "Minutes"] as const).map((candidate) => (
-            <button
-              key={candidate}
-              type="button"
-              className={filter === candidate ? "active" : undefined}
-              aria-pressed={filter === candidate}
-              onClick={() => setFilter(candidate)}
-            >
-              {t(filterLabels[candidate])} <span>{counts[candidate]}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      <div className="toolbar verein-documents-toolbar">
+        <SearchField
+          label={t("Pages_Command_Verein_DocumentsSearchPlaceholder")}
+          placeholder={t("Pages_Command_Verein_DocumentsSearchPlaceholder")}
+          clearLabel={t("Common_SearchClear")}
+          value={search}
+          onChange={setSearch}
+        />
+        <FilterChipGroup<VereinDocumentFilter>
+          label={t("Pages_Command_Verein_DocumentsToolbarAria")}
+          items={filterOrder.map((candidate) => ({
+            id: candidate,
+            label: t(filterLabels[candidate]),
+            count: counts[candidate],
+          }))}
+          value={filter}
+          onChange={setFilter}
+        />
+      </div>
 
       {query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_Verein_Loading")}</StatePanel>
+        <LoadingState label={t("Pages_Command_Verein_Loading")} />
       ) : (
         <section className="command-panel verein-documents-list">
           <header className="command-panel__header">
@@ -189,7 +196,9 @@ export function Component() {
             <StatusBadge>{countLabel(visible.length)}</StatusBadge>
           </header>
           {visible.length === 0 ? (
-            <StatePanel>{t("Pages_Command_Verein_DocumentsNoRows")}</StatePanel>
+            <EmptyState title={t("Pages_Command_Verein_DocumentsEmptyTitle")}>
+              {t("Pages_Command_Verein_DocumentsEmptyBody")}
+            </EmptyState>
           ) : (
             <div className="command-table-scroll">
               <table className="command-table verein-documents-table">
@@ -223,7 +232,9 @@ export function Component() {
                         </th>
                         <td>{kindLabel(document.kind)}</td>
                         <td>
-                          <StatusBadge tone={published ? "success" : "warning"}>
+                          <StatusBadge
+                            tone={toneOf(reportTones, published ? "published" : "draft")}
+                          >
                             {published
                               ? formatResource(
                                   t("Pages_Command_Verein_DocumentsPublishedVersion"),
@@ -236,18 +247,18 @@ export function Component() {
                         <td>{formatDateTime(document.timeStampUpdated)}</td>
                         <td>
                           <div className="table-actions">
-                            <Link
-                              className="button button--ghost"
+                            <ActionLink
+                              variant="ghost"
                               to={`/command/verein/documents/${document.primaryKey}`}
                             >
                               {t("Pages_Command_Verein_DocumentsOpenDetail")}
-                            </Link>
-                            <Link
-                              className="button button--ghost"
+                            </ActionLink>
+                            <ActionLink
+                              variant="ghost"
                               to={`/command/verein/documents/${document.primaryKey}/edit`}
                             >
                               {t("Pages_Command_Verein_DocumentsOpenEdit")}
-                            </Link>
+                            </ActionLink>
                           </div>
                         </td>
                       </tr>
@@ -259,6 +270,6 @@ export function Component() {
           )}
         </section>
       )}
-    </section>
+    </PageStack>
   );
 }

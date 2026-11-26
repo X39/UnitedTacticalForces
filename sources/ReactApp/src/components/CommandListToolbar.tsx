@@ -1,5 +1,7 @@
 import type { FormEventHandler, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { ActionButton } from "@/components/ActionControl";
+import { SearchField } from "@/components/SearchField";
 
 export interface CommandListToolbarProps {
   ariaLabel: string;
@@ -14,6 +16,13 @@ export interface CommandListToolbarProps {
   submitLabel: string;
 }
 
+/**
+ * The list-page toolbar with a submitted search: the shared {@link SearchField}, a submit button and the
+ * page-specific controls passed as children.
+ *
+ * Pressing Enter in the field or the submit button reports the form submit. The field keeps its clear control, which
+ * reports an empty value without submitting.
+ */
 export function CommandListToolbar({
   ariaLabel,
   children,
@@ -26,20 +35,20 @@ export function CommandListToolbar({
   submitDisabled = false,
   submitLabel,
 }: CommandListToolbarProps) {
+  const { t } = useTranslation();
   return (
     <form
       className={["toolbar", "command-list-toolbar", className].filter(Boolean).join(" ")}
       aria-label={ariaLabel}
       onSubmit={onSubmit}
     >
-      <label className="search-field">
-        <span className="sr-only">{searchLabel}</span>
-        <input
-          value={searchValue}
-          placeholder={searchPlaceholder}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
-      </label>
+      <SearchField
+        label={searchLabel}
+        placeholder={searchPlaceholder}
+        clearLabel={t("Common_SearchClear")}
+        value={searchValue}
+        onChange={onSearchChange}
+      />
       <ActionButton variant="ghost" type="submit" disabled={submitDisabled}>
         {submitLabel}
       </ActionButton>

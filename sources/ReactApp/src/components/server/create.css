@@ -1,0 +1,220 @@
+/*
+ * Styles for the guided server creation flow, built from --utf-* tokens only.
+ *
+ * The notice rule below belongs to the workspace notice after a create whose start was not confirmed. The create
+ * page components extend this file in later plans of the phase.
+ */
+
+/* Workspace notice after a create whose start was not confirmed */
+.create-notice__name {
+  overflow-wrap: anywhere;
+}
+
+/* Cost summary: a sticky card on desktop, the bottom create bar on narrow screens */
+.create-summary {
+  position: sticky;
+  top: calc(var(--command-header-height) + var(--utf-space-md));
+  display: grid;
+  gap: var(--utf-space-md);
+  min-width: 0;
+  padding: var(--utf-space-md);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+  box-shadow: var(--utf-elevation-1);
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+.create-summary__title {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+}
+
+.create-summary__hourly,
+.create-summary__monthly,
+.create-summary__while-off,
+.create-summary__alert {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.create-summary__hourly {
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+}
+
+.create-summary__monthly,
+.create-summary__while-off {
+  color: var(--utf-text-muted);
+}
+
+.create-summary__alert {
+  color: var(--utf-state-danger-fg);
+}
+
+.create-summary__rows {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--utf-space-xs) var(--utf-space-md);
+  margin: 0;
+}
+
+.create-summary__rows dt {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+  line-height: var(--utf-leading-label);
+}
+
+.create-summary__rows dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .create-summary {
+    bottom: 0;
+    z-index: 10;
+    gap: var(--utf-space-sm);
+    padding: var(--utf-space-sm) var(--utf-space-md);
+    border: 0;
+    border-top: 1px solid var(--utf-border-divider);
+    border-radius: 0;
+    background: var(--utf-surface-raised);
+    box-shadow: none;
+  }
+
+  .create-summary__rows,
+  .create-summary__while-off {
+    display: none;
+  }
+
+  .create-summary .button {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  /* A reason or an alert needs the room of the monthly sentence to keep the bar within a third of the screen */
+  .create-summary:has(.action-reason, .create-summary__alert) .create-summary__monthly {
+    display: none;
+  }
+}
+
+/* The heading-sized hourly sentence wraps to two lines on the narrowest screens and the bar outgrows its budget */
+@media (max-width: 520px) {
+  .create-summary__hourly {
+    font-size: var(--utf-text-body);
+    line-height: var(--utf-leading-body);
+  }
+}
+
+/* Billed to line */
+.create-owner-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--utf-space-sm) var(--utf-space-md);
+  min-width: 0;
+}
+
+.create-owner-line__text {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.create-owner-line .state-panel {
+  flex: 1 1 100%;
+}
+
+/* Section with a heading that is also the group label */
+.create-section {
+  display: grid;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.create-section__title {
+  margin: 0;
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+}
+
+/* Guided create page: main column and the sticky summary side by side */
+.create-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--utf-create-summary-width);
+  gap: var(--utf-space-lg);
+  align-items: start;
+  min-width: 0;
+}
+
+.create-page__main {
+  display: grid;
+  gap: var(--utf-space-xl);
+  min-width: 0;
+}
+
+/* While the server is being created the fields cannot be changed; dim them so that is visible */
+.create-page__main[inert] {
+  opacity: 0.7;
+}
+
+/* Flat section: a heading and its fields, separated from the next section by a divider */
+.create-page__section {
+  display: grid;
+  gap: var(--utf-space-md);
+  min-width: 0;
+  padding-block-end: var(--utf-space-lg);
+  border-bottom: 1px solid var(--utf-border-divider);
+}
+
+.create-page__fact {
+  display: grid;
+  gap: var(--utf-space-xs);
+  margin: 0;
+  min-width: 0;
+}
+
+.create-page__fact dt {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+  line-height: var(--utf-leading-label);
+}
+
+.create-page__fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.create-page__note {
+  margin: 0;
+  color: var(--utf-text-muted);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .create-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Keep the last field clear of the bottom create bar, also when it scrolls into view by focus */
+  .create-page__main {
+    padding-block-end: var(--utf-create-bar-reserve);
+  }
+
+  html:has(.create-page) {
+    scroll-padding-block-end: var(--utf-create-bar-reserve);
+  }
+}
+
+@media (max-width: 520px) {
+  .create-page__main .button {
+    width: 100%;
+    justify-content: center;
+  }
+}

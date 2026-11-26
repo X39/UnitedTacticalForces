@@ -1,32 +1,13 @@
-.command-shell .button--primary {
-  border-color: #e1c56e;
-  background: linear-gradient(135deg, #e2c66d, #b9953e);
-  color: #0a0d12;
-  box-shadow: 0 0.45rem 1.2rem rgb(0 0 0 / 22%);
-}
-
-.command-shell .button--primary:hover:not(:disabled) {
-  border-color: #f3df99;
-  background: linear-gradient(135deg, #f0d982, #c7a449);
-  translate: 0 -1px;
-}
-
-.command-shell .button--primary:focus-visible,
 .command-shell .command-nav__group a:focus-visible,
 .command-shell .command-work-area:focus-visible,
 .command-shell .command-attention-item:focus-visible {
-  outline: 3px solid rgb(229 201 111 / 58%);
+  outline: 3px solid var(--gold-bright);
   outline-offset: 3px;
 }
 
 .command-shell .page-header {
-  align-items: flex-start;
-  padding-bottom: 1rem;
+  padding-bottom: var(--utf-space-md);
   border-bottom: 1px solid var(--line);
-}
-
-.command-shell .page-header h1 {
-  font-size: clamp(2rem, 3vw, 2.75rem);
 }
 
 .command-shell .page-header__actions {
@@ -45,16 +26,30 @@
   color: #8995a4;
 }
 
+/* Navigation labels wrap instead of truncating, so a long German label stays readable in the 320px drawer. */
 .command-nav__group a > span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .command-nav__group a:hover > svg,
 .command-nav__group a.active > svg {
   color: var(--gold-light);
+}
+
+/* The scrim and the access state are shared controls and panels; these rules undo what their global rules assume. */
+.button.command-scrim {
+  width: auto;
+  max-width: none;
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+}
+
+.command-access-state .page-stack {
+  width: min(100%, 45rem);
 }
 
 .command-topbar__area-icon {
@@ -67,10 +62,6 @@
   border-radius: 0.35rem;
   background: rgb(186 160 90 / 8%);
   color: var(--gold-light);
-}
-
-.command-overview-page {
-  gap: 1.25rem;
 }
 
 .command-operational-snapshot {
@@ -237,28 +228,13 @@
   color: var(--gold-light);
 }
 
-.command-shell .next-hosting-tabs {
-  position: sticky;
-  top: var(--command-header-height);
-  z-index: 10;
-  margin: -0.25rem 0 1.1rem;
-  padding: 0.3rem 0.25rem 0;
-  background: rgb(9 13 19 / 94%);
-  backdrop-filter: blur(14px);
-}
-
-.command-shell .next-hosting-tab {
-  cursor: pointer;
-}
-
-.command-shell .next-hosting-tab:hover {
-  color: var(--text);
-  background: rgb(255 255 255 / 4%);
-}
-
 @media (max-width: 1180px) {
   .command-overview-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .command-topbar__actions > .shell-language {
+    display: none;
   }
 
   .command-topbar__actions > .command-topbar__site-link {
@@ -283,16 +259,6 @@
     display: none;
   }
 
-  .command-shell .page-header {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .command-shell .page-header__actions {
-    justify-content: flex-start;
-  }
-
   .command-shell .page-header__actions .button {
     flex: 0 1 auto;
   }
@@ -300,10 +266,6 @@
   .command-operational-snapshot__metrics,
   .command-work-area-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .command-shell .next-hosting-tabs {
-    top: 64px;
   }
 }
 
@@ -327,11 +289,5 @@
 
   .command-attention-item > span:last-child {
     justify-content: flex-start;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .command-shell .button--primary:hover:not(:disabled) {
-    translate: none;
   }
 }

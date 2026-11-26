@@ -1,0 +1,54 @@
+/*
+ * Styles for the preset and size fields of the guided server creation form, built from --utf-* tokens only.
+ *
+ * The note line is set at Body size in --utf-text-muted and wraps with overflow-wrap: anywhere so long member-authored
+ * titles never widen the page. Spacing comes from the spacing tokens. The only allowed literals are the 520px
+ * breakpoint and a 1px border width; the server style guard fails on anything else.
+ */
+
+/* Field wrapper that stacks a control with its notes and state panels */
+.create-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+/* Note line under a control */
+.create-field__note {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/* Facts of the selected size: terms in Label size above Body values, two columns that collapse on narrow screens */
+.create-size__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-sm) var(--utf-space-md);
+  margin: 0;
+}
+
+.create-size__fact {
+  min-width: 0;
+}
+
+.create-size__fact dt {
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-label);
+}
+
+.create-size__fact dd {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .create-size__facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,41 +1,53 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router";
-import { formatResource } from "@/app/i18n";
-import { currentLocale } from "@/app/format";
+import { useNavigate } from "react-router";
 import { useDocumentTitle } from "@/app/documentTitle";
-import { ApiError } from "@/api/client";
+import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
-import { PageHeader, StatePanel, useUnsavedChanges } from "@/components/primitives";
+import { ActionLink } from "@/components/ActionControl";
+import { useAppToast } from "@/components/AppToasts";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { SelectField, TextField } from "@/components/FormFields";
+import { PageHeader, useUnsavedChanges } from "@/components/primitives";
+import { AfterCreatingChoice, type AfterCreating } from "@/components/server/AfterCreatingChoice";
+import { AdvancedOptions, type OptionListState } from "@/components/server/AdvancedOptions";
+import { ApiText } from "@/components/server/ApiText";
+import { CostOwnerLine, costOwnerDisplayName } from "@/components/server/CostOwnerLine";
+import { CreateSummary } from "@/components/server/CreateSummary";
+import { PresetField } from "@/components/server/PresetField";
+import { SizeField } from "@/components/server/SizeField";
+import { StorageOptions } from "@/components/server/StorageOptions";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import "@/components/server/create.css";
 import { getHostingPermissions } from "@/features/hosting/authorization";
-import { HostingError, HostingLoading } from "@/features/hosting/components";
-import { useHostingCopy } from "@/features/hosting/copy";
 import {
-  combinedHourlyCost,
+  createFieldOrder,
+  advancedCreateFields,
   createServerCreationSchema,
-  isCostOwnerSelectionValid,
+  deriveCreateReadiness,
+  estimateCreateCost,
+  invalidCreateFields,
   isProviderAvailable,
+  isStorageMisfit,
   orderProviders,
+  presetSelectValue,
+  projectCreatePresets,
+  resolveCreateDefaults,
+  type CreateField,
+  type CreatePreset,
   type ServerCreationFormValues,
 } from "@/features/hosting/createServerModel";
-import {
-  formatBytes,
-  isStorageSelectionValid,
-  selectedStorageBytes,
-  type StorageStrategy,
-} from "@/features/hosting/model";
+import { createStartState } from "@/features/hosting/createStartIntent";
+import { formatBytes, formatHourlyRate, selectedStorageBytes } from "@/features/hosting/model";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
-import type {
-  RuntimeProfile,
-  RuntimeProvider,
-  ServerCreationCostOwnerOption,
-  StorageDemand,
-} from "@/features/hosting/types";
+import type { ServerCapability } from "@/features/hosting/types";
 
-const defaults: ServerCreationFormValues = {
+/** The form values before the defaults are resolved: every field empty or off. */
+const emptyValues: ServerCreationFormValues = {
   title: "",
   gameIdentifier: "",
   runtimeProviderIdentifier: "",
@@ -50,245 +62,109 @@ const defaults: ServerCreationFormValues = {
   isLaunchDisabled: false,
 };
 
+/**
+ * Builds the query key of the cost owner choices of one member.
+ *
+ * @param userId The signed-in user's id.
+ * @returns The query key.
+ */
 const costOwnerQueryKey = (userId: string) =>
   ["hosting", "creation", "cost-owners", userId] as const;
 
-function errorMessage(reason: unknown, fallback: string): string {
-  if (reason instanceof ApiError) return fallback;
-  return reason instanceof Error && reason.message.trim() ? reason.message : fallback;
-}
-
-function number(value: number | null | undefined, maximumFractionDigits = 1): string {
-  return value == null
-    ? "—"
-    : new Intl.NumberFormat(currentLocale(), { maximumFractionDigits }).format(value);
-}
-
-function euro(value: number | null | undefined, digits: number): string {
-  return value == null
-    ? "—"
-    : new Intl.NumberFormat(currentLocale(), {
-        style: "currency",
-        currency: "EUR",
-        minimumFractionDigits: digits,
-        maximumFractionDigits: digits,
-      }).format(value);
-}
-
-function providerStatusKey(
-  status: string,
-):
-  | "Hosting_ProfileCatalog_ConfigurationRequiredDescription"
-  | "Hosting_ProfileCatalog_UnavailableDescription"
-  | "Hosting_ProfileCatalog_EmptyDescription" {
-  switch (status.trim().toLocaleLowerCase()) {
-    case "configuration-required":
-      return "Hosting_ProfileCatalog_ConfigurationRequiredDescription";
-    case "catalog-unavailable":
-      return "Hosting_ProfileCatalog_UnavailableDescription";
-    default:
-      return "Hosting_ProfileCatalog_EmptyDescription";
-  }
-}
-
-function RuntimeProfileSummary({ profile }: { profile: RuntimeProfile }) {
-  const { t } = useTranslation();
-  return (
-    <section
-      className="next-hosting-profile-summary"
-      aria-label={t("Hosting_Profile_Specifications")}
-    >
-      <header>
-        <div>
-          <span>{t("Hosting_Profile_Specifications")}</span>
-          <strong>{profile.displayName}</strong>
-        </div>
-        <code>{profile.identifier}</code>
-      </header>
-      {profile.description && <p>{profile.description}</p>}
-      <dl className="next-hosting-facts next-hosting-facts--compact">
-        <div>
-          <dt>{t("Hosting_Profile_VirtualCpu")}</dt>
-          <dd>{number(profile.virtualCpuCount, 0)}</dd>
-        </div>
-        <div>
-          <dt>{t("Hosting_Profile_Memory")}</dt>
-          <dd>{profile.memoryGiB == null ? "—" : `${number(profile.memoryGiB)} GiB`}</dd>
-        </div>
-        <div>
-          <dt>{t("Hosting_Profile_Disk")}</dt>
-          <dd>{profile.diskGiB == null ? "—" : `${number(profile.diskGiB, 0)} GiB`}</dd>
-        </div>
-        <div>
-          <dt>{t("Hosting_Profile_HourlyEstimate")}</dt>
-          <dd>{euro(profile.estimatedHourlyCostEur, 4)}</dd>
-        </div>
-        <div>
-          <dt>{t("Hosting_Profile_MonthlyEstimate")}</dt>
-          <dd>{euro(profile.estimatedMonthlyCostEur, 2)}</dd>
-        </div>
-      </dl>
-    </section>
+/**
+ * Finds the capability of a game identifier, ignoring case.
+ *
+ * @param capabilities The loaded capabilities, if any.
+ * @param gameIdentifier The identifier to look up.
+ * @returns The matching capability, or undefined.
+ */
+function findCapability(
+  capabilities: readonly ServerCapability[] | undefined,
+  gameIdentifier: string,
+): ServerCapability | undefined {
+  return capabilities?.find(
+    (item) => item.gameIdentifier.toLocaleLowerCase() === gameIdentifier.toLocaleLowerCase(),
   );
 }
 
-function StorageDemandSummary({
-  demand,
-  selectedProfileIdentifier,
-}: {
-  demand: StorageDemand;
-  selectedProfileIdentifier: string;
-}) {
-  const { t } = useTranslation();
-  const selectedFit = demand.runtimeProfiles.find(
-    (candidate) =>
-      candidate.runtimeProfileIdentifier.toLocaleLowerCase() ===
-      selectedProfileIdentifier.toLocaleLowerCase(),
-  );
-  const status = String(demand.status).toLocaleLowerCase();
-  const statusLabel =
-    status === "measured"
-      ? t("Hosting_Create_StorageStatusMeasured")
-      : status === "estimated"
-        ? t("Hosting_Create_StorageStatusEstimated")
-        : status === "incomplete"
-          ? t("Hosting_Create_StorageStatusIncomplete")
-          : t("Hosting_Create_StorageStatusUnavailable");
-
-  return (
-    <section
-      className="next-hosting-panel next-hosting-storage-demand"
-      aria-labelledby="demand-title"
-    >
-      <div className="next-hosting-section-heading">
-        <span className="kicker">{t("Hosting_Create_StoragePreflight")}</span>
-        <h2 id="demand-title">{t("Hosting_Create_StorageDemandTitle")}</h2>
-        <p>{t("Hosting_Create_StorageDemandDescription")}</p>
-      </div>
-      <dl className="next-hosting-facts">
-        <div>
-          <dt>{t("Hosting_Create_SteadyStateUsage")}</dt>
-          <dd>{formatBytes(demand.steadyStateRequiredBytes)}</dd>
-        </div>
-        <div>
-          <dt>{t("Hosting_Create_PreparationWorkspace")}</dt>
-          <dd>{formatBytes(demand.preparationWorkspaceBytes)}</dd>
-        </div>
-        <div>
-          <dt>
-            {formatResource(t("Hosting_Create_SafetyMargin"), number(demand.safetyMarginPercent))}
-          </dt>
-          <dd>{formatBytes(demand.safetyMarginBytes)}</dd>
-        </div>
-        <div>
-          <dt>{t("Hosting_Create_RecommendedPeak")}</dt>
-          <dd>{formatBytes(demand.peakPreparationRequiredBytes)}</dd>
-        </div>
-        {demand.minimumExternalCapacityGiB != null && (
-          <>
-            <div>
-              <dt>{t("Hosting_Storage_RecommendedRawCapacity")}</dt>
-              <dd>{number(demand.minimumExternalCapacityGiB, 0)} GiB</dd>
-            </div>
-            <div>
-              <dt>{t("Hosting_Storage_RecommendedUsableCapacity")}</dt>
-              <dd>{formatBytes(demand.recommendedExternalUsableBytes)}</dd>
-            </div>
-          </>
-        )}
-      </dl>
-      <p className="next-hosting-muted">
-        <strong>{t("Hosting_Create_Confidence")}</strong> {statusLabel}.
-        {demand.measurementTimestamp && (
-          <>
-            {" "}
-            {formatResource(
-              t("Hosting_Create_LatestMeasurement"),
-              new Intl.DateTimeFormat(currentLocale(), {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(new Date(demand.measurementTimestamp)),
-            )}
-          </>
-        )}
-      </p>
-      {demand.missingComponents.length > 0 && (
-        <StatePanel kind="warning">
-          {formatResource(
-            t("Hosting_Create_MissingComponents"),
-            demand.missingComponents.join(", "),
-          )}
-        </StatePanel>
-      )}
-      {selectedFit?.isSufficient === false && (
-        <StatePanel kind="warning">{t("Hosting_Create_SelectedProfileInsufficient")}</StatePanel>
-      )}
-      {selectedFit?.isSufficient == null && (
-        <StatePanel kind="warning">{t("Hosting_Create_SelectedProfileUnknown")}</StatePanel>
-      )}
-      <h3>{t("Hosting_Create_SelectedProfileCapacity")}</h3>
-      {selectedFit ? (
-        <article className="next-hosting-storage-fit">
-          <strong>{selectedFit.displayName}</strong>
-          <span>
-            {t("Hosting_Create_IncludedCapacity")}: {formatBytes(selectedFit.includedCapacityBytes)}
-          </span>
-          <span>
-            {t("Hosting_Create_UsableCapacity")}: {formatBytes(selectedFit.usableCapacityBytes)}
-          </span>
-          <strong>
-            {selectedFit.isSufficient === true
-              ? t("Hosting_Create_FitSufficient")
-              : selectedFit.isSufficient === false
-                ? t("Hosting_Create_FitInsufficient")
-                : t("Hosting_Create_FitUnknown")}
-          </strong>
-        </article>
-      ) : (
-        <p className="next-hosting-muted">{t("Hosting_Create_ProfileCapacityUnavailable")}</p>
-      )}
-      <details>
-        <summary>{t("Hosting_Create_ComponentBreakdown")}</summary>
-        <ul className="next-hosting-component-list">
-          {demand.components.map((component) => (
-            <li key={component.identifier}>
-              <span>
-                <strong>{component.displayName}</strong> — {component.kind}
-              </span>
-              <span>
-                {formatBytes(component.requiredBytes)} · {String(component.status)} ·{" "}
-                {component.source}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </details>
-    </section>
-  );
+/**
+ * Reads the state of an option list query for the advanced options.
+ *
+ * @param query The query of one option list.
+ * @returns The data, whether the first load is running and whether it failed without data.
+ */
+function optionList<T>(query: {
+  data: T[] | undefined;
+  isLoading: boolean;
+  isError: boolean;
+}): OptionListState<T> {
+  return {
+    data: query.data,
+    loading: query.isLoading,
+    failed: query.isError && query.data === undefined,
+  };
 }
 
+/**
+ * The guided create page: name a server, check the size and the live cost, and either keep it off or start it.
+ *
+ * The page is composition and form state only. Every rule (defaults, readiness, cost) lives in the create model and
+ * every piece of presentation in the create components. A member who only types a name can create, because every
+ * other value is resolved from the capabilities and the option lists without making the form dirty; a valid choice
+ * of the member is never overwritten.
+ */
 export function CreateServerPage() {
-  const c = useHostingCopy();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { showToast } = useAppToast();
   const { user, isLoading: authLoading } = useAuth();
   const permissions = getHostingPermissions(user);
-  useDocumentTitle(t("Hosting_Create_Title"));
-  const schema = useMemo(
-    () =>
-      createServerCreationSchema({
-        titleRequired: t("Hosting_Create_ValidationNameRequired"),
-        titleTooLong: t("Hosting_Create_ValidationNameTooLong"),
+  useDocumentTitle(t("Server_Create_Title"));
+
+  const capabilities = useQuery({
+    queryKey: hostingQueryKeys.capabilities,
+    queryFn: ({ signal }) => hostingService.capabilities(signal),
+    enabled: permissions.createServers,
+    staleTime: 60_000,
+  });
+
+  // The schema depends on the capability and provider the values name, so the resolver derives its
+  // requirements from the values it validates instead of from state that is only known after useForm.
+  const resolver: Resolver<ServerCreationFormValues> = (values, context, options) => {
+    const requested = findCapability(capabilities.data, values.gameIdentifier);
+    const requestedProvider = requested?.runtimeProviderProfiles.find(
+      (item) =>
+        item.identifier.toLocaleLowerCase() ===
+        values.runtimeProviderIdentifier.toLocaleLowerCase(),
+    );
+    const schema = createServerCreationSchema(
+      {
+        titleRequired: t("Server_Create_Name_Required"),
+        titleTooLong: t("Server_Create_Name_TooLong"),
         selectionRequired: t("Hosting_Create_ValidationSelectionRequired"),
         invalidCapacity: t("Hosting_Create_ValidationCapacity"),
         invalidIdentifier: t("Hosting_Create_ValidationIdentifier"),
-      }),
-    [t],
-  );
+      },
+      {
+        requiresTerrain: requested?.requiresTerrain === true,
+        terrainRequired: t("Server_Create_Content_Required", {
+          label: requested?.terrainLabel ?? t("Server_Overview_Terrain"),
+        }),
+        requiresScenario: requested?.requiresScenario === true,
+        scenarioRequired: t("Server_Create_Content_Required", {
+          label: requested?.scenarioLabel ?? t("Server_Overview_Scenario"),
+        }),
+        storage: requestedProvider?.storage,
+      },
+    );
+    return zodResolver(schema)(values, context, options);
+  };
   const form = useForm<ServerCreationFormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: defaults,
+    resolver,
+    defaultValues: emptyValues,
+    mode: "onBlur",
+    shouldFocusError: false,
   });
   const [
     gameIdentifier,
@@ -301,6 +177,7 @@ export function CreateServerPage() {
     scenarioId,
     configurationProfileId,
     costOwnerId,
+    isLaunchDisabled,
   ] = useWatch({
     control: form.control,
     name: [
@@ -314,20 +191,29 @@ export function CreateServerPage() {
       "scenarioId",
       "configurationProfileId",
       "costOwnerId",
+      "isLaunchDisabled",
     ],
   });
   useUnsavedChanges(form.formState.isDirty);
-  const fixedExternalGiB = externalStorageSizeGiB ?? undefined;
 
-  const capabilities = useQuery({
-    queryKey: hostingQueryKeys.capabilities,
-    queryFn: ({ signal }) => hostingService.capabilities(signal),
-    enabled: permissions.createServers,
-    staleTime: 60_000,
-  });
-  const capability = capabilities.data?.find(
-    (item) => item.gameIdentifier.toLocaleLowerCase() === gameIdentifier.toLocaleLowerCase(),
-  );
+  const [touched, setTouched] = useState<ReadonlySet<CreateField>>(() => new Set());
+  const [afterCreating, setAfterCreating] = useState<AfterCreating>("keep-off");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const [advancedForced, setAdvancedForced] = useState(false);
+  const [requestFailed, setRequestFailed] = useState(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  // Set while a create request runs, so a second activation before the next render cannot create twice.
+  const creating = useRef(false);
+  // The hourly figure last announced (or first seen), so only a changed value is announced.
+  const announcedHourly = useRef<number | undefined>(undefined);
+
+  /** Records that the member decided a field by hand, so a default never replaces the choice. */
+  const markTouched = useCallback((field: CreateField) => {
+    setTouched((previous) => (previous.has(field) ? previous : new Set(previous).add(field)));
+  }, []);
+
+  const capability = findCapability(capabilities.data, gameIdentifier);
   const availableProviders = useMemo(
     () => orderProviders((capability?.runtimeProviderProfiles ?? []).filter(isProviderAvailable)),
     [capability],
@@ -345,45 +231,6 @@ export function CreateServerPage() {
   const profile = provider?.profiles.find(
     (item) => item.identifier.toLocaleLowerCase() === runtimeProfileIdentifier.toLocaleLowerCase(),
   );
-
-  useEffect(() => {
-    const firstCapability = capabilities.data?.[0];
-    if (!firstCapability) return;
-    const currentCapability = capabilities.data?.find(
-      (item) => item.gameIdentifier.toLocaleLowerCase() === gameIdentifier.toLocaleLowerCase(),
-    );
-    const nextCapability = currentCapability ?? firstCapability;
-    const nextProviders = orderProviders(
-      nextCapability.runtimeProviderProfiles.filter(isProviderAvailable),
-    );
-    const currentProvider = nextProviders.find(
-      (item) =>
-        item.identifier.toLocaleLowerCase() === runtimeProviderIdentifier.toLocaleLowerCase(),
-    );
-    const nextProvider = currentProvider ?? nextProviders[0];
-    const currentProfile = nextProvider?.profiles.find(
-      (item) =>
-        item.identifier.toLocaleLowerCase() === runtimeProfileIdentifier.toLocaleLowerCase(),
-    );
-    const nextProfile = currentProfile ?? nextProvider?.profiles[0];
-    if (!currentCapability) form.setValue("gameIdentifier", nextCapability.gameIdentifier);
-    if (!currentProvider)
-      form.setValue("runtimeProviderIdentifier", nextProvider?.identifier ?? "");
-    if (!currentProfile) form.setValue("runtimeProfileIdentifier", nextProfile?.identifier ?? "");
-    if (!currentProvider) {
-      form.setValue(
-        "runtimeStorageStrategy",
-        nextProvider?.storage?.supportsExternalBlockStorage ? "AutomaticExternal" : "IncludedDisk",
-      );
-      form.setValue("externalStorageSizeGiB", null);
-    }
-  }, [
-    capabilities.data,
-    form,
-    gameIdentifier,
-    runtimeProfileIdentifier,
-    runtimeProviderIdentifier,
-  ]);
 
   const modPacks = useQuery({
     queryKey: hostingQueryKeys.creationModPacks(gameIdentifier),
@@ -411,6 +258,7 @@ export function CreateServerPage() {
     queryFn: ({ signal }) => hostingService.profileOptions(gameIdentifier, signal),
     enabled: permissions.createServers && Boolean(gameIdentifier),
   });
+  // The estimate needs only the game and the provider; it does not wait for a resolved size.
   const storageEstimate = useQuery({
     queryKey: hostingQueryKeys.storageEstimate(
       gameIdentifier,
@@ -425,7 +273,7 @@ export function CreateServerPage() {
         signal,
       ),
     enabled:
-      permissions.createServers && Boolean(gameIdentifier && runtimeProviderIdentifier && profile),
+      permissions.createServers && Boolean(gameIdentifier) && Boolean(runtimeProviderIdentifier),
   });
   const costOwners = useQuery({
     queryKey: costOwnerQueryKey(user?.primaryKey ?? "anonymous"),
@@ -434,112 +282,136 @@ export function CreateServerPage() {
     staleTime: 30_000,
   });
 
-  const storageValid = isStorageSelectionValid(
-    storageStrategy as StorageStrategy,
+  // Resolve every default without marking the form dirty. A field that has no input of its own (the game
+  // with a single capability, the provider with a single provider) is registered first so resetField reaches it.
+  useEffect(() => {
+    if (!capabilities.data) return;
+    const current = form.getValues();
+    const next = resolveCreateDefaults({
+      capabilities: capabilities.data,
+      current,
+      touched,
+      terrains: terrains.data,
+      scenarios: scenarios.data,
+      modPacks: modPacks.data,
+      profiles: configurationProfiles.data,
+      storageDemand: storageEstimate.data,
+      owners: costOwners.data,
+    });
+    const apply = (field: CreateField, value: ServerCreationFormValues[CreateField]) => {
+      form.register(field);
+      // The value comes from resolveCreateDefaults and already has the type of its own field.
+      form.resetField(field, { defaultValue: value as never });
+    };
+    for (const field of createFieldOrder) {
+      if (!Object.is(current[field], next[field])) apply(field, next[field]);
+    }
+  }, [
+    capabilities.data,
+    configurationProfiles.data,
+    costOwners.data,
+    form,
+    modPacks.data,
+    scenarios.data,
+    storageEstimate.data,
+    terrains.data,
+    touched,
+    gameIdentifier,
+    runtimeProviderIdentifier,
+    runtimeProfileIdentifier,
+    storageStrategy,
+    externalStorageSizeGiB,
+    modPackDefinitionId,
+    terrainId,
+    scenarioId,
+    configurationProfileId,
+    costOwnerId,
+  ]);
+
+  const strategy = storageStrategy;
+  const capacityBytes = selectedStorageBytes(
+    strategy,
     profile,
     storageEstimate.data,
     provider?.storage,
-    fixedExternalGiB,
+    externalStorageSizeGiB ?? undefined,
   );
-  const capacity = selectedStorageBytes(
-    storageStrategy as StorageStrategy,
+  const storageMisfit = isStorageMisfit({
+    strategy,
     profile,
-    storageEstimate.data,
-    provider?.storage,
-    fixedExternalGiB,
-  );
-  const hourlyCost = combinedHourlyCost(profile, capacity, storageStrategy, provider?.storage);
-  const currentUserOwner = costOwners.data?.find((owner) => owner.isCurrentUser);
-  const costOwnerValid = isCostOwnerSelectionValid(costOwnerId, costOwners.data);
-  const requiredOptionsReady =
-    (capability?.supportsModPacks === false || modPacks.isSuccess) &&
-    (!capability?.requiresTerrain || terrains.isSuccess) &&
-    (!capability?.requiresScenario || scenarios.isSuccess) &&
-    configurationProfiles.isSuccess &&
-    costOwners.isSuccess;
-  const canSubmit =
-    Boolean(capability && provider && profile) &&
-    storageValid &&
-    costOwnerValid &&
-    requiredOptionsReady &&
-    (!capability?.requiresTerrain || terrainId !== null) &&
-    (!capability?.requiresScenario || scenarioId !== null) &&
-    !storageEstimate.isFetching;
+    demand: storageEstimate.data,
+    storage: provider?.storage,
+    fixedExternalGiB: externalStorageSizeGiB,
+  });
+  const estimate = estimateCreateCost({
+    profile,
+    strategy,
+    capacityBytes,
+    storage: provider?.storage,
+    estimateFetching: storageEstimate.isFetching,
+  });
+  const terrainRequired = capability?.requiresTerrain === true;
+  const scenarioRequired = capability?.requiresScenario === true;
+  const terrainMissing = terrainRequired && terrains.data !== undefined && terrainId === null;
+  const scenarioMissing = scenarioRequired && scenarios.data !== undefined && scenarioId === null;
+  const forceAdvanced = storageMisfit || terrainMissing || scenarioMissing;
+  // Something inside Advanced options needs attention: open it once when that starts, so the member can close it
+  // again afterwards. This is the guarded adjust-state-while-rendering pattern, never an effect.
+  if (forceAdvanced !== advancedForced) {
+    setAdvancedForced(forceAdvanced);
+    if (forceAdvanced) setAdvancedOpen(true);
+  }
+  const readiness = deriveCreateReadiness({
+    costOwnerId,
+    owners: costOwners.data,
+    ownersFailed: costOwners.isError && costOwners.data === undefined,
+    requiredOptionsLoading:
+      (terrainRequired && terrains.data === undefined && !terrains.isError) ||
+      (scenarioRequired && scenarios.data === undefined && !scenarios.isError),
+    requiredOptionsFailed:
+      (terrainRequired && terrains.isError && terrains.data === undefined) ||
+      (scenarioRequired && scenarios.isError && scenarios.data === undefined),
+    provider,
+    profile,
+    estimateFetching: storageEstimate.isFetching,
+    estimateFailed: storageEstimate.isError && storageEstimate.data === undefined,
+    storageMisfit,
+  });
+
+  // A required terrain or scenario that has no value shows its error at once instead of waiting for a submit.
+  useEffect(() => {
+    const missing: ("terrainId" | "scenarioId")[] = [];
+    if (terrainMissing) missing.push("terrainId");
+    if (scenarioMissing) missing.push("scenarioId");
+    if (missing.length > 0) void form.trigger(missing);
+  }, [form, terrainMissing, scenarioMissing]);
+
+  // Announce a changed hourly figure once, 600ms after the last change. The first known figure is only recorded.
+  const hourly = estimate.kind === "known" ? estimate.hourly : undefined;
+  useEffect(() => {
+    if (hourly === undefined) return undefined;
+    if (announcedHourly.current === undefined) {
+      announcedHourly.current = hourly;
+      return undefined;
+    }
+    if (announcedHourly.current === hourly) return undefined;
+    const timer = setTimeout(() => {
+      announcedHourly.current = hourly;
+      setAnnouncement(t("Server_Create_Cost_Announce", { hourly: formatHourlyRate(hourly) }));
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [hourly, t]);
 
   const create = useMutation({
     mutationFn: (payload: Parameters<typeof hostingService.create>[0]) =>
       hostingService.create(payload),
   });
 
-  const changeGame = (nextGame: string) => {
-    const nextCapability = capabilities.data?.find(
-      (item) => item.gameIdentifier.toLocaleLowerCase() === nextGame.toLocaleLowerCase(),
-    );
-    const nextProvider = orderProviders(
-      (nextCapability?.runtimeProviderProfiles ?? []).filter(isProviderAvailable),
-    )[0];
-    form.setValue("gameIdentifier", nextGame, { shouldDirty: true, shouldValidate: true });
-    form.setValue("runtimeProviderIdentifier", nextProvider?.identifier ?? "", {
-      shouldDirty: true,
-    });
-    form.setValue("runtimeProfileIdentifier", nextProvider?.profiles[0]?.identifier ?? "", {
-      shouldDirty: true,
-    });
-    form.setValue("modPackDefinitionId", null, { shouldDirty: true });
-    form.setValue("terrainId", null, { shouldDirty: true });
-    form.setValue("scenarioId", null, { shouldDirty: true });
-    form.setValue("configurationProfileId", null, { shouldDirty: true });
-    form.setValue(
-      "runtimeStorageStrategy",
-      nextProvider?.storage?.supportsExternalBlockStorage ? "AutomaticExternal" : "IncludedDisk",
-      { shouldDirty: true },
-    );
-    form.setValue("externalStorageSizeGiB", null, { shouldDirty: true });
-  };
-
-  useEffect(() => {
-    if (capability?.requiresTerrain && terrainId === null && terrains.data?.length) {
-      const selected =
-        terrains.data.find((item) =>
-          item.versions.some(
-            (version) => version.sourceIdentifier === capability.defaultTerrainSourceIdentifier,
-          ),
-        ) ?? terrains.data[0];
-      if (selected)
-        form.setValue("terrainId", Number(selected.primaryKey), { shouldValidate: true });
-    }
-    if (capability?.requiresScenario && scenarioId === null && scenarios.data?.length) {
-      const selected =
-        scenarios.data.find((item) =>
-          item.versions.some(
-            (version) => version.sourceIdentifier === capability.defaultScenarioSourceIdentifier,
-          ),
-        ) ?? scenarios.data[0];
-      if (selected) form.setValue("scenarioId", selected.primaryKey, { shouldValidate: true });
-    }
-  }, [capability, form, scenarioId, scenarios.data, terrainId, terrains.data]);
-
-  const changeProvider = (identifier: string) => {
-    const nextProvider = availableProviders.find(
-      (item) => item.identifier.toLocaleLowerCase() === identifier.toLocaleLowerCase(),
-    );
-    form.setValue("runtimeProviderIdentifier", identifier, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    form.setValue("runtimeProfileIdentifier", nextProvider?.profiles[0]?.identifier ?? "", {
-      shouldDirty: true,
-    });
-    form.setValue(
-      "runtimeStorageStrategy",
-      nextProvider?.storage?.supportsExternalBlockStorage ? "AutomaticExternal" : "IncludedDisk",
-      { shouldDirty: true },
-    );
-    form.setValue("externalStorageSizeGiB", null, { shouldDirty: true });
-  };
-
-  const submit = form.handleSubmit(async (values) => {
-    if (!canSubmit || create.isPending) return;
+  const finishCreate = async (values: ServerCreationFormValues) => {
+    if (readiness !== null || create.isPending || creating.current) return;
+    creating.current = true;
+    setRequestFailed(false);
+    const startAfterCreate = afterCreating === "start" && !values.isLaunchDisabled;
     try {
       const server = await create.mutateAsync({
         ...values,
@@ -548,567 +420,305 @@ export function CreateServerPage() {
           values.runtimeStorageStrategy === "FixedExternal" ? values.externalStorageSizeGiB : null,
         configurationProfileRevisionId: null,
       });
-      form.reset(values);
+      // Reset the baseline and render it before navigating, so leaving the page after a successful create
+      // is never "unsaved changes", even when the invalidations below settle at once.
+      flushSync(() => form.reset(values));
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: hostingQueryKeys.fleet }),
         queryClient.invalidateQueries({ queryKey: hostingQueryKeys.notifications }),
         queryClient.invalidateQueries({ queryKey: costOwnerQueryKey(user?.primaryKey ?? "") }),
       ]);
-      navigate(`/command/servers/${server.primaryKey}`);
+      showToast(
+        t(startAfterCreate ? "Server_Create_Toast_Start" : "Server_Create_Toast_KeepOff", {
+          name: values.title.trim(),
+        }),
+        "success",
+      );
+      // The workspace opens the shared start confirmation; this page never requests one itself.
+      void navigate(
+        `/command/servers/${server.primaryKey}`,
+        startAfterCreate ? { state: createStartState } : undefined,
+      );
     } catch {
-      // The normalized mutation error is rendered below and the form remains available for correction.
+      // The summary shows the fixed request error and the form stays available for correction. The owners are
+      // loaded again so an owner frozen after this page loaded shows its early block (D-06).
+      flushSync(() => setRequestFailed(true));
+      errorRef.current?.focus();
+      void costOwners.refetch();
+    } finally {
+      creating.current = false;
     }
-  });
-
-  const retryRequiredOptions = () => {
-    void Promise.all([
-      capability?.supportsModPacks !== false ? modPacks.refetch() : Promise.resolve(),
-      capability?.requiresTerrain ? terrains.refetch() : Promise.resolve(),
-      capability?.requiresScenario ? scenarios.refetch() : Promise.resolve(),
-      configurationProfiles.refetch(),
-    ]);
   };
+  /**
+   * Moves focus to the first invalid field in DOM order. A field inside the collapsed Advanced options is revealed
+   * first, so the focus never lands on something the member cannot see (RESEARCH Pitfall 3).
+   */
+  const focusFirstInvalid = (invalid: Partial<Record<CreateField, unknown>>) => {
+    const first = invalidCreateFields(invalid)[0];
+    if (first === undefined) return;
+    if (advancedCreateFields.has(first)) flushSync(() => setAdvancedOpen(true));
+    form.setFocus(first);
+  };
+  const submit = form.handleSubmit(finishCreate, focusFirstInvalid);
+
+  /** Switching the game drops every value that belonged to the old game, so the defaults resolve again. */
+  const changeGame = (identifier: string) => {
+    const next = findCapability(capabilities.data, identifier);
+    if (next !== undefined) {
+      setAnnouncement(t("Server_Create_Game_Announce", { game: next.displayName }));
+    }
+    setTouched((previous) => {
+      const next = new Set(previous);
+      for (const field of createFieldOrder) {
+        if (field !== "title" && field !== "costOwnerId") next.delete(field);
+      }
+      return next.add("gameIdentifier");
+    });
+    const options = { shouldDirty: true };
+    form.setValue("runtimeProviderIdentifier", "", options);
+    form.setValue("runtimeProfileIdentifier", "", options);
+    form.setValue("runtimeStorageStrategy", "IncludedDisk", options);
+    form.setValue("externalStorageSizeGiB", null, options);
+    form.setValue("modPackDefinitionId", null, options);
+    form.setValue("terrainId", null, options);
+    form.setValue("scenarioId", null, options);
+    form.setValue("configurationProfileId", null, options);
+  };
+
+  /** Switching the provider drops its size and storage, so the defaults of the new provider resolve. */
+  const changeProvider = () => {
+    setTouched((previous) => {
+      const next = new Set(previous);
+      next.delete("runtimeProfileIdentifier");
+      next.delete("runtimeStorageStrategy");
+      next.delete("externalStorageSizeGiB");
+      return next.add("runtimeProviderIdentifier");
+    });
+  };
+
+  /**
+   * Applies a preset: it sets the configuration profile or mod pack it stands for and forces Keep it off (D-02).
+   * A preset never starts anything, so it adds no blocking reason.
+   */
+  const choosePreset = (
+    selection: Pick<ServerCreationFormValues, "configurationProfileId" | "modPackDefinitionId">,
+    preset: CreatePreset,
+  ) => {
+    const options = { shouldDirty: true, shouldValidate: true };
+    form.setValue("configurationProfileId", selection.configurationProfileId, options);
+    form.setValue("modPackDefinitionId", selection.modPackDefinitionId, options);
+    markTouched("configurationProfileId");
+    markTouched("modPackDefinitionId");
+    setAfterCreating("keep-off");
+    setAnnouncement(
+      t("Server_Create_Preset_Announce", {
+        name: preset.kind === "default" ? t("Server_Create_Preset_Default") : preset.title,
+      }),
+    );
+  };
+
+  /** Turning launching off forces the server to stay off; turning it back on changes nothing. */
+  const changeLaunchDisabled = (disabled: boolean) => {
+    if (disabled) setAfterCreating("keep-off");
+  };
+
+  /** Opens Advanced options and moves focus to the cost owner select, which only exists once it is open. */
+  const changeCostOwner = () => {
+    flushSync(() => setAdvancedOpen(true));
+    form.setFocus("costOwnerId");
+  };
+
+  const retryOptions = () => {
+    if (capability?.supportsModPacks !== false) void modPacks.refetch();
+    if (terrainRequired) void terrains.refetch();
+    if (scenarioRequired) void scenarios.refetch();
+    void configurationProfiles.refetch();
+  };
+
+  const presets = projectCreatePresets(configurationProfiles.data, modPacks.data);
+  const presetValue = presetSelectValue({ configurationProfileId, modPackDefinitionId }, presets);
+  const presetsLoading = configurationProfiles.isLoading || modPacks.isLoading;
+  const presetsFailed =
+    (configurationProfiles.isError && configurationProfiles.data === undefined) ||
+    (modPacks.isError && modPacks.data === undefined);
+
+  const errors = form.formState.errors;
+  const ownerName = costOwnerDisplayName(costOwnerId, costOwners.data, user?.nickname);
+  const strategyLabelKey: TranslationKey =
+    strategy === "AutomaticExternal"
+      ? "Hosting_Create_StorageAutomatic"
+      : strategy === "FixedExternal"
+        ? "Hosting_Create_StorageFixed"
+        : "Hosting_Create_StorageIncluded";
+  const storageLabel =
+    capacityBytes === undefined
+      ? t(strategyLabelKey)
+      : t("Server_Create_Cost_StorageValue", {
+          strategy: t(strategyLabelKey),
+          capacity: formatBytes(capacityBytes),
+        });
 
   return (
     <div className="next-hosting-page">
-      <PageHeader title={t("Hosting_Create_Title")} description={t("Hosting_Create_Description")} />
-      <Link className="next-hosting-back-link" to="/command/servers">
-        ← {t("Hosting_Common_BackToServers")}
-      </Link>
+      <Breadcrumbs
+        label={t("Server_Workspace_Breadcrumb_Label")}
+        items={[
+          { label: t("Hosting_Servers_Title"), to: "/command/servers" },
+          { label: t("Server_Create_Title") },
+        ]}
+      />
+      <PageHeader title={t("Server_Create_Title")} description={t("Server_Create_Description")} />
       {authLoading ? (
-        <HostingLoading />
+        <LoadingState />
       ) : !permissions.createServers ? (
-        <StatePanel kind="forbidden" title={t("Hosting_Create_ForbiddenTitle")}>
+        <ForbiddenState title={t("Hosting_Create_ForbiddenTitle")}>
           {t("Hosting_Create_ForbiddenDescription")}
-        </StatePanel>
+        </ForbiddenState>
+      ) : capabilities.isLoading ? (
+        <LoadingState label={t("Hosting_Create_LoadingCapabilities")} />
+      ) : capabilities.isError ? (
+        <ErrorState
+          onRetry={() => void capabilities.refetch()}
+          retryLabel={t("Server_Create_Retry")}
+        >
+          {t("Hosting_Create_LoadError")}
+        </ErrorState>
+      ) : !capabilities.data?.length ? (
+        <EmptyState title={t("Hosting_Create_NoCapabilitiesTitle")}>
+          {t("Hosting_Create_NoCapabilitiesDescription")}
+        </EmptyState>
       ) : (
-        <>
-          {capabilities.isLoading ? (
-            <StatePanel kind="loading">{t("Hosting_Create_LoadingCapabilities")}</StatePanel>
-          ) : capabilities.isError ? (
-            <HostingError
-              message={errorMessage(capabilities.error, t("Hosting_Create_LoadError"))}
-              onRetry={() => void capabilities.refetch()}
-            />
-          ) : !capabilities.data?.length ? (
-            <StatePanel kind="empty" title={t("Hosting_Create_NoCapabilitiesTitle")}>
-              {t("Hosting_Create_NoCapabilitiesDescription")}
-            </StatePanel>
-          ) : (
-            <form
-              className="next-hosting-form-grid"
-              aria-busy={create.isPending}
-              onSubmit={(event) => void submit(event)}
-            >
-              <section className="next-hosting-panel next-hosting-form">
-                <div className="next-hosting-section-heading">
-                  <span className="kicker">{t("Hosting_Create_RecordKicker")}</span>
-                  <h2>{t("Hosting_Create_RecordTitle")}</h2>
-                  <p>{t("Hosting_Create_RecordDescription")}</p>
-                </div>
-                <label className="field">
-                  <span>{t("Hosting_Create_Name")}</span>
-                  <input
-                    autoComplete="off"
-                    maxLength={256}
-                    required
-                    aria-invalid={Boolean(form.formState.errors.title)}
-                    aria-describedby={form.formState.errors.title ? "server-name-error" : undefined}
-                    {...form.register("title")}
-                  />
-                  {form.formState.errors.title && (
-                    <small id="server-name-error" className="next-hosting-field-error" role="alert">
-                      {form.formState.errors.title.message}
-                    </small>
-                  )}
-                </label>
-                <label className="field">
-                  <span>{t("Hosting_Create_Game")}</span>
-                  <select
-                    value={gameIdentifier}
-                    required
-                    onChange={(event) => changeGame(event.target.value)}
-                  >
-                    {capabilities.data.map((item) => (
-                      <option key={item.gameIdentifier} value={item.gameIdentifier}>
-                        {item.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {capability?.requiresTerrain && (
-                  <label className="field">
-                    <span>{capability.terrainLabel ?? "Terrain"}</span>
-                    <select
-                      required
-                      value={terrainId ?? ""}
-                      disabled={terrains.isLoading || terrains.isError}
-                      onChange={(event) =>
-                        form.setValue(
-                          "terrainId",
-                          event.target.value ? Number(event.target.value) : null,
-                          {
-                            shouldDirty: true,
-                            shouldValidate: true,
-                          },
-                        )
-                      }
-                    >
-                      <option value="" disabled>
-                        Select {(capability.terrainLabel ?? "terrain").toLowerCase()}
-                      </option>
-                      {terrains.data?.map((item) => (
-                        <option key={item.primaryKey} value={item.primaryKey}>
-                          {item.title}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {capability?.requiresScenario && (
-                  <label className="field">
-                    <span>{capability.scenarioLabel ?? "Scenario"}</span>
-                    <select
-                      required
-                      value={scenarioId ?? ""}
-                      disabled={scenarios.isLoading || scenarios.isError}
-                      onChange={(event) =>
-                        form.setValue("scenarioId", event.target.value || null, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                    >
-                      <option value="" disabled>
-                        Select {(capability.scenarioLabel ?? "scenario").toLowerCase()}
-                      </option>
-                      {scenarios.data?.map((item) => (
-                        <option key={item.primaryKey} value={item.primaryKey}>
-                          {item.title}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {capability && capability.supportsModPacks !== false && (
-                  <label className="field">
-                    <span>{t("Hosting_Create_ModPack")}</span>
-                    <select
-                      value={modPackDefinitionId ?? ""}
-                      disabled={modPacks.isLoading || modPacks.isError}
-                      onChange={(event) =>
-                        form.setValue(
-                          "modPackDefinitionId",
-                          event.target.value ? Number(event.target.value) : null,
-                          { shouldDirty: true, shouldValidate: true },
-                        )
-                      }
-                    >
-                      <option value="">{t("Hosting_Create_ModPackNone")}</option>
-                      {modPacks.data?.map((item) => (
-                        <option key={item.primaryKey} value={item.primaryKey}>
-                          {item.title}
-                        </option>
-                      ))}
-                    </select>
-                    <small>{t("Hosting_Create_ModPackHint")}</small>
-                  </label>
-                )}
-                <label className="field">
-                  <span>{t("Hosting_Create_ConfigurationProfile")}</span>
-                  <select
-                    value={configurationProfileId ?? ""}
-                    disabled={configurationProfiles.isLoading || configurationProfiles.isError}
-                    onChange={(event) =>
-                      form.setValue("configurationProfileId", event.target.value || null, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      })
-                    }
-                  >
-                    <option value="">{t("Hosting_Create_ConfigurationProfileDefault")}</option>
-                    {configurationProfiles.data?.map((item) => (
-                      <option key={item.primaryKey} value={item.primaryKey}>
-                        {formatResource(
-                          t("Hosting_Create_ConfigurationProfileOption"),
-                          item.title,
-                          item.latestRevisionNumber,
-                        )}
-                      </option>
-                    ))}
-                  </select>
-                  <small>{t("Hosting_Create_ConfigurationProfileHint")}</small>
-                </label>
-                {((capability?.supportsModPacks !== false && modPacks.isLoading) ||
-                  (capability?.requiresTerrain && terrains.isLoading) ||
-                  (capability?.requiresScenario && scenarios.isLoading) ||
-                  configurationProfiles.isLoading) && (
-                  <StatePanel kind="loading">{t("Hosting_Create_LoadingSelections")}</StatePanel>
-                )}
-                {((capability?.supportsModPacks !== false && modPacks.isError) ||
-                  (capability?.requiresTerrain && terrains.isError) ||
-                  (capability?.requiresScenario && scenarios.isError) ||
-                  configurationProfiles.isError) && (
-                  <StatePanel
-                    kind="error"
-                    title={t("Hosting_Create_SelectionLoadErrorTitle")}
-                    action={
-                      <button
-                        className="button button--ghost"
-                        type="button"
-                        onClick={retryRequiredOptions}
-                      >
-                        {t("Hosting_Create_Retry")}
-                      </button>
-                    }
-                  >
-                    {errorMessage(
-                      terrains.error ??
-                        scenarios.error ??
-                        modPacks.error ??
-                        configurationProfiles.error,
-                      t("Hosting_Create_SelectionLoadError"),
-                    )}
-                  </StatePanel>
-                )}
-                <label className="field">
-                  <span>{t("Hosting_Common_CostOwner")}</span>
-                  <select
-                    value={costOwnerId ?? ""}
-                    disabled={!costOwners.isSuccess}
-                    aria-describedby="cost-owner-hint"
-                    onChange={(event) =>
-                      form.setValue("costOwnerId", event.target.value || null, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      })
-                    }
-                  >
-                    <option value="" disabled={currentUserOwner?.isFrozen}>
-                      {currentUserOwner
-                        ? formatResource(
-                            t("Hosting_Create_CostOwnerSelfExisting"),
-                            currentUserOwner.displayName,
-                          )
-                        : t("Hosting_Create_CostOwnerSelf")}
-                    </option>
-                    {costOwners.data
-                      ?.filter((owner: ServerCreationCostOwnerOption) => !owner.isCurrentUser)
-                      .map((owner) => (
-                        <option
-                          key={owner.costOwnerId}
-                          value={owner.costOwnerId}
-                          disabled={owner.isFrozen === true}
-                        >
-                          {owner.displayName}
-                          {owner.isFrozen ? ` — ${t("Hosting_Create_CostOwnerFrozen")}` : ""}
-                        </option>
-                      ))}
-                  </select>
-                  <small id="cost-owner-hint">{t("Hosting_Create_CostOwnerHint")}</small>
-                </label>
-                {costOwners.isLoading && (
-                  <p className="next-hosting-muted" role="status">
-                    {t("Hosting_Create_CostOwnersLoading")}
-                  </p>
-                )}
-                {costOwners.isError && (
-                  <StatePanel
-                    kind="warning"
-                    action={
-                      <button
-                        className="button button--ghost"
-                        type="button"
-                        onClick={() => void costOwners.refetch()}
-                      >
-                        {t("Hosting_Create_Retry")}
-                      </button>
-                    }
-                  >
-                    {t("Hosting_Create_CostOwnerLoadWarning")}
-                  </StatePanel>
-                )}
-                {!costOwnerValid && (
-                  <p className="next-hosting-inline-error" role="alert">
-                    {t("Hosting_Create_CostOwnerFrozenError")}
-                  </p>
-                )}
-                <label className="field">
-                  <span>{t("Hosting_Create_Runtime")}</span>
-                  {availableProviders.length > 0 ? (
-                    <select
-                      value={runtimeProviderIdentifier}
-                      required
-                      onChange={(event) => changeProvider(event.target.value)}
-                    >
-                      {availableProviders.map((item) => (
-                        <option key={item.identifier} value={item.identifier}>
-                          {item.identifier}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="next-hosting-provider-empty">
-                      {t("Hosting_ProfileCatalog_NoSelectableProvider")}
-                    </div>
-                  )}
-                  <small>{t("Hosting_Create_RuntimeHint")}</small>
-                </label>
-                {provider && provider.profiles.length > 0 && (
-                  <>
-                    <label className="field">
-                      <span>{t("Hosting_Create_Profile")}</span>
-                      <select
-                        value={runtimeProfileIdentifier}
-                        required
-                        onChange={(event) =>
-                          form.setValue("runtimeProfileIdentifier", event.target.value, {
-                            shouldDirty: true,
-                            shouldValidate: true,
-                          })
-                        }
-                      >
-                        {provider.profiles.map((item) => (
-                          <option key={item.identifier} value={item.identifier}>
-                            {item.displayName} — {number(item.virtualCpuCount, 0)} vCPU ·{" "}
-                            {number(item.memoryGiB)} GiB · {number(item.diskGiB, 0)} GiB ·{" "}
-                            {item.estimatedHourlyCostEur == null
-                              ? t("Hosting_Create_PriceUnavailable")
-                              : `${euro(item.estimatedHourlyCostEur, 4)} / ${t("Hosting_Create_Hour")}`}
-                          </option>
-                        ))}
-                      </select>
-                      <small>{t("Hosting_ProfileCatalog_SelectHint")}</small>
-                    </label>
-                    {profile && <RuntimeProfileSummary profile={profile} />}
-                  </>
-                )}
-                {profile && provider && (
-                  <section
-                    className="next-hosting-storage-configuration"
-                    aria-labelledby="storage-title"
-                  >
-                    <div className="next-hosting-section-heading">
-                      <span className="kicker">{t("Hosting_Create_StorageKicker")}</span>
-                      <h3 id="storage-title">
-                        {formatResource(t("Hosting_Create_StorageTitle"), profile.displayName)}
-                      </h3>
-                      <p>{t("Hosting_Create_StorageDescription")}</p>
-                    </div>
-                    <label className="field">
-                      <span>{t("Hosting_Create_StorageStrategy")}</span>
-                      <select
-                        value={storageStrategy}
-                        onChange={(event) => {
-                          const strategy = event.target.value as StorageStrategy;
-                          form.setValue("runtimeStorageStrategy", strategy, {
-                            shouldDirty: true,
-                            shouldValidate: true,
-                          });
-                          form.setValue(
-                            "externalStorageSizeGiB",
-                            strategy === "FixedExternal"
-                              ? (provider.storage?.minimumCapacityGiB ?? null)
-                              : null,
-                            { shouldDirty: true, shouldValidate: true },
-                          );
-                        }}
-                      >
-                        <option value="IncludedDisk">{t("Hosting_Create_StorageIncluded")}</option>
-                        {provider.storage?.supportsExternalBlockStorage && (
-                          <>
-                            <option value="AutomaticExternal">
-                              {t("Hosting_Create_StorageAutomatic")}
-                            </option>
-                            <option value="FixedExternal">
-                              {t("Hosting_Create_StorageFixed")}
-                            </option>
-                          </>
-                        )}
-                      </select>
-                    </label>
-                    {storageStrategy === "FixedExternal" && provider.storage && (
-                      <label className="field">
-                        <span>{t("Hosting_Create_ExternalCapacity")}</span>
-                        <input
-                          type="number"
-                          required
-                          min={provider.storage.minimumCapacityGiB}
-                          max={provider.storage.maximumCapacityGiB}
-                          step={provider.storage.capacityIncrementGiB}
-                          value={fixedExternalGiB ?? ""}
-                          aria-invalid={Boolean(
-                            storageEstimate.data && !storageValid && fixedExternalGiB,
-                          )}
-                          onChange={(event) =>
-                            form.setValue(
-                              "externalStorageSizeGiB",
-                              event.target.value ? Number(event.target.value) : null,
-                              { shouldDirty: true, shouldValidate: true },
-                            )
-                          }
-                        />
-                      </label>
-                    )}
-                    <dl className="next-hosting-facts next-hosting-facts--compact">
-                      <div>
-                        <dt>{t("Hosting_Create_IncludedProfileDisk")}</dt>
-                        <dd>
-                          {profile.diskGiB == null ? "—" : `${number(profile.diskGiB, 0)} GiB`}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>{t("Hosting_Create_EstimatedPeakRequirement")}</dt>
-                        <dd>
-                          {storageEstimate.isFetching
-                            ? t("Hosting_Create_Calculating")
-                            : formatBytes(storageEstimate.data?.peakPreparationRequiredBytes)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>
-                          {t(
-                            storageStrategy === "IncludedDisk"
-                              ? "Hosting_Create_SelectedDeploymentCapacity"
-                              : "Hosting_Storage_SelectedRawCapacity",
-                          )}
-                        </dt>
-                        <dd>{formatBytes(capacity)}</dd>
-                      </div>
-                      <div>
-                        <dt>{t("Hosting_Create_CombinedPrice")}</dt>
-                        <dd>
-                          {hourlyCost == null
-                            ? t("Hosting_Create_PriceUnavailable")
-                            : formatResource(
-                                t("Hosting_Create_CombinedPriceValue"),
-                                euro(hourlyCost, 6),
-                                euro(hourlyCost * 730, 2),
-                              )}
-                        </dd>
-                      </div>
-                    </dl>
-                    <p className="next-hosting-muted">
-                      {storageStrategy === "IncludedDisk"
-                        ? t("Hosting_Create_FilesystemIncluded")
-                        : formatResource(
-                            t("Hosting_Create_FilesystemExternal"),
-                            provider.storage?.deploymentMountPath ?? "—",
-                          )}
-                    </p>
-                    {storageStrategy !== "IncludedDisk" && (
-                      <StatePanel kind="warning">
-                        {t("Hosting_Create_ExternalStorageWarning")}
-                      </StatePanel>
-                    )}
-                  </section>
-                )}
-                {storageEstimate.isFetching && (
-                  <StatePanel kind="loading">{t("Hosting_Create_EstimateLoading")}</StatePanel>
-                )}
-                {storageEstimate.isError && (
-                  <StatePanel
-                    kind="warning"
-                    action={
-                      <button
-                        className="button button--ghost"
-                        type="button"
-                        onClick={() => void storageEstimate.refetch()}
-                      >
-                        {t("Hosting_Create_Retry")}
-                      </button>
-                    }
-                  >
-                    {formatResource(
-                      t("Hosting_Create_EstimateUnavailable"),
-                      errorMessage(storageEstimate.error, t("Hosting_Create_EstimateFallback")),
-                    )}
-                  </StatePanel>
-                )}
-                {storageEstimate.data && !storageValid && !storageEstimate.isFetching && (
-                  <StatePanel kind="warning">{t("Hosting_Create_InvalidStorage")}</StatePanel>
-                )}
-                {storageEstimate.data && (
-                  <StorageDemandSummary
+        <form
+          className="create-page"
+          noValidate
+          aria-busy={create.isPending}
+          onSubmit={(event) => void submit(event)}
+        >
+          <p className="sr-only" aria-live="polite">
+            {announcement}
+          </p>
+          <div className="create-page__main" inert={create.isPending}>
+            <section className="create-page__section">
+              <h2 className="create-section__title">{t("Server_Create_Section_Server")}</h2>
+              <TextField
+                label={t("Hosting_Create_Name")}
+                hint={t("Server_Create_Name_Hint")}
+                required
+                autoComplete="off"
+                maxLength={256}
+                error={errors.title?.message}
+                {...form.register("title")}
+              />
+              {capabilities.data.length > 1 ? (
+                <SelectField
+                  label={t("Hosting_Create_Game")}
+                  options={capabilities.data.map((item) => ({
+                    value: item.gameIdentifier,
+                    label: item.displayName,
+                  }))}
+                  {...form.register("gameIdentifier", {
+                    onChange: (event: { target: { value: string } }) =>
+                      changeGame(event.target.value),
+                  })}
+                />
+              ) : (
+                <dl className="create-page__fact">
+                  <dt>{t("Hosting_Create_Game")}</dt>
+                  <dd>
+                    <ApiText>{capabilities.data[0]?.displayName}</ApiText>
+                  </dd>
+                </dl>
+              )}
+              {capability?.description && (
+                <p className="create-page__note">
+                  <ApiText>{capability.description}</ApiText>
+                </p>
+              )}
+              <PresetField
+                presets={presets}
+                value={presetValue}
+                loading={presetsLoading}
+                failed={presetsFailed}
+                showAppliedLine={afterCreating === "keep-off"}
+                onRetry={retryOptions}
+                onChoose={choosePreset}
+              />
+              <SizeField
+                key={`${gameIdentifier}:${provider?.identifier ?? ""}`}
+                form={form}
+                profiles={provider?.profiles ?? []}
+                selected={profile}
+                strategy={strategy}
+                demand={storageEstimate.data}
+                onMemberChange={markTouched}
+              />
+              <CostOwnerLine
+                owners={costOwners.data}
+                costOwnerId={costOwnerId}
+                viewerName={user?.nickname}
+                loading={costOwners.isLoading}
+                failed={costOwners.isError && costOwners.data === undefined}
+                onRetry={() => void costOwners.refetch()}
+                onChange={changeCostOwner}
+              />
+            </section>
+            {capability && (
+              <AdvancedOptions
+                form={form}
+                open={advancedOpen}
+                onOpenChange={setAdvancedOpen}
+                capability={capability}
+                availableProviders={availableProviders}
+                unavailableProviders={unavailableProviders}
+                storage={
+                  <StorageOptions
+                    key={`${gameIdentifier}:${provider?.identifier ?? ""}`}
+                    form={form}
+                    provider={provider}
+                    profile={profile}
                     demand={storageEstimate.data}
-                    selectedProfileIdentifier={runtimeProfileIdentifier}
+                    estimateFetching={storageEstimate.isFetching}
+                    estimateFailed={storageEstimate.isError && storageEstimate.data === undefined}
+                    misfit={storageMisfit}
+                    onRetryEstimate={() => void storageEstimate.refetch()}
+                    onMemberChange={markTouched}
                   />
-                )}
-                {unavailableProviders.length > 0 && (
-                  <section
-                    className="next-hosting-provider-statuses"
-                    aria-label={t("Hosting_Create_ProviderAvailability")}
-                  >
-                    {unavailableProviders.map((item: RuntimeProvider) => (
-                      <article key={item.identifier}>
-                        <strong>{item.identifier}</strong>
-                        <span>
-                          {item.availabilityStatus === "paused"
-                            ? c.executionPaused
-                            : formatResource(
-                                t(providerStatusKey(item.availabilityStatus)),
-                                item.identifier,
-                              )}
-                        </span>
-                      </article>
-                    ))}
-                  </section>
-                )}
-                <label className="next-hosting-check">
-                  <input type="checkbox" {...form.register("isLaunchDisabled")} />
-                  <span>
-                    <strong>{t("Hosting_Create_LaunchDisabled")}</strong>
-                    <small>{t("Hosting_Create_LaunchDisabledHint")}</small>
-                  </span>
-                </label>
-                {create.error && (
-                  <p className="next-hosting-inline-error" role="alert">
-                    {errorMessage(create.error, t("Hosting_Create_SaveError"))}
-                  </p>
-                )}
-                <div className="next-hosting-form-actions">
-                  <Link className="button button--ghost" to="/command/servers">
-                    {t("Hosting_Common_Cancel")}
-                  </Link>
-                  <button
-                    className="button button--primary"
-                    type="submit"
-                    disabled={create.isPending || !canSubmit}
-                  >
-                    {create.isPending ? t("Hosting_Create_Saving") : t("Hosting_Create_Submit")}
-                  </button>
-                </div>
-              </section>
-              <aside className="next-hosting-create-aside">
-                <section className="next-hosting-panel next-hosting-capability-card">
-                  <span className="kicker">{t("Hosting_Create_CapabilityKicker")}</span>
-                  <h2>{capability?.displayName}</h2>
-                  <p>{capability?.description}</p>
-                  {capability && capability.actions.length > 0 && (
-                    <div className="next-hosting-capability-actions">
-                      {[...capability.actions]
-                        .sort((left, right) => left.order - right.order)
-                        .map((action) => (
-                          <span key={action.id} title={action.description}>
-                            {action.label}
-                          </span>
-                        ))}
-                    </div>
-                  )}
-                </section>
-                <section className="next-hosting-create-boundary">
-                  <strong>{t("Hosting_Create_SeparateTitle")}</strong>
-                  <p>{t("Hosting_Create_SeparateDescription")}</p>
-                  <ol>
-                    <li>{t("Hosting_Create_SeparateStepCreate")}</li>
-                    <li>{t("Hosting_Create_SeparateStepReview")}</li>
-                    <li>{t("Hosting_Create_SeparateStepStart")}</li>
-                  </ol>
-                </section>
-              </aside>
-            </form>
-          )}
-        </>
+                }
+                modPacks={optionList(modPacks)}
+                terrains={optionList(terrains)}
+                scenarios={optionList(scenarios)}
+                profiles={optionList(configurationProfiles)}
+                owners={costOwners.data}
+                onRetryOptions={retryOptions}
+                onMemberChange={markTouched}
+                onProviderChange={changeProvider}
+                onLaunchDisabledChange={changeLaunchDisabled}
+              />
+            )}
+            <AfterCreatingChoice
+              value={afterCreating}
+              onChange={setAfterCreating}
+              startDisabled={isLaunchDisabled}
+              disabled={create.isPending}
+            />
+            <ActionLink variant="ghost" to="/command/servers">
+              {t("Server_Create_Leave")}
+            </ActionLink>
+          </div>
+          <CreateSummary
+            estimate={estimate}
+            sizeLabel={profile?.displayName}
+            storageLabel={storageLabel}
+            ownerLabel={ownerName}
+            reason={readiness}
+            reasonOwnerName={ownerName}
+            afterCreating={isLaunchDisabled ? "keep-off" : afterCreating}
+            pending={create.isPending}
+            invalidCount={form.formState.submitCount > 0 ? invalidCreateFields(errors).length : 0}
+            requestFailed={requestFailed}
+            errorRef={errorRef}
+          />
+        </form>
       )}
     </div>
   );

@@ -56,16 +56,33 @@ export const identityService = {
     }),
   profileSettings: (signal?: AbortSignal) =>
     getApiClient().request<ProfileSettings>(apiPath("/users/me/settings"), { signal }),
+  /**
+   * Records the language the signed-in user reads messages in, such as Discord and email cost alerts.
+   *
+   * Callers that fire and forget must ignore a rejection themselves, for example with `.catch(() => undefined)`.
+   *
+   * @param language The interface language to record.
+   */
+  recordLocale: async (language: "en" | "de"): Promise<void> => {
+    const path = "/users/me/locale" as const;
+    await getApiClient().request<void>(apiPath(path), {
+      method: apiMethod(path, "post"),
+      body: { locale: language },
+    });
+  },
 };
 
+// Every read that declares expected "none" statuses (204 or 404) maps that answer to null: TanStack Query treats a
+// query function result of undefined as a failed load, which would show the error state instead of the empty state.
+// Only the declared statuses become null; 401, 403 and 5xx keep rejecting with an ApiError.
 export const eventService = {
   upcoming: (signal?: AbortSignal) =>
     getApiClient().request<UpcomingEvent[]>(apiPath("/events/upcoming"), { signal }),
-  detail: (eventId: string, signal?: AbortSignal) =>
-    getApiClient().request<FullEvent>(fillApiPath("/events/{eventId}", { eventId }), {
+  detail: async (eventId: string, signal?: AbortSignal) =>
+    (await getApiClient().request<FullEvent>(fillApiPath("/events/{eventId}", { eventId }), {
       signal,
       expectedStatuses: [204, 404],
-    }),
+    })) ?? null,
   setAcceptance: (eventId: string, acceptance: EventAcceptance, signal?: AbortSignal) => {
     const path = acceptancePaths[acceptance];
     return getApiClient().request<void>(fillApiPath(path, { eventId }), {
@@ -81,11 +98,11 @@ export const fieldReportService = {
       apiPathWithQuery("/field-reports", "skip=0&take=48"),
       { signal },
     ),
-  detail: (slug: string, signal?: AbortSignal) =>
-    getApiClient().request<FieldReport>(fillApiPath("/field-reports/{slug}", { slug }), {
+  detail: async (slug: string, signal?: AbortSignal) =>
+    (await getApiClient().request<FieldReport>(fillApiPath("/field-reports/{slug}", { slug }), {
       signal,
       expectedStatuses: [204, 404],
-    }),
+    })) ?? null,
 };
 
 export const wikiService = {
@@ -98,11 +115,11 @@ export const wikiService = {
 };
 
 export const publicPageService = {
-  published: (slug: string, signal?: AbortSignal) =>
-    getApiClient().request<PublishedPublicPage>(fillApiPath("/public-pages/{slug}", { slug }), {
-      signal,
-      expectedStatuses: [204, 404],
-    }),
+  published: async (slug: string, signal?: AbortSignal) =>
+    (await getApiClient().request<PublishedPublicPage>(
+      fillApiPath("/public-pages/{slug}", { slug }),
+      { signal, expectedStatuses: [204, 404] },
+    )) ?? null,
 };
 
 export const siteImageService = {
@@ -113,23 +130,24 @@ export const siteImageService = {
 export const vereinService = {
   settings: (signal?: AbortSignal) =>
     getApiClient().request<VereinSettings>(apiPath("/verein/settings"), { signal }),
-  statutes: (signal?: AbortSignal) =>
-    getApiClient().request<VereinDocument>(apiPath("/verein/documents/satzung"), {
+  // The three reads below map an expected "none" answer to null, as explained above `eventService`.
+  statutes: async (signal?: AbortSignal) =>
+    (await getApiClient().request<VereinDocument>(apiPath("/verein/documents/satzung"), {
       signal,
       expectedStatuses: [204, 404],
-    }),
+    })) ?? null,
   minutes: (signal?: AbortSignal) =>
     getApiClient().request<VereinDocument[]>(apiPath("/verein/documents/minutes"), { signal }),
-  minute: (documentId: string, signal?: AbortSignal) =>
-    getApiClient().request<VereinDocument>(
+  minute: async (documentId: string, signal?: AbortSignal) =>
+    (await getApiClient().request<VereinDocument>(
       fillApiPath("/verein/documents/minutes/{documentId}", { documentId }),
       { signal, expectedStatuses: [204, 404] },
-    ),
-  myMembershipRequest: (signal?: AbortSignal) =>
-    getApiClient().request<VereinMembershipRequest>(apiPath("/verein/membership-requests/me"), {
-      signal,
-      expectedStatuses: [204, 401, 404],
-    }),
+    )) ?? null,
+  myMembershipRequest: async (signal?: AbortSignal) =>
+    (await getApiClient().request<VereinMembershipRequest>(
+      apiPath("/verein/membership-requests/me"),
+      { signal, expectedStatuses: [204, 401, 404] },
+    )) ?? null,
   createMembershipRequest: (payload: VereinMembershipRequestPayload, signal?: AbortSignal) =>
     getApiClient().request<VereinMembershipRequest>(apiPath("/verein/membership-requests"), {
       method: apiMethod("/verein/membership-requests", "post"),

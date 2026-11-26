@@ -3,14 +3,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 import { z } from "zod";
 import { queryKeys } from "@/api/services";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinMemberships } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { useAppToastOnChange } from "@/components/AppToasts";
+import { TextAreaField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
 import { PageHeader, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
+import { ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
 import {
   createVereinSettingsPayload,
   loadVereinAdminSettings,
@@ -19,6 +22,7 @@ import {
   vereinAdminQueryKeys,
   type VereinAdminSettings,
 } from "@/features/admin/vereinSettingsAdmin";
+import "@/features/admin/vereinSettings.css";
 
 interface VereinSettingsForm {
   monthlyAmount: string;
@@ -112,47 +116,46 @@ export function Component() {
 
   if (!canManage)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Verein_SettingsAccessRequiredTitle")}>
-        {t("Pages_Command_Verein_SettingsAccessRequiredDescription")}
-      </StatePanel>
+      <PageStack>
+        <PageHeader
+          kicker={t("Shared_CommandCenter_Nav_VereinSettings")}
+          title={t("Pages_Command_VereinSettings_PageTitle")}
+        />
+        <ForbiddenState title={t("Pages_Command_Verein_SettingsAccessRequiredTitle")}>
+          {t("Pages_Command_Verein_SettingsAccessRequiredDescription")}
+        </ForbiddenState>
+      </PageStack>
     );
 
   return (
-    <section className="verein-settings-admin-page">
+    <PageStack>
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_VereinSettings")}
-        title={t("Pages_Command_Verein_SettingsPageTitle")}
+        title={t("Pages_Command_VereinSettings_PageTitle")}
         description={t("Pages_Command_Verein_SettingsPageDescription")}
         actions={
           <>
-            <Link className="button button--ghost" to="/join">
+            <ActionLink variant="ghost" to="/join">
               {t("Pages_Command_Verein_SettingsOpenJoin")}
-            </Link>
-            <button
-              className="button button--ghost"
-              type="button"
+            </ActionLink>
+            <ActionButton
+              variant="ghost"
               disabled={query.isFetching}
               onClick={() => void query.refetch()}
             >
               {t("Common_Refresh")}
-            </button>
+            </ActionButton>
           </>
         }
       />
-      {query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_Verein_Loading")}</StatePanel>
-      ) : query.isError ? (
-        <StatePanel
-          kind="error"
-          action={
-            <button className="button button--ghost" onClick={() => void query.refetch()}>
-              {t("Common_Refresh")}
-            </button>
-          }
-        >
+      {query.isError && (
+        <ErrorState onRetry={() => void query.refetch()} retryLabel={t("Common_Refresh")}>
           {formatResource(t("Pages_Command_Verein_LoadError"), query.error.message)}
-        </StatePanel>
-      ) : (
+        </ErrorState>
+      )}
+      {query.isPending ? (
+        <LoadingState label={t("Pages_Command_Verein_Loading")} />
+      ) : query.data ? (
         <>
           {save.isError && <StatePanel kind="error">{save.error.message}</StatePanel>}
           <div className="verein-settings-admin-workspace">
@@ -164,55 +167,55 @@ export function Component() {
                 <span className="kicker">{t("Pages_Command_Verein_SettingsFormKicker")}</span>
                 <h2>{t("Pages_Command_Verein_SettingsFormTitle")}</h2>
               </header>
-              <div className="verein-settings-admin-form__fields">
-                <label>
-                  <span>{t("Pages_Command_Verein_SettingsMonthlyAmount")}</span>
-                  <input inputMode="decimal" {...form.register("monthlyAmount")} />
-                  {form.formState.errors.monthlyAmount && (
-                    <small role="alert">{form.formState.errors.monthlyAmount.message}</small>
-                  )}
-                </label>
-                <label>
-                  <span>{t("Pages_Command_Verein_SettingsAnnualAmount")}</span>
-                  <input inputMode="decimal" {...form.register("annualAmount")} />
-                  {form.formState.errors.annualAmount && (
-                    <small role="alert">{form.formState.errors.annualAmount.message}</small>
-                  )}
-                </label>
-                <label>
-                  <span>{t("Pages_Command_Verein_SettingsCurrency")}</span>
-                  <input maxLength={3} {...form.register("currency")} />
-                  {form.formState.errors.currency && (
-                    <small role="alert">{form.formState.errors.currency.message}</small>
-                  )}
-                </label>
-                <label className="is-wide">
-                  <span>{t("Pages_Command_Verein_SettingsTextDe")}</span>
-                  <textarea rows={6} maxLength={4096} {...form.register("publicTextDe")} />
-                  {form.formState.errors.publicTextDe && (
-                    <small role="alert">{form.formState.errors.publicTextDe.message}</small>
-                  )}
-                </label>
-                <label className="is-wide">
-                  <span>{t("Pages_Command_Verein_SettingsTextEn")}</span>
-                  <textarea rows={6} maxLength={4096} {...form.register("publicTextEn")} />
-                  {form.formState.errors.publicTextEn && (
-                    <small role="alert">{form.formState.errors.publicTextEn.message}</small>
-                  )}
-                </label>
+              <div className="verein-settings-fields">
+                <TextField
+                  label={t("Pages_Command_Verein_SettingsMonthlyAmount")}
+                  inputMode="decimal"
+                  error={form.formState.errors.monthlyAmount?.message}
+                  {...form.register("monthlyAmount")}
+                />
+                <TextField
+                  label={t("Pages_Command_Verein_SettingsAnnualAmount")}
+                  inputMode="decimal"
+                  error={form.formState.errors.annualAmount?.message}
+                  {...form.register("annualAmount")}
+                />
+                <TextField
+                  label={t("Pages_Command_Verein_SettingsCurrency")}
+                  maxLength={3}
+                  error={form.formState.errors.currency?.message}
+                  {...form.register("currency")}
+                />
+                <div className="verein-settings-fields__wide">
+                  <TextAreaField
+                    label={t("Pages_Command_Verein_SettingsTextDe")}
+                    rows={6}
+                    maxLength={4096}
+                    error={form.formState.errors.publicTextDe?.message}
+                    {...form.register("publicTextDe")}
+                  />
+                </div>
+                <div className="verein-settings-fields__wide">
+                  <TextAreaField
+                    label={t("Pages_Command_Verein_SettingsTextEn")}
+                    rows={6}
+                    maxLength={4096}
+                    error={form.formState.errors.publicTextEn?.message}
+                    {...form.register("publicTextEn")}
+                  />
+                </div>
               </div>
               <footer>
-                <button className="button button--primary" type="submit" disabled={save.isPending}>
+                <ActionButton variant="gold" type="submit" disabled={save.isPending}>
                   {save.isPending ? t("Common_Saving") : t("Pages_Command_Verein_SettingsSave")}
-                </button>
-                <button
-                  className="button button--ghost"
-                  type="button"
+                </ActionButton>
+                <ActionButton
+                  variant="ghost"
                   disabled={save.isPending || !query.data}
                   onClick={() => query.data && form.reset(toFormValues(query.data))}
                 >
                   {t("Common_Reset")}
-                </button>
+                </ActionButton>
               </footer>
             </form>
 
@@ -235,7 +238,7 @@ export function Component() {
             </aside>
           </div>
         </>
-      )}
-    </section>
+      ) : null}
+    </PageStack>
   );
 }

@@ -148,16 +148,23 @@ export async function loadMediaAssetPage(
   return (assets ?? []).map(normalizeAsset);
 }
 
+/**
+ * Loads one gallery asset by its identifier.
+ *
+ * @param assetId - Identifier of the asset to load.
+ * @param signal - Optional signal that cancels the request.
+ * @returns The normalized asset, or exactly `null` when the asset no longer exists (HTTP 404).
+ */
 export async function loadMediaAsset(
   assetId: string,
   signal?: AbortSignal,
-): Promise<MediaAsset | undefined> {
+): Promise<MediaAsset | null> {
   const path = "/media-assets/{assetId}" as const;
   const asset = await getApiClient().request<MediaAssetDto>(fillApiPath(path, { assetId }), {
     signal,
     expectedStatuses: [404],
   });
-  return asset ? normalizeAsset(asset) : undefined;
+  return asset ? normalizeAsset(asset) : null;
 }
 
 export async function uploadMediaAsset(

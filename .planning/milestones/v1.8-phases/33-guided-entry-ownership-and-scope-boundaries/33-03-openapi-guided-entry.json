@@ -1,0 +1,600 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "United Tactical Forces Guided Cloud Entry",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "https://localhost:7072"
+    }
+  ],
+  "paths": {
+    "/game-servers/cloud-entry/options": {
+      "get": {
+        "operationId": "GetGuidedCloudEntryOptionsAsync",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidedCloudEntryOptionsDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/game-servers/cloud-entry/arma3-server": {
+      "post": {
+        "operationId": "CreateArma3GuidedCloudEntryServerAsync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidedCloudPlanningServerCreationPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameServerBillingAssignmentDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/cloud-entry/billing-owner": {
+      "post": {
+        "operationId": "AssignGuidedCloudEntryBillingOwnerAsync",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidedCloudEntryBillingOwnerSelectionPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidedCloudEntryServerOptionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/game-servers/{gameServerId}/cloud-entry/readiness": {
+      "post": {
+        "operationId": "ValidateGuidedCloudEntryReadinessAsync",
+        "parameters": [
+          {
+            "name": "gameServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidedCloudEntryReadinessPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidedCloudEntryReadinessDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GameServerBillingAssignmentDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "primaryKey": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "gameServerFk": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "billingAccountFk": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "assignedByFk": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "timeStampAssigned": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "unassignedByFk": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "timeStampUnassigned": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "unassignmentReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
+      "GuidedCloudEntryBillingOwnerDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "billingAccountFk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerKind": {
+            "$ref": "#/components/schemas/EBillingOwnerKind"
+          },
+          "ownerUserFk": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "GuidedCloudEntryBillingOwnerSelectionPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "billingAccountFk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "GuidedCloudEntryOptionsDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eligibleServers": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/GuidedCloudEntryServerOptionDto"
+            }
+          },
+          "billingOwners": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/GuidedCloudEntryBillingOwnerDto"
+            }
+          },
+          "serverTypeNames": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "locationNames": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "datacenterNames": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "imageNames": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "serverTypeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "locationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "datacenterName": {
+            "type": "string",
+            "nullable": true
+          },
+          "imageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadataSourceTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "hasProviderMetadata": {
+            "type": "boolean"
+          },
+          "deferredRuntimeAssumptions": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "GuidedCloudEntryReadinessDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gameServerFk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "selectedBillingAccountFk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "selectedBillingAssignmentFk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "serverTypeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "locationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "datacenterName": {
+            "type": "string",
+            "nullable": true
+          },
+          "imageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "storageGigabytes": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "gamePort": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "steamQueryPort": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "steamPort": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "enableRcon": {
+            "type": "boolean"
+          },
+          "rconPort": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "exposeSsh": {
+            "type": "boolean"
+          },
+          "administrativeSourceCidr": {
+            "type": "string",
+            "nullable": true
+          },
+          "selectedModPackFk": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "runtimeBasics": {
+            "type": "string",
+            "nullable": true
+          },
+          "isReadyForDryRun": {
+            "type": "boolean"
+          },
+          "blockingReasons": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "deferredRuntimeAssumptions": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "GuidedCloudEntryReadinessPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gameServerFk": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "selectedBillingAccountFk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "selectedBillingAssignmentFk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "serverTypeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "locationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "datacenterName": {
+            "type": "string",
+            "nullable": true
+          },
+          "imageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "storageGigabytes": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "gamePort": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "steamQueryPort": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "steamPort": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "enableRcon": {
+            "type": "boolean"
+          },
+          "rconPort": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "exposeSsh": {
+            "type": "boolean"
+          },
+          "administrativeSourceCidr": {
+            "type": "string",
+            "nullable": true
+          },
+          "selectedModPackFk": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "runtimeBasics": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "GuidedCloudEntryServerOptionDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gameServerFk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "controllerIdentifier": {
+            "type": "string",
+            "nullable": true
+          },
+          "selectedModPackFk": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "selectedModPackName": {
+            "type": "string",
+            "nullable": true
+          },
+          "activeBillingAccountFk": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "activeBillingAssignmentFk": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "isEligible": {
+            "type": "boolean"
+          },
+          "eligibilityState": {
+            "type": "string",
+            "nullable": true
+          },
+          "blockingReasons": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "GuidedCloudPlanningServerCreationPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "billingAccountFk": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "selectedModPackFk": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "runtimeBasics": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EBillingOwnerKind": {
+        "type": "integer",
+        "format": "int32",
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    }
+  }
+}

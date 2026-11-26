@@ -8,7 +8,12 @@ internal sealed class TestRuntimeProvider : IRuntimeProvider
 
     public string ProviderIdentifier => Identifier;
 
-    public RuntimeProviderCapabilities Capabilities { get; init; } = new(true, true, true, EstimatedHourlyCostEur: 0.10m);
+    public RuntimeProviderCapabilities Capabilities { get; init; } = new(
+        true,
+        true,
+        true,
+        EstimatedHourlyCostEur: 0.10m,
+        BillingUnit: RuntimeBillingUnit.PerStarted(Duration.FromSeconds(1)));
 
     /// <summary>Gets the catalog returned by the fake provider when a test supplies explicit profiles.</summary>
     public IReadOnlyCollection<RuntimeProfile>? Profiles { get; init; }

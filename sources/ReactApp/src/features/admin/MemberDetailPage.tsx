@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { formatDate } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { useAppToastOnChange } from "@/components/AppToasts";
+import { CheckboxField, SelectField, TextAreaField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
 import {
   ConfirmDialog,
   PageHeader,
@@ -15,6 +18,9 @@ import {
   StatusBadge,
   useUnsavedChanges,
 } from "@/components/primitives";
+import { SearchField } from "@/components/SearchField";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { accountTones, membershipTones, toneOf } from "@/components/statusTones";
 import { setRoleMember } from "@/features/admin/roles";
 import {
   loadMemberDetail,
@@ -29,6 +35,7 @@ import {
   type MemberRole,
   type VereinMembershipStatus,
 } from "@/features/admin/members";
+import "@/features/admin/members.css";
 
 interface ProfileDraft {
   userId: string;
@@ -105,14 +112,6 @@ function statusKey(status: ReturnType<typeof memberStatus>): TranslationKey {
   }
 }
 
-function statusTone(status: ReturnType<typeof memberStatus>) {
-  return status === "verified"
-    ? ("success" as const)
-    : status === "unverified"
-      ? ("warning" as const)
-      : ("danger" as const);
-}
-
 function membershipStatusKey(status: VereinMembershipStatus | undefined): TranslationKey {
   switch (status) {
     case "Active":
@@ -124,16 +123,6 @@ function membershipStatusKey(status: VereinMembershipStatus | undefined): Transl
     default:
       return "Pages_Command_Members_NoFormalMembership";
   }
-}
-
-function membershipTone(status: VereinMembershipStatus | undefined) {
-  return status === "Active"
-    ? ("success" as const)
-    : status === "Suspended"
-      ? ("warning" as const)
-      : status === "Ended"
-        ? ("neutral" as const)
-        : ("info" as const);
 }
 
 export function Component() {
@@ -153,10 +142,11 @@ export function Component() {
 
   const query = useQuery({
     queryKey: ["command-center", "member", userId],
-    queryFn: ({ signal }) => loadMemberDetail(userId!, permissions, signal),
+    // A missing member resolves to undefined, which a query may not hold; null keeps it a not-found result.
+    queryFn: async ({ signal }) => (await loadMemberDetail(userId!, permissions, signal)) ?? null,
     enabled: Boolean(userId && canOpen),
   });
-  const detail = query.data;
+  const detail = query.data ?? undefined;
   const user = detail?.user;
   const membership = detail?.membership;
   const profileDraft = profileState?.userId === userId ? profileState : undefined;
@@ -330,26 +320,46 @@ export function Component() {
 
   if (!canOpen)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Members_NoAccessTitle")}>
-        {t("Pages_Command_Members_NoAccessMessage")}
-      </StatePanel>
+      <PageStack>
+        <PageHeader
+          kicker={t("Shared_CommandCenter_Nav_Members")}
+          title={t("Pages_Command_Member_HeaderTitle")}
+        />
+        <ForbiddenState title={t("Pages_Command_Members_NoAccessTitle")}>
+          {t("Pages_Command_Members_NoAccessMessage")}
+        </ForbiddenState>
+      </PageStack>
     );
   if (!userId)
     return (
-      <StatePanel title={t("Pages_Command_Member_NotFoundTitle")}>
-        {t("Pages_Command_Member_NotFoundMessage")}
-      </StatePanel>
+      <PageStack>
+        <PageHeader
+          kicker={t("Shared_CommandCenter_Nav_Members")}
+          title={t("Pages_Command_Member_HeaderTitle")}
+        />
+        <EmptyState
+          title={t("Pages_Command_Member_NotFoundTitle")}
+          action={
+            <ActionLink variant="ghost" to="/command/members">
+              {t("Pages_Command_Member_BackToRoster")}
+            </ActionLink>
+          }
+        >
+          {t("Pages_Command_Member_NotFoundMessage")}
+        </EmptyState>
+      </PageStack>
     );
 
   const accountStatus = user ? memberStatus(user) : "unverified";
   const avatar = user ? memberAvatarSource(user) : undefined;
   const displayName = user?.nickname?.trim() || t("Pages_Command_Member_UnknownUser");
   const membershipLabel = t(membershipStatusKey(membership?.status));
-  const error =
-    profileMutation.error ?? membershipMutation.error ?? authorityMutation.error ?? query.error;
+  const accountTone = toneOf(accountTones, accountStatus);
+  const membershipTone = toneOf(membershipTones, membership?.status);
+  const saveError = profileMutation.error ?? membershipMutation.error ?? authorityMutation.error;
 
   return (
-    <section className="member-detail-page">
+    <PageStack>
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_Members")}
         title={
@@ -360,34 +370,42 @@ export function Component() {
         description={t("Pages_Command_Member_HeaderDescription")}
         actions={
           <>
-            <Link className="button button--ghost" to="/command/members">
+            <ActionLink variant="ghost" to="/command/members">
               {t("Pages_Command_Member_BackToRoster")}
-            </Link>
-            <button
-              className="button button--ghost"
-              type="button"
+            </ActionLink>
+            <ActionButton
+              variant="ghost"
               disabled={query.isFetching}
               onClick={() => void query.refetch()}
             >
               {t("Pages_Command_Member_Refresh")}
-            </button>
+            </ActionButton>
           </>
         }
       />
-      {error && (
+      {query.isError && (
+        <ErrorState onRetry={() => void query.refetch()}>
+          {formatResource(t("Pages_Command_Member_LoadError"), query.error.message)}
+        </ErrorState>
+      )}
+      {saveError && !query.isError && (
         <StatePanel kind="error">
-          {formatResource(
-            t(query.isError ? "Pages_Command_Member_LoadError" : "Pages_Command_Member_SaveError"),
-            error.message,
-          )}
+          {formatResource(t("Pages_Command_Member_SaveError"), saveError.message)}
         </StatePanel>
       )}
       {query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_Member_Loading")}</StatePanel>
-      ) : !detail || !user ? (
-        <StatePanel title={t("Pages_Command_Member_NotFoundTitle")}>
+        <LoadingState label={t("Pages_Command_Member_Loading")} />
+      ) : query.isError && !detail ? null : !detail || !user ? (
+        <EmptyState
+          title={t("Pages_Command_Member_NotFoundTitle")}
+          action={
+            <ActionLink variant="ghost" to="/command/members">
+              {t("Pages_Command_Member_BackToRoster")}
+            </ActionLink>
+          }
+        >
           {t("Pages_Command_Member_NotFoundMessage")}
-        </StatePanel>
+        </EmptyState>
       ) : (
         <>
           <section
@@ -410,9 +428,7 @@ export function Component() {
               <div>
                 <dt>{t("Pages_Command_Member_StatusAccount")}</dt>
                 <dd>
-                  <StatusBadge tone={statusTone(accountStatus)}>
-                    {t(statusKey(accountStatus))}
-                  </StatusBadge>
+                  <StatusBadge tone={accountTone}>{t(statusKey(accountStatus))}</StatusBadge>
                 </dd>
               </div>
               <div>
@@ -422,9 +438,7 @@ export function Component() {
               <div>
                 <dt>{t("Pages_Command_Member_StatusVerein")}</dt>
                 <dd>
-                  <StatusBadge tone={membershipTone(membership?.status)}>
-                    {membershipLabel}
-                  </StatusBadge>
+                  <StatusBadge tone={membershipTone}>{membershipLabel}</StatusBadge>
                 </dd>
               </div>
               <div>
@@ -449,9 +463,7 @@ export function Component() {
               <header className="command-panel__header">
                 <span className="kicker">{t("Pages_Command_Member_ProfileKicker")}</span>
                 <h2>{t("Pages_Command_Member_ProfileTitle")}</h2>
-                <StatusBadge tone={statusTone(accountStatus)}>
-                  {t(statusKey(accountStatus))}
-                </StatusBadge>
+                <StatusBadge tone={accountTone}>{t(statusKey(accountStatus))}</StatusBadge>
               </header>
               <dl className="command-detail-list member-detail-meta">
                 <dt>{t("Pages_Command_Member_FieldIdentifier")}</dt>
@@ -468,60 +480,48 @@ export function Component() {
                 </dd>
               </dl>
               {!permissions.profile ? (
-                <StatePanel kind="forbidden">
-                  {t("Pages_Command_Members_NoAccessMessage")}
-                </StatePanel>
+                <ForbiddenState>{t("Pages_Command_Members_NoAccessMessage")}</ForbiddenState>
               ) : (
                 <form
-                  className="member-detail-form"
+                  className="member-detail-fields"
                   onSubmit={(event) => {
                     event.preventDefault();
                     requestProfileSave();
                   }}
                 >
-                  <label>
-                    <span>{t("Pages_Command_Member_FieldNickname")}</span>
-                    <input
-                      required
-                      maxLength={1024}
-                      disabled={!permissions.nickname}
-                      value={nickname}
-                      onChange={(event) => setProfile({ nickname: event.target.value })}
+                  <TextField
+                    required
+                    maxLength={1024}
+                    disabled={!permissions.nickname}
+                    label={t("Pages_Command_Member_FieldNickname")}
+                    value={nickname}
+                    onChange={(event) => setProfile({ nickname: event.target.value })}
+                  />
+                  <TextField
+                    type="email"
+                    maxLength={1024}
+                    disabled={!permissions.email}
+                    label={t("Pages_Command_Member_FieldEmail")}
+                    value={email}
+                    onChange={(event) => setProfile({ email: event.target.value })}
+                  />
+                  <div className="member-detail-fields__toggles">
+                    <CheckboxField
+                      disabled={!permissions.verify}
+                      checked={verified}
+                      label={t("Pages_Command_Member_FieldVerified")}
+                      onChange={(event) => setProfile({ verified: event.target.checked })}
                     />
-                  </label>
-                  <label>
-                    <span>{t("Pages_Command_Member_FieldEmail")}</span>
-                    <input
-                      type="email"
-                      maxLength={1024}
-                      disabled={!permissions.email}
-                      value={email}
-                      onChange={(event) => setProfile({ email: event.target.value })}
+                    <CheckboxField
+                      disabled={!permissions.ban}
+                      checked={banned}
+                      label={t("Pages_Command_Member_FieldBanned")}
+                      onChange={(event) => setProfile({ banned: event.target.checked })}
                     />
-                  </label>
-                  <div className="member-detail-toggle-grid">
-                    <label>
-                      <input
-                        type="checkbox"
-                        disabled={!permissions.verify}
-                        checked={verified}
-                        onChange={(event) => setProfile({ verified: event.target.checked })}
-                      />
-                      <span>{t("Pages_Command_Member_FieldVerified")}</span>
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
-                        disabled={!permissions.ban}
-                        checked={banned}
-                        onChange={(event) => setProfile({ banned: event.target.checked })}
-                      />
-                      <span>{t("Pages_Command_Member_FieldBanned")}</span>
-                    </label>
                   </div>
-                  <div className="form-actions">
-                    <button
-                      className="button button--primary"
+                  <div className="member-detail-fields__actions">
+                    <ActionButton
+                      variant="primary"
                       type="submit"
                       disabled={!profileDirty || profileMutation.isPending || !nickname.trim()}
                     >
@@ -530,15 +530,14 @@ export function Component() {
                           ? "Pages_Command_Member_Saving"
                           : "Pages_Command_Member_SaveProfile",
                       )}
-                    </button>
-                    <button
-                      className="button button--ghost"
-                      type="button"
+                    </ActionButton>
+                    <ActionButton
+                      variant="ghost"
                       disabled={!profileDirty || profileMutation.isPending}
                       onClick={() => setProfileState(undefined)}
                     >
-                      {t("Common_Cancel")}
-                    </button>
+                      {t("Pages_Command_Member_ProfileReset_Dismiss")}
+                    </ActionButton>
                   </div>
                 </form>
               )}
@@ -548,61 +547,54 @@ export function Component() {
               <header className="command-panel__header">
                 <span className="kicker">{t("Pages_Command_Member_VereinKicker")}</span>
                 <h2>{t("Pages_Command_Member_VereinTitle")}</h2>
-                <StatusBadge tone={membershipTone(membership?.status)}>
-                  {membershipLabel}
-                </StatusBadge>
+                <StatusBadge tone={membershipTone}>{membershipLabel}</StatusBadge>
               </header>
               {!permissions.membership ? (
-                <StatePanel kind="forbidden">{t("Pages_Command_Member_VereinNoAccess")}</StatePanel>
+                <ForbiddenState>{t("Pages_Command_Member_VereinNoAccess")}</ForbiddenState>
               ) : (
                 <form
-                  className="member-detail-form"
+                  className="member-detail-fields"
                   onSubmit={(event) => {
                     event.preventDefault();
                     requestMembershipSave();
                   }}
                 >
-                  <label>
-                    <span>{t("Pages_Command_Member_FieldMembershipStatus")}</span>
-                    <select
-                      value={currentMembershipStatus}
-                      onChange={(event) =>
-                        setMembership({ status: event.target.value as VereinMembershipStatus })
-                      }
-                    >
-                      <option value="Active">{t("Pages_Command_Members_StatusActive")}</option>
-                      <option value="Suspended">
-                        {t("Pages_Command_Members_StatusSuspended")}
-                      </option>
-                      <option value="Ended">{t("Pages_Command_Members_StatusEnded")}</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>{t("Pages_Command_Member_FieldMemberNumber")}</span>
-                    <input
-                      maxLength={64}
-                      value={memberNumber}
-                      onChange={(event) => setMembership({ memberNumber: event.target.value })}
-                    />
-                  </label>
-                  <label className="member-detail-field--wide">
-                    <span>{t("Pages_Command_Member_FieldMembershipNotes")}</span>
-                    <textarea
+                  <SelectField
+                    label={t("Pages_Command_Member_FieldMembershipStatus")}
+                    value={currentMembershipStatus}
+                    options={[
+                      { value: "Active", label: t("Pages_Command_Members_StatusActive") },
+                      { value: "Suspended", label: t("Pages_Command_Members_StatusSuspended") },
+                      { value: "Ended", label: t("Pages_Command_Members_StatusEnded") },
+                    ]}
+                    onChange={(event) =>
+                      setMembership({ status: event.target.value as VereinMembershipStatus })
+                    }
+                  />
+                  <TextField
+                    maxLength={64}
+                    label={t("Pages_Command_Member_FieldMemberNumber")}
+                    value={memberNumber}
+                    onChange={(event) => setMembership({ memberNumber: event.target.value })}
+                  />
+                  <div className="member-detail-fields__wide">
+                    <TextAreaField
                       rows={4}
                       maxLength={2048}
+                      label={t("Pages_Command_Member_FieldMembershipNotes")}
                       value={membershipNotes}
                       onChange={(event) => setMembership({ notes: event.target.value })}
                     />
-                  </label>
-                  <label className="member-detail-field--wide">
-                    <span>{t("Pages_Command_Member_FieldMembershipReason")}</span>
-                    <input
+                  </div>
+                  <div className="member-detail-fields__wide">
+                    <TextField
+                      label={t("Pages_Command_Member_FieldMembershipReason")}
                       value={membershipReason}
                       onChange={(event) => setMembership({ reason: event.target.value })}
                     />
-                  </label>
+                  </div>
                   {membership && (
-                    <p className="member-detail-membership-timeline">
+                    <p className="member-detail-fields__timeline">
                       {t("Pages_Command_Members_LabelMembershipStart")}:{" "}
                       {formatDate(membership.timeStampStarted)}
                       {membership.timeStampEnded
@@ -610,9 +602,9 @@ export function Component() {
                         : ""}
                     </p>
                   )}
-                  <div className="form-actions">
-                    <button
-                      className="button button--primary"
+                  <div className="member-detail-fields__actions">
+                    <ActionButton
+                      variant="primary"
                       type="submit"
                       disabled={membershipMutation.isPending}
                     >
@@ -621,15 +613,14 @@ export function Component() {
                           ? "Pages_Command_Member_Saving"
                           : "Pages_Command_Member_SaveMembership",
                       )}
-                    </button>
-                    <button
-                      className="button button--ghost"
-                      type="button"
+                    </ActionButton>
+                    <ActionButton
+                      variant="ghost"
                       disabled={!membershipDirty || membershipMutation.isPending}
                       onClick={() => setMembershipState(undefined)}
                     >
-                      {t("Common_Cancel")}
-                    </button>
+                      {t("Pages_Command_Member_MembershipReset_Dismiss")}
+                    </ActionButton>
                   </div>
                 </form>
               )}
@@ -714,7 +705,12 @@ export function Component() {
             ? "Pages_Command_Member_ConfirmBanAction"
             : "Pages_Command_Member_ConfirmEndMembershipAction",
         )}
-        cancelLabel={t("Common_Cancel")}
+        cancelLabel={t(
+          confirmation === "ban"
+            ? "Pages_Command_Member_ConfirmBan_Dismiss"
+            : "Pages_Command_Member_ConfirmEndMembership_Dismiss",
+        )}
+        initialFocus="dismiss"
         onCancel={() => setConfirmation(undefined)}
         onConfirm={() => {
           const action = confirmation;
@@ -723,7 +719,7 @@ export function Component() {
           if (action === "end-membership") membershipMutation.mutate();
         }}
       />
-    </section>
+    </PageStack>
   );
 }
 
@@ -774,18 +770,17 @@ function AssignmentPanel({
         <StatusBadge>{assigned.length}</StatusBadge>
       </header>
       {!authorized ? (
-        <StatePanel kind="forbidden">{t("Pages_Command_Member_AuthorityNoAccess")}</StatePanel>
+        <ForbiddenState>{t("Pages_Command_Member_AuthorityNoAccess")}</ForbiddenState>
       ) : (
         <>
           <div className="toolbar member-assignment-search">
-            <label className="search-field">
-              <span className="sr-only">{searchLabel}</span>
-              <input
-                value={search}
-                placeholder={searchLabel}
-                onChange={(event) => onSearch(event.target.value)}
-              />
-            </label>
+            <SearchField
+              label={searchLabel}
+              placeholder={searchLabel}
+              clearLabel={t("Common_SearchClear")}
+              value={search}
+              onChange={onSearch}
+            />
           </div>
           <div className="member-assignment-columns">
             <AssignmentList
@@ -844,18 +839,14 @@ function AssignmentList({
                 <span>{item.secondary}</span>
                 <small>{item.detail}</small>
               </div>
-              <button
-                className={
-                  active
-                    ? "button button--primary button--small"
-                    : "button button--ghost button--small"
-                }
-                type="button"
+              <ActionButton
+                variant={active ? "primary" : "ghost"}
+                size="compact"
                 disabled={pending || item.id == null}
                 onClick={() => item.id != null && onSet(item.id, active)}
               >
                 {actionLabel}
-              </button>
+              </ActionButton>
             </li>
           ))}
         </ul>

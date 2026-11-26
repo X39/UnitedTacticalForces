@@ -1,0 +1,62 @@
+/*
+ * Chrome shared by the community layout and the command center layout.
+ *
+ * The shell used raw controls with their own class strings; they are now the shared ActionButton and SelectField.
+ * Those controls carry the global .button and .form-field rules, so the rules below restore the shell-only layout
+ * (hidden menu toggles on wide screens, full-viewport scrims, the compact language switch) with selectors that are
+ * specific enough to win without touching styles.css. The sheet uses tokens and rem values only.
+ */
+
+/* Language switch: the label is visually hidden, so the field wrapper adds no gap and the select stays compact. */
+.shell-language {
+  min-width: 0;
+}
+
+.shell-language .form-field {
+  gap: 0;
+}
+
+.shell-language .form-field__control--select {
+  width: auto;
+  min-width: 4.25rem;
+  padding-inline-start: var(--utf-space-sm);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+}
+
+/* Mobile menu toggle of the community layout: shown only where the navigation collapses into a menu. */
+.button.nav-toggle {
+  display: none;
+}
+
+/* The scrim covers the viewport behind an open menu; it is a button only so that it can be dismissed. */
+.button.navigation-scrim {
+  display: none;
+  width: auto;
+  max-width: none;
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Provider buttons on the sign-in page stack the provider and its hint at the start edge, as a button grid. */
+.authentication-options .button.identity-button {
+  justify-content: start;
+}
+
+@media (max-width: 1180px) {
+  .button.nav-toggle {
+    display: inline-flex;
+  }
+
+  .button.navigation-scrim {
+    display: block;
+  }
+}
+
+@media (max-width: 520px) {
+  .shell-language .form-field__control--select {
+    min-width: 0;
+    padding-inline-start: var(--utf-space-xs);
+  }
+}

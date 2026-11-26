@@ -1,0 +1,41 @@
+/*
+ * Styles for the fleet page: the cost line and the stack of fleet sections.
+ *
+ * Every other row of the page uses the vertical rhythm of .next-hosting-page. The file consumes --utf-* tokens only.
+ * The only allowed literals are a 1px border width and the 520px and 800px media breakpoints;
+ * tests/styles/server-style-guard.test.ts fails on anything else. The cost line text wraps; nothing is clipped.
+ */
+
+/* Cost line: one static warning note counted over the whole fleet. It is not a live region. */
+.fleet-cost-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  margin: 0;
+  padding: var(--utf-space-sm) var(--utf-space-md);
+  border: 1px solid var(--utf-state-warning-border);
+  border-radius: var(--utf-radius);
+  background: var(--utf-state-warning-bg);
+  color: var(--utf-state-warning-fg);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-regular);
+  line-height: var(--utf-leading-body);
+}
+
+.fleet-cost-line > svg {
+  flex: none;
+}
+
+.fleet-cost-line__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Section stack: the Active and Off sections, or the panel that replaces them. */
+.fleet-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xl);
+  min-width: 0;
+}

@@ -45,6 +45,7 @@ public sealed class GameServerAccessControllerAuthorizationTests
     [InlineData(nameof(GameServersController.EstimateStorageDemandAsync), Claims.Creation.Server)]
     [InlineData(nameof(GameServersController.GetCreationModPackOptionsAsync), Claims.Creation.Server)]
     [InlineData(nameof(GameServersController.GetCreationCostOwnerOptionsAsync), Claims.Creation.Server)]
+    [InlineData(nameof(GameServersController.GetCostOwnerOptionsAsync), Claims.ResourceBased.Server.Modify)]
     [InlineData(nameof(GameServersController.GetStorageDemandAsync), Claims.ResourceBased.Server.View)]
     [InlineData(nameof(GameServersController.ChangeRuntimeStorageAsync), Claims.ResourceBased.Server.Modify)]
     public void StorageEstimateRoutes_RequireExpectedAuthorization(string methodName, string expectedPolicy)
@@ -103,6 +104,8 @@ public sealed class GameServerAccessControllerAuthorizationTests
         foreach (var methodName in new[]
                  {
                      nameof(GameServersController.GetAccessAsync),
+                     nameof(GameServersController.GetUserAccessOptionsAsync),
+                     nameof(GameServersController.GetRoleAccessOptionsAsync),
                      nameof(GameServersController.GrantUserAccessAsync),
                      nameof(GameServersController.RevokeUserAccessAsync),
                      nameof(GameServersController.GrantRoleAccessAsync),
@@ -162,6 +165,131 @@ public sealed class GameServerAccessControllerAuthorizationTests
         Assert.Equal(serverId, accessService.LastListedServerId);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(51)]
+    [InlineData(-1)]
+    public async Task UserOptionsEndpoint_WithTakeOutsideBounds_ReturnsBadRequestWithoutDelegating(int take)
+    {
+        var accessService = new RecordingAccessService();
+        var controller = CreateController(accessService, Guid.NewGuid());
+
+        var result = await controller.GetUserAccessOptionsAsync(
+            Guid.NewGuid(),
+            "alpha",
+            take,
+            CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Null(accessService.LastUserSearch);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(50)]
+    public async Task UserOptionsEndpoint_WithTakeInsideBounds_DelegatesTheRequestedTake(int take)
+    {
+        var serverId = Guid.NewGuid();
+        var expected = new[]
+        {
+            new GameServerUserAccessCandidateDto { UserId = Guid.NewGuid(), Nickname = "alpha", Detail = "#abcdef" },
+        };
+        var accessService = new RecordingAccessService { UserCandidates = expected };
+        var controller = CreateController(accessService, Guid.NewGuid());
+
+        var result = await controller.GetUserAccessOptionsAsync(serverId, "alpha", take, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(expected, ok.Value);
+        Assert.Equal((serverId, "alpha", take), accessService.LastUserSearch);
+    }
+
+    [Fact]
+    public async Task UserOptionsEndpoint_WithoutTake_UsesTheDefaultOfTwenty()
+    {
+        var serverId = Guid.NewGuid();
+        var accessService = new RecordingAccessService();
+        var controller = CreateController(accessService, Guid.NewGuid());
+
+        var result = await controller.GetUserAccessOptionsAsync(serverId, null);
+
+        Assert.IsType<OkObjectResult>(result);
+        Assert.Equal((serverId, (string?)null, 20), accessService.LastUserSearch);
+    }
+
+    [Fact]
+    public async Task UserOptionsEndpoint_WhenTheServiceForbids_ReturnsForbid()
+    {
+        var controller = CreateController(new RecordingAccessService { ForbidSearch = true }, Guid.NewGuid());
+
+        var result = await controller.GetUserAccessOptionsAsync(Guid.NewGuid(), null, 20);
+
+        Assert.IsType<ForbidResult>(result);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(51)]
+    public async Task RoleOptionsEndpoint_WithTakeOutsideBounds_ReturnsBadRequestWithoutDelegating(int take)
+    {
+        var accessService = new RecordingAccessService();
+        var controller = CreateController(accessService, Guid.NewGuid());
+
+        var result = await controller.GetRoleAccessOptionsAsync(
+            Guid.NewGuid(),
+            "ops",
+            take,
+            CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Null(accessService.LastRoleSearch);
+    }
+
+    [Fact]
+    public async Task RoleOptionsEndpoint_DelegatesWithTheDefaultTakeOfTwenty()
+    {
+        var serverId = Guid.NewGuid();
+        var expected = new[]
+        {
+            new GameServerRoleAccessCandidateDto { RoleId = 7, Title = "Operators", MemberCount = 3 },
+        };
+        var accessService = new RecordingAccessService { RoleCandidates = expected };
+        var controller = CreateController(accessService, Guid.NewGuid());
+
+        var result = await controller.GetRoleAccessOptionsAsync(serverId, "op");
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(expected, ok.Value);
+        Assert.Equal((serverId, "op", 20), accessService.LastRoleSearch);
+    }
+
+    /// <summary>The cost owner options route is a GET on the cost-owner/options template of one server.</summary>
+    [Fact]
+    public void CostOwnerOptionsRoute_UsesTheExpectedTemplate()
+    {
+        var method = typeof(GameServersController).GetMethod(nameof(GameServersController.GetCostOwnerOptionsAsync))
+                     ?? throw new InvalidOperationException("Cost owner options endpoint was not found.");
+        var route = Assert.Single(method.GetCustomAttributes<HttpGetAttribute>(inherit: true));
+
+        Assert.Equal("{gameServerId:guid}/cost-owner/options", route.Template);
+    }
+
+    /// <summary>A take outside 1 to 50 answers 400 on the cost owner options route without any lookup.</summary>
+    /// <param name="take">The invalid limit.</param>
+    /// <returns>A task completing after the bad request is verified.</returns>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(51)]
+    [InlineData(-1)]
+    public async Task CostOwnerOptionsEndpoint_WithTakeOutsideBounds_ReturnsBadRequestWithoutDelegating(int take)
+    {
+        var controller = new GameServersController(null!, null!, new RecordingAccessService());
+
+        var result = await controller.GetCostOwnerOptionsAsync(Guid.NewGuid(), "alpha", take, CancellationToken.None);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
     [Fact]
     public async Task MutationEndpoint_WithoutActorIdentity_ReturnsUnauthorizedWithoutDelegating()
     {
@@ -215,6 +343,11 @@ public sealed class GameServerAccessControllerAuthorizationTests
         public IReadOnlyCollection<string> AllowedPermissions => Access.AllowedPermissions;
         public GameServerAccessDto Access { get; init; } = new();
         public Guid? LastListedServerId { get; private set; }
+        public bool ForbidSearch { get; init; }
+        public GameServerRoleAccessCandidateDto[] RoleCandidates { get; init; } = [];
+        public (Guid serverId, string? search, int take)? LastRoleSearch { get; private set; }
+        public GameServerUserAccessCandidateDto[] UserCandidates { get; init; } = [];
+        public (Guid serverId, string? search, int take)? LastUserSearch { get; private set; }
         public (Guid serverId, Guid userId, string permission, Guid actorId)? LastUserGrant { get; private set; }
         public (Guid serverId, long roleId, string permission, Guid actorId)? LastRoleGrant { get; private set; }
 
@@ -225,6 +358,30 @@ public sealed class GameServerAccessControllerAuthorizationTests
         {
             LastListedServerId = gameServerId;
             return Task.FromResult(Access);
+        }
+
+        public Task<GameServerUserAccessCandidateDto[]> SearchUserCandidatesAsync(
+            Guid gameServerId,
+            string? search,
+            int take,
+            ClaimsPrincipal principal,
+            CancellationToken cancellationToken = default)
+        {
+            if (ForbidSearch)
+                throw new HostingForbiddenException("Server ManageAccess permission is required.");
+            LastUserSearch = (gameServerId, search, take);
+            return Task.FromResult(UserCandidates);
+        }
+
+        public Task<GameServerRoleAccessCandidateDto[]> SearchRoleCandidatesAsync(
+            Guid gameServerId,
+            string? search,
+            int take,
+            ClaimsPrincipal principal,
+            CancellationToken cancellationToken = default)
+        {
+            LastRoleSearch = (gameServerId, search, take);
+            return Task.FromResult(RoleCandidates);
         }
 
         public Task GrantUserAsync(

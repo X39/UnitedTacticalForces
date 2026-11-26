@@ -1,0 +1,12 @@
+{
+  "family": "public-forms-wiki",
+  "owner": "69-23",
+  "files": {
+    "src/features/wiki/WikiPage.tsx": {
+      "controls": 1,
+      "lookalikes": 0,
+      "literals": 0,
+      "reason": "wiki editor (UI-SPEC allowance)"
+    }
+  }
+}

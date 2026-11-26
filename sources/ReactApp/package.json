@@ -9,12 +9,12 @@
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "npm run generate && tsc -b && vite build",
-    "build:assets": "npm run generate && vite build",
+    "build": "npm run locales:check && npm run generate && tsc -b && vite build",
+    "build:assets": "npm run locales:check && npm run generate && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "generate": "npm run locales:generate && npm run contracts:generate",
-    "locales:generate": "node scripts/export-locales.mjs",
-    "locales:check": "npm run locales:generate && git diff --exit-code -- src/generated/locales",
+    "generate": "npm run contracts:generate",
+    "locales:check": "node scripts/check-locales.mjs",
+    "locales:unused": "node scripts/check-locales.mjs --unused",
     "contracts:generate": "openapi-typescript openapi/utf-api.json -o src/generated/api.ts",
     "contracts:check": "npm run contracts:generate && git diff --exit-code -- src/generated/api.ts",
     "format": "prettier --write .",
@@ -24,7 +24,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "ci": "npm run locales:check && npm run contracts:check && npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build:assets"
+    "test:e2e:mobile": "playwright test --project=mobile-320 --project=mobile-390",
+    "test:e2e:update-snapshots": "playwright test --grep @visual --update-snapshots",
+    "test:uat": "playwright test -c playwright.uat.config.ts",
+    "ci": "npm run locales:check && npm run locales:unused && npm run contracts:check && npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build:assets"
   },
   "dependencies": {
     "@adobe/mdast-util-gridtables": "4.0.19",
@@ -54,6 +57,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "9.39.2",
     "@playwright/test": "1.62.1",
     "@testing-library/dom": "10.4.1",

@@ -3,7 +3,9 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatResource } from "@/app/i18n";
 import { ActionButton } from "@/components/ActionControl";
-import { StatePanel } from "@/components/primitives";
+import { SelectField, TextField } from "@/components/FormFields";
+import { SearchField } from "@/components/SearchField";
+import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
 import { FinanceAccountPicker } from "@/features/hosting/FinanceAccountPicker";
 import { ledgerKindTranslationKey, ownerKindTranslationKey } from "@/features/hosting/financeModel";
 import { financeQueryKeys, financeService } from "@/features/hosting/financeService";
@@ -79,56 +81,51 @@ export function FinanceProtocol({
         </div>
       </header>
       <div className="finance-filters">
-        <label className="field finance-filter--wide">
-          <span>{t("HostingFinance_SearchLabel")}</span>
-          <input
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(0);
-            }}
+        <div className="finance-filter--wide">
+          <SearchField
+            label={t("HostingFinance_SearchLabel")}
             placeholder={t("HostingFinance_ProtocolSearchPlaceholder")}
-          />
-        </label>
-        <label className="field">
-          <span>{t("HostingFinance_ColumnKind")}</span>
-          <select
-            value={kind}
-            onChange={(event) => {
-              setKind(event.target.value as FinanceLedgerKind | "");
-              setPage(0);
-            }}
-          >
-            <option value="">{t("HostingFinance_FilterAll")}</option>
-            {ledgerKinds.map((value) => (
-              <option key={value} value={value}>
-                {t(ledgerKindTranslationKey(value))}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>{t("HostingFinance_FilterFrom")}</span>
-          <input
-            type="date"
-            value={from}
-            onChange={(event) => {
-              setFrom(event.target.value);
+            clearLabel={t("Common_SearchClear")}
+            value={search}
+            onChange={(value) => {
+              setSearch(value);
               setPage(0);
             }}
           />
-        </label>
-        <label className="field">
-          <span>{t("HostingFinance_FilterTo")}</span>
-          <input
-            type="date"
-            value={to}
-            onChange={(event) => {
-              setTo(event.target.value);
-              setPage(0);
-            }}
-          />
-        </label>
+        </div>
+        <SelectField
+          label={t("HostingFinance_ColumnKind")}
+          value={kind}
+          options={[
+            { value: "", label: t("HostingFinance_FilterAll") },
+            ...ledgerKinds.map((value) => ({
+              value,
+              label: t(ledgerKindTranslationKey(value)),
+            })),
+          ]}
+          onChange={(event) => {
+            setKind(event.target.value as FinanceLedgerKind | "");
+            setPage(0);
+          }}
+        />
+        <TextField
+          type="date"
+          label={t("HostingFinance_FilterFrom")}
+          value={from}
+          onChange={(event) => {
+            setFrom(event.target.value);
+            setPage(0);
+          }}
+        />
+        <TextField
+          type="date"
+          label={t("HostingFinance_FilterTo")}
+          value={to}
+          onChange={(event) => {
+            setTo(event.target.value);
+            setPage(0);
+          }}
+        />
         {showAccount && (
           <FinanceAccountPicker
             value={accountId}
@@ -141,10 +138,12 @@ export function FinanceProtocol({
           />
         )}
       </div>
-      {query.isLoading && <StatePanel kind="loading">{t("Common_LoadingData")}</StatePanel>}
-      {query.isError && <StatePanel kind="error">{t("HostingFinance_LoadError")}</StatePanel>}
+      {query.isLoading && <LoadingState />}
+      {query.isError && <ErrorState onRetry={() => void query.refetch()} />}
       {query.data && query.data.entries.length === 0 && (
-        <StatePanel kind="empty">{t("HostingFinance_NoLedgerEntries")}</StatePanel>
+        <EmptyState title={t("HostingFinance_NoLedgerEntriesTitle")}>
+          {t("HostingFinance_NoLedgerEntriesBody")}
+        </EmptyState>
       )}
       {query.data && query.data.entries.length > 0 && (
         <>
@@ -225,9 +224,9 @@ export function FinanceProtocol({
       )}
       {selected && (
         <>
-          <button
+          <div
             className="finance-drawer-scrim"
-            aria-label={t("HostingFinance_CloseDetails")}
+            aria-hidden="true"
             onClick={() => setSelected(undefined)}
           />
           <aside
@@ -235,6 +234,9 @@ export function FinanceProtocol({
             role="dialog"
             aria-modal="true"
             aria-labelledby="finance-entry-details"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setSelected(undefined);
+            }}
           >
             <header>
               <div>

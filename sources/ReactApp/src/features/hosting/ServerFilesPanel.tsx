@@ -1,26 +1,29 @@
 import {
+  ArrowSync20Regular,
   ChevronDown16Regular,
   ChevronRight16Regular,
+  Dismiss16Regular,
   Document20Regular,
   Folder20Regular,
   FolderOpen20Regular,
-  MoreHorizontal20Regular,
-  Search20Regular,
 } from "@fluentui/react-icons";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type DragEvent,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from "react-router";
 import type { TFunction } from "i18next";
+import { ApiError } from "@/api/client";
 import { formatResource } from "@/app/i18n";
-import { ConfirmDialog, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
+import { ActionAnchor, ActionButton } from "@/components/ActionControl";
+import { FileChooserButton } from "@/components/FileChooserButton";
+import { CheckboxField, RadioGroupField, SelectField, TextField } from "@/components/FormFields";
+import { ConfirmDialog, StatePanel, StatusBadge } from "@/components/primitives";
+import { FileBrowser } from "@/components/server/FileBrowser";
+import { FileUploadDropzone } from "@/components/server/FileUploadDropzone";
+import { SearchField } from "@/components/SearchField";
+import { EmptyState, LoadingState } from "@/components/StateViews";
+import { useLeaveGuard } from "@/components/useLeaveGuard";
+import { filesLocationTo, readFilesLocation } from "@/features/hosting/filesLocation";
 import { formatBytes, formatDate, humanizeToken } from "@/features/hosting/model";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
 import type {
@@ -42,11 +45,22 @@ import {
   planUploads,
   sortHostingFiles,
 } from "@/features/hosting/workspaceModel";
+import { leavesWorkspaceSection } from "@/features/hosting/workspaceSections";
 
 const maximumUploadBytes = 16 * 1024 * 1024;
 const uploadConcurrency = 3;
 
 type UploadStatus = "queued" | "uploading" | "succeeded" | "failed" | "cancelled" | "rejected";
+
+/** The badge tone of each upload status: waiting states are neutral, progress is info, the outcomes follow their result. */
+const uploadStatusTone: Record<UploadStatus, "neutral" | "success" | "danger" | "info"> = {
+  queued: "neutral",
+  uploading: "info",
+  succeeded: "success",
+  failed: "danger",
+  rejected: "danger",
+  cancelled: "neutral",
+};
 
 interface SelectedUpload {
   file: File;
@@ -66,9 +80,16 @@ interface QueuedUpload {
 export function ServerFilesPanel({ server }: { server: GameServer }) {
   const { t } = useTranslation();
   const client = useQueryClient();
-  const [context, setContext] = useState<HostingFileContext>("persistent");
-  const [path, setPath] = useState("");
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set([""]));
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const navigationType = useNavigationType();
+  const read = readFilesLocation(searchParams);
+  const { context, path } = read.location;
+  const pathInvalid = read.invalid;
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
+    () => new Set(["", ...directoryAncestors(path)]),
+  );
   const [treeOpen, setTreeOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedPath, setSelectedPath] = useState<string>();
@@ -92,22 +113,116 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
   const [generatedApproved, setGeneratedApproved] = useState(false);
   const [batchRunning, setBatchRunning] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const newFolderDialogRef = useRef<HTMLDialogElement>(null);
-  const uploadDialogRef = useRef<HTMLDialogElement>(null);
+  const [mountKey] = useState(location.key);
+  const [notice, setNotice] = useState<"invalid" | "notFound" | null>(null);
+  const [noticeKey, setNoticeKey] = useState<string | null>(null);
+  // Every location change (link, Back, Forward, tree item, context switch) resets the folder-local state. It is
+  // adjusted while rendering, keyed on the router's location key, instead of inside an effect or `navigateTo`.
+  const [seenLocation, setSeenLocation] = useState({ key: location.key, context });
+  if (seenLocation.key !== location.key) {
+    setSeenLocation({ key: location.key, context });
+    const contextChanged = seenLocation.context !== context;
+    setSearch("");
+    setSelectedPath(undefined);
+    setTreeOpen(false);
+    // The fallback replace keeps its notice; any other navigation (link, Back, Forward) clears it.
+    if (navigationType !== "REPLACE") setNotice(null);
+    setExpandedPaths((current) => {
+      const next = contextChanged ? new Set([""]) : new Set(current);
+      next.add("");
+      for (const ancestor of directoryAncestors(path)) next.add(ancestor);
+      return next;
+    });
+  }
   const newFolderButtonRef = useRef<HTMLButtonElement>(null);
   const uploadButtonRef = useRef<HTMLButtonElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
   const uploadAbortRef = useRef<AbortController | undefined>(undefined);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const deleteInvokerRef = useRef<HTMLElement | null>(null);
+  const dropzoneRef = useRef<HTMLDivElement>(null);
+  const afterUploadRemoval = useRef<{ nextId: string | null } | null>(null);
 
-  useUnsavedChanges(
-    Boolean(selection.path || uploadQueue.some((item) => item.status === "queued")),
-  );
+  // Only work that the section itself would lose counts as dirty; folder changes stay inside the section and are
+  // never blocked (D-10). File operations are immediate and never enter the staged draft (D-01).
+  const dirty = Boolean(selection.path || uploadQueue.some((item) => item.status === "queued"));
+  const leaveGuard = useLeaveGuard({
+    dirty,
+    shouldBlock: ({ currentLocation, nextLocation }) =>
+      leavesWorkspaceSection(currentLocation, nextLocation, "files"),
+  });
 
   const files = useQuery({
     queryKey: hostingQueryKeys.files(server.primaryKey, context, path),
     queryFn: ({ signal }) => hostingService.files(server.primaryKey, context, path, signal),
   });
+  // An invalid ?path= was already reduced to the top level by the parser. A valid non-root path that the API
+  // reports as not found falls back to the top level once; a top-level not-found keeps the error panel and never
+  // navigates, so no fallback loop can exist.
+  const notFoundFallback =
+    path !== "" && files.error instanceof ApiError && files.error.code === "not-found";
+  const fallback = pathInvalid ? "invalid" : notFoundFallback ? "notFound" : null;
+  if (fallback !== null && noticeKey !== location.key) {
+    setNoticeKey(location.key);
+    setNotice(fallback);
+  }
+  const { pathname, search: locationSearch } = location;
+  useEffect(() => {
+    if (fallback === null) return;
+    void navigate(
+      filesLocationTo(pathname, new URLSearchParams(locationSearch), { path: "", context }),
+      { replace: true },
+    );
+  }, [fallback, pathname, locationSearch, context, navigate]);
+
+  // After a user-driven change (a push other than the one that mounted the panel) the folder heading takes focus
+  // once its listing is available. Back, Forward, replace and the first load never move focus. A change of the file
+  // context keeps focus on the context radios instead, so the Arrow keys can keep moving between the contexts.
+  const loaded = files.data !== undefined;
+  // The context switch arms the flag; the effect settles it on the first render of the new location, whether or not
+  // its listing ever loads, and remembers that location's key, so a failed or abandoned switch cannot swallow the
+  // heading focus of a later, unrelated navigation.
+  const keepContextFocusRef = useRef(false);
+  const contextFocusKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (navigationType !== "PUSH" || location.key === mountKey) return;
+    if (keepContextFocusRef.current) {
+      keepContextFocusRef.current = false;
+      contextFocusKeyRef.current = location.key;
+    }
+    if (!loaded || contextFocusKeyRef.current === location.key) return;
+    headingRef.current?.focus();
+  }, [navigationType, loaded, location.key, mountKey]);
+
+  // The upload dialog opens on its first choose control. The dialog body is a focusable region, so the browser's own
+  // initial focus would land there; this effect runs after the dialog has been shown and moves focus on.
+  useEffect(() => {
+    if (!uploadOpen) return;
+    dropzoneRef.current?.querySelector<HTMLElement>("button")?.focus();
+  }, [uploadOpen]);
+
+  // After a queued file is removed its row is gone together with the focused remove control. Focus moves to the
+  // remove control of the row that took its place, or to the first choose control of the drop zone once no
+  // removable row is left, so the member keeps their place inside the modal dialog.
+  useEffect(() => {
+    const pending = afterUploadRemoval.current;
+    if (!pending) return;
+    afterUploadRemoval.current = null;
+    const zone = dropzoneRef.current;
+    if (!zone) return;
+    if (pending.nextId !== null) {
+      const controls = zone
+        .closest("dialog")
+        ?.querySelectorAll<HTMLElement>("[data-upload-remove]");
+      for (const control of controls ?? []) {
+        if (control.dataset["uploadRemove"] === pending.nextId) {
+          control.focus();
+          return;
+        }
+      }
+    }
+    zone.querySelector<HTMLElement>("button")?.focus();
+  }, [uploadQueue]);
+
   const preservation = useQuery({
     queryKey: hostingQueryKeys.preservation(server.primaryKey),
     queryFn: ({ signal }) => hostingService.preservationSelections(server.primaryKey, signal),
@@ -148,9 +263,9 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
     return sorted.filter(
       (entry) =>
         entry.name.toLocaleLowerCase().includes(query) ||
-        humanizeToken(entry.classification).toLocaleLowerCase().includes(query),
+        classificationLabel(entry.classification, t).toLocaleLowerCase().includes(query),
     );
-  }, [search, sorted]);
+  }, [search, sorted, t]);
   const canMutate = server.canModify && context === "persistent";
   const collisions = uploadQueue.filter((item) => item.existing && !item.existing.isDirectory);
   const generatedCollisions = collisions.filter(
@@ -163,22 +278,6 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
     ["failed", "cancelled"].includes(item.status),
   ).length;
 
-  useEffect(() => {
-    folderInputRef.current?.setAttribute("webkitdirectory", "");
-  }, []);
-
-  useEffect(() => {
-    const dialog = newFolderDialogRef.current;
-    if (newFolderOpen && dialog && !dialog.open) dialog.showModal();
-    if (!newFolderOpen && dialog?.open) dialog.close();
-  }, [newFolderOpen]);
-
-  useEffect(() => {
-    const dialog = uploadDialogRef.current;
-    if (uploadOpen && dialog && !dialog.open) dialog.showModal();
-    if (!uploadOpen && dialog?.open) dialog.close();
-  }, [uploadOpen]);
-
   const refreshFiles = () =>
     client.invalidateQueries({ queryKey: ["hosting", "servers", server.primaryKey, "files"] });
 
@@ -188,6 +287,9 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
     onSuccess: async () => {
       setDeleteTarget(undefined);
       setSelectedPath(undefined);
+      // The row that held the invoker is gone after a delete, so the folder heading takes focus instead.
+      deleteInvokerRef.current = null;
+      window.setTimeout(() => headingRef.current?.focus());
       await refreshFiles();
     },
   });
@@ -222,34 +324,33 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
 
   const error =
     localError ??
-    files.error?.message ??
+    (notFoundFallback ? undefined : files.error?.message) ??
     preservation.error?.message ??
-    directoryMutation.error?.message ??
     deleteMutation.error?.message ??
     selectionMutation.error?.message ??
     deleteSelection.error?.message;
 
-  function setFileContext(nextContext: HostingFileContext) {
-    setContext(nextContext);
-    setPath("");
-    setExpandedPaths(new Set([""]));
-    setSearch("");
-    setSelectedPath(undefined);
+  /** The router location of a folder, built from the normalized path and never from the raw URL value. */
+  function folderTo(nextPath: string, nextContext: HostingFileContext = context) {
+    return filesLocationTo(location.pathname, searchParams, {
+      path: normalizeServerRelativePath(nextPath),
+      context: nextContext,
+    });
   }
 
-  function navigateTo(nextPath: string, nextContext = context) {
+  function navigateTo(nextPath: string, nextContext: HostingFileContext = context) {
     const normalized = normalizeServerRelativePath(nextPath);
-    if (nextContext !== context) setContext(nextContext);
-    setPath(normalized);
-    setExpandedPaths((current) => {
-      const next = new Set(current);
-      next.add("");
-      for (const ancestor of directoryAncestors(normalized)) next.add(ancestor);
-      return next;
-    });
-    setSearch("");
-    setSelectedPath(undefined);
-    setTreeOpen(false);
+    if (normalized === path && nextContext === context) return;
+    void navigate(folderTo(normalized, nextContext));
+  }
+
+  /** Drops the queued uploads and the unsaved preservation selection, then lets the held navigation continue. */
+  function discardAndLeave() {
+    setUploadOpen(false);
+    setUploadQueue([]);
+    setDirectoriesToCreate([]);
+    setSelection({ path: "", scope: "File", mode: "CreateOrUpdate" });
+    leaveGuard.proceed();
   }
 
   function toggleTreePath(treePath: string) {
@@ -264,6 +365,12 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
       } else next.add(treePath);
       return next;
     });
+  }
+
+  function closeDelete() {
+    setDeleteTarget(undefined);
+    const invoker = deleteInvokerRef.current;
+    window.setTimeout(() => invoker?.focus());
   }
 
   function openNewFolder() {
@@ -284,6 +391,28 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
     setReplacementApproved(false);
     setGeneratedApproved(false);
     setUploadOpen(true);
+  }
+
+  /**
+   * Takes one queued file out of the queue. The collision approvals follow the remaining queue because they are
+   * derived from it, and the folders that only the removed file needed are no longer created.
+   */
+  function removeUpload(id: string) {
+    const remaining = uploadQueue.filter((item) => item.id !== id);
+    // Only a queued row carries a remove control: prefer the next one, then the previous one.
+    const removable = uploadQueue.filter((item) => item.status === "queued");
+    const position = removable.findIndex((item) => item.id === id);
+    afterUploadRemoval.current = {
+      nextId: (removable[position + 1] ?? removable[position - 1])?.id ?? null,
+    };
+    setUploadQueue(remaining);
+    setDirectoriesToCreate((current) =>
+      current.filter((directory) =>
+        remaining.some(
+          (item) => item.status !== "rejected" && item.targetPath.startsWith(`${directory}/`),
+        ),
+      ),
+    );
   }
 
   function closeUpload() {
@@ -384,13 +513,10 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
     }
   }
 
-  async function handleInputFiles(event: ChangeEvent<HTMLInputElement>) {
-    const selected = Array.from(event.target.files ?? []).map((file) => ({
-      file,
-      relativePath: file.webkitRelativePath || file.name,
-    }));
-    event.target.value = "";
-    if (selected.length) await prepareUploads(selected);
+  async function handleChosenFiles(chosen: File[]) {
+    await prepareUploads(
+      chosen.map((file) => ({ file, relativePath: file.webkitRelativePath || file.name })),
+    );
   }
 
   async function handleDrop(event: DragEvent<HTMLDivElement>) {
@@ -521,276 +647,327 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
     }
   }
 
+  const crumbs = pathBreadcrumbs(path);
+  const currentFolder = path === "" ? "" : path.slice(path.lastIndexOf("/") + 1);
+  const folderLabel = path === "" ? t("Server_Files_TopLevel") : currentFolder;
+  const announcement = files.data
+    ? t("Server_Files_FolderAnnounce", { folder: folderLabel, count: files.data.length })
+    : "";
+  const rootListing = treeListings.get("");
+  const rootHasFolders = (rootListing?.files ?? []).some((entry) => entry.isDirectory);
+  const rootLabel =
+    context === "persistent"
+      ? t("React_ServerWorkspace_PersistentShort")
+      : t("React_ServerWorkspace_LiveShort");
+  // The heading of the list pane is the folder's name, or this context label at the root, so it is never empty.
+  const contextLabel =
+    context === "persistent" ? t("Hosting_Detail_PersistentFiles") : t("Hosting_Detail_LiveFiles");
+
   return (
     <>
-      <section className="next-hosting-panel next-hosting-files-panel">
-        <header className="next-hosting-section-heading next-hosting-files-heading">
+      <section className="workspace-panel next-hosting-files-panel">
+        <header className="workspace-panel__head next-hosting-files-heading">
           <div>
             <span className="kicker">{t("Hosting_Detail_FilesKicker")}</span>
             <h2>{t("Hosting_Detail_FilesTitle")}</h2>
             <p>{t("Hosting_Detail_FilesDescription")}</p>
           </div>
-          <div
-            className="next-hosting-file-contexts"
-            role="tablist"
-            aria-label={t("Hosting_Detail_FileContexts")}
-          >
-            <button
-              role="tab"
-              type="button"
-              aria-selected={context === "persistent"}
-              onClick={() => setFileContext("persistent")}
-            >
-              {t("Hosting_Detail_PersistentFiles")}
-            </button>
-            <button
-              role="tab"
-              type="button"
-              aria-selected={context === "live"}
-              onClick={() => setFileContext("live")}
-            >
-              {t("Hosting_Detail_LiveFiles")}
-            </button>
-          </div>
+          <RadioGroupField
+            layout="segmented"
+            hideLegend
+            legend={t("Hosting_Detail_FileContexts")}
+            name="file-context"
+            value={context}
+            options={[
+              { value: "persistent", label: t("Hosting_Detail_PersistentFiles") },
+              { value: "live", label: t("Hosting_Detail_LiveFiles") },
+            ]}
+            onChange={(value) => {
+              keepContextFocusRef.current = true;
+              navigateTo("", value === "live" ? "live" : "persistent");
+            }}
+          />
         </header>
+        {notice && (
+          <StatePanel
+            kind="info"
+            action={
+              <ActionButton variant="ghost" size="compact" onClick={() => setNotice(null)}>
+                {t("Server_Files_NoticeDismiss")}
+              </ActionButton>
+            }
+          >
+            {notice === "invalid" ? t("Server_Files_PathInvalid") : t("Server_Files_PathFallback")}
+          </StatePanel>
+        )}
         {error && (
           <p role="alert" className="next-hosting-inline-error">
             {error}
           </p>
         )}
-        <button
-          className="button button--ghost next-hosting-tree-toggle"
-          type="button"
+        <ActionButton
+          variant="ghost"
+          className="next-hosting-tree-toggle"
           aria-expanded={treeOpen}
           onClick={() => setTreeOpen((value) => !value)}
         >
           {treeOpen ? t("React_ServerFiles_HideFolders") : t("React_ServerFiles_ShowFolders")}
-        </button>
-        <div
-          className={`next-hosting-explorer${treeOpen ? " next-hosting-explorer--tree-open" : ""}`}
-        >
-          <aside className="next-hosting-file-tree-pane">
-            <h3>
-              {context === "persistent"
-                ? t("Hosting_Detail_PersistentFiles")
-                : t("Hosting_Detail_LiveFiles")}
-            </h3>
-            <ul className="next-hosting-file-tree" role="tree">
-              <FileTreeBranch
-                parentPath=""
-                currentPath={path}
-                expandedPaths={expandedPaths}
-                listings={treeListings}
-                onNavigate={navigateTo}
-                onToggle={toggleTreePath}
-                depth={0}
-                t={t}
-              />
-            </ul>
-            {(preservation.data ?? []).length > 0 && (
-              <div className="next-hosting-preserved-shortcuts">
-                <h3>{t("React_ServerFiles_PreservedPaths")}</h3>
-                <ul>
-                  {(preservation.data ?? []).map((item) => (
-                    <li key={item.primaryKey}>
-                      <button
-                        type="button"
-                        title={item.path}
-                        onClick={() =>
-                          navigateTo(
-                            item.scope === "File" ? parentServerPath(item.path) : item.path,
-                            "persistent",
-                          )
-                        }
-                      >
-                        <Folder20Regular aria-hidden="true" />
-                        <span>{item.path}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </aside>
-          <div
-            className={`next-hosting-file-content${dragActive ? " next-hosting-file-content--drag" : ""}`}
-            onDragEnter={(event) => {
-              if (!canMutate) return;
-              event.preventDefault();
-              setDragActive(true);
-            }}
-            onDragOver={(event) => {
-              if (!canMutate) return;
-              event.preventDefault();
-              event.dataTransfer.dropEffect = "copy";
-            }}
-            onDragLeave={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-                setDragActive(false);
-            }}
-            onDrop={(event) => void handleDrop(event)}
-          >
-            {dragActive && (
-              <div className="next-hosting-drop-overlay" aria-live="polite">
-                <Document20Regular aria-hidden="true" />
-                <strong>{t("React_ServerFiles_DropToUpload")}</strong>
-                <span>{displayPath(path, context, t)}</span>
-              </div>
-            )}
-            <div className="next-hosting-file-toolbar">
-              <nav aria-label={t("Hosting_Detail_Breadcrumbs")}>
-                <button type="button" onClick={() => navigateTo("")}>
-                  {context === "persistent"
-                    ? t("React_ServerWorkspace_PersistentShort")
-                    : t("React_ServerWorkspace_LiveShort")}
-                </button>
-                {pathBreadcrumbs(path).map((crumb) => (
-                  <span key={crumb.path}>
-                    <span aria-hidden="true"> / </span>
-                    <button type="button" onClick={() => navigateTo(crumb.path)}>
-                      {crumb.label}
-                    </button>
-                  </span>
-                ))}
-              </nav>
-              <label className="next-hosting-file-search">
-                <Search20Regular aria-hidden="true" />
-                <span className="sr-only">{t("React_ServerFiles_Search")}</span>
-                <input
-                  type="search"
-                  value={search}
-                  placeholder={t("React_ServerFiles_SearchPlaceholder")}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </label>
-              <button
-                className="button button--ghost"
-                type="button"
-                disabled={files.isFetching}
-                onClick={() => void files.refetch()}
-              >
-                {t("Common_Refresh")}
-              </button>
-              {canMutate && (
-                <>
-                  <button
-                    ref={newFolderButtonRef}
-                    className="button button--ghost"
-                    type="button"
-                    onClick={openNewFolder}
-                  >
-                    {t("Hosting_Detail_CreateFolder")}
-                  </button>
-                  <button
-                    ref={uploadButtonRef}
-                    className="button button--primary"
-                    type="button"
-                    onClick={openUpload}
-                  >
-                    {t("React_ServerFiles_Upload")}
-                  </button>
-                </>
+        </ActionButton>
+        <FileBrowser
+          toolbarLabel={t("Server_Files_Toolbar_Label")}
+          treeOpen={treeOpen}
+          dragActive={dragActive}
+          onDragEnter={(event) => {
+            if (!canMutate) return;
+            event.preventDefault();
+            setDragActive(true);
+          }}
+          onDragOver={(event) => {
+            if (!canMutate) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+              setDragActive(false);
+          }}
+          onDrop={(event) => void handleDrop(event)}
+          breadcrumb={
+            <nav aria-label={t("Server_Files_PathLabel")}>
+              {path === "" ? (
+                <span aria-current="location">{rootLabel}</span>
+              ) : (
+                <Link to={folderTo("")}>{rootLabel}</Link>
               )}
-            </div>
-            {files.isLoading ? (
-              <StatePanel kind="loading">{t("Hosting_Detail_FilesLoading")}</StatePanel>
-            ) : sorted.length === 0 ? (
-              <StatePanel kind="empty">
-                {t("Hosting_Detail_FilesEmpty")}
-                {canMutate && (
-                  <button className="button button--primary" type="button" onClick={openUpload}>
-                    {t("React_ServerFiles_Upload")}
-                  </button>
-                )}
-              </StatePanel>
-            ) : visibleFiles.length === 0 ? (
-              <StatePanel kind="empty">{t("React_ServerFiles_NoSearchResults")}</StatePanel>
-            ) : (
-              <div className="next-hosting-table-scroll next-hosting-file-table">
-                <table>
-                  <caption className="sr-only">{t("Hosting_Detail_FilesTitle")}</caption>
-                  <thead>
-                    <tr>
-                      <th>
-                        <button type="button" onClick={() => setSort("name")}>
-                          {t("Hosting_Detail_FileName")}
-                        </button>
-                      </th>
-                      <th>
-                        <button type="button" onClick={() => setSort("modified")}>
-                          {t("Hosting_Detail_FileModified")}
-                        </button>
-                      </th>
-                      <th>{t("Hosting_Detail_FileType")}</th>
-                      <th>
-                        <button type="button" onClick={() => setSort("size")}>
-                          {t("Hosting_Detail_FileSize")}
-                        </button>
-                      </th>
-                      <th className="next-hosting-actions-column">
-                        <span className="sr-only">{t("Hosting_Detail_FileActions")}</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleFiles.map((entry) => (
-                      <tr
-                        key={entry.path}
-                        tabIndex={0}
-                        data-selected={selectedPath === entry.path ? "true" : undefined}
-                        onClick={() => setSelectedPath(entry.path)}
-                        onFocus={() => setSelectedPath(entry.path)}
-                        onKeyDown={(event) => handleFileRowKey(event, entry, navigateTo)}
-                      >
-                        <td>
-                          {entry.isDirectory ? (
-                            <button
-                              className="next-hosting-file-name"
-                              type="button"
-                              onClick={() => navigateTo(entry.path)}
-                            >
-                              <Folder20Regular aria-hidden="true" />
-                              <span>{entry.name}</span>
-                            </button>
-                          ) : (
-                            <span className="next-hosting-file-label">
-                              <Document20Regular aria-hidden="true" />
-                              <span>{entry.name}</span>
-                            </span>
-                          )}
-                          {entry.isGeneratedTarget && (
-                            <small>
-                              {entry.overridesGenerated
-                                ? t("React_ServerWorkspace_PersistentOverride")
-                                : entry.configurationStatus === "Incomplete"
-                                  ? t("React_ServerWorkspace_GeneratedIncomplete")
-                                  : t("Hosting_FileClassification_Generated")}
-                            </small>
-                          )}
-                        </td>
-                        <td>{formatDate(entry.modifiedAt)}</td>
-                        <td>{humanizeToken(entry.classification)}</td>
-                        <td>{entry.isDirectory ? "—" : formatBytes(entry.size)}</td>
-                        <td>
-                          <details className="next-hosting-file-menu">
-                            <summary
-                              aria-label={t("React_ServerFiles_ActionsFor", { name: entry.name })}
-                            >
-                              <MoreHorizontal20Regular aria-hidden="true" />
-                            </summary>
-                            <div role="menu">
+              {crumbs.map((crumb, index) => (
+                <span key={crumb.path}>
+                  <span aria-hidden="true"> / </span>
+                  {index === crumbs.length - 1 ? (
+                    <span aria-current="location">{crumb.label}</span>
+                  ) : (
+                    <Link to={folderTo(crumb.path)}>{crumb.label}</Link>
+                  )}
+                </span>
+              ))}
+            </nav>
+          }
+          search={
+            <SearchField
+              label={t("React_ServerFiles_Search")}
+              placeholder={t("React_ServerFiles_SearchPlaceholder")}
+              clearLabel={t("Server_Fleet_SearchClear")}
+              value={search}
+              onChange={setSearch}
+            />
+          }
+          refresh={
+            <ActionButton
+              variant="ghost"
+              iconOnly
+              aria-label={t("Common_Refresh")}
+              disabled={files.isFetching}
+              onClick={() => void files.refetch()}
+            >
+              <ArrowSync20Regular aria-hidden="true" />
+            </ActionButton>
+          }
+          actions={
+            canMutate ? (
+              <>
+                <ActionButton ref={uploadButtonRef} variant="gold" onClick={openUpload}>
+                  {t("React_ServerFiles_Upload")}
+                </ActionButton>
+                <ActionButton ref={newFolderButtonRef} variant="ghost" onClick={openNewFolder}>
+                  {t("Hosting_Detail_CreateFolder")}
+                </ActionButton>
+              </>
+            ) : null
+          }
+          treePane={
+            <aside className="next-hosting-file-tree-pane">
+              <p className="file-browser__tree-title">{contextLabel}</p>
+              {rootListing?.loading ? (
+                <p className="next-hosting-tree-state">{t("Hosting_Detail_FilesLoading")}</p>
+              ) : rootListing?.error ? (
+                <p className="next-hosting-tree-state">{t("React_ServerFiles_FolderLoadFailed")}</p>
+              ) : !rootHasFolders ? (
+                <p className="next-hosting-tree-state">{t("React_ServerFiles_NoFolders")}</p>
+              ) : (
+                <ul className="next-hosting-file-tree" role="tree">
+                  <FileTreeBranch
+                    parentPath=""
+                    currentPath={path}
+                    expandedPaths={expandedPaths}
+                    listings={treeListings}
+                    onNavigate={navigateTo}
+                    onToggle={toggleTreePath}
+                    depth={0}
+                    t={t}
+                  />
+                </ul>
+              )}
+              {(preservation.data ?? []).length > 0 && (
+                <div className="next-hosting-preserved-shortcuts">
+                  <h3>{t("React_ServerFiles_PreservedPaths")}</h3>
+                  <ul>
+                    {(preservation.data ?? []).map((item) => (
+                      <li key={item.primaryKey}>
+                        <ActionButton
+                          variant="ghost"
+                          title={item.path}
+                          onClick={() =>
+                            navigateTo(
+                              item.scope === "File" ? parentServerPath(item.path) : item.path,
+                              "persistent",
+                            )
+                          }
+                        >
+                          <Folder20Regular aria-hidden="true" />
+                          <span>{item.path}</span>
+                        </ActionButton>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </aside>
+          }
+          listPane={
+            <>
+              {dragActive && (
+                <div
+                  className="file-browser__drop-overlay next-hosting-drop-overlay"
+                  aria-live="polite"
+                >
+                  <Document20Regular aria-hidden="true" />
+                  <strong>{t("React_ServerFiles_DropToUpload")}</strong>
+                  <span>{displayPath(path, context, t)}</span>
+                </div>
+              )}
+              <h3
+                ref={headingRef}
+                tabIndex={-1}
+                className="file-browser__heading next-hosting-file-folder-heading"
+              >
+                {currentFolder === "" ? contextLabel : currentFolder}
+              </h3>
+              <div className="sr-only" aria-live="polite">
+                {announcement}
+              </div>
+              {files.isLoading ? (
+                <LoadingState label={t("Hosting_Detail_FilesLoading")} />
+              ) : sorted.length === 0 ? (
+                <EmptyState
+                  title={t("Hosting_Detail_FilesEmptyTitle")}
+                  action={
+                    canMutate ? (
+                      <ActionButton variant="primary" onClick={openUpload}>
+                        {t("React_ServerFiles_Upload")}
+                      </ActionButton>
+                    ) : undefined
+                  }
+                >
+                  {t("Hosting_Detail_FilesEmptyBody")}
+                </EmptyState>
+              ) : visibleFiles.length === 0 ? (
+                <EmptyState title={t("React_ServerFiles_NoSearchResultsTitle")}>
+                  {t("React_ServerFiles_NoSearchResultsBody")}
+                </EmptyState>
+              ) : (
+                <div className="next-hosting-table-scroll next-hosting-file-table file-browser__table">
+                  <table>
+                    <caption className="sr-only">{t("Hosting_Detail_FilesTitle")}</caption>
+                    <thead>
+                      <tr>
+                        <th>
+                          <ActionButton
+                            variant="ghost"
+                            size="compact"
+                            onClick={() => setSort("name")}
+                          >
+                            {t("Hosting_Detail_FileName")}
+                          </ActionButton>
+                        </th>
+                        <th>
+                          <ActionButton
+                            variant="ghost"
+                            size="compact"
+                            onClick={() => setSort("modified")}
+                          >
+                            {t("Hosting_Detail_FileModified")}
+                          </ActionButton>
+                        </th>
+                        <th>{t("Hosting_Detail_FileType")}</th>
+                        <th>
+                          <ActionButton
+                            variant="ghost"
+                            size="compact"
+                            onClick={() => setSort("size")}
+                          >
+                            {t("Hosting_Detail_FileSize")}
+                          </ActionButton>
+                        </th>
+                        <th className="next-hosting-actions-column">
+                          <span className="sr-only">{t("Hosting_Detail_FileActions")}</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleFiles.map((entry) => (
+                        <tr
+                          key={entry.path}
+                          tabIndex={0}
+                          data-selected={selectedPath === entry.path ? "true" : undefined}
+                          onClick={() => setSelectedPath(entry.path)}
+                          onFocus={() => setSelectedPath(entry.path)}
+                          onKeyDown={(event) => handleFileRowKey(event, entry, navigateTo)}
+                        >
+                          <td>
+                            {entry.isDirectory ? (
+                              <Link className="next-hosting-file-name" to={folderTo(entry.path)}>
+                                <Folder20Regular aria-hidden="true" />
+                                <span>{entry.name}</span>
+                              </Link>
+                            ) : (
+                              <span className="next-hosting-file-label">
+                                <Document20Regular aria-hidden="true" />
+                                <span>{entry.name}</span>
+                              </span>
+                            )}
+                            {entry.isGeneratedTarget && (
+                              <small>
+                                {entry.overridesGenerated
+                                  ? t("React_ServerWorkspace_PersistentOverride")
+                                  : entry.configurationStatus === "Incomplete"
+                                    ? t("React_ServerWorkspace_GeneratedIncomplete")
+                                    : t("Hosting_FileClassification_Generated")}
+                              </small>
+                            )}
+                          </td>
+                          <td>{formatDate(entry.modifiedAt)}</td>
+                          <td>{classificationLabel(entry.classification, t)}</td>
+                          <td>{entry.isDirectory ? "—" : formatBytes(entry.size)}</td>
+                          <td>
+                            <div className="next-hosting-file-actions">
                               {entry.isDirectory && (
-                                <button
-                                  role="menuitem"
-                                  type="button"
+                                <ActionButton
+                                  variant="ghost"
+                                  size="compact"
+                                  aria-label={t("React_ServerFiles_OpenNamed", {
+                                    name: entry.name,
+                                  })}
                                   onClick={() => navigateTo(entry.path)}
                                 >
                                   {t("React_ServerFiles_Open")}
-                                </button>
+                                </ActionButton>
                               )}
                               {!entry.isDirectory && (
-                                <a
-                                  role="menuitem"
+                                <ActionAnchor
+                                  variant="ghost"
+                                  size="compact"
+                                  aria-label={t("React_ServerFiles_DownloadNamed", {
+                                    name: entry.name,
+                                  })}
                                   href={hostingService.fileDownloadUrl(
                                     server.primaryKey,
                                     context,
@@ -799,39 +976,52 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
                                   download={entry.name}
                                 >
                                   {t("Hosting_Detail_Download")}
-                                </a>
+                                </ActionAnchor>
                               )}
                               {canMutate &&
                                 entry.canModify &&
                                 (!entry.isGeneratedTarget || entry.overridesGenerated) && (
-                                  <button
-                                    role="menuitem"
-                                    type="button"
+                                  <ActionButton
+                                    variant="danger"
+                                    size="compact"
+                                    aria-label={t("React_ServerFiles_DeleteNamed", {
+                                      name: entry.name,
+                                    })}
                                     disabled={deleteMutation.isPending}
-                                    onClick={() => setDeleteTarget(entry)}
+                                    onClick={(event) => {
+                                      deleteInvokerRef.current = event.currentTarget;
+                                      setDeleteTarget(entry);
+                                    }}
                                   >
                                     {t("Hosting_Detail_Delete")}
-                                  </button>
+                                  </ActionButton>
                                 )}
                             </div>
-                          </details>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <footer className="next-hosting-file-footer" aria-live="polite">
-              {search.trim()
-                ? t("React_ServerFiles_FilteredCount", {
-                    visible: visibleFiles.length,
-                    total: sorted.length,
-                  })
-                : t("React_ServerFiles_ItemCount", { count: sorted.length })}
-            </footer>
-          </div>
-        </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          }
+          footer={
+            <>
+              <span>
+                {search.trim()
+                  ? t("React_ServerFiles_FilteredCount", {
+                      visible: visibleFiles.length,
+                      total: sorted.length,
+                    })
+                  : t("React_ServerFiles_ItemCount", { count: sorted.length })}
+              </span>
+              <span className="file-browser__footer-note">
+                {t("Server_Files_Footer_Immediate")}
+              </span>
+            </>
+          }
+        />
       </section>
 
       {server.canModify && (
@@ -847,225 +1037,208 @@ export function ServerFilesPanel({ server }: { server: GameServer }) {
         />
       )}
 
-      <dialog
-        ref={newFolderDialogRef}
-        className="dialog next-hosting-file-dialog"
-        aria-labelledby="server-files-new-folder-title"
-        onCancel={(event) => {
-          event.preventDefault();
-          closeNewFolder();
-        }}
+      <ConfirmDialog
+        open={newFolderOpen}
+        className="next-hosting-file-dialog"
+        kicker={t("Hosting_Detail_FilesKicker")}
+        title={t("Hosting_Detail_CreateFolderTitle")}
+        description={t("React_ServerFiles_Destination", {
+          path: displayPath(path, "persistent", t),
+        })}
+        confirmLabel={t("Hosting_Detail_CreateFolder")}
+        confirmVariant="gold"
+        cancelLabel={t("React_ServerFiles_NewFolder_Dismiss")}
+        busy={directoryMutation.isPending}
+        confirmDisabled={!folderNameIsValid(folderName)}
+        error={directoryMutation.error?.message}
+        onCancel={closeNewFolder}
+        onConfirm={() => directoryMutation.mutate()}
       >
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (folderNameIsValid(folderName)) directoryMutation.mutate();
+        <TextField
+          label={t("React_ServerFiles_FolderName")}
+          value={folderName}
+          error={
+            folderName && !folderNameIsValid(folderName)
+              ? t("React_ServerFiles_FolderNameInvalid")
+              : undefined
+          }
+          onChange={(event) => {
+            setFolderName(event.target.value);
+            directoryMutation.reset();
           }}
-        >
-          <span className="kicker">{t("Hosting_Detail_FilesKicker")}</span>
-          <h2 id="server-files-new-folder-title">{t("Hosting_Detail_CreateFolderTitle")}</h2>
-          <p>{t("React_ServerFiles_Destination", { path: displayPath(path, "persistent", t) })}</p>
-          <label className="field">
-            <span>{t("React_ServerFiles_FolderName")}</span>
-            <input
-              autoFocus
-              value={folderName}
-              onChange={(event) => {
-                setFolderName(event.target.value);
-                directoryMutation.reset();
-              }}
-            />
-          </label>
-          {folderName && !folderNameIsValid(folderName) && (
-            <p role="alert" className="next-hosting-inline-error">
-              {t("React_ServerFiles_FolderNameInvalid")}
-            </p>
-          )}
-          {directoryMutation.error && (
-            <p role="alert" className="next-hosting-inline-error">
-              {directoryMutation.error.message}
-            </p>
-          )}
-          <div className="dialog__actions">
-            <button className="button button--ghost" type="button" onClick={closeNewFolder}>
-              {t("Common_Cancel")}
-            </button>
-            <button
-              className="button button--primary"
-              type="submit"
-              disabled={!folderNameIsValid(folderName) || directoryMutation.isPending}
-            >
-              {t("Hosting_Detail_CreateFolder")}
-            </button>
-          </div>
-        </form>
-      </dialog>
+        />
+      </ConfirmDialog>
 
-      <dialog
-        ref={uploadDialogRef}
-        className="dialog next-hosting-file-dialog next-hosting-upload-dialog"
-        aria-labelledby="server-files-upload-title"
-        onCancel={(event) => {
-          event.preventDefault();
-          closeUpload();
-        }}
+      <ConfirmDialog
+        open={uploadOpen}
+        className="next-hosting-file-dialog next-hosting-upload-dialog"
+        kicker={t("Hosting_Detail_FilesKicker")}
+        title={t("Hosting_Detail_UploadTitle")}
+        description={t("React_ServerFiles_Destination", {
+          path: displayPath(uploadDestination, "persistent", t),
+        })}
+        confirmLabel={t("React_ServerFiles_Upload")}
+        confirmVariant="gold"
+        cancelLabel={t("React_ServerFiles_Upload_Dismiss")}
+        blockFileDrops
+        busy={batchRunning}
+        bodyLabel={t("Hosting_Detail_UploadTitle")}
+        confirmUnavailableReason={
+          !batchRunning &&
+          !preflightPending &&
+          !uploadQueue.some((item) => item.status === "queued")
+            ? t("React_ServerFiles_SelectOrDrop")
+            : undefined
+        }
+        confirmDisabled={
+          preflightPending ||
+          (collisions.length > 0 && !replacementApproved) ||
+          (generatedCollisions.length > 0 && !generatedApproved)
+        }
+        extraAction={
+          retryableCount > 0 && !batchRunning
+            ? {
+                label: t("React_ServerFiles_RetryFailed", { count: retryableCount }),
+                variant: "ghost",
+                onClick: () => void runUpload(true),
+              }
+            : undefined
+        }
+        onCancel={closeUpload}
+        onConfirm={() => void runUpload()}
       >
-        <form onSubmit={(event) => event.preventDefault()}>
-          <span className="kicker">{t("Hosting_Detail_FilesKicker")}</span>
-          <h2 id="server-files-upload-title">{t("Hosting_Detail_UploadTitle")}</h2>
-          <p>
-            {t("React_ServerFiles_Destination", {
-              path: displayPath(uploadDestination, "persistent", t),
-            })}
-          </p>
-          <div className="next-hosting-upload-pickers">
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
+        <FileUploadDropzone
+          ref={dropzoneRef}
+          title={t("Server_Files_Upload_DropTitle")}
+          body={t("Server_Files_Upload_DropBody")}
+          disabled={batchRunning || preflightPending}
+          onDrop={(event) => void handleDrop(event)}
+          chooseFiles={
+            <FileChooserButton
+              multiple
+              inputLabel={t("React_ServerWorkspace_FileMaximum")}
+              onFiles={(chosen) => void handleChosenFiles(chosen)}
             >
               {t("React_ServerFiles_ChooseFiles")}
-            </button>
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => folderInputRef.current?.click()}
+            </FileChooserButton>
+          }
+          chooseFolder={
+            <FileChooserButton
+              directory
+              inputLabel={t("React_ServerFiles_ChooseFolder")}
+              onFiles={(chosen) => void handleChosenFiles(chosen)}
             >
               {t("React_ServerFiles_ChooseFolder")}
-            </button>
-            <span>{t("React_ServerWorkspace_FileMaximum")}</span>
-            <input
-              ref={fileInputRef}
-              hidden
-              type="file"
-              multiple
-              aria-label={t("React_ServerWorkspace_FileMaximum")}
-              onChange={(event) => void handleInputFiles(event)}
-            />
-            <input
-              ref={folderInputRef}
-              hidden
-              type="file"
-              multiple
-              aria-label={t("React_ServerFiles_ChooseFolder")}
-              onChange={(event) => void handleInputFiles(event)}
-            />
-          </div>
-          {preflightPending ? (
-            <StatePanel kind="loading">{t("React_ServerFiles_CheckingDestinations")}</StatePanel>
-          ) : uploadQueue.length === 0 ? (
-            <div className="next-hosting-upload-empty">
-              <Document20Regular aria-hidden="true" />
-              <strong>{t("React_ServerFiles_SelectOrDrop")}</strong>
+            </FileChooserButton>
+          }
+        />
+        <span className="file-dropzone__limit">{t("React_ServerWorkspace_FileMaximum")}</span>
+        {preflightPending ? (
+          <StatePanel kind="loading">{t("React_ServerFiles_CheckingDestinations")}</StatePanel>
+        ) : uploadQueue.length === 0 ? null : (
+          <>
+            <div className="file-upload-summary next-hosting-upload-summary" aria-live="polite">
+              <strong>
+                {t("React_ServerFiles_UploadProgress", {
+                  completed: completedCount,
+                  total: uploadQueue.length,
+                })}
+              </strong>
+              <progress max={uploadQueue.length} value={completedCount} />
+              {batchRunning && (
+                <ActionButton
+                  variant="danger"
+                  size="compact"
+                  onClick={() => uploadAbortRef.current?.abort()}
+                >
+                  {t("React_ServerFiles_CancelUpload")}
+                </ActionButton>
+              )}
             </div>
-          ) : (
-            <>
-              <div className="next-hosting-upload-summary" aria-live="polite">
-                <strong>
-                  {t("React_ServerFiles_UploadProgress", {
-                    completed: completedCount,
-                    total: uploadQueue.length,
-                  })}
-                </strong>
-                <progress max={uploadQueue.length} value={completedCount} />
-              </div>
-              <ul className="next-hosting-upload-queue">
-                {uploadQueue.map((item) => (
-                  <li key={item.id} data-status={item.status}>
-                    <Document20Regular aria-hidden="true" />
-                    <span>
-                      <strong>{item.relativePath}</strong>
-                      <small>
-                        {formatBytes(item.file.size)} ·{" "}
-                        {t(`React_ServerFiles_Status_${item.status}`)}
+            <ul className="file-upload-queue next-hosting-upload-queue">
+              {uploadQueue.map((item) => (
+                <li key={item.id} className="file-upload-queue__row" data-status={item.status}>
+                  <Document20Regular aria-hidden="true" />
+                  <span className="file-upload-queue__name">
+                    <strong className="file-upload-queue__path">{item.relativePath}</strong>
+                    <small className="file-upload-queue__size">{formatBytes(item.file.size)}</small>
+                    {item.error && (
+                      <small className="file-upload-queue__error next-hosting-upload-error">
+                        {item.error}
                       </small>
-                      {item.error && (
-                        <small className="next-hosting-upload-error">{item.error}</small>
-                      )}
-                    </span>
+                    )}
+                  </span>
+                  <span className="file-upload-queue__end">
+                    <StatusBadge tone={uploadStatusTone[item.status]}>
+                      {t(`React_ServerFiles_Status_${item.status}`)}
+                    </StatusBadge>
                     {item.existing && (
                       <StatusBadge tone="warning">{t("React_ServerFiles_WillReplace")}</StatusBadge>
                     )}
-                  </li>
-                ))}
-              </ul>
-              {collisions.length > 0 && (
-                <label className="next-hosting-check">
-                  <input
-                    type="checkbox"
-                    checked={replacementApproved}
-                    disabled={batchRunning}
-                    onChange={(event) => setReplacementApproved(event.target.checked)}
-                  />
-                  <span>
-                    {t("React_ServerFiles_ApproveReplacements", { count: collisions.length })}
+                    {item.status === "queued" && !batchRunning && (
+                      <ActionButton
+                        variant="ghost"
+                        size="compact"
+                        iconOnly
+                        data-upload-remove={item.id}
+                        aria-label={t("Server_Files_Upload_RemoveNamed", {
+                          name: item.relativePath,
+                        })}
+                        onClick={() => removeUpload(item.id)}
+                      >
+                        <Dismiss16Regular aria-hidden="true" />
+                      </ActionButton>
+                    )}
                   </span>
-                </label>
-              )}
-              {generatedCollisions.length > 0 && (
-                <label className="next-hosting-check">
-                  <input
-                    type="checkbox"
-                    checked={generatedApproved}
-                    disabled={batchRunning}
-                    onChange={(event) => setGeneratedApproved(event.target.checked)}
-                  />
-                  <span>{t("React_ServerWorkspace_CreateGeneratedOverride")}</span>
-                </label>
-              )}
-            </>
-          )}
-          <div className="dialog__actions">
-            {batchRunning ? (
-              <button
-                className="button button--danger"
-                type="button"
-                onClick={() => uploadAbortRef.current?.abort()}
-              >
-                {t("React_ServerFiles_CancelUpload")}
-              </button>
-            ) : (
-              <button className="button button--ghost" type="button" onClick={closeUpload}>
-                {t("Common_Cancel")}
-              </button>
+                </li>
+              ))}
+            </ul>
+            {collisions.length > 0 && (
+              <CheckboxField
+                label={t("React_ServerFiles_ApproveReplacements", { count: collisions.length })}
+                checked={replacementApproved}
+                disabled={batchRunning}
+                onChange={(event) => setReplacementApproved(event.target.checked)}
+              />
             )}
-            {retryableCount > 0 && !batchRunning && (
-              <button
-                className="button button--ghost"
-                type="button"
-                onClick={() => void runUpload(true)}
-              >
-                {t("React_ServerFiles_RetryFailed", { count: retryableCount })}
-              </button>
+            {generatedCollisions.length > 0 && (
+              <CheckboxField
+                label={t("React_ServerWorkspace_CreateGeneratedOverride")}
+                checked={generatedApproved}
+                disabled={batchRunning}
+                onChange={(event) => setGeneratedApproved(event.target.checked)}
+              />
             )}
-            <button
-              className="button button--primary"
-              type="button"
-              disabled={
-                batchRunning ||
-                preflightPending ||
-                !uploadQueue.some((item) => item.status === "queued") ||
-                (collisions.length > 0 && !replacementApproved) ||
-                (generatedCollisions.length > 0 && !generatedApproved)
-              }
-              onClick={() => void runUpload()}
-            >
-              {t("React_ServerFiles_Upload")}
-            </button>
-          </div>
-        </form>
-      </dialog>
+          </>
+        )}
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        className="next-hosting-file-dialog"
+        title={t("Server_Files_Leave_Title")}
+        description={t("Server_Files_Leave_Body")}
+        cancelLabel={t("Server_Change_Leave_Stay")}
+        confirmLabel={t("Server_Files_Leave_Discard")}
+        confirmVariant="danger"
+        initialFocus="dismiss"
+        onCancel={leaveGuard.stay}
+        onConfirm={discardAndLeave}
+      />
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
+        className="next-hosting-file-dialog"
         title={t("React_ServerWorkspace_DeleteFile")}
         description={formatResource(
           t("Hosting_Detail_DeleteFileConfirm"),
           deleteTarget?.path ?? "",
         )}
         confirmLabel={t("Hosting_Detail_Delete")}
-        cancelLabel={t("Common_Cancel")}
-        onCancel={() => setDeleteTarget(undefined)}
+        cancelLabel={t("React_ServerFiles_DeleteFile_Dismiss")}
+        initialFocus="dismiss"
+        busy={deleteMutation.isPending}
+        onCancel={closeDelete}
         onConfirm={() => {
           if (deleteTarget) deleteMutation.mutate(deleteTarget);
         }}
@@ -1095,14 +1268,20 @@ function FileTreeBranch({
 }) {
   const listing = listings.get(parentPath);
   if (listing?.loading)
-    return <li className="next-hosting-tree-state">{t("Hosting_Detail_FilesLoading")}</li>;
+    return (
+      <li role="none">
+        <span className="next-hosting-tree-state">{t("Hosting_Detail_FilesLoading")}</span>
+      </li>
+    );
   if (listing?.error)
-    return <li className="next-hosting-tree-state">{t("React_ServerFiles_FolderLoadFailed")}</li>;
+    return (
+      <li role="none">
+        <span className="next-hosting-tree-state">{t("React_ServerFiles_FolderLoadFailed")}</span>
+      </li>
+    );
   const folders = (listing?.files ?? [])
     .filter((entry) => entry.isDirectory)
     .sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" }));
-  if (depth === 0 && folders.length === 0)
-    return <li className="next-hosting-tree-state">{t("React_ServerFiles_NoFolders")}</li>;
   return (
     <>
       {folders.map((folder, index) => {
@@ -1115,6 +1294,7 @@ function FileTreeBranch({
               role="treeitem"
               aria-expanded={expanded}
               aria-selected={selected}
+              aria-current={selected ? "location" : undefined}
               tabIndex={selected || (depth === 0 && currentPath === "" && index === 0) ? 0 : -1}
               style={{ paddingInlineStart: `${0.35 + depth * 1.05}rem` }}
               onClick={() => onNavigate(folder.path)}
@@ -1129,8 +1309,9 @@ function FileTreeBranch({
                 }
               }}
             >
-              <button
-                type="button"
+              <ActionButton
+                variant="ghost"
+                iconOnly
                 tabIndex={-1}
                 aria-label={
                   expanded
@@ -1142,8 +1323,12 @@ function FileTreeBranch({
                   onToggle(folder.path);
                 }}
               >
-                {expanded ? <ChevronDown16Regular /> : <ChevronRight16Regular />}
-              </button>
+                {expanded ? (
+                  <ChevronDown16Regular aria-hidden="true" />
+                ) : (
+                  <ChevronRight16Regular aria-hidden="true" />
+                )}
+              </ActionButton>
               {expanded ? (
                 <FolderOpen20Regular aria-hidden="true" />
               ) : (
@@ -1212,23 +1397,23 @@ function PreservationPanel({
               <div>
                 <strong>{item.path}</strong>
                 <span>
-                  {humanizeToken(item.scope)} · {humanizeToken(item.mode)}
+                  {t(preservationScopeKeys[item.scope])} · {t(preservationModeKeys[item.mode])}
                 </span>
                 {item.seededByGame && (
                   <StatusBadge tone="info">{t("Hosting_Detail_SeededByGame")}</StatusBadge>
                 )}
               </div>
-              <button
-                className="button button--danger"
-                type="button"
-                disabled={item.seededByGame || deletePending}
-                title={
+              <ActionButton
+                variant="danger"
+                size="compact"
+                disabled={deletePending}
+                unavailableReason={
                   item.seededByGame ? t("React_ServerWorkspace_GameSeededCannotRemove") : undefined
                 }
                 onClick={() => onDelete(item.primaryKey)}
               >
                 {t("Hosting_Detail_Remove")}
-              </button>
+              </ActionButton>
             </article>
           ))}
         </div>
@@ -1239,58 +1424,97 @@ function PreservationPanel({
           }}
         >
           <h3>{t("Hosting_Detail_AddPreservation")}</h3>
-          <label className="field">
-            <span>{t("Hosting_Detail_TargetPath")}</span>
-            <input
-              required
-              value={selection.path}
-              onChange={(event) =>
-                setSelection((current) => ({ ...current, path: event.target.value }))
-              }
-            />
-          </label>
-          <label className="field">
-            <span>{t("Hosting_Detail_Scope")}</span>
-            <select
-              value={selection.scope}
-              onChange={(event) =>
-                setSelection((current) => ({
-                  ...current,
-                  scope: event.target.value as PreservationSelectionInput["scope"],
-                }))
-              }
-            >
-              <option value="File">{t("Hosting_Detail_ScopeFile")}</option>
-              <option value="FlatFolder">{t("Hosting_Detail_ScopeFlat")}</option>
-              <option value="RecursiveFolder">{t("Hosting_Detail_ScopeRecursive")}</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>{t("Hosting_Detail_DeletionPolicy")}</span>
-            <select
-              value={selection.mode}
-              onChange={(event) =>
-                setSelection((current) => ({
-                  ...current,
-                  mode: event.target.value as PreservationSelectionInput["mode"],
-                }))
-              }
-            >
-              <option value="CreateOrUpdate">{t("Hosting_Detail_ModeCreateUpdate")}</option>
-              <option value="MirrorDeletions">{t("Hosting_Detail_ModeMirror")}</option>
-            </select>
-          </label>
-          <button
-            className="button button--primary"
+          <TextField
+            required
+            label={t("Hosting_Detail_TargetPath")}
+            value={selection.path}
+            onChange={(event) =>
+              setSelection((current) => ({ ...current, path: event.target.value }))
+            }
+          />
+          <SelectField
+            label={t("Hosting_Detail_Scope")}
+            value={selection.scope}
+            options={[
+              { value: "File", label: t("Hosting_Detail_ScopeFile") },
+              { value: "FlatFolder", label: t("Hosting_Detail_ScopeFlat") },
+              { value: "RecursiveFolder", label: t("Hosting_Detail_ScopeRecursive") },
+            ]}
+            onChange={(event) =>
+              setSelection((current) => ({
+                ...current,
+                scope: event.target.value as PreservationSelectionInput["scope"],
+              }))
+            }
+          />
+          <SelectField
+            label={t("Hosting_Detail_DeletionPolicy")}
+            value={selection.mode}
+            options={[
+              { value: "CreateOrUpdate", label: t("Hosting_Detail_ModeCreateUpdate") },
+              { value: "MirrorDeletions", label: t("Hosting_Detail_ModeMirror") },
+            ]}
+            onChange={(event) =>
+              setSelection((current) => ({
+                ...current,
+                mode: event.target.value as PreservationSelectionInput["mode"],
+              }))
+            }
+          />
+          <ActionButton
+            variant="primary"
             type="submit"
             disabled={!selection.path.trim() || selectionPending}
           >
             {t("Hosting_Detail_Add")}
-          </button>
+          </ActionButton>
         </form>
       </div>
     </section>
   );
+}
+
+/** The localized labels of the preservation scopes; the same texts the add form offers. */
+const preservationScopeKeys = {
+  File: "Hosting_Detail_ScopeFile",
+  FlatFolder: "Hosting_Detail_ScopeFlat",
+  RecursiveFolder: "Hosting_Detail_ScopeRecursive",
+} as const satisfies Record<PreservationSelection["scope"], string>;
+
+/** The localized labels of the preservation deletion policies; the same texts the add form offers. */
+const preservationModeKeys = {
+  CreateOrUpdate: "Hosting_Detail_ModeCreateUpdate",
+  MirrorDeletions: "Hosting_Detail_ModeMirror",
+} as const satisfies Record<PreservationSelection["mode"], string>;
+
+/** The locale key of every classification token the API reports. */
+const classificationKeys = {
+  Configuration: "Hosting_FileClassification_Configuration",
+  Downloaded: "Hosting_FileClassification_Downloaded",
+  GameFile: "Hosting_FileClassification_GameFile",
+  Generated: "Hosting_FileClassification_Generated",
+  Log: "Hosting_FileClassification_Log",
+  Mission: "Hosting_FileClassification_Mission",
+  Mod: "Hosting_FileClassification_Mod",
+  SaveFile: "Hosting_FileClassification_SaveFile",
+  Unknown: "Hosting_FileClassification_Unknown",
+  Upload: "Hosting_FileClassification_Upload",
+} as const;
+
+/**
+ * Names the classification of a file in the Type column.
+ *
+ * Every classification the API reports has a localized label; a token added to the API later falls back to its
+ * humanized form until the locale files carry a label for it.
+ *
+ * @param classification The classification token of the file.
+ * @param t The translation function of the panel.
+ * @returns The text of the Type cell.
+ */
+function classificationLabel(classification: string, t: TFunction): string {
+  return Object.hasOwn(classificationKeys, classification)
+    ? t(classificationKeys[classification as keyof typeof classificationKeys])
+    : humanizeToken(classification);
 }
 
 function folderNameIsValid(value: string): boolean {

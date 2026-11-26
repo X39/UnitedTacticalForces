@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManagePublicPages } from "@/auth/claims";
 import { useAppRouteToast, useAppToastOnChange } from "@/components/AppToasts";
-import { Markdown, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { PageStack } from "@/components/PageStack";
+import { Markdown, PageHeader, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
 import {
   latestPublishedRevision,
   loadAdminPublicPage,
@@ -31,7 +34,8 @@ export function Component() {
   const queryKey = ["command-center", "public-pages", slug] as const;
   const query = useQuery({
     queryKey,
-    queryFn: ({ signal }) => loadAdminPublicPage(slug, signal),
+    // A missing page is a valid answer; TanStack Query rejects `undefined` data, so it is carried as `null`.
+    queryFn: async ({ signal }) => (await loadAdminPublicPage(slug, signal)) ?? null,
     enabled: canManagePages,
     retry: false,
   });
@@ -52,7 +56,7 @@ export function Component() {
     publication.isSuccess ? t("Pages_Command_Content_PageToastPublicationUpdated") : undefined,
   );
   useAppToastOnChange(publication.isError ? publication.error.message : undefined, "error");
-  const page = query.data;
+  const page = query.data ?? undefined;
   const activeRevision = page ? latestRevision(page) : undefined;
   const publishedRevision = page ? latestPublishedRevision(page) : undefined;
   const structuredContent = useMemo(
@@ -71,63 +75,61 @@ export function Component() {
 
   if (!canManagePages)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Content_Pages_AccessRequiredTitle")}>
-        {t("Pages_Command_Content_Pages_AccessRequiredDescription")}
-      </StatePanel>
+      <PageStack>
+        <PageHeader title={t("Pages_Command_Content_PageDetailTitle")} />
+        <ForbiddenState title={t("Pages_Command_Content_Pages_AccessRequiredTitle")}>
+          {t("Pages_Command_Content_Pages_AccessRequiredDescription")}
+        </ForbiddenState>
+      </PageStack>
     );
 
   return (
-    <section className="command-public-page-detail">
+    <PageStack>
       <PageHeader
         title={page ? pageTitle : t("Pages_Command_Content_PageDetailTitle")}
         description={t("Pages_Command_Content_PageDetailDescription")}
         actions={
           <>
-            <Link className="button button--ghost" to="/command/content/pages">
+            <ActionLink variant="ghost" to="/command/content/pages">
               {t("Pages_Command_Content_Pages_BackToList")}
-            </Link>
+            </ActionLink>
             {page && (
               <>
-                <Link className="button button--ghost" to={`/${encodeURIComponent(slug)}`}>
+                <ActionLink variant="ghost" to={`/${encodeURIComponent(slug)}`}>
                   {t("Pages_Command_Content_Pages_OpenPublic")}
-                </Link>
-                <Link
-                  className="button button--primary"
+                </ActionLink>
+                <ActionLink
+                  variant="gold"
                   to={`/command/content/pages/${encodeURIComponent(slug)}/edit`}
                 >
                   {t("Pages_Command_Content_Pages_OpenEdit")}
-                </Link>
+                </ActionLink>
               </>
             )}
           </>
         }
       />
 
-      {query.isPending && (
-        <StatePanel kind="loading">{t("Pages_Command_Content_Pages_Loading")}</StatePanel>
-      )}
+      {query.isPending && <LoadingState label={t("Pages_Command_Content_Pages_Loading")} />}
       {query.isError && (
-        <StatePanel
-          kind="error"
-          action={
-            <button className="button button--ghost" onClick={() => void query.refetch()}>
-              {t("Common_Refresh")}
-            </button>
-          }
-        >
+        <ErrorState onRetry={() => void query.refetch()}>
           {formatResource(t("Pages_Command_Content_Pages_LoadError"), query.error.message)}
-        </StatePanel>
+        </ErrorState>
       )}
       {!query.isPending && !query.isError && !page && (
-        <StatePanel kind="empty" title={t("Pages_Command_Content_Pages_NotFoundTitle")}>
-          <p>{t("Pages_Command_Content_Pages_NotFoundDescription")}</p>
-          <Link
-            className="button button--primary"
-            to={`/command/content/pages/${encodeURIComponent(slug)}/edit`}
-          >
-            {t("Pages_Command_Content_Pages_CreateFirstRevision")}
-          </Link>
-        </StatePanel>
+        <EmptyState
+          title={t("Pages_Command_Content_Pages_NotFoundTitle")}
+          action={
+            <ActionLink
+              variant="primary"
+              to={`/command/content/pages/${encodeURIComponent(slug)}/edit`}
+            >
+              {t("Pages_Command_Content_Pages_CreateFirstRevision")}
+            </ActionLink>
+          }
+        >
+          {t("Pages_Command_Content_Pages_NotFoundDescription")}
+        </EmptyState>
       )}
       {page && (
         <div className="command-public-page-detail__grid">
@@ -220,10 +222,15 @@ export function Component() {
                           : "Pages_Command_Content_Pages_DraftOnly",
                       )}
                     </StatusBadge>
-                    <button
-                      className="button button--ghost button--small"
-                      type="button"
+                    <ActionButton
+                      variant="ghost"
+                      size="compact"
                       disabled={publication.isPending}
+                      aria-label={`${t(
+                        revision.isPublished
+                          ? "Pages_Command_Content_PageActionUnpublish"
+                          : "Pages_Command_Content_PageActionPublish",
+                      )}: ${revisionLabel(revision)}`}
                       onClick={() =>
                         publication.mutate({
                           revisionId: revision.primaryKey,
@@ -236,13 +243,13 @@ export function Component() {
                           ? "Pages_Command_Content_PageActionUnpublish"
                           : "Pages_Command_Content_PageActionPublish",
                       )}
-                    </button>
+                    </ActionButton>
                   </article>
                 ))}
             </div>
           </section>
         </div>
       )}
-    </section>
+    </PageStack>
   );
 }

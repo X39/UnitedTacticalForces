@@ -41,6 +41,7 @@ public sealed class GameServerLifecycleServiceTests
             new HostingAuditWriter(),
             new TestGameServerSecretService(),
             new GameServerConfigurationService(store.DbContext),
+            new GameServerContentSnapshotResolver(store.DbContext),
             Options.Create(new HostingFinanceOptions()));
 
         var server = await service.CreateAsync(
@@ -348,7 +349,8 @@ public sealed class GameServerLifecycleServiceTests
             .SingleAsync());
 
         ModPackDefinition Definition(string title, string gameIdentifier, bool isActive)
-            => new()
+        {
+            var definition = new ModPackDefinition
             {
                 Title = title,
                 GameIdentifier = gameIdentifier,
@@ -357,6 +359,146 @@ public sealed class GameServerLifecycleServiceTests
                 TimeStampCreated = now,
                 ModPackRevisionsOwned = [],
             };
+            definition.ModPackRevisionsOwned.Add(new ModPackRevision
+            {
+                Definition = definition,
+                UpdatedByFk = seed.User.PrimaryKey,
+                IsActive = true,
+                TimeStampCreated = now,
+                Mods = [],
+            });
+            return definition;
+        }
+    }
+
+    /// <summary>Verifies that a pack change clears the pinned revision so the Start snapshot resolves the new pack.</summary>
+    [Fact]
+    public async Task ChangeModPack_ClearsPinnedRevisionAndMarksModPackPending()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var packA = NewPack("Pack A", seed, isActive: true, withActiveRevision: true);
+        var packB = NewPack("Pack B", seed, isActive: true, withActiveRevision: true);
+        store.DbContext.ModPackDefinitions.AddRange(packA, packB);
+        await store.DbContext.SaveChangesAsync();
+        seed.Server.SelectedModPackDefinitionFk = packA.PrimaryKey;
+        seed.Server.PinnedModPackRevisionFk = packA.ModPackRevisionsOwned!.Single().PrimaryKey;
+        await store.DbContext.SaveChangesAsync();
+        var service = HostingTestData.CreateLifecycleService(store.DbContext);
+        var principal = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.Modify);
+
+        await service.ChangeModPackAsync(seed.Server.PrimaryKey, packB.PrimaryKey, principal);
+
+        store.DbContext.ChangeTracker.Clear();
+        var server = await store.DbContext.GameServers.SingleAsync(q => q.PrimaryKey == seed.Server.PrimaryKey);
+        Assert.Equal(packB.PrimaryKey, server.SelectedModPackDefinitionFk);
+        Assert.Null(server.PinnedModPackRevisionFk);
+        Assert.Equal(EGameServerChangeArea.ModPack, server.PendingStartChangeAreas);
+        Assert.NotNull(server.PendingStartSince);
+        Assert.Contains(
+            await store.DbContext.HostingAuditRecords.ToArrayAsync(),
+            q => q.GameServerFk == seed.Server.PrimaryKey
+                 && (q.Details?.Contains("PinCleared=True", StringComparison.Ordinal) ?? false));
+        var references = await new GameServerContentSnapshotResolver(store.DbContext)
+            .ResolveAsync(seed.Server.PrimaryKey);
+        Assert.Empty(references);
+    }
+
+    /// <summary>Verifies that unusable packs are rejected with the reason the options show and nothing changes.</summary>
+    [Fact]
+    public async Task ChangeModPack_RejectsUnusablePacksWithSharedReasons()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var inactive = NewPack("Inactive", seed, isActive: false, withActiveRevision: true);
+        var withoutRevision = NewPack("No revision", seed, isActive: true, withActiveRevision: false);
+        var brokenMod = new Mod
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameIdentifier = HostingTestData.GameIdentifier,
+            ProviderIdentifier = "steam-workshop",
+            CanonicalSourceIdentifier = "1",
+            Title = "Retired mod",
+            IsActive = false,
+            TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+        };
+        var unresolvable = NewPack("Unresolvable", seed, isActive: true, withActiveRevision: true);
+        unresolvable.ModPackRevisionsOwned!.Single().Mods =
+            [new ModPackRevisionMod { Mod = brokenMod, ModFk = brokenMod.PrimaryKey, Order = 0 }];
+        store.DbContext.ModPackDefinitions.AddRange(inactive, withoutRevision, unresolvable);
+        await store.DbContext.SaveChangesAsync();
+        var service = HostingTestData.CreateLifecycleService(store.DbContext);
+        var principal = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.Modify);
+
+        var inactiveError = await Assert.ThrowsAsync<HostingValidationException>(
+            () => service.ChangeModPackAsync(seed.Server.PrimaryKey, inactive.PrimaryKey, principal));
+        var revisionError = await Assert.ThrowsAsync<HostingValidationException>(
+            () => service.ChangeModPackAsync(seed.Server.PrimaryKey, withoutRevision.PrimaryKey, principal));
+        var unresolvableError = await Assert.ThrowsAsync<HostingValidationException>(
+            () => service.ChangeModPackAsync(seed.Server.PrimaryKey, unresolvable.PrimaryKey, principal));
+
+        Assert.Equal(ModPackAvailabilityReasons.Inactive, inactiveError.Message);
+        Assert.Equal(ModPackAvailabilityReasons.NoActiveRevision, revisionError.Message);
+        Assert.Equal(ModPackAvailabilityReasons.Unresolvable, unresolvableError.Message);
+        store.DbContext.ChangeTracker.Clear();
+        var server = await store.DbContext.GameServers.SingleAsync(q => q.PrimaryKey == seed.Server.PrimaryKey);
+        Assert.Null(server.SelectedModPackDefinitionFk);
+        Assert.Equal(EGameServerChangeArea.None, server.PendingStartChangeAreas);
+        Assert.Empty(await store.DbContext.HostingAuditRecords.ToArrayAsync());
+    }
+
+    /// <summary>Verifies that re-selecting the saved pack is a no-op even when that pack is inactive now.</summary>
+    [Fact]
+    public async Task ChangeModPack_ReselectingSavedPack_ChangesNothing()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var saved = NewPack("Saved", seed, isActive: false, withActiveRevision: true);
+        store.DbContext.ModPackDefinitions.Add(saved);
+        await store.DbContext.SaveChangesAsync();
+        seed.Server.SelectedModPackDefinitionFk = saved.PrimaryKey;
+        await store.DbContext.SaveChangesAsync();
+        var service = HostingTestData.CreateLifecycleService(store.DbContext);
+        var principal = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.Modify);
+
+        await service.ChangeModPackAsync(seed.Server.PrimaryKey, saved.PrimaryKey, principal);
+
+        store.DbContext.ChangeTracker.Clear();
+        var server = await store.DbContext.GameServers.SingleAsync(q => q.PrimaryKey == seed.Server.PrimaryKey);
+        Assert.Equal(saved.PrimaryKey, server.SelectedModPackDefinitionFk);
+        Assert.Equal(EGameServerChangeArea.None, server.PendingStartChangeAreas);
+        Assert.Null(server.PendingStartSince);
+        Assert.Empty(await store.DbContext.HostingAuditRecords.ToArrayAsync());
+    }
+
+    private static ModPackDefinition NewPack(
+        string title,
+        HostingTestSeed seed,
+        bool isActive,
+        bool withActiveRevision)
+    {
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var definition = new ModPackDefinition
+        {
+            Title = title,
+            GameIdentifier = HostingTestData.GameIdentifier,
+            IsActive = isActive,
+            OwnerFk = seed.User.PrimaryKey,
+            TimeStampCreated = now,
+            ModPackRevisionsOwned = [],
+        };
+        if (withActiveRevision)
+        {
+            definition.ModPackRevisionsOwned.Add(new ModPackRevision
+            {
+                Definition = definition,
+                UpdatedByFk = seed.User.PrimaryKey,
+                IsActive = true,
+                TimeStampCreated = now,
+                Mods = [],
+            });
+        }
+        return definition;
     }
 
     [Fact]

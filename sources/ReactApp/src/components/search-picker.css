@@ -1,0 +1,188 @@
+/*
+ * Styles for the shared SearchPicker (src/components/SearchPicker.tsx): the combobox slot, the inline listbox, the
+ * state rows and the chosen token.
+ *
+ * The listbox is in normal flow under the input, never an overlay, so it cannot be clipped by a panel. It scrolls
+ * inside itself up to --utf-listbox-max-height. The active option is drawn with the shared hover layer and the focus
+ * ring, never with colour alone; the picker announces the same state through its live region. The chosen token has the
+ * border box of the input, so choosing an option moves nothing.
+ *
+ * The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px
+ * media breakpoints; tests/styles/server-style-guard.test.ts fails on anything else. There is no transition.
+ */
+
+.search-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+  color: var(--utf-text);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+.search-picker__hint {
+  margin: 0;
+  color: var(--utf-text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Listbox: in flow under the input, one scroll container, rows divided by a hairline. */
+.search-picker__listbox {
+  box-sizing: border-box;
+  max-height: var(--utf-listbox-max-height);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--utf-border-control);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text);
+  list-style: none;
+}
+
+/* A listbox without options, as while only the error box is shown, takes no room and draws no empty border. */
+.search-picker__listbox:empty {
+  display: none;
+}
+
+.search-picker__option,
+.search-picker__state {
+  display: flex;
+  align-items: center;
+  gap: var(--utf-space-sm);
+  box-sizing: border-box;
+  min-height: var(--utf-control-height);
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  border-bottom: 1px solid var(--utf-border-divider);
+}
+
+.search-picker__listbox > :last-child {
+  border-bottom: 0;
+}
+
+.search-picker__option {
+  cursor: pointer;
+}
+
+/* The active option: the shared hover fill plus the focus ring, drawn inside the row so the scroll box never clips it. */
+.search-picker__option--active {
+  background-image: linear-gradient(var(--utf-hover), var(--utf-hover));
+  outline: var(--utf-focus-ring);
+  outline-offset: calc(var(--utf-focus-offset) * -1);
+}
+
+.search-picker__option--disabled {
+  color: var(--utf-text-muted);
+  cursor: not-allowed;
+}
+
+.search-picker__icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+/* Name, detail and disabled reason share one item; the reason always takes its own line. */
+.search-picker__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--utf-space-sm);
+  min-width: 0;
+}
+
+.search-picker__name {
+  font-weight: var(--utf-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.search-picker__detail,
+.search-picker__reason {
+  color: var(--utf-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.search-picker__reason {
+  flex-basis: 100%;
+}
+
+/* State rows: loading above the previous options, an error with its retry, and no match. */
+.search-picker__state {
+  justify-content: space-between;
+  color: var(--utf-text-muted);
+}
+
+.search-picker__state > [role="alert"] {
+  color: var(--utf-state-danger-fg);
+  overflow-wrap: anywhere;
+}
+
+/* Chosen token: the same height and border box as the input it replaces. */
+.search-picker__chosen {
+  display: flex;
+  align-items: center;
+  gap: var(--utf-space-sm);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--utf-control-height);
+  padding-block: 0;
+  padding-inline: var(--utf-space-sm) 0;
+  border: 1px solid var(--utf-border-control);
+  border-radius: var(--utf-radius-small);
+  background: var(--utf-surface-overlay);
+  color: var(--utf-text);
+}
+
+.search-picker__chosen .search-picker__text {
+  padding-block: var(--utf-space-xs);
+}
+
+/* The clear control fills the token height and stays at least 32px wide; the shared button raises it for touch. */
+.search-picker__chosen .search-picker__clear.button--icon-only {
+  flex: none;
+  align-self: stretch;
+  width: var(--utf-control-height-compact);
+  min-width: var(--utf-control-height-compact);
+  min-height: 0;
+  border-color: transparent;
+  border-radius: var(--utf-radius-small);
+}
+
+@media (max-width: 800px) {
+  .search-picker__option,
+  .search-picker__state,
+  .search-picker__chosen {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .search-picker__chosen .search-picker__clear.button--icon-only {
+    width: var(--utf-control-height-touch);
+    min-width: var(--utf-control-height-touch);
+  }
+}
+
+@media (forced-colors: active) {
+  .search-picker__listbox,
+  .search-picker__chosen {
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .search-picker__option--active {
+    background-image: none;
+    outline-color: Highlight;
+  }
+
+  .search-picker__option--disabled {
+    color: GrayText;
+  }
+
+  .search-picker__chosen .search-picker__clear.button--icon-only {
+    border-color: ButtonText;
+  }
+}

@@ -1,0 +1,219 @@
+/*
+ * Styles for the Access panel of the Settings section: the intro note, the list of subject rows and what a row
+ * shows in its header, summary and content.
+ *
+ * A row is an inline disclosure. Its badges sit in one wrapping group, its summary lists the held permissions and
+ * puts the detail line (member count or fingerprint) on a line of its own, and every name, description and summary
+ * wraps instead of being cut off.
+ *
+ * The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px
+ * media breakpoints; tests/styles/server-style-guard.test.ts fails on anything else.
+ */
+
+/* Muted note at the top of the panel and the list heading under it. */
+.access-intro {
+  margin: 0 0 var(--utf-space-md);
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+/*
+ * The grant form: heading, description, the Member and Role choice, then one row with the picker and the Give access
+ * button. From 521px the picker grows and the button sits at the end, aligned to the input rather than to the label
+ * above it; at 520px and below everything stacks and the button is full width.
+ */
+.access-grant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-width: 0;
+  margin: 0 0 var(--utf-space-lg);
+}
+
+.access-grant__title {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+}
+
+.access-grant__body {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.access-grant__row {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(min-content, 1fr);
+  gap: var(--utf-space-sm);
+  align-items: start;
+  min-width: 0;
+}
+
+.access-grant__picker {
+  min-width: 0;
+}
+
+/*
+ * The button and its unavailable reason are laid out by the row grid itself: the picker and the button share the first
+ * row and the reason takes a second row across the full width, so a long reason wraps at the width of the whole form
+ * instead of the narrow button column. The action cell and the wrapper of the button with a reason generate no box,
+ * which makes the button and the reason direct grid items. The invisible ReasonReserve occupies the same second row
+ * with every possible reason, so the row is as tall as the tallest reason and showing, changing or removing the reason
+ * never moves the list below the form. The button offset is the height of the picker label and the gap under it, so
+ * the button lines up with the input.
+ */
+.access-grant__action,
+.access-grant__action .action-with-reason {
+  display: contents;
+}
+
+.access-grant__picker {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.access-grant__action .button {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: start;
+  max-width: 100%;
+  margin-block-start: calc(var(--utf-text-body) * var(--utf-leading-body) + var(--utf-space-xs));
+}
+
+.access-grant__action .action-reason,
+.access-grant__row > .reason-reserve {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+/* The list filter: the search field with the polite result line below it. */
+.access-filter {
+  display: block;
+  min-width: 0;
+  margin-block-end: var(--utf-space-sm);
+}
+
+.access-filter__result {
+  margin: var(--utf-space-xs) 0 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+.access-list-title {
+  margin: 0 0 var(--utf-space-sm);
+  font-size: var(--utf-text-body);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+}
+
+/* The list of subject rows: one flat column with a small gap, no bullets. */
+.access-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.access-row {
+  min-width: 0;
+}
+
+/* Badges: a wrapping group in the badge slot of the disclosure header. */
+.access-row__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--utf-space-xs);
+}
+
+/* Summary: the held permissions, then the detail line below them. */
+.access-row__held {
+  overflow-wrap: anywhere;
+}
+
+.access-row__meta {
+  display: block;
+  color: var(--utf-text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Content: description and warning above whatever the row adds, spaced evenly. */
+.access-row__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  padding-inline: var(--utf-space-md);
+  padding-block-end: var(--utf-space-md);
+}
+
+.access-row__description {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The permission switches of a subject: two equal columns above 800px, one column at 800px and below. Each switch is
+ * its own grid cell with its hint and, after a failed change, the alert directly under it. The columns may shrink so
+ * a long label or hint wraps instead of widening the page.
+ */
+.access-switches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+  align-items: start;
+  min-width: 0;
+}
+
+.access-switches > * {
+  min-width: 0;
+}
+
+@media (max-width: 800px) {
+  .access-switches {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .access-switches .form-field__switch {
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .access-grant__action .button {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .access-row__badges {
+    justify-content: flex-start;
+  }
+
+  .access-grant__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Stacked: picker, then the full-width button, then the reason. */
+  .access-grant__action .button {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: stretch;
+    margin-block-start: 0;
+  }
+
+  .access-grant__action .action-reason,
+  .access-grant__row > .reason-reserve {
+    grid-row: 3;
+  }
+}

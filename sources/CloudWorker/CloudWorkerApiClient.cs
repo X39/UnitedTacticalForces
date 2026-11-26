@@ -117,37 +117,8 @@ public sealed class CloudWorkerApiClient(HttpClient httpClient) : ICloudWorkerAp
             connection,
             $"{WorkerPath(connection)}/commands/{commandId:D}/{statePath}",
             workerCredential);
-        message.Content = request.State switch
-        {
-            EWorkerCommandReportState.Received => JsonContent.Create(
-                new WorkerCommandStageRequest { DeploymentId = request.DeploymentId, Stage = request.Stage },
-                options: CloudWorkerJson.Options),
-            EWorkerCommandReportState.Running or EWorkerCommandReportState.Succeeded => JsonContent.Create(
-                new WorkerCommandProcessRequest
-                {
-                    DeploymentId = request.DeploymentId,
-                    Stage = request.Stage,
-                    ProcessId = request.ProcessId,
-                    ProcessStartedAt = request.ProcessStartedAt,
-                    Output = request.Output,
-                    StorageMeasurements = request.StorageMeasurements ?? [],
-                    ObservedContentVersions = request.ObservedContentVersions ?? [],
-                    Workloads = request.Workloads,
-                },
-                options: CloudWorkerJson.Options),
-            EWorkerCommandReportState.Failed => JsonContent.Create(
-                new WorkerCommandFailureRequest
-                {
-                    DeploymentId = request.DeploymentId,
-                    Stage = request.Stage,
-                    ErrorCode = request.ErrorCode ?? "worker-command-failed",
-                    ErrorMessage = request.ErrorMessage ?? "Worker command failed.",
-                    Output = request.Output,
-                    Workloads = request.Workloads,
-                },
-                options: CloudWorkerJson.Options),
-            _ => throw new ArgumentOutOfRangeException(nameof(request), request.State, "Unknown command report state."),
-        };
+        var body = WorkerCommandReportMapper.ToContract(request);
+        message.Content = JsonContent.Create(body, body.GetType(), options: CloudWorkerJson.Options);
         using var response = await httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.Conflict)
             return false;

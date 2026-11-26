@@ -4,11 +4,13 @@ import type {
   LifecycleJob,
   ServerAction,
 } from "@/features/hosting/types";
+import { fleetAction } from "../helpers/fleetFixtures";
 import {
   buildCommandProtocol,
   affectedDestinationDirectories,
   combineServerPath,
   configurationInputValue,
+  costStopAction,
   directoryAncestors,
   findHostingFileByPath,
   findUploadCollisions,
@@ -32,6 +34,9 @@ const entry = (overrides: Partial<GameConfigurationEntry> = {}): GameConfigurati
   kind: "Integer",
   required: true,
   sensitive: false,
+  isControlPlaneOnly: false,
+  tier: "Advanced",
+  choices: [],
   order: 1,
   minimum: 1,
   maximum: 128,
@@ -135,27 +140,96 @@ describe("server workspace model", () => {
     ]);
   });
 
-  it("prioritizes a dangerous cost-stop action when provider cost remains", () => {
-    const actions = [
-      {
-        id: "start",
+  describe("primary action", () => {
+    const action = (overrides: Partial<ServerAction>): ServerAction =>
+      ({
         enabled: true,
         pending: false,
-        order: 1,
         dangerous: false,
-        costImpact: "StartsCost",
-      },
-      {
-        id: "terminate",
-        enabled: true,
-        pending: false,
-        order: 9,
-        dangerous: true,
-        costImpact: "StopsCost",
-      },
-    ] as ServerAction[];
-    expect(primaryServerAction(actions, true)?.id).toBe("terminate");
-    expect(primaryServerAction(actions, false)?.id).toBe("start");
+        costImpact: "NoCostImpact",
+        order: 5,
+        ...overrides,
+      }) as ServerAction;
+    const start = action({ id: "start", order: 1, costImpact: "StartsCost" });
+    const stop = action({ id: "stop", order: 2, costImpact: "StopsCost" });
+    const terminate = action({
+      id: "terminate",
+      order: 9,
+      dangerous: true,
+      costImpact: "StopsCost",
+    });
+    const collectLogs = action({ id: "collect-logs", order: 0 });
+
+    it("prefers the graceful cost-stop over the destructive one when provider cost remains", () => {
+      expect(primaryServerAction([start, terminate, stop], true)?.id).toBe("stop");
+      expect(primaryServerAction([terminate, stop], true)?.id).toBe("stop");
+    });
+
+    it("falls back to the destructive cost-stop when no graceful stop is a candidate", () => {
+      const disabledStop = { ...stop, enabled: false } as ServerAction;
+      expect(primaryServerAction([start, disabledStop, terminate], true)?.id).toBe("terminate");
+    });
+
+    it("prefers start, then stop, then the lowest order and ignores collect-logs", () => {
+      expect(primaryServerAction([terminate, stop, start], false)?.id).toBe("start");
+      expect(primaryServerAction([terminate, stop], false)?.id).toBe("stop");
+      expect(primaryServerAction([collectLogs, terminate], false)?.id).toBe("terminate");
+      expect(primaryServerAction([collectLogs], false)).toBeUndefined();
+    });
+
+    it("treats unrecognised cost impact strings as not stopping cost, with no substring matching", () => {
+      const lowercase = { ...stop, costImpact: "stopscost" } as unknown as ServerAction;
+      const unknown = {
+        ...stop,
+        id: "other",
+        costImpact: "SomethingStopsCostish",
+      } as unknown as ServerAction;
+      expect(primaryServerAction([terminate, lowercase], true)?.id).toBe("terminate");
+      expect(primaryServerAction([terminate, unknown], true)?.id).toBe("terminate");
+    });
+  });
+
+  describe("cost-stop action", () => {
+    const stop = fleetAction("stop");
+    const terminate = fleetAction("terminate", { dangerous: true });
+    const start = fleetAction("start");
+    const collectLogs = fleetAction("collect-logs", { costImpact: "StopsCost" });
+    const disabled = (source: ServerAction): ServerAction => ({ ...source, enabled: false });
+
+    it("prefers an enabled graceful stop over an enabled terminate", () => {
+      expect(costStopAction([terminate, stop])?.id).toBe("stop");
+      expect(costStopAction([start, terminate, stop])?.id).toBe("stop");
+    });
+
+    it("returns the enabled terminate when the graceful stop is disabled", () => {
+      expect(costStopAction([disabled(stop), terminate])?.id).toBe("terminate");
+    });
+
+    it("treats a pending action as usable", () => {
+      const pendingStop = { ...disabled(stop), pending: true } as ServerAction;
+      expect(costStopAction([terminate, pendingStop])?.id).toBe("stop");
+    });
+
+    it("returns a disabled graceful stop when no cost-stop is usable", () => {
+      expect(costStopAction([disabled(terminate), disabled(stop)])?.id).toBe("stop");
+    });
+
+    it("returns a disabled terminate when it is the only cost-stop", () => {
+      expect(costStopAction([start, disabled(terminate)])?.id).toBe("terminate");
+    });
+
+    it("never returns collect-logs or a start action and returns undefined without a cost-stop", () => {
+      expect(costStopAction([collectLogs, start])).toBeUndefined();
+      expect(costStopAction([])).toBeUndefined();
+    });
+
+    it("keeps primaryServerAction on the same choice while cost may remain", () => {
+      expect(primaryServerAction([start, terminate, stop], true)?.id).toBe("stop");
+      expect(primaryServerAction([start, disabled(stop), terminate], true)?.id).toBe("terminate");
+      expect(primaryServerAction([start, disabled(stop), disabled(terminate)], true)?.id).toBe(
+        "start",
+      );
+    });
   });
 
   it("orders command protocols by their latest timestamp and includes diagnostic metadata", () => {

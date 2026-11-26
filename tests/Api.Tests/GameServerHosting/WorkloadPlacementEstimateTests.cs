@@ -246,7 +246,8 @@ public sealed class WorkloadPlacementEstimateTests
                 EstimatedHourlyCostEur = fallbackRate.HasValue
                     ? new Dictionary<string, decimal> { [TestRuntimeProvider.Identifier] = fallbackRate.Value }
                     : [],
-            }));
+            }),
+            Api.Tests.ServerAutomation.ServerAutomationTestData.CreateProjector(store.DbContext));
 
     /// <summary>Persists a placement override for subsequent effective-configuration reads.</summary>
     /// <param name="store">The context tracking the override.</param>

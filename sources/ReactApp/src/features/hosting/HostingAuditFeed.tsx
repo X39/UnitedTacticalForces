@@ -7,11 +7,13 @@ import {
   Server20Regular,
   ShieldLock20Regular,
 } from "@fluentui/react-icons";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { currentLocale } from "@/app/format";
 import type { TranslationKey } from "@/app/localizationTypes";
-import { StatePanel, StatusBadge } from "@/components/primitives";
+import { Disclosure } from "@/components/Disclosure";
+import { StatusBadge } from "@/components/primitives";
+import { EmptyState, LoadingState } from "@/components/StateViews";
 import { humanizeToken } from "@/features/hosting/model";
 import type { HostingOperation } from "@/features/hosting/types";
 
@@ -176,18 +178,19 @@ function isProjectedEvidence(field: AuditEvidence, operation: HostingOperation):
   return false;
 }
 
-function HostingAuditEntry({
-  operation,
-  compact,
-}: {
-  operation: HostingOperation;
-  compact: boolean;
-}) {
+/**
+ * Renders the technical evidence of one hosting operation as a collapsible list of identifiers and parsed detail.
+ *
+ * The record id, event kind, status code and every id the operation carries come first, followed by the parsed
+ * detail fields that the operation does not already project. The audit feed and the expanded audit entries of the
+ * Activity section both render it, so the evidence stays identical wherever it is shown.
+ *
+ * @param props.operation The hosting operation whose evidence is listed.
+ */
+export function HostingAuditEvidence({ operation }: { operation: HostingOperation }) {
   const { t } = useTranslation();
-  const tone = hostingAuditTone(operation);
-  const category = hostingAuditCategory(operation);
+  const [open, setOpen] = useState(false);
   const detail = parseHostingAuditDetail(operation.detail);
-  const Heading = compact ? "h3" : "h4";
   const evidence: AuditEvidence[] = [
     { label: t("React_ServerAudit_RecordId"), value: operation.primaryKey },
     { label: t("React_ServerAudit_EventKind"), value: operation.kind },
@@ -212,6 +215,44 @@ function HostingAuditEntry({
       : []),
     ...detail.fields.filter((field) => !isProjectedEvidence(field, operation)),
   ];
+  return (
+    <Disclosure
+      className="next-hosting-audit-evidence"
+      title={
+        <>
+          {t("React_ServerAudit_TechnicalEvidence")}
+          <small>{evidence.length}</small>
+        </>
+      }
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <dl>
+        {evidence.map((field, index) => (
+          <div key={`${field.label}-${index}`}>
+            <dt>{field.label}</dt>
+            <dd>
+              <code>{field.value}</code>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </Disclosure>
+  );
+}
+
+function HostingAuditEntry({
+  operation,
+  compact,
+}: {
+  operation: HostingOperation;
+  compact: boolean;
+}) {
+  const { t } = useTranslation();
+  const tone = hostingAuditTone(operation);
+  const category = hostingAuditCategory(operation);
+  const detail = parseHostingAuditDetail(operation.detail);
+  const Heading = compact ? "h3" : "h4";
   const noticeTone =
     tone === "warning" ? "warning" : tone === "danger" || detail.failure ? "danger" : null;
   const notice = detail.failure ?? (noticeTone ? detail.narrative : null);
@@ -279,24 +320,7 @@ function HostingAuditEntry({
           </div>
         )}
 
-        {!compact && (
-          <details className="next-hosting-audit-evidence">
-            <summary>
-              <span>{t("React_ServerAudit_TechnicalEvidence")}</span>
-              <small>{evidence.length}</small>
-            </summary>
-            <dl>
-              {evidence.map((field, index) => (
-                <div key={`${field.label}-${index}`}>
-                  <dt>{field.label}</dt>
-                  <dd>
-                    <code>{field.value}</code>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </details>
-        )}
+        {!compact && <HostingAuditEvidence operation={operation} />}
       </div>
     </article>
   );
@@ -324,9 +348,13 @@ export function HostingAuditFeed({
 }) {
   const { t } = useTranslation();
   const feedId = useId();
-  if (loading) return <StatePanel kind="loading">{t("React_ServerAudit_Loading")}</StatePanel>;
+  if (loading) return <LoadingState label={t("React_ServerAudit_Loading")} />;
   if (operations.length === 0)
-    return <StatePanel kind="empty">{t("Hosting_Detail_OperationsEmpty")}</StatePanel>;
+    return (
+      <EmptyState title={t("Hosting_Detail_OperationsEmptyTitle")}>
+        {t("Hosting_Detail_OperationsEmptyBody")}
+      </EmptyState>
+    );
 
   const sorted = sortedOperations(operations);
   if (compact)

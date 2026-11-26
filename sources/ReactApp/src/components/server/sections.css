@@ -1,0 +1,116 @@
+/*
+ * Styles for the panels of the workspace sections: Overview, Settings and Machine.
+ *
+ * The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px
+ * media breakpoints; tests/styles/server-style-guard.test.ts fails on anything else. Class names use the
+ * workspace-panel and workspace-section prefixes so they never collide with the legacy next-hosting rules.
+ */
+
+/* Section stack: the panels of one section, separated by the panel gap. */
+.workspace-section {
+  display: grid;
+  gap: var(--utf-space-lg);
+  min-width: 0;
+}
+
+/* Heading row of a section: the section heading on the left, the Expand all or Collapse all button on the right. */
+.workspace-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--utf-space-sm) var(--utf-space-md);
+  min-width: 0;
+}
+
+/* Panel: the raised surface every section panel shares. */
+.workspace-panel {
+  min-width: 0;
+  padding: var(--utf-space-lg);
+  border: 1px solid var(--utf-border-divider);
+  border-radius: var(--utf-radius);
+  background: var(--utf-surface-raised);
+  box-shadow: var(--utf-elevation-1);
+}
+
+.workspace-panel h2 {
+  margin: 0 0 var(--utf-space-md);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .workspace-panel {
+    padding: var(--utf-space-md);
+  }
+}
+
+/*
+ * Collapsible settings panel: the disclosure header and content carry the panel padding, so the surface itself has
+ * none. The heading reset undoes the generic workspace-panel h2 rule for the h2 that wraps the header button. The
+ * anchor scroll offset below the sticky chrome comes from the page scroll padding of the workspace shell.
+ */
+.settings-panel {
+  padding: 0;
+}
+
+.settings-panel > .disclosure > .disclosure__heading {
+  margin: 0;
+  font: inherit;
+}
+
+/* Server record: more room above the destructive panel than between the other panels. */
+.workspace-panel--record {
+  margin-top: calc(var(--utf-space-xl) - var(--utf-space-lg));
+}
+
+.workspace-panel--record .disclosure__content > p {
+  margin: 0 0 var(--utf-space-md);
+}
+
+.workspace-panel__error {
+  margin: var(--utf-space-sm) 0 0;
+  color: var(--utf-state-danger-fg);
+}
+
+/* Overview: details and metrics stacked, so the metrics panel spans the full row at every width. */
+.workspace-overview__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--utf-space-lg);
+  min-width: 0;
+}
+
+.workspace-panel__muted {
+  margin: 0;
+  color: var(--utf-text-muted);
+}
+
+/* Details list: label and value pairs, two columns above 520px and stacked below. */
+.workspace-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--utf-space-md);
+  margin: 0;
+}
+
+.workspace-facts__fact {
+  display: grid;
+  gap: var(--utf-space-xs);
+  min-width: 0;
+}
+
+.workspace-facts__fact dt {
+  color: var(--utf-text-muted);
+}
+
+.workspace-facts__fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .workspace-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

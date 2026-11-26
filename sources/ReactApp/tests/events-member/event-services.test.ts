@@ -22,7 +22,7 @@ describe("event detail API service", () => {
     vi.stubGlobal("fetch", fetchMock);
     initializeApiClient(configuration);
 
-    await expect(eventService.detail(eventId)).resolves.toBeUndefined();
+    await expect(eventService.detail(eventId)).resolves.toBeNull();
     await expect(eventsMemberService.slots(eventId)).resolves.toEqual([]);
   });
 

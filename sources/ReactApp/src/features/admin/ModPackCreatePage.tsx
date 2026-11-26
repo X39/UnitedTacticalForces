@@ -1,10 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { useAuth } from "@/auth/auth";
 import { canManageModPacks } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { SelectField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
 import { PageHeader, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { toneOf } from "@/components/statusTones";
+import { assetReadinessTones } from "@/features/admin/assetTones";
 import {
   materializeRevision,
   ModPackContentEditor,
@@ -16,9 +22,13 @@ import "@/features/admin/modPacks.css";
 
 const emptyContent: ModPackEditorValue = { mods: [], dependencies: [] };
 
+/**
+ * The mod pack creation wizard: game, title and content on one page, then a review step before the pack is created.
+ *
+ * The forbidden state renders below the same header as the form, and the game picker is the shared select.
+ */
 export function Component() {
-  const { t: translate } = useTranslation();
-  const t = (key: string) => translate(key as never, { defaultValue: key });
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -41,7 +51,9 @@ export function Component() {
     ? gameOverride
     : (supported[0]?.gameIdentifier ?? "");
   const capability = supported.find((game) => game.gameIdentifier === gameIdentifier);
-  const validation = title.trim() ? validateModPackEditor(content) : t("A title is required.");
+  const validation = title.trim()
+    ? validateModPackEditor(content)
+    : t("React_ModPackEditor_TitleRequired");
   const isDirty = Boolean(title || content.mods.length || content.dependencies.length);
   useUnsavedChanges(isDirty && !hasSubmitted);
   const mutation = useMutation({
@@ -66,69 +78,77 @@ export function Component() {
 
   if (!authorized)
     return (
-      <StatePanel kind="forbidden" title={t("Auto_ModPackAdministratorAccessRequired_95eb8250")}>
-        {t("Auto_ModPackCreationIsVisibleOnlyToAuthorizedAsset_24514d7e")}
-      </StatePanel>
+      <section>
+        <PageHeader
+          kicker={t("Shared_CommandCenter_Nav_ModPacks")}
+          title={t("Auto_CreateModPack_04e0630f")}
+        />
+        <PageStack>
+          <ForbiddenState title={t("Auto_ModPackAdministratorAccessRequired_95eb8250")}>
+            {t("Auto_ModPackCreationIsVisibleOnlyToAuthorizedAsset_24514d7e")}
+          </ForbiddenState>
+        </PageStack>
+      </section>
     );
 
   return (
-    <section className="modpack-create-page">
+    <section>
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_ModPacks")}
         title={t("Auto_CreateModPack_04e0630f")}
-        description={t(
-          "Build a versioned mod pack from catalog mods, source providers, and nested packs.",
-        )}
+        description={t("React_ModPackEditor_CreateDescription")}
         actions={
-          <Link className="button button--ghost" to="/command/mod-packs">
+          <ActionLink variant="ghost" to="/command/mod-packs">
             {t("Auto_BackToModPacks_9037ecf6")}
-          </Link>
+          </ActionLink>
         }
       />
-      {capabilities.isError && (
-        <StatePanel kind="error">{t("Hosting_Create_LoadError")}</StatePanel>
-      )}
-      {mutation.isError && (
-        <StatePanel kind="error">
-          {mutation.error instanceof Error
-            ? mutation.error.message
-            : t("Auto_ModPackCouldNotBeCreatedCheckThePackage_cd6c5632")}
-        </StatePanel>
-      )}
-      <section className="command-panel modpack-wizard">
-        {capabilities.isPending ? (
-          <StatePanel kind="loading">{t("Common_LoadingData")}</StatePanel>
-        ) : !capability ? (
-          <StatePanel kind="empty">{t("No registered game supports mod packs.")}</StatePanel>
-        ) : (
-          <div className="modpack-wizard__body">
-            <section className="modpack-wizard__section">
-              <header>
-                <div>
-                  <span className="kicker">{t("Definition")}</span>
-                  <h2>{t("Package identity")}</h2>
-                </div>
-                <StatusBadge tone={!validation ? "success" : "warning"}>
-                  {!validation ? t("Ready") : t("Needs content")}
-                </StatusBadge>
-              </header>
-              <div className="modpack-definition-grid">
-                <label className="field">
-                  <span>{t("Game")}</span>
-                  <select
-                    value={gameIdentifier}
-                    onChange={(event) => changeGame(event.target.value)}
+      <PageStack>
+        {capabilities.isError && (
+          <ErrorState onRetry={() => void capabilities.refetch()}>
+            {t("Hosting_Create_LoadError")}
+          </ErrorState>
+        )}
+        {mutation.isError && (
+          <StatePanel kind="error">
+            {mutation.error instanceof Error
+              ? mutation.error.message
+              : t("Auto_ModPackCouldNotBeCreatedCheckThePackage_cd6c5632")}
+          </StatePanel>
+        )}
+        <section className="command-panel modpack-wizard">
+          {capabilities.isPending ? (
+            <LoadingState />
+          ) : !capability ? (
+            <EmptyState title={t("Pages_ModPacks_Create_NoGameTitle")}>
+              {t("Pages_ModPacks_Create_NoGameBody")}
+            </EmptyState>
+          ) : (
+            <div className="modpack-wizard__body">
+              <section className="modpack-wizard__section">
+                <header>
+                  <div>
+                    <span className="kicker">{t("Definition")}</span>
+                    <h2>{t("Package identity")}</h2>
+                  </div>
+                  <StatusBadge
+                    tone={toneOf(assetReadinessTones, !validation ? "ready" : "needs-attention")}
                   >
-                    {supported.map((game) => (
-                      <option key={game.gameIdentifier} value={game.gameIdentifier}>
-                        {game.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span>{t("Title")}</span>
-                  <input
+                    {!validation ? t("Ready") : t("React_ModPackEditor_NeedsContent")}
+                  </StatusBadge>
+                </header>
+                <div className="modpack-definition-grid">
+                  <SelectField
+                    label={t("React_Terrains_GameLabel")}
+                    value={gameIdentifier}
+                    options={supported.map((game) => ({
+                      value: game.gameIdentifier ?? "",
+                      label: game.displayName ?? game.gameIdentifier ?? "",
+                    }))}
+                    onChange={(event) => changeGame(event.target.value)}
+                  />
+                  <TextField
+                    label={t("Title")}
                     maxLength={1024}
                     value={title}
                     onChange={(event) => {
@@ -136,81 +156,76 @@ export function Component() {
                       setReviewed(false);
                     }}
                   />
-                </label>
-              </div>
-              <ModPackContentEditor
-                capability={capability}
-                value={content}
-                onChange={(value) => {
-                  setContent(value);
-                  setReviewed(false);
-                }}
-              />
-              {(capability.modPackFormats?.length ?? 0) > 0 && (
-                <div className="modpack-format-note">
-                  <strong>{t("Game formats")}</strong>
-                  <span>
-                    {capability.modPackFormats?.map((format) => format.displayName).join(", ")}
-                  </span>
-                  <small>
-                    {t(
-                      "Use the game format importer above to review its normalized content before saving.",
-                    )}
-                  </small>
                 </div>
-              )}
-              {validation && <StatePanel kind="warning">{validation}</StatePanel>}
-              {reviewed && !validation && (
-                <section className="modpack-review" aria-label={t("Review")}>
-                  <h3>{t("Review")}</h3>
-                  <p>
-                    {title.trim()} · {capability.displayName}
-                  </p>
-                  <p>
-                    {content.mods.length} {t("mods")} · {content.dependencies.length}{" "}
-                    {t("nested mod packs")}
-                  </p>
-                  <p>
-                    {content.mods.filter((mod) => !mod.modId).length}{" "}
-                    {t("new catalog entries will be created")}
-                  </p>
-                </section>
-              )}
-              <div className="form-actions">
-                {!reviewed ? (
-                  <button
-                    className="button button--primary"
-                    type="button"
-                    disabled={Boolean(validation)}
-                    onClick={() => setReviewed(true)}
-                  >
-                    {t("Review mod pack")}
-                  </button>
-                ) : (
-                  <button
-                    className="button button--primary"
-                    type="button"
-                    disabled={Boolean(validation) || mutation.isPending}
-                    onClick={() => mutation.mutate()}
-                  >
-                    {mutation.isPending ? t("Creating…") : t("Create mod pack")}
-                  </button>
+                <ModPackContentEditor
+                  capability={capability}
+                  value={content}
+                  onChange={(value) => {
+                    setContent(value);
+                    setReviewed(false);
+                  }}
+                />
+                {(capability.modPackFormats?.length ?? 0) > 0 && (
+                  <div className="modpack-format-note">
+                    <strong>{t("React_ModPackEditor_GameFormats")}</strong>
+                    <span>
+                      {capability.modPackFormats?.map((format) => format.displayName).join(", ")}
+                    </span>
+                    <small>{t("React_ModPackEditor_ImportReviewHint")}</small>
+                  </div>
                 )}
-                {reviewed && (
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    disabled={mutation.isPending}
-                    onClick={() => setReviewed(false)}
-                  >
-                    {t("Back to editing")}
-                  </button>
+                {validation && <StatePanel kind="warning">{validation}</StatePanel>}
+                {reviewed && !validation && (
+                  <section className="modpack-review" aria-label={t("Review")}>
+                    <h3>{t("Review")}</h3>
+                    <p>
+                      {title.trim()} · {capability.displayName}
+                    </p>
+                    <p>
+                      {content.mods.length} {t("React_ModPackEditor_ModsCount")} ·{" "}
+                      {content.dependencies.length} {t("React_ModPackEditor_NestedModPacksCount")}
+                    </p>
+                    <p>
+                      {content.mods.filter((mod) => !mod.modId).length}{" "}
+                      {t("React_ModPackEditor_NewEntriesCount")}
+                    </p>
+                  </section>
                 )}
-              </div>
-            </section>
-          </div>
-        )}
-      </section>
+                <div className="form-actions">
+                  {!reviewed ? (
+                    <ActionButton
+                      variant="gold"
+                      disabled={Boolean(validation)}
+                      onClick={() => setReviewed(true)}
+                    >
+                      {t("React_ModPackEditor_ReviewModPack")}
+                    </ActionButton>
+                  ) : (
+                    <ActionButton
+                      variant="gold"
+                      disabled={Boolean(validation) || mutation.isPending}
+                      onClick={() => mutation.mutate()}
+                    >
+                      {mutation.isPending
+                        ? t("React_ModPackEditor_Creating")
+                        : t("React_ModPackEditor_CreateModPack")}
+                    </ActionButton>
+                  )}
+                  {reviewed && (
+                    <ActionButton
+                      variant="ghost"
+                      disabled={mutation.isPending}
+                      onClick={() => setReviewed(false)}
+                    >
+                      {t("React_ModPackEditor_BackToEditing")}
+                    </ActionButton>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
+        </section>
+      </PageStack>
     </section>
   );
 }

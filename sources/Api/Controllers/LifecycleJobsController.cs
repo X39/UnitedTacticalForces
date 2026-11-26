@@ -25,6 +25,7 @@ public sealed class LifecycleJobsController(
         var job = await dbContext.LifecycleJobs
             .AsNoTracking()
             .Include(q => q.WorkerCommands)
+            .Include(q => q.RequestedBy)
             .SingleOrDefaultAsync(q => q.PrimaryKey == lifecycleJobId, cancellationToken)
             .ConfigureAwait(false);
         if (job is null)

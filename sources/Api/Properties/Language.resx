@@ -598,4 +598,40 @@ Usually this is the same as the installation path and the same as the one entere
   <data name="Panels_CreateModPackPanel_Title" xml:space="preserve">
         <value />
     </data>
+  <data name="CostAlert_Subject" xml:space="preserve">
+        <value>Cost alert: {0} reached {1}</value>
+    </data>
+  <data name="CostAlert_Body" xml:space="preserve">
+        <value>The server {0} reached your cost alert of {1}. This session has cost {2} so far (as of {3}).</value>
+    </data>
+  <data name="CostAlert_StopWithLink" xml:space="preserve">
+        <value>Open the server to shut it down and stop billing: {0}</value>
+    </data>
+  <data name="CostAlert_StopWithoutLink" xml:space="preserve">
+        <value>Open the server in the app to shut it down and stop billing.</value>
+    </data>
+  <data name="CostAlert_Footer" xml:space="preserve">
+        <value>You receive this message because cost alerts are set for this cost owner. Each amount alerts once per session.</value>
+    </data>
+  <data name="AutoStop_Subject" xml:space="preserve">
+        <value>Automatic shutdown of {0} at {1}</value>
+    </data>
+  <data name="AutoStop_Body_Idle" xml:space="preserve">
+        <value>Nobody has been on {0} for {1} minutes. It shuts down at {2} unless someone joins.</value>
+    </data>
+  <data name="AutoStop_Body_MaxRuntime" xml:space="preserve">
+        <value>{0} reached its maximum runtime of {1} hours and shuts down at {2}.</value>
+    </data>
+  <data name="AutoStop_Body_Schedule" xml:space="preserve">
+        <value>A schedule shuts {0} down at {2}.</value>
+    </data>
+  <data name="AutoStop_Consequence" xml:space="preserve">
+        <value>It saves its data, stops, and releases the cloud machine. Billing stops once the machine is confirmed gone.</value>
+    </data>
+  <data name="AutoStop_WithLink" xml:space="preserve">
+        <value>Change automatic shutdown: {0}</value>
+    </data>
+  <data name="AutoStop_Footer" xml:space="preserve">
+        <value>You receive this message because automatic shutdown warnings are sent to the alert recipients of this cost owner.</value>
+    </data>
 </root>

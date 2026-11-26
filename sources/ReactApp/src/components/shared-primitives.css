@@ -1,0 +1,464 @@
+/*
+ * Shared primitive styles: page header, state panel, status badge, section heading, page stack and the dialog shell.
+ *
+ * Every value comes from the --utf-* tokens (src/styles/tokens.css) or from the legacy font families declared in
+ * styles.css. No raw colour, no pixel spacing literal and no viewport-relative type belong in this file;
+ * tests/styles/server-style-guard.test.ts scans it exactly like components/server/*.css. The sheet is imported from
+ * primitives.tsx, so the bundle loads it before styles.css; legacy page rules that adjust a primitive therefore
+ * need a selector that is more specific than the primitive's own.
+ */
+
+/* Page header (CON-01): one rhythm, Display title at every width. */
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--utf-space-lg);
+  margin-bottom: var(--utf-space-lg);
+  min-width: 0;
+}
+
+.page-header > div {
+  min-width: 0;
+}
+
+.page-header .kicker {
+  margin-bottom: var(--utf-space-xs);
+}
+
+/* Sub-level headers (headingLevel 2 and 3) use the Heading step; only the h1 is Display. */
+.page-header :is(h1, h2, h3) {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  letter-spacing: normal;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.page-header h1 {
+  font-size: var(--utf-text-display);
+}
+
+.page-header p {
+  max-width: var(--utf-measure);
+  margin: var(--utf-space-sm) 0 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+}
+
+.page-header__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--utf-space-sm);
+  margin-top: var(--utf-space-sm);
+}
+
+.page-header__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--utf-space-sm);
+  max-width: 100%;
+}
+
+@media (max-width: 800px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--utf-space-md);
+  }
+
+  .page-header__actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .page-header__actions > :is(a, button) {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .page-header__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-header__actions > :is(a, button) {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+/* Section heading: the h2 that opens a block of a page; Heading step, never a viewport-relative size. */
+.section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--utf-space-lg);
+  margin-bottom: var(--utf-space-lg);
+}
+
+.section-heading > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  letter-spacing: normal;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--utf-space-md);
+  }
+}
+
+/* Page stack (CON-03): the body wrapper below a page header; one gap between page blocks. */
+.page-stack {
+  display: grid;
+  gap: var(--utf-space-lg);
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .page-stack {
+    gap: var(--utf-space-md);
+  }
+}
+
+/*
+ * State panel (CON-02): raised surface, divider border, a tone stripe at the start edge, Heading title and muted
+ * Body text. loading, empty and forbidden use the neutral tone; error maps to danger.
+ */
+.state-panel {
+  --state-panel-tone: var(--utf-state-neutral-fg);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--utf-space-md);
+  width: 100%;
+  padding: var(--utf-space-lg);
+  border: 1px solid var(--utf-border-divider);
+  border-inline-start: var(--utf-space-xs) solid var(--state-panel-tone);
+  background: var(--utf-surface-raised);
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.state-panel h2 {
+  margin: 0 0 var(--utf-space-xs);
+  color: var(--utf-text);
+  font-family: var(--font-body);
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  text-transform: none;
+}
+
+.state-panel p {
+  margin: var(--utf-space-xs) 0;
+}
+
+.state-panel__icon {
+  display: grid;
+  color: var(--state-panel-tone);
+}
+
+.state-panel--error {
+  --state-panel-tone: var(--utf-state-danger-fg);
+}
+
+.state-panel--warning {
+  --state-panel-tone: var(--utf-state-warning-fg);
+}
+
+.state-panel--success {
+  --state-panel-tone: var(--utf-state-success-fg);
+}
+
+.state-panel--info {
+  --state-panel-tone: var(--utf-state-info-fg);
+}
+
+@media (max-width: 800px) {
+  .state-panel {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .state-panel__action {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .state-panel {
+    padding: var(--utf-space-md);
+  }
+}
+
+/* Status badge (D-05): the five tones read their colours from the same state tokens as ServerStateBadge. */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--utf-space-xs);
+  width: max-content;
+  max-width: 100%;
+  min-height: var(--utf-space-lg);
+  padding: var(--utf-space-xs) var(--utf-space-sm);
+  border: 1px solid var(--utf-state-neutral-border);
+  border-radius: var(--utf-radius-small);
+  background: var(--utf-state-neutral-bg);
+  color: var(--utf-state-neutral-fg);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.status-badge--info {
+  border-color: var(--utf-state-info-border);
+  background: var(--utf-state-info-bg);
+  color: var(--utf-state-info-fg);
+}
+
+.status-badge--success {
+  border-color: var(--utf-state-success-border);
+  background: var(--utf-state-success-bg);
+  color: var(--utf-state-success-fg);
+}
+
+.status-badge--warning {
+  border-color: var(--utf-state-warning-border);
+  background: var(--utf-state-warning-bg);
+  color: var(--utf-state-warning-fg);
+}
+
+.status-badge--danger {
+  border-color: var(--utf-state-danger-border);
+  background: var(--utf-state-danger-bg);
+  color: var(--utf-state-danger-fg);
+}
+
+/*
+ * Dialog shell (D-10): one content column so kicker, title, body, fields, error slot and actions share a left edge.
+ * The width rule is wrapped in :where() so a page dialog that sets its own width keeps it whatever the load order.
+ * The cost, review and leave variants double the selector (.dialog.dialog--*) to adjust this shell.
+ */
+:where(.dialog) {
+  width: min(var(--utf-dialog-width), 100vw - var(--utf-dialog-gutter));
+}
+
+.dialog {
+  max-height: calc(100dvh - var(--utf-dialog-gutter));
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--stroke-strong);
+  border-radius: var(--utf-radius-small);
+  background: var(--utf-surface-raised);
+  color: var(--utf-text);
+  box-shadow: var(--utf-elevation-2);
+}
+
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog::backdrop {
+  background: var(--utf-scrim);
+  backdrop-filter: blur(var(--utf-space-xs));
+}
+
+.dialog form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-height: 0;
+  padding: var(--utf-space-lg);
+}
+
+.dialog .kicker {
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}
+
+.dialog h2 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--utf-text-heading);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-heading);
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.dialog p {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.dialog .dialog__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dialog .dialog__error {
+  margin: 0;
+  color: var(--utf-state-danger-fg);
+  overflow-wrap: anywhere;
+}
+
+.dialog h2:focus-visible,
+.dialog .dialog__body:focus-visible,
+.dialog .dialog__error:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/* Facts: a description list with term and value side by side above 520px, stacked below. */
+.dialog__facts {
+  display: grid;
+  gap: var(--utf-space-sm);
+  margin: 0;
+}
+
+.dialog__fact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--utf-space-sm);
+}
+
+.dialog__fact dt {
+  color: var(--utf-text-muted);
+  font-family: var(--font-label);
+  font-size: var(--utf-text-label);
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-label);
+}
+
+.dialog__fact dd {
+  margin: 0;
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/* Actions: one right-aligned row, dismiss then confirm; stacked below. */
+.dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--utf-space-sm);
+  margin-top: 0;
+}
+
+@media (max-width: 800px) {
+  .dialog__actions > :is(a, button) {
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+@media (max-width: 520px) {
+  .dialog form {
+    padding: var(--utf-space-md);
+  }
+
+  .dialog__fact {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--utf-space-xs);
+  }
+
+  .dialog__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  /* The doubled selector outranks the later `.button { width: fit-content }` rule of styles.css. */
+  .dialog .dialog__actions > * {
+    width: 100%;
+  }
+}
+
+/*
+ * Icon-only controls and the toast dismiss (WCAG 2.2 target size, 69-24): at least 2rem (32px, above the 24px floor) on
+ * desktop and the touch height at or below 800px. The toast dismiss lives in styles.css, whose rule this sheet
+ * outranks with a doubled selector; the icon-only rule triples the class to outrank .button--small.button--icon-only.
+ */
+.app-toast .app-toast__dismiss {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+}
+
+.app-toast .app-toast__dismiss:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+/*
+ * The toast viewport holds a persistent polite and a persistent assertive live region (WR-04). An empty region leaves
+ * the grid flow so the viewport gap appears only between visible toasts, while the element stays in the accessibility
+ * tree and keeps announcing the toasts that are added to it.
+ */
+.app-toast-viewport > .app-toast-region {
+  display: grid;
+  gap: var(--utf-space-sm);
+}
+
+.app-toast-viewport > .app-toast-region:empty {
+  position: absolute;
+}
+
+@media (max-width: 800px) {
+  .app-toast .app-toast__dismiss {
+    width: var(--utf-control-height-touch);
+    height: var(--utf-control-height-touch);
+    min-width: var(--utf-control-height-touch);
+    min-height: var(--utf-control-height-touch);
+  }
+
+  .button.button--icon-only.button--icon-only {
+    width: var(--utf-control-height-touch);
+    min-width: var(--utf-control-height-touch);
+    min-height: var(--utf-control-height-touch);
+  }
+}
+
+/*
+ * The command topbar is sticky, so a focused element that scrolls into view must stop below it instead of under it
+ * (WCAG 2.4.11 Focus Not Obscured). Layouts without the variable keep a zero offset.
+ */
+html {
+  scroll-padding-block-start: var(--command-header-height, 0);
+}

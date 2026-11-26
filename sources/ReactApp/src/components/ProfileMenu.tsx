@@ -1,17 +1,32 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { Dismiss20Regular } from "@fluentui/react-icons";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { formatResource } from "@/app/i18n";
 import type { FullUser } from "@/api/types";
 import { canAccessCommandCenter } from "@/auth/claims";
 import { useAuth } from "@/auth/auth";
-import { ConfirmDialog } from "@/components/primitives";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { CostAlertMenuItem } from "@/components/server/CostAlertMenuItem";
+import { ServerStateSummary } from "@/components/server/ServerStateSummary";
+import { UnavailableReason } from "@/components/server/UnavailableReason";
+import {
+  operatePermissionReason,
+  operationPendingReason,
+} from "@/components/server/unavailableReasonMapping";
+import { useCostConfirmation } from "@/components/server/useCostConfirmation";
+import { ActionLabel } from "@/features/hosting/components";
+import { deriveServerState } from "@/features/hosting/serverState";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
-import type { ServerAction, ServerNotification } from "@/features/hosting/types";
+import { useCostAlertArrivalToasts, useCostAlerts } from "@/features/hosting/useCostAlerts";
+import { useFleetQuery } from "@/features/hosting/useFleetQuery";
 import "@/components/ProfileMenu.css";
 
 export const profileNotificationPollInterval = 15_000;
+
+/** The most cost alert rows the menu lists; the rest collapse into one line. */
+const maxVisibleAlertRows = 3;
 const allowedAvatarMimeTypes = new Set([
   "image/avif",
   "image/bmp",
@@ -22,11 +37,6 @@ const allowedAvatarMimeTypes = new Set([
 ]);
 
 export type ProfileMenuMode = "community" | "command";
-
-interface PendingAction {
-  notification: ServerNotification;
-  action: ServerAction;
-}
 
 export function avatarSource(user: FullUser): string | undefined {
   if (!user.avatar) return undefined;
@@ -80,13 +90,12 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
   const { t } = useTranslation();
   const auth = useAuth();
   const user = auth.user;
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { request } = useCostConfirmation();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState<PendingAction>();
+  const attentionDescriptionId = useId();
 
   const notifications = useQuery({
     queryKey: hostingQueryKeys.notifications,
@@ -97,23 +106,28 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
     refetchIntervalInBackground: false,
   });
 
-  const executeAction = useMutation({
-    mutationFn: ({ notification, action }: PendingAction) =>
-      hostingService.executeAction(notification.serverId, action.id),
-    onSuccess: async (_, { notification }) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: hostingQueryKeys.notifications }),
-        queryClient.invalidateQueries({ queryKey: hostingQueryKeys.fleet }),
-        queryClient.invalidateQueries({ queryKey: hostingQueryKeys.server(notification.serverId) }),
-      ]);
-    },
-  });
+  // Cost alerts reach the menu as socket frames written into the alerts cache; this hook never polls.
+  const costAlerts = useCostAlerts();
+  useCostAlertArrivalToasts();
+
+  // The fleet is only needed to describe the notified servers, so it is not loaded for an empty list.
+  const fleet = useFleetQuery(
+    Boolean(user) && ((notifications.data?.length ?? 0) > 0 || costAlerts.alerts.length > 0),
+  );
+  const serversById = useMemo(
+    () => new Map((fleet.data ?? []).map((server) => [server.primaryKey, server])),
+    [fleet.data],
+  );
 
   useEffect(() => {
     if (!open) return;
     closeRef.current?.focus();
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      // Marks this Escape as handled so an open shell navigation (its listener runs later, on the window) stays open
+      // and closes on the next Escape. This is safe because the popover closes itself before it requests a cost
+      // confirmation, so no dialog can be open while this listener exists.
+      event.preventDefault();
       setOpen(false);
       triggerRef.current?.focus();
     };
@@ -121,14 +135,41 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [open]);
 
-  const attentionCount = (notifications.data ?? []).filter(
-    (notification) => notification.possibleCost,
-  ).length;
+  // The badge counts distinct servers: one that may still cost and has an alert counts once.
+  const attentionCount = new Set([
+    ...(notifications.data ?? [])
+      .filter((notification) => notification.possibleCost)
+      .map((notification) => notification.serverId),
+    ...costAlerts.alerts.map((alert) => alert.serverId),
+  ]).size;
   const visibleNotifications = (notifications.data ?? []).slice(0, 5);
-  const actionError = executeAction.isError;
-  const busyServerId = executeAction.isPending
-    ? executeAction.variables?.notification.serverId
-    : null;
+  const visibleAlerts = costAlerts.alerts.slice(0, maxVisibleAlertRows);
+  const hiddenAlertCount = costAlerts.alerts.length - visibleAlerts.length;
+  const hasRows = visibleAlerts.length > 0 || visibleNotifications.length > 0;
+
+  // After a dismissal the alert row is removed by the alerts cache. Focus then moves to the first control of the
+  // row that followed it, or to the close button when none did, once the removal has rendered.
+  const [alertFocus, setAlertFocus] = useState<{ removedId: string; nextId: string | null } | null>(
+    null,
+  );
+  const handledAlertFocus = useRef<typeof alertFocus>(null);
+  useEffect(() => {
+    if (!alertFocus || handledAlertFocus.current === alertFocus) return;
+    if (costAlerts.alerts.some((alert) => alert.id === alertFocus.removedId)) return;
+    handledAlertFocus.current = alertFocus;
+    const nextRow =
+      alertFocus.nextId === null
+        ? undefined
+        : Array.from(
+            popoverRef.current?.querySelectorAll<HTMLElement>(
+              "[data-cost-alert-id], [data-auto-stop-alert-id]",
+            ) ?? [],
+          ).find(
+            (row) => (row.dataset.costAlertId ?? row.dataset.autoStopAlertId) === alertFocus.nextId,
+          );
+    const target = nextRow?.querySelector<HTMLElement>("a[href], button");
+    (target ?? closeRef.current)?.focus();
+  }, [alertFocus, costAlerts.alerts]);
 
   const profile = useMemo(() => {
     if (!user) return undefined;
@@ -196,25 +237,17 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
     if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
-  const requestAction = (notification: ServerNotification, action: ServerAction) => {
-    if (!notification.canOperate || !action.enabled || action.pending) return;
-    executeAction.reset();
-    if (action.confirmationChallenge) {
-      close();
-      navigate(
-        `/command/servers/${encodeURIComponent(notification.serverId)}?action=${encodeURIComponent(action.id)}`,
-      );
-      return;
-    }
-    if (action.confirmationText) {
-      setPendingAction({ notification, action });
-      return;
-    }
-    executeAction.mutate({ notification, action });
+  const moveFocusAfterDismissal = (alertId: string) => {
+    const index = costAlerts.alerts.findIndex((alert) => alert.id === alertId);
+    setAlertFocus({
+      removedId: alertId,
+      nextId: index < 0 ? null : (costAlerts.alerts[index + 1]?.id ?? null),
+    });
   };
 
-  const trapFocus = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== "Tab") return;
+  const moveFocus = (event: KeyboardEvent<HTMLElement>) => {
+    const isArrow = event.key === "ArrowDown" || event.key === "ArrowUp";
+    if (event.key !== "Tab" && !isArrow) return;
     const focusable = Array.from(
       popoverRef.current?.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -223,7 +256,14 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
     if (focusable.length === 0) return;
     const first = focusable[0]!;
     const last = focusable[focusable.length - 1]!;
-    if (event.shiftKey && document.activeElement === first) {
+    if (isArrow) {
+      // Arrow keys walk the same rows as Tab and wrap at both ends, so the popover never needs the mouse.
+      event.preventDefault();
+      const current = focusable.indexOf(document.activeElement as HTMLElement);
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      const next = current < 0 ? (step > 0 ? 0 : focusable.length - 1) : current + step;
+      focusable[(next + focusable.length) % focusable.length]!.focus();
+    } else if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -241,21 +281,18 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
 
   return (
     <div className={`account-profile account-profile--${mode}`}>
-      <button
+      <ActionButton
         ref={triggerRef}
         className="account-profile__trigger"
-        type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls="account-profile-panel"
+        aria-describedby={attentionCount > 0 ? attentionDescriptionId : undefined}
         aria-label={formatResource(
           t("Components_UtfProfileMenu_TriggerLabel"),
           profile.displayName,
         )}
-        onClick={() => {
-          if (!open) executeAction.reset();
-          setOpen((value) => !value);
-        }}
+        onClick={() => setOpen((value) => !value)}
       >
         <span className="account-profile__avatar" aria-hidden="true">
           {profile.avatar ? <img src={profile.avatar} alt="" /> : <span>{profile.initials}</span>}
@@ -269,24 +306,30 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
           <strong>{profile.displayName}</strong>
           <span>{profile.verification}</span>
         </span>
-      </button>
+      </ActionButton>
+      {attentionCount > 0 && (
+        <span id={attentionDescriptionId} className="sr-only">
+          {t("Server_Alerts_Menu_Badge", { count: attentionCount })}
+        </span>
+      )}
 
       {open && (
         <>
-          <button
+          <ActionButton
             className="account-profile__scrim"
-            type="button"
             tabIndex={-1}
             aria-label={t("Components_UtfProfileMenu_CloseMenu")}
             onClick={() => close(true)}
-          />
+          >
+            {null}
+          </ActionButton>
           <section
             ref={popoverRef}
             id="account-profile-panel"
             className="account-profile__popover"
             role="dialog"
             aria-label={t("Components_UtfProfileMenu_ProfileMenu")}
-            onKeyDown={trapFocus}
+            onKeyDown={moveFocus}
           >
             <header className="account-profile__hero">
               <div className="account-profile__identity">
@@ -321,15 +364,17 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
                   <span>{profile.initials}</span>
                 )}
               </span>
-              <button
+              <ActionButton
                 ref={closeRef}
+                iconOnly
+                variant="ghost"
+                size="compact"
                 className="account-profile__close"
-                type="button"
                 aria-label={t("Components_UtfProfileMenu_CloseMenu")}
                 onClick={() => close(true)}
               >
-                &times;
-              </button>
+                <Dismiss20Regular aria-hidden="true" />
+              </ActionButton>
             </header>
 
             <div
@@ -357,35 +402,53 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
                 </div>
                 {attentionCount > 0 && <span>{attentionCount}</span>}
               </div>
-              {(notifications.isError || actionError) && (
+              {notifications.isError && (
                 <p className="account-profile__notification-message" role="status">
-                  {actionError
-                    ? t("Hosting_Notification_ActionError")
-                    : t("Hosting_Notification_LoadError")}
+                  {t("Hosting_Notification_LoadError")}
                 </p>
               )}
-              {!notifications.isError && !actionError && notifications.isLoading && (
+              {!notifications.isError && notifications.isLoading && (
                 <p className="account-profile__notification-message" role="status">
                   {t("Common_LoadingData")}
                 </p>
               )}
               {!notifications.isError &&
                 !notifications.isLoading &&
-                visibleNotifications.length === 0 && (
+                !costAlerts.loading &&
+                !hasRows && (
                   <p className="account-profile__notification-message">
                     {t("Hosting_Notification_Empty")}
                   </p>
                 )}
-              {visibleNotifications.length > 0 && (
+              {hasRows && (
                 <>
                   <div className="account-profile__notification-list">
+                    {visibleAlerts.map((alert) => (
+                      <CostAlertMenuItem
+                        key={alert.id}
+                        alert={alert}
+                        server={serversById.get(alert.serverId)}
+                        onNavigate={() => close()}
+                        returnFocus={triggerRef}
+                        onDismissed={moveFocusAfterDismissal}
+                      />
+                    ))}
+                    {hiddenAlertCount > 0 && (
+                      <p className="account-profile__notification-message">
+                        {t("Server_Alerts_Menu_More", { count: hiddenAlertCount })}
+                      </p>
+                    )}
                     {visibleNotifications.map((notification) => {
                       const action = notification.costStopAction;
-                      const actionDisabled =
-                        !notification.canOperate ||
-                        !action?.enabled ||
-                        Boolean(action.pending) ||
-                        busyServerId === notification.serverId;
+                      const derived = deriveServerState(serversById.get(notification.serverId), {
+                        notification,
+                      });
+                      const unavailable =
+                        !notification.canOperate || !action?.enabled || Boolean(action.pending);
+                      const reason = !notification.canOperate
+                        ? operatePermissionReason
+                        : action?.unavailableReason ||
+                          (action?.pending ? operationPendingReason : null);
                       return (
                         <article
                           key={notification.serverId}
@@ -400,23 +463,39 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
                             to={`/command/servers/${encodeURIComponent(notification.serverId)}`}
                             onClick={() => close()}
                           >
-                            <strong>{notification.title}</strong>
-                            <span>{notification.statusLabel}</span>
-                            {notification.possibleCost && (
-                              <small>{t("Hosting_Notification_PossibleCost")}</small>
-                            )}
+                            <strong>
+                              <bdi>{notification.title}</bdi>
+                            </strong>
                           </Link>
+                          <ServerStateSummary derived={derived} />
                           {action && (
-                            <button
-                              type="button"
-                              disabled={actionDisabled}
-                              title={action.unavailableReason ?? undefined}
-                              onClick={() => requestAction(notification, action)}
+                            <ActionButton
+                              variant="ghost"
+                              size="compact"
+                              unavailableReason={
+                                unavailable ? (
+                                  <UnavailableReason
+                                    reason={reason}
+                                    stateLabel={t(derived.labelKey)}
+                                  />
+                                ) : undefined
+                              }
+                              onClick={() => {
+                                close();
+                                request({
+                                  serverId: notification.serverId,
+                                  actionId: action.id,
+                                  source: "notification",
+                                  returnFocus: triggerRef,
+                                });
+                              }}
                             >
-                              {action.pending
-                                ? t("Hosting_Notification_ActionPending")
-                                : action.label}
-                            </button>
+                              {action.pending ? (
+                                t("Server_Action_InProgress")
+                              ) : (
+                                <ActionLabel action={action} />
+                              )}
+                            </ActionButton>
                           )}
                         </article>
                       );
@@ -495,45 +574,25 @@ export function ProfileMenu({ mode = "community" }: { mode?: ProfileMenuMode }) 
 
             <footer className="account-profile__actions">
               {profile.commandAccess && (
-                <Link
-                  className="account-profile__button account-profile__button--primary"
-                  to="/command"
-                  onClick={() => close()}
-                >
+                <ActionLink variant="gold" fullWidth to="/command" onClick={() => close()}>
                   {t("Components_UtfProfileMenu_CommandCenter")}
-                </Link>
+                </ActionLink>
               )}
-              <Link
-                className="account-profile__button account-profile__button--ghost"
-                to="/settings"
-                onClick={() => close()}
-              >
+              <ActionLink variant="ghost" fullWidth to="/settings" onClick={() => close()}>
                 {t("Components_UtfProfileMenu_AccountSettings")}
-              </Link>
-              <button
-                className="account-profile__button account-profile__button--danger"
-                type="button"
+              </ActionLink>
+              <ActionButton
+                variant="danger"
+                fullWidth
+                className="account-profile__sign-out"
                 onClick={() => auth.logout()}
               >
                 {t("Components_UtfProfileMenu_SignOut")}
-              </button>
+              </ActionButton>
             </footer>
           </section>
         </>
       )}
-
-      <ConfirmDialog
-        open={Boolean(pendingAction)}
-        title={pendingAction?.action.label ?? ""}
-        description={pendingAction?.action.confirmationText ?? ""}
-        confirmLabel={pendingAction?.action.label ?? ""}
-        cancelLabel={t("Hosting_Common_Cancel")}
-        onCancel={() => setPendingAction(undefined)}
-        onConfirm={() => {
-          if (pendingAction) executeAction.mutate(pendingAction);
-          setPendingAction(undefined);
-        }}
-      />
     </div>
   );
 }

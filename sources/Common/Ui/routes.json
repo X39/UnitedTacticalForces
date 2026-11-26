@@ -347,6 +347,14 @@
       "shell": "command"
     },
     {
+      "id": "server-cost-alerts",
+      "canonical": "/command/servers/cost-alerts",
+      "classicFallback": "/command/servers",
+      "aliases": [],
+      "certified": true,
+      "shell": "command"
+    },
+    {
       "id": "server",
       "canonical": "/command/servers/{ServerId:guid}",
       "aliases": [],

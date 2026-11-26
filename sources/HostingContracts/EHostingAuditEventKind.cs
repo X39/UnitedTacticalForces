@@ -88,4 +88,40 @@ public enum EHostingAuditEventKind
     CostOwnerRenamed = 80,
     CostOwnerFrozen = 81,
     CostOwnerUnfrozen = 82,
+
+    /// <summary>
+    /// The control plane opened an automatic stop warning because an idle, maximum runtime or schedule limit
+    /// was reached.
+    /// </summary>
+    AutomaticStopWarned = 83,
+
+    /// <summary>
+    /// The control plane queued an ordinary stop job because an automatic limit or schedule came due.
+    /// </summary>
+    AutomaticStopRequested = 84,
+
+    /// <summary>
+    /// An open automatic stop warning was cancelled before the stop was requested.
+    /// </summary>
+    AutomaticStopCancelled = 85,
+
+    /// <summary>
+    /// The control plane queued a start job because a schedule occurrence came due.
+    /// </summary>
+    ScheduledStartRequested = 86,
+
+    /// <summary>
+    /// A schedule occurrence was recorded without an action; the reason is in the audit summary.
+    /// </summary>
+    ScheduledRunSkipped = 87,
+
+    /// <summary>
+    /// A user changed the automation settings or schedule rules of a server.
+    /// </summary>
+    AutomationSettingsChanged = 88,
+
+    /// <summary>
+    /// A user confirmed that scheduled starts of a server may incur cost for the current cost owner.
+    /// </summary>
+    ScheduledStartsConfirmed = 89,
 }

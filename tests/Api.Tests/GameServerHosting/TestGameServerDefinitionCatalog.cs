@@ -9,8 +9,14 @@ internal sealed class TestGameServerDefinitionCatalog : IGameServerDefinitionCat
 {
     private readonly GameServerDefinition _definition;
 
+    /// <summary>
+    /// Creates the catalog with its single test game.
+    /// </summary>
+    /// <param name="inboundNetworkRequirements">The inbound network requirements, or <see langword="null"/> for the default UDP range.</param>
+    /// <param name="reportsPlayerCount">Whether the test game reports its player count, which enables idle shutdown.</param>
     public TestGameServerDefinitionCatalog(
-        IReadOnlyList<RuntimeInboundNetworkRequirement>? inboundNetworkRequirements = null)
+        IReadOnlyList<RuntimeInboundNetworkRequirement>? inboundNetworkRequirements = null,
+        bool reportsPlayerCount = true)
     {
         _definition = new GameServerDefinition(
             HostingTestData.GameIdentifier,
@@ -24,6 +30,7 @@ internal sealed class TestGameServerDefinitionCatalog : IGameServerDefinitionCat
             [],
             [])
         {
+            ReportsPlayerCount = reportsPlayerCount,
             InboundNetworkRequirements = inboundNetworkRequirements
                                          ??
                                          [

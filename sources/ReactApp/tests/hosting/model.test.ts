@@ -1,7 +1,10 @@
+import i18n, { i18nReady } from "@/app/i18n";
 import {
   automaticExternalStorageGiB,
   buildConfigurationValues,
   configurationDraftValue,
+  formatHourlyRate,
+  formatMoney,
   isStorageSelectionValid,
   validateConfigurationDraft,
 } from "@/features/hosting/model";
@@ -174,5 +177,38 @@ describe("hosting storage and configuration models", () => {
     expect(validateConfigurationDraft(definitions, { verifySignatures: "1" })[0]?.code).toBe(
       "selection",
     );
+  });
+});
+
+describe("hourly rate and money formatting", () => {
+  beforeAll(async () => i18nReady);
+
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("keeps a sub-cent hourly rate visible in English", async () => {
+    await i18n.changeLanguage("en");
+
+    expect(formatHourlyRate(0.0063)).toBe("€0.0063");
+  });
+
+  it("keeps a sub-cent hourly rate visible in German with a non-breaking space", async () => {
+    await i18n.changeLanguage("de");
+
+    expect(formatHourlyRate(0.0063)).toBe("0,0063\u00A0€");
+  });
+
+  it("shows two fraction digits when more are not needed", async () => {
+    await i18n.changeLanguage("en");
+
+    expect(formatHourlyRate(0.2)).toBe("€0.20");
+  });
+
+  it("leaves formatMoney at two fraction digits", async () => {
+    await i18n.changeLanguage("en");
+
+    expect(formatMoney(0.0063)).toBe("€0.01");
+    expect(formatMoney(null)).toBe("—");
   });
 });

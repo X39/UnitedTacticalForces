@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { Dismiss20Regular } from "@fluentui/react-icons";
 import { useEffect, useId, useState, type ReactNode } from "react";
+import { ActionButton } from "@/components/ActionControl";
+import { TextField } from "@/components/FormFields";
 import { StatePanel } from "@/components/primitives";
+import "@/features/admin/eventAuthoring.css";
 
 export function EventEntityPicker<T>({
   label,
@@ -82,10 +86,10 @@ export function EventEntityPicker<T>({
 
   return (
     <div className="event-authoring-picker">
-      <label htmlFor={`${id}-input`}>{label}</label>
       <div className="event-authoring-picker__control">
-        <input
+        <TextField
           id={`${id}-input`}
+          label={label}
           value={search}
           placeholder={placeholder}
           disabled={disabled}
@@ -139,24 +143,26 @@ export function EventEntityPicker<T>({
               close(true);
             }
           }}
+          trailing={
+            selected && onClear ? (
+              <ActionButton
+                variant="ghost"
+                iconOnly
+                disabled={disabled}
+                aria-label={clearLabel ?? label}
+                title={clearLabel ?? label}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  setSearch("");
+                  close(false);
+                  onClear();
+                }}
+              >
+                <Dismiss20Regular aria-hidden="true" />
+              </ActionButton>
+            ) : undefined
+          }
         />
-        {selected && onClear && (
-          <button
-            className="event-authoring-picker__clear"
-            type="button"
-            disabled={disabled}
-            aria-label={clearLabel}
-            title={clearLabel}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => {
-              setSearch("");
-              close(false);
-              onClear();
-            }}
-          >
-            <span aria-hidden="true">&times;</span>
-          </button>
-        )}
         {open && (
           <div className="event-authoring-picker__popover" id={`${id}-options`} role="listbox">
             {query.isPending ? (
@@ -170,10 +176,9 @@ export function EventEntityPicker<T>({
                 const itemKey = getKey(item);
                 const isActive = itemKey === resolvedActiveKey;
                 return (
-                  <button
+                  <ActionButton
                     id={`${id}-option-${index}`}
                     key={itemKey}
-                    type="button"
                     role="option"
                     aria-selected={isActive}
                     data-current={itemKey === selectedKey || undefined}
@@ -186,7 +191,7 @@ export function EventEntityPicker<T>({
                     onClick={() => select(item)}
                   >
                     {renderOption ? renderOption(item) : <strong>{getLabel(item)}</strong>}
-                  </button>
+                  </ActionButton>
                 );
               })
             )}

@@ -44,15 +44,6 @@ export const correctionSchema = z
     path: ["correctCostOwnerId"],
   });
 
-export const reversalSchema = z.object({
-  reason: z.string().trim().min(1).max(512),
-  timeStampEffective: z.string().datetime(),
-});
-
-export const externalOrganizationSchema = z.object({
-  displayName: z.string().trim().min(1).max(256),
-});
-
 const ownerKinds = ["User", "Verein", "ExternalOrganization"] as const;
 const ledgerKinds = [
   "ProviderCostSlice",

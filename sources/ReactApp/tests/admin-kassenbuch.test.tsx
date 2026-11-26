@@ -12,6 +12,7 @@ import { Component as VereinKassenbuchEditorPage } from "@/features/admin/Verein
 import { Component as VereinKassenbuchPage } from "@/features/admin/VereinKassenbuchPage";
 import type { KassenbuchEntry, KassenbuchPage } from "@/features/admin/vereinKassenbuch";
 import * as kassenbuch from "@/features/admin/vereinKassenbuch";
+import { findToast, toastPoliteness } from "./helpers/toastQueries";
 
 const authState = vi.hoisted(() => ({ user: undefined as FullUser | undefined }));
 
@@ -79,7 +80,7 @@ function renderPage(initialEntry: string) {
     ],
     { initialEntries: [initialEntry] },
   );
-  return render(
+  const { unmount } = render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
         <AppToastProvider>
@@ -88,6 +89,7 @@ function renderPage(initialEntry: string) {
       </QueryClientProvider>
     </I18nextProvider>,
   );
+  return { router, unmount };
 }
 
 describe("Verein Kassenbuch administration", () => {
@@ -189,10 +191,9 @@ describe("Verein Kassenbuch administration", () => {
         }),
       ),
     );
-    const savedToast = (await screen.findByText("Kassenbuch entry saved.")).closest(
-      '[role="status"]',
-    );
+    const savedToast = await findToast("Kassenbuch entry saved.");
     expect(savedToast).toHaveClass("app-toast");
+    expect(toastPoliteness(savedToast)).toBe("polite");
   });
 
   it("loads an edit target and keeps destructive deletion behind confirmation", async () => {
@@ -208,10 +209,70 @@ describe("Verein Kassenbuch administration", () => {
     await user.click(within(dialog).getByRole("button", { name: "Delete entry" }));
 
     await waitFor(() => expect(kassenbuch.deleteKassenbuchEntry).toHaveBeenCalledWith(42));
-    const deletedToast = (await screen.findByText("Kassenbuch entry deleted.")).closest(
-      '[role="status"]',
-    );
+    const deletedToast = await findToast("Kassenbuch entry deleted.");
     expect(deletedToast).toHaveClass("app-toast");
+    expect(toastPoliteness(deletedToast)).toBe("polite");
+  });
+
+  it("renders one h1 above the forbidden and not-found states of the ledger pages", async () => {
+    authState.user = undefined;
+    for (const path of ["/command/verein/kassenbuch", "/command/verein/kassenbuch/create"]) {
+      const { unmount } = renderPage(path);
+      expect(
+        await screen.findByRole("heading", { name: "Kassenbuch access required" }),
+      ).toBeVisible();
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      unmount();
+    }
+
+    authState.user = administrator;
+    renderPage("/command/verein/kassenbuch/not-a-number/edit");
+    expect(await screen.findByRole("heading", { name: "Ledger entry not found" })).toBeVisible();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("shows an empty state with a next step when no ledger entry matches", async () => {
+    vi.mocked(kassenbuch.loadKassenbuchPage).mockResolvedValue({
+      ...page,
+      entries: [],
+      totalCount: 0,
+    });
+    renderPage("/command/verein/kassenbuch");
+
+    expect(await screen.findByRole("heading", { name: "No ledger entries match" })).toBeVisible();
+    expect(screen.getByText("Clear the filters or add a ledger entry.")).toBeVisible();
+  });
+
+  it("offers Keep editing and Leave without saving when leaving an edited entry", async () => {
+    const user = userEvent.setup();
+    const { router } = renderPage("/command/verein/kassenbuch/create");
+
+    await user.type(await screen.findByLabelText("Category"), "Donations");
+    await user.click(screen.getByRole("link", { name: "Leave without saving" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "Keep editing" })).toBeVisible();
+    expect(router.state.location.pathname).toBe("/command/verein/kassenbuch/create");
+
+    await user.click(within(dialog).getByRole("button", { name: "Keep editing" }));
+    expect(router.state.location.pathname).toBe("/command/verein/kassenbuch/create");
+    expect(screen.getByLabelText("Category")).toHaveValue("Donations");
+
+    await user.click(screen.getByRole("link", { name: "Leave without saving" }));
+    const second = await screen.findByRole("dialog");
+    await user.click(within(second).getByRole("button", { name: "Leave without saving" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/command/verein/kassenbuch"));
+  });
+
+  it("names the dismiss of the delete dialog after what it keeps and focuses it first", async () => {
+    const user = userEvent.setup();
+    renderPage("/command/verein/kassenbuch/42/edit");
+
+    await screen.findByRole("form", { name: "Kassenbuch entry editor" });
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "Keep ledger entry" })).toHaveFocus();
+    expect(within(dialog).queryByRole("button", { name: "Cancel" })).toBeNull();
   });
 
   it("renders the command workflow from German resources", async () => {

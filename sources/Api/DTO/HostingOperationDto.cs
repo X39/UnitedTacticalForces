@@ -21,5 +21,9 @@ public sealed record HostingOperationDto
     public Guid? WorkerId { get; init; }
     public string? TraceId { get; init; }
     public string? SpanId { get; init; }
+
+    /// <summary>Nickname of the user behind the event, the hidden-member placeholder for a deleted user, or null for a platform event.</summary>
+    /// <value>The actor's display name, the placeholder <c>Hidden member</c>, or <see langword="null"/> for a platform event.</value>
+    public string? ActorName { get; init; }
     public Instant TimeStampCreated { get; init; }
 }

@@ -160,27 +160,55 @@ public sealed class Arma3AdmissionLifecycleTests
         Assert.False(fixture.Process.IsRunning);
     }
 
-    /// <summary>A primary without an assigned HC does not install or load the managed readiness addon.</summary>
-    /// <returns>The asynchronous optional-instrumentation verification.</returns>
+    /// <summary>A primary without an assigned HC still installs and loads the addon that reports players.</summary>
+    /// <returns>The asynchronous always-on instrumentation verification.</returns>
     [Fact]
-    public async Task Start_WithoutHeadlessAssignmentDoesNotEnableAddon()
+    public async Task Start_WithoutHeadlessAssignmentStillEnablesAddonForPlayers()
     {
         using var fixture = new Fixture();
-        var command = fixture.Command("start");
+        var command = WithoutHeadlessTopology(fixture.Command("start"));
+
+        var result = await fixture.CreateExecutor().ExecuteAsync(command, CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Contains("-serverMod=" + Arma3JoinAddon.GetModPath(fixture.Paths), fixture.Process.ArgumentsAtStart);
+        Assert.True(File.Exists(Path.Combine(Arma3JoinAddon.GetModPath(fixture.Paths), "addons", "utf_hc_join.pbo")));
+        Assert.NotNull(await new Arma3JoinMonitor(fixture.Paths, TimeProvider.System)
+            .ReadSessionAsync(CancellationToken.None));
+    }
+
+    /// <summary>Readiness verification still completes at once when no headless client is assigned.</summary>
+    /// <returns>The asynchronous readiness verification.</returns>
+    [Fact]
+    public async Task VerifyReadiness_WithoutHeadlessAssignmentCompletesWithoutWaiting()
+    {
+        using var fixture = new Fixture(joinTimeout: TimeSpan.FromSeconds(30));
+        var executor = fixture.CreateExecutor();
+        Assert.True((await executor.ExecuteAsync(
+            WithoutHeadlessTopology(fixture.Command("start")), CancellationToken.None)).Succeeded);
+
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var result = await executor.ExecuteAsync(
+            WithoutHeadlessTopology(fixture.Command("verify-readiness")), CancellationToken.None);
+
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Equal("hc-not-required", result.Stage);
+        Assert.True(System.Diagnostics.Stopwatch.GetElapsedTime(started) < TimeSpan.FromSeconds(10));
+    }
+
+    /// <summary>Removes the headless-client endpoint so only the primary remains in the topology.</summary>
+    /// <param name="command">A command created by the fixture.</param>
+    /// <returns>The same command with a primary-only topology.</returns>
+    private static WorkerCommandClaimResponse WithoutHeadlessTopology(WorkerCommandClaimResponse command)
+    {
         var payload = JsonSerializer.Deserialize<WorkerCommandPayload>(command.Payload, CloudWorkerJson.Options)!;
-        command = command with
+        return command with
         {
             Payload = JsonSerializer.Serialize(payload with
             {
                 Topology = payload.Topology.Where(endpoint => endpoint.IsPrimary).ToArray(),
             }, CloudWorkerJson.Options),
         };
-
-        var result = await fixture.CreateExecutor().ExecuteAsync(command, CancellationToken.None);
-
-        Assert.True(result.Succeeded, result.ErrorMessage);
-        Assert.DoesNotContain(fixture.Process.ArgumentsAtStart, argument => argument.StartsWith("-serverMod="));
-        Assert.False(Directory.Exists(Arma3JoinAddon.GetModPath(fixture.Paths)));
     }
 
     /// <summary>A live primary and a previously logged success cannot satisfy the new readiness command.</summary>
@@ -270,6 +298,69 @@ public sealed class Arma3AdmissionLifecycleTests
         fixture.Process.IsRunning = false;
         var result = await executor.ExecuteAsync(fixture.Command("verify-readiness"), CancellationToken.None);
         Assert.Equal("hc-primary-not-running", result.ErrorCode);
+    }
+
+    /// <summary>A running primary with a fresh addon record reports the engine's human count without capacity.</summary>
+    /// <returns>The asynchronous player observation.</returns>
+    [Fact]
+    public async Task ObservePlayers_PrimaryWithFreshRecordReportsCountWithoutCapacity()
+    {
+        using var fixture = new Fixture();
+        var executor = fixture.CreateExecutor();
+        Assert.True((await executor.ExecuteAsync(fixture.Command("start"), CancellationToken.None)).Succeeded);
+        var monitor = new Arma3JoinMonitor(fixture.Paths, TimeProvider.System);
+        var session = Assert.IsType<Arma3JoinSession>(await monitor.ReadSessionAsync(CancellationToken.None));
+        Assert.Equal(WorkerMetricUnavailableReasons.Measuring,
+            (await executor.ObservePlayersAsync(CancellationToken.None)).UnavailableReason);
+        await File.WriteAllTextAsync(fixture.Paths.RuntimeLogPath,
+            $"UTFHC|1|{session.Nonce}|9|3|1\nUTFPL|1|{session.Nonce}|4|5\n");
+
+        var reading = await executor.ObservePlayersAsync(CancellationToken.None);
+
+        Assert.Equal(5, reading.Count);
+        Assert.Null(reading.Capacity);
+        Assert.Null(reading.UnavailableReason);
+    }
+
+    /// <summary>Without a launch session or a running process the executor never invents a player count.</summary>
+    /// <returns>The asynchronous player observation.</returns>
+    [Fact]
+    public async Task ObservePlayers_WithoutSessionOrProcessReportsMeasuring()
+    {
+        using var fixture = new Fixture();
+        var executor = fixture.CreateExecutor();
+        await File.WriteAllTextAsync(fixture.Paths.RuntimeLogPath, $"UTFPL|1|{new string('a', 32)}|1|5\n");
+        Assert.Equal(WorkerMetricUnavailableReasons.Measuring,
+            (await executor.ObservePlayersAsync(CancellationToken.None)).UnavailableReason);
+
+        fixture.Process.IsRunning = true;
+        var running = await executor.ObservePlayersAsync(CancellationToken.None);
+        Assert.Null(running.Count);
+        Assert.Equal(WorkerMetricUnavailableReasons.Measuring, running.UnavailableReason);
+
+        fixture.Process.IsRunning = false;
+        Assert.True((await executor.ExecuteAsync(fixture.Command("start"), CancellationToken.None)).Succeeded);
+        await File.WriteAllTextAsync(fixture.Paths.RuntimeLogPath,
+            $"UTFPL|1|{(await new Arma3JoinMonitor(fixture.Paths, TimeProvider.System).ReadSessionAsync(CancellationToken.None))!.Nonce}|1|5\n");
+        Assert.Equal(5, (await executor.ObservePlayersAsync(CancellationToken.None)).Count);
+        fixture.Process.IsRunning = false;
+        Assert.Equal(WorkerMetricUnavailableReasons.Measuring,
+            (await executor.ObservePlayersAsync(CancellationToken.None)).UnavailableReason);
+    }
+
+    /// <summary>A headless-client host has no player source of its own.</summary>
+    /// <returns>The asynchronous player observation.</returns>
+    [Fact]
+    public async Task ObservePlayers_HeadlessClientHostReportsGameDoesNotReport()
+    {
+        using var fixture = new Fixture(headless: true);
+        var executor = fixture.CreateExecutor();
+        Assert.True((await executor.ExecuteAsync(fixture.Command("start"), CancellationToken.None)).Succeeded);
+
+        var reading = await executor.ObservePlayersAsync(CancellationToken.None);
+
+        Assert.Null(reading.Count);
+        Assert.Equal(WorkerMetricUnavailableReasons.GameDoesNotReport, reading.UnavailableReason);
     }
 
     // These private test doubles are nested because their lifetimes and assertions belong only to this fixture.

@@ -6,6 +6,7 @@ import i18n, { i18nReady } from "@/app/i18n";
 import { initializeApiClient } from "@/api/client";
 import { setUiVariant } from "@/app/routes";
 import "highlight.js/styles/github-dark.css";
+import "@/styles/tokens.css";
 import "@/styles.css";
 
 const rootElement = document.getElementById("root");

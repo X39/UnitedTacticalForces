@@ -41,6 +41,7 @@ public sealed class CounterStrike2GameServerDefinitionRegistration : IGameServer
             new(ERuntimeNetworkProtocol.Udp, 27015, 27015, "Counter-Strike 2 game and query traffic"),
             new(ERuntimeNetworkProtocol.Tcp, 27015, 27015, "Counter-Strike 2 RCON traffic"),
         ],
+        ReportsPlayerCount = true,
         PrimaryConnection = new(ERuntimeNetworkProtocol.Udp, 27015, "Counter-Strike 2 server"),
         RuntimeInstallation = new(
             "730",
@@ -69,7 +70,8 @@ public sealed class CounterStrike2GameServerDefinitionRegistration : IGameServer
         },
         Secrets =
         [
-            new("rcon-password", "RCON password", true, true, true),
+            new("rcon-password", "RCON password", true, true, true,
+                AcceptsChosenValue: true, ValueFormat: EGameSecretValueFormat.Token),
             new("gslt", "Steam Game Server Login Token", true, false, false, true),
             new("join-password", "Join password", false, false, true),
         ],

@@ -14,6 +14,22 @@ internal sealed class NoOpGameServerAccessService : IGameServerAccessService
         CancellationToken cancellationToken = default)
         => Task.FromResult(new GameServerAccessDto());
 
+    public Task<GameServerUserAccessCandidateDto[]> SearchUserCandidatesAsync(
+        Guid gameServerId,
+        string? search,
+        int take,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(Array.Empty<GameServerUserAccessCandidateDto>());
+
+    public Task<GameServerRoleAccessCandidateDto[]> SearchRoleCandidatesAsync(
+        Guid gameServerId,
+        string? search,
+        int take,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(Array.Empty<GameServerRoleAccessCandidateDto>());
+
     public Task GrantUserAsync(
         Guid gameServerId,
         Guid userId,

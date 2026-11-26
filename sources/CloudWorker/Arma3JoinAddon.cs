@@ -3,7 +3,10 @@ using System.Text;
 
 namespace X39.UnitedTacticalForces.CloudWorker;
 
-/// <summary>Packages the worker-owned server addon that reports engine-observed Headless Client readiness.</summary>
+/// <summary>
+/// Packages the worker-owned server addon that reports engine-observed Headless Client readiness and the human
+/// player count of the server.
+/// </summary>
 internal static class Arma3JoinAddon
 {
     /// <summary>Resolves the private addon independently of user-selected or preserved mod content.</summary>

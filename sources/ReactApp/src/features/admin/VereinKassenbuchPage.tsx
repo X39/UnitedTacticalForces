@@ -1,15 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import { ApiError } from "@/api/client";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { currentLocale, formatCurrency, formatDate } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageVereinLedger } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { useAppRouteToast } from "@/components/AppToasts";
-import { Metric, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
+import { Metric, PageHeader, StatusBadge } from "@/components/primitives";
+import { SearchField } from "@/components/SearchField";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { financeTones, toneOf } from "@/components/statusTones";
 import {
   dateFilterInstant,
   kassenbuchQueryKeys,
@@ -70,9 +76,15 @@ export function Component() {
 
   if (!authorized)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Verein_KassenbuchAccessRequiredTitle")}>
-        {t("Pages_Command_Verein_KassenbuchAccessRequiredDescription")}
-      </StatePanel>
+      <PageStack>
+        <PageHeader
+          kicker={t("Shared_CommandCenter_Nav_VereinKassenbuch")}
+          title={t("Pages_Command_Verein_KassenbuchPageTitle")}
+        />
+        <ForbiddenState title={t("Pages_Command_Verein_KassenbuchAccessRequiredTitle")}>
+          {t("Pages_Command_Verein_KassenbuchAccessRequiredDescription")}
+        </ForbiddenState>
+      </PageStack>
     );
 
   const data = query.data;
@@ -87,49 +99,38 @@ export function Component() {
     query.error instanceof ApiError &&
     (query.error.code === "unauthorized" || query.error.code === "forbidden");
   return (
-    <section className="verein-kassenbuch-page">
+    <PageStack>
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_VereinKassenbuch")}
         title={t("Pages_Command_Verein_KassenbuchPageTitle")}
         description={t("Pages_Command_Verein_KassenbuchPageDescription")}
         actions={
           <>
-            <button
-              className="button button--ghost"
-              type="button"
+            <ActionButton
+              variant="ghost"
               disabled={query.isFetching}
               onClick={() => void query.refetch()}
             >
               {t("Pages_Command_Verein_ActionRefresh")}
-            </button>
-            <Link className="button button--ghost" to="/verein/kassenbuch">
+            </ActionButton>
+            <ActionLink variant="ghost" to="/verein/kassenbuch">
               {t("Pages_Command_Verein_KassenbuchMemberView")}
-            </Link>
-            <Link className="button button--primary" to="/command/verein/kassenbuch/create">
+            </ActionLink>
+            <ActionLink variant="gold" to="/command/verein/kassenbuch/create">
               {t("Pages_Command_Verein_LedgerAddEntry")}
-            </Link>
+            </ActionLink>
           </>
         }
       />
 
       {forbidden ? (
-        <StatePanel
-          kind="forbidden"
-          title={t("Pages_Command_Verein_KassenbuchAccessRequiredTitle")}
-        >
+        <ForbiddenState title={t("Pages_Command_Verein_KassenbuchAccessRequiredTitle")}>
           {t("Pages_Command_Verein_KassenbuchAccessRequiredDescription")}
-        </StatePanel>
+        </ForbiddenState>
       ) : query.isError ? (
-        <StatePanel
-          kind="error"
-          action={
-            <button className="button button--ghost" type="button" onClick={() => query.refetch()}>
-              {t("React_UI_Retry")}
-            </button>
-          }
-        >
+        <ErrorState onRetry={() => void query.refetch()}>
           {formatResource(t("Pages_Command_Verein_LoadError"), query.error.message)}
-        </StatePanel>
+        </ErrorState>
       ) : null}
 
       <section
@@ -166,52 +167,42 @@ export function Component() {
           setFilters(formFilters);
         }}
       >
-        <label className="search-field">
-          <span className="sr-only">{t("Pages_Command_Verein_KassenbuchSearchPlaceholder")}</span>
-          <input
-            value={formFilters.search}
-            placeholder={t("Pages_Command_Verein_KassenbuchSearchPlaceholder")}
-            onChange={(event) =>
-              setFormFilters((current) => ({ ...current, search: event.target.value }))
-            }
-          />
-        </label>
-        <label>
-          <span>{t("Pages_Command_Verein_LedgerFormCategory")}</span>
-          <input
-            value={formFilters.category}
-            maxLength={96}
-            onChange={(event) =>
-              setFormFilters((current) => ({ ...current, category: event.target.value }))
-            }
-          />
-        </label>
-        <label>
-          <span>{t("Pages_Command_Verein_KassenbuchFilterFrom")}</span>
-          <input
-            type="date"
-            value={formFilters.from}
-            onChange={(event) =>
-              setFormFilters((current) => ({ ...current, from: event.target.value }))
-            }
-          />
-        </label>
-        <label>
-          <span>{t("Pages_Command_Verein_KassenbuchFilterTo")}</span>
-          <input
-            type="date"
-            value={formFilters.to}
-            onChange={(event) =>
-              setFormFilters((current) => ({ ...current, to: event.target.value }))
-            }
-          />
-        </label>
-        <button className="button button--ghost" type="submit" disabled={query.isFetching}>
+        <SearchField
+          label={t("Pages_Command_Verein_KassenbuchSearchPlaceholder")}
+          placeholder={t("Pages_Command_Verein_KassenbuchSearchPlaceholder")}
+          clearLabel={t("Common_SearchClear")}
+          value={formFilters.search}
+          onChange={(search) => setFormFilters((current) => ({ ...current, search }))}
+        />
+        <TextField
+          label={t("Pages_Command_Verein_LedgerFormCategory")}
+          value={formFilters.category}
+          maxLength={96}
+          onChange={(event) =>
+            setFormFilters((current) => ({ ...current, category: event.target.value }))
+          }
+        />
+        <TextField
+          label={t("Pages_Command_Verein_KassenbuchFilterFrom")}
+          type="date"
+          value={formFilters.from}
+          onChange={(event) =>
+            setFormFilters((current) => ({ ...current, from: event.target.value }))
+          }
+        />
+        <TextField
+          label={t("Pages_Command_Verein_KassenbuchFilterTo")}
+          type="date"
+          value={formFilters.to}
+          onChange={(event) =>
+            setFormFilters((current) => ({ ...current, to: event.target.value }))
+          }
+        />
+        <ActionButton variant="ghost" type="submit" disabled={query.isFetching}>
           {t("Pages_Command_Verein_KassenbuchApplyFilters")}
-        </button>
-        <button
-          className="button button--ghost"
-          type="button"
+        </ActionButton>
+        <ActionButton
+          variant="ghost"
           disabled={query.isFetching}
           onClick={() => {
             setFormFilters(emptyFilters);
@@ -219,11 +210,11 @@ export function Component() {
           }}
         >
           {t("Pages_Command_Verein_KassenbuchClearFilters")}
-        </button>
+        </ActionButton>
       </form>
 
       {query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_Verein_Loading")}</StatePanel>
+        <LoadingState label={t("Pages_Command_Verein_Loading")} />
       ) : data ? (
         <section className="command-panel verein-kassenbuch-list">
           <header className="command-panel__header verein-kassenbuch-list__header">
@@ -234,7 +225,9 @@ export function Component() {
             <StatusBadge>{countLabel}</StatusBadge>
           </header>
           {data.entries.length === 0 ? (
-            <StatePanel kind="empty">{t("Pages_Command_Verein_KassenbuchNoRows")}</StatePanel>
+            <EmptyState title={t("Pages_Command_Verein_KassenbuchEmptyTitle")}>
+              {t("Pages_Command_Verein_KassenbuchEmptyBody")}
+            </EmptyState>
           ) : (
             <div className="command-table-scroll">
               <table className="command-table verein-kassenbuch-table">
@@ -256,7 +249,12 @@ export function Component() {
                       <td>{entry.description}</td>
                       <td>{entry.documentNumber || entry.reference || "—"}</td>
                       <td>
-                        <StatusBadge tone={entry.direction === "Expense" ? "danger" : "success"}>
+                        <StatusBadge
+                          tone={toneOf(
+                            financeTones,
+                            entry.direction === "Expense" ? "expense" : "income",
+                          )}
+                        >
                           {formatCurrency(
                             entry.direction === "Expense" ? -entry.amount : entry.amount,
                             entry.currency,
@@ -264,12 +262,12 @@ export function Component() {
                         </StatusBadge>
                       </td>
                       <td>
-                        <Link
-                          className="button button--ghost"
+                        <ActionLink
+                          variant="ghost"
                           to={`/command/verein/kassenbuch/${entry.primaryKey}/edit`}
                         >
                           {t("Pages_Command_Verein_KassenbuchActionEdit")}
-                        </Link>
+                        </ActionLink>
                       </td>
                     </tr>
                   ))}
@@ -279,6 +277,6 @@ export function Component() {
           )}
         </section>
       ) : null}
-    </section>
+    </PageStack>
   );
 }

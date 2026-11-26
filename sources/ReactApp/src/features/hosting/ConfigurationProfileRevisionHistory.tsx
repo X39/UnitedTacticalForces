@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatResource } from "@/app/i18n";
+import { Disclosure } from "@/components/Disclosure";
 import { formatDate } from "@/features/hosting/model";
 import type {
   ConfigurationDefinition,
@@ -67,6 +69,7 @@ function RevisionEntry({
   definitionByKey: Map<string, ConfigurationDefinition>;
 }) {
   const { t } = useTranslation();
+  const [snapshotOpen, setSnapshotOpen] = useState(false);
   const changes = revision.changes ?? [];
   const groupedChanges = Object.entries(
     changes.reduce<Record<string, typeof changes>>((result, change) => {
@@ -146,8 +149,12 @@ function RevisionEntry({
             ))}
           </div>
         )}
-        <details className="next-hosting-revision-snapshot">
-          <summary>{t("React_ConfigurationProfiles_FullSnapshot")}</summary>
+        <Disclosure
+          className="next-hosting-revision-snapshot"
+          title={t("React_ConfigurationProfiles_FullSnapshot")}
+          open={snapshotOpen}
+          onOpenChange={setSnapshotOpen}
+        >
           <dl className="next-hosting-facts next-hosting-facts--compact">
             {definitions
               .filter(
@@ -165,7 +172,7 @@ function RevisionEntry({
                 </div>
               ))}
           </dl>
-        </details>
+        </Disclosure>
       </article>
     </li>
   );

@@ -1,0 +1,130 @@
+/*
+ * Styles for the Mods panel of the Settings section and the mod pack contents diff of the review dialog.
+ *
+ * The file consumes --utf-* tokens only. The only allowed literals are a 1px border width and the 520px and 800px
+ * media breakpoints; tests/styles/server-style-guard.test.ts fails on anything else. Pack and mod titles come from
+ * the API: they wrap and are never ellipsized, so every text rule below allows an anywhere break.
+ */
+
+/* Panel body inside the collapsible Settings panel: the description, the chooser and the lines below it, one stack. */
+.mods-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-md);
+}
+
+.mods-panel__description,
+.mods-panel__line {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/* Contents and unavailable-pack lists: plain stacks; a long pack stays a list and wraps, never ellipsized. */
+.mods-panel__list {
+  margin: 0;
+  padding-inline-start: var(--utf-space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+  overflow-wrap: anywhere;
+}
+
+.mods-panel__list--packs {
+  padding-inline-start: 0;
+  list-style: none;
+  gap: var(--utf-space-sm);
+}
+
+.mods-panel__pack-title,
+.mods-panel__pack-reason {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.mods-panel__pack-reason {
+  color: var(--utf-text-muted);
+}
+
+/* Contents diff of the review: a one-line note, or the Added, Removed and Unchanged groups stacked. */
+.mod-diff,
+.mod-diff__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+}
+
+.mod-diff__note {
+  margin: 0;
+  color: var(--utf-text-muted);
+  font-size: var(--utf-text-body);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+/* Label-style group heading: the word and the count always visible, so no color carries the meaning alone. */
+.mod-diff__heading {
+  margin: 0;
+  font-weight: var(--utf-weight-bold);
+  line-height: var(--utf-leading-body);
+  overflow-wrap: anywhere;
+}
+
+.mod-diff__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--utf-space-xs);
+}
+
+.mod-diff__entry {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--utf-space-sm);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mod-diff__marker {
+  flex: none;
+}
+
+/* Added uses the success family and removed the warning family; a removal is never shown as danger. */
+.mod-diff__marker--added {
+  color: var(--utf-state-success-fg);
+}
+
+.mod-diff__marker--removed {
+  color: var(--utf-state-warning-fg);
+}
+
+.mod-diff__toggle {
+  align-self: flex-start;
+}
+
+/*
+ * The disclosure around the groups sits inside the review row without an extra box: no border, no fill and no inline
+ * padding, so it reads as one link-like line under the values. The two-class selectors outrank the single-class
+ * disclosure rules.
+ */
+.mod-diff__disclosure .disclosure__summary {
+  min-height: var(--utf-control-height-compact);
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+}
+
+.mod-diff__disclosure .disclosure__content {
+  padding-top: var(--utf-space-sm);
+}
+
+@media (max-width: 800px) {
+  .mod-diff__disclosure .disclosure__summary {
+    min-height: var(--utf-control-height-touch);
+  }
+}

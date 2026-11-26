@@ -32,6 +32,13 @@ public sealed record GameServerDefinition(
     /// <value>The advertised player endpoint, or no endpoint when the game does not expose one.</value>
     public GameServerConnectionDefinition? PrimaryConnection { get; init; }
 
+    /// <summary>
+    /// Whether the game's worker can report a player count. This is the structural availability of idle shutdown;
+    /// a transient unavailable reading does not change it.
+    /// </summary>
+    /// <value><see langword="true" /> when the worker reports player counts; <see langword="false" /> by default.</value>
+    public bool ReportsPlayerCount { get; init; }
+
     /// <summary>Gets the game installation and credential requirements used by the dedicated worker.</summary>
     /// <value>Installation metadata; no game process is executed by the API catalog.</value>
     public GameRuntimeInstallationDefinition? RuntimeInstallation { get; init; }

@@ -1,6 +1,4 @@
-import { z } from "zod";
 import { currentLocale } from "@/app/format";
-import type { TranslationKey } from "@/app/localizationTypes";
 import type {
   ConfigurationDefinition,
   ConfigurationValue,
@@ -69,20 +67,6 @@ export function isStorageSelectionValid(
   );
 }
 
-export const serverCreationSchema = z.object({
-  title: z.string().trim().min(1).max(256),
-  gameIdentifier: z.string().min(1),
-  runtimeProviderIdentifier: z.string().min(1),
-  runtimeProfileIdentifier: z.string().min(1),
-  runtimeStorageStrategy: z.enum(["IncludedDisk", "AutomaticExternal", "FixedExternal"]),
-  externalStorageSizeGiB: z.number().int().positive().nullable(),
-  modPackDefinitionId: z.number().int().positive().nullable(),
-  configurationProfileId: z.string().uuid().nullable(),
-  isLaunchDisabled: z.boolean(),
-});
-
-export type ServerCreationForm = z.infer<typeof serverCreationSchema>;
-
 export function configurationDraftValue(
   definition: ConfigurationDefinition,
   value?: unknown,
@@ -112,7 +96,7 @@ export class ConfigurationValidationError extends Error {
   }
 }
 
-export function parseConfigurationValue(definition: ConfigurationDefinition, raw: string): unknown {
+function parseConfigurationValue(definition: ConfigurationDefinition, raw: string): unknown {
   const kind = definition.kind.toLowerCase();
   if (kind === "boolean") return raw === "true";
   if (kind === "integer") {
@@ -268,44 +252,25 @@ export function formatMoney(value: number | null | undefined, currency = "EUR"):
   return new Intl.NumberFormat(currentLocale(), { style: "currency", currency }).format(value);
 }
 
+/**
+ * Formats an hourly rate with at least two and at most four fraction digits.
+ *
+ * Hourly cloud rates can be below one cent, and the two digits that `formatMoney` uses by
+ * default would round such a rate up to one cent.
+ */
+export function formatHourlyRate(value: number, currency = "EUR"): string {
+  return new Intl.NumberFormat(currentLocale(), {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(value);
+}
+
 export function humanizeToken(value: string | null | undefined): string {
   if (!value) return "—";
   return value
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/[-_]+/g, " ")
     .replace(/^./, (character) => character.toUpperCase());
-}
-
-const deploymentStatusKeys: Record<string, TranslationKey> = {
-  Provisioning: "Hosting_DeploymentStatus_Provisioning",
-  WaitingForWorker: "Hosting_DeploymentStatus_WaitingForWorker",
-  Preparing: "Hosting_DeploymentStatus_Preparing",
-  Running: "Hosting_DeploymentStatus_Running",
-  Stopping: "Hosting_DeploymentStatus_Stopping",
-  PreservationFailed: "Hosting_DeploymentStatus_PreservationFailed",
-  Terminating: "Hosting_DeploymentStatus_Terminating",
-  Stopped: "Hosting_DeploymentStatus_Stopped",
-  TerminatingDueToFault: "Hosting_DeploymentStatus_TerminatingDueToFault",
-  TerminatedDueToFault: "Hosting_DeploymentStatus_TerminatedDueToFault",
-  Failed: "Hosting_DeploymentStatus_Failed",
-  Terminated: "Hosting_DeploymentStatus_Terminated",
-};
-
-const serverMessageKeys: Record<string, TranslationKey> = {
-  "Server Operate permission is required.": "Hosting_ServerMessage_OperatePermissionRequired",
-  "Another lifecycle operation is pending.": "Hosting_ServerMessage_OperationPending",
-  "Server launch is disabled.": "Hosting_ServerMessage_LaunchDisabled",
-  "This action is unavailable in the current deployment state.":
-    "Hosting_ServerMessage_ActionUnavailableForState",
-  "Termination is already in progress.": "Hosting_ServerMessage_TerminationPending",
-  "Confirm this server action.": "Hosting_ServerMessage_ConfirmAction",
-  "Live unpublished data will be lost.": "Hosting_ServerMessage_LiveDataWillBeLost",
-};
-
-export function deploymentStatusKey(value: string | null | undefined): TranslationKey | undefined {
-  return value ? deploymentStatusKeys[value] : undefined;
-}
-
-export function serverMessageKey(value: string | null | undefined): TranslationKey | undefined {
-  return value ? serverMessageKeys[value] : undefined;
 }

@@ -1,8 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { SelectField, TextField } from "@/components/FormFields";
 import { financeQueryKeys, financeService } from "@/features/hosting/financeService";
 
+/**
+ * A labelled account chooser: a search field that narrows a labelled select of billing accounts.
+ *
+ * The select is a shared {@link SelectField}, so a `name` makes its value part of a surrounding form. Frozen accounts
+ * are never offered.
+ *
+ * @param props.value The chosen cost owner id, or an empty string for none.
+ * @param props.name Optional form field name of the select.
+ * @param props.label Visible label of the select.
+ * @param props.allowAll Offers "All" instead of "Select an account" as the empty choice.
+ * @param props.excludeId A cost owner id that is left out of the list.
+ * @param props.required Marks the select as required.
+ * @param props.onChange Called with the chosen cost owner id.
+ * @returns The search field and the select.
+ */
 export function FinanceAccountPicker({
   value,
   name,
@@ -27,31 +43,28 @@ export function FinanceAccountPicker({
     queryFn: ({ signal }) => financeService.owners(search, 0, 50, undefined, false, signal),
   });
   return (
-    <div className="finance-picker">
-      <label className="field">
-        <span>{t("HostingFinance_SearchAccounts")}</span>
-        <input value={search} onChange={(event) => setSearch(event.target.value)} />
-      </label>
-      <label className="field">
-        <span>{label}</span>
-        <select
-          name={name}
-          value={value}
-          required={required}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          <option value="">
-            {t(allowAll ? "HostingFinance_FilterAll" : "HostingFinance_SelectAccount")}
-          </option>
-          {accounts.data?.owners
+    <>
+      <TextField
+        label={t("HostingFinance_SearchAccounts")}
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
+      <SelectField
+        name={name}
+        label={label}
+        value={value}
+        required={required}
+        options={[
+          {
+            value: "",
+            label: t(allowAll ? "HostingFinance_FilterAll" : "HostingFinance_SelectAccount"),
+          },
+          ...(accounts.data?.owners ?? [])
             .filter((owner) => owner.costOwnerId !== excludeId)
-            .map((owner) => (
-              <option key={owner.costOwnerId} value={owner.costOwnerId}>
-                {owner.displayName}
-              </option>
-            ))}
-        </select>
-      </label>
-    </div>
+            .map((owner) => ({ value: owner.costOwnerId, label: owner.displayName })),
+        ]}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </>
   );
 }

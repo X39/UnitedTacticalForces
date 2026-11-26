@@ -687,6 +687,212 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cost-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the caller's undismissed cost alerts, newest first, at most 50. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CostAlertDto"][];
+                        "application/json": components["schemas"]["CostAlertDto"][];
+                        "text/json": components["schemas"]["CostAlertDto"][];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-alerts/{costAlertId}/dismissal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismisses one cost alert for the caller only. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The identifier of the alert. */
+                    costAlertId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-alerts/dismissals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismisses, for the caller only, the listed visible undismissed cost alerts of one server. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description A token that cancels the request. */
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CostAlertDismissAllPayload"];
+                    "text/json": components["schemas"]["CostAlertDismissAllPayload"];
+                    "application/*+json": components["schemas"]["CostAlertDismissAllPayload"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-owners/{costOwnerId}/alert-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads the alert settings of one cost owner. */
+        get: operations["GetAlertSettingsAsync"];
+        /** Replaces the alert settings of one cost owner. */
+        put: operations["UpdateAlertSettingsAsync"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cost-owners/mine/alert-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reads the alert settings of the caller's personal cost owner. */
+        get: operations["GetMyAlertSettingsAsync"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cost-owners": {
         parameters: {
             query?: never;
@@ -2702,6 +2908,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/game-servers/{gameServerId}/automation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replaces the automation settings and weekly schedule rules of one game server. */
+        put: operations["UpdateAutomationAsync"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/game-servers/{gameServerId}/configuration": {
         parameters: {
             query?: never;
@@ -2709,11 +2932,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Resolves the effective configuration of a server, including the tier each option belongs to. */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description The identifier of the game server. */
                     gameServerId: string;
                 };
                 cookie?: never;
@@ -2725,19 +2950,37 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "text/plain": components["schemas"]["GameConfigurationDto"];
+                        "application/json": components["schemas"]["GameConfigurationDto"];
+                        "text/json": components["schemas"]["GameConfigurationDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
             };
         };
+        /** Applies configuration value updates and resets to a server and records that the change waits for the next start. */
         put: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description The identifier of the game server. */
                     gameServerId: string;
                 };
                 cookie?: never;
             };
+            /** @description Cancels the request. */
             requestBody: {
                 content: {
                     "application/json": components["schemas"]["ServerConfigurationUpdatePayload"];
@@ -2751,7 +2994,33 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "text/plain": components["schemas"]["GameConfigurationDto"];
+                        "application/json": components["schemas"]["GameConfigurationDto"];
+                        "text/json": components["schemas"]["GameConfigurationDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
             };
         };
@@ -2770,15 +3039,21 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /**
+         * Selects the configuration profile and revision mode of a server. A selection that equals the stored one is a
+         *     no-op and neither audits nor marks a pending change.
+         */
         put: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description The identifier of the game server. */
                     gameServerId: string;
                 };
                 cookie?: never;
             };
+            /** @description Cancels the request. */
             requestBody: {
                 content: {
                     "application/json": components["schemas"]["GameServerConfigurationProfileSelectionPayload"];
@@ -2787,12 +3062,34 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description OK */
-                200: {
+                /** @description No Content */
+                204: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
             };
         };
@@ -2810,11 +3107,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * Lists the non-archived configuration profiles that match the game of the server, each with the identifier of its
+         *     latest revision.
+         */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description The identifier of the game server. */
                     gameServerId: string;
                 };
                 cookie?: never;
@@ -2826,7 +3128,22 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "text/plain": components["schemas"]["ConfigurationProfileSummaryDto"][];
+                        "application/json": components["schemas"]["ConfigurationProfileSummaryDto"][];
+                        "text/json": components["schemas"]["ConfigurationProfileSummaryDto"][];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
             };
         };
@@ -3193,45 +3510,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/game-servers/{gameServerId}/actions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    gameServerId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["GameServerActionDto"][];
-                        "application/json": components["schemas"]["GameServerActionDto"][];
-                        "text/json": components["schemas"]["GameServerActionDto"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/game-servers/{gameServerId}/mod-pack-options": {
         parameters: {
             query?: never;
@@ -3259,6 +3537,236 @@ export interface paths {
                         "text/plain": components["schemas"]["GameServerModPackOptionDto"][];
                         "application/json": components["schemas"]["GameServerModPackOptionDto"][];
                         "text/json": components["schemas"]["GameServerModPackOptionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-servers/{gameServerId}/mod-pack-options/{modPackDefinitionId}/contents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gets the flattened contents of one mod pack of the server's game, resolved as the next Start would. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game server the pack is inspected for. */
+                    gameServerId: string;
+                    /** @description The mod pack definition to inspect. */
+                    modPackDefinitionId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GameServerModPackContentsDto"];
+                        "application/json": components["schemas"]["GameServerModPackContentsDto"];
+                        "text/json": components["schemas"]["GameServerModPackContentsDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-servers/{gameServerId}/accrued-cost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gets the provider cost accrued by the current or most recent session of the server, calculated by the control
+         *     plane from charged ledger slices.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game server whose session cost is requested. */
+                    gameServerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GameServerAccruedCostDto"];
+                        "application/json": components["schemas"]["GameServerAccruedCostDto"];
+                        "text/json": components["schemas"]["GameServerAccruedCostDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-servers/{gameServerId}/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gets the current metric readings of the server, decided by the control plane from the latest sample of its
+         *     primary worker.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description The game server whose readings are requested. */
+                    gameServerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GameServerMetricsDto"];
+                        "application/json": components["schemas"]["GameServerMetricsDto"];
+                        "text/json": components["schemas"]["GameServerMetricsDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-servers/{gameServerId}/metrics/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gets the retained metric history of the server for one range from the rollup tier of that range. */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The range code: `1h`, `24h` or `7d`. */
+                    range?: string;
+                };
+                header?: never;
+                path: {
+                    /** @description The game server whose history is requested. */
+                    gameServerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GameServerMetricsHistoryDto"];
+                        "application/json": components["schemas"]["GameServerMetricsHistoryDto"];
+                        "text/json": components["schemas"]["GameServerMetricsHistoryDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
@@ -3566,6 +4074,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/game-servers/{gameServerId}/cost-owner/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lists the cost owners the caller may transfer the server to. Administrators receive every owner, everyone else
+         *     receives their own owner and the owners they hold an exact cost-owner use grant for. The server's current owner
+         *     is never listed and frozen owners are listed with their frozen flag set.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The optional owner display-name search text; blank text matches every owner. */
+                    search?: string;
+                    /** @description The maximum number of owners, from 1 to 50. */
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description The game server identity. */
+                    gameServerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GameServerCostOwnerOptionDto"][];
+                        "application/json": components["schemas"]["GameServerCostOwnerOptionDto"][];
+                        "text/json": components["schemas"]["GameServerCostOwnerOptionDto"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/game-servers/{gameServerId}/cost-owner": {
         parameters: {
             query?: never;
@@ -3821,6 +4412,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/game-servers/{gameServerId}/access/users/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Searches the members that can still be given direct access to the server: verified members who are neither
+         *     deleted nor banned and hold no direct grant on the server.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The optional nickname search text; blank text matches every member. */
+                    search?: string;
+                    /** @description The maximum number of candidates, from 1 to 50. */
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description The game server identity. */
+                    gameServerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GameServerUserAccessCandidateDto"][];
+                        "application/json": components["schemas"]["GameServerUserAccessCandidateDto"][];
+                        "text/json": components["schemas"]["GameServerUserAccessCandidateDto"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/game-servers/{gameServerId}/access/roles/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Searches the roles that can still be given direct access to the server: roles that hold no direct grant on
+         *     the server. Each candidate reports its active member count.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description The optional role title search text; blank text matches every role. */
+                    search?: string;
+                    /** @description The maximum number of candidates, from 1 to 50. */
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description The game server identity. */
+                    gameServerId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GameServerRoleAccessCandidateDto"][];
+                        "application/json": components["schemas"]["GameServerRoleAccessCandidateDto"][];
+                        "text/json": components["schemas"]["GameServerRoleAccessCandidateDto"][];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/game-servers/{gameServerId}/access/users/grant": {
         parameters: {
             query?: never;
@@ -3992,11 +4747,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Lists the secret slots of a game and whether each has a current value. */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description The identifier of the game server. */
                     gameServerId: string;
                 };
                 cookie?: never;
@@ -4014,17 +4771,42 @@ export interface paths {
                         "text/json": components["schemas"]["GameServerSecretStatusDto"][];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
             };
         };
+        /** Supplies a new value for a user-provided or externally issued secret. */
         put: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description The identifier of the game server. */
                     gameServerId: string;
                 };
                 cookie?: never;
             };
+            /** @description A token that cancels the request. */
             requestBody: {
                 content: {
                     "application/json": components["schemas"]["GameServerSecretValuePayload"];
@@ -4033,12 +4815,56 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description OK */
-                200: {
+                /** @description No Content */
+                204: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ValidationProblemDetails"];
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                        "text/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
             };
         };
@@ -4058,12 +4884,18 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * Replaces a platform-generated secret with a freshly generated value and returns that value once to the
+         *     acting member. The reveal permission is not required because only the value this call generated is returned.
+         */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description The identifier of the game server. */
                     gameServerId: string;
+                    /** @description The key of the generated secret. */
                     key: string;
                 };
                 cookie?: never;
@@ -4075,7 +4907,55 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "text/plain": components["schemas"]["GameServerSecretValueDto"];
+                        "application/json": components["schemas"]["GameServerSecretValueDto"];
+                        "text/json": components["schemas"]["GameServerSecretValueDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ValidationProblemDetails"];
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                        "text/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
             };
         };
@@ -4094,19 +4974,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * Reveals the current value of a revealable secret and records an audit entry. Reveal stays available on
+         *     archived servers because it is read-only.
+         */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description The identifier of the game server. */
                     gameServerId: string;
+                    /** @description The key of the secret to reveal. */
                     key: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description OK */
+                /**
+                 * @description The secret value with `Cache-Control: no-store`, `403` without the reveal permission or for a
+                 *     non-revealable secret, or `404`.
+                 */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -5729,6 +6618,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/me/locale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Records the language the currently logged-in user reads messages in, such as cost alerts. */
+        post: operations["UpdateMeLocaleAsync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/me/settings": {
         parameters: {
             query?: never;
@@ -6356,6 +7262,34 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description The accrued provider cost of one hosting session, calculated by the control plane. */
+        AccruedCostDto: {
+            /**
+             * Format: uuid
+             * @description Gets the deployment that forms the session.
+             *     The primary key of the deployment the amount belongs to.
+             */
+            deploymentId: string;
+            amount: null | number;
+            /**
+             * @description Gets the currency of decimal? AccruedCostDto.Amount.
+             *     The ISO currency code; currently always `EUR`.
+             */
+            currency?: string;
+            /**
+             * @description Gets the instant the amount is valid for.
+             *     The request instant while cost may still accrue, or the resolution instant once it has stopped.
+             */
+            asOf: components["schemas"]["Instant"];
+            /**
+             * @description Gets whether the amount is final.
+             *     `true` when cost has stopped and the amount can no longer advance.
+             */
+            isFinal: boolean;
+            unavailableReason?: null | string;
+            billingUnitSeconds?: null | number;
+            billedThrough?: null | components["schemas"]["Instant"];
+        };
         /** @description Public, secret-free authentication provider availability. */
         AuthenticationProvidersDto: {
             /** @description Whether Steam authentication is registered and available. */
@@ -6713,6 +7647,20 @@ export interface components {
             /** @description Gets the desired exact permissions. */
             permissions?: string[];
         };
+        ConfigurationProfileSummaryDto: {
+            /** Format: uuid */
+            primaryKey?: string;
+            title?: string;
+            gameIdentifier?: string;
+            isArchived?: boolean;
+            /**
+             * Format: int32
+             * @description Gets the number of the newest revision, or zero when the profile has no revision.
+             */
+            latestRevisionNumber?: number;
+            latestRevisionId?: null | string;
+            timeStampUpdated?: components["schemas"]["Instant"];
+        };
         /** @description Describes the desired direct profile permissions for one user. */
         ConfigurationProfileUserAccessRowPayload: {
             /**
@@ -6742,6 +7690,183 @@ export interface components {
             artifactIdentifier?: null | string;
             checksumSha256?: null | string;
             artifactSizeBytes?: null | number;
+        };
+        /** @description Dismisses, for the calling viewer, the listed cost alerts of one game server. */
+        CostAlertDismissAllPayload: {
+            /**
+             * Format: uuid
+             * @description Gets the game server whose alerts are dismissed.
+             *     The primary key of the game server.
+             */
+            gameServerId?: string;
+            /**
+             * @description Gets the alerts the client shows; alerts raised later are never dismissed by this request.
+             *     One to fifty alert ids; ids of other servers or unviewable cost owners are ignored.
+             */
+            costAlertIds: string[];
+        };
+        /**
+         * @description One in-app cost alert: the record that the accrued cost of a session reached one threshold of its cost owner, or
+         *     that an automatic stop is pending for it.
+         */
+        CostAlertDto: {
+            /**
+             * Format: uuid
+             * @description Gets the identifier of the alert, used to dismiss it.
+             *     The primary key of the persisted alert.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Gets the server whose session reached the threshold.
+             *     The primary key of the game server.
+             */
+            serverId: string;
+            /**
+             * @description Gets the title of the server whose session reached the threshold.
+             *     The current title of the game server.
+             */
+            serverName: string;
+            /**
+             * Format: uuid
+             * @description Gets the cost owner the session was billed to when the threshold was reached.
+             *     The primary key of the cost owner.
+             */
+            costOwnerId: string;
+            /**
+             * Format: double
+             * @description Gets the threshold that was reached.
+             *     The threshold amount in string CostAlertDto.Currency.
+             */
+            thresholdAmount: number;
+            /**
+             * Format: double
+             * @description Gets the accrued cost at the instant the crossing was recorded.
+             *     The accrued amount in string CostAlertDto.Currency; it is never updated after the crossing.
+             */
+            accruedAmount: number;
+            /**
+             * @description Gets the currency of both amounts.
+             *     The ISO currency code.
+             */
+            currency: string;
+            /**
+             * @description Gets the instant the crossing was recorded.
+             *     The creation time of the alert.
+             */
+            createdAt: components["schemas"]["Instant"];
+            /**
+             * @description Gets what the alert announces.
+             *     ECostAlertKind.CostThreshold for a threshold crossing and ECostAlertKind.AutoStop
+             *     for an automatic stop warning.
+             */
+            kind: components["schemas"]["ECostAlertKind"];
+            stopsAt: null | components["schemas"]["Instant"];
+            stopReason: null | components["schemas"]["EAutoStopReason"];
+            stopLimit: null | number;
+        };
+        /**
+         * @description The cost alert configuration of one cost owner together with what the viewer may do with it and which channels
+         *     can currently deliver.
+         */
+        CostAlertSettingsDto: {
+            /**
+             * Format: uuid
+             * @description Gets the cost owner the settings belong to.
+             *     The primary key of the cost owner.
+             */
+            costOwnerId: string;
+            /**
+             * @description Gets the display name of the cost owner.
+             *     The name shown in the editor heading.
+             */
+            costOwnerName: string;
+            /**
+             * Format: int32
+             * @description Gets the revision of the stored setting.
+             *     `0` while nothing was saved; otherwise the counter that is incremented on every save and must be sent
+             *     back unchanged to save again.
+             */
+            revision: number;
+            /**
+             * @description Gets the alert amounts.
+             *     The absolute accrued amounts, in ascending order, at which an alert is raised; empty means none.
+             */
+            thresholds: number[];
+            /**
+             * @description Gets whether alerts are delivered as Discord direct messages.
+             *     `true` when the Discord channel is enabled for this owner.
+             */
+            discordEnabled: boolean;
+            /**
+             * @description Gets whether alerts are delivered by email.
+             *     `true` when the email channel is enabled for this owner.
+             */
+            emailEnabled: boolean;
+            /**
+             * @description Gets the currency of the thresholds.
+             *     The ISO currency code of the cost owner.
+             */
+            currency: string;
+            /**
+             * Format: int32
+             * @description Gets the largest number of thresholds a save may carry.
+             *     The configured limit on the number of alert amounts.
+             */
+            maxThresholds: number;
+            /**
+             * Format: double
+             * @description Gets the largest alert amount a save may carry.
+             *     The configured upper bound of one alert amount, in string CostAlertSettingsDto.Currency.
+             */
+            maxThresholdAmount: number;
+            /**
+             * @description Gets whether the viewer may save changes.
+             *     `true` when the viewer may use the cost owner.
+             */
+            canManage: boolean;
+            /**
+             * @description Gets who the alerts of this owner are addressed to.
+             *     ECostAlertAudience.Self for a personal owner, otherwise ECostAlertAudience.Group.
+             */
+            audience: components["schemas"]["ECostAlertAudience"];
+            /**
+             * @description Gets whether the Discord channel can reach the recipients.
+             *     The availability of Discord direct messages for the current recipients.
+             */
+            discord: components["schemas"]["ECostAlertChannelAvailability"];
+            /**
+             * @description Gets whether the email channel can reach the recipients.
+             *     The availability of email for the current recipients.
+             */
+            email: components["schemas"]["ECostAlertChannelAvailability"];
+            messageLanguage?: null | string;
+        };
+        /** @description A full replacement of the cost alert configuration of one cost owner. */
+        CostAlertSettingsUpdate: {
+            /**
+             * Format: int32
+             * @description Gets the revision the editor loaded.
+             *     The revision of the read this save is based on; a save with a different revision is rejected as a conflict.
+             */
+            revision?: number;
+            /**
+             * @description Gets the complete list of alert amounts.
+             *     The absolute amounts to alert at. Each must be above zero, at most the configured maximum, carry at most two
+             *     decimals and be unique; an empty list switches alerts off.
+             */
+            thresholds?: number[];
+            /**
+             * @description Gets whether alerts are delivered as Discord direct messages.
+             *     `true` to enable the Discord channel.
+             */
+            discordEnabled?: boolean;
+            /**
+             * @description Gets whether alerts are delivered by email.
+             *     `true` to enable the email channel.
+             */
+            emailEnabled?: boolean;
+            language?: null | string;
         };
         /** @description Retry-safe change to one cost owner's finite spending allowance. A null allowance revokes it. */
         CostOwnerAllowancePayload: {
@@ -6807,9 +7932,25 @@ export interface components {
         /** @enum {integer} */
         EArmaSide: "Empty" | "East" | "West" | "Resistance" | "Civilian" | "AmbientLife" | "Logic";
         /** @enum {integer} */
+        EAutomationIdleState: "NotRunning" | "PlayersOnline" | "Idle" | "Unknown";
+        /** @enum {integer} */
+        EAutoStopReason: "Idle" | "MaxRuntime" | "Schedule";
+        /** @enum {integer} */
         EConfigurationContentStatus: "NotApplicable" | "Ready" | "Incomplete" | "Conflict";
         /** @enum {integer} */
         EContentSourceKind: "BuiltIn" | "SteamWorkshop" | "UploadedArtifact";
+        /**
+         * @description Tells who the alerts of a cost owner are addressed to.
+         * @enum {integer}
+         */
+        ECostAlertAudience: "Self" | "Group";
+        /**
+         * @description Tells whether a cost alert channel can reach the people a cost owner's alerts are addressed to.
+         * @enum {integer}
+         */
+        ECostAlertChannelAvailability: "Deliverable" | "NotLinked" | "NoAddress" | "ChannelUnavailable";
+        /** @enum {integer} */
+        ECostAlertKind: "CostThreshold" | "AutoStop";
         /** @enum {integer} */
         ECostImpact: "NoCostImpact" | "StartsCost" | "StopsCost" | "KeepsCostRunning" | "Unknown";
         /** @enum {integer} */
@@ -6827,9 +7968,21 @@ export interface components {
         /** @enum {integer} */
         EFileContext: "Persistent" | "Live";
         /** @enum {integer} */
+        EGameConfigurationTier: "Advanced" | "Common";
+        /** @enum {integer} */
+        EGameConfigurationValueKind: "String" | "Integer" | "Number" | "Boolean" | "StringArray" | "Selection";
+        /**
+         * @description Describes which characters a game can use in the value of a credential. The API rejects values that violate the
+         *     declared format.
+         * @enum {integer}
+         */
+        EGameSecretValueFormat: "SingleLine" | "Token";
+        /** @enum {integer} */
+        EGameServerChangeArea: "None" | "ModPack" | "Configuration" | "Credentials";
+        /** @enum {integer} */
         EGameServerSecretOrigin: "Generated" | "UserProvided" | "ExternalProvider";
         /** @enum {integer} */
-        EHostingAuditEventKind: "ServerCreated" | "ServerUpdated" | "ServerArchived" | "ServerLaunchDisabled" | "ServerLaunchEnabled" | "CostOwnerAssigned" | "LifecycleRequested" | "LifecycleStarted" | "LifecycleSucceeded" | "LifecycleFailed" | "LifecycleRetried" | "LifecycleSkipped" | "LifecycleCancelledByCostStop" | "TerminateRequested" | "WorkerRegistered" | "WorkerDegraded" | "WorkerRecovered" | "WorkerStopped" | "WorkerCommandUpdated" | "PreservationSelectionAdded" | "PreservationSelectionUpdated" | "PreservationSelectionRemoved" | "FileCreated" | "FileUpdated" | "FileDeleted" | "DeploymentResourceObserved" | "DeploymentResourceReleased" | "ManualCleanupRecorded" | "CostOwnerChanged" | "DeploymentCreated" | "LifecycleJobQueued" | "LifecycleJobClaimed" | "LifecycleJobSucceeded" | "LifecycleJobRetryPending" | "LifecycleJobFailed" | "LifecycleJobSkipped" | "CommandsCancelledByCostStop" | "WorkerProvisioned" | "WorkerHeartbeat" | "WorkerCommandQueued" | "WorkerCommandSucceeded" | "WorkerCommandFailed" | "DeploymentStopped" | "DeploymentTerminated" | "AccessGranted" | "AccessRevoked" | "FileChanged" | "PreservationPublished" | "PreservationFailed" | "PersistentDataDeleted" | "Recovery" | "ProviderReconciliationDegraded" | "DeploymentResourceAdopted" | "DanglingResourceDetected" | "DanglingResourceCleanupFailed" | "DanglingResourceCleanupSucceeded" | "WorkerCredentialRotationIssued" | "ProviderCostSliceCharged" | "ProviderCostSliceReserved" | "ProviderCostSliceReservationReleased" | "BankTransferPaymentRecorded" | "CostOwnerAllowanceChanged" | "ExternalRefundRecorded" | "DeploymentCostOwnerCorrected" | "HostingLedgerEntryReversed" | "DeploymentResourceProvisioningRequested" | "DeploymentResourceProvisioningFailed" | "DeploymentResourceReleaseRequested" | "DeploymentResourceReleaseFailed" | "ServerConfigurationChanged" | "ServerConfigurationProfileChanged" | "ConfigurationProfileCreated" | "ConfigurationProfileRevisionCreated" | "ConfigurationProfileArchived" | "HostingFinancePolicyChanged" | "ServerSecretCreated" | "ServerSecretRotated" | "ServerSecretRevealed" | "ServerSecretUpdated" | "CostOwnerCreated" | "CostOwnerRenamed" | "CostOwnerFrozen" | "CostOwnerUnfrozen";
+        EHostingAuditEventKind: "ServerCreated" | "ServerUpdated" | "ServerArchived" | "ServerLaunchDisabled" | "ServerLaunchEnabled" | "CostOwnerAssigned" | "LifecycleRequested" | "LifecycleStarted" | "LifecycleSucceeded" | "LifecycleFailed" | "LifecycleRetried" | "LifecycleSkipped" | "LifecycleCancelledByCostStop" | "TerminateRequested" | "WorkerRegistered" | "WorkerDegraded" | "WorkerRecovered" | "WorkerStopped" | "WorkerCommandUpdated" | "PreservationSelectionAdded" | "PreservationSelectionUpdated" | "PreservationSelectionRemoved" | "FileCreated" | "FileUpdated" | "FileDeleted" | "DeploymentResourceObserved" | "DeploymentResourceReleased" | "ManualCleanupRecorded" | "CostOwnerChanged" | "DeploymentCreated" | "LifecycleJobQueued" | "LifecycleJobClaimed" | "LifecycleJobSucceeded" | "LifecycleJobRetryPending" | "LifecycleJobFailed" | "LifecycleJobSkipped" | "CommandsCancelledByCostStop" | "WorkerProvisioned" | "WorkerHeartbeat" | "WorkerCommandQueued" | "WorkerCommandSucceeded" | "WorkerCommandFailed" | "DeploymentStopped" | "DeploymentTerminated" | "AccessGranted" | "AccessRevoked" | "FileChanged" | "PreservationPublished" | "PreservationFailed" | "PersistentDataDeleted" | "Recovery" | "ProviderReconciliationDegraded" | "DeploymentResourceAdopted" | "DanglingResourceDetected" | "DanglingResourceCleanupFailed" | "DanglingResourceCleanupSucceeded" | "WorkerCredentialRotationIssued" | "ProviderCostSliceCharged" | "ProviderCostSliceReserved" | "ProviderCostSliceReservationReleased" | "BankTransferPaymentRecorded" | "CostOwnerAllowanceChanged" | "ExternalRefundRecorded" | "DeploymentCostOwnerCorrected" | "HostingLedgerEntryReversed" | "DeploymentResourceProvisioningRequested" | "DeploymentResourceProvisioningFailed" | "DeploymentResourceReleaseRequested" | "DeploymentResourceReleaseFailed" | "ServerConfigurationChanged" | "ServerConfigurationProfileChanged" | "ConfigurationProfileCreated" | "ConfigurationProfileRevisionCreated" | "ConfigurationProfileArchived" | "HostingFinancePolicyChanged" | "ServerSecretCreated" | "ServerSecretRotated" | "ServerSecretRevealed" | "ServerSecretUpdated" | "CostOwnerCreated" | "CostOwnerRenamed" | "CostOwnerFrozen" | "CostOwnerUnfrozen" | "AutomaticStopWarned" | "AutomaticStopRequested" | "AutomaticStopCancelled" | "ScheduledStartRequested" | "ScheduledRunSkipped" | "AutomationSettingsChanged" | "ScheduledStartsConfirmed";
         /** @enum {integer} */
         EHostingFileModificationMode: "None" | "RawFile" | "StructuredConfiguration";
         /** @enum {integer} */
@@ -6845,6 +7998,8 @@ export interface components {
         /** @enum {integer} */
         ELifecycleJobStatus: "Queued" | "Running" | "RetryPending" | "WaitingForWorker" | "Succeeded" | "Failed" | "Skipped" | "CancelledByCostStop";
         /** @enum {integer} */
+        ELifecycleJobTrigger: "Manual" | "Idle" | "MaxRuntime" | "Schedule";
+        /** @enum {integer} */
         EModUsageRole: "Shared" | "ClientOnly" | "ServerOnly";
         /** @enum {integer} */
         EPreservationMode: "CreateOrUpdate" | "MirrorDeletions";
@@ -6852,6 +8007,16 @@ export interface components {
         EPreservationScope: "File" | "FlatFolder" | "RecursiveFolder";
         /** @enum {integer} */
         ERuntimeStorageStrategy: "IncludedDisk" | "AutomaticExternal" | "FixedExternal";
+        /** @enum {integer} */
+        EServerScheduleAction: "Start" | "Stop";
+        /** @enum {integer} */
+        EServerScheduleRunOutcome: "Started" | "Stopped" | "SkippedRunning" | "SkippedOff" | "SkippedCost" | "SkippedConsent" | "SkippedMissed" | "SkippedBusy" | "Failed" | "WaitingForStop" | "SkippedStopUnfinished";
+        /**
+         * @description Describes whether scheduled starts of a server may currently run, because a scheduled start costs money and needs
+         *     the consent of the cost owner that pays for it.
+         * @enum {integer}
+         */
+        EStartConsentState: "NotRequired" | "Given" | "Needed";
         /** @enum {integer} */
         EStorageEstimateStatus: "Measured" | "Estimated" | "Incomplete" | "Unavailable";
         /** @description Represents the payload used to create a new event within the application. */
@@ -7145,10 +8310,62 @@ export interface components {
             /** @description The roles this user has. */
             roles?: components["schemas"]["RoleDto"][];
         };
+        GameConfigurationChoice: {
+            value: components["schemas"]["JsonElement"];
+            label: string;
+            description?: null | string;
+        };
+        GameConfigurationDto: {
+            /** Format: uuid */
+            serverId?: string;
+            profileId?: null | string;
+            profileRevisionId?: null | string;
+            profileRevisionNumber?: null | number;
+            isComplete?: boolean;
+            entries?: components["schemas"]["GameConfigurationEntryDto"][];
+        };
+        GameConfigurationEntryDto: {
+            key?: string;
+            targetPath?: string;
+            group?: string;
+            displayName?: string;
+            description?: string;
+            kind?: components["schemas"]["EGameConfigurationValueKind"];
+            required?: boolean;
+            sensitive?: boolean;
+            /**
+             * @description Gets whether the setting controls orchestration instead of a generated game file.
+             *     True when file-conflict checks and file-target presentation do not apply.
+             */
+            isControlPlaneOnly?: boolean;
+            /**
+             * @description Gets whether the game definition declares the setting as Common or Advanced.
+             *     The tier declared by the game definition; Advanced when the definition declares nothing.
+             */
+            tier?: components["schemas"]["EGameConfigurationTier"];
+            /** Format: int32 */
+            order?: number;
+            minimum?: null | number;
+            maximum?: null | number;
+            allowedValues?: string[];
+            /** @description Gets the typed choices supported by the setting. */
+            choices?: components["schemas"]["GameConfigurationChoice"][];
+            value?: null | components["schemas"]["JsonElement"];
+            source?: string;
+            isCompatible?: boolean;
+            isRedacted?: boolean;
+            warning?: null | string;
+        };
         /** @description Direct user and role grants for one game server. */
         GameServerAccessDto: {
             /** @description Exact server-scoped permissions which may be delegated through this surface. */
             allowedPermissions?: string[];
+            /**
+             * @description The subset of string[] GameServerAccessDto.AllowedPermissions the calling member may grant or revoke on this server, in
+             *     the order of string[] GameServerAccessDto.AllowedPermissions. Administrators and holders of full control may assign every
+             *     permission; every other member may assign only the permissions they hold themselves.
+             */
+            assignablePermissions?: string[];
             /** @description Users holding direct grants for this server. */
             users?: components["schemas"]["GameServerUserAccessGrantDto"][];
             /** @description Roles holding direct grants for this server. */
@@ -7163,6 +8380,16 @@ export interface components {
             userId?: string;
             /** @description Exact server-scoped claim identifier. */
             permission?: string;
+        };
+        /** @description The accrued cost of the current or most recent session of one game server. */
+        GameServerAccruedCostDto: {
+            /**
+             * Format: uuid
+             * @description Gets the game server the accrued cost belongs to.
+             *     The primary key of the game server.
+             */
+            gameServerId: string;
+            session?: null | components["schemas"]["AccruedCostDto"];
         };
         /** @description Server-authoritative action presentation and availability metadata. */
         GameServerActionDto: {
@@ -7221,7 +8448,7 @@ export interface components {
             scenarioId: null | string;
             scenarioVersionId: null | string;
         };
-        /** @description A billing owner the current caller may assign while creating a game server. */
+        /** @description A billing owner the current caller may assign while creating a game server or transfer an existing server to. */
         GameServerCostOwnerOptionDto: {
             /**
              * Format: uuid
@@ -7234,6 +8461,8 @@ export interface components {
             isFrozen?: boolean;
             /** @description Whether this is the authenticated caller's personal cost owner. */
             isCurrentUser?: boolean;
+            /** @description The kind of account behind the owner: a member, the association or an external organization. */
+            kind?: components["schemas"]["ECostOwnerKind"];
         };
         /** @description Selects the payer used by future deployments of a stopped server. */
         GameServerCostOwnerUpdatePayload: {
@@ -7348,10 +8577,30 @@ export interface components {
             /** Format: uuid */
             costOwnerId?: string;
             costOwnerName?: string;
+            costOwnerUserId?: null | string;
             isLaunchDisabled?: boolean;
+            costAlertThresholds?: null | number[];
+            canManageCostAlerts?: null | boolean;
+            /**
+             * @description Kinds of applied change that still wait for the next start, in the order mod pack, configuration, credentials.
+             *     The pending areas, or an empty list when nothing waits for a start.
+             */
+            changesPendingStartAreas?: components["schemas"]["EGameServerChangeArea"][];
+            /**
+             * @description Whether at least one applied change still waits for the next start.
+             *     `true` when IReadOnlyList&lt;EGameServerChangeArea&gt; GameServerDto.ChangesPendingStartAreas is not empty.
+             */
+            hasChangesPendingStart?: boolean;
             isArchived?: boolean;
             canModify?: boolean;
             canManageSecrets?: boolean;
+            /**
+             * @description Whether the viewer may list, grant and revoke access to this server; the exact rule of the manage-access requirement.
+             *     `true` for a global or hosting administrator, a server-wide holder and a holder of the manage-access permission for this server.
+             */
+            canManageAccess?: boolean;
+            costOwnerIsFrozen?: null | boolean;
+            costOwnerAssignedAt?: null | components["schemas"]["Instant"];
             canRevealSecrets?: boolean;
             timeStampCreated?: components["schemas"]["Instant"];
             timeStampUpdated?: components["schemas"]["Instant"];
@@ -7359,12 +8608,115 @@ export interface components {
             /** Format: int32 */
             pendingJobCount?: number;
             actions?: components["schemas"]["GameServerActionDto"][];
+            automation?: null | components["schemas"]["ServerAutomationDto"];
+            canManageAutomation?: null | boolean;
         };
-        /** @description Active provider-neutral game-content definition available to a durable server. */
-        GameServerModPackOptionDto: {
-            /** Format: int64 */
-            primaryKey?: number;
+        /** @description The current metric readings of one game server, decided by the control plane. */
+        GameServerMetricsDto: {
+            /**
+             * Format: uuid
+             * @description Gets the game server the readings belong to.
+             *     The primary key of the game server.
+             */
+            gameServerId: string;
+            asOf?: null | components["schemas"]["Instant"];
+            /**
+             * Format: int32
+             * @description Gets how many seconds after Instant? GameServerMetricsDto.AsOf the readings count as stale.
+             *     The whole seconds of the configured stale limit; 45 with the default settings.
+             */
+            staleAfterSeconds: number;
+            runningSince?: null | components["schemas"]["Instant"];
+            runningSinceUnavailableReason?: null | string;
+            cpuPercent?: null | number;
+            cpuUnavailableReason?: null | string;
+            memoryUsedBytes?: null | number;
+            memoryTotalBytes?: null | number;
+            memoryUnavailableReason?: null | string;
+            playerCount?: null | number;
+            playerCapacity?: null | number;
+            playersUnavailableReason?: null | string;
+        };
+        /** @description The retained metric history of one game server for one range, read from the durable rollup tier. */
+        GameServerMetricsHistoryDto: {
+            /**
+             * Format: uuid
+             * @description Gets the game server the history belongs to.
+             *     The primary key of the game server.
+             */
+            gameServerId: string;
+            /**
+             * @description Gets the range code that was served.
+             *     One of `1h`, `24h` or `7d`.
+             */
+            range: string;
+            /**
+             * @description Gets the inclusive start of the covered window.
+             *     The read time minus the range span.
+             */
+            from: components["schemas"]["Instant"];
+            /**
+             * @description Gets the end of the covered window.
+             *     The read time.
+             */
+            to: components["schemas"]["Instant"];
+            /**
+             * Format: int32
+             * @description Gets the bucket length of the served tier in seconds.
+             *     15, 60 or 300.
+             */
+            bucketSeconds: number;
+            memoryTotalBytes?: null | number;
+            playerCapacity?: null | number;
+            /**
+             * @description Gets the reported buckets in ascending time order.
+             *     One point per bucket that received at least one sample; empty windows have no point.
+             */
+            points: components["schemas"]["ServerMetricPointDto"][];
+        };
+        /** @description One content item of a flattened mod pack, keyed so that two packs can be compared item by item. */
+        GameServerModPackContentItemDto: {
+            /** @description Gets the comparison key in the form `{source}:{identifier}`, unique within one contents response. */
+            key?: string;
+            /** @description Gets the display title of the content item. */
             title?: string;
+        };
+        /** @description The flattened contents of one mod pack as the next Start would resolve them for a game server. */
+        GameServerModPackContentsDto: {
+            /**
+             * Format: int64
+             * @description Gets the primary key of the mod pack definition the contents belong to.
+             */
+            modPackDefinitionId?: number;
+            /**
+             * @description Gets a value indicating whether the pack can be resolved. When `false`,
+             *     IReadOnlyList&lt;GameServerModPackContentItemDto&gt; GameServerModPackContentsDto.Items is empty and string? GameServerModPackContentsDto.UnavailableReason explains why.
+             */
+            isAvailable?: boolean;
+            unavailableReason?: null | string;
+            /**
+             * Format: int32
+             * @description Gets the number of items in IReadOnlyList&lt;GameServerModPackContentItemDto&gt; GameServerModPackContentsDto.Items.
+             */
+            total?: number;
+            /** @description Gets the content items in resolution order, unique by string GameServerModPackContentItemDto.Key. */
+            items?: components["schemas"]["GameServerModPackContentItemDto"][];
+        };
+        /** @description Provider-neutral game-content definition offered to a durable server, with its availability for selection. */
+        GameServerModPackOptionDto: {
+            /**
+             * Format: int64
+             * @description Gets the primary key of the mod pack definition.
+             */
+            primaryKey?: number;
+            /** @description Gets the display title of the mod pack. */
+            title?: string;
+            /**
+             * @description Gets a value indicating whether the pack can be selected. A server's saved pack stays listed after it became
+             *     unavailable so that the chooser can show and explain it.
+             */
+            isAvailable?: boolean;
+            unavailableReason?: null | string;
         };
         /** @description Changes or clears the desired game-specific content definition for a durable server. */
         GameServerModPackSelectionPayload: {
@@ -7380,6 +8732,24 @@ export interface components {
             canOperate?: boolean;
             costStopAction?: null | components["schemas"]["GameServerActionDto"];
         };
+        /** @description One role that can be given direct access to a game server. */
+        GameServerRoleAccessCandidateDto: {
+            /**
+             * Format: int64
+             * @description Role identity.
+             */
+            roleId?: number;
+            /** @description Current role title. */
+            title?: string;
+            /** @description Current role description. */
+            description?: string;
+            /**
+             * Format: int32
+             * @description Number of active members of the role, counting only members that are verified and neither deleted nor
+             *     banned, which is the number of people a grant to the role reaches.
+             */
+            memberCount?: number;
+        };
         /** @description Direct server-scoped permissions assigned to one role. */
         GameServerRoleAccessGrantDto: {
             /**
@@ -7391,6 +8761,12 @@ export interface components {
             title?: string;
             /** @description Current role description. */
             description?: string;
+            /**
+             * Format: int32
+             * @description Number of active members of the role, counting only members that are verified and neither deleted nor
+             *     banned, which is the number of people the grants of the role reach.
+             */
+            memberCount?: number;
             /** @description Exact direct permissions assigned for the server. */
             permissions?: string[];
         };
@@ -7419,28 +8795,64 @@ export interface components {
             revealable: boolean;
             externalProvider: boolean;
         };
+        /** @description The configuration state of one credential slot of a game server. It never contains the value. */
         GameServerSecretStatusDto: {
+            /** @description The stable key of the secret within the game. */
             key: string;
+            /** @description The human-readable name of the secret. */
             displayName: string;
+            /** @description Whether the server cannot start while the secret has no current value. */
             requiredForStart: boolean;
+            /** @description Whether the platform generates the value. */
             generated: boolean;
+            /** @description Whether an authorized member may reveal the current value. */
             revealable: boolean;
+            /** @description Whether an external provider issues the value. */
             externalProvider: boolean;
+            /** @description Whether the secret has a current value. */
             isConfigured: boolean;
             version: null | number;
             origin: null | components["schemas"]["EGameServerSecretOrigin"];
             timeStampCreated: null | components["schemas"]["Instant"];
+            /** @description Whether a member may supply a deliberate value for this credential. */
+            acceptsChosenValue: boolean;
+            /** @description The characters the game can use in a supplied value. */
+            valueFormat: components["schemas"]["EGameSecretValueFormat"];
         };
+        /**
+         * @description A plaintext game server secret value returned to an authorized caller, either by an explicit reveal or once after a
+         *     rotation generated it.
+         */
         GameServerSecretValueDto: {
+            /** @description The secret key as declared by the game definition. */
             key: string;
+            /** @description The plaintext secret value. It is never logged or audited. */
             value: string;
-            /** Format: int32 */
+            /**
+             * Format: int32
+             * @description The version number of the returned value.
+             */
             version: number;
         };
         GameServerSecretValuePayload: {
             key: string;
             value: string;
             origin?: components["schemas"]["EGameServerSecretOrigin"];
+        };
+        /** @description One member that can be given direct access to a game server. */
+        GameServerUserAccessCandidateDto: {
+            /**
+             * Format: uuid
+             * @description User identity.
+             */
+            userId?: string;
+            /** @description Current display name. */
+            nickname?: string;
+            /**
+             * @description Short fingerprint of the user identity, the character # followed by the last six characters of the user id,
+             *     that tells members with equal nicknames apart.
+             */
+            detail?: string;
         };
         /** @description Direct server-scoped permissions assigned to one user. */
         GameServerUserAccessGrantDto: {
@@ -7451,6 +8863,11 @@ export interface components {
             userId?: string;
             /** @description Current display name. */
             nickname?: string;
+            /**
+             * @description Short fingerprint of the user identity, the character # followed by the last six characters of the user id,
+             *     that tells members with equal nicknames apart.
+             */
+            detail?: string;
             /** @description Exact direct permissions assigned for the server. */
             permissions?: string[];
         };
@@ -7701,6 +9118,7 @@ export interface components {
             workerId?: null | string;
             traceId?: null | string;
             spanId?: null | string;
+            actorName?: null | string;
             timeStampCreated?: components["schemas"]["Instant"];
         };
         /** Format: binary */
@@ -7804,6 +9222,13 @@ export interface components {
             attemptCount?: number;
             failureCode?: null | string;
             failureReason?: null | string;
+            requestedByName?: null | string;
+            /**
+             * @description What caused the job. The UI shows a trigger line instead of the actor line for automatic jobs.
+             *     ELifecycleJobTrigger.Manual for a user request, otherwise the automatic cause.
+             */
+            trigger?: components["schemas"]["ELifecycleJobTrigger"];
+            triggerLimit?: null | number;
             canRetry?: boolean;
             canSkip?: boolean;
             timeStampCreated?: components["schemas"]["Instant"];
@@ -8466,9 +9891,317 @@ export interface components {
             version: components["schemas"]["ContentVersionPayload"];
             requiredModPacks: components["schemas"]["ModPackReferencePayload"][];
         };
+        /**
+         * @description The automation of one game server: the saved settings, the limits the control plane enforces, what the game
+         *     supports, the live status and the start consent.
+         */
+        ServerAutomationDto: {
+            /**
+             * @description Gets the saved automation settings, or the defaults when nothing was saved yet.
+             *     The editable settings including the schedule rules and the revision to send back on save.
+             */
+            settings: components["schemas"]["ServerAutomationSettingsDto"];
+            /**
+             * @description Gets the limits the control plane enforces on the settings.
+             *     The allowed ranges and counts, so clients never hard-code them.
+             */
+            limits: components["schemas"]["ServerAutomationLimitsDto"];
+            /**
+             * @description Gets whether the game of the server supports idle shutdown.
+             *     The idle shutdown capability of the game.
+             */
+            idleShutdown: components["schemas"]["ServerIdleShutdownCapabilityDto"];
+            /**
+             * @description Gets the live automation status of the server.
+             *     The idle clock, the maximum runtime stop, the next scheduled action and a pending stop.
+             */
+            status: components["schemas"]["ServerAutomationStatusDto"];
+            /**
+             * @description Gets whether scheduled starts of the server may run.
+             *     The start consent state for the cost owner that currently pays for the server.
+             */
+            startConsent: components["schemas"]["ServerStartConsentDto"];
+        };
+        /** @description The limits the control plane enforces on server automation settings. */
+        ServerAutomationLimitsDto: {
+            /**
+             * Format: int32
+             * @description Gets the smallest idle limit.
+             *     The minimum number of idle minutes.
+             */
+            idleMinutesMin: number;
+            /**
+             * Format: int32
+             * @description Gets the largest idle limit.
+             *     The maximum number of idle minutes.
+             */
+            idleMinutesMax: number;
+            /**
+             * Format: int32
+             * @description Gets the smallest maximum runtime.
+             *     The minimum number of hours.
+             */
+            maxRuntimeHoursMin: number;
+            /**
+             * Format: int32
+             * @description Gets the largest maximum runtime.
+             *     The maximum number of hours.
+             */
+            maxRuntimeHoursMax: number;
+            /**
+             * Format: int32
+             * @description Gets the largest number of schedule rules one server may hold.
+             *     The rule limit.
+             */
+            maxSchedules: number;
+            /**
+             * Format: int32
+             * @description Gets the warning lead: an automatic stop is warned this long before it happens.
+             *     The lead in whole minutes, rounded up.
+             */
+            warningLeadMinutes: number;
+        };
+        /** @description The saved automation settings of one game server. */
+        ServerAutomationSettingsDto: {
+            /**
+             * @description Gets whether a running server is stopped after it stayed without players.
+             *     `true` when idle shutdown is switched on.
+             */
+            idleShutdownEnabled: boolean;
+            /**
+             * Format: int32
+             * @description Gets the minutes without connected players after which idle shutdown applies.
+             *     The idle limit in minutes; the proposed default while nothing was saved.
+             */
+            idleShutdownMinutes: number;
+            /**
+             * @description Gets whether a session is stopped after it ran for a maximum duration.
+             *     `true` when the maximum runtime limit is switched on.
+             */
+            maxRuntimeEnabled: boolean;
+            /**
+             * Format: int32
+             * @description Gets the hours after which the maximum runtime limit applies.
+             *     The runtime limit in hours; the proposed default while nothing was saved.
+             */
+            maxRuntimeHours: number;
+            timeZone?: null | string;
+            /**
+             * @description Gets the weekly schedule rules in display order.
+             *     The rules, or an empty list when the server has none.
+             */
+            schedules: components["schemas"]["ServerScheduleDto"][];
+            /**
+             * Format: int32
+             * @description Gets the revision of the saved settings.
+             *     `0` while nothing was saved, otherwise the counter to send back unchanged on the next save.
+             */
+            version: number;
+        };
+        /** @description The live automation status of a game server, calculated by the control plane. */
+        ServerAutomationStatusDto: {
+            /**
+             * @description Gets the state of the idle shutdown clock.
+             *     The idle state with its start and stop instants.
+             */
+            idle: components["schemas"]["ServerIdleStatusDto"];
+            maxRuntimeStopsAt?: null | components["schemas"]["Instant"];
+            nextScheduled?: null | components["schemas"]["ServerNextScheduledDto"];
+            pendingStop?: null | components["schemas"]["ServerPendingStopDto"];
+        };
+        /** @description A full replacement of the automation settings and weekly schedule rules of one game server. */
+        ServerAutomationUpdate: {
+            /**
+             * Format: int32
+             * @description Gets the version the editor loaded.
+             *     The version of the read this save is based on, zero for a server that never saved automation settings. A save
+             *     with a different version is rejected as a conflict.
+             */
+            version?: number;
+            /**
+             * @description Gets whether a running server is stopped after it stayed without connected players.
+             *     `true` to enable idle shutdown; only games that report players support it.
+             */
+            idleShutdownEnabled?: boolean;
+            /**
+             * Format: int32
+             * @description Gets the number of minutes without connected players after which the idle shutdown applies.
+             *     A value within the configured idle limits when idle shutdown is enabled. While it is disabled, an out-of-range
+             *     value is ignored and the stored value is kept.
+             */
+            idleShutdownMinutes?: number;
+            /**
+             * @description Gets whether a session is stopped after it ran for the maximum runtime.
+             *     `true` to enable the maximum runtime limit.
+             */
+            maxRuntimeEnabled?: boolean;
+            /**
+             * Format: int32
+             * @description Gets the number of hours after which the maximum runtime limit applies.
+             *     A value within the configured runtime limits when the limit is enabled. While it is disabled, an out-of-range
+             *     value is ignored and the stored value is kept.
+             */
+            maxRuntimeHours?: number;
+            timeZone?: null | string;
+            /**
+             * @description Gets the complete list of weekly schedule rules.
+             *     The rules in display order; at most the configured number of rules.
+             */
+            schedules?: components["schemas"]["ServerScheduleRuleUpdate"][];
+            /**
+             * @description Gets whether the saving user confirms that scheduled starts may incur cost for the current cost owner.
+             *     `true` to record the consent; `false` records nothing and never revokes an
+             *     existing consent.
+             */
+            startConsent?: boolean;
+        };
         ServerConfigurationUpdatePayload: {
             values?: components["schemas"]["ConfigurationValuePayload"][];
             resetKeys?: string[];
+        };
+        /** @description Describes whether idle shutdown is available for the game of a server. */
+        ServerIdleShutdownCapabilityDto: {
+            /**
+             * @description Gets whether idle shutdown can be used.
+             *     `true` when the game reports its player count; `false` when idle shutdown
+             *     cannot work because the game cannot tell whether players are connected.
+             */
+            available: boolean;
+        };
+        /** @description The state of the idle shutdown clock of a game server. */
+        ServerIdleStatusDto: {
+            /**
+             * @description Gets the idle state.
+             *     Not running, players online, idle, or unknown while the player count is unavailable.
+             */
+            state: components["schemas"]["EAutomationIdleState"];
+            since?: null | components["schemas"]["Instant"];
+            stopsAt?: null | components["schemas"]["Instant"];
+        };
+        /** @description The average, minimum and maximum of one metric inside one history bucket, computed by the API. */
+        ServerMetricAggregateDto: {
+            /**
+             * Format: double
+             * @description Gets the average of the samples in the bucket.
+             *     The sum divided by the sample count, rounded to two decimals.
+             */
+            average: number;
+            /**
+             * Format: double
+             * @description Gets the lowest sample in the bucket.
+             *     The minimum, so the trough of a dip survives downsampling.
+             */
+            minimum: number;
+            /**
+             * Format: double
+             * @description Gets the highest sample in the bucket.
+             *     The maximum, so the peak of a spike survives downsampling.
+             */
+            maximum: number;
+        };
+        /** @description One bucket of the metric history of a server. */
+        ServerMetricPointDto: {
+            /**
+             * @description Gets the inclusive start of the bucket.
+             *     The API receipt time floored to the bucket resolution.
+             */
+            bucketStart: components["schemas"]["Instant"];
+            cpu?: null | components["schemas"]["ServerMetricAggregateDto"];
+            memoryUsed?: null | components["schemas"]["ServerMetricAggregateDto"];
+            players?: null | components["schemas"]["ServerMetricAggregateDto"];
+        };
+        /** @description The next scheduled action of a game server. */
+        ServerNextScheduledDto: {
+            /**
+             * @description Gets the action that runs next.
+             *     Start or stop.
+             */
+            action: components["schemas"]["EServerScheduleAction"];
+            /**
+             * @description Gets the instant the action runs.
+             *     The occurrence instant calculated in the schedule time zone.
+             */
+            at: components["schemas"]["Instant"];
+        };
+        /** @description An automatic stop that was announced to the owner and has not happened yet. */
+        ServerPendingStopDto: {
+            /**
+             * @description Gets why the stop was announced.
+             *     Idle, maximum runtime or schedule.
+             */
+            reason: components["schemas"]["EAutoStopReason"];
+            /**
+             * @description Gets the instant the stop happens unless it is cancelled first.
+             *     The stop instant recorded when the warning opened.
+             */
+            stopsAt: components["schemas"]["Instant"];
+            limit?: null | number;
+        };
+        /** @description One weekly schedule rule of a game server. */
+        ServerScheduleDto: {
+            /**
+             * Format: uuid
+             * @description Gets the identifier of the rule.
+             *     The primary key of the rule.
+             */
+            id: string;
+            /**
+             * @description Gets the action the rule performs.
+             *     Start or stop.
+             */
+            action: components["schemas"]["EServerScheduleAction"];
+            /**
+             * @description Gets the weekdays the rule applies to.
+             *     ISO weekdays in ascending order, Monday is 1 and Sunday is 7.
+             */
+            days: number[];
+            /**
+             * @description Gets the local time of day in the schedule time zone.
+             *     The time formatted as `HH:mm`.
+             */
+            time: string;
+            nextRunAt?: null | components["schemas"]["Instant"];
+            lastRun?: null | components["schemas"]["ServerScheduleLastRunDto"];
+        };
+        /** @description The latest recorded occurrence of a schedule rule. */
+        ServerScheduleLastRunDto: {
+            /**
+             * @description Gets the instant the occurrence was scheduled for.
+             *     The occurrence instant.
+             */
+            at: components["schemas"]["Instant"];
+            /**
+             * @description Gets what the control plane decided or what happened to the job it queued.
+             *     The recorded outcome, or Failed when the job of the occurrence ended failed.
+             */
+            outcome: components["schemas"]["EServerScheduleRunOutcome"];
+        };
+        /** @description One weekly schedule rule inside a ServerAutomationUpdate. */
+        ServerScheduleRuleUpdate: {
+            id?: null | string;
+            /**
+             * @description Gets the action the rule performs.
+             *     Start or stop.
+             */
+            action?: components["schemas"]["EServerScheduleAction"];
+            /**
+             * @description Gets the weekdays the rule applies to.
+             *     A non-empty set of distinct ISO weekdays, Monday is 1 and Sunday is 7. The API returns them in ascending order.
+             */
+            days?: number[];
+            /**
+             * @description Gets the local time of day in the schedule time zone.
+             *     The time formatted as `HH:mm`, from `00:00` to `23:59`.
+             */
+            time?: string;
+        };
+        /** @description The start consent of a game server. It carries the state only, never the identity of the cost owner. */
+        ServerStartConsentDto: {
+            /**
+             * @description Gets whether scheduled starts may run.
+             *     Not required without a start rule, given for the current cost owner, otherwise needed.
+             */
+            state: components["schemas"]["EStartConsentState"];
         };
         /** @description Public-site image slot backed by a reusable media asset. */
         SiteImageSettingDto: {
@@ -8641,6 +10374,14 @@ export interface components {
             discordId?: null | string;
             discordUsername?: null | string;
         };
+        /** @description The language a signed-in user reads messages in. */
+        UserLocaleUpdate: {
+            /**
+             * @description Gets the locale to record.
+             *     A locale such as `de` or `en-GB`; only English and German are accepted.
+             */
+            locale?: string;
+        };
         UserUpdate: {
             avatar?: null | string;
             avatarMimeType?: null | string;
@@ -8648,6 +10389,16 @@ export interface components {
             eMail?: null | string;
             isBanned?: null | boolean;
             isVerified?: null | boolean;
+        };
+        ValidationProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            status?: null | number;
+            detail?: null | string;
+            instance?: null | string;
+            errors?: {
+                [key: string]: string[];
+            };
         };
         /** @description Represents a Verein governance document with a selected revision. */
         VereinDocumentDto: {
@@ -9275,6 +11026,158 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
+            };
+        };
+    };
+    GetAlertSettingsAsync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The cost owner whose settings are read. */
+                costOwnerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["CostAlertSettingsDto"];
+                    "application/json": components["schemas"]["CostAlertSettingsDto"];
+                    "text/json": components["schemas"]["CostAlertSettingsDto"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateAlertSettingsAsync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The cost owner whose settings are saved. */
+                costOwnerId: string;
+            };
+            cookie?: never;
+        };
+        /** @description A token that cancels the request. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CostAlertSettingsUpdate"];
+                "text/json": components["schemas"]["CostAlertSettingsUpdate"];
+                "application/*+json": components["schemas"]["CostAlertSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["CostAlertSettingsDto"];
+                    "application/json": components["schemas"]["CostAlertSettingsDto"];
+                    "text/json": components["schemas"]["CostAlertSettingsDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetMyAlertSettingsAsync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["CostAlertSettingsDto"];
+                    "application/json": components["schemas"]["CostAlertSettingsDto"];
+                    "text/json": components["schemas"]["CostAlertSettingsDto"];
+                };
+            };
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -10767,6 +12670,89 @@ export interface operations {
             };
         };
     };
+    UpdateAutomationAsync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The server whose automation is saved. */
+                gameServerId: string;
+            };
+            cookie?: never;
+        };
+        /** @description A token that cancels the request. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServerAutomationUpdate"];
+                "text/json": components["schemas"]["ServerAutomationUpdate"];
+                "application/*+json": components["schemas"]["ServerAutomationUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ServerAutomationDto"];
+                    "application/json": components["schemas"]["ServerAutomationDto"];
+                    "text/json": components["schemas"]["ServerAutomationDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     "GameServersController.GetAsync": {
         parameters: {
             query?: never;
@@ -12199,6 +14185,53 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    UpdateMeLocaleAsync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A CancellationToken to cancel the operation. */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserLocaleUpdate"];
+                "text/json": components["schemas"]["UserLocaleUpdate"];
+                "application/*+json": components["schemas"]["UserLocaleUpdate"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": components["schemas"]["ProblemDetails"];
+                    "application/json": components["schemas"]["ProblemDetails"];
+                    "text/json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };

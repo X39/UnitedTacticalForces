@@ -1,0 +1,189 @@
+/*
+ * Shared semantic design tokens (--utf-* layer).
+ *
+ * This layer is additive: it never redefines a legacy variable from styles.css. Tokens either alias a legacy
+ * variable through var() so the two files cannot drift, or introduce a new value the UI contract defines.
+ * This file is imported in main.tsx before styles.css; var() lookups resolve at use time, so the order only
+ * matters for readability and for the import-order guard in tests/styles/tokens-contrast.test.ts.
+ *
+ * CSS under components/server/ must consume these tokens only: no raw hex colours and no pixel spacing literals.
+ * Every foreground/background pair declared here is checked against WCAG AA by the same test.
+ */
+:root {
+  /* Space (rem, one rem is 16px) */
+  --utf-space-xs: 0.25rem;
+  --utf-space-sm: 0.5rem;
+  --utf-space-md: 1rem;
+  --utf-space-lg: 1.5rem;
+  --utf-space-xl: 2rem;
+  --utf-space-2xl: 3rem;
+  --utf-space-3xl: 4rem;
+  --utf-control-height: 2.5rem;
+  --utf-control-height-touch: 2.75rem;
+  /* Compact control (Phase 70): the height of a small button and a small icon-only button (32px) */
+  --utf-control-height-compact: 2rem;
+
+  /* Reading measure (Phase 69): the maximum line length of page header descriptions and panel prose (720px) */
+  --utf-measure: 45rem;
+
+  /* Dialog layout */
+  --utf-dialog-width: 30rem;
+  --utf-dialog-gutter: 2rem;
+
+  /* Fleet layout: the minimum card width of the fleet grid (352px) */
+  --utf-fleet-card-min: 22rem;
+
+  /* Workspace layout: the minimum width of one cost strip fact (160px), the stroke of the current section
+     indicator (2px) and the height at which a raw output box starts to scroll internally (384px) */
+  --utf-workspace-fact-min: 10rem;
+  --utf-indicator-width: 0.125rem;
+  --utf-output-max-height: 24rem;
+
+  /* Metrics layout (Phase 67): the minimum width of one chart column (352px), the height of one plot (160px), the
+     maximum width of the chart tooltip (224px) and the opacity of the previous charts while a new range loads */
+  --utf-metric-chart-min: 22rem;
+  --utf-metric-chart-height: 10rem;
+  --utf-metric-tooltip-width: 14rem;
+  --utf-metric-refetch-opacity: 0.6;
+
+  /* Automation layout (Phase 68): the maximum width of the minutes, hours and time fields (192px) and the reserved
+     height of the save status line (48px) */
+  --utf-automation-field-width: 12rem;
+  --utf-automation-status-min-height: 3rem;
+
+  /* Control dimensions (Phase 70): drawn marks and layout minimums of the shared form controls */
+  /* The drawn check box and radio circle of CheckboxField and RadioGroupField (20px) */
+  --utf-check-size: 1.25rem;
+  /* The SwitchField track (40px by 24px; the height is also the minimum target of the mark) and its thumb (16px) */
+  --utf-switch-track-width: 2.5rem;
+  --utf-switch-track-height: 1.5rem;
+  --utf-switch-thumb-size: 1rem;
+  /* The minimum width of one weekday chip of the automation schedule (48px); renames the former automation day token */
+  --utf-day-chip-min: 3rem;
+  /* The minimum height of the upload dialog drop zone (128px) */
+  --utf-dropzone-min-height: 8rem;
+  /* The minimum width of the name column of a change review row and of the credential action column (160px) */
+  --utf-review-name-min: 10rem;
+  /* The minimum width of one choice card when a group of two or three lays out in a row (224px) */
+  --utf-choice-card-min: 14rem;
+  /* The height at which the inline listbox of the SearchPicker starts to scroll inside itself (256px) */
+  --utf-listbox-max-height: 16rem;
+
+  /* Chart data hue (Phase 67): the average line and the min-max band; the grid aliases the divider so the two
+     cannot drift. The line measures at least 3:1 on every surface (tests/styles/tokens-contrast.test.ts). */
+  --utf-chart-line: #3a9fd0;
+  --utf-chart-band: rgb(58 159 208 / 12%);
+  --utf-chart-grid: var(--utf-border-divider);
+
+  /* Create layout: the desktop summary column width (352px) and the scroll and bottom padding (192px) that keep
+     focused fields clear of the sticky bottom bar */
+  --utf-create-summary-width: 22rem;
+  --utf-create-bar-reserve: 12rem;
+
+  /* Change layout (Phase 65): the scroll and bottom padding (192px) that keep focused fields clear of the sticky
+     change bar, and the width of the review dialog (704px) */
+  --utf-change-bar-reserve: 12rem;
+  --utf-review-dialog-width: 44rem;
+
+  /* Cost alert settings (Phase 66): the maximum width of one alert amount field (256px) and the reserved height of
+     the save status line (48px), two body lines plus slack so no status moves the buttons */
+  --utf-alert-amount-width: 16rem;
+  /* Cost alert settings page column: capped at 48rem (768px) so the cards stay readable on wide screens */
+  --utf-alerts-page-max-width: 48rem;
+  --utf-alerts-status-min-height: 3rem;
+
+  /* Type */
+  --utf-text-body: 0.875rem;
+  --utf-text-label: 0.75rem;
+  --utf-text-heading: 1.25rem;
+  --utf-text-display: 1.75rem;
+  --utf-weight-regular: 400;
+  --utf-weight-bold: 700;
+  --utf-leading-body: 1.5;
+  --utf-leading-label: 1.35;
+  --utf-leading-heading: 1.2;
+
+  /* Text colour */
+  --utf-text: var(--ink);
+  --utf-text-muted: var(--muted);
+  --utf-text-subtle: #8b97a7;
+
+  /* Surface */
+  --utf-surface-base: var(--surface);
+  --utf-surface-raised: var(--surface-raised);
+  --utf-surface-overlay: var(--surface-soft);
+
+  /* Hover layer (Phase 70): the single neutral hover fill, the ink colour at 8%, painted over a control fill as a
+     background image so it composes with every variant. Text on it stays at 4.5:1 (tests/styles/tokens-contrast.test.ts). */
+  --utf-hover: rgb(244 241 232 / 8%);
+
+  /* Border */
+  --utf-border-divider: var(--stroke);
+  --utf-border-control: #6f7f92;
+
+  /* State families: the tint must stay at 12% alpha, danger on the overlay surface passes AA by only 0.08. */
+  --utf-state-neutral-fg: var(--muted);
+  --utf-state-neutral-bg: rgb(170 178 191 / 12%);
+  --utf-state-neutral-border: rgb(170 178 191 / 60%);
+  --utf-state-info-fg: var(--info);
+  --utf-state-info-bg: rgb(121 169 223 / 12%);
+  --utf-state-info-border: rgb(121 169 223 / 60%);
+  --utf-state-success-fg: var(--success);
+  --utf-state-success-bg: rgb(102 196 154 / 12%);
+  --utf-state-success-border: rgb(102 196 154 / 60%);
+  --utf-state-warning-fg: var(--warning);
+  --utf-state-warning-bg: rgb(225 185 104 / 12%);
+  --utf-state-warning-border: rgb(225 185 104 / 60%);
+  --utf-state-danger-fg: var(--danger);
+  --utf-state-danger-bg: rgb(228 119 119 / 12%);
+  --utf-state-danger-border: rgb(228 119 119 / 60%);
+
+  /* Cost families: live and unconfirmed share the warning colour, component CSS draws the dashed border. */
+  --utf-cost-live-fg: var(--warning);
+  --utf-cost-live-bg: rgb(225 185 104 / 12%);
+  --utf-cost-live-border: rgb(225 185 104 / 60%);
+  --utf-cost-unconfirmed-fg: var(--warning);
+  --utf-cost-unconfirmed-bg: rgb(225 185 104 / 12%);
+  --utf-cost-unconfirmed-border: rgb(225 185 104 / 60%);
+  --utf-cost-none-fg: var(--muted);
+  --utf-cost-none-bg: rgb(170 178 191 / 12%);
+  --utf-cost-none-border: rgb(170 178 191 / 60%);
+
+  /* Button looks moved out of styles.css (Phase 70): the gold variant border and shadows, and the glass variant border,
+     two-stop fill and highlight. Existing values, not new colours. */
+  --utf-gold-border: rgb(245 222 154 / 38%);
+  --utf-gold-shadow: inset 0 1px 0 rgb(255 255 255 / 24%), 0 8px 24px rgb(186 160 90 / 14%);
+  --utf-glass-border: rgb(255 255 255 / 28%);
+  --utf-glass-fill: linear-gradient(180deg, rgb(22 28 36 / 72%), rgb(8 11 16 / 72%));
+  --utf-glass-highlight: inset 0 1px 0 rgb(255 255 255 / 7%);
+
+  /* Focus */
+  --utf-focus-ring: 2px solid var(--gold-bright);
+  --utf-focus-offset: 2px;
+
+  /* Scrim: the modal backdrop colour, the value the dialog shell already used (moved here, not a new colour) */
+  --utf-scrim: rgb(2 4 7 / 76%);
+
+  /* Elevation */
+  --utf-elevation-0: none;
+  --utf-elevation-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --utf-elevation-2: var(--shadow);
+
+  /* Radius */
+  --utf-radius: var(--radius);
+  --utf-radius-small: var(--radius-small);
+
+  /* Motion */
+  --utf-motion-fast: 100ms;
+  --utf-motion-base: 150ms;
+  --utf-motion-slow: 250ms;
+  --utf-motion-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --utf-motion-fast: 0.01ms;
+    --utf-motion-base: 0.01ms;
+    --utf-motion-slow: 0.01ms;
+  }
+}

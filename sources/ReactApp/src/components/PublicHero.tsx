@@ -35,6 +35,19 @@ function joinClassNames(...classNames: (string | false | undefined)[]): string {
   return classNames.filter(Boolean).join(" ");
 }
 
+/**
+ * The image hero of the public community pages and the only header kind with a marketing title scale.
+ *
+ * The title keeps its scale as the single documented type exception (E-01). The copy column renders its slots in
+ * one fixed order: kicker, the `h1` title, the lede, then the actions. A page renders exactly one hero, so the
+ * hero title is the page's only `h1`; a state view or section below it starts at `h2`.
+ *
+ * @param props.kicker Optional short label above the title.
+ * @param props.title The page title, rendered as the `h1`.
+ * @param props.description Optional lede below the title.
+ * @param props.actions Optional action controls below the lede.
+ * @param props.aside Optional side panel; requires `asideLabel`.
+ */
 export function PublicHero({
   kicker,
   title,

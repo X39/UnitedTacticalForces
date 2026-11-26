@@ -4,28 +4,26 @@ import {
   Calendar20Regular,
   Document20Regular,
   People20Regular,
-  Save20Regular,
   Settings20Regular,
 } from "@fluentui/react-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useParams, useSearchParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { resolveImageUrl } from "@/api/client";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
 import { canEditEvent, canManageEvents, isAuthenticated } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { useAppToast } from "@/components/AppToasts";
+import { SelectField, TextAreaField, TextField } from "@/components/FormFields";
 import { NotFoundPage } from "@/components/NotFoundPage";
-import {
-  ConfirmDialog,
-  Markdown,
-  StatePanel,
-  StatusBadge,
-  useUnsavedChanges,
-} from "@/components/primitives";
+import { PageStack } from "@/components/PageStack";
+import { ConfirmDialog, Markdown, PageHeader, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { useLeaveGuard } from "@/components/useLeaveGuard";
 import { EventEntityPicker } from "@/features/admin/EventEntityPicker";
 import { EventObjectiveIconPicker } from "@/features/admin/EventObjectiveIconPicker";
 import { EventSlotPlanner } from "@/features/admin/EventSlotPlanner";
@@ -57,6 +55,7 @@ import type { MediaAsset } from "@/features/admin/siteImages";
 import { loadTerrainWindow, type Terrain } from "@/features/admin/terrains";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
 import type { GameContentOption } from "@/features/hosting/types";
+import "@/features/admin/eventAuthoring.css";
 
 type EditorTab = "details" | "briefing" | "objectives" | "slots";
 type SaveMode = "all" | "slots";
@@ -157,7 +156,8 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
     queryKey: hostingQueryKeys.capabilities,
     queryFn: ({ signal }) => hostingService.capabilities(signal),
   });
-  useUnsavedChanges(dirty);
+  const leaveGuard = useLeaveGuard({ dirty });
+  const descriptionField = form.register("description");
   useEffect(() => {
     if (searchParams.get("slotSetup") === "failed")
       showToast(t("React_EventAuthoring_PartialSlotFailure"), "warning");
@@ -314,50 +314,40 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
   const currentSaveDisabled = busy || (tab === "slots" ? !slotsDirty : !dirty);
 
   return (
-    <section className="event-authoring-page event-editor-page">
-      <section className="command-panel event-editor-header">
-        <div className="event-editor-header__main">
-          <div className="event-editor-header__copy">
-            <Link className="event-editor-back-link" to={backPath}>
-              <ArrowLeft20Regular />
-              {t("Auto_BackToEvents_6f92c820")}
-            </Link>
-            <div className="event-editor-title-row">
-              <div>
-                <span className="kicker">{t("Shared_CommandCenter_Nav_Events")}</span>
-                <h1>{watched.title?.trim() || t("Pages_Events_Edit_UntitledOperation")}</h1>
-              </div>
-              <StatusBadge tone={watched.isVisible ? "success" : "neutral"}>
-                {watched.isVisible ? t("Public") : t("Hidden")}
-              </StatusBadge>
-            </div>
-            <p>
-              {t("Auto_AuthoringWorkspaceForOperationMetadataBriefingMediaReadinessAnd_560063d1")}
-            </p>
-            <div className="event-editor-header__meta">
-              <span>
-                <Calendar20Regular />
-                {formatDate(watched.scheduledForLocal)}
-              </span>
-              <span>
-                <People20Regular />
-                {t("Host")}: {host?.nickname || t("Pages_Events_Edit_Status_HostPending")}
-              </span>
-              {dirty && <strong>{t("React_UnsavedChanges")}</strong>}
-            </div>
+    <PageStack className="event-editor-page">
+      <PageHeader
+        kicker={t("Shared_CommandCenter_Nav_Events")}
+        title={watched.title?.trim() || t("Pages_Events_Edit_UntitledOperation")}
+        description={t(
+          "Auto_AuthoringWorkspaceForOperationMetadataBriefingMediaReadinessAnd_560063d1",
+        )}
+        meta={
+          <div className="event-editor-header__meta">
+            <StatusBadge tone={watched.isVisible ? "success" : "neutral"}>
+              {watched.isVisible ? t("Public") : t("Hidden")}
+            </StatusBadge>
+            <span>
+              <Calendar20Regular aria-hidden="true" />
+              {formatDate(watched.scheduledForLocal)}
+            </span>
+            <span>
+              <People20Regular aria-hidden="true" />
+              {t("Host")}: {host?.nickname || t("Pages_Events_Edit_Status_HostPending")}
+            </span>
+            {dirty && <strong>{t("React_UnsavedChanges")}</strong>}
           </div>
-          <div className="event-editor-header__actions">
-            <Link className="button button--ghost" to={`/events/${eventId}`}>
-              <People20Regular />
+        }
+        actions={
+          <>
+            <ActionLink variant="ghost" to={backPath}>
+              <ArrowLeft20Regular aria-hidden="true" />
+              {t("Auto_BackToEvents_6f92c820")}
+            </ActionLink>
+            <ActionLink variant="ghost" to={`/events/${eventId}`}>
+              <People20Regular aria-hidden="true" />
               {t("Auto_ViewSlots_ddcd3598")}
-            </Link>
-            <button
-              className="button button--primary"
-              type="button"
-              disabled={currentSaveDisabled}
-              onClick={saveCurrent}
-            >
-              <Save20Regular />
+            </ActionLink>
+            <ActionButton variant="gold" disabled={currentSaveDisabled} onClick={saveCurrent}>
               {saveMutation.isPending
                 ? tab === "slots"
                   ? t("Pages_Events_Edit_ActionSavingSlots")
@@ -365,31 +355,33 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                 : tab === "slots"
                   ? t("Pages_Events_Edit_ActionSaveSlotPlan")
                   : t("Pages_Events_Edit_ActionSaveChanges")}
-            </button>
-          </div>
-        </div>
+            </ActionButton>
+          </>
+        }
+      />
+      <section className="command-panel event-editor-header">
         <nav
           className="event-editor-tabs"
           role="tablist"
           aria-label={t("React_EventAuthoring_EditorTabs")}
         >
           {(["details", "briefing", "objectives", "slots"] as const).map((item) => (
-            <button
+            <ActionButton
               key={item}
-              type="button"
+              fullWidth
               role="tab"
               aria-selected={tab === item}
-              className={tab === item ? "is-active" : ""}
+              {...(tab === item ? { className: "is-active" } : {})}
               onClick={() => setTab(item)}
             >
               {item === "details" ? (
-                <Settings20Regular />
+                <Settings20Regular aria-hidden="true" />
               ) : item === "briefing" ? (
-                <Document20Regular />
+                <Document20Regular aria-hidden="true" />
               ) : item === "objectives" ? (
-                <Calendar20Regular />
+                <Calendar20Regular aria-hidden="true" />
               ) : (
-                <People20Regular />
+                <People20Regular aria-hidden="true" />
               )}
               {t(
                 item === "details"
@@ -405,7 +397,7 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                   {slots.filter((slot) => !slot.isDeleted).length}
                 </span>
               )}
-            </button>
+            </ActionButton>
           ))}
         </nav>
       </section>
@@ -424,28 +416,22 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                 }
               />
               <div className="event-authoring-form-grid">
-                <label className="is-wide">
-                  <span>{t("Title")}</span>
-                  <input
+                <div className="is-wide">
+                  <TextField
                     {...form.register("title")}
+                    label={t("Title")}
                     maxLength={1024}
                     disabled={busy}
-                    aria-invalid={Boolean(errors.title)}
+                    error={errors.title?.message}
                   />
-                  {errors.title && <small className="field-error">{errors.title.message}</small>}
-                </label>
-                <label>
-                  <span>{t("Schedule")}</span>
-                  <input
-                    {...form.register("scheduledForLocal")}
-                    type="datetime-local"
-                    disabled={busy}
-                    aria-invalid={Boolean(errors.scheduledForLocal)}
-                  />
-                  {errors.scheduledForLocal && (
-                    <small className="field-error">{errors.scheduledForLocal.message}</small>
-                  )}
-                </label>
+                </div>
+                <TextField
+                  {...form.register("scheduledForLocal")}
+                  label={t("Schedule")}
+                  type="datetime-local"
+                  disabled={busy}
+                  error={errors.scheduledForLocal?.message}
+                />
                 <EventEntityPicker<EventPerson>
                   label={t("Host")}
                   placeholder={t("Auto_SearchHost_abe3f02f")}
@@ -466,29 +452,23 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                     });
                   }}
                 />
-                <label>
-                  <span>{t("Auto_MinimumAccepted_05ac548c")}</span>
-                  <input
-                    {...form.register("minimumAccepted", { valueAsNumber: true })}
-                    type="number"
-                    min={0}
-                    disabled={busy}
-                    aria-invalid={Boolean(errors.minimumAccepted)}
-                  />
-                  {errors.minimumAccepted && (
-                    <small className="field-error">{errors.minimumAccepted.message}</small>
-                  )}
-                </label>
-                <label>
-                  <span>{t("Visibility")}</span>
-                  <select
-                    {...form.register("isVisible", { setValueAs: normalizeEventVisibility })}
-                    disabled={busy}
-                  >
-                    <option value="true">{t("Public")}</option>
-                    <option value="false">{t("Hidden")}</option>
-                  </select>
-                </label>
+                <TextField
+                  {...form.register("minimumAccepted", { valueAsNumber: true })}
+                  label={t("Auto_MinimumAccepted_05ac548c")}
+                  type="number"
+                  min={0}
+                  disabled={busy}
+                  error={errors.minimumAccepted?.message}
+                />
+                <SelectField
+                  {...form.register("isVisible", { setValueAs: normalizeEventVisibility })}
+                  label={t("Visibility")}
+                  disabled={busy}
+                  options={[
+                    { value: "true", label: t("Public") },
+                    { value: "false", label: t("Hidden") },
+                  ]}
+                />
                 <EventEntityPicker<Terrain>
                   label={t("Terrain")}
                   placeholder={t("Auto_SearchTerrain_ca2ee95e")}
@@ -537,8 +517,8 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                 />
                 {watched.scenarioRequired && terrain && (
                   <EventEntityPicker<GameContentOption>
-                    label="Scenario"
-                    placeholder="Search scenarios"
+                    label={t("Pages_Events_Create_Step_Scenario_Label")}
+                    placeholder={t("React_EventAuthoring_ScenarioSearchPlaceholder")}
                     selected={scenario}
                     disabled={busy}
                     queryKey={`edit-scenario-${eventId}-${terrain.gameIdentifier}`}
@@ -631,18 +611,16 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                         snapshot.event.imagePath ||
                         t("Auto_NoMissionImage_4188cdba")}
                     </p>
-                    <button
-                      className="button button--ghost"
-                      type="button"
+                    <ActionButton
+                      variant="ghost"
                       disabled={busy}
                       onClick={() => setPickerOpen(true)}
                     >
                       {t("React_EventAuthoring_SelectImage")}
-                    </button>
+                    </ActionButton>
                     {imageUrl && (
-                      <button
-                        className="button button--ghost"
-                        type="button"
+                      <ActionButton
+                        variant="ghost"
                         disabled={busy}
                         onClick={() => {
                           setSelectedAsset(undefined);
@@ -651,7 +629,7 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                         }}
                       >
                         {t("Remove")}
-                      </button>
+                      </ActionButton>
                     )}
                   </div>
                 </div>
@@ -669,18 +647,16 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                   watched.description?.length ?? 0,
                 )}
               />
-              <label className="event-authoring-briefing-field">
-                <span>{t("Auto_BriefingMarkdown_57d6b69f")}</span>
-                <textarea
-                  {...form.register("description")}
-                  rows={18}
-                  disabled={busy}
-                  onBlur={(event) => {
-                    form.register("description").onBlur(event);
-                    setObjectives(parseEventObjectives(event.currentTarget.value));
-                  }}
-                />
-              </label>
+              <TextAreaField
+                {...descriptionField}
+                label={t("Auto_BriefingMarkdown_57d6b69f")}
+                rows={18}
+                disabled={busy}
+                onBlur={(event) => {
+                  void descriptionField.onBlur(event);
+                  setObjectives(parseEventObjectives(event.currentTarget.value));
+                }}
+              />
               <section className="event-authoring-markdown-preview">
                 <span className="kicker">{t("Auto_RenderedBriefing_9d4f9366")}</span>
                 <Markdown>{watched.description ?? ""}</Markdown>
@@ -714,46 +690,40 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
                         )
                       }
                     />
-                    <label>
-                      <span>
-                        {formatResource(t("Pages_Events_Edit_LabelObjective"), index + 1)}
-                      </span>
-                      <input
-                        value={objective.text}
-                        maxLength={150}
-                        disabled={busy}
-                        onChange={(event) =>
-                          applyObjectives(
-                            objectives.map((item) =>
-                              item.draftKey === objective.draftKey
-                                ? { ...item, text: event.target.value }
-                                : item,
-                            ),
-                          )
-                        }
-                      />
-                    </label>
-                    <button
-                      className="button button--ghost"
-                      type="button"
+                    <TextField
+                      label={formatResource(t("Pages_Events_Edit_LabelObjective"), index + 1)}
+                      value={objective.text}
+                      maxLength={150}
+                      disabled={busy}
+                      onChange={(event) =>
+                        applyObjectives(
+                          objectives.map((item) =>
+                            item.draftKey === objective.draftKey
+                              ? { ...item, text: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                    <ActionButton
+                      variant="ghost"
                       disabled={busy}
                       onClick={() => setRemoveObjective(objective)}
                     >
                       {t("Pages_Events_Edit_ActionRemoveObjective")}
-                    </button>
+                    </ActionButton>
                   </article>
                 ))}
               </div>
-              <button
-                className="button button--ghost"
-                type="button"
+              <ActionButton
+                variant="ghost"
                 disabled={busy}
                 onClick={() =>
                   applyObjectives([...objectives, createObjectiveDraft(objectives.length)])
                 }
               >
                 {t("Pages_Events_Edit_ActionAddObjective")}
-              </button>
+              </ActionButton>
               <section className="event-authoring-markdown-preview">
                 <span className="kicker">{t("Auto_PublicPreview_f948bc45")}</span>
                 <Markdown>{watched.description ?? ""}</Markdown>
@@ -831,7 +801,7 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
         title={t("React_EventAuthoring_RemoveObjectiveTitle")}
         description={t("Pages_Events_Edit_Tooltip_ConfirmRemoveObjective")}
         confirmLabel={t("Pages_Events_Edit_ActionConfirmRemoveObjective")}
-        cancelLabel={t("Cancel")}
+        cancelLabel={t("React_EventAuthoring_RemoveObjective_Dismiss")}
         onConfirm={() => {
           if (removeObjective)
             applyObjectives(
@@ -841,7 +811,28 @@ function Editor({ snapshot }: { snapshot: EventAuthoringSnapshot }) {
         }}
         onCancel={() => setRemoveObjective(undefined)}
       />
-    </section>
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        title={t("React_EventAuthoring_Leave_Title")}
+        description={t("React_EventAuthoring_Leave_Body")}
+        cancelLabel={t("React_EventAuthoring_Leave_Stay")}
+        confirmLabel={t("React_EventAuthoring_Leave_Leave")}
+        initialFocus="dismiss"
+        onCancel={leaveGuard.stay}
+        onConfirm={leaveGuard.proceed}
+      />
+    </PageStack>
+  );
+}
+
+/** Renders the shared page header above a state view, so every state of the editor route keeps one `h1`. */
+function EditorStateFrame({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <PageStack>
+      <PageHeader title={t("Shared_CommandCenter_Nav_Events")} />
+      {children}
+    </PageStack>
   );
 }
 
@@ -852,45 +843,56 @@ export function Component() {
   const canLoad = isAuthenticated(user);
   const query = useQuery({
     queryKey: eventAuthoringQueryKeys.event(eventId ?? ""),
-    queryFn: ({ signal }) => eventAuthoringService.load(eventId!, signal),
+    // A missing event resolves to null: a query can never hold undefined, which would show a load error instead.
+    queryFn: async ({ signal }) => (await eventAuthoringService.load(eventId!, signal)) ?? null,
     enabled: canLoad && isGuid(eventId),
   });
 
   if (!isGuid(eventId)) return <NotFoundPage />;
   if (!canLoad)
     return (
-      <StatePanel kind="forbidden" title={t("Auto_EventAdministratorAccessRequired_d59039c1")}>
-        {t("Auto_EventAuthoringIsVisibleOnlyToAuthorizedOperationPlanners_b8740e86")}
-      </StatePanel>
+      <EditorStateFrame>
+        <ForbiddenState title={t("Auto_EventAdministratorAccessRequired_d59039c1")}>
+          {t("Auto_EventAuthoringIsVisibleOnlyToAuthorizedOperationPlanners_b8740e86")}
+        </ForbiddenState>
+      </EditorStateFrame>
     );
   if (query.isPending)
-    return <StatePanel kind="loading">{t("Auto_LoadingEventEditor_f4351c62")}</StatePanel>;
+    return (
+      <EditorStateFrame>
+        <LoadingState label={t("Auto_LoadingEventEditor_f4351c62")} />
+      </EditorStateFrame>
+    );
   if (query.isError)
     return (
-      <StatePanel
-        kind="error"
-        action={
-          <button className="button button--ghost" type="button" onClick={() => query.refetch()}>
-            {t("React_UI_Retry")}
-          </button>
-        }
-      >
-        {formatResource(t("React_EventAuthoring_LoadError"), query.error.message)}
-      </StatePanel>
+      <EditorStateFrame>
+        <ErrorState onRetry={() => void query.refetch()}>
+          {formatResource(t("React_EventAuthoring_LoadError"), query.error.message)}
+        </ErrorState>
+      </EditorStateFrame>
     );
   if (!query.data)
     return (
-      <StatePanel kind="empty" title={t("React_EventAuthoring_NotFoundTitle")}>
-        <Link className="button button--ghost" to="/command/events">
-          {t("Auto_BackToEvents_6f92c820")}
-        </Link>
-      </StatePanel>
+      <EditorStateFrame>
+        <EmptyState
+          title={t("React_EventAuthoring_NotFoundTitle")}
+          action={
+            <ActionLink variant="ghost" to="/command/events">
+              {t("Auto_BackToEvents_6f92c820")}
+            </ActionLink>
+          }
+        >
+          {t("Pages_Events_Detail_Error_NotFound")}
+        </EmptyState>
+      </EditorStateFrame>
     );
   if (!canEditEvent(user, query.data.event.hostedBy?.primaryKey))
     return (
-      <StatePanel kind="forbidden" title={t("Auto_EventAdministratorAccessRequired_d59039c1")}>
-        {t("Auto_EventAuthoringIsVisibleOnlyToAuthorizedOperationPlanners_b8740e86")}
-      </StatePanel>
+      <EditorStateFrame>
+        <ForbiddenState title={t("Auto_EventAdministratorAccessRequired_d59039c1")}>
+          {t("Auto_EventAuthoringIsVisibleOnlyToAuthorizedOperationPlanners_b8740e86")}
+        </ForbiddenState>
+      </EditorStateFrame>
     );
   return <Editor snapshot={query.data} />;
 }

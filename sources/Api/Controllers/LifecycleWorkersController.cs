@@ -1,7 +1,10 @@
+using System.Net.WebSockets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using X39.UnitedTacticalForces.Api.Services.GameServerLifecycle;
 using X39.UnitedTacticalForces.Api.Services.WorkerProtocol;
 using X39.UnitedTacticalForces.Hosting.Contracts.WorkerProtocol;
 
@@ -67,6 +70,64 @@ public sealed class LifecycleWorkersController(IWorkerProtocolService workerProt
         {
             return result;
         }
+    }
+
+    /// <summary>
+    /// Upgrades the request to the persistent worker channel after verifying the worker credential.
+    /// </summary>
+    /// <remarks>
+    /// The bearer credential is the only credential carrier; the deployment id is a non-secret query parameter. The
+    /// worker is authenticated before the upgrade is accepted, so an unauthenticated peer never obtains a socket.
+    /// The action completes when the channel ends. The status code is written directly because a successful upgrade
+    /// has no response body.
+    /// </remarks>
+    /// <param name="workerId">The id of the worker opening the channel.</param>
+    /// <param name="deploymentId">The id of the deployment the worker is bound to.</param>
+    /// <param name="channelHandler">The handler that serves the accepted socket.</param>
+    /// <param name="options">The channel settings used for the per-socket keep-alive.</param>
+    /// <param name="cancellationToken">A token cancelled when the request is aborted.</param>
+    /// <returns>A task completing once the channel ended or the upgrade was refused.</returns>
+    [HttpGet("channel")]
+    public async Task ChannelAsync(
+        [FromRoute] Guid workerId,
+        [FromQuery(Name = WorkerChannelProtocol.DeploymentIdQueryParameter)] Guid deploymentId,
+        [FromServices] IWorkerChannelHandler channelHandler,
+        [FromServices] IOptions<LifecycleWorkerOptions> options,
+        CancellationToken cancellationToken)
+    {
+        if (!TryReadBearerCredential(out var workerCredential))
+        {
+            Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        if (!HttpContext.WebSockets.IsWebSocketRequest)
+        {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+        AuthenticatedWorker identity;
+        try
+        {
+            identity = await workerProtocolService
+                .AuthenticateAsync(workerId, deploymentId, workerCredential, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (WorkerProtocolAuthenticationException)
+        {
+            Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        using var socket = await HttpContext.WebSockets
+            .AcceptWebSocketAsync(
+                new WebSocketAcceptContext
+                {
+                    KeepAliveInterval = options.Value.ChannelKeepAliveInterval,
+                    KeepAliveTimeout = options.Value.ChannelKeepAliveTimeout,
+                })
+            .ConfigureAwait(false);
+        await channelHandler.RunAsync(identity, workerCredential, socket, HttpContext.RequestAborted)
+            .ConfigureAwait(false);
     }
 
     [HttpPost("heartbeat")]

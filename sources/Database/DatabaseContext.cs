@@ -81,10 +81,22 @@ public class DatabaseContext : DbContext
     public DbSet<GameServerSecret> GameServerSecrets { get; set; } = null!;
     public DbSet<HostingAuditRecord> HostingAuditRecords { get; set; } = null!;
     public DbSet<HostingCostLedgerEntry> HostingCostLedgerEntries { get; set; } = null!;
+    public DbSet<CostAlertSetting> CostAlertSettings { get; set; } = null!;
+    public DbSet<CostAlertThreshold> CostAlertThresholds { get; set; } = null!;
+    public DbSet<CostAlert> CostAlerts { get; set; } = null!;
+    public DbSet<CostAlertDismissal> CostAlertDismissals { get; set; } = null!;
+    public DbSet<CostAlertDelivery> CostAlertDeliveries { get; set; } = null!;
+    public DbSet<ServerMetricSnapshot> ServerMetricSnapshots { get; set; } = null!;
+    public DbSet<ServerMetricBucket> ServerMetricBuckets { get; set; } = null!;
     public DbSet<HostingFinanceOperation> HostingFinanceOperations { get; set; } = null!;
     public DbSet<HostingFinanceCorrectionAllocation> HostingFinanceCorrectionAllocations { get; set; } = null!;
     public DbSet<HostingFinancePolicy> HostingFinancePolicies { get; set; } = null!;
     public DbSet<DanglingProviderResourceIncident> DanglingProviderResourceIncidents { get; set; } = null!;
+    public DbSet<ServerAutomationSettings> ServerAutomationSettings { get; set; } = null!;
+    public DbSet<ServerAutomationState> ServerAutomationStates { get; set; } = null!;
+    public DbSet<ServerSchedule> ServerSchedules { get; set; } = null!;
+    public DbSet<ServerScheduleRun> ServerScheduleRuns { get; set; } = null!;
+    public DbSet<AutomationPendingStop> AutomationPendingStops { get; set; } = null!;
 
     #endregion
 
@@ -345,6 +357,10 @@ public class DatabaseContext : DbContext
             entity.ToTable(table => table.HasCheckConstraint(
                 "CK_CostOwners_KindUser",
                 "(\"Kind\" = 0 AND \"UserFk\" IS NOT NULL) OR (\"Kind\" <> 0 AND \"UserFk\" IS NULL)"));
+            entity.HasOne(q => q.CostAlertSetting)
+                .WithOne(q => q.CostOwner)
+                .HasForeignKey<CostAlertSetting>(q => q.CostOwnerFk)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<GameServerCostOwnerAssignment>(entity =>
@@ -521,6 +537,24 @@ public class DatabaseContext : DbContext
                 .HasDatabaseName(WorkerCommand.ActiveDeploymentIndexName)
                 .IsUnique()
                 .HasFilter(WorkerCommand.ActiveDeploymentIndexFilter);
+        });
+
+        modelBuilder.Entity<CostAlert>(entity =>
+        {
+            entity.HasIndex(q => new { q.DeploymentFk, q.ThresholdAmount })
+                .HasDatabaseName(CostAlert.ThresholdIndexName)
+                .IsUnique()
+                .HasFilter(CostAlert.ThresholdIndexFilter);
+            entity.HasIndex(q => q.PendingStopFk)
+                .IsUnique();
+        });
+
+        modelBuilder.Entity<AutomationPendingStop>(entity =>
+        {
+            entity.HasIndex(q => q.DeploymentFk)
+                .HasDatabaseName(AutomationPendingStop.PendingIndexName)
+                .IsUnique()
+                .HasFilter(AutomationPendingStop.PendingIndexFilter);
         });
 
         modelBuilder.Entity<HostingFinancePolicy>(entity =>

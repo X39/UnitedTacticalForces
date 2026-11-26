@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Data;
 using System.Text.Json;
@@ -26,6 +27,7 @@ internal sealed class GameServerLifecycleService(
     IHostingAuditWriter auditWriter,
     IGameServerSecretService secretService,
     IGameServerConfigurationService configurationService,
+    IGameServerContentSnapshotResolver contentSnapshotResolver,
     IOptions<HostingFinanceOptions> financeOptions) : IGameServerLifecycleService
 {
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
@@ -313,9 +315,100 @@ internal sealed class GameServerLifecycleService(
         if (!GameServerActions.TryGetKind(actionId, out var kind))
             throw new HostingValidationException("The requested server action is not supported.");
 
-        await using var actionTransaction = await dbContext.Database
-            .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+        return await EnqueueCoreAsync(
+                gameServerId,
+                actionId,
+                kind,
+                confirmation,
+                actorId,
+                principal,
+                ELifecycleJobTrigger.Manual,
+                null,
+                null,
+                NodaSystemClock.Instance.GetCurrentInstant(),
+                cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<LifecycleJob> EnqueueAutomatedActionAsync(
+        AutomatedLifecycleRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var actionId = request.ActionId.Trim().ToLowerInvariant();
+        if (actionId is not (GameServerActions.Start or GameServerActions.Stop)
+            || !GameServerActions.TryGetKind(actionId, out var kind))
+        {
+            throw new HostingValidationException("Only start and stop can be queued automatically.");
+        }
+        if (request.Trigger is ELifecycleJobTrigger.Manual)
+            throw new HostingValidationException("An automated request needs an automatic trigger.");
+
+        var auditNote = request.AuditNote?.Trim();
+        if (auditNote is { Length: > 256 })
+            auditNote = auditNote[..256];
+        return await EnqueueCoreAsync(
+                request.GameServerId,
+                actionId,
+                kind,
+                null,
+                null,
+                null,
+                request.Trigger,
+                request.TriggerLimit,
+                auditNote,
+                request.Now,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Queues one lifecycle job for a server. Shared by the user-initiated and the system-initiated entry points so both
+    /// apply the same preconditions, server-row lock and sequence allocation.
+    /// </summary>
+    /// <param name="gameServerId">The server the job belongs to.</param>
+    /// <param name="actionId">The trimmed, lower-case action identifier.</param>
+    /// <param name="kind">The lifecycle job kind resolved from <paramref name="actionId" />.</param>
+    /// <param name="confirmation">The confirmation text of a user, ignored when there is no user.</param>
+    /// <param name="actorId">The requesting user, or <see langword="null" /> for a system-initiated job.</param>
+    /// <param name="principal">
+    /// The requesting user principal whose cost-owner consent and confirmation text are checked, or
+    /// <see langword="null" /> for a system-initiated job whose caller already proved consent.
+    /// </param>
+    /// <param name="trigger">What caused the job to be queued.</param>
+    /// <param name="triggerLimit">The automatic limit that applied, or <see langword="null" />.</param>
+    /// <param name="auditNote">An optional note appended to the queue audit details.</param>
+    /// <param name="now">The instant the request is evaluated at.</param>
+    /// <param name="cancellationToken">A token that cancels the operation.</param>
+    /// <returns>The queued job.</returns>
+    /// <exception cref="HostingValidationException">
+    /// A system-initiated request names an action other than start or stop, or the game does not expose the action.
+    /// </exception>
+    /// <exception cref="HostingNotFoundException">The server does not exist or is archived.</exception>
+    /// <exception cref="HostingConflictException">A lifecycle precondition is not met.</exception>
+    /// <exception cref="HostingForbiddenException">The user may not use the assigned cost owner.</exception>
+    private async Task<LifecycleJob> EnqueueCoreAsync(
+        Guid gameServerId,
+        string actionId,
+        ELifecycleJobKind kind,
+        string? confirmation,
+        Guid? actorId,
+        ClaimsPrincipal? principal,
+        ELifecycleJobTrigger trigger,
+        int? triggerLimit,
+        string? auditNote,
+        Instant now,
+        CancellationToken cancellationToken)
+    {
+        if (principal is null && kind is not (ELifecycleJobKind.Start or ELifecycleJobKind.Stop))
+            throw new HostingValidationException("Only start and stop can be queued without a user.");
+
+        // A caller that already opened a transaction owns its commit, so its own claim and this job commit together.
+        await using var ownTransaction = dbContext.Database.CurrentTransaction is null
+            ? await dbContext.Database
+                .BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+                .ConfigureAwait(false)
+            : null;
         IQueryable<GameServer> serverQuery = dbContext.GameServers;
         if (dbContext.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
         {
@@ -334,7 +427,8 @@ internal sealed class GameServerLifecycleService(
         if (supported is null
             || kind is not ELifecycleJobKind.Terminate && projectedAction is null)
             throw new HostingValidationException("The selected game implementation does not expose this action.");
-        if (projectedAction?.RequiresConfirmation == true
+        if (principal is not null
+            && projectedAction?.RequiresConfirmation == true
             && !string.Equals(confirmation, server.Title, StringComparison.Ordinal))
             throw new HostingValidationException("This action requires the exact server title as confirmation.");
 
@@ -343,7 +437,6 @@ internal sealed class GameServerLifecycleService(
                 q => q.GameServerFk == gameServerId && q.TimeStampResolved == null,
                 cancellationToken)
             .ConfigureAwait(false);
-        var now = NodaSystemClock.Instance.GetCurrentInstant();
         GameServerDeployment deployment;
         if (kind is ELifecycleJobKind.Start)
         {
@@ -352,7 +445,8 @@ internal sealed class GameServerLifecycleService(
                 throw new HostingConflictException(server.LaunchDisabledReason ?? "Server launch is disabled.");
             if (server.CurrentCostOwner is null || server.CurrentCostOwner.IsFrozen)
                 throw new HostingConflictException("The assigned cost owner is unavailable.");
-            if (!await authorizationService
+            if (principal is not null
+                && !await authorizationService
                     .CanUseCostOwnerAsync(principal, server.CurrentCostOwnerFk, cancellationToken)
                     .ConfigureAwait(false))
             {
@@ -480,6 +574,8 @@ internal sealed class GameServerLifecycleService(
                 TimeStampUpdated = now,
             };
             dbContext.GameServerDeployments.Add(deployment);
+            // The content snapshot is frozen here; configuration and credentials are consumed at command creation.
+            PendingStartChanges.ConsumeAtDeploymentCreation(server);
             auditWriter.Add(
                 dbContext,
                 EHostingAuditEventKind.DeploymentCreated,
@@ -559,25 +655,37 @@ internal sealed class GameServerLifecycleService(
             Stage            = "queued",
             Progress         = 0,
             MaxAttempts      = kind is ELifecycleJobKind.Terminate ? int.MaxValue : 3,
+            Trigger          = trigger,
+            TriggerLimit     = triggerLimit,
             TimeStampCreated = now,
             TimeStampUpdated = now,
         };
         dbContext.LifecycleJobs.Add(job);
         server.TimeStampUpdated = now;
+        var automated = trigger is not ELifecycleJobTrigger.Manual;
         auditWriter.Add(
             dbContext,
-            kind is ELifecycleJobKind.Terminate
-                ? EHostingAuditEventKind.TerminateRequested
-                : EHostingAuditEventKind.LifecycleJobQueued,
+            kind switch
+            {
+                ELifecycleJobKind.Terminate => EHostingAuditEventKind.TerminateRequested,
+                ELifecycleJobKind.Stop when automated => EHostingAuditEventKind.AutomaticStopRequested,
+                ELifecycleJobKind.Start when automated => EHostingAuditEventKind.ScheduledStartRequested,
+                _ => EHostingAuditEventKind.LifecycleJobQueued,
+            },
             $"Lifecycle action '{actionId}' queued.",
             actorId,
             server.PrimaryKey,
             deployment.PrimaryKey,
             job.PrimaryKey,
             costOwnerId: deployment.CostOwnerFk,
+            details: automated
+                ? $"Trigger={trigger}; Limit={triggerLimit?.ToString(CultureInfo.InvariantCulture) ?? "none"}"
+                  + (string.IsNullOrWhiteSpace(auditNote) ? string.Empty : $"; {auditNote}")
+                : null,
             costImpact: CostImpact(kind));
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await actionTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        if (ownTransaction is not null)
+            await ownTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return job;
     }
 
@@ -881,6 +989,7 @@ internal sealed class GameServerLifecycleService(
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
     public async Task ChangeModPackAsync(
         Guid gameServerId,
         long? modPackDefinitionId,
@@ -896,6 +1005,9 @@ internal sealed class GameServerLifecycleService(
             .ConfigureAwait(false)
             ?? throw new HostingNotFoundException($"Game server {gameServerId} does not exist.");
 
+        if (server.SelectedModPackDefinitionFk == modPackDefinitionId)
+            return;
+
         if (modPackDefinitionId is { } selectedId)
         {
             var selected = await dbContext.ModPackDefinitions
@@ -904,17 +1016,38 @@ internal sealed class GameServerLifecycleService(
                 .Select(q => new { q.PrimaryKey, q.GameIdentifier })
                 .SingleOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false)
-                ?? throw new HostingValidationException("The selected mod pack is unavailable.");
+                ?? throw new HostingValidationException(ModPackAvailabilityReasons.Inactive);
             if (!string.Equals(selected.GameIdentifier, server.GameIdentifier, StringComparison.OrdinalIgnoreCase))
                 throw new HostingValidationException("The selected mod pack belongs to a different game.");
+            var hasActiveRevision = await dbContext.ModPackRevisions
+                .AsNoTracking()
+                .AnyAsync(q => q.DefinitionFk == selectedId && q.IsActive, cancellationToken)
+                .ConfigureAwait(false);
+            if (!hasActiveRevision)
+                throw new HostingValidationException(ModPackAvailabilityReasons.NoActiveRevision);
+            try
+            {
+                await contentSnapshotResolver
+                    .ResolveAsync(server.GameIdentifier, selectedId, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (PermanentLifecycleExecutionException ex)
+            {
+                throw new HostingValidationException(ex.Message);
+            }
+            catch (InvalidOperationException)
+            {
+                throw new HostingValidationException(ModPackAvailabilityReasons.Unresolvable);
+            }
         }
 
-        if (server.SelectedModPackDefinitionFk == modPackDefinitionId)
-            return;
-
         var previous = server.SelectedModPackDefinitionFk;
+        var clearedPin = server.PinnedModPackRevisionFk is not null;
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
         server.SelectedModPackDefinitionFk = modPackDefinitionId;
-        server.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+        server.PinnedModPackRevisionFk = null;
+        server.TimeStampUpdated = now;
+        PendingStartChanges.MarkChanged(server, EGameServerChangeArea.ModPack, now);
         auditWriter.Add(
             dbContext,
             EHostingAuditEventKind.ServerUpdated,
@@ -924,7 +1057,8 @@ internal sealed class GameServerLifecycleService(
             actorId,
             server.PrimaryKey,
             details: $"PreviousModPack={previous?.ToString() ?? "none"}; "
-                     + $"ModPack={modPackDefinitionId?.ToString() ?? "none"}; AppliesTo=next-preparation-or-update");
+                     + $"ModPack={modPackDefinitionId?.ToString() ?? "none"}; PinCleared={clearedPin}; "
+                     + "AppliesTo=next-preparation-or-update");
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

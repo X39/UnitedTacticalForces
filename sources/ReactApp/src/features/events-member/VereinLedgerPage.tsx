@@ -1,14 +1,16 @@
-import { ArrowLeft20Regular, ArrowSync20Regular, Money24Regular } from "@fluentui/react-icons";
+import { ArrowLeft20Regular, Money24Regular } from "@fluentui/react-icons";
 import { useQuery } from "@tanstack/react-query";
-import { type CSSProperties } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 import { formatCurrency, formatDate } from "@/app/format";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import { useSiteImage } from "@/app/siteImages";
 import { useAuth } from "@/auth/auth";
-import { Metric, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { PageStack } from "@/components/PageStack";
+import { Metric, PageHeader, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
 import { canReadVereinLedger } from "./memberAccess";
 import { eventsMemberQueryKeys, eventsMemberService } from "./services";
 import type { KassenbuchEntry } from "./types";
@@ -33,53 +35,8 @@ export function VereinLedgerPage() {
   });
   useDocumentTitle(t("Pages_Unit_Kassenbuch_Index_PageTitle"));
 
-  if (auth.isLoading) {
-    return (
-      <div className="narrow-page">
-        <StatePanel kind="loading">{t("Pages_Unit_Kassenbuch_Index_Loading")}</StatePanel>
-      </div>
-    );
-  }
-
-  if (!auth.isAuthenticated) {
-    const provider = auth.providers.steam ? "steam" : auth.providers.discord ? "discord" : null;
-    return (
-      <div className="narrow-page">
-        <StatePanel
-          kind="forbidden"
-          title={t("Pages_Unit_Kassenbuch_Index_SignInRequiredTitle")}
-          action={
-            provider ? (
-              <button
-                className="button button--gold"
-                type="button"
-                onClick={() => auth.login(provider)}
-              >
-                {t("Pages_Unit_Kassenbuch_Index_SignIn")}
-              </button>
-            ) : undefined
-          }
-        >
-          {t("Pages_Unit_Kassenbuch_Index_SignInRequiredDescription")}
-        </StatePanel>
-      </div>
-    );
-  }
-
-  if (!canRead) {
-    return (
-      <div className="narrow-page">
-        <StatePanel
-          kind="forbidden"
-          title={t("Pages_Unit_Kassenbuch_Index_MembershipRequiredTitle")}
-        >
-          {t("Pages_Unit_Kassenbuch_Index_MembershipRequiredDescription")}
-        </StatePanel>
-      </div>
-    );
-  }
-
-  return (
+  // The one page h1 stays in place for every state; the shared state view or the ledger follows below it.
+  const frame = (body: ReactNode) => (
     <div
       className="page-wrap em-ledger-page"
       style={{ "--em-ledger-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
@@ -90,31 +47,54 @@ export function VereinLedgerPage() {
           title={t("Pages_Unit_Kassenbuch_Index_Title")}
           description={t("Pages_Unit_Kassenbuch_Index_Intro")}
           actions={
-            <Link className="button button--glass" to="/verein">
-              <ArrowLeft20Regular /> {t("Pages_Unit_Kassenbuch_Index_BackToUnit")}
-            </Link>
+            <ActionLink variant="glass" to="/verein">
+              <ArrowLeft20Regular aria-hidden="true" />{" "}
+              {t("Pages_Unit_Kassenbuch_Index_BackToUnit")}
+            </ActionLink>
           }
         />
       </section>
+      <PageStack>{body}</PageStack>
+    </div>
+  );
 
-      {query.isLoading && (
-        <StatePanel kind="loading">{t("Pages_Unit_Kassenbuch_Index_Loading")}</StatePanel>
-      )}
+  if (auth.isLoading) {
+    return frame(<LoadingState label={t("Pages_Unit_Kassenbuch_Index_Loading")} />);
+  }
+
+  if (!auth.isAuthenticated) {
+    const provider = auth.providers.steam ? "steam" : auth.providers.discord ? "discord" : null;
+    return frame(
+      <ForbiddenState
+        title={t("Pages_Unit_Kassenbuch_Index_SignInRequiredTitle")}
+        action={
+          provider && (
+            <ActionButton variant="gold" onClick={() => auth.login(provider)}>
+              {t("Pages_Unit_Kassenbuch_Index_SignIn")}
+            </ActionButton>
+          )
+        }
+      >
+        <p>{t("Pages_Unit_Kassenbuch_Index_SignInRequiredDescription")}</p>
+      </ForbiddenState>,
+    );
+  }
+
+  if (!canRead) {
+    return frame(
+      <ForbiddenState title={t("Pages_Unit_Kassenbuch_Index_MembershipRequiredTitle")}>
+        {t("Pages_Unit_Kassenbuch_Index_MembershipRequiredDescription")}
+      </ForbiddenState>,
+    );
+  }
+
+  return frame(
+    <>
+      {query.isLoading && <LoadingState label={t("Pages_Unit_Kassenbuch_Index_Loading")} />}
       {query.isError && (
-        <StatePanel
-          kind="error"
-          action={
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => void query.refetch()}
-            >
-              <ArrowSync20Regular /> {t("React_UI_Retry")}
-            </button>
-          }
-        >
+        <ErrorState onRetry={() => void query.refetch()}>
           {t("Pages_Unit_Kassenbuch_Index_Error_LoadFailed")}
-        </StatePanel>
+        </ErrorState>
       )}
       {query.data && (
         <>
@@ -143,25 +123,36 @@ export function VereinLedgerPage() {
           </section>
 
           {query.data.entries.length === 0 ? (
-            <StatePanel kind="empty" title={t("Pages_Unit_Kassenbuch_Index_NoEntriesTitle")}>
+            <EmptyState
+              title={t("Pages_Unit_Kassenbuch_Index_NoEntriesTitle")}
+              action={
+                <ActionButton variant="ghost" onClick={() => void query.refetch()}>
+                  {t("Common_Refresh")}
+                </ActionButton>
+              }
+            >
               {t("Pages_Unit_Kassenbuch_Index_NoEntriesDescription")}
-            </StatePanel>
+            </EmptyState>
           ) : (
             <section className="content-section em-panel em-ledger-panel">
               <PageHeader
+                headingLevel={2}
                 kicker={t("Pages_Unit_Kassenbuch_Index_LedgerKicker")}
                 title={t("Pages_Unit_Kassenbuch_Index_LedgerTitle")}
-                actions={<Money24Regular />}
+                actions={<Money24Regular aria-hidden="true" />}
               />
               <div className="em-table-scroll">
                 <table>
+                  <caption className="sr-only">
+                    {t("Pages_Unit_Kassenbuch_Index_LedgerTitle")}
+                  </caption>
                   <thead>
                     <tr>
-                      <th>{t("Pages_Unit_Kassenbuch_Index_TableDate")}</th>
-                      <th>{t("Pages_Unit_Kassenbuch_Index_TableCategory")}</th>
-                      <th>{t("Pages_Unit_Kassenbuch_Index_TableDescription")}</th>
-                      <th>{t("Pages_Unit_Kassenbuch_Index_TableReference")}</th>
-                      <th>{t("Pages_Unit_Kassenbuch_Index_TableAmount")}</th>
+                      <th scope="col">{t("Pages_Unit_Kassenbuch_Index_TableDate")}</th>
+                      <th scope="col">{t("Pages_Unit_Kassenbuch_Index_TableCategory")}</th>
+                      <th scope="col">{t("Pages_Unit_Kassenbuch_Index_TableDescription")}</th>
+                      <th scope="col">{t("Pages_Unit_Kassenbuch_Index_TableReference")}</th>
+                      <th scope="col">{t("Pages_Unit_Kassenbuch_Index_TableAmount")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -185,6 +176,6 @@ export function VereinLedgerPage() {
           )}
         </>
       )}
-    </div>
+    </>,
   );
 }

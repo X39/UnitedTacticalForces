@@ -1,22 +1,27 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { ApiError, resolveImageUrl } from "@/api/client";
 import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManagePublicPages } from "@/auth/claims";
 import { useAppToastOnChange } from "@/components/AppToasts";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
+import { CheckboxField, FieldError, TextAreaField, TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
 import {
+  ConfirmDialog,
   Markdown,
   PageHeader,
   StatePanel,
   StatusBadge,
-  useUnsavedChanges,
 } from "@/components/primitives";
+import { ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { useLeaveGuard } from "@/components/useLeaveGuard";
 import { GalleryAssetPicker } from "@/features/admin/GalleryAssetPicker";
 import { GdprContentEditor } from "@/features/admin/GdprContentEditor";
 import { serializeGdprContent } from "@/features/admin/gdprContent";
@@ -42,6 +47,59 @@ interface ToastFeedback {
   text: string;
 }
 
+/**
+ * The heading levels the preview moves the page content down. The preview sits below its own `h2`, and the page has
+ * exactly one `h1`, so a `# Title` in the content must not become a second `h1` of the editor.
+ */
+const previewHeadingShift = 2;
+
+/**
+ * Moves every heading of the page markdown down for the preview, so the editor keeps one `h1` and the preview
+ * headings stay below the preview `h2`.
+ *
+ * ATX headings (`# Title`) gain {@link previewHeadingShift} marks up to level 6, and a level one setext heading
+ * (`Title` over `=====`) becomes an ATX heading of the shifted level. Lines inside fenced code blocks are left
+ * alone, so a shell comment in a code sample stays a comment. Only the preview text changes; the saved markdown is
+ * never touched.
+ *
+ * @param markdown The markdown the editor holds.
+ * @returns The markdown to render in the preview.
+ */
+function demotePreviewHeadings(markdown: string): string {
+  const output: string[] = [];
+  let fence: string | undefined;
+  for (const line of markdown.split("\n")) {
+    const fenceMarker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1]?.[0];
+    if (fenceMarker !== undefined) {
+      fence = fence === undefined ? fenceMarker : fence === fenceMarker ? undefined : fence;
+      output.push(line);
+      continue;
+    }
+    if (fence !== undefined) {
+      output.push(line);
+      continue;
+    }
+    const previous = output.at(-1);
+    if (
+      /^\s{0,3}=+\s*$/.test(line) &&
+      previous !== undefined &&
+      previous.trim() !== "" &&
+      !previous.trimStart().startsWith("#")
+    ) {
+      output[output.length - 1] = `${"#".repeat(1 + previewHeadingShift)} ${previous.trim()}`;
+      continue;
+    }
+    const heading = /^(\s{0,3})(#{1,6})(?=\s|$)/.exec(line);
+    if (heading?.[1] === undefined || heading[2] === undefined) {
+      output.push(line);
+      continue;
+    }
+    const level = Math.min(6, heading[2].length + previewHeadingShift);
+    output.push(`${heading[1]}${"#".repeat(level)}${line.slice(heading[0].length)}`);
+  }
+  return output.join("\n");
+}
+
 function fileNameFromPath(path: string): string {
   return decodeURIComponent(path.split("/").filter(Boolean).at(-1) ?? path);
 }
@@ -61,7 +119,9 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
       heroKicker: t("Pages_Public_GDPR_Hero_Kicker"),
       heroTitle: t("Pages_Public_GDPR_Hero_Title"),
       heroDescription: t("Pages_Public_GDPR_Hero_Description"),
-      markdown: isGdpr ? sourceRevision?.markdown || "# GDPR" : "# New public page",
+      markdown: isGdpr
+        ? sourceRevision?.markdown || "## GDPR"
+        : t("Pages_Command_Content_PageDefaultMarkdown"),
     }),
     [isGdpr, slug, sourceRevision?.markdown, t],
   );
@@ -133,7 +193,7 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
     },
   });
   useAppToastOnChange(feedback?.text, feedback?.kind ?? "success");
-  useUnsavedChanges(dirty && !save.isPending && !savedSlug);
+  const leaveGuard = useLeaveGuard({ dirty: dirty && !save.isPending && !savedSlug });
   useEffect(() => {
     if (!savedSlug) return;
     navigate(`/command/content/pages/${encodeURIComponent(savedSlug)}`, {
@@ -158,8 +218,6 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
       )
     : formatResource(t("Pages_Command_Content_PageEditTitleWithSlug"), slug);
   const imageUrl = resolveImageUrl(values.heroImagePath);
-  const fieldError = (message: string | undefined) =>
-    message ? <span className="field-error">{message}</span> : null;
   const setGalleryAsset = (asset: MediaAsset) => {
     setSelectedAsset(asset);
     form.setValue("heroImageAssetFk", asset.primaryKey, {
@@ -206,27 +264,24 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
   });
 
   return (
-    <section className="public-page-editor-page">
+    <PageStack>
       <PageHeader
         kicker={t("Pages_Command_Content_PageEditorKicker")}
         title={pageTitle}
         description={t("Pages_Command_Content_PageEditDescription")}
         actions={
           <>
-            <Link className="button button--ghost" to="/command/content">
+            <ActionLink variant="ghost" to="/command/content">
               {t("Pages_Command_Content_BackToHub")}
-            </Link>
+            </ActionLink>
             {page && (
-              <Link
-                className="button button--ghost"
-                to={`/command/content/pages/${encodeURIComponent(slug)}`}
-              >
+              <ActionLink variant="ghost" to={`/command/content/pages/${encodeURIComponent(slug)}`}>
                 {t("Pages_Command_Content_Pages_OpenDetail")}
-              </Link>
+              </ActionLink>
             )}
-            <Link className="button button--ghost" to={`/${encodeURIComponent(slug)}`}>
+            <ActionLink variant="ghost" to={`/${encodeURIComponent(slug)}`}>
               {t("Pages_Command_Content_Pages_OpenPublic")}
-            </Link>
+            </ActionLink>
           </>
         }
       />
@@ -304,60 +359,46 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
             </div>
           </header>
           <div className="public-page-editor-fields">
-            <label>
-              <span>{t("Pages_Command_Content_PageSlug")}</span>
-              <input value={slug} disabled />
-            </label>
-            <label>
-              <span>{t("Pages_Command_Content_PageFormTitle")}</span>
-              <input
-                {...form.register("title")}
-                maxLength={180}
-                disabled={save.isPending}
-                aria-invalid={Boolean(form.formState.errors.title)}
-              />
-              {fieldError(form.formState.errors.title?.message)}
-            </label>
-            <label className="public-page-editor-fields__wide">
-              <span>{t("Pages_Command_Content_PageFormSummary")}</span>
-              <input
+            <TextField label={t("Pages_Command_Content_PageSlug")} value={slug} disabled />
+            <TextField
+              {...form.register("title")}
+              label={t("Pages_Command_Content_PageFormTitle")}
+              maxLength={180}
+              disabled={save.isPending}
+              error={form.formState.errors.title?.message}
+            />
+            <div className="public-page-editor-fields__wide">
+              <TextField
                 {...form.register("summary")}
+                label={t("Pages_Command_Content_PageFormSummary")}
                 maxLength={512}
                 disabled={save.isPending}
-                aria-invalid={Boolean(form.formState.errors.summary)}
+                error={form.formState.errors.summary?.message}
               />
-              {fieldError(form.formState.errors.summary?.message)}
-            </label>
-            <label>
-              <span>{t("Pages_Command_Content_PageFormHeroKicker")}</span>
-              <input
-                {...form.register("heroKicker")}
-                maxLength={96}
-                disabled={save.isPending}
-                aria-invalid={Boolean(form.formState.errors.heroKicker)}
-              />
-              {fieldError(form.formState.errors.heroKicker?.message)}
-            </label>
-            <label>
-              <span>{t("Pages_Command_Content_PageFormHeroTitle")}</span>
-              <input
-                {...form.register("heroTitle")}
-                maxLength={180}
-                disabled={save.isPending}
-                aria-invalid={Boolean(form.formState.errors.heroTitle)}
-              />
-              {fieldError(form.formState.errors.heroTitle?.message)}
-            </label>
-            <label className="public-page-editor-fields__wide">
-              <span>{t("Pages_Command_Content_PageFormHeroDescription")}</span>
-              <input
+            </div>
+            <TextField
+              {...form.register("heroKicker")}
+              label={t("Pages_Command_Content_PageFormHeroKicker")}
+              maxLength={96}
+              disabled={save.isPending}
+              error={form.formState.errors.heroKicker?.message}
+            />
+            <TextField
+              {...form.register("heroTitle")}
+              label={t("Pages_Command_Content_PageFormHeroTitle")}
+              maxLength={180}
+              disabled={save.isPending}
+              error={form.formState.errors.heroTitle?.message}
+            />
+            <div className="public-page-editor-fields__wide">
+              <TextField
                 {...form.register("heroDescription")}
+                label={t("Pages_Command_Content_PageFormHeroDescription")}
                 maxLength={512}
                 disabled={save.isPending}
-                aria-invalid={Boolean(form.formState.errors.heroDescription)}
+                error={form.formState.errors.heroDescription?.message}
               />
-              {fieldError(form.formState.errors.heroDescription?.message)}
-            </label>
+            </div>
             <section
               className="public-page-editor-gallery public-page-editor-fields__wide"
               aria-label={t("Pages_Command_Content_PageGalleryAria")}
@@ -382,27 +423,25 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
               </header>
               <div className="public-page-editor-gallery__workspace">
                 <div className="public-page-editor-gallery__actions">
-                  <button
-                    className="button button--ghost"
-                    type="button"
+                  <ActionButton
+                    variant="ghost"
                     disabled={save.isPending}
                     onClick={() => setPickerOpen(true)}
                   >
                     {t("Pages_Command_Content_PageGallerySelectLabel")}
-                  </button>
+                  </ActionButton>
                   {imageUrl && (
-                    <button
-                      className="button button--ghost"
-                      type="button"
+                    <ActionButton
+                      variant="ghost"
                       disabled={save.isPending}
                       onClick={clearGalleryAsset}
                     >
                       {t("React_PublicPageEditor_RemoveImage")}
-                    </button>
+                    </ActionButton>
                   )}
-                  <Link className="button button--ghost" to="/command/content/gallery">
+                  <ActionLink variant="ghost" to="/command/content/gallery">
                     {t("Pages_Command_Content_PageGalleryOpen")}
-                  </Link>
+                  </ActionLink>
                 </div>
                 <div className="public-page-editor-gallery__preview">
                   {imageUrl ? (
@@ -412,28 +451,31 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
                   )}
                 </div>
               </div>
-              {fieldError(form.formState.errors.heroImageAssetFk?.message)}
+              {form.formState.errors.heroImageAssetFk?.message && (
+                <FieldError
+                  id="public-page-hero-image-error"
+                  message={form.formState.errors.heroImageAssetFk.message}
+                />
+              )}
             </section>
 
             {isGdpr ? (
-              <div className="state-panel state-panel--info public-page-editor-fields__wide">
-                <div>
-                  <h3>{t("Pages_Command_Content_Gdpr_TemplateNoticeTitle")}</h3>
-                  <p>{t("Pages_Command_Content_Gdpr_TemplateNoticeBody")}</p>
-                </div>
+              <div className="public-page-editor-fields__wide">
+                <StatePanel kind="info" title={t("Pages_Command_Content_Gdpr_TemplateNoticeTitle")}>
+                  {t("Pages_Command_Content_Gdpr_TemplateNoticeBody")}
+                </StatePanel>
               </div>
             ) : (
-              <label className="public-page-editor-fields__wide">
-                <span>{t("Pages_Command_Content_PageFormMarkdown")}</span>
-                <textarea
+              <div className="public-page-editor-fields__wide">
+                <TextAreaField
                   {...form.register("markdown")}
+                  label={t("Pages_Command_Content_PageFormMarkdown")}
                   rows={18}
                   maxLength={60_000}
                   disabled={save.isPending}
-                  aria-invalid={Boolean(form.formState.errors.markdown)}
+                  error={form.formState.errors.markdown?.message}
                 />
-                {fieldError(form.formState.errors.markdown?.message)}
-              </label>
+              </div>
             )}
           </div>
         </section>
@@ -449,20 +491,18 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
             </div>
           </header>
           <div className="public-page-editor-revision__body">
-            <label>
-              <span>{t("Pages_Command_Content_PageFormRevisionComment")}</span>
-              <input
-                {...form.register("comment")}
-                maxLength={512}
-                disabled={save.isPending}
-                aria-invalid={Boolean(form.formState.errors.comment)}
-              />
-              {fieldError(form.formState.errors.comment?.message)}
-            </label>
-            <label className="public-page-editor-check">
-              <input {...form.register("publish")} type="checkbox" disabled={save.isPending} />
-              <span>{t("Pages_Command_Content_PageFormPublish")}</span>
-            </label>
+            <TextField
+              {...form.register("comment")}
+              label={t("Pages_Command_Content_PageFormRevisionComment")}
+              maxLength={512}
+              disabled={save.isPending}
+              error={form.formState.errors.comment?.message}
+            />
+            <CheckboxField
+              {...form.register("publish")}
+              label={t("Pages_Command_Content_PageFormPublish")}
+              disabled={save.isPending}
+            />
             <div className="public-page-editor-revision__context">
               <StatusBadge tone={dirty ? "warning" : "success"}>
                 {t(
@@ -474,19 +514,16 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
               <p>{t("Pages_Command_Content_PageEditorDirtyHelp")}</p>
             </div>
             <div className="public-page-editor-actions">
-              <button className="button button--primary" type="submit" disabled={save.isPending}>
+              <ActionButton variant="primary" type="submit" disabled={save.isPending}>
                 {t(
                   save.isPending
                     ? "Pages_Command_Content_PageFormSaving"
                     : "Pages_Command_Content_PageSaveRevision",
                 )}
-              </button>
-              <Link
-                className="button button--ghost"
-                to={`/command/content/pages/${encodeURIComponent(slug)}`}
-              >
-                {t("Common_Cancel")}
-              </Link>
+              </ActionButton>
+              <ActionLink variant="ghost" to={`/command/content/pages/${encodeURIComponent(slug)}`}>
+                {t("Pages_Command_Content_PageEditorLeave_Dismiss")}
+              </ActionLink>
             </div>
           </div>
         </aside>
@@ -501,7 +538,11 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
               <StatusBadge>{nextRevisionLabel}</StatusBadge>
             </header>
             <div>
-              <Markdown>{values.markdown || t("Pages_Command_Content_PagePreviewEmpty")}</Markdown>
+              <Markdown>
+                {values.markdown
+                  ? demotePreviewHeadings(values.markdown)
+                  : t("Pages_Command_Content_PagePreviewEmpty")}
+              </Markdown>
             </div>
           </aside>
         )}
@@ -530,17 +571,14 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
               )}
             </StatusBadge>
             <div>
-              <Link className="button button--ghost" to="/command/content">
+              <ActionLink variant="ghost" to="/command/content">
                 {t("Pages_Command_Content_BackToHub")}
-              </Link>
-              <Link
-                className="button button--ghost"
-                to={`/command/content/pages/${encodeURIComponent(slug)}`}
-              >
-                {t("Common_Cancel")}
-              </Link>
-              <button
-                className="button button--primary"
+              </ActionLink>
+              <ActionLink variant="ghost" to={`/command/content/pages/${encodeURIComponent(slug)}`}>
+                {t("Pages_Command_Content_PageEditorLeave_Dismiss")}
+              </ActionLink>
+              <ActionButton
+                variant="gold"
                 type="submit"
                 form="public-page-editor-form"
                 disabled={save.isPending}
@@ -550,7 +588,7 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
                     ? "Pages_Command_Content_PageFormSaving"
                     : "Pages_Command_Content_PageSaveRevision",
                 )}
-              </button>
+              </ActionButton>
             </div>
           </section>
         </>
@@ -563,7 +601,17 @@ function EditorWorkspace({ slug, page }: { slug: string; page: PublicPage | unde
         onSelect={setGalleryAsset}
         onCancel={() => setPickerOpen(false)}
       />
-    </section>
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        title={t("Server_Alerts_Leave_Title")}
+        description={t("React_UnsavedChanges")}
+        cancelLabel={t("Server_Change_KeepEditing")}
+        confirmLabel={t("Pages_Command_Content_PageEditorLeave_Dismiss")}
+        initialFocus="dismiss"
+        onCancel={leaveGuard.stay}
+        onConfirm={leaveGuard.proceed}
+      />
+    </PageStack>
   );
 }
 
@@ -574,37 +622,41 @@ export function Component() {
   const canManagePages = canManagePublicPages(user);
   const query = useQuery({
     queryKey: ["command-center", "public-pages", slug],
-    queryFn: ({ signal }) => loadAdminPublicPage(slug, signal),
+    // A missing page is a valid answer; TanStack Query rejects `undefined` data, so it is carried as `null`.
+    queryFn: async ({ signal }) => (await loadAdminPublicPage(slug, signal)) ?? null,
     enabled: canManagePages,
     retry: false,
   });
 
+  const stateShell = (state: ReactNode) => (
+    <PageStack>
+      <PageHeader
+        kicker={t("Pages_Command_Content_PageEditorKicker")}
+        title={formatResource(t("Pages_Command_Content_PageEditTitleWithSlug"), slug)}
+      />
+      {state}
+    </PageStack>
+  );
+
   if (!canManagePages)
-    return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Content_Pages_AccessRequiredTitle")}>
+    return stateShell(
+      <ForbiddenState title={t("Pages_Command_Content_Pages_AccessRequiredTitle")}>
         {t("Pages_Command_Content_Pages_AccessRequiredDescription")}
-      </StatePanel>
+      </ForbiddenState>,
     );
   if (query.isPending)
-    return <StatePanel kind="loading">{t("Pages_Command_Content_Pages_Loading")}</StatePanel>;
+    return stateShell(<LoadingState label={t("Pages_Command_Content_Pages_Loading")} />);
   if (query.isError)
-    return (
-      <StatePanel
-        kind="error"
-        action={
-          <button className="button button--ghost" type="button" onClick={() => query.refetch()}>
-            {t("Common_Refresh")}
-          </button>
-        }
-      >
+    return stateShell(
+      <ErrorState onRetry={() => void query.refetch()}>
         {formatResource(t("Pages_Command_Content_Pages_LoadError"), query.error.message)}
-      </StatePanel>
+      </ErrorState>,
     );
   return (
     <EditorWorkspace
       key={`${slug}:${query.data?.timeStampUpdated ?? "new"}`}
       slug={slug}
-      page={query.data}
+      page={query.data ?? undefined}
     />
   );
 }

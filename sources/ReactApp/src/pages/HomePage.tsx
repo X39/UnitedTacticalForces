@@ -15,36 +15,22 @@ import type { UpcomingEvent } from "@/api/types";
 import type { PublicConfiguration } from "@/app/config";
 import { formatDate, formatUtcDateTime } from "@/app/format";
 import { resolveSiteImage, useSiteImages } from "@/app/siteImages";
-import { eventNeedsSignups, normalizeEventAcceptance } from "@/app/upcomingEvents";
+import { eventAttendance, eventReadiness } from "@/app/upcomingEvents";
 import { ActionLink } from "@/components/ActionControl";
 import { PublicHero } from "@/components/PublicHero";
-import { MarkdownExcerpt, Metric, StatePanel, StatusBadge } from "@/components/primitives";
-
-function operationTone(event: UpcomingEvent): "success" | "warning" {
-  return eventNeedsSignups(event) ? "warning" : "success";
-}
+import { MarkdownExcerpt, Metric, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
+import { attendanceTones, operationTones, toneOf } from "@/components/statusTones";
+import "./publicEvents.css";
 
 function operationStatusLabel(event: UpcomingEvent, t: TFunction): string {
-  return eventNeedsSignups(event)
+  return eventReadiness(event) === "needs-signups"
     ? t("Pages_Public_Home_StatusLowSlots")
     : t("Pages_Public_Home_StatusConfirmed");
 }
 
-function attendanceTone(event: UpcomingEvent): "neutral" | "success" | "warning" | "danger" {
-  switch (normalizeEventAcceptance(event.metaAcceptance)) {
-    case "Accepted":
-      return "success";
-    case "Maybe":
-      return "warning";
-    case "Rejected":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
 function attendanceLabel(event: UpcomingEvent, t: TFunction): string {
-  switch (normalizeEventAcceptance(event.metaAcceptance)) {
+  switch (eventAttendance(event)) {
     case "Accepted":
       return t("Pages_Public_Home_UserStatusConfirmed");
     case "Maybe":
@@ -172,13 +158,13 @@ export function Component() {
                 <div className="operation-brief__status">
                   <div>
                     <span>{t("Pages_Public_Home_OperationStatusLabel")}</span>
-                    <StatusBadge tone={operationTone(primary)}>
+                    <StatusBadge tone={toneOf(operationTones, eventReadiness(primary))}>
                       {operationStatusLabel(primary, t)}
                     </StatusBadge>
                   </div>
                   <div>
                     <span>{t("Pages_Public_Home_YourStatusLabel")}</span>
-                    <StatusBadge tone={attendanceTone(primary)}>
+                    <StatusBadge tone={toneOf(attendanceTones, eventAttendance(primary))}>
                       {attendanceLabel(primary, t)}
                     </StatusBadge>
                   </div>
@@ -188,12 +174,16 @@ export function Component() {
                   </div>
                 </div>
               </>
+            ) : events.isLoading ? (
+              <LoadingState label={t("Pages_Public_Home_OperationsLoading")} />
+            ) : events.isError ? (
+              <ErrorState onRetry={() => void events.refetch()}>
+                {t("Pages_Public_Home_UpcomingSummaryError")}
+              </ErrorState>
             ) : (
-              <StatePanel kind={events.isError ? "warning" : "empty"}>
-                {events.isError
-                  ? t("Pages_Public_Home_UpcomingSummaryError")
-                  : t("Pages_Public_Home_UpcomingSummaryEmpty")}
-              </StatePanel>
+              <EmptyState title={t("Pages_Public_Home_UpcomingEmptyTitle")}>
+                {t("Pages_Public_Home_UpcomingEmptyBody")}
+              </EmptyState>
             )}
             {hasCommunityChannels && (
               <nav
@@ -276,14 +266,16 @@ export function Component() {
             <ChevronRight20Regular />
           </Link>
         </div>
-        {events.isLoading && (
-          <StatePanel kind="loading">{t("Pages_Public_Home_OperationsLoading")}</StatePanel>
-        )}
+        {events.isLoading && <LoadingState label={t("Pages_Public_Home_OperationsLoading")} />}
         {events.isError && (
-          <StatePanel kind="error">{t("Pages_Public_Home_ErrorOperationsLoadFailed")}</StatePanel>
+          <ErrorState onRetry={() => void events.refetch()}>
+            {t("Pages_Public_Home_ErrorOperationsLoadFailed")}
+          </ErrorState>
         )}
         {!events.isLoading && !events.isError && upcoming.length === 0 && (
-          <StatePanel kind="empty">{t("Pages_Public_Home_UpcomingSummaryEmpty")}</StatePanel>
+          <EmptyState title={t("Pages_Public_Home_UpcomingEmptyTitle")}>
+            {t("Pages_Public_Home_UpcomingEmptyBody")}
+          </EmptyState>
         )}
         <div className="operation-card-grid">
           {upcoming.slice(0, 3).map((event) => (
@@ -299,7 +291,7 @@ export function Component() {
                 }}
               >
                 <div className="operation-card__badges">
-                  <StatusBadge tone={operationTone(event)}>
+                  <StatusBadge tone={toneOf(operationTones, eventReadiness(event))}>
                     {operationStatusLabel(event, t)}
                   </StatusBadge>
                   <span className="operation-card__slot-count">
@@ -336,7 +328,7 @@ export function Component() {
                       ? `${event.acceptedCount} / ${event.minimumAccepted}`
                       : event.acceptedCount}
                   </strong>
-                  <StatusBadge tone={attendanceTone(event)}>
+                  <StatusBadge tone={toneOf(attendanceTones, eventAttendance(event))}>
                     {attendanceLabel(event, t)}
                   </StatusBadge>
                 </div>
@@ -360,14 +352,16 @@ export function Component() {
             <ChevronRight20Regular />
           </Link>
         </div>
-        {reports.isLoading && <StatePanel kind="loading">{t("Common_LoadingData")}</StatePanel>}
+        {reports.isLoading && <LoadingState />}
         {reports.isError && (
-          <StatePanel kind="warning">
+          <ErrorState onRetry={() => void reports.refetch()}>
             {t("Pages_Public_Home_ErrorFieldReportsLoadFailed")}
-          </StatePanel>
+          </ErrorState>
         )}
         {!reports.isLoading && !reports.isError && reportCards.length === 0 && (
-          <StatePanel kind="empty">{t("Pages_Public_Home_NoFieldReportsPublished")}</StatePanel>
+          <EmptyState title={t("Pages_Public_Home_NoFieldReportsTitle")}>
+            {t("Pages_Public_Home_NoFieldReportsBody")}
+          </EmptyState>
         )}
         <div className="report-card-grid">
           {reportCards.map((report, index) => (

@@ -1,13 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import type { TranslationKey } from "@/app/localizationTypes";
 import { useAuth } from "@/auth/auth";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { CommandListToolbar } from "@/components/CommandListToolbar";
-import { Metric, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { FilterChipGroup, type FilterChipItem } from "@/components/FilterChipGroup";
+import { PageStack } from "@/components/PageStack";
+import { Metric, PageHeader, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { accountTones, toneOf } from "@/components/statusTones";
 import {
   loadCommunitySnapshot,
   memberAvatarSource,
@@ -19,6 +24,7 @@ import {
   type CommunityMember,
   type MemberView,
 } from "@/features/admin/members";
+import "@/features/admin/members.css";
 
 const pageSize = 25;
 const viewKeys: Record<MemberView, TranslationKey> = {
@@ -47,11 +53,6 @@ function statusTranslationKey(member: CommunityMember): TranslationKey {
     default:
       return "Pages_Command_Members_StatusUnverified";
   }
-}
-
-function statusTone(member: CommunityMember): "danger" | "success" | "warning" {
-  const status = memberStatus(member);
-  return status === "verified" ? "success" : status === "unverified" ? "warning" : "danger";
 }
 
 function vereinStatusKey(member: CommunityMember): TranslationKey {
@@ -131,192 +132,158 @@ export function Component() {
         snapshot.verifiedMemberCount / snapshot.memberCount,
       )
     : "0%";
+  const filterItems: FilterChipItem<MemberView>[] = (Object.keys(viewKeys) as MemberView[]).map(
+    (candidate) => ({ id: candidate, label: t(viewKeys[candidate]) }),
+  );
 
   if (!permissions.roster)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Members_NoAccessTitle")}>
-        {t("Pages_Command_Members_NoAccessMessage")}
-      </StatePanel>
+      <PageStack>
+        <PageHeader
+          kicker={t("Shared_CommandCenter_Nav_Members")}
+          title={t("Pages_Command_Members_HeaderTitle")}
+        />
+        <ForbiddenState title={t("Pages_Command_Members_NoAccessTitle")}>
+          {t("Pages_Command_Members_NoAccessMessage")}
+        </ForbiddenState>
+      </PageStack>
     );
 
   return (
-    <section className="members-admin-page">
+    <PageStack>
       <PageHeader
         kicker={t("Shared_CommandCenter_Nav_Members")}
         title={t("Pages_Command_Members_HeaderTitle")}
         description={t("Pages_Command_Members_HeaderDescription")}
         actions={
           <>
-            <button
-              className="button button--ghost"
-              type="button"
+            <ActionButton
+              variant="ghost"
               disabled={query.isFetching}
               onClick={() => void query.refetch()}
             >
               {t("Pages_Command_Members_Refresh")}
-            </button>
-            <Link className="button button--ghost" to="/members">
+            </ActionButton>
+            <ActionLink variant="ghost" to="/members">
               {t("Pages_Command_Members_PublicPage")}
-            </Link>
+            </ActionLink>
           </>
         }
       />
 
       {query.isError && (
-        <StatePanel
-          kind="error"
-          action={
-            <button className="button button--ghost" onClick={() => void query.refetch()}>
-              {t("Pages_Command_Members_Refresh")}
-            </button>
-          }
-        >
+        <ErrorState onRetry={() => void query.refetch()}>
           {formatResource(t("Pages_Command_Members_ErrorLoad"), query.error.message)}
-        </StatePanel>
+        </ErrorState>
       )}
 
       <section
         className="command-metrics members-admin-metrics"
         aria-label={t("Pages_Command_Members_MetricAria")}
       >
-        <button
-          type="button"
-          className={view === "attention" ? "active" : undefined}
-          aria-pressed={view === "attention"}
-          onClick={() => setActiveView("attention")}
-        >
-          <Metric
-            label={t("Pages_Command_Members_StatusAttention")}
-            value={countText(
-              attentionCount,
-              t("Pages_Command_Members_LabelMember"),
-              t("Pages_Command_Members_LabelMembers"),
+        <Metric
+          label={t("Pages_Command_Members_StatusAttention")}
+          value={countText(
+            attentionCount,
+            t("Pages_Command_Members_LabelMember"),
+            t("Pages_Command_Members_LabelMembers"),
+            t,
+          )}
+          detail={formatResource(
+            t("Pages_Command_Members_MetricDescriptionAttention"),
+            countText(
+              snapshot?.unverifiedMemberCount ?? 0,
+              t("Pages_Command_Members_LabelUnverifiedMember"),
+              t("Pages_Command_Members_LabelUnverifiedMembers"),
               t,
-            )}
-            detail={formatResource(
-              t("Pages_Command_Members_MetricDescriptionAttention"),
-              countText(
-                snapshot?.unverifiedMemberCount ?? 0,
-                t("Pages_Command_Members_LabelUnverifiedMember"),
-                t("Pages_Command_Members_LabelUnverifiedMembers"),
-                t,
-              ),
-              countText(
-                snapshot?.bannedMemberCount ?? 0,
-                t("Pages_Command_Members_LabelBannedMember"),
-                t("Pages_Command_Members_LabelBannedMembers"),
-                t,
-              ),
-            )}
-          />
-        </button>
-        <button
-          type="button"
-          className={view === "verified" ? "active" : undefined}
-          aria-pressed={view === "verified"}
-          onClick={() => setActiveView("verified")}
-        >
-          <Metric
-            label={t("Pages_Command_Members_StatusVerified")}
-            value={countText(
-              snapshot?.verifiedMemberCount ?? 0,
-              t("Pages_Command_Members_LabelMember"),
-              t("Pages_Command_Members_LabelMembers"),
+            ),
+            countText(
+              snapshot?.bannedMemberCount ?? 0,
+              t("Pages_Command_Members_LabelBannedMember"),
+              t("Pages_Command_Members_LabelBannedMembers"),
               t,
-            )}
-            detail={formatResource(
-              t("Pages_Command_Members_MetricDescriptionVerified"),
-              verifiedPercentage,
-            )}
-          />
-        </button>
-        <button
-          type="button"
-          className={view === "roles" ? "active" : undefined}
-          aria-pressed={view === "roles"}
-          onClick={() => setActiveView("roles")}
-        >
-          <Metric
-            label={t("Pages_Command_Members_StatusAuthority")}
-            value={countText(
-              snapshot?.roleCount ?? 0,
-              t("Pages_Command_Members_LabelRole"),
-              t("Pages_Command_Members_LabelRoles"),
+            ),
+          )}
+        />
+        <Metric
+          label={t("Pages_Command_Members_StatusVerified")}
+          value={countText(
+            snapshot?.verifiedMemberCount ?? 0,
+            t("Pages_Command_Members_LabelMember"),
+            t("Pages_Command_Members_LabelMembers"),
+            t,
+          )}
+          detail={formatResource(
+            t("Pages_Command_Members_MetricDescriptionVerified"),
+            verifiedPercentage,
+          )}
+        />
+        <Metric
+          label={t("Pages_Command_Members_StatusAuthority")}
+          value={countText(
+            snapshot?.roleCount ?? 0,
+            t("Pages_Command_Members_LabelRole"),
+            t("Pages_Command_Members_LabelRoles"),
+            t,
+          )}
+          detail={formatResource(
+            t("Pages_Command_Members_MetricDescriptionRoles"),
+            countText(
+              snapshot?.claimCount ?? 0,
+              t("Pages_Command_Members_LabelClaim"),
+              t("Pages_Command_Members_LabelClaims"),
               t,
-            )}
-            detail={formatResource(
-              t("Pages_Command_Members_MetricDescriptionRoles"),
-              countText(
-                snapshot?.claimCount ?? 0,
-                t("Pages_Command_Members_LabelClaim"),
-                t("Pages_Command_Members_LabelClaims"),
-                t,
-              ),
-              t("Pages_Command_Members_LabelAuthority"),
-            )}
-          />
-        </button>
-        <button
-          type="button"
-          className={view === "verein" ? "active" : undefined}
-          aria-pressed={view === "verein"}
-          onClick={() => setActiveView("verein")}
-        >
-          <Metric
-            label={t("Pages_Command_Members_StatusVerein")}
-            value={countText(
-              snapshot?.activeVereinMemberCount ?? 0,
-              t("Pages_Command_Members_LabelMember"),
-              t("Pages_Command_Members_LabelMembers"),
+            ),
+            t("Pages_Command_Members_LabelAuthority"),
+          )}
+        />
+        <Metric
+          label={t("Pages_Command_Members_StatusVerein")}
+          value={countText(
+            snapshot?.activeVereinMemberCount ?? 0,
+            t("Pages_Command_Members_LabelMember"),
+            t("Pages_Command_Members_LabelMembers"),
+            t,
+          )}
+          detail={formatResource(
+            t("Pages_Command_Members_MetricDescriptionVerein"),
+            countText(
+              snapshot?.suspendedVereinMemberCount ?? 0,
+              t("Pages_Command_Members_LabelSuspendedMember"),
+              t("Pages_Command_Members_LabelSuspendedMembers"),
               t,
-            )}
-            detail={formatResource(
-              t("Pages_Command_Members_MetricDescriptionVerein"),
-              countText(
-                snapshot?.suspendedVereinMemberCount ?? 0,
-                t("Pages_Command_Members_LabelSuspendedMember"),
-                t("Pages_Command_Members_LabelSuspendedMembers"),
-                t,
-              ),
-              countText(
-                snapshot?.endedVereinMemberCount ?? 0,
-                t("Pages_Command_Members_LabelEndedMember"),
-                t("Pages_Command_Members_LabelEndedMembers"),
-                t,
-              ),
-            )}
-          />
-        </button>
-        <button
-          type="button"
-          className={view === "all" ? "active" : undefined}
-          aria-pressed={view === "all"}
-          onClick={() => setActiveView("all")}
-        >
-          <Metric
-            label={t("Pages_Command_Members_StatusRoster")}
-            value={countText(
-              snapshot?.memberCount ?? 0,
-              t("Pages_Command_Members_LabelMember"),
-              t("Pages_Command_Members_LabelMembers"),
+            ),
+            countText(
+              snapshot?.endedVereinMemberCount ?? 0,
+              t("Pages_Command_Members_LabelEndedMember"),
+              t("Pages_Command_Members_LabelEndedMembers"),
               t,
-            )}
-            detail={formatResource(
-              t("Pages_Command_Members_MetricDescriptionAll"),
-              countText(
-                snapshot?.deletedMemberCount ?? 0,
-                t("Pages_Command_Members_LabelDeletedRecord"),
-                t("Pages_Command_Members_LabelDeletedRecords"),
-                t,
-              ),
-            )}
-          />
-        </button>
+            ),
+          )}
+        />
+        <Metric
+          label={t("Pages_Command_Members_StatusRoster")}
+          value={countText(
+            snapshot?.memberCount ?? 0,
+            t("Pages_Command_Members_LabelMember"),
+            t("Pages_Command_Members_LabelMembers"),
+            t,
+          )}
+          detail={formatResource(
+            t("Pages_Command_Members_MetricDescriptionAll"),
+            countText(
+              snapshot?.deletedMemberCount ?? 0,
+              t("Pages_Command_Members_LabelDeletedRecord"),
+              t("Pages_Command_Members_LabelDeletedRecords"),
+              t,
+            ),
+          )}
+        />
       </section>
 
       <CommandListToolbar
         className="members-admin-toolbar"
-        ariaLabel={t("Pages_Command_Members_FilterAria")}
+        ariaLabel={t("Pages_Command_Members_SearchPlaceholder")}
         onSubmit={submitSearch}
         searchLabel={t("Pages_Command_Members_SearchPlaceholder")}
         searchValue={searchDraft}
@@ -324,168 +291,169 @@ export function Component() {
         submitLabel={t("Pages_Command_Members_Search")}
         submitDisabled={query.isFetching}
       >
-        <div className="filter-chips">
-          {(Object.keys(viewKeys) as MemberView[]).map((candidate) => (
-            <button
-              key={candidate}
-              type="button"
-              className={view === candidate ? "active" : undefined}
-              aria-pressed={view === candidate}
-              onClick={() => setActiveView(candidate)}
-            >
-              {t(viewKeys[candidate])}
-            </button>
-          ))}
-        </div>
+        <FilterChipGroup
+          label={t("Pages_Command_Members_FilterAria")}
+          items={filterItems}
+          value={view}
+          onChange={setActiveView}
+        />
       </CommandListToolbar>
 
       {query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_Members_Loading")}</StatePanel>
+        <LoadingState label={t("Pages_Command_Members_Loading")} />
       ) : (
-        <section className="command-panel members-admin-roster">
-          <header className="command-panel__header members-admin-panel-header">
-            <span className="kicker">{t("Pages_Command_Members_ListKicker")}</span>
-            <h2>{t(titleKeys[view])}</h2>
-            <StatusBadge>
-              {formatResource(t("Pages_Command_Members_RowCount"), visibleMembers.length)}
-            </StatusBadge>
-          </header>
-          {pagedMembers.length === 0 ? (
-            <StatePanel>{t("Pages_Command_Members_NoRows")}</StatePanel>
-          ) : (
-            <div className="command-table-scroll">
-              <table className="command-table members-admin-table">
-                <thead>
-                  <tr>
-                    <th>{t("Pages_Command_Members_ColumnMember")}</th>
-                    <th>{t("Pages_Command_Members_ColumnStatus")}</th>
-                    <th>{t("Pages_Command_Members_ColumnVerein")}</th>
-                    <th>{t("Pages_Command_Members_ColumnAuthority")}</th>
-                    <th>{t("Pages_Command_Members_ColumnDirectClaims")}</th>
-                    <th>{t("Pages_Command_Members_ColumnDeleted")}</th>
-                    <th>{t("Pages_Command_Members_ColumnActions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedMembers.map((member) => {
-                    const avatar =
-                      member.primaryKey && !failedAvatars.has(member.primaryKey)
-                        ? memberAvatarSource(member)
-                        : undefined;
-                    const nickname =
-                      member.nickname?.trim() || t("Pages_Command_Member_UnknownUser");
-                    const roleTitles = member.roleTitles ?? [];
-                    return (
-                      <tr
-                        key={member.primaryKey}
-                        tabIndex={0}
-                        aria-label={`${t("Pages_Command_Members_ActionManage")}: ${nickname}`}
-                        onClick={() => openMember(member)}
-                        onKeyDown={(event) => handleRowKey(event, member)}
-                      >
-                        <th scope="row">
-                          <div className="members-admin-identity">
-                            {avatar ? (
-                              <img
-                                src={avatar}
-                                alt={formatResource(t("Pages_Command_Members_AvatarAlt"), nickname)}
-                                width="42"
-                                height="42"
-                                loading="lazy"
-                                onError={() =>
-                                  member.primaryKey &&
-                                  setFailedAvatars((current) =>
-                                    new Set(current).add(member.primaryKey!),
-                                  )
-                                }
-                              />
-                            ) : (
-                              <span
-                                role="img"
-                                aria-label={formatResource(
-                                  t("Pages_Command_Members_AvatarAlt"),
-                                  nickname,
-                                )}
-                              >
-                                {memberInitials(nickname)}
+        !query.isError && (
+          <section className="command-panel members-admin-roster">
+            <header className="command-panel__header members-admin-panel-header">
+              <span className="kicker">{t("Pages_Command_Members_ListKicker")}</span>
+              <h2>{t(titleKeys[view])}</h2>
+              <StatusBadge>
+                {formatResource(t("Pages_Command_Members_RowCount"), visibleMembers.length)}
+              </StatusBadge>
+            </header>
+            {pagedMembers.length === 0 ? (
+              <EmptyState title={t("Pages_Command_Members_EmptyTitle")}>
+                {t("Pages_Command_Members_EmptyBody")}
+              </EmptyState>
+            ) : (
+              <div className="command-table-scroll">
+                <table className="command-table members-admin-table">
+                  <thead>
+                    <tr>
+                      <th>{t("Pages_Command_Members_ColumnMember")}</th>
+                      <th>{t("Pages_Command_Members_ColumnStatus")}</th>
+                      <th>{t("Pages_Command_Members_ColumnVerein")}</th>
+                      <th>{t("Pages_Command_Members_ColumnAuthority")}</th>
+                      <th>{t("Pages_Command_Members_ColumnDirectClaims")}</th>
+                      <th>{t("Pages_Command_Members_ColumnDeleted")}</th>
+                      <th>{t("Pages_Command_Members_ColumnActions")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedMembers.map((member) => {
+                      const avatar =
+                        member.primaryKey && !failedAvatars.has(member.primaryKey)
+                          ? memberAvatarSource(member)
+                          : undefined;
+                      const nickname =
+                        member.nickname?.trim() || t("Pages_Command_Member_UnknownUser");
+                      const roleTitles = member.roleTitles ?? [];
+                      return (
+                        <tr
+                          key={member.primaryKey}
+                          tabIndex={0}
+                          aria-label={`${t("Pages_Command_Members_ActionManage")}: ${nickname}`}
+                          onClick={() => openMember(member)}
+                          onKeyDown={(event) => handleRowKey(event, member)}
+                        >
+                          <th scope="row">
+                            <div className="members-admin-identity">
+                              {avatar ? (
+                                <img
+                                  src={avatar}
+                                  alt={formatResource(
+                                    t("Pages_Command_Members_AvatarAlt"),
+                                    nickname,
+                                  )}
+                                  width="42"
+                                  height="42"
+                                  loading="lazy"
+                                  onError={() =>
+                                    member.primaryKey &&
+                                    setFailedAvatars((current) =>
+                                      new Set(current).add(member.primaryKey!),
+                                    )
+                                  }
+                                />
+                              ) : (
+                                <span
+                                  role="img"
+                                  aria-label={formatResource(
+                                    t("Pages_Command_Members_AvatarAlt"),
+                                    nickname,
+                                  )}
+                                >
+                                  {memberInitials(nickname)}
+                                </span>
+                              )}
+                              <span>
+                                <strong>{nickname}</strong>
+                                <small>{member.primaryKey}</small>
                               </span>
+                            </div>
+                          </th>
+                          <td>
+                            <StatusBadge tone={toneOf(accountTones, memberStatus(member))}>
+                              {t(statusTranslationKey(member))}
+                            </StatusBadge>
+                          </td>
+                          <td>{t(vereinStatusKey(member))}</td>
+                          <td>
+                            {roleTitles.length === 0
+                              ? t("Pages_Command_Members_NoRoleAssignments")
+                              : roleTitles.length <= 2
+                                ? roleTitles.join(", ")
+                                : formatResource(
+                                    t("Pages_Command_Members_MoreRoleAssignments"),
+                                    roleTitles.slice(0, 2).join(", "),
+                                    roleTitles.length - 2,
+                                  )}
+                          </td>
+                          <td>{member.directClaimCount ?? 0}</td>
+                          <td>
+                            {t(
+                              member.isDeleted
+                                ? "Pages_Command_Members_Yes"
+                                : "Pages_Command_Members_No",
                             )}
-                            <span>
-                              <strong>{nickname}</strong>
-                              <small>{member.primaryKey}</small>
-                            </span>
-                          </div>
-                        </th>
-                        <td>
-                          <StatusBadge tone={statusTone(member)}>
-                            {t(statusTranslationKey(member))}
-                          </StatusBadge>
-                        </td>
-                        <td>{t(vereinStatusKey(member))}</td>
-                        <td>
-                          {roleTitles.length === 0
-                            ? t("Pages_Command_Members_NoRoleAssignments")
-                            : roleTitles.length <= 2
-                              ? roleTitles.join(", ")
-                              : formatResource(
-                                  t("Pages_Command_Members_MoreRoleAssignments"),
-                                  roleTitles.slice(0, 2).join(", "),
-                                  roleTitles.length - 2,
-                                )}
-                        </td>
-                        <td>{member.directClaimCount ?? 0}</td>
-                        <td>
-                          {t(
-                            member.isDeleted
-                              ? "Pages_Command_Members_Yes"
-                              : "Pages_Command_Members_No",
-                          )}
-                        </td>
-                        <td onClick={stopRowNavigation}>
-                          {member.primaryKey && (
-                            <Link
-                              className="button button--ghost button--small"
-                              to={`/command/members/${member.primaryKey}`}
-                            >
-                              {t("Pages_Command_Members_ActionManage")}
-                            </Link>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {pageCount > 1 && (
-            <nav
-              className="members-admin-pagination"
-              aria-label={t("Pages_Command_Members_FilterAria")}
-            >
-              <button
-                className="button button--ghost button--small"
-                type="button"
-                disabled={currentPage === 0}
-                onClick={() => setPage(Math.max(0, currentPage - 1))}
+                          </td>
+                          <td onClick={stopRowNavigation}>
+                            {member.primaryKey && (
+                              <ActionLink
+                                variant="ghost"
+                                size="compact"
+                                to={`/command/members/${member.primaryKey}`}
+                              >
+                                {t("Pages_Command_Members_ActionManage")}
+                              </ActionLink>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {pageCount > 1 && (
+              <nav
+                className="members-admin-pagination"
+                aria-label={t("Pages_Command_Members_ListKicker")}
               >
-                {t("Previous")}
-              </button>
-              <span>
-                {t("Page")} {currentPage + 1} / {pageCount}
-              </span>
-              <button
-                className="button button--ghost button--small"
-                type="button"
-                disabled={currentPage + 1 >= pageCount}
-                onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}
-              >
-                {t("Next")}
-              </button>
-            </nav>
-          )}
-        </section>
+                <ActionButton
+                  variant="ghost"
+                  size="compact"
+                  disabled={currentPage === 0}
+                  onClick={() => setPage(Math.max(0, currentPage - 1))}
+                >
+                  {t("Previous")}
+                </ActionButton>
+                <span>
+                  {t("Page")} {currentPage + 1} / {pageCount}
+                </span>
+                <ActionButton
+                  variant="ghost"
+                  size="compact"
+                  disabled={currentPage + 1 >= pageCount}
+                  onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}
+                >
+                  {t("Next")}
+                </ActionButton>
+              </nav>
+            )}
+          </section>
+        )
       )}
-    </section>
+    </PageStack>
   );
 }

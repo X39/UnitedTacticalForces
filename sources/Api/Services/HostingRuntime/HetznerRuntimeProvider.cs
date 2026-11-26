@@ -38,6 +38,12 @@ public sealed class HetznerRuntimeProvider(
     private const string ManagedLabelValue = "true";
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _provisioningLocks = new();
 
+    /// <summary>
+    /// Gets the billing unit of Hetzner Cloud, which bills every started hour in full.
+    /// </summary>
+    /// <value>The started-hour unit, <see cref="RuntimeBillingUnit.StartedHour"/>.</value>
+    public static RuntimeBillingUnit ProviderBillingUnit => RuntimeBillingUnit.StartedHour;
+
     public string ProviderIdentifier => Identifier;
 
     public RuntimeProviderCapabilities Capabilities
@@ -68,7 +74,8 @@ public sealed class HetznerRuntimeProvider(
                     CapacityIncrementGiB: optionsProvider.Value.VolumeSizeIncrementGiB,
                     EstimatedHourlyCostPerGiBEur: optionsProvider.Value.VolumeEstimatedHourlyCostPerGiBEur,
                     DeploymentMountPath: optionsProvider.Value.VolumeMountPath,
-                    ReadinessFailure: failure));
+                    ReadinessFailure: failure),
+                BillingUnit: ProviderBillingUnit);
         }
     }
 

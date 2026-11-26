@@ -24,7 +24,7 @@ function collectBlazorRoutes(directory: string): string[] {
 
 describe("route manifest", () => {
   it("describes every existing Blazor route and marks React-only fallbacks", () => {
-    expect(countRoutePatterns()).toBe(80);
+    expect(countRoutePatterns()).toBe(81);
     const manifestRoutes = routeManifest.routes
       .filter((route) => !route.classicFallback)
       .flatMap((route) => [route.canonical, ...route.aliases]);
@@ -102,6 +102,9 @@ describe("route manifest", () => {
       matchRoute("/command/configuration-profiles/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f")?.certified,
     ).toBe(true);
     expect(matchRoute("/command/servers/create")?.certified).toBe(true);
+    expect(matchRoute("/command/servers/cost-alerts")?.id).toBe("server-cost-alerts");
+    expect(matchRoute("/command/servers/cost-alerts")?.certified).toBe(true);
+    expect(matchRoute("/command/servers/cost-alerts")?.classicFallback).toBe("/command/servers");
     expect(matchRoute("/command/servers/83d25ddd-9ff5-4d09-99ab-4f49d91a7c3f")?.certified).toBe(
       true,
     );

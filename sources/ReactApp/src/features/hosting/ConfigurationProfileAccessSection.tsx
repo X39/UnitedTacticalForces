@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TranslationKey } from "@/app/localizationTypes";
-import { StatePanel, useUnsavedChanges } from "@/components/primitives";
+import { ActionButton } from "@/components/ActionControl";
+import { CheckboxField, RadioGroupField, TextField } from "@/components/FormFields";
+import { useUnsavedChanges } from "@/components/primitives";
+import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
 import { hostingService } from "@/features/hosting/services";
 import type {
   ConfigurationProfileAccess,
@@ -140,19 +143,11 @@ export function ConfigurationProfileAccessSection({
         </div>
       </header>
       {loading ? (
-        <StatePanel kind="loading">{t("Hosting_ConfigurationProfiles_AccessLoading")}</StatePanel>
+        <LoadingState label={t("Hosting_ConfigurationProfiles_AccessLoading")} />
       ) : error ? (
-        <StatePanel
-          kind="error"
-          title={t("Hosting_ConfigurationProfiles_AccessLoadError")}
-          action={
-            <button className="button button--ghost" type="button" onClick={onRetry}>
-              {t("Hosting_ConfigurationProfiles_Retry")}
-            </button>
-          }
-        >
+        <ErrorState title={t("Hosting_ConfigurationProfiles_AccessLoadError")} onRetry={onRetry}>
           {error.message}
-        </StatePanel>
+        </ErrorState>
       ) : (
         <>
           <section
@@ -165,40 +160,29 @@ export function ConfigurationProfileAccessSection({
               </h3>
               <p>{t("React_ConfigurationProfiles_AddPrincipalDescription")}</p>
             </div>
-            <fieldset>
-              <legend>{t("Hosting_ConfigurationProfiles_SubjectType")}</legend>
-              {(["user", "role"] as const).map((kind) => (
-                <label key={kind}>
-                  <input
-                    type="radio"
-                    name="profile-access-subject"
-                    checked={subject === kind}
-                    onChange={() => {
-                      setSubject(kind);
-                      setSearch("");
-                      setActiveCandidateIndex(-1);
-                    }}
-                  />
-                  <span>
-                    {t(
-                      kind === "user"
-                        ? "Hosting_ConfigurationProfiles_User"
-                        : "Hosting_ConfigurationProfiles_Role",
-                    )}
-                  </span>
-                </label>
-              ))}
-            </fieldset>
-            <label className="field next-hosting-access-search">
-              <span>
-                {t(
+            <RadioGroupField
+              legend={t("Hosting_ConfigurationProfiles_SubjectType")}
+              name="profile-access-subject"
+              layout="segmented"
+              value={subject}
+              options={[
+                { value: "user", label: t("Hosting_ConfigurationProfiles_User") },
+                { value: "role", label: t("Hosting_ConfigurationProfiles_Role") },
+              ]}
+              onChange={(kind) => {
+                setSubject(kind === "role" ? "role" : "user");
+                setSearch("");
+                setActiveCandidateIndex(-1);
+              }}
+            />
+            <div className="next-hosting-access-search">
+              <TextField
+                role="combobox"
+                label={t(
                   subject === "user"
                     ? "React_ConfigurationProfiles_SearchUsers"
                     : "React_ConfigurationProfiles_SearchRoles",
                 )}
-              </span>
-              <input
-                role="combobox"
                 aria-expanded={search.trim().length > 0}
                 aria-controls={`${profileId}-principal-options`}
                 aria-activedescendant={
@@ -234,7 +218,7 @@ export function ConfigurationProfileAccessSection({
                   }
                 }}
               />
-            </label>
+            </div>
             {search.trim() && (
               <div
                 id={`${profileId}-principal-options`}
@@ -254,10 +238,10 @@ export function ConfigurationProfileAccessSection({
                     const label = user ? candidate.nickname : candidate.title;
                     const description = user ? candidate.userId : candidate.description;
                     return (
-                      <button
+                      <ActionButton
                         id={`${profileId}-principal-option-${index}`}
                         key={`${subject}-${id}`}
-                        type="button"
+                        variant="ghost"
                         role="option"
                         aria-selected={activeCandidateIndex === index}
                         onMouseEnter={() => setActiveCandidateIndex(index)}
@@ -265,7 +249,7 @@ export function ConfigurationProfileAccessSection({
                       >
                         <strong>{label}</strong>
                         <small>{description}</small>
-                      </button>
+                      </ActionButton>
                     );
                   })
                 )}
@@ -273,9 +257,9 @@ export function ConfigurationProfileAccessSection({
             )}
           </section>
           {rows.length === 0 ? (
-            <StatePanel kind="empty" title={t("Hosting_ConfigurationProfiles_NoDirectAccess")}>
+            <EmptyState title={t("Hosting_ConfigurationProfiles_NoDirectAccess")}>
               {t("React_ConfigurationProfiles_NoDirectAccessDescription")}
-            </StatePanel>
+            </EmptyState>
           ) : (
             <div className="next-hosting-access-matrix-scroll">
               <table className="next-hosting-access-matrix">
@@ -311,23 +295,24 @@ export function ConfigurationProfileAccessSection({
                       </th>
                       {(access?.allowedPermissions ?? []).map((permission) => (
                         <td key={permission} data-label={permissionLabel(permission)}>
-                          <label className="next-hosting-access-check">
-                            <input
-                              type="checkbox"
-                              checked={row.permissions.includes(permission)}
-                              aria-label={`${row.label}: ${permissionLabel(permission)}`}
-                              onChange={(event) =>
-                                updatePermission(row, permission, event.target.checked)
-                              }
-                            />
-                            <span aria-hidden="true" />
-                          </label>
+                          <CheckboxField
+                            label={
+                              <span className="sr-only">
+                                {`${row.label}: ${permissionLabel(permission)}`}
+                              </span>
+                            }
+                            checked={row.permissions.includes(permission)}
+                            onChange={(event) =>
+                              updatePermission(row, permission, event.target.checked)
+                            }
+                          />
                         </td>
                       ))}
                       <td>
-                        <button
-                          className="button button--ghost button--small"
-                          type="button"
+                        <ActionButton
+                          variant="ghost"
+                          size="compact"
+                          aria-label={`${t("React_ConfigurationProfiles_RemovePrincipal")}: ${row.label}`}
                           onClick={() =>
                             setDraftRows(
                               rows.filter((item) => item.kind !== row.kind || item.id !== row.id),
@@ -335,7 +320,7 @@ export function ConfigurationProfileAccessSection({
                           }
                         >
                           {t("React_ConfigurationProfiles_RemovePrincipal")}
-                        </button>
+                        </ActionButton>
                       </td>
                     </tr>
                   ))}
@@ -351,24 +336,22 @@ export function ConfigurationProfileAccessSection({
             >
               <strong>{t("React_ConfigurationProfiles_UnsavedAccessChanges")}</strong>
               <div>
-                <button
-                  className="button button--ghost"
-                  type="button"
+                <ActionButton
+                  variant="ghost"
                   disabled={pending}
                   onClick={() => setDraftRows(undefined)}
                 >
                   {t("React_ConfigurationProfiles_DiscardChanges")}
-                </button>
-                <button
-                  className="button button--primary"
-                  type="button"
+                </ActionButton>
+                <ActionButton
+                  variant="gold"
                   disabled={pending}
                   onClick={() => onSave(toMatrix(rows))}
                 >
                   {pending
                     ? t("React_ConfigurationProfiles_SavingAccess")
                     : t("React_ConfigurationProfiles_SaveAccess")}
-                </button>
+                </ActionButton>
               </div>
             </div>
           )}

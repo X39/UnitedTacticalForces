@@ -378,4 +378,40 @@ Wenn diese Einstellung aktiviert ist, kann sich der Start des Servers um 600 Sek
   <data name="Pages_UsersDetail_Tabs_Details_Nickname" xml:space="preserve">
         <value>Spitzname</value>
     </data>
+  <data name="CostAlert_Subject" xml:space="preserve">
+        <value>Kostenwarnung: {0} hat {1} erreicht</value>
+    </data>
+  <data name="CostAlert_Body" xml:space="preserve">
+        <value>Der Server {0} hat deine Kostenwarnung von {1} erreicht. Diese Sitzung hat bisher {2} gekostet (Stand {3}).</value>
+    </data>
+  <data name="CostAlert_StopWithLink" xml:space="preserve">
+        <value>Öffne den Server, um ihn herunterzufahren und die Abrechnung zu beenden: {0}</value>
+    </data>
+  <data name="CostAlert_StopWithoutLink" xml:space="preserve">
+        <value>Öffne den Server in der App, um ihn herunterzufahren und die Abrechnung zu beenden.</value>
+    </data>
+  <data name="CostAlert_Footer" xml:space="preserve">
+        <value>Du erhältst diese Nachricht, weil für diesen Kostenträger Kostenwarnungen eingerichtet sind. Jeder Betrag warnt einmal pro Sitzung.</value>
+    </data>
+  <data name="AutoStop_Subject" xml:space="preserve">
+        <value>Automatisches Herunterfahren von {0} um {1}</value>
+    </data>
+  <data name="AutoStop_Body_Idle" xml:space="preserve">
+        <value>Seit {1} Minuten war niemand auf {0}. Er fährt um {2} herunter, wenn niemand beitritt.</value>
+    </data>
+  <data name="AutoStop_Body_MaxRuntime" xml:space="preserve">
+        <value>{0} hat seine maximale Laufzeit von {1} Stunden erreicht und fährt um {2} herunter.</value>
+    </data>
+  <data name="AutoStop_Body_Schedule" xml:space="preserve">
+        <value>Ein Zeitplan fährt {0} um {2} herunter.</value>
+    </data>
+  <data name="AutoStop_Consequence" xml:space="preserve">
+        <value>Er speichert seine Daten, stoppt und gibt die Cloud-Maschine frei. Die Abrechnung endet, sobald bestätigt ist, dass die Maschine entfernt ist.</value>
+    </data>
+  <data name="AutoStop_WithLink" xml:space="preserve">
+        <value>Automatisches Herunterfahren ändern: {0}</value>
+    </data>
+  <data name="AutoStop_Footer" xml:space="preserve">
+        <value>Du erhältst diese Nachricht, weil Warnungen vor automatischem Herunterfahren an die Alarmempfänger dieses Kostenträgers gesendet werden.</value>
+    </data>
 </root>

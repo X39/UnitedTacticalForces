@@ -1,8 +1,5 @@
-.finance-page {
-  display: grid;
-  gap: 1.5rem;
-  width: 100%;
-  min-width: 0;
+.finance-back {
+  margin-bottom: var(--utf-space-md);
 }
 .finance-filters {
   display: grid;
@@ -12,9 +9,6 @@
 }
 .finance-filter--wide {
   min-width: 16rem;
-}
-.finance-picker {
-  display: contents;
 }
 .finance-table-scroll {
   width: 100%;
@@ -48,7 +42,11 @@
 .finance-table tbody tr:hover,
 .finance-table tbody tr:focus {
   background: color-mix(in srgb, currentColor 7%, transparent);
-  outline: none;
+}
+/* The ring sits inside the row so the scroll container never clips it. */
+.finance-table tbody tr:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: calc(var(--utf-focus-offset) * -1);
 }
 .finance-table td small {
   display: block;
@@ -84,6 +82,8 @@
 .finance-position,
 .finance-policy,
 .finance-protocol {
+  /* A page-stack item may shrink below its widest table, which then scrolls inside its own region. */
+  min-width: 0;
   padding: 1.2rem;
   border: 1px solid var(--border-color, #39414c);
   border-radius: 0.65rem;
@@ -107,6 +107,15 @@
 .finance-dialog {
   width: min(36rem, calc(100vw - 2rem));
 }
+/*
+ * The shared dialog shell stacks the actions below 520px but its full-width rule loses to the `.button` width, so the
+ * finance dialog repeats the rule with a doubled selector (the review and cost dialogs do the same).
+ */
+@media (max-width: 520px) {
+  .dialog.finance-dialog .dialog__actions > * {
+    width: 100%;
+  }
+}
 .finance-dialog__body {
   display: grid;
   gap: 1rem;
@@ -116,7 +125,6 @@
   position: fixed;
   inset: 0;
   z-index: 49;
-  border: 0;
   background: rgb(0 0 0 / 0.55);
 }
 .finance-drawer {

@@ -1,0 +1,30 @@
+{
+  "family": "events-admin",
+  "owner": "69-16",
+  "files": {
+    "src/features/admin/EventObjectiveIconPicker.tsx": {
+      "controls": 1,
+      "lookalikes": 0,
+      "literals": 0,
+      "reason": "editor internal with grid or roving behavior (UI-SPEC allowance)"
+    },
+    "src/features/admin/EventSlotPlanner.tsx": {
+      "controls": 4,
+      "lookalikes": 0,
+      "literals": 0,
+      "reason": "editor internal with grid or roving behavior (UI-SPEC allowance)"
+    },
+    "src/features/events/EventRoleSymbolPicker.tsx": {
+      "controls": 1,
+      "lookalikes": 0,
+      "literals": 0,
+      "reason": "editor internal with grid or roving behavior (UI-SPEC allowance)"
+    },
+    "src/features/events/EventSidePicker.tsx": {
+      "controls": 1,
+      "lookalikes": 0,
+      "literals": 0,
+      "reason": "editor internal with grid or roving behavior (UI-SPEC allowance)"
+    }
+  }
+}

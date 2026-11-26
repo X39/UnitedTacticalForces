@@ -4,7 +4,8 @@ import {
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
-import { useMemo, useState, type FormEvent } from "react";
+import { Checkmark16Regular } from "@fluentui/react-icons";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { resolveImageUrl } from "@/api/client";
@@ -12,8 +13,16 @@ import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canManageGallery } from "@/auth/claims";
+import { ActionButton } from "@/components/ActionControl";
 import { useAppToastOnChange } from "@/components/AppToasts";
-import { PageHeader, StatePanel, StatusBadge, useUnsavedChanges } from "@/components/primitives";
+import { CopyButton } from "@/components/CopyButton";
+import { FileChooserButton } from "@/components/FileChooserButton";
+import { TextField } from "@/components/FormFields";
+import { PageStack } from "@/components/PageStack";
+import { ConfirmDialog, PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { SearchField } from "@/components/SearchField";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { useLeaveGuard } from "@/components/useLeaveGuard";
 import {
   loadMediaAssetPage,
   mediaAssetMatchesUsageDomains,
@@ -23,6 +32,7 @@ import {
   uploadMediaAsset,
   type MediaAsset,
 } from "@/features/admin/siteImages";
+import "@/features/admin/mediaAdmin.css";
 
 const pageSize = 60;
 const maximumImageBytes = 10 * 1024 * 1024;
@@ -60,6 +70,17 @@ function upsertAsset(
   );
   pages[0] = [asset, ...(pages[0] ?? [])];
   return { ...current, pages };
+}
+
+/** Renders the page header above a state view so every state of the gallery keeps exactly one `h1`. */
+function GalleryStateFrame({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <PageStack>
+      <PageHeader title={t("Shared_CommandCenter_Nav_Gallery")} />
+      {children}
+    </PageStack>
+  );
 }
 
 export function Component() {
@@ -108,7 +129,7 @@ export function Component() {
   const tagDirty = Boolean(
     selectedAsset && !mediaAssetTagsEqual(tagEditorValue, selectedAsset.tags),
   );
-  useUnsavedChanges(tagDirty);
+  const leaveGuard = useLeaveGuard({ dirty: tagDirty });
   useAppToastOnChange(notice?.text, notice?.tone ?? "success");
 
   const upload = useMutation({
@@ -185,16 +206,6 @@ export function Component() {
     });
     setNotice(undefined);
   };
-  const copyReference = async () => {
-    if (!selectedAsset) return;
-    setNotice(undefined);
-    try {
-      await navigator.clipboard.writeText(selectedAsset.imagePath);
-      setNotice({ tone: "success", text: t("Pages_Command_Gallery_CopiedReference") });
-    } catch {
-      setNotice({ tone: "error", text: t("Pages_Command_Gallery_CopyReferenceFailed") });
-    }
-  };
   const sourceLabel = (domain: SourceDomain) => {
     switch (domain) {
       case "terrain":
@@ -214,131 +225,129 @@ export function Component() {
 
   if (!canManage)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_Gallery_NoAccessTitle")}>
-        {t("Pages_Command_Gallery_NoAccessMessage")}
-      </StatePanel>
+      <GalleryStateFrame>
+        <ForbiddenState title={t("Pages_Command_Gallery_NoAccessTitle")}>
+          {t("Pages_Command_Gallery_NoAccessMessage")}
+        </ForbiddenState>
+      </GalleryStateFrame>
     );
 
   return (
-    <section className="media-gallery-page">
+    <PageStack>
       <PageHeader
-        kicker={t("Shared_CommandCenter_Nav_Gallery")}
-        title={t("Pages_Command_Gallery_PageTitle")}
+        title={t("Shared_CommandCenter_Nav_Gallery")}
         description={t("Pages_Command_Gallery_PageDescription")}
         actions={
-          <button
-            className="button button--ghost"
-            type="button"
+          <ActionButton
+            variant="ghost"
             disabled={query.isFetching}
             onClick={() => void query.refetch()}
           >
             {t("Common_Refresh")}
-          </button>
+          </ActionButton>
         }
       />
 
       <form
-        className="toolbar media-gallery-toolbar"
+        className="media-admin-toolbar"
         aria-label={t("Pages_Command_Gallery_FilterAria")}
         onSubmit={applySearch}
       >
-        <label className="search-field">
-          <span className="sr-only">{t("Pages_Command_Gallery_SearchPlaceholder")}</span>
-          <input
-            value={searchDraft}
-            placeholder={t("Pages_Command_Gallery_SearchPlaceholder")}
-            onChange={(event) => setSearchDraft(event.target.value)}
-          />
-        </label>
-        <button className="button button--ghost" type="submit">
+        <SearchField
+          label={t("Pages_Command_Gallery_SearchPlaceholder")}
+          placeholder={t("Pages_Command_Gallery_SearchPlaceholder")}
+          clearLabel={t("Components_GalleryImagePicker_Clear")}
+          value={searchDraft}
+          onChange={setSearchDraft}
+        />
+        <ActionButton variant="ghost" type="submit">
           {t("Components_GalleryImagePicker_SearchAction")}
-        </button>
-        <div className="filter-chips" aria-label={t("Pages_Command_Gallery_DomainFilterAria")}>
-          {sourceDomains.map((domain) => (
-            <button
-              key={domain}
-              className={enabledSources.has(domain) ? "active" : undefined}
-              type="button"
-              aria-pressed={enabledSources.has(domain)}
-              onClick={() => toggleSource(domain)}
-            >
-              {sourceLabel(domain)}
-            </button>
-          ))}
+        </ActionButton>
+        <div
+          role="group"
+          aria-label={t("Pages_Command_Gallery_DomainFilterAria")}
+          className="filter-chip-group"
+        >
+          {sourceDomains.map((domain) => {
+            const pressed = enabledSources.has(domain);
+            return (
+              <ActionButton
+                key={domain}
+                variant="ghost"
+                className="filter-chip"
+                aria-pressed={pressed}
+                onClick={() => toggleSource(domain)}
+              >
+                {pressed && (
+                  <Checkmark16Regular className="filter-chip__check" aria-hidden="true" />
+                )}
+                <span className="filter-chip__label">{sourceLabel(domain)}</span>
+              </ActionButton>
+            );
+          })}
         </div>
       </form>
 
-      <form className="command-panel media-gallery-tag-filters" onSubmit={applyTagFilters}>
-        <label>
-          <span>{t("Pages_Command_Gallery_IncludeTagsLabel")}</span>
-          <input
-            value={includeTagsDraft}
-            placeholder={t("Pages_Command_Gallery_TagPlaceholder")}
-            onChange={(event) => setIncludeTagsDraft(event.target.value)}
-          />
-        </label>
-        <label>
-          <span>{t("Pages_Command_Gallery_ExcludeTagsLabel")}</span>
-          <input
-            value={excludeTagsDraft}
-            placeholder={t("Pages_Command_Gallery_NegativeTagPlaceholder")}
-            onChange={(event) => setExcludeTagsDraft(event.target.value)}
-          />
-        </label>
-        <button className="button button--ghost" type="submit" disabled={query.isFetching}>
+      <form className="command-panel media-admin-fields" onSubmit={applyTagFilters}>
+        <TextField
+          label={t("Pages_Command_Gallery_IncludeTagsLabel")}
+          value={includeTagsDraft}
+          placeholder={t("Pages_Command_Gallery_TagPlaceholder")}
+          onChange={(event) => setIncludeTagsDraft(event.target.value)}
+        />
+        <TextField
+          label={t("Pages_Command_Gallery_ExcludeTagsLabel")}
+          value={excludeTagsDraft}
+          placeholder={t("Pages_Command_Gallery_NegativeTagPlaceholder")}
+          onChange={(event) => setExcludeTagsDraft(event.target.value)}
+        />
+        <ActionButton variant="ghost" type="submit" disabled={query.isFetching}>
           {t("Pages_Command_Gallery_ApplyTagFilters")}
-        </button>
+        </ActionButton>
       </form>
 
       <section
-        className="command-panel media-gallery-upload"
+        className="command-panel media-admin-upload"
         aria-label={t("Pages_Command_Gallery_UploadAria")}
       >
-        <div>
+        <div className="media-admin-upload__intro">
           <span className="kicker">{t("Pages_Command_Gallery_UploadKicker")}</span>
           <h2>{t("Pages_Command_Gallery_UploadTitle")}</h2>
           <p>{t("Pages_Command_Gallery_UploadDescription")}</p>
         </div>
-        <div className="media-gallery-upload__controls">
-          <label>
-            <span>{t("Pages_Command_Gallery_UploadTagsLabel")}</span>
-            <input
-              value={uploadTags}
-              placeholder={t("Pages_Command_Gallery_TagPlaceholder")}
-              onChange={(event) => setUploadTags(event.target.value)}
-            />
-          </label>
-          <label className="media-gallery-upload__drop">
-            <strong>{t("Pages_Command_Gallery_UploadDropText")}</strong>
-            <span>{t("Pages_Command_Gallery_UploadHintText")}</span>
-            <input
-              type="file"
+        <div className="media-admin-upload__controls">
+          <TextField
+            label={t("Pages_Command_Gallery_UploadTagsLabel")}
+            value={uploadTags}
+            placeholder={t("Pages_Command_Gallery_TagPlaceholder")}
+            onChange={(event) => setUploadTags(event.target.value)}
+          />
+          <div>
+            <FileChooserButton
+              inputLabel={t("Pages_Command_Gallery_UploadDropText")}
               accept={[...acceptedTypes].join(",")}
               disabled={upload.isPending}
-              onChange={(event) => chooseFile(event.target.files?.[0])}
-            />
-          </label>
+              onFiles={(files) => chooseFile(files[0])}
+            >
+              {t("Pages_Command_Gallery_UploadDropText")}
+            </FileChooserButton>
+          </div>
+          <p className="media-admin-hint">{t("Pages_Command_Gallery_UploadHintText")}</p>
         </div>
       </section>
       {fileError && <StatePanel kind="error">{fileError}</StatePanel>}
 
-      {query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_Gallery_Loading")}</StatePanel>
-      ) : query.isError ? (
-        <StatePanel
-          kind="error"
-          action={
-            <button className="button button--ghost" onClick={() => void query.refetch()}>
-              {t("Common_Refresh")}
-            </button>
-          }
-        >
+      {query.isError && (
+        <ErrorState onRetry={() => void query.refetch()}>
           {formatResource(t("Pages_Command_Gallery_LoadError"), query.error.message)}
-        </StatePanel>
-      ) : (
-        <div className="media-gallery-workspace">
-          <section className="command-panel media-gallery-assets">
-            <header className="command-panel__header">
+        </ErrorState>
+      )}
+      {query.isPending ? (
+        <LoadingState label={t("Pages_Command_Gallery_Loading")} />
+      ) : query.data ? (
+        <div className="media-admin-workspace">
+          <section className="command-panel media-admin-assets">
+            <header className="command-panel__header media-admin-panel-header">
               <div>
                 <span className="kicker">{t("Pages_Command_Gallery_ListKicker")}</span>
                 <h2>{t("Pages_Command_Gallery_ListTitle")}</h2>
@@ -348,20 +357,20 @@ export function Component() {
               </StatusBadge>
             </header>
             {visibleAssets.length === 0 ? (
-              <StatePanel kind="empty">{t("Pages_Command_Gallery_Empty")}</StatePanel>
+              <EmptyState title={t("Pages_Command_Gallery_EmptyTitle")}>
+                {t("Pages_Command_Gallery_EmptyBody")}
+              </EmptyState>
             ) : (
               <div
-                className="media-gallery-assets__grid"
+                className="media-admin-grid"
                 role="listbox"
                 aria-label={t("Pages_Command_Gallery_ListTitle")}
               >
                 {visibleAssets.map((asset) => (
-                  <button
+                  <ActionButton
                     key={asset.primaryKey}
-                    className={
-                      selectedAsset?.primaryKey === asset.primaryKey ? "is-selected" : undefined
-                    }
-                    type="button"
+                    variant="ghost"
+                    className="media-admin-tile"
                     role="option"
                     aria-selected={selectedAsset?.primaryKey === asset.primaryKey}
                     onClick={() => {
@@ -378,7 +387,7 @@ export function Component() {
                       )}
                       loading="lazy"
                     />
-                    <span>
+                    <span className="media-admin-tile__text">
                       <strong>{asset.originalFileName}</strong>
                       <small>
                         {asset.contentType} · {formatBytes(asset.size)}
@@ -392,27 +401,30 @@ export function Component() {
                           : t("Pages_Command_Gallery_Unused")}
                       </StatusBadge>
                     </span>
-                  </button>
+                  </ActionButton>
                 ))}
               </div>
             )}
             {query.hasNextPage && (
-              <button
-                className="button button--ghost media-gallery-assets__load-more"
-                type="button"
-                disabled={query.isFetchingNextPage}
-                onClick={() => void query.fetchNextPage()}
-              >
-                {query.isFetchingNextPage
-                  ? t("Components_GalleryImagePicker_LoadingMore")
-                  : t("Components_GalleryImagePicker_LoadMore")}
-              </button>
+              <div>
+                <ActionButton
+                  variant="ghost"
+                  disabled={query.isFetchingNextPage}
+                  onClick={() => void query.fetchNextPage()}
+                >
+                  {query.isFetchingNextPage
+                    ? t("Components_GalleryImagePicker_LoadingMore")
+                    : t("Components_GalleryImagePicker_LoadMore")}
+                </ActionButton>
+              </div>
             )}
           </section>
 
-          <aside className="command-panel media-gallery-detail">
+          <aside className="command-panel media-admin-detail">
             {!selectedAsset ? (
-              <StatePanel>{t("Pages_Command_Gallery_NoSelection")}</StatePanel>
+              <EmptyState title={t("Pages_Command_Gallery_NoSelectionTitle")}>
+                {t("Pages_Command_Gallery_NoSelectionBody")}
+              </EmptyState>
             ) : (
               <>
                 <header className="command-panel__header">
@@ -422,95 +434,109 @@ export function Component() {
                   </div>
                 </header>
                 <img
-                  className="media-gallery-detail__image"
+                  className="media-admin-detail__image"
                   src={resolveImageUrl(selectedAsset.imagePath)}
                   alt={formatResource(
                     t("Pages_Command_Gallery_ImageAlt"),
                     selectedAsset.originalFileName,
                   )}
                 />
-                <div className="media-gallery-detail__scroll">
-                  <div className="media-gallery-reference">
-                    <label>
-                      <span>{t("Pages_Command_Gallery_ReferenceLabel")}</span>
-                      <input readOnly value={selectedAsset.imagePath} />
-                    </label>
-                    <button className="button button--ghost" type="button" onClick={copyReference}>
-                      {t("Pages_Command_Gallery_CopyReference")}
-                    </button>
-                  </div>
-                  <dl>
-                    <dt>{t("Pages_Command_Gallery_ContentTypeLabel")}</dt>
-                    <dd>{selectedAsset.contentType}</dd>
-                    <dt>{t("Pages_Command_Gallery_SizeLabel")}</dt>
-                    <dd>{formatBytes(selectedAsset.size)}</dd>
-                    <dt>{t("Pages_Command_Gallery_CreatedLabel")}</dt>
-                    <dd>{formatDateTime(selectedAsset.timeStampCreated)}</dd>
-                    <dt>{t("Pages_Command_Gallery_UploadedByLabel")}</dt>
-                    <dd>{selectedAsset.createdByName ?? t("Pages_Command_Gallery_UnknownUser")}</dd>
-                  </dl>
-                  <form
-                    className="media-gallery-detail__section"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      saveTags.mutate({
+                <TextField
+                  readOnly
+                  label={t("Pages_Command_Gallery_ReferenceLabel")}
+                  value={selectedAsset.imagePath}
+                  trailing={
+                    <CopyButton
+                      value={selectedAsset.imagePath}
+                      label={t("Pages_Command_Gallery_CopyReference")}
+                      copiedMessage={t("Pages_Command_Gallery_CopiedReference")}
+                    />
+                  }
+                />
+                <dl className="media-admin-facts">
+                  <dt>{t("Pages_Command_Gallery_ContentTypeLabel")}</dt>
+                  <dd>{selectedAsset.contentType}</dd>
+                  <dt>{t("Pages_Command_Gallery_SizeLabel")}</dt>
+                  <dd>{formatBytes(selectedAsset.size)}</dd>
+                  <dt>{t("Pages_Command_Gallery_CreatedLabel")}</dt>
+                  <dd>{formatDateTime(selectedAsset.timeStampCreated)}</dd>
+                  <dt>{t("Pages_Command_Gallery_UploadedByLabel")}</dt>
+                  <dd>{selectedAsset.createdByName ?? t("Pages_Command_Gallery_UnknownUser")}</dd>
+                </dl>
+                <form
+                  className="media-admin-section"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    saveTags.mutate({
+                      assetId: selectedAsset.primaryKey,
+                      tags: parseMediaAssetTags(tagEditorValue),
+                    });
+                  }}
+                >
+                  <h3>{t("Pages_Command_Gallery_TagsTitle")}</h3>
+                  <TextField
+                    label={t("Pages_Command_Gallery_TagEditorLabel")}
+                    value={tagEditorValue}
+                    onChange={(event) =>
+                      setTagEditor({
                         assetId: selectedAsset.primaryKey,
-                        tags: parseMediaAssetTags(tagEditorValue),
-                      });
-                    }}
-                  >
-                    <h3>{t("Pages_Command_Gallery_TagsTitle")}</h3>
-                    <label>
-                      <span>{t("Pages_Command_Gallery_TagEditorLabel")}</span>
-                      <input
-                        value={tagEditorValue}
-                        onChange={(event) =>
-                          setTagEditor({
-                            assetId: selectedAsset.primaryKey,
-                            value: event.target.value,
-                          })
-                        }
-                      />
-                    </label>
-                    <button
-                      className="button button--primary"
+                        value: event.target.value,
+                      })
+                    }
+                  />
+                  <div>
+                    <ActionButton
+                      variant="primary"
                       type="submit"
                       disabled={!tagDirty || saveTags.isPending}
                     >
                       {saveTags.isPending
                         ? t("Pages_Command_Gallery_SavingTags")
                         : t("Pages_Command_Gallery_SaveTags")}
-                    </button>
-                    <div className="media-gallery-tags">
-                      {selectedAsset.tags.map((tag) => (
-                        <span key={tag}>{tag}</span>
+                    </ActionButton>
+                  </div>
+                  <ul className="media-admin-tags">
+                    {selectedAsset.tags.map((tag) => (
+                      <li key={tag}>
+                        <StatusBadge>{tag}</StatusBadge>
+                      </li>
+                    ))}
+                  </ul>
+                </form>
+                <section className="media-admin-section">
+                  <h3>{t("Pages_Command_Gallery_UsageTitle")}</h3>
+                  {selectedAsset.usages.length === 0 ? (
+                    <p>{t("Pages_Command_Gallery_NoUsage")}</p>
+                  ) : (
+                    <ul className="media-admin-usages">
+                      {selectedAsset.usages.map((usage) => (
+                        <li key={`${usage.domain}:${usage.domainKey}`}>
+                          <strong>{usage.displayName}</strong>
+                          <span>{usage.domain}</span>
+                          {usage.path && (
+                            <Link to={usage.path}>{t("Pages_Command_Gallery_OpenUsage")}</Link>
+                          )}
+                        </li>
                       ))}
-                    </div>
-                  </form>
-                  <section className="media-gallery-detail__section">
-                    <h3>{t("Pages_Command_Gallery_UsageTitle")}</h3>
-                    {selectedAsset.usages.length === 0 ? (
-                      <p>{t("Pages_Command_Gallery_NoUsage")}</p>
-                    ) : (
-                      <ul className="media-gallery-usages">
-                        {selectedAsset.usages.map((usage) => (
-                          <li key={`${usage.domain}:${usage.domainKey}`}>
-                            <strong>{usage.displayName}</strong>
-                            <span>{usage.domain}</span>
-                            {usage.path && (
-                              <Link to={usage.path}>{t("Pages_Command_Gallery_OpenUsage")}</Link>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-                </div>
+                    </ul>
+                  )}
+                </section>
               </>
             )}
           </aside>
         </div>
-      )}
-    </section>
+      ) : null}
+
+      <ConfirmDialog
+        open={leaveGuard.blocked}
+        title={t("Server_Alerts_Leave_Title")}
+        description={t("React_UnsavedChanges")}
+        cancelLabel={t("Server_Change_KeepEditing")}
+        confirmLabel={t("Pages_Command_Content_PageEditorLeave_Dismiss")}
+        initialFocus="dismiss"
+        onCancel={leaveGuard.stay}
+        onConfirm={leaveGuard.proceed}
+      />
+    </PageStack>
   );
 }

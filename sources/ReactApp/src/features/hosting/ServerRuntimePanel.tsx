@@ -1,11 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActionButton } from "@/components/ActionControl";
+import { SelectField, TextField } from "@/components/FormFields";
 import { StatePanel } from "@/components/primitives";
-import { formatBytes, formatMoney, humanizeToken } from "@/features/hosting/model";
+import { LoadingState } from "@/components/StateViews";
+import { formatBytes, formatMoney } from "@/features/hosting/model";
 import { automaticExternalStorageGiB } from "@/features/hosting/model";
 import { hostingQueryKeys, hostingService } from "@/features/hosting/services";
 import type { GameServer } from "@/features/hosting/types";
+
+/** The localized label of each storage strategy; the same texts the strategy select offers. */
+const storageStrategyKeys = {
+  IncludedDisk: "React_ServerWorkspace_IncludedDiskOnly",
+  AutomaticExternal: "React_ServerWorkspace_AutomaticExternal",
+  FixedExternal: "React_ServerWorkspace_FixedExternal",
+} as const satisfies Record<GameServer["runtimeStorageStrategy"], string>;
 
 export function ServerRuntimePanel({ server }: { server: GameServer }) {
   const { t } = useTranslation();
@@ -21,11 +31,6 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
   const capability = capabilities.data?.find(
     (item) => item.gameIdentifier.toLowerCase() === server.gameIdentifier.toLowerCase(),
   );
-  const modPacks = useQuery({
-    queryKey: hostingQueryKeys.modPackOptions(server.primaryKey),
-    queryFn: ({ signal }) => hostingService.modPackOptions(server.primaryKey, signal),
-    enabled: Boolean(capability) && capability?.supportsModPacks !== false,
-  });
   const terrains = useQuery({
     queryKey: hostingQueryKeys.terrains(server.gameIdentifier),
     queryFn: ({ signal }) => hostingService.terrains(server.gameIdentifier, signal),
@@ -39,7 +44,6 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
   const [profileId, setProfileId] = useState(server.runtimeProfileIdentifier);
   const [strategy, setStrategy] = useState(server.runtimeStorageStrategy);
   const [capacity, setCapacity] = useState<number | null>(server.externalStorageSizeGiB);
-  const [modPackId, setModPackId] = useState<number | null>(server.selectedModPackDefinitionId);
   const [terrainId, setTerrainId] = useState<number | null>(server.selectedTerrainId);
   const [scenarioId, setScenarioId] = useState<string | null>(server.selectedScenarioId);
   const provider = useMemo(
@@ -88,10 +92,6 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
       ),
     onSuccess: refresh,
   });
-  const modPackMutation = useMutation({
-    mutationFn: () => hostingService.changeModPack(server.primaryKey, modPackId),
-    onSuccess: refresh,
-  });
   const contentMutation = useMutation({
     mutationFn: () =>
       hostingService.changeContentSelection(server.primaryKey, terrainId, scenarioId),
@@ -100,10 +100,8 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
   const error =
     capabilities.error?.message ??
     demand.error?.message ??
-    modPacks.error?.message ??
     profileMutation.error?.message ??
     storageMutation.error?.message ??
-    modPackMutation.error?.message ??
     contentMutation.error?.message;
 
   return (
@@ -121,38 +119,33 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
           </div>
         </header>
         {capabilities.isLoading ? (
-          <StatePanel kind="loading">
-            {t("React_ServerWorkspace_LoadingRuntimeProfiles")}
-          </StatePanel>
+          <LoadingState label={t("React_ServerWorkspace_LoadingRuntimeProfiles")} />
         ) : !provider ? (
           <StatePanel kind="warning">
             {t("React_ServerWorkspace_RuntimeCatalogUnavailable")}
           </StatePanel>
         ) : (
           <>
-            <label className="field">
-              <span>{t("React_ServerWorkspace_ProfileNextDeployment")}</span>
-              <select
-                aria-label={t("React_ServerWorkspace_ProfileNextDeployment")}
-                disabled={!server.canModify || server.isArchived || profileMutation.isPending}
-                value={profileId}
-                onChange={(event) => setProfileId(event.target.value)}
-              >
-                {provider.profiles.map((profile) => (
-                  <option key={profile.identifier} value={profile.identifier}>
-                    {profile.displayName} · {profile.virtualCpuCount ?? "—"} vCPU ·{" "}
-                    {profile.memoryGiB ?? "—"} GiB · {formatMoney(profile.estimatedHourlyCostEur)}/h
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SelectField
+              label={t("React_ServerWorkspace_ProfileNextDeployment")}
+              disabled={!server.canModify || server.isArchived || profileMutation.isPending}
+              value={profileId}
+              onChange={(event) => setProfileId(event.target.value)}
+              options={provider.profiles.map((profile) => ({
+                value: profile.identifier,
+                label: `${profile.displayName} · ${profile.virtualCpuCount ?? "—"} vCPU · ${
+                  profile.memoryGiB ?? "—"
+                } GiB · ${formatMoney(profile.estimatedHourlyCostEur)}/h`,
+              }))}
+            />
             {selectedProfile && (
               <dl className="next-hosting-facts">
                 <div>
                   <dt>{t("Hosting_Detail_Compute")}</dt>
                   <dd>
-                    {selectedProfile.virtualCpuCount ?? "—"} vCPU ·{" "}
-                    {selectedProfile.memoryGiB ?? "—"} GiB RAM
+                    {`${selectedProfile.virtualCpuCount ?? "—"} vCPU · ${
+                      selectedProfile.memoryGiB ?? "—"
+                    } GiB RAM`}
                   </dd>
                 </div>
                 <div>
@@ -174,16 +167,15 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
             )}
             {server.canModify && (
               <div className="next-hosting-form-actions">
-                <button
-                  className="button button--primary"
-                  type="button"
+                <ActionButton
+                  variant="primary"
                   disabled={
                     profileId === server.runtimeProfileIdentifier || profileMutation.isPending
                   }
                   onClick={() => profileMutation.mutate()}
                 >
                   {t("Hosting_Detail_SaveCloudProfile")}
-                </button>
+                </ActionButton>
               </div>
             )}
           </>
@@ -197,46 +189,43 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
               <h2>{t("React_ServerWorkspace_StorageConfigurationTitle")}</h2>
             </div>
           </header>
-          <label className="field">
-            <span>{t("React_ServerWorkspace_StorageStrategy")}</span>
-            <select
-              aria-label={t("React_ServerWorkspace_StorageStrategy")}
-              disabled={
-                !server.canModify ||
-                server.isArchived ||
-                Boolean(server.deployment) ||
-                storageMutation.isPending
-              }
-              value={strategy}
-              onChange={(event) =>
-                setStrategy(event.target.value as GameServer["runtimeStorageStrategy"])
-              }
-            >
-              <option value="IncludedDisk">{t("React_ServerWorkspace_IncludedDiskOnly")}</option>
-              {storage.supportsExternalBlockStorage && (
-                <>
-                  <option value="AutomaticExternal">
-                    {t("React_ServerWorkspace_AutomaticExternal")}
-                  </option>
-                  <option value="FixedExternal">{t("React_ServerWorkspace_FixedExternal")}</option>
-                </>
-              )}
-            </select>
-          </label>
+          <SelectField
+            label={t("React_ServerWorkspace_StorageStrategy")}
+            disabled={
+              !server.canModify ||
+              server.isArchived ||
+              Boolean(server.deployment) ||
+              storageMutation.isPending
+            }
+            value={strategy}
+            onChange={(event) =>
+              setStrategy(event.target.value as GameServer["runtimeStorageStrategy"])
+            }
+            options={[
+              { value: "IncludedDisk", label: t("React_ServerWorkspace_IncludedDiskOnly") },
+              ...(storage.supportsExternalBlockStorage
+                ? [
+                    {
+                      value: "AutomaticExternal",
+                      label: t("React_ServerWorkspace_AutomaticExternal"),
+                    },
+                    { value: "FixedExternal", label: t("React_ServerWorkspace_FixedExternal") },
+                  ]
+                : []),
+            ]}
+          />
           {strategy === "FixedExternal" && (
-            <label className="field">
-              <span>{t("React_ServerWorkspace_ExternalCapacity")}</span>
-              <input
-                type="number"
-                min={storage.minimumCapacityGiB}
-                max={storage.maximumCapacityGiB}
-                step={storage.capacityIncrementGiB}
-                value={capacity ?? ""}
-                onChange={(event) =>
-                  setCapacity(event.target.value ? Number(event.target.value) : null)
-                }
-              />
-            </label>
+            <TextField
+              label={t("React_ServerWorkspace_ExternalCapacity")}
+              type="number"
+              min={storage.minimumCapacityGiB}
+              max={storage.maximumCapacityGiB}
+              step={storage.capacityIncrementGiB}
+              value={capacity ?? ""}
+              onChange={(event) =>
+                setCapacity(event.target.value ? Number(event.target.value) : null)
+              }
+            />
           )}
           <dl className="next-hosting-facts">
             <div>
@@ -273,13 +262,11 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
             </div>
             <div>
               <dt>{t("React_ServerWorkspace_Strategy")}</dt>
-              <dd>{humanizeToken(strategy)}</dd>
+              <dd>{t(storageStrategyKeys[strategy])}</dd>
             </div>
           </dl>
           {strategy !== "IncludedDisk" && (
-            <StatePanel kind="warning">
-              {t("React_ServerWorkspace_ExternalStorageDeleted")}
-            </StatePanel>
+            <StatePanel kind="warning">{t("Server_Machine_ExternalStorage")}</StatePanel>
           )}
           {server.deployment && (
             <StatePanel kind="info">{t("React_ServerWorkspace_StorageAppliesNext")}</StatePanel>
@@ -292,9 +279,8 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
           )}
           {server.canModify && (
             <div className="next-hosting-form-actions">
-              <button
-                className="button button--primary"
-                type="button"
+              <ActionButton
+                variant="primary"
                 disabled={
                   Boolean(server.deployment) ||
                   !storageValid ||
@@ -305,7 +291,7 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
                 onClick={() => storageMutation.mutate()}
               >
                 {t("React_ServerWorkspace_SaveStorage")}
-              </button>
+              </ActionButton>
             </div>
           )}
         </section>
@@ -314,52 +300,41 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
         <section className="next-hosting-panel">
           <header className="next-hosting-section-heading">
             <div>
-              <span className="kicker">Content</span>
-              <h2>Terrain and scenario</h2>
+              <span className="kicker">{t("React_ServerWorkspace_ContentKicker")}</span>
+              <h2>{t("React_ServerWorkspace_ContentTitle")}</h2>
             </div>
           </header>
           {capability.requiresTerrain && (
-            <label className="field">
-              <span>{capability.terrainLabel ?? "Terrain"}</span>
-              <select
-                value={terrainId ?? ""}
-                disabled={!server.canModify || terrains.isLoading}
-                onChange={(event) =>
-                  setTerrainId(event.target.value ? Number(event.target.value) : null)
-                }
-              >
-                {(terrains.data ?? []).map((item) => (
-                  <option key={item.primaryKey} value={item.primaryKey}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SelectField
+              label={capability.terrainLabel ?? t("Server_Overview_Terrain")}
+              value={terrainId ?? ""}
+              disabled={!server.canModify || terrains.isLoading}
+              onChange={(event) =>
+                setTerrainId(event.target.value ? Number(event.target.value) : null)
+              }
+              options={(terrains.data ?? []).map((item) => ({
+                value: String(item.primaryKey),
+                label: item.title,
+              }))}
+            />
           )}
           {capability.requiresScenario && (
-            <label className="field">
-              <span>{capability.scenarioLabel ?? "Scenario"}</span>
-              <select
-                value={scenarioId ?? ""}
-                disabled={!server.canModify || scenarios.isLoading}
-                onChange={(event) => setScenarioId(event.target.value || null)}
-              >
-                {(scenarios.data ?? []).map((item) => (
-                  <option key={item.primaryKey} value={item.primaryKey}>
-                    {item.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SelectField
+              label={capability.scenarioLabel ?? t("Server_Overview_Scenario")}
+              value={scenarioId ?? ""}
+              disabled={!server.canModify || scenarios.isLoading}
+              onChange={(event) => setScenarioId(event.target.value || null)}
+              options={(scenarios.data ?? []).map((item) => ({
+                value: String(item.primaryKey),
+                label: item.title,
+              }))}
+            />
           )}
-          <p className="next-hosting-muted">
-            Unpinned selections follow the latest compatible version.
-          </p>
+          <p className="next-hosting-muted">{t("React_ServerWorkspace_ContentFollowsLatest")}</p>
           {server.canModify && (
             <div className="next-hosting-form-actions">
-              <button
-                className="button button--primary"
-                type="button"
+              <ActionButton
+                variant="primary"
                 disabled={
                   contentMutation.isPending ||
                   (terrainId === server.selectedTerrainId &&
@@ -367,57 +342,8 @@ export function ServerRuntimePanel({ server }: { server: GameServer }) {
                 }
                 onClick={() => contentMutation.mutate()}
               >
-                Save content selection
-              </button>
-            </div>
-          )}
-        </section>
-      )}
-      {capability && capability.supportsModPacks !== false && (
-        <section className="next-hosting-panel">
-          <header className="next-hosting-section-heading">
-            <div>
-              <span className="kicker">{t("Hosting_Detail_ModPackKicker")}</span>
-              <h2>{t("Hosting_Detail_ModPackTitle")}</h2>
-            </div>
-          </header>
-          {modPacks.isLoading ? (
-            <StatePanel kind="loading">{t("Hosting_Detail_ModPackLoading")}</StatePanel>
-          ) : (
-            <label className="field">
-              <span>{t("Hosting_Detail_ModPackTitle")}</span>
-              <select
-                aria-label={t("Hosting_Detail_ModPackTitle")}
-                disabled={!server.canModify || modPackMutation.isPending}
-                value={modPackId ?? ""}
-                onChange={(event) =>
-                  setModPackId(event.target.value ? Number(event.target.value) : null)
-                }
-              >
-                <option value="">{t("React_ServerWorkspace_NoModPack")}</option>
-                {(modPacks.data ?? []).map((option) => (
-                  <option key={option.primaryKey} value={option.primaryKey}>
-                    {option.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {server.deployment && (
-            <StatePanel kind="info">{t("Hosting_Detail_ModPackAppliesNextPreparation")}</StatePanel>
-          )}
-          {server.canModify && (
-            <div className="next-hosting-form-actions">
-              <button
-                className="button button--primary"
-                type="button"
-                disabled={
-                  modPackId === server.selectedModPackDefinitionId || modPackMutation.isPending
-                }
-                onClick={() => modPackMutation.mutate()}
-              >
-                {t("Hosting_Detail_SaveModPack")}
-              </button>
+                {t("React_ServerWorkspace_SaveContentSelection")}
+              </ActionButton>
             </div>
           )}
         </section>

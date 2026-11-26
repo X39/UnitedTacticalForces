@@ -14,6 +14,10 @@ using GameDefinition = X39.UnitedTacticalForces.Api.Services.GameServerDefinitio
 
 namespace X39.UnitedTacticalForces.Api.Services.GameServerSecrets;
 
+/// <summary>
+/// Stores, rotates, reveals and resolves encrypted game server secrets while keeping every change audited and
+/// recorded in the pending-start signal.
+/// </summary>
 [Scoped<GameServerSecretService, IGameServerSecretService>]
 internal sealed class GameServerSecretService(
     DatabaseContext dbContext,
@@ -59,10 +63,13 @@ internal sealed class GameServerSecretService(
                 value is not null,
                 value?.Version,
                 value?.Origin,
-                value?.TimeStampCreated);
+                value?.TimeStampCreated,
+                !q.Generated || q.AcceptsChosenValue,
+                q.ValueFormat);
         }).ToArray();
     }
 
+    /// <inheritdoc />
     public async Task SetAsync(
         Guid serverId,
         string key,
@@ -77,16 +84,20 @@ internal sealed class GameServerSecretService(
         if (value.Length is 0 or > 4096)
             throw new HostingValidationException("The secret value is empty or too long.");
         var (server, definition) = await LoadAsync(serverId, cancellationToken).ConfigureAwait(false);
+        if (server.IsArchived)
+            throw new HostingConflictException("Archived servers cannot change their credentials.");
         var secretDefinition = FindSecret(definition, key);
-        if (secretDefinition.Generated)
+        if (secretDefinition.Generated && !secretDefinition.AcceptsChosenValue)
             throw new HostingValidationException("This secret is managed by the platform.");
         if (secretDefinition.ExternalProvider != (origin is EGameServerSecretOrigin.ExternalProvider))
             throw new HostingValidationException(secretDefinition.ExternalProvider
                 ? "This secret must be supplied by its external provider."
                 : "This secret is user-provided rather than provider-issued.");
+        ValidateValue(value, secretDefinition.ValueFormat);
         var now = NodaSystemClock.Instance.GetCurrentInstant();
         RetireCurrent(server, secretDefinition.Key, now);
         AddVersion(server, secretDefinition.Key, value, origin, actorId, now);
+        PendingStartChanges.MarkChanged(server, EGameServerChangeArea.Credentials, now);
         auditWriter.Add(dbContext, EHostingAuditEventKind.ServerSecretUpdated, "Server secret updated.", actorId, serverId, details: $"Key={secretDefinition.Key}");
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -108,21 +119,33 @@ internal sealed class GameServerSecretService(
         return new GameServerSecretValueDto(secret.Key, _protector.Unprotect(secret.ProtectedValue), secret.Version);
     }
 
-    public async Task RotateAsync(
+    /// <inheritdoc />
+    public async Task<GameServerSecretValueDto> RotateAsync(
         Guid serverId,
         string key,
         Guid actorId,
         CancellationToken cancellationToken = default)
     {
         var (server, definition) = await LoadAsync(serverId, cancellationToken).ConfigureAwait(false);
+        if (server.IsArchived)
+            throw new HostingConflictException("Archived servers cannot change their credentials.");
         var secretDefinition = FindSecret(definition, key);
         if (!secretDefinition.Generated)
             throw new HostingValidationException("Only platform-generated secrets can be rotated.");
         var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var value = Generate();
         RetireCurrent(server, secretDefinition.Key, now);
-        AddVersion(server, secretDefinition.Key, Generate(), EGameServerSecretOrigin.Generated, actorId, now);
-        auditWriter.Add(dbContext, EHostingAuditEventKind.ServerSecretRotated, "Server secret rotated.", actorId, serverId, details: $"Key={secretDefinition.Key}");
+        var version = AddVersion(server, secretDefinition.Key, value, EGameServerSecretOrigin.Generated, actorId, now);
+        PendingStartChanges.MarkChanged(server, EGameServerChangeArea.Credentials, now);
+        auditWriter.Add(
+            dbContext,
+            EHostingAuditEventKind.ServerSecretRotated,
+            "Server secret rotated; the new value was returned once to the acting user.",
+            actorId,
+            serverId,
+            details: $"Key={secretDefinition.Key}; Version={version}");
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return new GameServerSecretValueDto(secretDefinition.Key, value, version);
     }
 
     public async Task<IReadOnlyDictionary<string, string>> ResolveRequiredAsync(
@@ -248,7 +271,7 @@ internal sealed class GameServerSecretService(
         current.TimeStampRetired = now;
     }
 
-    private void AddVersion(GameServer server, string key, string value, EGameServerSecretOrigin origin, Guid? actorId, Instant now)
+    private int AddVersion(GameServer server, string key, string value, EGameServerSecretOrigin origin, Guid? actorId, Instant now)
     {
         var version = server.Secrets.Where(q => q.Key == key).Select(q => q.Version).DefaultIfEmpty().Max() + 1;
         dbContext.GameServerSecrets.Add(new GameServerSecret
@@ -263,6 +286,23 @@ internal sealed class GameServerSecretService(
             CreatedByFk = actorId,
             TimeStampCreated = now,
         });
+        return version;
+    }
+
+    /// <summary>
+    /// Verifies that a supplied value is usable for the game. The thrown messages are fixed and never contain the
+    /// value.
+    /// </summary>
+    /// <param name="value">The trimmed value to validate.</param>
+    /// <param name="format">The value format the game declares for the credential.</param>
+    /// <exception cref="HostingValidationException">The value contains characters the game cannot use.</exception>
+    private static void ValidateValue(string value, EGameSecretValueFormat format)
+    {
+        if (value.Any(char.IsControl))
+            throw new HostingValidationException("The secret value must be a single line without control characters.");
+        if (format is EGameSecretValueFormat.Token && value.Any(q => q is < '!' or > '~' or '"' or '\\'))
+            throw new HostingValidationException(
+                "This secret accepts only printable ASCII characters without spaces, quotes or backslashes.");
     }
 
     private static string Generate() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32));

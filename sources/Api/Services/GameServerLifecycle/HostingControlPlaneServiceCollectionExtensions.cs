@@ -7,7 +7,8 @@ public static class HostingControlPlaneServiceCollectionExtensions
 {
     /// <summary>
     /// Validates the startup pause before registering processors. Paused hosts never resolve a queue, reconcile
-    /// provider resources, collect costs, or recover expired leases through these background services.
+    /// provider resources, collect costs, evaluate cost alerts, evaluate server automation, prune server metric
+    /// history, or recover expired leases through these background services.
     /// </summary>
     /// <param name="services">The API dependency registrations.</param>
     /// <param name="configuration">The final operator configuration.</param>
@@ -24,7 +25,11 @@ public static class HostingControlPlaneServiceCollectionExtensions
             services.AddHostedService<GameServerControlPlaneWorker>();
             services.AddHostedService<DeploymentHealthReconciliationWorker>();
             services.AddHostedService<HostingCostReconciliationWorker>();
+            services.AddHostedService<CostAlertWorker>();
+            services.AddHostedService<ServerAutomationWorker>();
+            services.AddHostedService<CostAlertDispatcher>();
             services.AddHostedService<ProviderResourceReconciliationWorker>();
+            services.AddHostedService<ServerMetricsPruneWorker>();
         }
         return services;
     }

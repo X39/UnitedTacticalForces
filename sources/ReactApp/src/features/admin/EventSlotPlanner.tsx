@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatResource } from "@/app/i18n";
+import { ActionButton } from "@/components/ActionControl";
 import { ConfirmDialog, StatusBadge } from "@/components/primitives";
+import { slotTones, toneOf } from "@/components/statusTones";
 import { EventEntityPicker } from "@/features/admin/EventEntityPicker";
 import {
   createSlotDraft,
@@ -19,10 +21,11 @@ import {
   eventSlotRoleSymbolIconName,
 } from "@/features/events/EventTacticalIcon";
 
-function statusTone(slot: EventSlotDraft): "neutral" | "success" | "warning" | "info" {
-  if (!slot.isVisible) return "neutral";
-  if (slot.assignedToFk) return "success";
-  return slot.isSelfAssignable ? "info" : "warning";
+/** Resolves the lexicon key of a slot: hidden, assigned, self-assignable or unassigned. */
+function slotStatus(slot: EventSlotDraft): string {
+  if (!slot.isVisible) return "hidden";
+  if (slot.assignedToFk) return "assigned";
+  return slot.isSelfAssignable ? "self-assignable" : "unassigned";
 }
 
 function avatarSource(person: EventPerson | null): string | undefined {
@@ -110,14 +113,13 @@ export function EventSlotPlanner({
           <span className="kicker">{t("Slots")}</span>
           <h2>{t("Auto_SlotPlan_7b3bf485")}</h2>
         </div>
-        <button
-          className="button button--ghost"
-          type="button"
+        <ActionButton
+          variant="ghost"
           disabled={disabled}
           onClick={() => onChange([...slots, createSlotDraft()])}
         >
           {t("Auto_AddSlot_21ac8a98")}
-        </button>
+        </ActionButton>
       </header>
 
       {!visibleSlots.length ? (
@@ -299,7 +301,7 @@ export function EventSlotPlanner({
                               </div>
 
                               <div className="event-slot-editor-row__status">
-                                <StatusBadge tone={statusTone(slot)}>
+                                <StatusBadge tone={toneOf(slotTones, slotStatus(slot))}>
                                   {!slot.isVisible
                                     ? t("Pages_Events_Edit_Status_Hidden")
                                     : slot.assignedToFk
@@ -335,22 +337,22 @@ export function EventSlotPlanner({
                               </div>
 
                               <div className="event-slot-editor-row__actions">
-                                <button
-                                  className="button button--ghost button--small"
-                                  type="button"
+                                <ActionButton
+                                  variant="ghost"
+                                  size="compact"
                                   disabled={disabled || !slot.assignedToFk}
                                   onClick={() => onUnassign(slot)}
                                 >
                                   {t("Pages_Events_Edit_ActionUnassignSlot")}
-                                </button>
-                                <button
-                                  className="button button--ghost button--small"
-                                  type="button"
+                                </ActionButton>
+                                <ActionButton
+                                  variant="ghost"
+                                  size="compact"
                                   disabled={disabled}
                                   onClick={() => setRemoveCandidate(slot)}
                                 >
                                   {t("Pages_Events_Edit_ActionRemoveSlot")}
-                                </button>
+                                </ActionButton>
                               </div>
                             </article>
                           );
@@ -374,16 +376,11 @@ export function EventSlotPlanner({
           )}
         </span>
         {showSave && (
-          <button
-            className="button button--primary"
-            type="button"
-            disabled={disabled || saving}
-            onClick={onSave}
-          >
+          <ActionButton variant="primary" disabled={disabled || saving} onClick={onSave}>
             {saving
               ? t("Pages_Events_Edit_ActionSavingSlots")
               : t("Pages_Events_Edit_ActionSaveSlotPlan")}
-          </button>
+          </ActionButton>
         )}
       </footer>
 
@@ -392,7 +389,7 @@ export function EventSlotPlanner({
         title={t("React_EventAuthoring_RemoveSlotTitle")}
         description={t("React_EventAuthoring_RemoveSlotDescription")}
         confirmLabel={t("Pages_Events_Edit_ActionRemoveSlot")}
-        cancelLabel={t("Cancel")}
+        cancelLabel={t("React_EventAuthoring_RemoveSlot_Dismiss")}
         onConfirm={() => removeCandidate && removeSlot(removeCandidate)}
         onCancel={() => setRemoveCandidate(undefined)}
       />

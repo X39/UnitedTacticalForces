@@ -37,4 +37,11 @@ public sealed record GameConfigurationDefinition(
 {
     /// <summary>Gets whether the setting is consumed only by the control plane.</summary>
     public bool IsControlPlaneOnly { get; init; }
+
+    /// <summary>Gets how prominently the setting is presented.</summary>
+    /// <value>
+    /// <see cref="EGameConfigurationTier.Common" /> for everyday settings; <see cref="EGameConfigurationTier.Advanced" />
+    /// when the game definition declares nothing.
+    /// </value>
+    public EGameConfigurationTier Tier { get; init; }
 }

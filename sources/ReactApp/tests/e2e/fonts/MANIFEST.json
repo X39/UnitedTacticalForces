@@ -1,0 +1,94 @@
+{
+  "description": "Test-only vendored latin-subset web fonts served to Playwright through page.route. Production loads fonts from Google Fonts (E-03). Roboto is one variable woff2 that Google Fonts serves for every weight, so the five Roboto files are byte-identical copies kept under the weight names the stylesheet generator uses.",
+  "fetchedFrom": "fonts.googleapis.com css2 latin subset (Chrome user agent), woff2 from fonts.gstatic.com",
+  "fonts": [
+    {
+      "file": "Roboto-300.woff2",
+      "family": "Roboto",
+      "weight": 300,
+      "sha256": "1404ca348bd75ef836f4dd8b6f2cc719458642d1237c368296b2fc652dca47dc",
+      "sourceUrl": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+      "license": "OFL-1.1"
+    },
+    {
+      "file": "Roboto-400.woff2",
+      "family": "Roboto",
+      "weight": 400,
+      "sha256": "1404ca348bd75ef836f4dd8b6f2cc719458642d1237c368296b2fc652dca47dc",
+      "sourceUrl": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+      "license": "OFL-1.1"
+    },
+    {
+      "file": "Roboto-500.woff2",
+      "family": "Roboto",
+      "weight": 500,
+      "sha256": "1404ca348bd75ef836f4dd8b6f2cc719458642d1237c368296b2fc652dca47dc",
+      "sourceUrl": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+      "license": "OFL-1.1"
+    },
+    {
+      "file": "Roboto-700.woff2",
+      "family": "Roboto",
+      "weight": 700,
+      "sha256": "1404ca348bd75ef836f4dd8b6f2cc719458642d1237c368296b2fc652dca47dc",
+      "sourceUrl": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+      "license": "OFL-1.1"
+    },
+    {
+      "file": "Roboto-900.woff2",
+      "family": "Roboto",
+      "weight": 900,
+      "sha256": "1404ca348bd75ef836f4dd8b6f2cc719458642d1237c368296b2fc652dca47dc",
+      "sourceUrl": "https://fonts.gstatic.com/s/roboto/v51/KFO7CnqEu92Fr1ME7kSn66aGLdTylUAMa3yUBA.woff2",
+      "license": "OFL-1.1"
+    },
+    {
+      "file": "BarlowCondensed-500.woff2",
+      "family": "Barlow Condensed",
+      "weight": 500,
+      "sha256": "460f141ec8f6c9a1516bfd2bd9fe71656246d7a9d04a0955faf53158d8970c4c",
+      "sourceUrl": "https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B4-Lwz3bWuQ.woff2",
+      "license": "OFL-1.1"
+    },
+    {
+      "file": "BarlowCondensed-600.woff2",
+      "family": "Barlow Condensed",
+      "weight": 600,
+      "sha256": "215a93c696f442034a46fbb382958f753fda60e30490683aeea6b235fcbb2b66",
+      "sourceUrl": "https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B4873z3bWuQ.woff2",
+      "license": "OFL-1.1"
+    },
+    {
+      "file": "BarlowCondensed-700.woff2",
+      "family": "Barlow Condensed",
+      "weight": 700,
+      "sha256": "3787a5a419171630e6890cfa47c4da067474d005cd0ff8dc11ec090fdc3ee2b8",
+      "sourceUrl": "https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B46r2z3bWuQ.woff2",
+      "license": "OFL-1.1"
+    },
+    {
+      "file": "BarlowCondensed-800.woff2",
+      "family": "Barlow Condensed",
+      "weight": 800,
+      "sha256": "2515494e8cc2ca07c86ea78766cfa104b796aa6ed5d66821c01d51dbb0b52bce",
+      "sourceUrl": "https://fonts.gstatic.com/s/barlowcondensed/v13/HTxwL3I-JCGChYJ8VI-L6OO_au7B47b1z3bWuQ.woff2",
+      "license": "OFL-1.1"
+    }
+  ],
+  "licenses": [
+    {
+      "file": "OFL-Roboto.txt",
+      "family": "Roboto",
+      "license": "OFL-1.1",
+      "sha256": "061402327a96aadb0bfb694a960ed289ecd38d383e396243831ab81feb109c41",
+      "sourceUrl": "https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/OFL.txt"
+    },
+    {
+      "file": "OFL-BarlowCondensed.txt",
+      "family": "Barlow Condensed",
+      "license": "OFL-1.1",
+      "sha256": "186d750eb496a4c17a76385f82be6aea2ac1cf2de074a811d63786cf374ea73f",
+      "sourceUrl": "https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/OFL.txt"
+    }
+  ]
+}

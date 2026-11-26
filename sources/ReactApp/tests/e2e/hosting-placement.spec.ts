@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { fulfillCostRoute } from "./support/costMocks";
+import { seedSettingsPanels } from "./support/settingsPanels";
 
 const serverId = "10000000-0000-4000-8000-000000000001";
 const server = {
@@ -27,7 +29,27 @@ const server = {
   actions: [],
 };
 
-test("saves Arma placement through typed configuration and reloads its estimate", async ({
+/** The game capability of the mocked server: Arma 3 without mod pack support, so the Mods panel is not rendered. */
+const capability = {
+  gameIdentifier: "arma3",
+  displayName: "Arma 3",
+  description: "Dedicated Arma operations.",
+  runtimeProviders: [],
+  actions: [],
+  modProviderBindings: [],
+  modPackFormats: [],
+  requiresTerrain: false,
+  terrainLabel: "Terrain",
+  requiresScenario: false,
+  scenarioLabel: "Mission",
+  supportsModPacks: false,
+  requiresModPack: false,
+  defaultTerrainSourceIdentifier: null,
+  defaultScenarioSourceIdentifier: null,
+  runtimeProviderProfiles: [],
+};
+
+test("applies Arma placement through typed configuration and reloads its estimate", async ({
   page,
 }) => {
   let placement = "separate-host";
@@ -66,6 +88,7 @@ test("saves Arma placement through typed configuration and reloads its estimate"
     ],
   });
   await page.addInitScript(() => localStorage.setItem("UtfCulture", "en"));
+  await seedSettingsPanels(page);
   await page.route("**/appsettings.json", (route) =>
     route.fulfill({
       json: {
@@ -99,6 +122,7 @@ test("saves Arma placement through typed configuration and reloads its estimate"
     if (path === "/api/users/authentication-providers") {
       return route.fulfill({ json: { steam: true, discord: true } });
     }
+    if (await fulfillCostRoute(route, request.method(), path, serverId)) return;
     if (path === `/api/game-servers/${serverId}/configuration`) {
       if (request.method() === "PUT") {
         expect(request.postDataJSON()).toEqual({
@@ -136,6 +160,8 @@ test("saves Arma placement through typed configuration and reloads its estimate"
       });
     }
     if (path === `/api/game-servers/${serverId}`) return route.fulfill({ json: server });
+    // The Settings section reads the game capability to decide whether the Mods panel exists; this game has no packs.
+    if (path === "/api/game-servers/capabilities") return route.fulfill({ json: [capability] });
     if (
       [
         "/api/site-image-settings",
@@ -150,19 +176,29 @@ test("saves Arma placement through typed configuration and reloads its estimate"
     throw new Error(`Unexpected API request: ${request.method()} ${path}`);
   });
 
-  await page.goto(`command/servers/${serverId}?tab=configuration`);
+  await page.goto(`command/servers/${serverId}?tab=settings`);
   const selector = page.getByRole("combobox", { name: "Headless Client placement" });
+  // The workspace cost strip shows the server hourly rate too, so the estimate figures are read inside the estimate.
+  const estimate = page.getByLabel("Next deployment estimate");
   await expect(selector).toHaveValue("separate-host");
   await expect(selector.getByRole("option", { name: "Separate server", exact: true })).toHaveCount(
     1,
   );
   await expect(selector.getByRole("option", { name: "Same server", exact: true })).toHaveCount(1);
-  await expect(page.getByText("€0.20", { exact: true })).toBeVisible();
+  await expect(estimate.getByText("€0.20", { exact: true })).toBeVisible();
 
   await selector.selectOption("same-host");
-  await expect(page.getByText("€0.20", { exact: true })).not.toBeVisible();
-  await page.getByRole("button", { name: "Save overrides", exact: true }).click();
-  await expect(page.getByText("€0.10", { exact: true })).toBeVisible();
+  // The estimate still describes the saved settings while the change is staged, and says so.
+  await expect(estimate.getByText("€0.20", { exact: true })).toBeVisible();
+  await expect(
+    estimate.getByText("Based on the saved settings, not the staged changes.", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Review changes", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Review changes" })
+    .getByRole("button", { name: "Apply 1 change", exact: true })
+    .click();
+  await expect(estimate.getByText("€0.10", { exact: true })).toBeVisible();
   const saveIndex = requests.indexOf(`PUT /api/game-servers/${serverId}/configuration`);
   expect(saveIndex).toBeGreaterThan(-1);
   expect(requests.slice(saveIndex + 1)).toContain(
@@ -171,7 +207,7 @@ test("saves Arma placement through typed configuration and reloads its estimate"
 
   await page.reload();
   await expect(selector).toHaveValue("same-host");
-  await expect(page.getByText("€0.10", { exact: true })).toBeVisible();
+  await expect(estimate.getByText("€0.10", { exact: true })).toBeVisible();
   expect(requests.filter((request) => request.startsWith("PUT "))).toHaveLength(1);
   expect(requests.some((request) => request.startsWith("POST "))).toBe(false);
   expect(requests.some((request) => request.includes("/files/"))).toBe(false);

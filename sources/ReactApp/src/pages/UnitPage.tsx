@@ -14,6 +14,7 @@ import { useSiteImage } from "@/app/siteImages";
 import { ActionLink } from "@/components/ActionControl";
 import { PublicHero } from "@/components/PublicHero";
 import { PageHeader, StatusBadge } from "@/components/primitives";
+import "./publicEvents.css";
 
 export function Component() {
   const { t } = useTranslation();

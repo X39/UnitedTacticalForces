@@ -711,6 +711,436 @@ public sealed class GameServerProjectionServiceTests
         Assert.Empty(hidden);
     }
 
+    /// <summary>The user behind a user-kind cost owner receives their own user id and the owner display name.</summary>
+    /// <returns>A task completing after the owning viewer's projection is verified.</returns>
+    [Fact]
+    public async Task CostOwnerUserId_IsProjectedForTheOwningUser()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var dto = await projection.GetServerAsync(seed.Server.PrimaryKey, viewer);
+
+        Assert.NotNull(dto);
+        Assert.Equal(seed.User.PrimaryKey, dto.CostOwnerUserId);
+        Assert.Equal("Hosting operator", dto.CostOwnerName);
+    }
+
+    /// <summary>A viewer who may not see the cost owner learns neither its name nor its user id.</summary>
+    /// <returns>A task completing after the hidden-owner projection is verified.</returns>
+    [Fact]
+    public async Task CostOwnerUserId_IsWithheldWhenTheViewerCannotSeeTheOwner()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var other = await HostingTestData.SeedServerAsync(store.DbContext);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(other.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var dto = await projection.GetServerAsync(seed.Server.PrimaryKey, viewer);
+
+        Assert.NotNull(dto);
+        Assert.Null(dto.CostOwnerUserId);
+        Assert.Equal("Assigned owner", dto.CostOwnerName);
+    }
+
+    /// <summary>A different viewer holding the cost owner view claim receives the owner's user id.</summary>
+    /// <returns>A task completing after the visible-owner projection is verified.</returns>
+    [Fact]
+    public async Task CostOwnerUserId_IsProjectedWhenTheViewerMayViewTheOwner()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var other = await HostingTestData.SeedServerAsync(store.DbContext);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.Principal(
+            other.User,
+            (Claims.ResourceBased.Server.View, seed.Server.PrimaryKey.ToString()),
+            (Claims.ResourceBased.CostOwner.View, seed.CostOwner.PrimaryKey.ToString()));
+
+        var dto = await projection.GetServerAsync(seed.Server.PrimaryKey, viewer);
+
+        Assert.NotNull(dto);
+        Assert.Equal(seed.User.PrimaryKey, dto.CostOwnerUserId);
+        Assert.Equal("Hosting operator", dto.CostOwnerName);
+    }
+
+    /// <summary>A visible owner that is not a user projects its display name but no user id.</summary>
+    /// <returns>A task completing after the Verein-owner projection is verified.</returns>
+    [Fact]
+    public async Task CostOwnerUserId_IsNullForANonUserOwner()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        seed.CostOwner.Kind = ECostOwnerKind.Verein;
+        seed.CostOwner.UserFk = null;
+        seed.CostOwner.User = null;
+        seed.CostOwner.DisplayName = "Verein";
+        await store.DbContext.SaveChangesAsync();
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var administrator = HostingTestData.Principal(seed.User, (Claims.Administrative.All, string.Empty));
+
+        var dto = await projection.GetServerAsync(seed.Server.PrimaryKey, administrator);
+
+        Assert.NotNull(dto);
+        Assert.Null(dto.CostOwnerUserId);
+        Assert.Equal("Verein", dto.CostOwnerName);
+    }
+
+    /// <summary>A hosting administrator viewing a user-kind owner receives the owner's user id.</summary>
+    /// <returns>A task completing after the administrator projection is verified.</returns>
+    [Fact]
+    public async Task CostOwnerUserId_IsProjectedForAHostingAdministrator()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var other = await HostingTestData.SeedServerAsync(store.DbContext);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var administrator = HostingTestData.Principal(other.User, (Claims.Administrative.All, string.Empty));
+
+        var dto = await projection.GetServerAsync(seed.Server.PrimaryKey, administrator);
+
+        Assert.NotNull(dto);
+        Assert.Equal(seed.User.PrimaryKey, dto.CostOwnerUserId);
+        Assert.Equal("Hosting operator", dto.CostOwnerName);
+    }
+
+    /// <summary>
+    /// The manage-access flag follows the exact rule of the manage-access requirement in the detail and in the list.
+    /// </summary>
+    /// <param name="scenario">The named claim set the viewer holds.</param>
+    /// <param name="expected">Whether the viewer may manage access.</param>
+    /// <returns>A task completing after both projections are verified.</returns>
+    [Theory]
+    [InlineData("adm", true)]
+    [InlineData("adm:sv", true)]
+    [InlineData("adm:hosting", true)]
+    [InlineData("sv", true)]
+    [InlineData("view+manage-access", true)]
+    [InlineData("view+modify", false)]
+    [InlineData("view", false)]
+    [InlineData("manage-access-of-another-server", false)]
+    public async Task CanManageAccess_MirrorsTheManageAccessRequirement(string scenario, bool expected)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var other = await HostingTestData.SeedServerAsync(store.DbContext);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var serverId = seed.Server.PrimaryKey.ToString();
+        (string type, string value)[] claims = scenario switch
+        {
+            "adm" => [(Claims.Administrative.All, string.Empty)],
+            "adm:sv" => [(Claims.Administrative.Server, string.Empty)],
+            "adm:hosting" => [(Claims.Administrative.Hosting, string.Empty)],
+            "sv" => [(Claims.ResourceBased.Server.All, serverId)],
+            "view+manage-access" =>
+            [
+                (Claims.ResourceBased.Server.View, serverId),
+                (Claims.ResourceBased.Server.ManageAccess, serverId),
+            ],
+            "view+modify" =>
+            [
+                (Claims.ResourceBased.Server.View, serverId),
+                (Claims.ResourceBased.Server.Modify, serverId),
+            ],
+            "view" => [(Claims.ResourceBased.Server.View, serverId)],
+            "manage-access-of-another-server" =>
+            [
+                (Claims.ResourceBased.Server.View, serverId),
+                (Claims.ResourceBased.Server.ManageAccess, other.Server.PrimaryKey.ToString()),
+            ],
+            _ => throw new ArgumentOutOfRangeException(nameof(scenario), scenario, null),
+        };
+        var viewer = HostingTestData.Principal(other.User, claims);
+
+        var detail = await projection.GetServerAsync(seed.Server.PrimaryKey, viewer);
+        var list = await projection.GetServersAsync(viewer);
+
+        Assert.NotNull(detail);
+        Assert.Equal(expected, detail.CanManageAccess);
+        Assert.Equal(expected, list.Single(q => q.PrimaryKey == seed.Server.PrimaryKey).CanManageAccess);
+    }
+
+    /// <summary>The frozen flag mirrors the current owner for a viewer who may see the owner.</summary>
+    /// <param name="frozen">Whether the current owner is frozen.</param>
+    /// <returns>A task completing after the detail and list projections are verified.</returns>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CostOwnerIsFrozen_MirrorsTheOwnerForAViewerWhoMaySeeIt(bool frozen)
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        seed.CostOwner.IsFrozen = frozen;
+        await store.DbContext.SaveChangesAsync();
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var detail = await projection.GetServerAsync(seed.Server.PrimaryKey, viewer);
+        var list = await projection.GetServersAsync(viewer);
+
+        Assert.NotNull(detail);
+        Assert.Equal(frozen, detail.CostOwnerIsFrozen);
+        Assert.Equal(frozen, list.Single().CostOwnerIsFrozen);
+    }
+
+    /// <summary>A viewer who may not see the owner learns neither the frozen state nor the assignment time.</summary>
+    /// <returns>A task completing after the hidden-owner projection is verified.</returns>
+    [Fact]
+    public async Task CostOwnerFacts_AreWithheldWhenTheViewerCannotSeeTheOwner()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var other = await HostingTestData.SeedServerAsync(store.DbContext);
+        seed.CostOwner.IsFrozen = true;
+        await store.DbContext.SaveChangesAsync();
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(other.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var detail = await projection.GetServerAsync(seed.Server.PrimaryKey, viewer);
+        var list = await projection.GetServersAsync(viewer);
+
+        Assert.NotNull(detail);
+        Assert.Null(detail.CostOwnerIsFrozen);
+        Assert.Null(detail.CostOwnerAssignedAt);
+        Assert.Null(list.Single(q => q.PrimaryKey == seed.Server.PrimaryKey).CostOwnerIsFrozen);
+    }
+
+    /// <summary>
+    /// The detail reports the time of the open assignment, ignoring closed ones, and the list leaves it empty.
+    /// </summary>
+    /// <returns>A task completing after the assignment time projection is verified.</returns>
+    [Fact]
+    public async Task CostOwnerAssignedAt_IsTheOpenAssignmentInTheDetailOnly()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        var openAssignment = await store.DbContext.GameServerCostOwnerAssignments
+            .SingleAsync(q => q.GameServerFk == seed.Server.PrimaryKey);
+        var closedAt = Instant.FromUnixTimeSeconds(1_600_000_000);
+        var openAt = Instant.FromUnixTimeSeconds(1_700_000_500);
+        openAssignment.TimeStampAssigned = openAt;
+        store.DbContext.GameServerCostOwnerAssignments.Add(new GameServerCostOwnerAssignment
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            CostOwnerFk = seed.CostOwner.PrimaryKey,
+            AssignedByFk = seed.User.PrimaryKey,
+            UnassignedByFk = seed.User.PrimaryKey,
+            TimeStampAssigned = closedAt,
+            TimeStampUnassigned = Instant.FromUnixTimeSeconds(1_650_000_000),
+        });
+        await store.DbContext.SaveChangesAsync();
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var detail = await projection.GetServerAsync(seed.Server.PrimaryKey, viewer);
+        var list = await projection.GetServersAsync(viewer);
+
+        Assert.NotNull(detail);
+        Assert.Equal(openAt, detail.CostOwnerAssignedAt);
+        Assert.Null(list.Single().CostOwnerAssignedAt);
+    }
+
+    /// <summary>A job requested by a user projects that user's nickname for a viewer of the server.</summary>
+    /// <returns>A task completing after the requester projection is verified.</returns>
+    [Fact]
+    public async Task RequestedByName_IsTheRequesterNickname()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        await AddJobAsync(store, seed, seed.User.PrimaryKey);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var jobs = await projection.GetJobsAsync(seed.Server.PrimaryKey, viewer);
+
+        var job = Assert.Single(jobs);
+        Assert.Equal("hosting-operator", job.RequestedByName);
+    }
+
+    /// <summary>A job without a requesting user, such as an automatic cost-stop, projects no requester name.</summary>
+    /// <returns>A task completing after the platform-job projection is verified.</returns>
+    [Fact]
+    public async Task RequestedByName_IsNullForPlatformJobs()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        await AddJobAsync(store, seed, requestedByFk: null);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var jobs = await projection.GetJobsAsync(seed.Server.PrimaryKey, viewer);
+
+        var job = Assert.Single(jobs);
+        Assert.Null(job.RequestedByName);
+    }
+
+    /// <summary>A deleted requesting user is withheld behind the hidden-member placeholder.</summary>
+    /// <returns>A task completing after the deleted-requester projection is verified.</returns>
+    [Fact]
+    public async Task RequestedByName_HidesDeletedUsers()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        await AddJobAsync(store, seed, seed.User.PrimaryKey);
+        seed.User.IsDeleted = true;
+        await store.DbContext.SaveChangesAsync();
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var jobs = await projection.GetJobsAsync(seed.Server.PrimaryKey, viewer);
+
+        var job = Assert.Single(jobs);
+        Assert.Equal("Hidden member", job.RequestedByName);
+    }
+
+    /// <summary>A requester reference without a loaded user never reads as the platform.</summary>
+    /// <returns>A task completing after the unloaded-navigation projection is verified.</returns>
+    [Fact]
+    public async Task RequestedByName_UsesPlaceholderWhenNavigationIsMissing()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        var job = new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            DeploymentFk = seed.Deployment!.PrimaryKey,
+            RequestedByFk = seed.User.PrimaryKey,
+            RequestedBy = null,
+            Kind = ELifecycleJobKind.Restart,
+            ActionIdentifier = GameServerActions.Restart,
+            Sequence = 1,
+            Status = ELifecycleJobStatus.Queued,
+            Stage = "queued",
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        };
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var dto = projection.ProjectJob(job, viewer);
+
+        Assert.Equal("Hidden member", dto.RequestedByName);
+    }
+
+    /// <summary>A viewer without the server view permission still receives no jobs and therefore no actor names.</summary>
+    /// <returns>A task completing after the unauthorized read is verified.</returns>
+    [Fact]
+    public async Task RequestedByName_IsNotExposedWithoutTheViewPermission()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext, withActiveDeployment: true);
+        await AddJobAsync(store, seed, seed.User.PrimaryKey);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+
+        var jobs = await projection.GetJobsAsync(seed.Server.PrimaryKey, HostingTestData.Principal(seed.User));
+
+        Assert.Empty(jobs);
+    }
+
+    /// <summary>An operational audit record caused by a user projects that user's nickname.</summary>
+    /// <returns>A task completing after the actor projection is verified.</returns>
+    [Fact]
+    public async Task ActorName_IsTheActorNickname()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        await AddOperationAsync(store, seed, seed.User.PrimaryKey);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var operations = await projection.GetOperationsAsync(seed.Server.PrimaryKey, viewer);
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("hosting-operator", operation.ActorName);
+    }
+
+    /// <summary>An operational audit record without an actor projects no actor name.</summary>
+    /// <returns>A task completing after the platform-record projection is verified.</returns>
+    [Fact]
+    public async Task ActorName_IsNullForPlatformRecords()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        await AddOperationAsync(store, seed, actorFk: null);
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var operations = await projection.GetOperationsAsync(seed.Server.PrimaryKey, viewer);
+
+        var operation = Assert.Single(operations);
+        Assert.Null(operation.ActorName);
+    }
+
+    /// <summary>A deleted actor is withheld behind the hidden-member placeholder.</summary>
+    /// <returns>A task completing after the deleted-actor projection is verified.</returns>
+    [Fact]
+    public async Task ActorName_HidesDeletedUsers()
+    {
+        await using var store = await HostingTestStore.CreateAsync();
+        var seed = await HostingTestData.SeedServerAsync(store.DbContext);
+        await AddOperationAsync(store, seed, seed.User.PrimaryKey);
+        seed.User.IsDeleted = true;
+        await store.DbContext.SaveChangesAsync();
+        var projection = HostingTestData.CreateProjectionService(store.DbContext);
+        var viewer = HostingTestData.ServerPrincipal(seed.User, seed.Server, Claims.ResourceBased.Server.View);
+
+        var operations = await projection.GetOperationsAsync(seed.Server.PrimaryKey, viewer);
+
+        var operation = Assert.Single(operations);
+        Assert.Equal("Hidden member", operation.ActorName);
+    }
+
+    /// <summary>Persists one operational audit record for the seeded server with the given actor.</summary>
+    /// <param name="store">The isolated test database.</param>
+    /// <param name="seed">The seeded server.</param>
+    /// <param name="actorFk">The acting user, or <see langword="null"/> for a platform event.</param>
+    /// <returns>A task completing after the record is saved.</returns>
+    private static async Task AddOperationAsync(HostingTestStore store, HostingTestSeed seed, Guid? actorFk)
+    {
+        store.DbContext.HostingAuditRecords.Add(new HostingAuditRecord
+        {
+            PrimaryKey = Guid.NewGuid(),
+            Kind = EHostingAuditEventKind.LifecycleJobQueued,
+            ActorFk = actorFk,
+            GameServerFk = seed.Server.PrimaryKey,
+            Summary = "Lifecycle job queued.",
+            TimeStampCreated = NodaSystemClock.Instance.GetCurrentInstant(),
+        });
+        await store.DbContext.SaveChangesAsync();
+    }
+
+    /// <summary>Persists one queued restart job for the seeded server with the given requester.</summary>
+    /// <param name="store">The isolated test database.</param>
+    /// <param name="seed">The seeded server and active deployment.</param>
+    /// <param name="requestedByFk">The requesting user, or <see langword="null"/> for a platform action.</param>
+    /// <returns>A task completing after the job is saved.</returns>
+    private static async Task AddJobAsync(HostingTestStore store, HostingTestSeed seed, Guid? requestedByFk)
+    {
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
+        store.DbContext.LifecycleJobs.Add(new LifecycleJob
+        {
+            PrimaryKey = Guid.NewGuid(),
+            GameServerFk = seed.Server.PrimaryKey,
+            DeploymentFk = seed.Deployment!.PrimaryKey,
+            RequestedByFk = requestedByFk,
+            Kind = ELifecycleJobKind.Restart,
+            ActionIdentifier = GameServerActions.Restart,
+            Sequence = 1,
+            Status = ELifecycleJobStatus.Queued,
+            Stage = "queued",
+            MaxAttempts = 3,
+            TimeStampCreated = now,
+            TimeStampUpdated = now,
+        });
+        await store.DbContext.SaveChangesAsync();
+    }
+
     private static GameServerProjectionService Projection(
         X39.UnitedTacticalForces.Database.DatabaseContext dbContext,
         params IRuntimeProvider[] providers)
@@ -738,6 +1168,7 @@ public sealed class GameServerProjectionServiceTests
             logger,
             new GameServerConfigurationService(dbContext),
             Options.Create(new HostingFinanceOptions()),
+            Api.Tests.ServerAutomation.ServerAutomationTestData.CreateProjector(dbContext),
             state);
 
     /// <summary>Creates the production state from an explicit public operator setting.</summary>

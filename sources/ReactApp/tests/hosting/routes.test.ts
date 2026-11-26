@@ -1,11 +1,11 @@
 import { hostingRouteDefinitions } from "@/features/hosting/routes";
 
 describe("hosting router integration contract", () => {
-  it("exposes the command, fleet, create, workspace, profile, and finance routes", () => {
+  it("exposes the fleet, create, workspace, profile, and finance routes", () => {
     expect(hostingRouteDefinitions.map((route) => route.manifestPattern)).toEqual([
-      "/command",
       "/command/servers",
       "/command/servers/create",
+      "/command/servers/cost-alerts",
       "/command/servers/{ServerId:guid}",
       "/command/configuration-profiles",
       "/command/configuration-profiles/create",

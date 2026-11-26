@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 import { z } from "zod";
 import { resolveImageUrl } from "@/api/client";
 import { publicPageService, queryKeys } from "@/api/services";
-import { Markdown, PageHeader, StatePanel } from "@/components/primitives";
+import { ActionAnchor, ActionLink } from "@/components/ActionControl";
+import { Markdown, PageHeader } from "@/components/primitives";
+import { PublicHero } from "@/components/PublicHero";
+import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
 import { useSiteImage } from "@/app/siteImages";
 
 const text = z.string().catch("");
@@ -92,7 +94,7 @@ function CardSectionView({ section }: { section: CardSection }) {
   if (!section.cards.length) return null;
   return (
     <section className="legal-band">
-      <PageHeader kicker={section.kicker} title={section.title} />
+      <PageHeader kicker={section.kicker} title={section.title} headingLevel={2} />
       <div className="visibility-grid">
         {section.cards.map((card, index) => (
           <article key={`${card.title}-${index}`}>
@@ -113,6 +115,7 @@ export function StructuredContent({ content }: { content: GdprContent }) {
           kicker={content.intro.kicker}
           title={content.intro.title}
           description={content.intro.description}
+          headingLevel={2}
         />
         <div className="legal-note">
           <strong>{content.intro.lastReviewedLabel}</strong>
@@ -123,7 +126,11 @@ export function StructuredContent({ content }: { content: GdprContent }) {
       <PolicyCards cards={content.openingCards} />
       {content.lifecycle.steps.length > 0 && (
         <section>
-          <PageHeader kicker={content.lifecycle.kicker} title={content.lifecycle.title} />
+          <PageHeader
+            kicker={content.lifecycle.kicker}
+            title={content.lifecycle.title}
+            headingLevel={2}
+          />
           <ol className="lifecycle">
             {content.lifecycle.steps.map((step, index) => (
               <li key={`${step.title}-${index}`}>
@@ -141,7 +148,11 @@ export function StructuredContent({ content }: { content: GdprContent }) {
       )}
       {content.dataMap.cards.length > 0 && (
         <section>
-          <PageHeader kicker={content.dataMap.kicker} title={content.dataMap.title} />
+          <PageHeader
+            kicker={content.dataMap.kicker}
+            title={content.dataMap.title}
+            headingLevel={2}
+          />
           <div className="data-map">
             {content.dataMap.cards.map((card, index) => (
               <article key={`${card.title}-${index}`}>
@@ -192,36 +203,35 @@ export function Component() {
 
   return (
     <div className="gdpr-page page-wrap">
-      <section
-        className="gdpr-hero"
+      <PublicHero
+        className="editorial-hero"
+        compact
+        singleColumn
         style={{ "--hero-image": `url("${heroImage.replaceAll('"', "%22")}")` } as CSSProperties}
-      >
-        <div>
-          <span className="kicker">
-            {revision?.heroKicker || t("Pages_Public_GDPR_Hero_Kicker")}
-          </span>
-          <h1>{revision?.heroTitle || t("Pages_Public_GDPR_Hero_Title")}</h1>
-          <p>{revision?.heroDescription || t("Pages_Public_GDPR_Hero_Description")}</p>
-          <a
-            className="button button--glass"
+        kicker={revision?.heroKicker || t("Pages_Public_GDPR_Hero_Kicker")}
+        title={revision?.heroTitle || t("Pages_Public_GDPR_Hero_Title")}
+        description={revision?.heroDescription || t("Pages_Public_GDPR_Hero_Description")}
+        actions={
+          <ActionAnchor
+            variant="glass"
             href="https://github.com/X39/UnitedTacticalForces"
             rel="noreferrer"
           >
             {t("Pages_Public_GDPR_Hero_SourceCode")}
-          </a>
-        </div>
-      </section>
+          </ActionAnchor>
+        }
+      />
 
-      {query.isLoading && <StatePanel kind="loading">{t("React_Gdpr_Loading")}</StatePanel>}
+      {query.isLoading && <LoadingState label={t("React_Gdpr_Loading")} />}
       {query.isError && (
-        <StatePanel kind="error" title={t("React_Gdpr_ErrorTitle")}>
+        <ErrorState onRetry={() => void query.refetch()} title={t("React_Gdpr_ErrorTitle")}>
           {t("React_Gdpr_ErrorBody")}
-        </StatePanel>
+        </ErrorState>
       )}
       {!query.isLoading && !query.isError && !revision && (
-        <StatePanel kind="empty" title={t("React_Gdpr_UnavailableTitle")}>
+        <EmptyState title={t("React_Gdpr_UnavailableTitle")}>
           {t("React_Gdpr_UnavailableBody")}
-        </StatePanel>
+        </EmptyState>
       )}
       {revision &&
         (content ? (
@@ -236,20 +246,20 @@ export function Component() {
           <h2>{t("Pages_Public_GDPR_Reference_Title")}</h2>
           <p>{t("Pages_Public_GDPR_Reference_Body")}</p>
           <div className="header-actions">
-            <a
-              className="button button--ghost"
+            <ActionAnchor
+              variant="ghost"
               href="https://commission.europa.eu/law/law-topic/data-protection_en"
               rel="noreferrer"
             >
               {t("Pages_Public_GDPR_Reference_EuropeanCommission")}
-            </a>
-            <a
-              className="button button--ghost"
+            </ActionAnchor>
+            <ActionAnchor
+              variant="ghost"
               href="https://www.edpb.europa.eu/sme-data-protection-guide/respect-individuals-rights_en"
               rel="noreferrer"
             >
               {t("Pages_Public_GDPR_Reference_EDPB")}
-            </a>
+            </ActionAnchor>
           </div>
         </section>
       )}
@@ -258,9 +268,9 @@ export function Component() {
         <p>{t("Pages_Public_GDPR_FunctionalCookies_Body")}</p>
         <code>utf_ui_variant</code>
       </section>
-      <Link className="button button--ghost" to="/">
+      <ActionLink variant="ghost" to="/">
         {t("Pages_Public_GDPR_BackToUtf")}
-      </Link>
+      </ActionLink>
     </div>
   );
 }

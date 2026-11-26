@@ -1,0 +1,44 @@
+/*
+ * Terrain pages: the shared controls inside the legacy terrain layout.
+ *
+ * The terrain layout rules in styles.css style the bare elements of the metric strip and the stepper. The shared
+ * action button carries the global button rules too, so the two-class selectors below keep the layout of the old
+ * markup. Tokens only; the legacy ratchet holds this file at zero literals.
+ */
+
+.terrain-metrics > .terrain-metric {
+  width: 100%;
+  justify-content: stretch;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+.terrain-metrics > .terrain-metric:focus-visible,
+.terrain-stepper > li > .terrain-step:focus-visible {
+  outline: var(--utf-focus-ring);
+  outline-offset: var(--utf-focus-offset);
+}
+
+.terrain-stepper > li > .terrain-step {
+  justify-content: stretch;
+  border-radius: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  white-space: normal;
+}
+
+/* The filter chips sit at the end of the toolbar row beside the search. */
+.terrain-toolbar > .filter-chip-group {
+  margin-left: auto;
+}
+
+/* The shared text and select fields fill their grid cell. */
+.terrain-form-grid > .form-field {
+  min-width: 0;
+}
+
+.terrain-edit-form > .form-field {
+  min-width: 0;
+}

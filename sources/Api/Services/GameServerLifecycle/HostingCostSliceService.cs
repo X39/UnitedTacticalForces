@@ -57,23 +57,23 @@ internal sealed class HostingCostSliceService(
             return;
         }
 
-        var rate = deployment.EstimatedHourlyCostEur is > 0m and { } selectedRate
-            ? selectedRate
-            : _options.GetHourlyRate(providerIdentifier);
         var sliceStartsAt = now;
         var sliceEndsAt = now + Duration.FromTimeSpan(policy.ReservationSlice);
-        var amount = CalculateAmount(rate, sliceStartsAt, sliceEndsAt);
-        var otherReservations = await GetOtherReservationTotalAsync(
-                owner.PrimaryKey,
+        var availability = await EvaluateInitialSliceAsync(
+                owner,
                 deployment.PrimaryKey,
+                deployment.EstimatedHourlyCostEur,
+                providerIdentifier,
+                now,
+                policy,
                 cancellationToken)
             .ConfigureAwait(false);
-        var availableAfter = owner.Balance + (owner.Allowance ?? 0m) - otherReservations - amount;
-        if (availableAfter < policy.MinimumSafetyRangeEur)
+        if (!availability.IsAffordable)
         {
             throw new HostingAffordabilityException(
                 "The cost owner cannot reserve the next provider-cost slice while preserving the required safety range.");
         }
+        var (rate, amount) = (availability.Rate, availability.Amount);
 
         deployment.CostReservationStartsAt = sliceStartsAt;
         deployment.CostReservationExpiresAt = sliceEndsAt;
@@ -91,6 +91,46 @@ internal sealed class HostingCostSliceService(
             costImpact: ECostImpact.NoCostImpact);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> CanReserveInitialSliceAsync(
+        Guid costOwnerId,
+        decimal? estimatedHourlyCostEur,
+        string providerIdentifier,
+        Instant now,
+        CancellationToken cancellationToken = default)
+    {
+        var owner = await dbContext.CostOwners
+            .AsNoTracking()
+            .SingleOrDefaultAsync(q => q.PrimaryKey == costOwnerId, cancellationToken)
+            .ConfigureAwait(false);
+        if (owner is null
+            || owner.IsFrozen
+            || !string.Equals(owner.Currency, "EUR", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var policy = await financePolicyService.GetAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return (await EvaluateInitialSliceAsync(
+                        owner,
+                        null,
+                        estimatedHourlyCostEur,
+                        providerIdentifier,
+                        now,
+                        policy,
+                        cancellationToken)
+                    .ConfigureAwait(false))
+                .IsAffordable;
+        }
+        catch (InvalidOperationException)
+        {
+            // No positive hourly rate is configured, so the executor's reservation would refuse this start as well.
+            return false;
+        }
     }
 
     public async Task CommitInitialReservationAsync(
@@ -274,15 +314,50 @@ internal sealed class HostingCostSliceService(
         }
     }
 
+    /// <summary>
+    /// Calculates the first slice of a start and whether the owner can cover it while keeping the safety range. Both
+    /// the executor's reservation and the read-only pre-check use this one calculation, so they cannot disagree.
+    /// </summary>
+    /// <param name="owner">The cost owner whose balance, allowance and other reservations are counted.</param>
+    /// <param name="excludedDeploymentId">The deployment whose own reservation is not counted, if any.</param>
+    /// <param name="estimatedHourlyCostEur">The deployment's own hourly estimate, used when positive.</param>
+    /// <param name="providerIdentifier">The provider whose configured rate applies when there is no estimate.</param>
+    /// <param name="now">The instant the slice starts at.</param>
+    /// <param name="policy">The effective finance policy giving the slice length and the safety range.</param>
+    /// <param name="cancellationToken">A token that cancels the operation.</param>
+    /// <returns>The selected rate, the slice amount and whether the slice is affordable.</returns>
+    /// <exception cref="InvalidOperationException">No positive hourly rate is known for the provider.</exception>
+    private async Task<InitialSliceAvailability> EvaluateInitialSliceAsync(
+        CostOwner owner,
+        Guid? excludedDeploymentId,
+        decimal? estimatedHourlyCostEur,
+        string providerIdentifier,
+        Instant now,
+        EffectiveHostingFinancePolicy policy,
+        CancellationToken cancellationToken)
+    {
+        var rate = estimatedHourlyCostEur is > 0m and { } selectedRate
+            ? selectedRate
+            : _options.GetHourlyRate(providerIdentifier);
+        var amount = CalculateAmount(rate, now, now + Duration.FromTimeSpan(policy.ReservationSlice));
+        var otherReservations = await GetOtherReservationTotalAsync(
+                owner.PrimaryKey,
+                excludedDeploymentId,
+                cancellationToken)
+            .ConfigureAwait(false);
+        var availableAfter = owner.Balance + (owner.Allowance ?? 0m) - otherReservations - amount;
+        return new InitialSliceAvailability(rate, amount, availableAfter >= policy.MinimumSafetyRangeEur);
+    }
+
     private async Task<decimal> GetOtherReservationTotalAsync(
         Guid costOwnerId,
-        Guid excludedDeploymentId,
+        Guid? excludedDeploymentId,
         CancellationToken cancellationToken)
     {
         var reservations = await dbContext.GameServerDeployments
             .AsNoTracking()
             .Where(q => q.CostOwnerFk == costOwnerId
-                        && q.PrimaryKey != excludedDeploymentId
+                        && (excludedDeploymentId == null || q.PrimaryKey != excludedDeploymentId)
                         && q.TimeStampResolved == null
                         && q.ReservedProviderCostEur != null)
             .Select(q => q.ReservedProviderCostEur!.Value)
@@ -386,6 +461,8 @@ internal sealed class HostingCostSliceService(
 
     private bool IsPostgreSql
         => dbContext.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true;
+
+    private sealed record InitialSliceAvailability(decimal Rate, decimal Amount, bool IsAffordable);
 
     private sealed record LockedDeployment(
         IDbContextTransaction Transaction,

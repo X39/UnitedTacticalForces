@@ -1,36 +1,38 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 import { formatDateTime } from "@/app/format";
 import { formatResource } from "@/app/i18n";
 import { useAuth } from "@/auth/auth";
 import { canCreateFieldReports, canReadFieldReports } from "@/auth/claims";
+import { ActionButton, ActionLink } from "@/components/ActionControl";
 import { CommandListToolbar } from "@/components/CommandListToolbar";
-import { PageHeader, StatePanel, StatusBadge } from "@/components/primitives";
+import { FilterChipGroup, type FilterChipItem } from "@/components/FilterChipGroup";
+import { PageStack } from "@/components/PageStack";
+import { PageHeader, StatusBadge } from "@/components/primitives";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/StateViews";
+import { reportTones, toneOf } from "@/components/statusTones";
 import {
   fieldReportMatchesView,
   fieldReportState,
   loadCommandFieldReports,
   sortCommandFieldReports,
   type CommandFieldReport,
-  type FieldReportState,
   type FieldReportView,
 } from "@/features/admin/fieldReports";
+import "@/features/admin/mediaAdmin.css";
 
 const views: readonly FieldReportView[] = ["all", "published", "drafts", "featured", "deleted"];
 
-function stateTone(state: FieldReportState): "success" | "warning" | "danger" | "info" {
-  switch (state) {
-    case "published":
-      return "success";
-    case "scheduled":
-      return "info";
-    case "draft":
-      return "warning";
-    case "deleted":
-      return "danger";
-  }
+/** Renders the page header above a state view so every state of the list keeps exactly one `h1`. */
+function ReportsStateFrame({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <PageStack>
+      <PageHeader title={t("Shared_CommandCenter_Nav_FieldReports")} />
+      {children}
+    </PageStack>
+  );
 }
 
 export function Component() {
@@ -101,112 +103,110 @@ export function Component() {
   };
   const countFor = (value: FieldReportView) =>
     reports.filter((report) => fieldReportMatchesView(report, value)).length;
+  const viewChips: readonly FilterChipItem<FieldReportView>[] = views.map((value) => ({
+    id: value,
+    label: viewLabel(value),
+    count: countFor(value),
+  }));
+  const metrics: readonly {
+    view: FieldReportView;
+    status: string;
+    value: string;
+    description: string;
+  }[] = [
+    {
+      view: "all",
+      status: t("Pages_Command_FieldReports_MetricStatus_Reports"),
+      value: formatResource(
+        t("Pages_Command_FieldReports_MetricValue_Report"),
+        query.data?.fieldReportCount ?? 0,
+      ),
+      description: formatResource(
+        t("Pages_Command_FieldReports_MetricDescription_All"),
+        reports.length,
+      ),
+    },
+    {
+      view: "published",
+      status: t("Pages_Command_FieldReports_MetricStatus_Published"),
+      value: formatResource(
+        t("Pages_Command_FieldReports_MetricValue_Report"),
+        query.data?.publishedFieldReportCount ?? 0,
+      ),
+      description: t("Pages_Command_FieldReports_MetricDescription_Published"),
+    },
+    {
+      view: "drafts",
+      status: t("Pages_Command_FieldReports_MetricStatus_Drafts"),
+      value: formatResource(
+        t("Pages_Command_FieldReports_MetricValue_Draft"),
+        query.data?.draftFieldReportCount ?? 0,
+      ),
+      description: t("Pages_Command_FieldReports_MetricDescription_Drafts"),
+    },
+    {
+      view: "deleted",
+      status: t("Pages_Command_FieldReports_MetricStatus_Deleted"),
+      value: formatResource(
+        t("Pages_Command_FieldReports_MetricValue_Report"),
+        query.data?.deletedFieldReportCount ?? 0,
+      ),
+      description: t("Pages_Command_FieldReports_MetricDescription_Deleted"),
+    },
+  ];
 
   if (!canRead)
     return (
-      <StatePanel kind="forbidden" title={t("Pages_Command_FieldReports_NoAccessTitle")}>
-        {t("Pages_Command_FieldReports_NoAccessMessage")}
-      </StatePanel>
+      <ReportsStateFrame>
+        <ForbiddenState title={t("Pages_Command_FieldReports_NoAccessTitle")}>
+          {t("Pages_Command_FieldReports_NoAccessMessage")}
+        </ForbiddenState>
+      </ReportsStateFrame>
     );
 
   return (
-    <section className="field-report-admin-page">
+    <PageStack>
       <PageHeader
-        kicker={t("Shared_CommandCenter_Nav_FieldReports")}
-        title={t("Pages_Command_FieldReports_HeaderTitle")}
+        title={t("Shared_CommandCenter_Nav_FieldReports")}
         description={t("Pages_Command_FieldReports_HeaderDescription")}
         actions={
           <>
-            <button
-              className="button button--ghost"
-              type="button"
+            <ActionButton
+              variant="ghost"
               disabled={query.isFetching}
               onClick={() => void query.refetch()}
             >
               {t("Pages_Command_FieldReports_Refresh")}
-            </button>
+            </ActionButton>
             {canCreate && (
-              <Link className="button button--primary" to="/command/field-reports/create">
+              <ActionLink variant="gold" to="/command/field-reports/create">
                 {t("Pages_Command_FieldReports_NewReport")}
-              </Link>
+              </ActionLink>
             )}
-            <Link className="button button--ghost" to="/field-reports">
+            <ActionLink variant="ghost" to="/field-reports">
               {t("Pages_Command_FieldReports_PublicReports")}
-            </Link>
+            </ActionLink>
           </>
         }
       />
 
-      <section
-        className="command-metrics field-report-admin-metrics"
-        aria-label={t("Pages_Command_FieldReports_SummaryAria")}
-      >
-        <button
-          type="button"
-          className={view === "all" ? "active" : undefined}
-          aria-pressed={view === "all"}
-          onClick={() => setView("all")}
-        >
-          <span>{t("Pages_Command_FieldReports_MetricStatus_Reports")}</span>
-          <strong>
-            {formatResource(
-              t("Pages_Command_FieldReports_MetricValue_Report"),
-              query.data?.fieldReportCount ?? 0,
-            )}
-          </strong>
-          <small>
-            {formatResource(t("Pages_Command_FieldReports_MetricDescription_All"), reports.length)}
-          </small>
-        </button>
-        <button
-          type="button"
-          className={view === "published" ? "active" : undefined}
-          aria-pressed={view === "published"}
-          onClick={() => setView("published")}
-        >
-          <span>{t("Pages_Command_FieldReports_MetricStatus_Published")}</span>
-          <strong>
-            {formatResource(
-              t("Pages_Command_FieldReports_MetricValue_Report"),
-              query.data?.publishedFieldReportCount ?? 0,
-            )}
-          </strong>
-          <small>{t("Pages_Command_FieldReports_MetricDescription_Published")}</small>
-        </button>
-        <button
-          type="button"
-          className={view === "drafts" ? "active" : undefined}
-          aria-pressed={view === "drafts"}
-          onClick={() => setView("drafts")}
-        >
-          <span>{t("Pages_Command_FieldReports_MetricStatus_Drafts")}</span>
-          <strong>
-            {formatResource(
-              t("Pages_Command_FieldReports_MetricValue_Draft"),
-              query.data?.draftFieldReportCount ?? 0,
-            )}
-          </strong>
-          <small>{t("Pages_Command_FieldReports_MetricDescription_Drafts")}</small>
-        </button>
-        <button
-          type="button"
-          className={view === "deleted" ? "active" : undefined}
-          aria-pressed={view === "deleted"}
-          onClick={() => setView("deleted")}
-        >
-          <span>{t("Pages_Command_FieldReports_MetricStatus_Deleted")}</span>
-          <strong>
-            {formatResource(
-              t("Pages_Command_FieldReports_MetricValue_Report"),
-              query.data?.deletedFieldReportCount ?? 0,
-            )}
-          </strong>
-          <small>{t("Pages_Command_FieldReports_MetricDescription_Deleted")}</small>
-        </button>
+      <section className="report-metrics" aria-label={t("Pages_Command_FieldReports_SummaryAria")}>
+        {metrics.map((metric) => (
+          <ActionButton
+            key={metric.view}
+            variant="ghost"
+            className="report-metric"
+            aria-pressed={view === metric.view}
+            onClick={() => setView(metric.view)}
+          >
+            <span>{metric.status}</span>
+            <strong>{metric.value}</strong>
+            <small>{metric.description}</small>
+          </ActionButton>
+        ))}
       </section>
 
       <CommandListToolbar
-        className="field-report-admin-toolbar"
         ariaLabel={t("Pages_Command_FieldReports_FilterAria")}
         onSubmit={applySearch}
         searchLabel={t("Pages_Command_FieldReports_SearchPlaceholder")}
@@ -215,48 +215,39 @@ export function Component() {
         submitLabel={t("Pages_Command_FieldReports_Search")}
         submitDisabled={query.isFetching}
       >
-        <div className="filter-chips">
-          {views.map((value) => (
-            <button
-              key={value}
-              className={view === value ? "active" : undefined}
-              type="button"
-              aria-pressed={view === value}
-              onClick={() => setView(value)}
-            >
-              {viewLabel(value)} <span>{countFor(value)}</span>
-            </button>
-          ))}
-        </div>
+        <FilterChipGroup<FieldReportView>
+          label={t("Pages_Command_FieldReports_FilterAria")}
+          items={viewChips}
+          value={view}
+          onChange={setView}
+        />
       </CommandListToolbar>
 
-      {query.isPending ? (
-        <StatePanel kind="loading">{t("Pages_Command_FieldReports_Loading")}</StatePanel>
-      ) : query.isError ? (
-        <StatePanel
-          kind="error"
-          action={
-            <button className="button button--ghost" type="button" onClick={() => query.refetch()}>
-              {t("Pages_Command_FieldReports_Refresh")}
-            </button>
-          }
-        >
+      {query.isError && (
+        <ErrorState onRetry={() => void query.refetch()}>
           {formatResource(t("Pages_Command_FieldReports_LoadError"), query.error.message)}
-        </StatePanel>
-      ) : (
-        <section className="command-panel field-report-admin-ledger">
-          <header className="command-panel__header field-report-admin-ledger__header">
-            <span className="kicker">{t("Pages_Command_FieldReports_LedgerKicker")}</span>
-            <h2>{viewTitle()}</h2>
+        </ErrorState>
+      )}
+      {query.isPending ? (
+        <LoadingState label={t("Pages_Command_FieldReports_Loading")} />
+      ) : query.data ? (
+        <section className="command-panel">
+          <header className="command-panel__header report-ledger__header">
+            <div>
+              <span className="kicker">{t("Pages_Command_FieldReports_LedgerKicker")}</span>
+              <h2>{viewTitle()}</h2>
+            </div>
             <StatusBadge>
               {formatResource(t("Pages_Command_FieldReports_RowCount"), visibleReports.length)}
             </StatusBadge>
           </header>
           {visibleReports.length === 0 ? (
-            <StatePanel kind="empty">{t("Pages_Command_FieldReports_NoReports")}</StatePanel>
+            <EmptyState title={t("Pages_Command_FieldReports_EmptyTitle")}>
+              {t("Pages_Command_FieldReports_EmptyBody")}
+            </EmptyState>
           ) : (
             <div className="command-table-scroll">
-              <table className="command-table field-report-admin-table">
+              <table className="command-table report-table">
                 <caption className="sr-only">{viewTitle()}</caption>
                 <thead>
                   <tr>
@@ -270,67 +261,68 @@ export function Component() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleReports.map((report) => {
-                    const state = fieldReportState(report);
-                    return (
-                      <tr key={report.primaryKey}>
-                        <th scope="row">
-                          <strong>{report.title}</strong>
-                          <span>{report.slug}</span>
-                        </th>
-                        <td>
-                          <StatusBadge tone={stateTone(state)}>{statusLabel(report)}</StatusBadge>
-                        </td>
-                        <td>{report.category}</td>
-                        <td>
-                          <strong>{formatDateTime(report.timeStampUpdated)}</strong>
-                          <span>
-                            {formatDateTime(report.timeStampPublished ?? report.timeStampUpdated)}
-                          </span>
-                        </td>
-                        <td>
-                          <strong>
-                            {report.isFeatured
-                              ? t("Pages_Command_FieldReports_FlagFeatured")
-                              : t("Pages_Command_FieldReports_FlagStandard")}
-                          </strong>
-                          <span>
-                            {report.isPublished
-                              ? t("Pages_Command_FieldReports_FlagPublic")
-                              : t("Pages_Command_FieldReports_FlagEditorial")}
-                          </span>
-                        </td>
-                        <td>
-                          <strong>
-                            {formatResource(
-                              t("Pages_Command_FieldReports_RecordCount"),
-                              report.auditRecordCount,
-                            )}
-                          </strong>
-                          <span>
-                            {formatResource(
-                              t("Pages_Command_FieldReports_SortValue"),
-                              report.sortOrder,
-                            )}
-                          </span>
-                        </td>
-                        <td>
-                          <Link
-                            className="button button--ghost button--small"
-                            to={`/command/field-reports/${report.primaryKey}`}
-                          >
-                            {t("Pages_Command_FieldReports_Edit")}
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {visibleReports.map((report) => (
+                    <tr key={report.primaryKey}>
+                      <th scope="row">
+                        <strong>{report.title}</strong>
+                        <span>{report.slug}</span>
+                      </th>
+                      <td>
+                        <StatusBadge tone={toneOf(reportTones, fieldReportState(report))}>
+                          {statusLabel(report)}
+                        </StatusBadge>
+                      </td>
+                      <td>{report.category}</td>
+                      <td>
+                        <strong>{formatDateTime(report.timeStampUpdated)}</strong>
+                        <span>
+                          {formatDateTime(report.timeStampPublished ?? report.timeStampUpdated)}
+                        </span>
+                      </td>
+                      <td>
+                        <strong>
+                          {report.isFeatured
+                            ? t("Pages_Command_FieldReports_FlagFeatured")
+                            : t("Pages_Command_FieldReports_FlagStandard")}
+                        </strong>
+                        <span>
+                          {report.isPublished
+                            ? t("Pages_Command_FieldReports_FlagPublic")
+                            : t("Pages_Command_FieldReports_FlagEditorial")}
+                        </span>
+                      </td>
+                      <td>
+                        <strong>
+                          {formatResource(
+                            t("Pages_Command_FieldReports_RecordCount"),
+                            report.auditRecordCount,
+                          )}
+                        </strong>
+                        <span>
+                          {formatResource(
+                            t("Pages_Command_FieldReports_SortValue"),
+                            report.sortOrder,
+                          )}
+                        </span>
+                      </td>
+                      <td>
+                        <ActionLink
+                          variant="ghost"
+                          size="compact"
+                          aria-label={`${t("Pages_Command_FieldReports_Edit")} ${report.title}`}
+                          to={`/command/field-reports/${report.primaryKey}`}
+                        >
+                          {t("Pages_Command_FieldReports_Edit")}
+                        </ActionLink>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           )}
         </section>
-      )}
-    </section>
+      ) : null}
+    </PageStack>
   );
 }

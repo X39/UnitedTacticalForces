@@ -61,11 +61,17 @@ try
         new("cs2", () => new CounterStrike2WorkerCommandExecutor(connection, options, storage: storageTransfer)),
     ]);
     var executor = executorRegistry.Create(connection.GameIdentifier);
+    await using var channel = new CloudWorkerChannelClient(
+        new ClientWebSocketChannelConnector(CloudWorkerChannelOptions.Default),
+        CloudWorkerChannelOptions.Default);
     var runtime = new CloudWorkerRuntime(
         new CloudWorkerApiClient(controlHttpClient),
+        channel,
         credentialStore,
         new FlatFileWorkerCommandJournal(options.StateDirectory),
-        executor);
+        executor,
+        new WorkerMetricsSampler(),
+        executorRegistry.GameIdentifiers);
     return await runtime.RunAsync(connection, bootstrap, options, shutdown.Token).ConfigureAwait(false);
 }
 catch (OperationCanceledException) when (shutdown.IsCancellationRequested)

@@ -21,8 +21,16 @@ public sealed class GameServerConfigurationController(
     IHostingAuthorizationService authorizationService,
     IHostingAuditWriter auditWriter) : ControllerBase
 {
+    /// <summary>
+    /// Resolves the effective configuration of a server, including the tier each option belongs to.
+    /// </summary>
+    /// <param name="gameServerId">The identifier of the game server.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The resolved configuration, or <c>404</c> when the server does not exist.</returns>
     [HttpGet]
     [Authorize(Claims.ResourceBased.Server.View)]
+    [ProducesResponseType<GameConfigurationDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAsync(
         [FromRoute] Guid gameServerId,
         CancellationToken cancellationToken)
@@ -44,8 +52,21 @@ public sealed class GameServerConfigurationController(
         }
     }
 
+    /// <summary>
+    /// Applies configuration value updates and resets to a server and records that the change waits for the next start.
+    /// </summary>
+    /// <param name="gameServerId">The identifier of the game server.</param>
+    /// <param name="payload">The values to set and the keys to reset.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>
+    /// The resolved configuration, <c>400</c> for invalid or conflicting keys, <c>401</c> without a user and
+    /// <c>404</c> when the server does not exist or is archived.
+    /// </returns>
     [HttpPut]
     [Authorize(Claims.ResourceBased.Server.Modify)]
+    [ProducesResponseType<GameConfigurationDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateAsync(
         [FromRoute] Guid gameServerId,
         [FromBody] ServerConfigurationUpdatePayload payload,
@@ -59,6 +80,7 @@ public sealed class GameServerConfigurationController(
             .ConfigureAwait(false);
         if (server is null)
             return NotFound();
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
         var updates = payload.Values
             .GroupBy(q => q.Key, StringComparer.Ordinal)
             .ToArray();
@@ -75,20 +97,23 @@ public sealed class GameServerConfigurationController(
                 var existing = server.ConfigurationValues.SingleOrDefault(q => q.DefinitionKey == update.Key);
                 if (existing is null)
                 {
-                    server.ConfigurationValues.Add(new GameServerConfigurationValue
+                    // Added through the set because a client-assigned key on an entity discovered through the
+                    // tracked collection would be tracked as an existing row and fail with a concurrency error.
+                    dbContext.GameServerConfigurationValues.Add(new GameServerConfigurationValue
                     {
                         PrimaryKey = Guid.NewGuid(),
+                        GameServerFk = server.PrimaryKey,
                         DefinitionKey = update.Key,
                         ValueJson = value.GetRawText(),
                         UpdatedByFk = actorId,
-                        TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant(),
+                        TimeStampUpdated = now,
                     });
                 }
                 else
                 {
                     existing.ValueJson = value.GetRawText();
                     existing.UpdatedByFk = actorId;
-                    existing.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+                    existing.TimeStampUpdated = now;
                 }
             }
             foreach (var key in payload.ResetKeys)
@@ -106,7 +131,9 @@ public sealed class GameServerConfigurationController(
             return BadRequest(new { error = ex.Message });
         }
 
-        server.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+        server.TimeStampUpdated = now;
+        if (updates.Length > 0 || payload.ResetKeys.Count > 0)
+            PendingStartChanges.MarkChanged(server, EGameServerChangeArea.Configuration, now);
         auditWriter.Add(
             dbContext,
             EHostingAuditEventKind.ServerConfigurationChanged,
@@ -120,8 +147,22 @@ public sealed class GameServerConfigurationController(
             true));
     }
 
+    /// <summary>
+    /// Selects the configuration profile and revision mode of a server. A selection that equals the stored one is a
+    /// no-op and neither audits nor marks a pending change.
+    /// </summary>
+    /// <param name="gameServerId">The identifier of the game server.</param>
+    /// <param name="payload">The profile and optional pinned revision to select.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>
+    /// <c>204</c> when applied or unchanged, <c>400</c> for an unavailable profile or revision, <c>401</c> without a
+    /// user and <c>404</c> when the server does not exist or is archived.
+    /// </returns>
     [HttpPut("profile")]
     [Authorize(Claims.ResourceBased.Server.Modify)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SelectProfileAsync(
         [FromRoute] Guid gameServerId,
         [FromBody] GameServerConfigurationProfileSelectionPayload payload,
@@ -153,9 +194,15 @@ public sealed class GameServerConfigurationController(
                 return BadRequest(new { error = "The pinned revision does not belong to the selected profile." });
         }
 
+        var changed = server.SelectedConfigurationProfileFk != payload.ProfileId
+                      || server.PinnedConfigurationProfileRevisionFk != payload.PinnedRevisionId;
+        if (!changed)
+            return NoContent();
+        var now = NodaSystemClock.Instance.GetCurrentInstant();
         server.SelectedConfigurationProfileFk = payload.ProfileId;
         server.PinnedConfigurationProfileRevisionFk = payload.PinnedRevisionId;
-        server.TimeStampUpdated = NodaSystemClock.Instance.GetCurrentInstant();
+        server.TimeStampUpdated = now;
+        PendingStartChanges.MarkChanged(server, EGameServerChangeArea.Configuration, now);
         auditWriter.Add(
             dbContext,
             EHostingAuditEventKind.ServerConfigurationProfileChanged,
@@ -167,8 +214,17 @@ public sealed class GameServerConfigurationController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Lists the non-archived configuration profiles that match the game of the server, each with the identifier of its
+    /// latest revision.
+    /// </summary>
+    /// <param name="gameServerId">The identifier of the game server.</param>
+    /// <param name="cancellationToken">Cancels the request.</param>
+    /// <returns>The selectable profile summaries, or <c>404</c> when the server does not exist or is archived.</returns>
     [HttpGet("profile-options")]
     [Authorize(Claims.ResourceBased.Server.Modify)]
+    [ProducesResponseType<IReadOnlyCollection<ConfigurationProfileSummaryDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetProfileOptionsAsync(
         [FromRoute] Guid gameServerId,
         CancellationToken cancellationToken)
@@ -192,6 +248,7 @@ public sealed class GameServerConfigurationController(
                 GameIdentifier = q.GameIdentifier,
                 IsArchived = q.IsArchived,
                 LatestRevisionNumber = q.Revisions.Max(r => (int?) r.RevisionNumber) ?? 0,
+                LatestRevisionId = q.Revisions.OrderByDescending(r => r.RevisionNumber).Select(r => (Guid?) r.PrimaryKey).FirstOrDefault(),
                 TimeStampUpdated = q.TimeStampUpdated,
             })
             .ToArrayAsync(cancellationToken)
@@ -217,6 +274,7 @@ public sealed class GameServerConfigurationController(
                 Required = q.Definition.Required,
                 Sensitive = q.Definition.Sensitive,
                 IsControlPlaneOnly = q.Definition.IsControlPlaneOnly,
+                Tier = q.Definition.Tier,
                 Order = q.Definition.Order,
                 Minimum = q.Definition.Minimum,
                 Maximum = q.Definition.Maximum,

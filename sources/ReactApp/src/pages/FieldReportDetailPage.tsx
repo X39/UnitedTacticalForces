@@ -9,7 +9,10 @@ import { formatDate } from "@/app/format";
 import { useDocumentTitle } from "@/app/documentTitle";
 import { formatResource } from "@/app/i18n";
 import { useSiteImage } from "@/app/siteImages";
-import { Markdown, StatePanel } from "@/components/primitives";
+import { ActionLink } from "@/components/ActionControl";
+import { Markdown, PageHeader } from "@/components/primitives";
+import { PublicHero } from "@/components/PublicHero";
+import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
 
 export function Component() {
   const { t } = useTranslation();
@@ -29,66 +32,62 @@ export function Component() {
   if (query.isLoading)
     return (
       <div className="narrow-page">
-        <StatePanel kind="loading">{t("Pages_FieldReports_Detail_Loading")}</StatePanel>
+        <PageHeader title={t("Pages_Public_Media_Title")} />
+        <LoadingState label={t("Pages_FieldReports_Detail_Loading")} />
       </div>
     );
   if (query.isError)
     return (
       <div className="narrow-page">
-        <StatePanel
-          kind="error"
-          title={t("Pages_FieldReports_Detail_Error_LoadFailed")}
-          action={
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => void query.refetch()}
-            >
-              {t("React_UI_Retry")}
-            </button>
-          }
-        >
+        <PageHeader title={t("Pages_Public_Media_Title")} />
+        <ErrorState onRetry={() => void query.refetch()}>
           {t("Pages_FieldReports_Detail_Error_LoadFailed")}
-        </StatePanel>
+        </ErrorState>
       </div>
     );
   if (!query.data)
     return (
       <div className="narrow-page">
-        <StatePanel
-          kind="empty"
+        <PageHeader title={t("Pages_Public_Media_Title")} />
+        <EmptyState
           title={t("Pages_FieldReports_Detail_NotFound")}
           action={
-            <Link className="button button--ghost" to="/field-reports">
+            <ActionLink variant="ghost" to="/field-reports">
               {t("Pages_FieldReports_Detail_BackToReports")}
-            </Link>
+            </ActionLink>
           }
         >
           {t("Pages_FieldReports_Detail_NotFoundDescription")}
-        </StatePanel>
+        </EmptyState>
       </div>
     );
   const report = query.data;
   return (
     <article className="report-detail">
-      <header
+      <PublicHero
+        className="editorial-hero"
+        compact
+        singleColumn
         style={
           {
-            "--report-image": `url("${resolveImageUrl(report.heroImagePath) ?? fallbackImage}")`,
+            "--hero-image": `url("${(resolveImageUrl(report.heroImagePath) ?? fallbackImage).replaceAll('"', "%22")}")`,
           } as CSSProperties
         }
-      >
-        <div>
-          <Link className="button button--glass button--small" to="/field-reports">
+        kicker={report.category}
+        title={report.title}
+        description={
+          <>
+            <p>{report.excerpt}</p>
+            <small>{formatDate(report.timeStampPublished ?? report.timeStampUpdated)}</small>
+          </>
+        }
+        actions={
+          <ActionLink variant="glass" size="compact" to="/field-reports">
             <ArrowLeft20Regular />
             {t("Pages_FieldReports_Detail_BackToReports")}
-          </Link>
-          <span className="kicker">{report.category}</span>
-          <h1>{report.title}</h1>
-          <p>{report.excerpt}</p>
-          <small>{formatDate(report.timeStampPublished ?? report.timeStampUpdated)}</small>
-        </div>
-      </header>
+          </ActionLink>
+        }
+      />
       <div className="report-detail__layout">
         <aside>
           <Link to="/field-reports">{t("Pages_FieldReports_Detail_AllReports")}</Link>
