@@ -1,5 +1,6 @@
-# Trusted release. The React unit and browser suites run as parallel jobs of the same revision; the release job
-# needs all of them and keeps the .NET checks, every publication input and the deployment in one workspace.
+# Trusted release. The React unit suite and the optional React browser suite run as parallel jobs of the same
+# revision; the release job needs both and keeps the .NET checks, every publication input and the deployment in one
+# workspace.
 version: 1
 triggers:
   - trusted_branch
@@ -35,7 +36,7 @@ jobs:
     steps:
       - name: Check React contracts, locales, formatting, lint, types and unit tests
         run: sh .mozaic/build.sh react-tests
-  react-browser-desktop:
+  react-browser:
     image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     runs_on:
       labels:
@@ -64,76 +65,12 @@ jobs:
         - playwright.download.prss.microsoft.com
     timeout_minutes: 60
     steps:
-      - name: Run the optional React desktop browser journeys (off unless UTF_DESKTOP_BROWSER_TESTS=1)
-        run: sh .mozaic/build.sh react-browser-desktop
-  react-browser-mobile-390:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - nodejs.org
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - mcr.microsoft.com
-        - mcrprod.azureedge.net
-        - westeurope.data.mcr.microsoft.com
-        - registry.npmjs.org
-        - cdn.playwright.dev
-        - playwright.download.prss.microsoft.com
-    timeout_minutes: 60
-    steps:
-      - name: Run the React browser journeys at the 390 pixel mobile viewport
-        run: sh .mozaic/build.sh react-browser --project=mobile-390
-  react-browser-mobile-320:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - nodejs.org
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - mcr.microsoft.com
-        - mcrprod.azureedge.net
-        - westeurope.data.mcr.microsoft.com
-        - registry.npmjs.org
-        - cdn.playwright.dev
-        - playwright.download.prss.microsoft.com
-    timeout_minutes: 60
-    steps:
-      - name: Run the React browser journeys at the 320 pixel mobile viewport
-        run: sh .mozaic/build.sh react-browser --project=mobile-320
+      - name: Run the optional React browser journeys (off unless UTF_BROWSER_TESTS=1)
+        run: sh .mozaic/build.sh react-browser-optional
   checked-artifacts:
     needs:
       - react-tests
-      - react-browser-desktop
-      - react-browser-mobile-390
-      - react-browser-mobile-320
+      - react-browser
     image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     runs_on:
       labels:

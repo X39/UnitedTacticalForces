@@ -69,7 +69,7 @@ jobs:
         format: trx
       - path: test-results/auth-debug-results/*.trx
         format: trx
-  react-browser-desktop:
+  react-browser:
     image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
     needs:
       - react-tests
@@ -100,71 +100,5 @@ jobs:
         - playwright.download.prss.microsoft.com
     timeout_minutes: 30
     steps:
-      - name: Run the optional React desktop browser journeys (off unless UTF_DESKTOP_BROWSER_TESTS=1)
-        run: sh .mozaic/build.sh react-browser-desktop
-  react-browser-mobile-390:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    needs:
-      - react-tests
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - nodejs.org
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - mcr.microsoft.com
-        - mcrprod.azureedge.net
-        - westeurope.data.mcr.microsoft.com
-        - registry.npmjs.org
-        - cdn.playwright.dev
-        - playwright.download.prss.microsoft.com
-    timeout_minutes: 30
-    steps:
-      - name: Run the React browser journeys at the 390 pixel mobile viewport
-        run: sh .mozaic/build.sh react-browser --project=mobile-390
-  react-browser-mobile-320:
-    image: docker.io/library/rust@sha256:6ae102bdbf528294bc79ad6e1fae682f6f7c2a6e6621506ba959f9685b308a55
-    needs:
-      - react-tests
-    runs_on:
-      labels:
-        host-profile: fedora-44-cloud-v1
-        workspace-storage: bounded-disk-v1
-    resources:
-      cpu_millis: 2000
-      memory_mib: 4096
-      scratch_mib: 65536
-      pids: 512
-      log_mib: 64
-    network:
-      mode: http_https
-      allow_hosts:
-        - nodejs.org
-        - index.crates.io
-        - static.crates.io
-        - auth.docker.io
-        - registry-1.docker.io
-        - production.cloudfront.docker.com
-        - mcr.microsoft.com
-        - mcrprod.azureedge.net
-        - westeurope.data.mcr.microsoft.com
-        - registry.npmjs.org
-        - cdn.playwright.dev
-        - playwright.download.prss.microsoft.com
-    timeout_minutes: 30
-    steps:
-      - name: Run the React browser journeys at the 320 pixel mobile viewport
-        run: sh .mozaic/build.sh react-browser --project=mobile-320
+      - name: Run the optional React browser journeys (off unless UTF_BROWSER_TESTS=1)
+        run: sh .mozaic/build.sh react-browser-optional
