@@ -6,7 +6,7 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 temporary=$(mktemp -d "$repo_root/.mozaic-release-test.XXXXXX")
 trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 
-for failure in none react-tests dotnet-release react-browser worker-test worker-evidence; do
+for failure in none dotnet-release react-assets worker-test worker-evidence; do
     workspace=$temporary/$failure
     mkdir -p "$workspace/.mozaic/oci-layout" "$workspace/bin" \
         "$workspace/sources/ReactApp" "$workspace/sources/HostingContracts" \
@@ -42,13 +42,15 @@ fi
 DOTNET
     cat > "$workspace/bin/npm" <<'NPM'
 #!/bin/sh
+set -eu
 printf 'npm %s\n' "$*" >> "$TRACE"
+if [ "$1" = run ]; then test "$FAILURE" != react-assets; fi
 NPM
     chmod +x "$workspace/bin/"* "$workspace/.mozaic/oci-layout/run.sh"
     for command in npm dotnet; do
         test "$(PATH="$workspace/bin:$PATH" command -v "$command")" = "$workspace/bin/$command"
     done
-    export TRACE=$workspace/trace FAILURE=$failure
+    export TRACE=$workspace/trace FAILURE=$failure MOZAIC_REVISION=0123456789abcdef0123456789abcdef01234567
     export UTF_PROOF_DIRECTORY=$workspace/proof UTF_CHECK_PUBLISH_DIRECTORY=$workspace/.publish
     if PATH="$workspace/bin:$PATH" sh "$workspace/release.sh"; then
         test "$failure" = none
@@ -56,6 +58,9 @@ NPM
         test ! -e "$workspace/images/aska.tar"
         grep -q '^dotnet publish .*--no-build --no-restore' "$TRACE"
         test "$(grep -c '^assemble ' "$TRACE")" = 3
+        # The React suites are separate jobs that the release job needs; it only builds the two asset sets.
+        test "$(grep -c '^npm run build:assets' "$TRACE")" = 2
+        if grep -q '^react-tests$\|^react-browser$' "$TRACE"; then exit 1; fi
     else
         test "$failure" != none
         test ! -d "$workspace/images"

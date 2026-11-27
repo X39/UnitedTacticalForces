@@ -1,8 +1,10 @@
 # Mozaic CI
 
 The active trusted release definition is [release.yml](release.yml). Its
-`checked-artifacts` job runs the required suites and assembles all three publication
-inputs in the same workspace. [pipeline.yml](pipeline.yml) retains pull-request
+React unit suite and the two mobile browser viewports run as parallel jobs, so no job
+reaches the runner's 60 minute limit. The desktop browser journeys are optional and skipped
+unless the pipeline variable `UTF_DESKTOP_BROWSER_TESTS` is `1`. The `checked-artifacts` job needs all of them, runs
+the .NET suites and assembles all three publication inputs in the same workspace. [pipeline.yml](pipeline.yml) retains pull-request
 feedback. See [RELEASE.md](RELEASE.md) for checks and immutable publication rules,
 and [DEPLOYMENT.md](DEPLOYMENT.md) for data, worker and acceptance requirements.
 

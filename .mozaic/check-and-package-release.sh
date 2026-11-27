@@ -4,13 +4,14 @@ set -eu
 cd /workspace
 helper=/workspace/.mozaic/oci-layout/run.sh
 
-sh .mozaic/check-ordinary.sh react-tests
+# The React unit and browser suites run as separate jobs of the same revision that this job needs, so the
+# whole release fits the runner's job time limit. This job builds the two React asset sets it packages.
 sh .mozaic/check-browser.sh dotnet-release
-sh .mozaic/check-browser.sh react-browser
-
-# The root canary uses the same checked sources with a different public base path.
 (
     cd sources/ReactApp
+    npm ci
+    npm run build:assets
+    # The root canary uses the same sources with a different public base path.
     UTF_REACT_BASE_PATH=/ npm run build:assets
 )
 

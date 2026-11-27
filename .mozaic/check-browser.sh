@@ -3,6 +3,7 @@
 set -eu
 cd /workspace
 mode=${1:?A browser check name is required}
+shift
 case "$mode" in
     dotnet-release) version=1.61.0 ;;
     react-browser) version=1.62.1 ;;
@@ -12,4 +13,4 @@ helper=/workspace/.mozaic/oci-layout/run.sh
 prefix=/workspace/.browser-deps-$version
 sh "$helper" python .mozaic/stage-browser-deps.py "$version" "$prefix"
 . "$prefix/environment.sh"
-sh .mozaic/check-ordinary.sh "$mode"
+sh .mozaic/check-ordinary.sh "$mode" "$@"

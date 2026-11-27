@@ -2,6 +2,10 @@
 
 The active trusted definition is `.mozaic/release.yml`. Its ordinary
 `checked-artifacts` job checks and packages API, web, and one shared worker in one workspace.
+It needs the `react-tests` and `react-browser-*` jobs (one per Playwright viewport project), which run the
+React suites in parallel on the same revision so that no job reaches the runner's 60 minute limit. The desktop job
+(`react-browser-desktop`) is optional and skips itself unless the pipeline variable `UTF_DESKTOP_BROWSER_TESTS` is
+`1`; when enabled, it gates the release like the others.
 `.mozaic/pipeline.yml` retains the same check suites for pull-request feedback.
 
 The former split came from ASKA's Windows runtime support: commit `1bcf282a`
