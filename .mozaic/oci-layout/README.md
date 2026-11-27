@@ -12,16 +12,17 @@ Commands are `stage-node PREFIX`, `stage-dotnet PREFIX [201|302]`,
 `.publish/web/wwwroot`, `.publish/worker`, and the existing React outputs.
 
 Runtime base manifests, configs, layer digests and uncompressed identities are
-verified. Ubuntu Noble package indexes chain to SHA-256-pinned Release documents
-at snapshot `20261024T000000Z`; each package payload is SHA-256 verified.
-The original snapshot URL and every Release, index and package digest remain
-authoritative. CI downloads those same bytes from the existing CI-restricted
-`https://app.mozaic.space/mozaic-release-inputs/ubuntu-snapshot-20261024T000000Z/`
-mirror because the upstream snapshot service is IPv4-only. The mirror preserves
-the upstream relative paths and cannot replace the pinned integrity checks.
-The same restricted input service delivers the unchanged SteamCMD installer at
-its existing digest-named path; its original upstream URL and SHA-256 remain
-in the assembly request. Neither delivery path is an arbitrary proxy.
+verified. Ubuntu Noble packages come from the normal public archives, exactly the
+suites the base image's own apt sources use: `noble` and `noble-updates` from
+`https://archive.ubuntu.com/ubuntu/`, `noble-security` from
+`https://security.ubuntu.com/ubuntu/`. Both serve HTTPS over IPv6. As with apt,
+each suite's `InRelease` is checked by `gpgv` against the Ubuntu archive keyring
+shipped in the digest-pinned base image, and every package index and package
+payload is SHA-256 verified against the signed index. Package versions therefore
+follow Ubuntu's current updates, like any `apt-get install` in a Dockerfile.
+SteamCMD is not part of the image: the worker entrypoint installs the pinned
+installer (same SHA-256 as the development Dockerfile) on the game host at first
+start.
 Required and pre-required dependencies are resolved against the base's installed
 package metadata, including i386 worker dependencies. Package maintainer scripts
 are deliberately not run. Runtime users, Wine command links and data ownership
@@ -45,11 +46,3 @@ the helper cannot establish that limit by source inspection.
 Focused inert metadata and unit checks may run locally. Real application image
 builds, required full release tests and toolchain runtime acceptance run through
 the ordinary Mozaic worker. Local checks do not authorize deployment or imports.
-
-## Bootstrap access on managed runners
-
-The Ubuntu snapshot and SteamCMD inputs are immutable, checksum-pinned bootstrap
-assets. The runner needs TLS access to those exact assets at
-app.mozaic.space. If verification passes and assembly returns HTTP 403, match
-the request to the active runner generation and check the ingress allowlist
-before retrying. The target host does not download these build inputs.

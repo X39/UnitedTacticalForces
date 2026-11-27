@@ -44,7 +44,8 @@ class ApiImagePauseTests(unittest.TestCase):
             output = root / 'api.tar'
             with patch.object(assembly, 'Base', return_value=base), \
                     patch.object(assembly, 'package_closure', return_value=[
-                        {'Filename': str(index), 'SHA256': 'a' * 64} for index in range(2)]), \
+                        {'Filename': str(index), 'SHA256': 'a' * 64,
+                         'Archive-Url': 'https://archive.ubuntu.com/ubuntu/'} for index in range(2)]), \
                     patch.object(assembly, 'fetch', side_effect=packages), \
                     patch.object(assembly, 'deb_data', side_effect=lambda data: data):
                 assembly.assemble('api', root, output)

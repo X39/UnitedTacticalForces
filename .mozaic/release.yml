@@ -97,9 +97,8 @@ jobs:
         - api.nuget.org
         - globalcdn.nuget.org
         - registry.npmjs.org
-        - snapshot.ubuntu.com
-        - app.mozaic.space
-        - steamcdn-a.akamaihd.net
+        - archive.ubuntu.com
+        - security.ubuntu.com
         - unitedtacticalforces.de
         - cdn.playwright.dev
         - playwright.download.prss.microsoft.com

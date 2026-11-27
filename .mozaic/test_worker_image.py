@@ -44,13 +44,16 @@ class SharedWorkerImageTests(unittest.TestCase):
             metadata={'etc/passwd': b'root:x:0:0::/root:/bin/sh\n', 'etc/group': b'root:x:0:\n'})
         package = payload(name for name in ('usr/bin/xvfb-run', 'usr/bin/Xvfb', 'usr/bin/wine-stable',
                                            'usr/bin/wineboot-stable') if name not in missing)
-        steam = payload(['steamcmd.sh'], compressed=True)
         output = root / 'worker.tar'
+        fetched = []
         with patch.object(assembly, 'Base', return_value=base), \
-                patch.object(assembly, 'package_closure', return_value=[{'Filename': 'fixture.deb', 'SHA256': 'a' * 64}]) as closure, \
+                patch.object(assembly, 'package_closure', return_value=[{'Filename': 'fixture.deb', 'SHA256': 'a' * 64,
+                                                                       'Archive-Url': 'https://archive.ubuntu.com/ubuntu/'}]) as closure, \
                 patch.object(assembly, 'deb_data', side_effect=lambda data: data), \
-                patch.object(assembly, 'fetch', side_effect=lambda url, *args: steam if 'steamcmd' in url else package):
+                patch.object(assembly, 'fetch', side_effect=lambda url, *args: fetched.append(url) or package):
             assembly.assemble('worker', source, output)
+        # Packages come from the public archive; SteamCMD is installed on the game host, not in the build.
+        self.assertEqual(fetched, ['https://archive.ubuntu.com/ubuntu/fixture.deb'])
         self.assertTrue({'wine', 'wine64', 'winbind', 'xauth', 'xvfb', 'fonts-liberation'}
                         .issubset(closure.call_args.args[1]))
         self.assertEqual(closure.call_args.args[2], ['amd64', 'i386'])
@@ -67,6 +70,26 @@ class SharedWorkerImageTests(unittest.TestCase):
                 image = json.load(archive.extractfile('blobs/sha256/' + manifest['config']['digest'][7:]))
             self.assertEqual(image['config']['Entrypoint'], ['/usr/bin/tini', '-g', '--', '/app/docker-entrypoint.sh'])
             self.assertIn('UTF_ASKA_XVFB_RUN_PATH=/usr/bin/xvfb-run', image['config']['Env'])
+
+    def test_build_downloads_only_from_public_origins(self):
+        """No restricted mirror or IPv4-only origin is an allowed build download destination."""
+        for host in ('app.mozaic.space', 'snapshot.ubuntu.com', 'steamcdn-a.akamaihd.net'):
+            with self.subTest(host=host), self.assertRaisesRegex(ValueError, 'unapproved download destination'):
+                assembly.check_url('https://' + host + '/anything')
+        self.assertTrue({'archive.ubuntu.com', 'security.ubuntu.com'}.issubset(assembly.HOSTS))
+
+    def test_unsigned_suite_index_is_rejected(self):
+        """A suite index that gpgv does not accept never reaches package resolution."""
+        with patch.object(assembly.subprocess, 'run', return_value=SimpleNamespace(returncode=1, stdout=b'')):
+            with self.assertRaisesRegex(ValueError, 'signature verification failed'):
+                assembly.verified_release(b'unsigned', [b'keyring'])
+
+    def test_entrypoint_installs_pinned_steamcmd_without_a_seed(self):
+        """The release image has no /opt/steamcmd, so the game host fetches the pinned installer."""
+        entrypoint = (Path(__file__).resolve().parent.parent / 'sources/CloudWorker/docker-entrypoint.sh').read_text()
+        self.assertIn('if [ -d /opt/steamcmd ]; then', entrypoint)
+        self.assertIn('sha256sum --check --strict', entrypoint)
+        self.assertIn('cebf0046bfd08cf45da6bc094ae47aa39ebf4155e5ede41373b579b8f1071e7c', entrypoint)
 
     def test_missing_xvfb_support_is_rejected(self):
         """Consolidation must not silently turn the shared image into the former Linux-only image."""

@@ -12,6 +12,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -32,20 +33,18 @@ PINS = {
     'web': ('docker.io/library/nginx', '3bcf852aed06467cf075c6105892e4d5a6ebbbafa0ce22d35062db9e90ddef4c'),
     'worker': ('mcr.microsoft.com/dotnet/runtime', 'ca17638b4cbab2063771e8943dbe887ea6c0ae00c5fede3498d5938758c85dfe'),
 }
-SNAPSHOT = 'https://snapshot.ubuntu.com/ubuntu/20261024T000000Z/'
-SNAPSHOT_DELIVERY = 'https://app.mozaic.space/mozaic-release-inputs/ubuntu-snapshot-20261024T000000Z/'
-STEAMCMD_DELIVERY = ('https://app.mozaic.space/mozaic-release-inputs/'
-                    'cebf0046bfd08cf45da6bc094ae47aa39ebf4155e5ede41373b579b8f1071e7c/steamcmd_linux.tar.gz')
-RELEASES = {
-    'noble': '26758a13cecfaff9ff274d31ea9a4633674a999bd130c09f6ecd66a4b8071184',
-    'noble-updates': 'b0ce6f04d05c105454c4f3b6747230e1486618f4f167a616b54b643d9a58ff06',
-    'noble-security': '08ee8b6333cd5d57d555a77a58b911165742adc54240d8f2ed757fbedbc91f4a',
+# The suites an Ubuntu Noble image's own apt sources use. Both archives serve HTTPS over IPv6.
+ARCHIVES = {
+    'noble': 'https://archive.ubuntu.com/ubuntu/',
+    'noble-updates': 'https://archive.ubuntu.com/ubuntu/',
+    'noble-security': 'https://security.ubuntu.com/ubuntu/',
 }
+# The archive keyring shipped by the digest-pinned Ubuntu base image verifies the signed suite indexes, as apt does.
+KEYRINGS = ('usr/share/keyrings/ubuntu-archive-keyring.gpg', 'etc/apt/trusted.gpg.d/ubuntu-keyring-2018-archive.gpg')
 HOSTS = {'auth.docker.io', 'registry-1.docker.io', 'production.cloudfront.docker.com',
          'nodejs.org',
-         'mcr.microsoft.com', 'mcrprod.azureedge.net', 'westeurope.data.mcr.microsoft.com', 'snapshot.ubuntu.com',
-         'app.mozaic.space',
-         'steamcdn-a.akamaihd.net'}
+         'mcr.microsoft.com', 'mcrprod.azureedge.net', 'westeurope.data.mcr.microsoft.com',
+         'archive.ubuntu.com', 'security.ubuntu.com'}
 
 
 def require(condition, message):
@@ -104,19 +103,12 @@ def fetch_failure(url, error, kind='content', layer=None):
 
 def fetch(url, expected=None, maximum=1024 * 1024 * 1024, headers=None):
     check_url(url)
-    # Deliver unchanged pinned IPv4-only inputs through the existing CI-restricted IPv6 mirror.
-    delivery_url = url
-    if url.startswith(SNAPSHOT):
-        delivery_url = SNAPSHOT_DELIVERY + url.removeprefix(SNAPSHOT)
-    elif url == 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz':
-        delivery_url = STEAMCMD_DELIVERY
-    check_url(delivery_url)
     try:
         with urllib.request.build_opener(Redirect()).open(
-                urllib.request.Request(delivery_url, headers=headers or {}), timeout=300) as response:
+                urllib.request.Request(url, headers=headers or {}), timeout=300) as response:
             data = response.read(maximum + 1)
     except Exception as error:
-        raise fetch_failure(delivery_url, error) from None
+        raise fetch_failure(url, error) from None
     require(len(data) <= maximum, 'download exceeds limit')
     if expected:
         require(sha(data) == expected.removeprefix('sha256:'), 'content digest mismatch')
@@ -183,7 +175,7 @@ class Base:
             with tarfile.open(path, mode='r|*') as archive:
                 for member in archive:
                     name = checked_path(member.name)
-                    if name in ('etc/passwd', 'etc/group', 'var/lib/dpkg/status', 'etc/os-release') and member.isfile():
+                    if name in ('etc/passwd', 'etc/group', 'var/lib/dpkg/status', 'etc/os-release') + KEYRINGS and member.isfile():
                         self.metadata[name] = archive.extractfile(member).read()
 
     def download_layer(self, descriptor, path):
@@ -351,14 +343,32 @@ def version_compare(a, b):
     return ((ae > be) - (ae < be)) or segment(au, bu) or segment(ar, br)
 
 
+def verified_release(data, keyrings):
+    """Return the signed text of an InRelease document after gpgv checks it against the base image's keyrings."""
+    with tempfile.TemporaryDirectory() as temporary:
+        arguments = ['gpgv', '--quiet', '--output', '-']
+        for index, keyring in enumerate(keyrings):
+            path = Path(temporary) / f'keyring-{index}.gpg'
+            path.write_bytes(keyring)
+            arguments += ['--keyring', './' + path.name]
+        result = subprocess.run(arguments + ['-'], input=data, capture_output=True, timeout=60, check=False,
+                                cwd=temporary)
+    require(result.returncode == 0 and result.stdout, 'Ubuntu suite index signature verification failed')
+    return result.stdout.decode()
+
+
 def package_closure(base, roots, architectures):
     installed = {}
     for package in paragraphs(base.metadata['var/lib/dpkg/status']):
         if package.get('Status') == 'install ok installed':
             installed[(package['Package'], package['Architecture'])] = package
     catalog = {}
-    for suite, pin in RELEASES.items():
-        release = fetch(SNAPSHOT + 'dists/' + suite + '/Release', pin, 4 * 1024**2).decode()
+    keyrings = [base.metadata[name] for name in KEYRINGS if name in base.metadata]
+    require(keyrings, 'package base has no Ubuntu archive keyring')
+    for suite, archive in ARCHIVES.items():
+        release = verified_release(fetch(archive + 'dists/' + suite + '/InRelease', maximum=4 * 1024**2), keyrings)
+        fields = paragraphs(release.encode())[0]
+        require(fields.get('Suite') == suite and fields.get('Codename') == 'noble', 'unexpected Ubuntu suite index')
         hashes = {}
         active = False
         for line in release.splitlines():
@@ -372,8 +382,9 @@ def package_closure(base, roots, architectures):
         for component in ('main', 'universe'):
             for architecture in architectures:
                 name = f'{component}/binary-{architecture}/Packages.xz'
-                data = lzma.decompress(fetch(SNAPSHOT + 'dists/' + suite + '/' + name, hashes[name]))
+                data = lzma.decompress(fetch(archive + 'dists/' + suite + '/' + name, hashes[name]))
                 for package in paragraphs(data):
+                    package['Archive-Url'] = archive
                     key = (package['Package'], package['Architecture'])
                     if key not in catalog or version_compare(package['Version'], catalog[key]['Version']) > 0:
                         catalog[key] = package
@@ -584,7 +595,7 @@ def assemble(component, source, output):
             require(base.config['config'].get('Labels', {}).get('org.opencontainers.image.version') == '24.04', 'package base is not noble')
             packages = package_closure(base, roots, ['amd64', 'i386'] if component == 'worker' else ['amd64'])
             for package in packages:
-                overlay.payload(deb_data(fetch(SNAPSHOT + package['Filename'], package['SHA256'])))
+                overlay.payload(deb_data(fetch(package['Archive-Url'] + package['Filename'], package['SHA256'])))
             # Essential package manager triggers are represented directly in OCI;
             # target-maintainer scripts, chroot and ldconfig are never executed.
         if component == 'api':
@@ -613,14 +624,9 @@ def assemble(component, source, output):
             overlay.put('etc/passwd', base.metadata['etc/passwd'] + b'utfgame:x:10002:10001::/srv/united-tactical-forces/runtime:/usr/sbin/nologin\nutfsteam:x:10003:10001::/srv/united-tactical-forces/runtime:/usr/sbin/nologin\n')
             overlay.put('etc/group', base.metadata['etc/group'] + b'utfruntime:x:10001:\n')
             for directory, mode, gid in [('var/lib/united-tactical-forces', 0o755, 0), ('var/lib/united-tactical-forces/worker', 0o700, 0),
-                                          ('srv/united-tactical-forces/runtime', 0o2770, 10001), ('opt/steamcmd', 0o755, 0)]:
+                                          ('srv/united-tactical-forces/runtime', 0o2770, 10001)]:
                 overlay.put(directory, mode=mode, gid=gid, kind=tarfile.DIRTYPE)
-            steam = fetch('https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz',
-                          'cebf0046bfd08cf45da6bc094ae47aa39ebf4155e5ede41373b579b8f1071e7c')
-            with tarfile.open(fileobj=io.BytesIO(steam), mode='r:gz') as archive:
-                for item in archive:
-                    require(item.isfile() or item.isdir(), 'unexpected SteamCMD archive entry')
-                    overlay.put('opt/steamcmd/' + checked_path(item.name), archive.extractfile(item).read() if item.isfile() else b'', item.mode, kind=item.type)
+            # SteamCMD is not baked in: the entrypoint installs it on the game host on first start.
             environment.update({'UTF_WORKER_BOOTSTRAP_PATH': '/run/secrets/utf-worker-bootstrap.json',
                 'UTF_WORKER_STATE_DIRECTORY': '/var/lib/united-tactical-forces/worker', 'UTF_WORKER_RUNTIME_ROOT': '/srv/united-tactical-forces/runtime',
                 'UTF_STEAMCMD_PATH': '/srv/united-tactical-forces/runtime/.utf-tooling/steamcmd/steamcmd.sh',
@@ -739,7 +745,7 @@ def verify(component, output):
                     and environment['UTF_GAME_GID'] == '10001', 'worker identities changed')
             require('/srv/united-tactical-forces/runtime' in config['Volumes']
                     and '/var/lib/united-tactical-forces/worker' in config['Volumes'], 'worker volume contract changed')
-            require('app/X39.UnitedTacticalForces.CloudWorker.dll' in members and 'opt/steamcmd/steamcmd.sh' in members, 'worker payload missing')
+            require('app/X39.UnitedTacticalForces.CloudWorker.dll' in members, 'worker payload missing')
             require(environment['UTF_ASKA_WINE_PATH'] == '/usr/bin/wine'
                     and environment['UTF_ASKA_WINEBOOT_PATH'] == '/usr/bin/wineboot'
                     and environment['UTF_ASKA_XVFB_RUN_PATH'] == '/usr/bin/xvfb-run'
