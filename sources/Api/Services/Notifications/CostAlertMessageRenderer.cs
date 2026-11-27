@@ -33,7 +33,7 @@ internal static partial class CostAlertMessageRenderer
         var title = SanitizeTitle(model.ServerTitle);
         var threshold = FormatAmount(model.ThresholdAmount, model.Currency, culture);
         var accrued = FormatAmount(model.AccruedAmount, model.Currency, culture);
-        var time = model.CreatedAt.ToDateTimeUtc().ToString("g", culture) + " UTC";
+        var time = FormatTime(model.CreatedAt, culture);
 
         var subject = string.Format(culture, GetResource(CostAlertMessageKeys.Subject, culture), title, threshold);
         var sentence = string.Format(
@@ -82,7 +82,7 @@ internal static partial class CostAlertMessageRenderer
         ArgumentNullException.ThrowIfNull(model);
         var culture = MessageLocales.ToCulture(locale);
         var title = SanitizeTitle(model.ServerTitle);
-        var time = model.StopsAt.ToDateTimeUtc().ToString("g", culture) + " UTC";
+        var time = FormatTime(model.StopsAt, culture);
         var bodyKey = model.Reason switch
         {
             EAutoStopReason.Idle => AutoStopMessageKeys.BodyIdle,
@@ -150,6 +150,17 @@ internal static partial class CostAlertMessageRenderer
 
     private static string FormatAmount(decimal amount, string currency, CultureInfo culture)
         => amount.ToString("N2", culture) + " " + currency;
+
+    /// <summary>
+    /// Formats a UTC instant as the culture's short date and time followed by "UTC". ICU (Linux) puts a narrow
+    /// no-break space before the day period ("6:30 PM") while Windows NLS uses a plain space; both are replaced with a
+    /// plain space so the plain-text message is identical on every host.
+    /// </summary>
+    /// <param name="instant">The instant to format.</param>
+    /// <param name="culture">The culture of the message.</param>
+    /// <returns>The short date and time in UTC with plain spaces, suffixed with " UTC".</returns>
+    private static string FormatTime(Instant instant, CultureInfo culture)
+        => instant.ToDateTimeUtc().ToString("g", culture).Replace(' ', ' ').Replace(' ', ' ') + " UTC";
 
     private static string GetResource(string key, CultureInfo culture)
         => Language.ResourceManager.GetString(key, culture)
